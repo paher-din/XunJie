@@ -2,10 +2,11 @@ import { createContext, useContext } from 'react'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import type { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import type { ReliableActions } from '../reliable-workspace/actions'
+import type { ComponentInteractions } from '../component-host/interactions'
 import type { ExecutionController } from '../tool-execution/controller'
 
 export const ActivitySessionContext = createContext<{
-  workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions; execution: ExecutionController
+  workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions; execution: ExecutionController; interactions: ComponentInteractions
 } | null>(null)
 export function useActivitySession() {
   const session = useContext(ActivitySessionContext)

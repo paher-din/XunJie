@@ -60,7 +60,7 @@ test('the execution owner keeps the original acceptance, the durable stop and on
     assert.equal(algorithmRoute.value.memoryPages, 256);
 
     const content = { table: manifest.initialState.table, parameters: manifest.initialState.parameters };
-    const state = { formatVersion: 1, instanceId: `${activity.activityId}:table`, componentId: manifest.componentId, version: 1,
+    const state = { formatVersion: 1, instanceId: `${activity.activityId}:table`, componentId: manifest.componentId, version: manifest.version,
       definitionDigest: definition.digest, stateVersion: 1, operationId: randomUUID(),
       content: { table: content.table, parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } } };
     const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'components/table.json', kind: 'state', encoding: 'json',
@@ -74,7 +74,7 @@ test('the execution owner keeps the original acceptance, the durable stop and on
       receiver: { receiverId: 'browser-execution', location: 'local', kind: 'execution' },
       execution: {
         instance: { instanceId: `${activity.activityId}:table`, key: 'table', componentId: manifest.componentId,
-          componentVersion: 1, definitionDigest: definition.digest, hostApiVersion: 1, stateVersion: 1 },
+          componentVersion: manifest.version, definitionDigest: definition.digest, hostApiVersion: 1, stateVersion: 1 },
         operation: { operationId: 'aggregate', effect: 'execute' },
         parameters,
         basis: { works: [file], state: { name: file.name, contentId: file.contentId, sha256: sha256Json(state) },
@@ -86,7 +86,7 @@ test('the execution owner keeps the original acceptance, the durable stop and on
         limits: { timeMs: 5000, memoryPages: 256, inputBytes: 1048576, outputBytes: 65536, concurrentJobs: 1, queuedJobs: 4 },
         plan: { planId: 'browser-job', planVersion: 1, location: 'browser', kind: 'job',
           planDigest: sha256Json({ planId: 'browser-job', planVersion: 1, componentId: manifest.componentId,
-            componentVersion: 1, operationId: 'aggregate' }) },
+            componentVersion: manifest.version, operationId: 'aggregate' }) },
         initiator: { kind: 'student', principalId: activity.identity.principalId } } });
     const requestId = randomUUID(), executionRef = randomUUID();
     const action = actionOf(requestId, { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' });

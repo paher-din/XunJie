@@ -6,7 +6,7 @@ import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
-import { annotationPackage, preparedAnnotationPackage, selfTestMaterial } from '../components/material-annotation/package.mjs';
+import { legacyAnnotationPackage, preparedAnnotationPackage, selfTestMaterial } from '../components/material-annotation/package.mjs';
 
 const output = resolve(process.env.XUNJIE_PREPARATION_REPORT_DIR ?? '.verification/wp03-171');
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
@@ -84,7 +84,7 @@ try {
   };
   const assetsBefore = await artifactDigest(webRoot);
   const preparedImport = { requestId: randomUUID(), ...await preparedAnnotationPackage() };
-  const legacyImport = { requestId: randomUUID(), ...await annotationPackage() };
+  const legacyImport = { requestId: randomUUID(), ...await legacyAnnotationPackage() };
   const preparedDefinition = await api('manage/component-import', preparedImport, admin);
   const legacyDefinition = await api('manage/component-import', legacyImport, admin);
   assert.equal(preparedDefinition.manifest.formatVersion, 2);

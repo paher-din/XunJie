@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { acceptsState, componentMessageSchema, componentChangeSchema, componentStateSchema,
   componentStateName, componentInstanceId, componentExecutionSubmitSchema, componentExecutionQuerySchema,
-  componentExecutionStopSchema, type ComponentBinding } from '@xunjie/contracts/components'
+  componentExecutionStopSchema, componentEventSchema, type ComponentEvent, type ComponentBinding } from '@xunjie/contracts/components'
 import { executionCapabilitiesSchema } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import type { ExecutionController } from '../tool-execution/controller'
@@ -19,13 +19,20 @@ export function componentError(error: unknown) {
 }
 /** A mount grants exactly one fixed instance and expires independently of other valid views. */
 export function createComponentBridge(workspace: ReliableWorkspace, activityId: string, binding: ComponentBinding,
-  canWrite: () => boolean, execution?: { controller: ExecutionController; canRun: () => boolean }) {
+  canWrite: () => boolean, execution?: { controller: ExecutionController; canRun: () => boolean },
+  consume: (event: ComponentEvent) => void = () => {}) {
   const connectionId = crypto.randomUUID(), instanceId = componentInstanceId(activityId, binding.key)
   const manifest = binding.definition.manifest
+  const submitted = new Set<string>()
   let active = true
   let accepting = Promise.resolve()
+  let sequence = 0
+  const events = new Map<string, { input: string; receipt: { received: true; eventId: string; sequence: number; kind: ComponentEvent['kind'] } }>()
   const current = () => workspace.snapshot().files.find(file => file.name === componentStateName(binding.key))
-  function read() { return readComponentState(workspace, binding, instanceId) }
+  function read() {
+    const { contentId, content } = readComponentState(workspace, binding, instanceId)
+    return { contentId, content }
+  }
   function assertWritable() {
     if (!active) throw new Error('stale-connection')
     if (!canWrite()) throw new Error('forbidden')
@@ -35,12 +42,36 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     const input = componentExecutionSubmitSchema.parse(raw)
     if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
     if (!execution || !execution.canRun()) throw new Error('capability-unavailable')
+    const preceding = accepting
+    let release!: () => void
+    accepting = new Promise<void>(resolve => { release = resolve })
+    return workspace.trackInput((async () => {
+      try {
+        await preceding
+        assertWritable()
     const action = await executionAction({ workspace, binding, instanceId, receiver: {
       receiverId: execution.controller.receiver.identity.receiverId, location: 'local', kind: 'execution' },
       operationId: input.operationId, parameters: input.parameters, expectedContentId: input.expectedContentId,
       requestId: input.requestId })
     await execution.controller.submit(action)
+    submitted.add(action.requestId)
     return action
+      } finally { release() }
+    })())
+  }
+
+  async function assertExecutionInstance(requestId: string, stopping = false) {
+    if (!execution) throw new Error('capability-unavailable')
+    const record = await execution.controller.receiver.store.read(execution.controller.scope, requestId)
+    assertWritable()
+    if (!record) {
+      if (stopping && !submitted.has(requestId)) throw new Error('outcome-unknown')
+      return
+    }
+    const target = record.action.execution.instance
+    if (target.instanceId !== instanceId || target.componentId !== manifest.componentId
+      || target.componentVersion !== manifest.version || target.definitionDigest !== binding.definition.digest)
+      throw new Error('forbidden')
   }
   async function handle(raw: unknown) {
     assertWritable()
@@ -52,8 +83,15 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     if (message.method === 'component.close') { z.object({}).strict().parse(message.payload); active = false; return { closed: true } }
     if (message.method === 'component.ready') { z.object({}).strict().parse(message.payload); return { ready: true } }
     if (message.method === 'component.event') {
-      z.object({ eventId: z.uuid(), sequence: z.number().int().nonnegative(), kind: z.literal('interaction') }).strict().parse(message.payload)
-      return { received: true } // Transport acknowledgement only; no learning evidence or model call.
+      const event = componentEventSchema.parse(message.payload), input = JSON.stringify(canonical(event))
+      const previous = events.get(event.eventId)
+      if (previous) { if (previous.input !== input) throw new Error('conflict'); return previous.receipt }
+      if (event.sequence !== sequence + 1) throw new Error('conflict')
+      if (events.size >= 4096) throw new Error('capability-unavailable')
+      consume(event)
+      const receipt = { received: true as const, eventId: event.eventId, sequence: event.sequence, kind: event.kind }
+      events.set(event.eventId, { input, receipt }); sequence = event.sequence
+      return receipt
     }
     const capability = message.method
     if (capability === 'execution.capabilities') {
@@ -77,12 +115,14 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     if (capability === 'execution.query') {
       const input = componentExecutionQuerySchema.parse(message.payload)
       if (!execution) throw new Error('capability-unavailable')
+      await assertExecutionInstance(input.requestId)
       // An empty answer is honest: the durable handoff may not be readable yet, and it still exists.
       return await execution.controller.query(input.requestId, input.inputDigest)
     }
     if (capability === 'execution.stop') {
       const input = componentExecutionStopSchema.parse(message.payload)
       if (!execution) throw new Error('capability-unavailable')
+      await assertExecutionInstance(input.requestId, true)
       // The stop keeps the identity the caller retries with; a second click is the same stop.
       await execution.controller.stop(input.requestId, input.stopId, input.inputDigest)
       return await execution.controller.query(input.requestId, input.inputDigest)
@@ -127,7 +167,11 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
         workspace.change(files, true)
         // Preserve message arrival order through async admission; protection remains in the shared owner.
         release()
-      }, () => workspace.retainConflict(candidate().files))
+      }, () => {
+        if (!active) throw new Error('stale-connection')
+        if (!canWrite()) throw new Error('forbidden')
+        workspace.retainConflict(candidate().files)
+      })
       } finally { release() }
     })())
   }

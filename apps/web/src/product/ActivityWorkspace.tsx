@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useState, useSyncExternalStore } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { CodeReferenceSource } from '../components/workspace/references'
 import { FileTabs } from '../components/workspace/FileTabs'
@@ -7,10 +7,9 @@ import { workspaceScope } from './learningTransport'
 import { useActivitySession } from './ActivitySession'
 
 export interface ActivityWorkspaceHandle { leave(): Promise<void> }
-export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }>(
-  function ActivityWorkspace({ activity, namespace }, ref) {
+export function ActivityWorkspace({ activity, namespace }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }) {
     const scope = workspaceScope(namespace, activity)
-    const { workspace, draft, actions } = useActivitySession()
+    const { workspace } = useActivitySession()
     const state = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
     const editorNamespace = useMemo(() => scope + ':' + crypto.randomUUID(), [scope, workspace])
     const [failure, setFailure] = useState('')
@@ -18,7 +17,6 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
     const [name, setName] = useState('')
     const [rename, setRename] = useState('')
     const [merged, setMerged] = useState('')
-    useImperativeHandle(ref, () => ({ leave: async () => { await workspace.leave(); await draft.leave(); await actions.leave() } }), [workspace, draft, actions])
     const file = state.files.find(f => f.objectId === selected) ?? state.files[0]
     const attempt = (operation: () => unknown) => { try { operation(); setFailure('') } catch { setFailure('操作未完成，请检查文件名、内容大小或重复路径。原内容仍保留。') } }
     const choose = async (files: WorkFile[]) => {
@@ -49,7 +47,7 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
           <label>文件名<input value={name} required onChange={e => setName(e.target.value)} /></label>
           <button type="submit" className="ws-btn solid" disabled={!!state.conflict}>新建文件</button>
         </form>
-        {file && <form className="product-file-form" onSubmit={e => { e.preventDefault(); attempt(() => { workspace.rename(file.objectId, rename); setRename('') }) }}>
+        {file && file.mediaType !== 'application/vnd.xunjie.component-state+json' && <form className="product-file-form" onSubmit={e => { e.preventDefault(); attempt(() => { workspace.rename(file.objectId, rename); setRename('') }) }}>
             <label>新名称<input value={rename} required onChange={e => setRename(e.target.value)} /></label>
             <button type="submit" className="ws-btn ghost" disabled={!!state.conflict}>重命名</button>
             <button type="button" className="ws-btn ghost" disabled={!!state.conflict} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
@@ -70,4 +68,4 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
         </> : <div className="empty"><p>从一个文本或代码文件开始。</p><p>在「文件」中创建你的第一份作品。</p></div>}
       </>}
     </section>
-  })
+  }

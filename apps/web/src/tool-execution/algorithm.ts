@@ -51,17 +51,49 @@ const MAX_GROUPS = 200, MAX_COLUMNS = 12, MAX_ROWS = 2000
 
 interface AlgorithmInstance { aggregate(ptr: number, count: number, mode: number): number; memory: WebAssembly.Memory }
 
+/** Module.imports omits defined (including unexported) memories and tables. This ABI needs no
+ * tables and only host memory; reject other storage before instantiation can allocate it. */
+function assertNoDefinedStorage(bytes: Uint8Array) {
+  let offset = 8 // The engine has already validated the magic, version and section encoding.
+  const invalid = () => new AlgorithmError('algorithm-error', '算法内存声明无法核实，已拒绝实例化。')
+  const readU32 = () => {
+    let value = 0
+    for (let shift = 0; shift <= 28; shift += 7) {
+      const byte = bytes[offset++]
+      if (byte === undefined || (shift === 28 && byte > 15)) throw invalid()
+      value += (byte & 127) * 2 ** shift
+      if (!(byte & 128)) return value
+    }
+    throw invalid()
+  }
+  while (offset < bytes.length) {
+    const section = bytes[offset++]
+    const size = readU32(), end = offset + size
+    if (end > bytes.length) throw invalid()
+    if (section === 4 && readU32() !== 0)
+      throw new AlgorithmError('algorithm-error', '算法不能定义 table，当前聚合接口只允许受预算限制的宿主内存。')
+    if (section === 5 && readU32() !== 0)
+      throw new AlgorithmError('algorithm-error', '算法不能定义额外线性内存，只能使用受预算限制的宿主内存。')
+    offset = end
+  }
+}
+
 /**
- * Refuses unpermitted imports, an unexpected ABI and an unbounded memory declaration.
+ * Refuses unpermitted imports, defined tables/memories and an unexpected ABI.
  * The host memory is the only one the module can ever reach.
  */
 export function instantiateAlgorithm(bytes: ArrayBuffer | Uint8Array, options: { memoryPages: number; entry: string }): AlgorithmInstance {
+  if (!Number.isInteger(options.memoryPages) || options.memoryPages < 1 || options.memoryPages > 256)
+    throw new AlgorithmError('invalid-input', '算法内存预算必须为 1 至 256 页。')
+  // Compile and inspect the same private copy, even if the caller supplied a shared/mutable view.
+  const binary = new Uint8Array(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes))
   let module: WebAssembly.Module
-  try { module = new WebAssembly.Module(bytes as Uint8Array<ArrayBuffer>) }
+  try { module = new WebAssembly.Module(binary) }
   catch { throw new AlgorithmError('algorithm-error', '算法资源不是有效的 WebAssembly 模块。') }
   const imports = WebAssembly.Module.imports(module)
   const permitted = imports.length === 1 && imports[0]!.module === 'env' && imports[0]!.name === 'memory' && imports[0]!.kind === 'memory'
   if (!permitted) throw new AlgorithmError('algorithm-error', '算法声明了未经许可的导入，已拒绝实例化。')
+  assertNoDefinedStorage(binary)
   const exports = WebAssembly.Module.exports(module)
   if (!exports.some(item => item.name === options.entry && item.kind === 'function')
     || !exports.some(item => item.name === 'abiVersion' && item.kind === 'global'))

@@ -64,10 +64,12 @@ try {
       const port = event.ports[0], binding = event.data;
       const pending = new Map();
       port.addEventListener('message', event => {
+        if (!window.XunJieComponentProtocol.componentHostMessageSchema.safeParse(event.data).success) window.__componentProbe.protocolErrors++;
         const finish = pending.get(event.data?.replyTo);
         if (finish) { pending.delete(event.data.replyTo); finish(event.data); }
       });
-      window.__componentProbe = { connectionId: binding.connectionId, instanceId: binding.instanceId,
+      window.__componentProbe = { connectionId: binding.connectionId, instanceId: binding.instanceId, protocolErrors: 0,
+        initializeValid: window.XunJieComponentProtocol.componentHostMessageSchema.safeParse(binding).success,
         request: (method, payload, connectionId = binding.connectionId) => new Promise((resolve, reject) => {
           const messageId = crypto.randomUUID();
           const timer = setTimeout(() => { pending.delete(messageId); reject(new Error('Probe response timeout')); }, 10000);
@@ -100,6 +102,13 @@ try {
   try { await expect(frame.getByRole('button', { name: '标注选中文字' })).toBeEnabled(); }
   catch (error) { console.log(await frame.locator('body').innerText()); throw error; }
   passed('dynamic imported HTML is mounted by the formal product workspace');
+  assert.equal(await frame.locator('body').evaluate(() => window.__componentProbe.initializeValid), true);
+  const metrics = await frame.getByRole('button', { name: '标注选中文字' }).evaluate(button => ({
+    height: button.getBoundingClientRect().height, size: getComputedStyle(button).fontSize,
+    titleFont: getComputedStyle(document.querySelector('h1')).fontFamily, loaded: document.fonts.check('17px XunJieTitle') }));
+  assert.equal(metrics.height, 32); assert.equal(metrics.size, '13px'); assert.equal(metrics.loaded, true);
+  assert.match(metrics.titleFont, /XunJieTitle/);
+  passed('shared isolated controls follow DESIGN and load the verified title font without network access');
   await frame.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
     const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
   await frame.getByRole('button', { name: '标注选中文字' }).click();
@@ -162,6 +171,8 @@ try {
   });
   passed('257 real IndexedDB operations replay their original receipt and reject altered input');
   await page.locator('iframe[title="材料标注"]').evaluate(element => { element.src = element.src; });
+  await expect.poll(async () => { try { const id = await page.frameLocator('iframe[title="材料标注"]').locator('body').evaluate(() => window.__componentProbe?.connectionId);
+    return typeof id === 'string' && id !== protocol.connectionId; } catch { return false; } }).toBe(true);
   await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue(original);
   const reloaded = await page.frameLocator('iframe[title="材料标注"]').locator('body').evaluate(async (_, old) => {
     const probe = window.__componentProbe;
@@ -194,6 +205,56 @@ try {
   await expect(page.getByRole('heading', { name: '作品存在分歧', exact: true })).toBeVisible({ timeout: 10000 });
   await expect(page.getByText('本页保留的冲突候选', { exact: false }).first()).toBeVisible();
   passed('a stale component edit is protected as a conflict candidate before unmounting');
+  // Separate browser storage partitions reproduce independent first-state object identities.
+  const competing = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+  const competingId = (await competing.json()).activityId;
+  const competingContext = await browser.newContext({ storageState: await context.storageState(), viewport: { width: 1440, height: 1000 } });
+  let releaseReads;
+  const heldReads = new Promise(resolve => { releaseReads = resolve; });
+  try {
+    const first = await context.newPage(), other = await competingContext.newPage();
+    const url = endpoint + '?space=school&activity=' + competingId;
+    for (const target of [first, other]) {
+      await target.goto(url); await target.getByRole('tab', { name: '材料标注', exact: true }).click();
+      await expect(target.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+    }
+    // Delay real reads, rather than returning invented workspace facts.
+    await other.route('**/api/learning/workspaces/' + competingId, async route => {
+      if (route.request().method() === 'GET') await heldReads;
+      await route.continue();
+    });
+    const add = async (target, text) => {
+      const view = target.frameLocator('iframe[title="材料标注"]');
+      await view.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
+        const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
+      await view.getByRole('button', { name: '标注选中文字' }).click();
+      await view.getByRole('textbox', { name: '标注内容', exact: true }).fill(text);
+    };
+    await add(first, '另一客户端的首次标注');
+    const remoteWorks = async () => (await context.request.get(endpoint + '/api/learning/workspaces/' + competingId)).json();
+    await expect.poll(async () => JSON.parse((await remoteWorks()).files[0]?.value ?? '{}').content?.annotations?.[0]?.note).toBe('另一客户端的首次标注');
+    const remoteFile = (await remoteWorks()).files[0];
+    await add(other, '本页独立创建的首次标注');
+    await expect.poll(() => other.evaluate(id => new Promise((resolve, reject) => {
+      const request = indexedDB.open('xunjie-reliable-works-v1');
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => { const db = request.result, tx = db.transaction('workspaces', 'readonly');
+        const rows = tx.objectStore('workspaces').getAll();
+        tx.oncomplete = () => { const file = rows.result.find(row => row.key.includes(id))?.files?.[0]; db.close(); resolve(file); };
+        tx.onabort = () => { db.close(); reject(tx.error); };
+      };
+    }), competingId)).toMatchObject({ objectId: expect.not.stringMatching(remoteFile.objectId), name: 'components/annotation.json', value: expect.stringContaining('本页独立创建的首次标注') });
+    releaseReads();
+    await other.getByRole('tab', { name: '作品', exact: true }).click();
+    await expect(other.getByRole('heading', { name: '作品存在分歧', exact: true })).toBeVisible();
+    await other.getByRole('button', { name: '采用另一版本', exact: true }).click();
+    await expect(other.getByRole('heading', { name: '作品存在分歧', exact: true })).toHaveCount(0);
+    await expect.poll(async () => (await remoteWorks()).files[0]).toEqual(remoteFile);
+    await other.reload(); await other.getByRole('tab', { name: '材料标注', exact: true }).click();
+    await expect(other.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('另一客户端的首次标注');
+    passed('independent first component states can adopt the other client through the real conflict UI and recover after reload');
+    await first.close();
+  } finally { releaseReads(); await competingContext.close(); }
   const failingActivity = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
   const failingId = (await failingActivity.json()).activityId;
   const failing = await context.newPage();
@@ -290,7 +351,7 @@ try {
   await upgradePage.getByRole('tab', { name: '材料标注', exact: true }).click();
   await expect(upgradePage.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toBeVisible();
   const upgrade = await upgradePage.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('xunjie-reliable-works-v1', 4);
+    const request = indexedDB.open('xunjie-reliable-works-v1');
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const db = request.result, tx = db.transaction('workspaces', 'readonly');
@@ -299,9 +360,183 @@ try {
       tx.onabort = () => reject(tx.error);
     };
   }));
-  assert.deepEqual(upgrade, { version: 4, operations: true, text: '已有中文作品不得丢失' });
+  assert.deepEqual(upgrade, { version: 5, operations: true, text: '已有中文作品不得丢失' });
   await upgradeContext.close();
-  passed('the real v3 IndexedDB upgrades additively to v4 without losing existing workspace data');
+  passed('the real v3 IndexedDB upgrades additively to v5 without losing existing workspace data');
+  const openSample = async () => {
+    const response = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+    const id = (await response.json()).activityId, page = await context.newPage();
+    await page.goto(endpoint + '?space=personal');
+    await page.getByRole('button', { name: '学校空间', exact: true }).click();
+    await page.locator(`[data-activity-id="${id}"]`).click();
+    await page.getByRole('tab', { name: '材料标注', exact: true }).click();
+    const frame = page.frameLocator('iframe[title="材料标注"]');
+    await expect(frame.getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+    return { id, page, frame, works: async () => (await context.request.get(endpoint + '/api/learning/workspaces/' + id)).json() };
+  };
+  const addNote = async (sample, text) => {
+    await sample.frame.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
+      const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
+    await sample.frame.getByRole('button', { name: '标注选中文字' }).click();
+    await sample.frame.getByRole('textbox', { name: '标注内容', exact: true }).fill(text);
+    await expect.poll(async () => JSON.parse((await sample.works()).files[0]?.value ?? '{}').content?.annotations?.[0]?.note).toBe(text);
+  };
+  const navigation = await openSample();
+  await addNote(navigation, '导航前已经确认');
+  await navigation.page.goBack();
+  await expect(navigation.page.locator('#activity-title')).toHaveCount(0);
+  await navigation.page.goForward();
+  await expect(navigation.page.locator('#activity-title')).toBeVisible();
+  await navigation.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(navigation.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('导航前已经确认');
+  passed('component-only workspace can navigate back/forward without a mounted editor ref');
+  await navigation.page.getByRole('button', { name: '打开对话', exact: true }).click();
+  await navigation.page.evaluate(() => {
+    window.componentWriteFault = true;
+    const original = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function(stores, mode, options) {
+      if (mode === 'readwrite' && window.componentWriteFault) throw new DOMException('Controlled storage refusal', 'QuotaExceededError');
+      return original.call(this, stores, mode, options);
+    };
+  });
+  await navigation.page.getByRole('textbox', { name: '你的问题', exact: true }).fill('组件旁边尚未保护的问题草稿');
+  await navigation.frame.getByRole('textbox', { name: '标注内容', exact: true }).fill('存储失败时返回也不能丢失');
+  await expect(navigation.frame.getByRole('alert')).toBeVisible();
+  const marker = randomUUID();
+  await navigation.frame.locator('body').evaluate((_, marker) => { window.documentMarker = marker; }, marker);
+  await navigation.page.getByRole('button', { name: '返回活动列表', exact: true }).click();
+  await expect(navigation.page.locator('.product-workspace-notice [role="alert"]').first()).toBeVisible();
+  await expect(navigation.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('存储失败时返回也不能丢失');
+  assert.equal(await navigation.frame.locator('body').evaluate(() => window.documentMarker), marker);
+  await navigation.page.evaluate(() => history.go(-2));
+  await expect(navigation.page.locator('.product-workspace-notice [role="alert"]').first()).toBeVisible();
+  await expect(navigation.page.locator('#activity-title')).toBeVisible();
+  assert.equal(await navigation.frame.locator('body').evaluate(() => window.documentMarker), marker);
+  await navigation.frame.getByRole('button', { name: '导出当前标注' }).click();
+  assert.match(await navigation.frame.getByRole('textbox', { name: '可复制的标注备份' }).inputValue(), /存储失败时返回也不能丢失/);
+  await expect(navigation.page.getByRole('textbox', { name: '你的问题', exact: true })).toHaveValue('组件旁边尚未保护的问题草稿');
+  await navigation.page.evaluate(() => { window.componentWriteFault = false; });
+  await navigation.page.getByRole('button', { name: '返回活动列表', exact: true }).click();
+  await expect(navigation.page.locator('#activity-title')).toHaveCount(0);
+  await navigation.page.locator(`[data-activity-id="${navigation.id}"]`).click();
+  await navigation.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(navigation.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('存储失败时返回也不能丢失');
+  await navigation.page.getByRole('button', { name: '打开对话', exact: true }).click();
+  await expect(navigation.page.getByRole('textbox', { name: '你的问题', exact: true })).toHaveValue('组件旁边尚未保护的问题草稿');
+  passed('failed return/history preserves the same component, exportable input and draft, then recovery permits leaving');
+  const renaming = await openSample();
+  await addNote(renaming, '状态位置不可随意改变');
+  await renaming.page.getByRole('tab', { name: '作品', exact: true }).click();
+  await renaming.page.getByRole('button', { name: '文件', exact: true }).click();
+  await expect(renaming.page.getByRole('button', { name: '重命名', exact: true })).toHaveCount(0);
+  await renaming.page.getByLabel('文件名', { exact: true }).fill('components/annotation.json');
+  await renaming.page.getByRole('button', { name: '新建文件', exact: true }).click();
+  await expect(renaming.page.getByRole('alert').filter({ hasText: '操作未完成' }).first()).toBeVisible();
+  await renaming.page.keyboard.press('Escape');
+  assert.equal((await renaming.works()).files.length, 1);
+  await renaming.page.getByRole('button', { name: '返回活动列表', exact: true }).click();
+  await expect(renaming.page.locator('#activity-title')).toHaveCount(0);
+  const remote = await renaming.works(), invalidId = randomUUID();
+  const invalidFiles = remote.files.map(file => ({ ...file, name: 'renamed-annotation.json' }));
+  const invalidPending = { requestId: invalidId, baseRevision: remote.revision, files: invalidFiles };
+  assert.equal((await context.request.post(endpoint + '/api/learning/workspaces/' + renaming.id, { data: invalidPending })).status(), 400);
+  assert.equal(await (await context.request.get(endpoint + `/api/learning/workspaces/${renaming.id}/receipts/${invalidId}`)).json(), null);
+  // Represent the persisted shape left by the old product, including its original rejected request identity.
+  await renaming.page.evaluate(async ({ id, files, pending, confirmed }) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('xunjie-reliable-works-v1');
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('workspaces', 'readwrite'), store = tx.objectStore('workspaces'), all = store.getAll();
+      all.onsuccess = () => {
+        const row = all.result.find(row => JSON.parse(row.key)[4] === id);
+        if (!row) { tx.abort(); return; }
+        store.put({ ...row, localRevision: row.localRevision + 1, remoteRevision: pending.baseRevision, confirmedFiles: confirmed, files, pending, pendingRejected: undefined });
+      };
+      tx.oncomplete = () => { db.close(); resolve(); }; tx.onabort = () => reject(tx.error ?? new Error('legacy row missing'));
+    }; request.onerror = () => reject(request.error);
+  }), { id: renaming.id, files: invalidFiles, pending: invalidPending, confirmed: remote.files });
+  await renaming.page.locator(`[data-activity-id="${renaming.id}"]`).click();
+  await renaming.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(renaming.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('状态位置不可随意改变');
+  await expect.poll(async () => (await renaming.works()).revision).toBeGreaterThan(remote.revision);
+  assert.deepEqual((await renaming.works()).files.map(file => file.name), ['components/annotation.json']);
+  await renaming.page.getByRole('tab', { name: '作品', exact: true }).click();
+  await renaming.page.getByRole('button', { name: '文件', exact: true }).click();
+  await renaming.page.getByLabel('文件名', { exact: true }).fill('after-rename.txt');
+  await renaming.page.getByRole('button', { name: '新建文件', exact: true }).click();
+  await renaming.page.keyboard.press('Escape');
+  await renaming.page.locator('.monaco-editor textarea').focus(); await renaming.page.keyboard.insertText('恢复后普通作品继续同步');
+  await expect.poll(async () => (await renaming.works()).files.find(file => file.name === 'after-rename.txt')?.value).toBe('恢复后普通作品继续同步');
+  await renaming.page.reload();
+  await renaming.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(renaming.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('状态位置不可随意改变');
+  passed('protected state paths and legacy invalid pending recovery preserve data and resume ordinary synchronization');
+  const awaiting = await openSample();
+  await awaiting.page.evaluate(() => {
+    const original = navigator.locks.request.bind(navigator.locks); let first = true;
+    navigator.locks.request = async (...args) => {
+      if (first) { first = false; await new Promise(resolve => { window.releaseActivityInput = resolve; }); }
+      return original(...args);
+    };
+  });
+  await awaiting.frame.locator('body').evaluate(() => {
+    window.oldRequest = window.__componentProbe.request('workspace.change', { operationId: crypto.randomUUID(), expectedContentId: null,
+      contentId: crypto.randomUUID(), content: { annotations: [{ id: crypto.randomUUID(), quote: '准入等待', note: '活动返回必须等待这份输入' }] } });
+  });
+  await expect.poll(() => awaiting.page.evaluate(() => typeof window.releaseActivityInput)).toBe('function');
+  await awaiting.page.getByRole('button', { name: '返回活动列表', exact: true }).click();
+  await expect(awaiting.page.locator('iframe[title="材料标注"]')).toBeVisible();
+  await awaiting.page.evaluate(() => window.releaseActivityInput());
+  await expect(awaiting.page.locator('#activity-title')).toHaveCount(0);
+  await awaiting.page.locator(`[data-activity-id="${awaiting.id}"]`).click();
+  await awaiting.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(awaiting.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('活动返回必须等待这份输入');
+  passed('activity return waits for asynchronous component admission before disposing its session');
+  const replaced = await openSample();
+  const oldConnection = await replaced.frame.locator('body').evaluate(() => window.__componentProbe.connectionId);
+  await replaced.page.evaluate(() => {
+    const lock = navigator.locks.request.bind(navigator.locks), transaction = IDBDatabase.prototype.transaction; let first = true;
+    navigator.locks.request = async (...args) => { if (first) { first = false; await new Promise(resolve => { window.releaseRetiredInput = resolve; }); } return lock(...args); };
+    IDBDatabase.prototype.transaction = function(stores, mode, options) {
+      if (window.failRetiredLookup && mode === 'readonly' && (typeof stores === 'string' ? [stores] : [...stores]).includes('workOperations')) {
+        window.failRetiredLookup = false; window.retiredLookupFailed = true; throw new DOMException('Controlled late receipt read failure', 'UnknownError');
+      }
+      return transaction.call(this, stores, mode, options);
+    };
+  });
+  await replaced.frame.locator('body').evaluate(() => {
+    window.retiredRequest = window.__componentProbe.request('workspace.change', { operationId: crypto.randomUUID(), expectedContentId: null,
+      contentId: crypto.randomUUID(), content: { annotations: [{ id: crypto.randomUUID(), quote: '退休连接', note: 'RETIRED INPUT' }] } });
+  });
+  await expect.poll(() => replaced.page.evaluate(() => typeof window.releaseRetiredInput)).toBe('function');
+  await replaced.page.locator('iframe[title="材料标注"]').evaluate(element => { element.src = element.src; });
+  await expect.poll(async () => { try { const id = await replaced.frame.locator('body').evaluate(() => window.__componentProbe?.connectionId); return typeof id === 'string' && id !== oldConnection; } catch { return false; } }).toBe(true);
+  await expect(replaced.frame.getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+  await addNote(replaced, '后继连接的当前内容');
+  await replaced.page.evaluate(() => { window.failRetiredLookup = true; window.releaseRetiredInput(); });
+  await expect.poll(() => replaced.page.evaluate(() => window.retiredLookupFailed)).toBe(true);
+  await replaced.page.getByRole('tab', { name: '作品', exact: true }).click();
+  await expect(replaced.page.getByRole('heading', { name: '作品存在分歧', exact: true })).toHaveCount(0);
+  await expect(replaced.page.getByText('后继连接的当前内容', { exact: false }).first()).toBeVisible();
+  await expect(replaced.page.getByText('RETIRED INPUT', { exact: false })).toHaveCount(0);
+  passed('a real iframe replacement followed by late receipt failure cannot mutate the successor workspace');
+  const eventSample = await openSample();
+  let dispatched = 0;
+  const observe = request => { if (request.method() === 'POST' && /\/(?:intents|models|gateway)(?:\/|$)/.test(new URL(request.url()).pathname)) dispatched++; };
+  eventSample.page.on('request', observe);
+  const eventResults = await eventSample.frame.locator('body').evaluate(async () => {
+    const values = [{ kind: 'control-change', controlId: 'selection', value: '中文' }, { kind: 'answer', promptId: 'reading', value: '我的回答' },
+      { kind: 'prediction', promptId: 'reading', value: '我的预测' }, { kind: 'confirmation', targetId: 'selection', confirmed: true }];
+    const results = [];
+    for (const [index, value] of values.entries()) {
+      const event = { formatVersion: 1, eventId: crypto.randomUUID(), sequence: index + 1, ...value };
+      const first = await window.__componentProbe.request('component.event', event), repeated = await window.__componentProbe.request('component.event', event);
+      results.push({ first, repeated });
+    }
+    return results;
+  });
+  for (const { first, repeated } of eventResults) { assert.equal(first.payload.received, true); assert.deepEqual(first.payload, repeated.payload); }
+  assert.equal(dispatched, 0); assert.deepEqual((await eventSample.works()).files, []);
+  passed('compatible component sends four typed events with stable receipts and no model/question dispatch');
   const revokedActivity = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
   const revokedPage = await context.newPage();
   await revokedPage.goto(endpoint + '?space=school&activity=' + (await revokedActivity.json()).activityId);
@@ -314,6 +549,12 @@ try {
   assert.equal(await artifactDigest(webRoot), assetsBefore);
   report.frontendSha256 = assetsBefore;
   passed('component import and use leave the main frontend artifact unchanged');
+  for (const document of context.pages()) for (const frame of document.frames()) {
+    if (frame === document.mainFrame()) continue;
+    const errors = await frame.evaluate(() => window.__componentProbe?.protocolErrors ?? 0);
+    assert.equal(errors, 0, 'every observed host response must pass the shared strict v1 validator');
+  }
+  passed('strict public v1 validator accepts all observed initialization, success and error messages');
   report.status = 'passed';
   }
 } catch (error) {

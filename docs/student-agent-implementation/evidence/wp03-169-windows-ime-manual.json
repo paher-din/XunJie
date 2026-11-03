@@ -1,0 +1,65 @@
+{
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "timezone": "Asia/Shanghai",
+  "issue": 169,
+  "branch": "codex/issue-169-review-remediation",
+  "sourceCommit": "0a16a74e46a8876da33724d57ee7481a2939c9a9",
+  "candidate": "dist/wp03-169-remediation",
+  "scope": "Windows desktop Chrome, system Chinese IME (Microsoft Pinyin procedure), material annotation; excludes #171",
+  "status": "passed",
+  "method": "user-manual-confirmation",
+  "confirmation": "每一项都符合，全部通过",
+  "cases": [
+    {
+      "name": "候选确认",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    },
+    {
+      "name": "候选选择",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    },
+    {
+      "name": "候选取消",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    },
+    {
+      "name": "连续编辑",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    },
+    {
+      "name": "焦点切换",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    },
+    {
+      "name": "刷新恢复",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    },
+    {
+      "name": "离开再进入",
+      "status": "passed",
+      "evidence": "user confirmation of all seven prescribed checks"
+    }
+  ],
+  "agentAutomatedExecution": "not-executed",
+  "automatedAttemptHistory": [
+    "Chrome app authorization timed out",
+    "Windows Computer Use stopped because the current browser URL could not be identified reliably"
+  ],
+  "evidenceLimits": [
+    "Agent did not independently observe all manual steps",
+    "No user recording, step screenshots or final text supplied",
+    "Exact manual-run Windows, Chrome and IME versions not supplied"
+  ],
+  "remaining": [
+    "Apple Silicon Mac and its system IME: independent issue #179",
+    "real cross-machine component path",
+    "teaching outcomes"
+  ]
+}

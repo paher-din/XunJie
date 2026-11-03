@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import wabtFactory from 'wabt'
 import { executionQuerySchema, executionActionSchema, advanceExecution, fixedActionKind } from '@xunjie/contracts/execution'
 import type { ExecutionQuery } from '@xunjie/contracts/execution'
 import { actionInputSchema } from '@xunjie/contracts/action-intents'
@@ -14,6 +15,31 @@ const table: AggregationTable = { columns: ['班级', '姓名', '分数'],
 
 function run(overrides: Partial<Parameters<typeof runAggregation>[0]> = {}) {
   return runAggregation({ bytes: algorithm, table, parameters: { groupColumn: '班级', valueColumn: '分数', aggregate: 'mean' }, ...limits, ...overrides })
+}
+
+/** Real modules with an aggregate that reads f64 from the supplied memory; private memories
+ * deliberately remain unexported, so export inspection cannot detect the regression. */
+function memoryModule(options: { definedMemories?: number[][]; extraImports?: number[][]; importMaximum?: number
+  customData?: number[] } = {}) {
+  const u32 = (value: number) => {
+    const bytes: number[] = []
+    do { const byte = value & 127; value >>>= 7; bytes.push(byte | (value ? 128 : 0)) } while (value)
+    return bytes
+  }
+  const name = (value: string) => [...u32(value.length), ...Buffer.from(value)]
+  const section = (id: number, body: number[]) => [id, ...u32(body.length), ...body]
+  const extraImports = options.extraImports ?? []
+  const memory = options.importMaximum === undefined ? [0, 1] : [1, 1, ...u32(options.importMaximum)]
+  const body = [0, 32, 0, 43, 3, 0, 11] // local.get 0; f64.load (memory 0)
+  return new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0,
+    ...section(0, [...name('padding'), ...(options.customData ?? [])]),
+    ...section(1, [1, 96, 3, 127, 127, 127, 1, 124]),
+    ...section(2, [1 + extraImports.length, ...name('env'), ...name('memory'), 2, ...memory, ...extraImports.flat()]),
+    ...section(3, [1, 0]),
+    ...(options.definedMemories ? section(5, [options.definedMemories.length, ...options.definedMemories.flat()]) : []),
+    ...section(6, [1, 127, 0, 65, 1, 11]),
+    ...section(7, [2, ...name('aggregate'), 0, 0, ...name('abiVersion'), 3, 0]),
+    ...section(10, [1, ...u32(body.length), ...body])])
 }
 
 describe('fixed table aggregation runs in a restricted algorithm', () => {
@@ -51,6 +77,68 @@ describe('fixed table aggregation runs in a restricted algorithm', () => {
     expect(instance.memory.buffer.byteLength).toBe(4 * 65536)
     expect(() => instance.memory.grow(1)).toThrow()
     expect(instance.aggregate(0, 0, 1)).toBeNaN()
+  })
+  it.each([
+    ['over-budget private memory', [1, 129, 2, 129, 2]], // min/max 257 pages
+    ['small private memory', [1, 1, 1]],
+    ['zero-sized growable private memory', [0, 0]],
+  ])('refuses %s before instantiation', (_label, memory) => {
+    const bytes = memoryModule({ definedMemories: [memory] })
+    expect(WebAssembly.validate(bytes)).toBe(true)
+    expect(WebAssembly.Module.imports(new WebAssembly.Module(bytes))).toEqual([{ module: 'env', name: 'memory', kind: 'memory' }])
+    expect(() => instantiateAlgorithm(bytes, { memoryPages: 1, entry: 'aggregate' })).toThrow(/额外线性内存/)
+  })
+  it('rejects private tables compiled from real WAT while preserving the ABI global', async () => {
+    const wabt = await wabtFactory()
+    for (const size of [null, 0, 1, 4194304]) {
+      const wat = wabt.parseWat('table-budget.wat', `(module
+        (import "env" "memory" (memory 1))
+        ${size === null ? '' : `(table ${size} funcref)`}
+        (global (export "abiVersion") i32 (i32.const 1))
+        (func (export "aggregate") (param i32 i32 i32) (result f64)
+          (f64.load (local.get 0))))`)
+      try {
+        const buffer = new Uint8Array(wat.toBinary({}).buffer)
+        expect(WebAssembly.validate(buffer)).toBe(true)
+        const module = new WebAssembly.Module(buffer)
+        expect(WebAssembly.Module.imports(module)).toEqual([{ module: 'env', name: 'memory', kind: 'memory' }])
+        expect(WebAssembly.Module.exports(module)).toContainEqual({ name: 'abiVersion', kind: 'global' })
+        if (size !== null) {
+          // Compile/validate the huge declaration, but never allocate its table in the test.
+          expect(() => instantiateAlgorithm(buffer, { memoryPages: 1, entry: 'aggregate' })).toThrow(/不能定义 table/)
+        } else {
+          const instance = instantiateAlgorithm(buffer, { memoryPages: 1, entry: 'aggregate' })
+          new Float64Array(instance.memory.buffer)[0] = 42.25
+          expect(instance.aggregate(0, 1, 0)).toBe(42.25)
+        }
+      } finally { wat.destroy() }
+    }
+  })
+  it.each([
+    ['global under the permitted memory name', [3, 101, 110, 118, 6, 109, 101, 109, 111, 114, 121, 3, 127, 0]],
+    ['second memory', [3, 101, 110, 118, 5, 111, 116, 104, 101, 114, 2, 0, 1]],
+    ['function', [3, 101, 110, 118, 3, 108, 111, 103, 0, 0]],
+  ])('refuses an additional imported %s', (_label, imported) => {
+    const bytes = memoryModule({ extraImports: [imported] })
+    expect(WebAssembly.validate(bytes)).toBe(true)
+    expect(() => instantiateAlgorithm(bytes, { memoryPages: 1, entry: 'aggregate' })).toThrow(/未经许可的导入/)
+  })
+  it('accepts compatible bounded or unbounded imports but caps actual memory and computes from it', () => {
+    for (const importMaximum of [undefined, 4]) {
+      const bytes = memoryModule({ importMaximum, definedMemories: [], customData: [...Array<number>(160).fill(0), 5, 3, 1, 0, 0] })
+      const padded = new Uint8Array(bytes.length + 10)
+      padded.set(bytes, 5)
+      for (const input of [bytes.buffer, padded.subarray(5, 5 + bytes.length)]) {
+        const instance = instantiateAlgorithm(input, { memoryPages: 4, entry: 'aggregate' })
+        new Float64Array(instance.memory.buffer)[0] = 42.25
+        expect(instance.aggregate(0, 1, 0)).toBe(42.25)
+        expect(instance.memory.buffer.byteLength).toBe(4 * 65536)
+        expect(() => instance.memory.grow(1)).toThrow()
+      }
+    }
+  })
+  it.each([0, -1, 1.5, 257, NaN, Infinity])('rejects an unsupported host memory budget %s', memoryPages => {
+    expect(() => instantiateAlgorithm(algorithm, { memoryPages, entry: 'aggregate' })).toThrow(/内存预算/)
   })
 })
 

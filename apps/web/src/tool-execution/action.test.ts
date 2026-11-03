@@ -1,6 +1,9 @@
+import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { componentManifestSchema, componentStateName } from '@xunjie/contracts/components'
 import { defaultExecutionLimits } from '@xunjie/contracts/execution'
+import { ReliableActions, type ActionTransport } from '../reliable-workspace/actions'
+import type { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { browserLimits, browserPlan, digestOf, executionAction } from './action'
 
@@ -44,7 +47,7 @@ describe('the fixed execution request is the one the adapter advertises', () => 
     expect(action.execution.plan).toEqual(first)
     expect(action.execution.limits).toEqual(browserLimits(manifest, manifest.operations![0]!))
     // The basis cites the state copy it really read, and nothing from another instance.
-    expect(action.execution.basis.works).toEqual([])
+    expect(action.execution.basis.works).toEqual([file])
     expect(action.execution.basis.state).toEqual({ name: file.name, contentId: file.contentId, sha256: await digestOf(stateValue) })
     expect(action.execution.basis.expected.stateContentId).toBe(file.contentId)
     expect(action.execution.plan.location).toBe('browser')
@@ -58,4 +61,24 @@ describe('the fixed execution request is the one the adapter advertises', () => 
     await expect(executionAction({ workspace, binding, instanceId, receiver, operationId: 'missing',
       parameters: {}, expectedContentId: file.contentId, requestId: crypto.randomUUID() })).rejects.toThrow('capability-unavailable')
   })
+})
+
+it('retains the original input across hashing, later edits and reliable action handoff without reading a question draft', async () => {
+  const original = structuredClone(file), mutable = structuredClone(file), parameters = { aggregate: 'sum' }
+  const key = JSON.stringify(['school', crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()])
+  const current = { key, snapshot: () => ({ ready: true, files: [mutable] }) } as unknown as ReliableWorkspace
+  const pending = executionAction({ workspace: current, binding, instanceId, receiver, operationId: 'aggregate',
+    parameters, expectedContentId: original.contentId, requestId: crypto.randomUUID() })
+  // These edits run before the first digest resolves, including mutation of the selected object itself.
+  mutable.contentId = crypto.randomUUID(); mutable.value = JSON.stringify({ ...stateValue, content: { text: '后来输入' } })
+  parameters.aggregate = 'mean'
+  const action = await pending
+  expect(action.execution.parameters).toEqual({ aggregate: 'sum' })
+  expect(action.execution.basis.works).toEqual([original])
+  const draft = { key, capture: () => { throw new Error('execution must not capture question') } } as unknown as ReliableQuestionDraft
+  const actions = new ReliableActions(key, draft, () => { throw new Error('execution must not re-read mutable works') },
+    {} as ActionTransport, { denied: () => false, confirmed: () => {} })
+  actions.suspend()
+  await actions.createExecution({ requestId: action.requestId, receiver, execution: action.execution })
+  expect((await actions.read(action.requestId))?.input).toEqual(action)
 })

@@ -39,7 +39,7 @@ pre{margin:0;overflow:auto;max-height:220px;font-size:12px;background:var(--chip
 <script>
 (() => {
   let connection, port, contentId = null, state, initialized = false, blocked = false;
-  let capabilities, requestId = null, polling = null, chain = Promise.resolve(), saveTimer = null;
+  let capabilities, requestId = null, polling = null;
   const stopIds = new Map();
   const pending = new Map();
   function request(method, payload, done) {
@@ -55,24 +55,24 @@ pre{margin:0;overflow:auto;max-height:220px;font-size:12px;background:var(--chip
   function clearError() { const el = document.querySelector('#error'); el.hidden = true; el.textContent = ''; }
   function editable() { return !blocked && connection && !connection.readOnly; }
 
-  function persist() {
-    chain = chain.then(() => new Promise(resolve => {
-      const previous = contentId; contentId = crypto.randomUUID();
-      const snapshot = {operationId:crypto.randomUUID(), expectedContentId:previous, contentId, content:structuredClone(state)};
-      request('workspace.change', snapshot, reply => {
+  function persist(snapshot = structuredClone(state)) {
+    // Send immediately in port order so the host protects every edit before navigation can unmount us.
+    const previous = contentId, next = crypto.randomUUID();
+    contentId = next;
+    return new Promise(resolve => {
+      request('workspace.change', {operationId:crypto.randomUUID(), expectedContentId:previous, contentId:next, content:snapshot}, reply => {
         if (reply.error) {
-          contentId = previous;
-          fail('本次修改尚未确认。请保留页面，作品原内容仍保留。');
-        } else if (reply.payload) {
-          contentId = reply.payload.contentId ?? contentId;
-          clearError();
+          blocked = true; renderControls();
+          fail('本次修改尚未确认。请保留页面，作品原内容仍保留。'); resolve(false);
+        } else {
+          // An older acknowledgement cannot replace the identity of a later optimistic edit.
+          if (contentId === next) contentId = reply.payload.contentId ?? next;
+          if (!blocked) clearError(); resolve(true);
         }
-        resolve();
       });
-    }));
-    return chain;
+    });
   }
-  function schedule() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { void persist(); }, 250); }
+  function schedule() { void persist(); }
 
   function renderTable() {
     const host = document.querySelector('#table-host'); host.replaceChildren();
@@ -199,26 +199,25 @@ pre{margin:0;overflow:auto;max-height:220px;font-size:12px;background:var(--chip
   };
   document.querySelector('#run').onclick = () => {
     if (!editable() || requestId) return;
-    clearError();
+    const snapshot = structuredClone(state), id = crypto.randomUUID();
+    requestId = id; renderControls(); clearError();
     document.querySelector('#status').textContent = '正在保存当前表格…';
-    void persist().then(() => { submit(); });
-    function submit() {
-      const id = crypto.randomUUID();
-      document.querySelector('#status').textContent = '正在提交计算…';
-      request('execution.submit', {requestId:id, operationId:capabilities.operations[0].operationId,
-        parameters:structuredClone(state.parameters), expectedContentId:contentId}, reply => {
-        if (reply.error) {
-          document.querySelector('#status').textContent = '本次计算没有提交。';
-          fail(reply.error.code === 'conflict' ? '表格在你提交前又发生了变化，已停止提交。请核对后重新运行。'
-            : '当前不能发起计算：' + (reply.error.next ?? '请核对组件与工作区状态。'));
-          return;
-        }
+    void persist(snapshot);
+    const fixedContentId = contentId;
+    // The host serializes this with preceding and later workspace changes on this port.
+    document.querySelector('#status').textContent = '正在提交计算…';
+    request('execution.submit', {requestId:id, operationId:capabilities.operations[0].operationId,
+      parameters:snapshot.parameters, expectedContentId:fixedContentId}, reply => {
+      if (reply.error) {
+        requestId = null; renderControls();
+        fail(reply.error.code === 'conflict' ? '表格在你提交前又发生了变化，已停止提交。请核对后重新运行。'
+          : '当前不能发起计算：' + (reply.error.next ?? '请核对组件与工作区状态。'));
+      } else {
         requestId = reply.payload.requestId;
         document.querySelector('#stop').hidden = false;
-        renderControls();
-        poll(requestId);
-      });
-    }
+        renderControls(); poll(requestId);
+      }
+    });
   };
   document.querySelector('#stop').onclick = () => {
     if (!requestId) return;

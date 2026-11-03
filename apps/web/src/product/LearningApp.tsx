@@ -114,6 +114,11 @@ function LearningView() {
   const currentView = useRef({ context, key, opened })
   currentView.current = { context, key, opened }
   const workspace = useRef<ActivityWorkspaceHandle>(null)
+  async function protectActivity() {
+    if (!currentView.current.opened) return
+    if (!workspace.current) throw new Error('活动仍在准备，暂时无法保护当前内容。')
+    await workspace.current.leave()
+  }
   const returnFocus = useRef<{ key: string; activityId: string; scrollTop: number } | null>(null)
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (approvedSearch.current === nextLocation.search) { approvedSearch.current = null; return false }
@@ -122,7 +127,7 @@ function LearningView() {
   useEffect(() => {
     if (blocker.state !== 'blocked') return
     let active = true
-    void workspace.current?.leave().then(() => { if (active) blocker.proceed() }).catch(() => {
+    void protectActivity().then(() => { if (active) blocker.proceed() }).catch(() => {
       if (active) { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); blocker.reset() }
     })
     return () => { active = false }
@@ -189,10 +194,10 @@ function LearningView() {
 
   async function refreshContext(prefer?: string, generation = epoch.current) {
     const authentication = authEpoch.current
-    await workspace.current?.leave()
+    await protectActivity()
     const next = await api('context') as Context
     if (generation !== epoch.current || authentication !== authEpoch.current) return
-    await workspace.current?.leave()
+    await protectActivity()
     if (generation !== epoch.current || authentication !== authEpoch.current) return
     const nextKey = prefer && next.identities.some(item => item.key === prefer) ? prefer
       : next.identities.some(item => item.key === key) ? key : next.identities[0]?.key ?? ''
@@ -233,10 +238,9 @@ function LearningView() {
       checking = true
       const generation = epoch.current
       const authentication = authEpoch.current
-      const previous = workspace.current
       void api('context').then(async value => {
         if (generation !== epoch.current || authentication !== authEpoch.current) return
-        await previous?.leave()
+        await protectActivity()
         if (generation !== epoch.current || authentication !== authEpoch.current) return
         const next = value as Context
         // 恢复请求可能早于当前活动挂载完成；按最新视图保留已打开或 URL 请求的活动，避免恢复后落回列表。
@@ -342,7 +346,7 @@ function LearningView() {
 
   async function switchSpace(next: string) {
     if (next === key) return
-    try { await workspace.current?.leave() } catch { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); return }
+    try { await protectActivity() } catch { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); return }
     rememberActivity(null, next)
     ++epoch.current; setKey(next); setOpened(null); setActivities(null); setError(''); setNotice('')
     setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
@@ -436,7 +440,7 @@ function LearningView() {
     setPendingRequest(null); setGoal(''); setQuestion(''); setReference(''); setError('')
   }
   async function openActivity(activityId: string) {
-    await workspace.current?.leave()
+    await protectActivity()
     returnFocus.current = { key, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     const params = new URLSearchParams(currentSearch.current)
     params.set('activity', activityId); params.set('space', key)
@@ -472,10 +476,10 @@ function LearningView() {
   const schoolControls = context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
       {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async () => {
         const authentication = ++authEpoch.current
-        await workspace.current?.leave()
+        await protectActivity()
         await api('logout', {}); if (authentication !== authEpoch.current) return
         // Authentication outlives a view switch; a later login still supersedes this response.
-        if (currentView.current.key === 'school') await workspace.current?.leave()
+        if (currentView.current.key === 'school') await protectActivity()
         if (authentication !== authEpoch.current || !currentView.current.context) return
         ++authEpoch.current
         const signedOut = { ...currentView.current.context, identities: currentView.current.context.identities.filter(item => item.key !== 'school') }
@@ -509,7 +513,7 @@ function LearningView() {
           })}>已在学校批准，完成连接</button></div>}
       </details>}
       {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async generation => {
-        await workspace.current?.leave()
+        await protectActivity()
         await api('connections/revoke', { connectionId: key.slice(7) }, key)
         // The revoked connection is gone; re-read so the stale school space cannot be selected again.
         if (generation === epoch.current) await refreshContext(context.identities.some(item => item.key === 'personal') ? 'personal' : undefined, generation)
@@ -519,7 +523,7 @@ function LearningView() {
   const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
   const visibleRelease = release?.courseId === selectedCourseId ? release : null
   const visibleActivities = activitiesFor === pendingKey ? activities : null
-  const goHome = () => void action(async () => { await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null); setReload(value => value + 1) })
+  const goHome = () => void action(async () => { await protectActivity(); rememberActivity(null); rememberMaterial(null); setReload(value => value + 1) })
   const now = new Date()
   const greeting = now.getHours() < 12 ? '上午好' : now.getHours() < 18 ? '下午好' : '晚上好'
   return <ProductShell immersive={!!opened} identityName={identity?.name ?? '学习空间'}

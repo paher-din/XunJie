@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { questionDraftViewSchema, questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
 import type { QuestionDraftSync } from '@xunjie/contracts/question-drafts'
 import { courseMaterialContentSchema } from '@xunjie/contracts/courses'
@@ -12,6 +12,7 @@ import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action
 import { z } from 'zod'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
+import { ComponentInteractions } from '../component-host/interactions'
 import { BrowserExecutionReceiver } from '../tool-execution/receiver'
 import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
@@ -29,6 +30,9 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; children: ReactNode
 }) {
   const scope = workspaceScope(namespace, activity)
+  const access = useRef(authorized)
+  access.current = authorized
+  const interactions = useMemo(() => new ComponentInteractions(), [scope])
   const draft = useMemo(() => {
     const id = activity.activityId
     const transport = {
@@ -50,7 +54,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       read: async () => workViewSchema.parse(await request('')),
       receipt: async id => { const value = await request('/receipts/' + id); return value === null ? null : workViewSchema.parse(value) },
       sync: async body => workViewSchema.parse(await request('', body)),
-    })
+    }, { activityId: activity.activityId, bindings: activity.course?.components ?? [] })
   }, [scope, spaceKey, namespace])
   const actions = useMemo(() => {
     const path = 'intents/' + activity.activityId
@@ -69,7 +73,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' },
       scope, Date.now())
     return new ExecutionController(scope, receiver, actions,
-      createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace))
+      createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace), undefined, () => access.current && !workspace.accessDenied())
   }, [scope, actions, activity, spaceKey, namespace])
   useEffect(() => {
     let active = true
@@ -83,7 +87,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution }}>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, interactions }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }

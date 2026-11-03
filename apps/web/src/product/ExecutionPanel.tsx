@@ -49,7 +49,10 @@ export function ExecutionPanel({ activity, binding, authorized }: {
   const [note, setNote] = useState('')
   const instanceId = `${activity.activityId}:${binding.key}`
   const currentFile = work.files.find(file => file.name === componentStateName(binding.key))
-  const records = state.records.filter(record => record.action.scope.activityId === activity.activityId
+  const canRead = authorized && !workspace.accessDenied()
+  const access = useRef(canRead)
+  access.current = canRead
+  const records = (canRead ? state.records : []).filter(record => record.action.scope.activityId === activity.activityId
     && record.action.execution.instance.key === binding.key)
   const running = records.some(record => !isTerminalExecutionState(record.query.state))
   const canRun = authorized && !workspace.accessDenied() && !work.conflict && work.ready && !running
@@ -86,7 +89,11 @@ export function ExecutionPanel({ activity, binding, authorized }: {
   }
   const download = async (requestId: string) => {
     setNote('')
-    const artifact = await execution.artifact(requestId)
+    if (!access.current) return
+    let artifact
+    try { artifact = await execution.artifact(requestId) }
+    catch { setNote('当前空间资格已失效，不能读取结果。'); return }
+    if (!access.current) return
     if (!artifact) { setNote('本机没有该运行的结果文件：结果只在发起计算的浏览器中保存。'); return }
     const url = URL.createObjectURL(new Blob([artifact.text], { type: artifact.mediaType }))
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = artifact.name; anchor.click()
@@ -115,10 +122,10 @@ export function ExecutionPanel({ activity, binding, authorized }: {
             {result && <p className="execution-hint">总计 {display(result.value)}，共 {result.groups.length} 组。</p>}
             {record.query.reason && <p className="execution-warn">{record.query.reason.detail}</p>}
             <div className="execution-actions">
-              <button type="button" className="ws-btn ghost" onClick={() => void query(record.requestId)}>核对状态</button>
+              <button type="button" className="ws-btn ghost" disabled={!canRead} onClick={() => void query(record.requestId)}>核对状态</button>
               {!terminal && <button type="button" className="ws-btn ghost" onClick={() => void stop(record.requestId)}>停止</button>}
               {record.query.output?.artifact && <button type="button" className="ws-btn ghost"
-                onClick={() => void download(record.requestId)}>下载 CSV</button>}
+                disabled={!canRead} onClick={() => void download(record.requestId)}>下载 CSV</button>}
             </div>
           </li>
         })}

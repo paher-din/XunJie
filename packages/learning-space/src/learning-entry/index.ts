@@ -280,7 +280,7 @@ export function createLearningEntry(options: {
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
           'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
           'permissions-policy': 'camera=(), microphone=(), geolocation=(), clipboard-read=(), clipboard-write=()',
-          'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; sandbox allow-scripts; frame-ancestors 'self'" });
+          'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; sandbox allow-scripts; frame-ancestors 'self'" });
         response.end(Buffer.from(bundle.contentBase64, 'base64'));
       } else sendLearning(response, 200, result);
     } catch (error) { learningFailure(response, error); }

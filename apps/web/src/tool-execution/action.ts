@@ -1,4 +1,4 @@
-import { acceptsState, componentStateSchema, componentStateName, type ComponentBinding, type ComponentManifest } from '@xunjie/contracts/components'
+import { acceptsState, matchesComponentState, componentStateSchema, componentStateName, type ComponentBinding, type ComponentManifest } from '@xunjie/contracts/components'
 import { executionActionSchema, defaultExecutionLimits, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
@@ -13,15 +13,14 @@ export async function digestOf(value: unknown) {
   const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)))
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')
 }
+const inputActivityId = (instanceId: string, key: string) => instanceId.slice(0, -(key.length + 1))
 /** The instance state file is the only mutable input a run may cite; it is read, never guessed. */export function readComponentState(workspace: ReliableWorkspace, binding: ComponentBinding, instanceId: string) {
   const manifest = binding.definition.manifest
-  const file = workspace.snapshot().files.find(item => item.name === componentStateName(binding.key))
+  const selected = workspace.snapshot().files.find(item => item.name === componentStateName(binding.key))
+  const file = selected && structuredClone(selected)
   if (!file) return { file: undefined, contentId: null, content: manifest.initialState }
   const value = componentStateSchema.parse(JSON.parse(file.value))
-  if (file.kind !== 'state' || file.encoding !== 'json' || file.mediaType !== componentStateMediaType
-    || value.componentId !== manifest.componentId || value.version !== manifest.version || value.stateVersion !== manifest.stateVersion
-    || value.instanceId !== instanceId || value.definitionDigest !== binding.definition.digest
-    || !acceptsState(manifest.stateShape, value.content)) throw new Error('invalid-input')
+  if (!matchesComponentState(binding, inputActivityId(instanceId, binding.key), file)) throw new Error('invalid-input')
   return { file, contentId: file.contentId, content: value.content }
 }
 /**
@@ -51,6 +50,7 @@ export async function executionAction(input: {
   receiver: ExecutionAction['receiver']; operationId: string; parameters: unknown
   expectedContentId: string | null; requestId: string
 }): Promise<ExecutionAction> {
+  input = { ...input, binding: structuredClone(input.binding), receiver: structuredClone(input.receiver), parameters: structuredClone(input.parameters) }
   const manifest = input.binding.definition.manifest
   if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
   const operation = manifest.operations.find(item => item.operationId === input.operationId)
@@ -72,7 +72,7 @@ export async function executionAction(input: {
         stateVersion: manifest.stateVersion },
       operation: { operationId: operation.operationId, effect: operation.effect },
       parameters: input.parameters,
-      basis: { works: [], state: state.file ? { name: componentStateName(input.binding.key), contentId: state.file.contentId,
+      basis: { works: state.file ? [state.file] : [], state: state.file ? { name: componentStateName(input.binding.key), contentId: state.file.contentId,
         sha256: await digestOf(JSON.parse(state.file.value)) } : null,
         expected: { stateContentId: input.expectedContentId }, resources },
       limits: browserLimits(manifest, operation),

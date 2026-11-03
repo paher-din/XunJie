@@ -43,10 +43,11 @@ function prepared(manifest: ComponentDefinition['manifest']): ComponentPreparedM
 /** Course-owned definitions, independent of any student state. Resources share this owner's maintenance gate. */
 export function createComponents(storage: OwnedStorage) {
   async function read(componentId: string, version: number): Promise<ComponentDefinition> {
+    componentId = z.uuid().parse(componentId).toLowerCase();
     const { rows: [row] } = await storage.read('SELECT definition FROM course_components WHERE component_id=$1 AND version=$2', [componentId, version]);
     if (!row) throw new StorageError('missing');
     const result = componentDefinitionSchema.parse(row.definition);
-    if (result.digest !== componentDigest(result.manifest) || result.manifest.componentId !== componentId || result.manifest.version !== version) throw new StorageError('corrupt');
+    if (result.digest !== componentDigest(result.manifest) || result.manifest.componentId.toLowerCase() !== componentId.toLowerCase() || result.manifest.version !== version) throw new StorageError('corrupt');
     return result;
   }
   async function resource(reference: { resourceId: string; sha256: string; byteLength: number }) {
@@ -167,7 +168,7 @@ export function createComponents(storage: OwnedStorage) {
     for (const row of rows) {
       const definition = await read(String(row.component_id), Number(row.version));
       await bytes(definition);
-      const scope = `component/${row.component_id}/${row.version}`;
+      const scope = `component/${definition.manifest.componentId}/${row.version}`;
       const expected: { reference: string; resource: { resourceId: string; sha256: string; byteLength: number } }[] =
         [{ reference: scope, resource: definition.manifest.entry }];
       if (definition.manifest.formatVersion === 1 && definition.manifest.algorithm) expected.push({ reference: `${scope}/algorithm`, resource: definition.manifest.algorithm.resource });

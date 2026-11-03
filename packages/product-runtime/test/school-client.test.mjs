@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
+import { preparedAnnotationPackage } from '../../../components/material-annotation/package.mjs';
 import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
 
 test('revoking a school connection wins over an already exchanged but delayed confirmation', { timeout: 30000 }, async () => {
@@ -94,6 +95,15 @@ test('installed client forwards the course surface and rejects malformed or fore
     digest: createHash('sha256').update(JSON.stringify(published.manifest)).digest('hex') }, mediaType: 'application/wasm',
     entry: 'aggregate', memoryPages: 256, sha256: published.manifest.algorithm.resource.sha256,
     byteLength: published.manifest.algorithm.resource.byteLength, contentBase64: published.algorithmBase64 };
+  const prepared = await preparedAnnotationPackage();
+  const dependency = { ...prepared.manifest.dependencies[0], contentBase64: prepared.dependencies[0].contentBase64 };
+  // The wire dependency response has only public content fields, not its declaration metadata.
+  const dependencyContent = Object.fromEntries(['dependencyId', 'resourceId', 'sha256', 'byteLength', 'mediaType', 'contentBase64'].map(key => [key, dependency[key]]));
+  const report = { formatVersion: 1, componentId: prepared.manifest.componentId, version: prepared.manifest.version,
+    definitionDigest: digest, preparationProtocolVersion: 1, selfTestVersion: 1, hostVersion: 'test-host',
+    device: { platform: 'test-platform', browser: 'Chrome', browserVersion: '156', features: [], preparationImplementationVersion: 1 },
+    status: 'ready', reason: 'none', stage: 'activate', capabilities: [], durationMs: 1, resourceBytes: 100, cacheHit: false, preview: false };
+  const reportReceipt = { reportId: randomUUID(), report };
   const receiver = { receiverId: 'school-question-receiver', location: 'remote', kind: 'question' };
   const actionInput = { requestId: actionId, scope: { environmentId: grant.identity.environmentId,
     spaceId: grant.identity.spaceId, principalId: grant.identity.principalId, activityId: activity.activityId }, receiver,
@@ -109,7 +119,11 @@ test('installed client forwards the course surface and rejects malformed or fore
     else if (url.endsWith('/api/learning/releases/' + releaseId)) response.end(JSON.stringify(release));
     else if (url.endsWith('/api/learning/releases/' + releaseId + '/components/table/algorithm')) {
       response.end(JSON.stringify(algorithmBundle));
-    } else if (url.includes('/api/learning/executions/')) {
+    } else if (url.endsWith('/components/annotation/dependencies/mark-js')) response.end(JSON.stringify(dependencyContent));
+    else if (url.endsWith('/components/annotation/dependencies/broken')) response.end(JSON.stringify({ dependencyId: 'broken' }));
+    else if (url.endsWith('/components/annotation/preparation-reports')) response.end(JSON.stringify([report]));
+    else if (url.endsWith('/components/annotation/preparation-report')) response.end(JSON.stringify(reportReceipt));
+    else if (url.includes('/api/learning/executions/')) {
       if (url.includes('/executions/' + malformedExecutionActivity)) response.end(JSON.stringify({ state: 'queued' }));
       // The run that comes back belongs to another activity than the one the caller asked under.
       else if (url.includes('/executions/' + foreignExecutionActivity)) response.end(JSON.stringify({ ...executionQuery,
@@ -195,6 +209,10 @@ test('installed client forwards the course surface and rejects malformed or fore
     assert.equal((await api(`releases/${releaseId}/components/table/algorithm`, undefined, remote)).value.contentBase64,
       published.algorithmBase64);
     assert.equal((await api(`releases/${releaseId}/components/table/algorithm/extra`, undefined, remote)).status, 403);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/dependencies/mark-js`, undefined, remote)).value, dependencyContent);
+    assert.equal((await api(`releases/${releaseId}/components/annotation/dependencies/broken`, undefined, remote)).status, 503);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-reports`, undefined, remote)).value, [report]);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-report`, { reportId: reportReceipt.reportId, report }, remote)).value, reportReceipt);
     assert.equal((await api('manage/course-import', { requestId: randomUUID() }, remote)).status, 403);
   } finally {
     await host?.stop();

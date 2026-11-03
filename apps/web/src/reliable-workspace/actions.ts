@@ -125,17 +125,15 @@ export class ReliableActions {
    * It never reads, sends or clears the question draft, and later edits cannot widen it.
    */
   async createExecution(options: { requestId: string; receiver: ActionReceiverIdentity
-    execution: Omit<ExecutionAction['execution'], 'basis'> & { basis: Pick<ExecutionAction['execution']['basis'], 'state' | 'expected' | 'resources'> } }) {
-    const works = structuredClone(this.captureWorks())
+    execution: ExecutionAction['execution'] }) {
+    // The host captured these exact bytes before hashing; never re-read the mutable workspace here.
+    const execution = structuredClone(options.execution)
     const scope = scopeFromKey(this.key)
-    const state = options.execution.basis.state
-    // Only the state copy this run reads: unrelated saves must not change this input's digest,
-    // and the command must stay inside the 4 MB wire budget.
-    const cited = state ? works.filter(file => file.name === state.name && file.contentId === state.contentId) : []
-    if (state && !cited.length) throw new Error('运行时使用的组件状态已不在当前工作区。')
+    const state = execution.basis.state
+    const cited = state ? execution.basis.works.filter(file => file.name === state.name && file.contentId === state.contentId) : []
+    if (state && cited.length !== 1) throw new Error('运行时使用的组件状态副本不可读。')
     const input = fixedActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: options.requestId, scope,
-      receiver: options.receiver, execution: { ...options.execution, basis: { works: cited, state,
-        expected: options.execution.basis.expected, resources: options.execution.basis.resources } } })
+      receiver: options.receiver, execution: { ...execution, basis: { ...execution.basis, works: cited } } })
     return this.retainNew(input)
   }
   private async retainNew(input: FixedAction) {

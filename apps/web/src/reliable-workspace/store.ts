@@ -3,7 +3,7 @@ import { workFilesSchema } from '@xunjie/contracts/learning-data'
 import { openWorkspaceDatabase } from './draft-store'
 
 export interface WorkConflict { source: 'local' | 'remote'; local: WorkFile[]; other: WorkFile[]; at: number; remoteRevision: number; candidateId?: string }
-export interface WorkRecord { key: string; localRevision: number; remoteRevision: number; confirmedFiles?: WorkFile[]; files: WorkFile[]; pending: WorkSync | null; conflict?: WorkConflict }
+export interface WorkRecord { key: string; localRevision: number; remoteRevision: number; confirmedFiles?: WorkFile[]; files: WorkFile[]; pending: WorkSync | null; pendingRejected?: boolean; conflict?: WorkConflict }
 export interface WorkOperation { scope: string; operationId: string; inputDigest: string; name: string; contentId: string }
 export interface WorkOperationReceipt { inputDigest: string; confirmation: 'local-protected'; contentId: string | null; requestedContentId: string; superseded: boolean }
 export class LocalCompetition extends Error {

@@ -6,6 +6,7 @@ import type { WorkRecord, WorkConflict, WorkOperation, WorkOperationReceipt } fr
 import { ReliableActions } from './actions'
 import type { ActionTransport } from './actions'
 import type { ReliableQuestionDraft } from './draft'
+import { componentStateMediaType, componentStateName, matchesComponentState, type ComponentBinding } from '@xunjie/contracts/components'
 
 export { LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 export interface WorkTransport { read(): Promise<WorkView>; receipt(requestId: string): Promise<WorkView | null>; sync(input: WorkSync): Promise<WorkView> }
@@ -21,7 +22,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   private inputs = new Set<Promise<unknown>>()
   private listeners = new Set<() => void>()
   state: WorkspaceState = { files: [], ready: false, error: '', conflictReady: false, editorEpoch: 0 }
-  constructor(readonly key: string, private transport: WorkTransport) { super(); this.record = initialRecord(key, { revision: 0, files: [] }) }
+  constructor(readonly key: string, private transport: WorkTransport,
+    private components?: { activityId: string; bindings: ComponentBinding[] }) { super(); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
   trackInput<T>(input: Promise<T>): Promise<T> {
@@ -101,7 +103,18 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       let conflict = this.record.conflict
       if (!conflict && candidates[0]) conflict = { source: 'local', local: candidates[0].files, other: this.record.files,
         at: this.record.localRevision, remoteRevision: this.record.remoteRevision, candidateId: candidates[0].id }
-      if (!this.disposed) this.notify({ files: conflict?.local ?? this.record.files, ready: true, conflict, error: '' })
+      let files = conflict?.local ?? this.record.files
+      // Repair only a legacy display path whose complete immutable binding still matches.
+      // The original pending identity stays intact until the owner explicitly refuses it.
+      if (this.components && !conflict) files = files.map(file => {
+        if (file.mediaType !== componentStateMediaType) return file
+        const binding = this.components!.bindings.find(binding => matchesComponentState(binding, this.components!.activityId,
+          { ...file, name: componentStateName(binding.key) }))
+        const name = binding && componentStateName(binding.key)
+        return name && file.name !== name && !files.some(other => other.objectId !== file.objectId && other.name === name) ? { ...file, name } : file
+      })
+      if (!sameFiles(files, conflict?.local ?? this.record.files)) { this.editEpoch++; this.dirty = true }
+      if (!this.disposed) this.notify({ files, ready: true, conflict, error: this.record.pendingRejected ? '原作品请求未通过校验，请修正内容；原文仍保留。' : '' })
     } catch (error) {
       if ((error as { code?: unknown }).code === 'forbidden') this.denied = true
       if (!this.disposed) this.notify({ files: this.record.files, error: this.denied ? '原空间访问资格已失效，请重新登录原空间。'
@@ -110,10 +123,28 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     }
   }
   change(files: WorkFile[], retainInput = false) {
+    this.validateComponentEdits(files)
     if (!retainInput) workFilesSchema.parse(files)
     this.editEpoch++; this.dirty = true
     this.notify({ files: structuredClone(files) })
     if (retainInput) workFilesSchema.parse(files)
+  }
+  private validateComponentBindings(files: WorkFile[]) {
+    if (!this.components) return
+    for (const file of files) {
+      const binding = this.components.bindings.find(binding => componentStateName(binding.key) === file.name)
+      if (binding ? !matchesComponentState(binding, this.components.activityId, file) : file.mediaType === componentStateMediaType)
+        throw new Error('组件状态身份和位置由活动绑定固定，不能作为普通文件更改。')
+    }
+  }
+  private validateComponentEdits(files: WorkFile[]) {
+    this.validateComponentBindings(files)
+    if (!this.components) return
+    for (const previous of this.state.files.filter(file => file.mediaType === componentStateMediaType)) {
+      const file = files.find(file => file.objectId === previous.objectId)
+      if (!file || file.mediaType !== componentStateMediaType || file.kind !== 'state' || file.encoding !== 'json')
+        throw new Error('请在组件中修改状态，状态对象不可作为普通文件删除或替换。')
+    }
   }
   /** A stale component view keeps its candidate in this same protected workspace, never in an iframe-only buffer. */
   retainConflict(files: WorkFile[]) {
@@ -123,6 +154,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       at: this.record.localRevision, remoteRevision: this.record.remoteRevision }, error: '组件读取的状态已变化，请在「作品」中比较双方内容。' })
   }
   edit(objectId: string, value: string) {
+    if (this.state.files.find(file => file.objectId === objectId)?.mediaType === componentStateMediaType) throw new Error('请在组件中编辑状态。')
     const files = this.state.files.map(file => file.objectId === objectId ? { ...file, value, contentId: crypto.randomUUID() } : file)
     this.editEpoch++; this.dirty = true
     this.notify({ files, ...(this.state.conflict ? { conflict: { ...this.state.conflict, local: files } } : {}) })
@@ -151,7 +183,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
         this.record = await this.store.change(this.key, current => {
           const previous = current ?? this.record
           return { ...previous, localRevision: previous.localRevision + 1, files,
-            pending: previous.pending ?? pendingFor(files, previous.remoteRevision),
+            pending: previous.pending && !previous.pendingRejected ? previous.pending : pendingFor(files, previous.remoteRevision),
+            pendingRejected: false,
             ...(conflict ? { conflict: { ...conflict, local: files, at: previous.localRevision + 1 } } : {}) }
         }, { expected: this.record.localRevision, files }, undefined, operations.map(([, value]) => value))
         for (const [key, value] of operations) if (this.operations.get(key) === value) this.operations.delete(key)
@@ -170,7 +203,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
           this.notify({ files: current.files, editorEpoch: this.state.editorEpoch + 1, conflict: current.conflict })
         } else if (current && current.localRevision === this.record.localRevision) this.record = current
       }
-      if (!this.denied) this.notify({ error: '' })
+      if (!this.denied) this.notify({ error: this.record.pendingRejected ? '原作品请求未通过校验，请修正内容；原文仍保留。' : '' })
     } catch (error) {
       if (error instanceof LocalCompetition) {
         for (const [key, value] of operations) if (this.operations.get(key) === value) this.operations.delete(key)
@@ -184,10 +217,12 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   protected async synchronize() {
     if (this.stopped || this.denied || this.sending || !this.state.ready || this.state.conflict) return
     this.sending = true
+    let attempted: WorkSync | undefined
     try {
       await this.protect()
       const current = await this.store.read(this.key)
       const pending = current?.pending
+      if (current?.pendingRejected) return
       if (!current || !pending) {
         // Also discover changes from a separate client without interpreting failures as an empty workspace.
         const remote = workViewSchema.parse(await this.transport.read())
@@ -204,7 +239,9 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       if (this.stopped || this.denied) return
       const known = await this.transport.receipt(pending.requestId)
       if (this.stopped || this.denied) return
-      const confirmed = workViewSchema.parse(known ?? await this.transport.sync(pending))
+      let confirmed: WorkView
+      if (known) confirmed = workViewSchema.parse(known)
+      else { attempted = pending; confirmed = workViewSchema.parse(await this.transport.sync(pending)) }
       if (confirmed.revision !== pending.baseRevision + 1 || !sameFiles(confirmed.files, pending.files)) throw Object.assign(new Error('服务回执与原请求不符。'), { code: 'corrupt' })
       // Acknowledgement can only settle the exact durable pending request; memory and subsequent edits are untouched.
       await this.store.change(this.key, saved => {
@@ -225,6 +262,18 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
             at: this.record.localRevision, remoteRevision: other.revision }, error: '另一客户端修改了作品，请比较并选择。' })
           await this.protect()
         } catch { /* retain original request until the original service is available */ }
+      } else if (code === 'invalid' && attempted) {
+        // A direct invalid sync response is definitive rejection, never a lost acceptance ACK.
+        const requestId = attempted.requestId, baseline = this.record
+        try {
+          this.record = await this.store.change(this.key, saved => {
+            if (!saved || saved.pending?.requestId !== requestId) return saved ?? baseline
+            const corrected = !sameFiles(saved.files, saved.pending.files)
+            return { ...saved, pendingRejected: !corrected,
+              pending: corrected ? pendingFor(saved.files, saved.remoteRevision) : saved.pending }
+          })
+          this.notify({ error: this.record.pendingRejected ? '原作品请求未通过校验，请修正内容；原文仍保留。' : '' })
+        } catch { /* Keep querying the original request until its rejection can be protected locally. */ }
       } else if (code === 'forbidden' || code === 'stale-generation') {
         this.denied = true
         this.notify({ error: '访问资格已失效，已停止该身份的同步。本机作品仍保留，请重新登录原空间。' })
@@ -243,6 +292,9 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     if (!conflict) return
     if (this.dirty) throw new Error('当前比较内容仍在保护中。')
     workFilesSchema.parse(files)
+    // An explicit choice may adopt another client's object or its valid empty state.
+    // Keep binding validation, but do not impose ordinary-edit identity retention.
+    this.validateComponentBindings(files)
     if (conflict.source === 'remote') files = files.map(file =>
       this.record.confirmedFiles?.some(old => old.objectId === file.objectId) && !conflict.other.some(other => other.objectId === file.objectId)
         ? { ...file, objectId: crypto.randomUUID(), contentId: crypto.randomUUID() } : file)

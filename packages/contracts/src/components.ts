@@ -165,7 +165,9 @@ export const componentImportSchema = z.object({ requestId: z.uuid(), manifest: c
     return new Set(submitted.map(item => item.resourceId)).size === submitted.length
       && submitted.length === value.manifest.dependencies.length
       && manifestDependencies(value.manifest).every(item => submitted.some(content => content.resourceId === item.resourceId))
-  }, 'Dependency resources must match the manifest exactly');
+  }, 'Dependency resources must match the manifest exactly')
+  .refine(value => value.manifest.componentId === value.manifest.componentId.toLowerCase(),
+    'New component registrations require canonical lowercase UUIDs');
 export type ComponentImport = z.infer<typeof componentImportSchema>;
 /** Verified dependency bytes for an already-authorized client; never an arbitrary URL proxy. */
 export const componentDependencyContentSchema = z.object({
@@ -205,6 +207,7 @@ export const componentInitializeSchema = z.object({
     theme: z.record(z.string().regex(/^[a-z][a-z0-9-]{0,39}$/), z.string().max(64)),
     materials: z.array(z.object({ title: z.string().min(1).max(300), text: z.string().max(16000000) }).strict()).max(20),
     readOnly: z.boolean(),
+    titleFont: z.object({ base64: z.string().max(1500000), sha256: digest }).strict().optional(),
     preparation: z.object({ preparationProtocolVersion: z.literal(1), mode: z.enum(['production', 'preparation']) }).strict().optional(),
   }).strict(),
 }).strict()
@@ -295,4 +298,58 @@ export function componentStateName(key: string) { return `components/${key}.json
 export function componentTestInstanceId(preparationId: string, key: string) { return `preparation:${preparationId}:${key}`; }
 export function componentDependencyReference(componentId: string, version: number, dependencyId: string) {
   return `component/${componentId}/${version}/dependency/${dependencyId}`;
+}
+
+const eventValue = z.union([z.string().max(4000), z.number().finite(), z.boolean(), z.null()]);
+const eventIdentity = { formatVersion: z.literal(1), eventId: z.uuid(), sequence: z.number().int().positive() };
+export const componentEventSchema = z.discriminatedUnion('kind', [
+  z.object({ ...eventIdentity, kind: z.literal('control-change'), controlId: identifier, value: eventValue }).strict(),
+  z.object({ ...eventIdentity, kind: z.literal('answer'), promptId: identifier, value: z.string().max(4000) }).strict(),
+  z.object({ ...eventIdentity, kind: z.literal('prediction'), promptId: identifier, value: z.string().max(4000) }).strict(),
+  z.object({ ...eventIdentity, kind: z.literal('confirmation'), targetId: identifier, confirmed: z.boolean() }).strict(),
+]);
+export type ComponentEvent = z.infer<typeof componentEventSchema>;
+export const componentRequestSchema = z.union([
+  componentMessageSchema.extend({ method: z.enum(['component.ready', 'component.close', 'workspace.read']), payload: z.object({}).strict() }),
+  componentMessageSchema.extend({ method: z.literal('workspace.change'), payload: componentChangeSchema }),
+  componentMessageSchema.extend({ method: z.literal('component.event'), payload: componentEventSchema }),
+  componentMessageSchema.extend({ method: z.enum(['execution.capabilities', 'execution.submit', 'execution.query', 'execution.stop', 'execution.control', 'reference.select', 'reference.locate']) }),
+]);
+const hostEnvelope = z.object({ hostApiVersion: z.literal(1), connectionId: z.uuid(), instanceId: z.string().min(1).max(300),
+  messageId: z.uuid(), method: z.string().min(1).max(80) });
+const successEnvelope = hostEnvelope.extend({ replyTo: z.uuid() });
+export const componentSuccessSchema = z.union([
+  // Execution owners validate payloads with their own public execution schemas; this is the shared transport envelope.
+  successEnvelope.extend({ method: z.enum(['execution.capabilities', 'execution.query', 'execution.stop']), payload: z.unknown() }).strict(),
+  successEnvelope.extend({ method: z.literal('execution.submit'), payload: z.object({ requestId: z.uuid() }).strict() }).strict(),
+  successEnvelope.extend({ method: z.literal('component.ready'), payload: z.object({ ready: z.literal(true) }).strict() }).strict(),
+  successEnvelope.extend({ method: z.literal('component.close'), payload: z.object({ closed: z.literal(true) }).strict() }).strict(),
+  successEnvelope.extend({ method: z.literal('workspace.read'), payload: z.object({ contentId: z.uuid().nullable(), content: z.unknown() }).strict() }).strict(),
+  successEnvelope.extend({ method: z.literal('workspace.change'), payload: z.object({ inputDigest: digest,
+    confirmation: z.literal('local-protected'), contentId: z.uuid().nullable(), requestedContentId: z.uuid(), superseded: z.boolean() }).strict() }).strict(),
+  successEnvelope.extend({ method: z.literal('component.event'), payload: z.object({ received: z.literal(true),
+    eventId: z.uuid(), sequence: z.number().int().positive(), kind: z.enum(['control-change', 'answer', 'prediction', 'confirmation']) }).strict() }).strict(),
+]);
+export const componentErrorSchema = hostEnvelope.extend({ replyTo: z.uuid(), payload: z.null(), error: z.object({
+  code: z.enum(['invalid-input', 'unsupported-version', 'capability-unavailable', 'forbidden', 'stale-connection', 'conflict', 'resource-unavailable', 'outcome-unknown']),
+  next: z.string().min(1).max(1000),
+}).strict() }).strict();
+export const componentHostMessageSchema = z.union([componentInitializeSchema, componentSuccessSchema, componentErrorSchema]);
+export function componentReply(context: { connectionId: string; instanceId: string }, request: { messageId: string; method: string },
+  outcome: { payload: unknown } | { error: unknown }, messageId: string) {
+  return componentHostMessageSchema.parse({ hostApiVersion: 1, connectionId: context.connectionId, instanceId: context.instanceId, messageId,
+    method: request.method, replyTo: request.messageId, ...('error' in outcome ? { payload: null, error: outcome.error } : outcome) });
+}
+export const componentStateMediaType = 'application/vnd.xunjie.component-state+json';
+/** Pure binding invariants only; each boundary must still authorize its real subject. */
+export function matchesComponentState(binding: ComponentBinding, activityId: string,
+  file: { name: string; kind: string; encoding: string; mediaType: string; value: string }): boolean {
+  try {
+    const value = componentStateSchema.parse(JSON.parse(file.value)), manifest = binding.definition.manifest;
+    return file.name === componentStateName(binding.key) && file.kind === 'state' && file.encoding === 'json'
+      && file.mediaType === componentStateMediaType && value.instanceId === componentInstanceId(activityId, binding.key)
+      && value.componentId === manifest.componentId && value.version === manifest.version
+      && value.definitionDigest === binding.definition.digest && value.stateVersion === manifest.stateVersion
+      && acceptsState(manifest.stateShape, value.content);
+  } catch { return false; }
 }

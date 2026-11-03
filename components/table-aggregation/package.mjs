@@ -23,16 +23,17 @@ const group = { type: 'object', properties: { key: cell, count: { type: 'number'
 
 /** Public teaching assets for one importable component: no server, accounts or student records. */
 export async function aggregationPackage() {
-  const [view, wasm] = await Promise.all([readFile(new URL('./view.html', import.meta.url)),
+  const [source, wasm] = await Promise.all([readFile(new URL('./view.html', import.meta.url)),
     readFile(new URL('./algorithm.wasm', import.meta.url))]);
+  const view = Buffer.from(source.toString('utf8').replaceAll('\r\n', '\n'));
   const manifest = componentManifestSchema.parse({ formatVersion: 1,
-    componentId: '1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61', version: 1, hostApiVersion: 1, title: '表格聚合',
-    entry: { resourceId: '5f0c7a21-9d38-4b6e-8c15-2a4d7e91b0f6', mediaType: 'text/html',
+    componentId: '1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61', version: 2, hostApiVersion: 1, title: '表格聚合',
+    entry: { resourceId: '7386d1f5-af05-41a4-8250-54c34e09fa2a', mediaType: 'text/html',
       sha256: hash(view), byteLength: view.length },
     stateVersion: 1, requiredCapabilities: ['workspace.read', 'workspace.change', 'execution.submit'],
     stateShape,
     initialState: { table: sampleTable, parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } },
-    algorithm: { resource: { resourceId: 'b3a1e8d0-4c27-4a59-9f63-8d2b6c04e1a7', mediaType: 'application/wasm',
+    algorithm: { resource: { resourceId: 'b07e066c-a7e9-429a-b82d-011d513ed72b', mediaType: 'application/wasm',
       sha256: hash(wasm), byteLength: wasm.length }, mediaType: 'application/wasm', entry: 'aggregate', memoryPages: 256 },
     operations: [{ operationId: 'aggregate', effect: 'execute',
       parameters: { type: 'object', properties: { groupColumn: cell, valueColumn: cell, aggregate: { type: 'string', maxLength: 8 } } },
@@ -46,9 +47,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const out = resolve(process.argv[2] ?? 'dist/table-aggregation');
   const input = await aggregationPackage();
   await mkdir(out, { recursive: true });
-  await copyFile(new URL('./view.html', import.meta.url), resolve(out, 'view.html'));
+  await writeFile(resolve(out, 'view.html'), Buffer.from(input.contentBase64, 'base64'));
   await copyFile(new URL('./algorithm.wasm', import.meta.url), resolve(out, 'algorithm.wasm'));
-  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: 'c4f7d291-58ba-4e03-9a76-1d0e5b83ca24',
+  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: 'feebc885-c9b7-4e05-9fb0-5ec79e59b1f2',
     manifest: input.manifest, path: 'view.html', algorithm: { path: 'algorithm.wasm' } }, null, 2));
   console.log(`Component import: ${resolve(out, 'component.json')}`);
 }

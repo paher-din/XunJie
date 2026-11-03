@@ -5,6 +5,7 @@ import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
+import wabtFactory from 'wabt';
 import { aggregationPackage } from '../components/table-aggregation/package.mjs';
 
 /**
@@ -24,7 +25,7 @@ const report = { platform: process.platform, arch: process.arch, os: release(), 
   root, browser: 'Google Chrome', cases: [], status: 'running', headless: false };
 const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
   postgresVersion: '18.6', webRoot, windowsPrerequisitePath: resolve('scripts/windows-prereq-prepare.ps1') } });
-let browser;
+let browser, page;
 const passed = name => { report.cases.push(name); console.log('PASS ' + name); };
 try {
   await runtime.install({ profile: 'local' });
@@ -55,7 +56,7 @@ try {
   const created = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
   assert.equal(created.status(), 200);
   const activity = await created.json();
-  const page = await context.newPage();
+  page = await context.newPage();
   page.on('pageerror', error => console.log('BROWSER ERROR ' + error.message));
   page.on('console', message => { if (message.type() === 'error') console.log('CONSOLE ' + message.text().slice(0, 300)); });
   page.on('response', async response => { if (response.status() >= 400) console.log('HTTP ' + response.status() + ' ' + response.url() + ' ' + (await response.text().catch(() => ''))); });
@@ -167,10 +168,87 @@ try {
   await page.getByRole('tab', { name: '表格聚合', exact: true }).click();
   await expect(page.getByRole('region', { name: '计算记录' })).toContainText('已完成');
   passed('switching tools keeps the run record and its download available');
+  // Hold a real save acknowledgement while the student keeps typing. Only transport timing changes.
+  await page.evaluate(() => {
+    const post = MessagePort.prototype.postMessage;
+    window.__heldSaveAck = null;
+    MessagePort.prototype.postMessage = function(message, ...rest) {
+      if (!window.__heldSaveAck && message?.method === 'workspace.change' && message?.payload?.confirmation === 'local-protected') {
+        window.__heldSaveAck = () => { MessagePort.prototype.postMessage = post; Reflect.apply(post, this, [message, ...rest]); };
+        return;
+      }
+      return Reflect.apply(post, this, [message, ...rest]);
+    };
+  });
+  const currentFrame = page.frameLocator('iframe[title="表格聚合"]');
+  await expect(currentFrame.getByRole('textbox', { name: '得分 第1行', exact: true })).toHaveValue('100');
+  await currentFrame.getByRole('button', { name: '运行计算', exact: true }).click();
+  await page.waitForFunction(() => typeof window.__heldSaveAck === 'function');
+  await currentFrame.getByRole('textbox', { name: '得分 第1行', exact: true }).fill('40');
+  await page.evaluate(() => window.__heldSaveAck());
+  // The click preceded the edit: A = 100 + 92 + 79 + 73, rather than 40 + 92 + 79 + 73.
+  await expect(currentFrame.locator('#groups tbody tr').first()).toContainText('344', { timeout: 20000 });
+  await expect(currentFrame.getByRole('textbox', { name: '得分 第1行', exact: true })).toHaveValue('40');
+  passed('holding the save acknowledgement and continuing to type preserves the table captured by the run click');
+
+  // Import an independently declared busy WASM so a real running Worker can be stopped from another page.
+  const wabt = await wabtFactory();
+  const module = wabt.parseWat('busy.wat', `(module (import "env" "memory" (memory 1))
+    (global (export "abiVersion") i32 (i32.const 1))
+    (func (export "aggregate") (param i32 i32 i32) (result f64) (loop $busy (br $busy)) (f64.const 0)))`);
+  const busyBytes = Buffer.from(module.toBinary({}).buffer); module.destroy();
+  const busy = structuredClone(published);
+  busy.manifest.componentId = randomUUID(); busy.manifest.entry.resourceId = randomUUID();
+  busy.manifest.algorithm.resource = { ...busy.manifest.algorithm.resource, resourceId: randomUUID(),
+    sha256: createHash('sha256').update(busyBytes).digest('hex'), byteLength: busyBytes.length };
+  busy.algorithmBase64 = busyBytes.toString('base64');
+  const busyDefinition = await api('manage/component-import', { requestId: randomUUID(), ...busy }, admin);
+  const busyCourseId = randomUUID(), busyReleaseId = randomUUID();
+  await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId: busyCourseId, name: '真实停止验收' },
+    task: { taskId: randomUUID(), title: '运行中的跨标签停止', summary: '' }, release: { releaseId: busyReleaseId,
+      objectives: ['真实 Worker 终止'], requirements: '从另一标签页停止原运行。', starterWorks: [], capabilities: [], materials: [],
+      components: [{ key: 'table', definition: busyDefinition, configuration: { title: '表格聚合' }, materialIds: [] }] }, resources: [] }, admin);
+  await api('manage/course-access', { requestId: randomUUID(), courseId: busyCourseId, principalId: member.principalId, active: true }, admin);
+  const busyActivity = await (await context.request.post(endpoint + '/api/learning/course-activities', {
+    data: { requestId: randomUUID(), releaseId: busyReleaseId } })).json();
+  const runningPage = await context.newPage();
+  await runningPage.goto(endpoint + '?space=school&activity=' + busyActivity.activityId);
+  await runningPage.getByRole('tab', { name: '表格聚合', exact: true }).click();
+  const busyFrame = runningPage.frameLocator('iframe[title="表格聚合"]');
+  await expect(busyFrame.getByRole('button', { name: '运行计算', exact: true })).toBeEnabled();
+  const workerStarted = runningPage.waitForEvent('worker');
+  await busyFrame.getByRole('button', { name: '运行计算', exact: true }).click();
+  const worker = await workerStarted, began = Date.now();
+  const stopPage = await context.newPage();
+  await stopPage.goto(endpoint + '?space=school&activity=' + busyActivity.activityId);
+  await stopPage.getByRole('tab', { name: '表格聚合', exact: true }).click();
+  await stopPage.getByRole('region', { name: '计算记录' }).getByRole('button', { name: '停止', exact: true }).click();
+  await expect(runningPage.getByRole('region', { name: '计算记录' })).toContainText('已取消', { timeout: 4000 });
+  await expect.poll(() => runningPage.workers().includes(worker), { timeout: 4000 }).toBe(false);
+  assert.ok(Date.now() - began < 5000, 'the stop must precede the algorithm timeout');
+  report.crossTabStopMs = Date.now() - began;
+  passed('a second Chrome page stops the original running WASM Worker and the original owner confirms cancellation');
+  await stopPage.close();
+
+  const timedWorkerStarted = runningPage.waitForEvent('worker');
+  await busyFrame.getByRole('button', { name: '运行计算', exact: true }).click();
+  const timedWorker = await timedWorkerStarted;
+  await expect(busyFrame.locator('#error')).toContainText('5000 ms', { timeout: 12000 });
+  await expect.poll(() => runningPage.workers().includes(timedWorker)).toBe(false);
+  await expect(runningPage.getByRole('region', { name: '计算记录' })).toContainText('未完成');
+  passed('the declared execution time limit really terminates a busy WASM Worker and leaves a queryable failure');
+  await runningPage.close();
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed';
   report.error = error?.message ?? String(error);
+  if (page) {
+    report.failureView = await page.locator('body').innerText().catch(() => 'unreadable');
+    report.failureComponent = await page.frameLocator('iframe[title="表格聚合"]').locator('body').innerText().catch(() => 'unreadable');
+    console.log('FAILURE VIEW ' + report.failureView.slice(-2500));
+    console.log('FAILURE COMPONENT ' + report.failureComponent.slice(-1200));
+    await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+  }
   throw error;
 } finally {
   await writeFile(join(output, 'browser-report.json'), JSON.stringify(report, null, 2)).catch(() => {});

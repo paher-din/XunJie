@@ -3,10 +3,33 @@ import { readFile, mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { componentManifestSchema, componentPreparedManifestSchema } from '@xunjie/contracts/components';
+import { build } from 'esbuild';
+let protocol;
 
 /** Produce importable public teaching assets; no server, accounts or student records. */
 export async function annotationPackage() {
-  const bytes = await readFile(new URL('./view.html', import.meta.url));
+  protocol ??= build({ stdin: { contents: "export { componentHostMessageSchema, componentRequestSchema } from '@xunjie/contracts/components';",
+    resolveDir: dirname(fileURLToPath(import.meta.url)) }, bundle: true, write: false, format: 'iife', globalName: 'XunJieComponentProtocol',
+    platform: 'browser', target: 'es2022', minify: true, legalComments: 'none' });
+  const runtime = (await protocol).outputFiles[0].text.replaceAll('</script', '<\\/script');
+  const source = (await readFile(new URL('./view.html', import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
+  const styles = (await readFile(new URL('../shared/host.css', import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
+  const bytes = Buffer.from(source.replace('/* xunjie-host-styles */', () => styles).replace('<!-- xunjie-contracts -->', () => `<script>${runtime}</script>`));
+  const manifest = componentManifestSchema.parse({ formatVersion: 1,
+    componentId: '6237a554-67ee-4e74-ae33-36faf1223f12', version: 3, hostApiVersion: 1, title: '材料标注',
+    entry: { resourceId: 'd0c86f21-5856-49ce-b9b3-f8fcc7697127', mediaType: 'text/html',
+      sha256: createHash('sha256').update(bytes).digest('hex'), byteLength: bytes.length },
+    stateVersion: 1, requiredCapabilities: ['workspace.read', 'workspace.change'],
+    stateShape: { type: 'object', properties: { annotations: { type: 'array', maxItems: 100,
+      items: { type: 'object', properties: { id: { type: 'string', maxLength: 36 },
+        quote: { type: 'string', maxLength: 4000 }, note: { type: 'string', maxLength: 4000 } } } } } },
+    initialState: { annotations: [] } });
+  return { manifest, contentBase64: bytes.toString('base64') };
+}
+
+/** Immutable v1 import for compatibility verification and existing course assets. */
+export async function legacyAnnotationPackage() {
+  const bytes = await readFile(new URL('./view-v1.html', import.meta.url));
   const manifest = componentManifestSchema.parse({ formatVersion: 1,
     componentId: '6237a554-67ee-4e74-ae33-36faf1223f12', version: 1, hostApiVersion: 1, title: '材料标注',
     entry: { resourceId: '99d9b8e1-885f-4f80-a4f3-a0b21d57843b', mediaType: 'text/html',
@@ -29,7 +52,8 @@ const annotationShape = { type: 'object', properties: { annotations: { type: 'ar
 
 /**
  * Version 2 of the same component: identical state structure plus a locked browser dependency the view
- * really executes for source highlighting. Version 1 stays byte-identical so its digest never moves.
+ * really executes for source highlighting. Keep its manifest and resource bytes fixed;
+ * annotationPackage publishes the new host protocol separately as version 3.
  */
 export async function preparedAnnotationPackage() {
   const entry = await readFile(new URL('./view-v2.html', import.meta.url));
@@ -81,11 +105,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const input = await annotationPackage();
   const prepared = await preparedAnnotationPackage();
   await mkdir(resolve(out, 'vendor'), { recursive: true });
-  await copyFile(new URL('./view.html', import.meta.url), resolve(out, 'view.html'));
+  await writeFile(resolve(out, 'view.html'), Buffer.from(input.contentBase64, 'base64'));
   await copyFile(new URL('./view-v2.html', import.meta.url), resolve(out, 'view-v2.html'));
   await copyFile(new URL('./vendor/mark.min.js', import.meta.url), resolve(out, 'vendor/mark.min.js'));
   await copyFile(new URL('./vendor/LICENSE-mark.js', import.meta.url), resolve(out, 'vendor/LICENSE-mark.js'));
-  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: '88ec2e3d-e700-413b-b757-99299a1a1224', manifest: input.manifest, path: 'view.html' }, null, 2));
+  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: 'cc3ff819-6fb6-4f3f-a96d-4f2c2ebde939', manifest: input.manifest, path: 'view.html' }, null, 2));
   await writeFile(resolve(out, 'component-v2.json'), JSON.stringify({ requestId: 'aa411f88-a147-4afb-9f4c-7156260c3b0c',
     manifest: prepared.manifest, path: 'view-v2.html',
     dependencies: [{ dependencyId: highlightDependencyId, path: 'vendor/mark.min.js' }] }, null, 2));

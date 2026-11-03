@@ -1,0 +1,5 @@
+/* Shared isolated-view controls, following DESIGN.md; no external font or network URL. */
+h1,h2,h3{font-family:"XunJieTitle","Kaiti SC",STKaiti,serif;font-weight:600}
+button{font-family:inherit;font-size:13px;line-height:1.5;height:32px;padding:0 16px;border-radius:8px;background:var(--canvas);border:1px solid var(--line-strong);color:var(--ink-soft);cursor:pointer}
+button:hover{background:var(--hover)}button:disabled{cursor:default;opacity:.6}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
