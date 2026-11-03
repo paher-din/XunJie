@@ -56,6 +56,9 @@ export function createChecks(storage: OwnedStorage, owner: {
         return { expired: true };
       });
     }
+    await reconcileEndedDispatchers();
+  }
+  async function reconcileEndedDispatchers() {
     if (!owner.dispatcher) return;
     const { rows } = await storage.read('SELECT id,dispatcher_id,credential_ref FROM model_attempts WHERE physical_ended=false');
     for (const row of rows) {
@@ -204,8 +207,11 @@ export function createChecks(storage: OwnedStorage, owner: {
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
         : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, !!attempt.segment, metadata?.applicationSchema);
-      if (controller.signal.reason === 'timeout' && !['completed', 'failed'].includes(result.state)) {
-        result.state = 'unknown'; result.reason = 'timeout'; result.toolIntents = [];
+      const interruption = controller.signal.reason;
+      if ((interruption === 'timeout' || interruption === 'maintenance') && !['completed', 'failed'].includes(result.state)) {
+        result.state = 'unknown';
+        result.reason = interruption === 'maintenance' ? 'maintenance-interrupted' : 'timeout';
+        result.toolIntents = [];
       }
       const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-result:' + attempt.attemptId,
         bytes: Buffer.from(JSON.stringify(result.native)), mediaType: 'application/json', contentVersion: 1 });
@@ -267,13 +273,23 @@ export function createChecks(storage: OwnedStorage, owner: {
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },
     async drain() {
-      await settleUnsentClaims();
-      while (starting || active.size) {
-        await Promise.allSettled([...active.values()].map(value => value.task));
-        if (starting) await new Promise(resolve => setTimeout(resolve, 5));
-      }
-      await settleUnsentClaims();
-      if (unsentClaims.size) throw new StorageError('resource-busy');
+      // Leave time in the runtime's 30-second maintenance window for durable result publication.
+      const interrupt = setTimeout(() => {
+        for (const { controller } of active.values()) controller.abort('maintenance');
+      }, 20_000);
+      try {
+        await settleUnsentClaims();
+        while (starting || active.size) {
+          await Promise.allSettled([...active.values()].map(value => value.task));
+          if (starting) await new Promise(resolve => setTimeout(resolve, 5));
+        }
+        await settleUnsentClaims();
+        if (unsentClaims.size) throw new StorageError('resource-busy');
+        await reconcileEndedDispatchers();
+        // The local task map cannot account for abandoned claims or another host's dispatcher.
+        const { rows } = await storage.read('SELECT id FROM model_attempts WHERE physical_ended=false LIMIT 1');
+        if (rows.length) throw new StorageError('resource-busy');
+      } finally { clearTimeout(interrupt); }
     },
     resume() { closed = false; admissionClosed = false; } };
 }

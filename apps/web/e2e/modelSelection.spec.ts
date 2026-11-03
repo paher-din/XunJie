@@ -130,6 +130,19 @@ test('a confirmed selection conflict can be reloaded and retried without refresh
   await page.goto(deviceEndpoint + '/?settings=models&space=' + encodeURIComponent(connectionKey))
   const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
   await expect(choices.locator('.st-provider').filter({ hasText: '学校默认服务' }).getByText('当前选用', { exact: true })).toBeVisible()
+  const reload = choices.getByRole('button', { name: '重新读取选用', exact: true })
+  await page.route('**/api/learning/models/selection', route => route.abort('connectionfailed'))
+  await reload.click()
+  await expect(choices.getByRole('status')).toHaveText('当前模型状态待确认')
+  await expect(choices.getByRole('button', { name: '检查当前模型', exact: true })).toBeDisabled()
+  await page.unroute('**/api/learning/models/selection')
+  await page.route('**/api/learning/models/selection', async route => {
+    const response = await route.fetch()
+    await route.fulfill({ response, json: { ...await response.json(), restoredInstallation: true } })
+  }, { times: 1 })
+  await reload.click()
+  await expect(choices.getByRole('alert')).toHaveCount(0)
+  await expect(choices.getByText('此环境已完成接管。', { exact: false })).toBeVisible()
   const headers = { 'x-xj-space': connectionKey }
   const current = await (await page.request.get(deviceEndpoint + '/api/learning/models/selection', { headers })).json()
   const advanced = await page.request.post(deviceEndpoint + '/api/learning/models/selection', { headers,

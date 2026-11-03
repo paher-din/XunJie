@@ -64,6 +64,24 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 
 ## 恢复与验证
 
+用正式包的 `xunjie install --profile model --root <设备环境>` 创建独立模型运行环境，然后用 `xunjie start --root <设备环境>` 启动。`status` 返回独立的 `model-connection` 服务身份及监听地址，`stop` 走正式维护排空。此模式保留主体认证和模型 owner，使用 PostgreSQL，不装配学习数据 owner。配置仍使用本机产品的 `?settings=models` 入口。学校配对时，成员的学习目标与 WP01 授权来源都使用该设备的 `model-connection` 服务身份。学校无需访问设备监听端口。
+
+独立模型环境使用通用 `backup`、`restore`、`takeover` 流程。恢复默认保留 `model` 装配。接管后在正式模型设置核对提示，并用原引用检查结果。重新连接时为新安装签发 WP01 授权并更新设备绑定。
+
+学校侧受控调用方可用正式包中的 `xunjie model-task --root <学校环境> --file <请求 JSON>` 或产品运行时的 `modelTask` 接口提交和查询已配对设备的调用任务。两者都走学校宿主的本机控制端口。任务用独立 `taskId` 标识，`attemptId` 保持模型调用原身份。设备主动经 `learning.authority` 拉取并交回回执，学校核对已认证成员的学习 owner、授权和设备安装身份。回执只包含公开尝试投影。现有调用入口仍负责建立段和上传固定图片，任务通道仅处理该段上的接收、派发、查询及取消。
+
+```ts
+const school = openProductRuntime({ root: schoolRoot });
+const binding = { grantId: runtimeGrant.grantId, installationId: deviceInstallationId };
+await school.modelTask({ operation: 'enqueue', identity, binding,
+  task: { taskId, attemptId, operation: 'read' } });
+const result = await school.modelTask({ operation: 'read', identity, binding, taskId });
+```
+
+`identity` 使用学校已认证成员身份，`runtimeGrant` 来自已批准的 WP01 `learning.authority` 配对。`receipt: null` 表示学校尚未持久收到回执。若提交响应丢失，用同一任务参数和 `taskId` 查询或重复提交。需要查看设备上的最新调用状态时，用新的 `taskId` 排队一个 `read`，沿用原 `attemptId`。
+
+任务和回执随模型 owner schema 10 进入备份，接管后查询仍按原身份和原绑定返回。新绑定不会领取旧绑定的待处理任务。原生结果仍由模型 owner 持有，Run、活动和交付可通过 owner 的 `results.retain` 与 `results.release` 增减各自的保留引用。
+
 配置版本、加密凭据引用、vault key、请求及结果资源随所属迁移和 WP01 加密备份恢复。默认产品新增后共四个 owner（含 runtime）。恢复旧三 owner 备份时，隔离阶段保持原 owner 集合；按原流程接管后正常停止/启动一次，才初始化空的模型 owner。不要跳过通用恢复的精确版本校验，也不回退到 legacy 模型配置。
 
 #165 新增迁移仅追加到既有版本；授权、选择、图片/变换来源、工具结果、观察、段和客户端持有方绑定都进入同一模型 owner。资源 pin 随接收/结果/段事务提交，旧段或设置更新不释放仍引用的原件。维护验证检查已有结果与图片内容；真实备份→隔离还原→接管后可读原引用并继续原生工具配对。旧 schema 必须走 WP01 正式升级，正常启动不偷偷迁移。

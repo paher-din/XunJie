@@ -40,7 +40,7 @@ export const personalModelChoiceSchema = z.object({ kind: z.literal('personal'),
   policy: modelCheckPolicySchema, origin: z.enum(['self', 'device', 'grant']), grantId: z.uuid().optional() }).strict();
 export const modelChoiceSchema = z.union([schoolModelSchema, personalModelChoiceSchema]);
 export const modelSelectionSchema = z.object({ version: z.number().int().nonnegative(), selected: modelChoiceSchema.nullable(),
-  options: z.array(modelChoiceSchema), unavailableReason: z.string().optional() }).strict();
+  options: z.array(modelChoiceSchema), unavailableReason: z.string().optional(), restoredInstallation: z.literal(true).optional() }).strict();
 export const modelSelectionSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('school'), connectionId: z.uuid() }).strict(),
   z.object({ kind: z.literal('personal'), connectionId: z.uuid(), grantId: z.uuid() }).strict(),

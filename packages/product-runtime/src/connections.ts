@@ -451,6 +451,7 @@ export function createConnectionAuthority(options: {
           grantId: grant.grantId,
           sourceEnvironmentId: grant.sourceEnvironmentId,
           sourceServiceId: grant.sourceServiceId,
+          ...(grant.sourceInstallationId ? { sourceInstallationId: grant.sourceInstallationId } : {}),
         }));
       } finally {
         response.off('close', disconnected);

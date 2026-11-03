@@ -42,6 +42,7 @@ const commands: Record<string, readonly string[]> = {
   'school-membership': ['file', 'resources'],
   'school-connection': ['file', 'resources'],
   'school-model': ['file', 'resources'],
+  'model-task': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
   'course-access': ['file', 'resources'],
@@ -200,8 +201,8 @@ async function main(): Promise<void> {
   const installOptions = async (): Promise<InstallOptions> => {
     const config = values.config === undefined ? {} : await jsonFile(required('config'), '安装配置');
     const profile = values.profile ?? config.profile ?? 'local';
-    if (!['local', 'school', 'remote'].includes(String(profile))) {
-      throw new Error('profile 必须是 local、school 或 remote');
+    if (!['local', 'school', 'remote', 'model'].includes(String(profile))) {
+      throw new Error('profile 必须是 local、school、remote 或 model');
     }
     return { ...config, profile } as InstallOptions;
   };
@@ -376,6 +377,11 @@ async function main(): Promise<void> {
       });
       if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
       output(await response.json()); break;
+    }
+    case 'model-task': {
+      const input = await jsonFile(required('file'), '配对模型任务');
+      output(await runtime.modelTask(input));
+      break;
     }
     case 'school-model': {
       const input = await jsonFile(required('file'), '学校默认模型');

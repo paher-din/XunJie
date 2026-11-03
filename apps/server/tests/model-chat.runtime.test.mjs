@@ -10,7 +10,7 @@ import { crc32 } from 'node:zlib';
 import { openProductRuntime, restoreProductRecovery } from '@xunjie/product-runtime';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
-async function product(upstreamHandler, run, overrides = {}) {
+async function product(upstreamHandler, run, overrides = {}, profile = 'local') {
   const upstream = createServer(upstreamHandler);
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const root = await mkdtemp(join(tmpdir(), 'xj-native-chat-'));
@@ -21,7 +21,7 @@ async function product(upstreamHandler, run, overrides = {}) {
   const runtime = openProductRuntime({ root, resources });
   let failure;
   try {
-    await runtime.install({ profile: 'local' }); const { endpoint } = await runtime.start();
+    await runtime.install({ profile }); const { endpoint } = await runtime.start();
     const api = async (path, body) => {
       const response = await fetch(endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
         ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
@@ -112,7 +112,7 @@ test('fixed images and multi-tool reasoning survive persistence and restart into
   });
 });
 
-test('real backup, isolated restore and takeover retain grants, fixed images and pending native tools', { timeout: 300000 }, async () => {
+test('independent model deployment backup, isolated restore and takeover retain grants, images and native tools', { timeout: 300000 }, async () => {
   const received = [];
   await product(async (request, response) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk); received.push(JSON.parse(Buffer.concat(chunks)));
@@ -136,12 +136,16 @@ test('real backup, isolated restore and takeover retain grants, fixed images and
     const directory = await mkdtemp(join(tmpdir(), 'xj-model-restore-')), key = randomBytes(32);
     await runtime.setCredential('native-chat-recovery', key.toString('base64'));
     const backup = await runtime.recovery.backup({ directory, recoveryKeyRef: 'native-chat-recovery', leaveClosed: true });
+    assert.equal(backup.source.profile, 'model');
+    assert.equal(backup.source.services.some(service => service.unit === 'learning-data'), false);
     const targetRoot = join(directory, 'target');
     const restored = await restoreProductRecovery({ root: targetRoot, resources, backupDirectory: join(directory, backup.backupId), key });
     for (const owner of restored.owners) await owner.close?.();
     const target = openProductRuntime({ root: targetRoot, resources });
     try {
       const state = await target.start(); assert.equal(state.state, 'maintenance');
+      assert.equal(state.environment.profile, 'model');
+      assert.equal(state.environment.services.some(service => service.unit === 'learning-data'), false);
       await target.recovery.takeover({ sourceRoot: root, receivers: [] });
       const targetApi = async (path, body) => {
         const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
@@ -149,6 +153,7 @@ test('real backup, isolated restore and takeover retain grants, fixed images and
         assert.equal(response.status, 200); return response.json();
       };
       assert.equal((await targetApi('selection')).selected.grantId, grantId);
+      assert.equal((await targetApi('selection')).restoredInstallation, true);
       assert.equal((await targetApi('calls/' + first.attemptId)).resultRef, first.resultRef);
       assert.equal((await targetApi('segments/' + segmentId)).pendingTools[0].callId, 'restore-call');
       assert.equal(received.length, 1);
@@ -166,7 +171,7 @@ test('real backup, isolated restore and takeover retain grants, fixed images and
       assert.equal(received[1].messages.find(message => message.role === 'assistant').reasoning_content, 'PRIVATE-RESTORED');
       assert.equal(received[1].messages[1].content[1].image_url.url, 'data:image/png;base64,' + png);
     } finally { await target.stop(); }
-  });
+  }, {}, 'model');
 });
 
 test('image validation rejects invalid pixels before dispatch and transformed images retain their original version', { timeout: 180000 }, async () => {

@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -12,7 +13,7 @@ import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
-import { routeModels } from '@xunjie/learning-space';
+import { modelDeviceTaskSchema, routeModels } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
@@ -30,11 +31,12 @@ const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url()
   clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
   localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional() });
 type Connection = z.infer<typeof connectionSchema>;
+const modelTaskAuthorization = new AsyncLocalStorage<() => Promise<void>>();
 
 /** Installed client retains only its own verifier and scoped grant, never the school's account database. */
 export function createSchoolClient(root: string, environment: RuntimeEnvironment, local?: {
   target: LearningTarget;
-  create(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
+  create?(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
   models?: Awaited<ReturnType<typeof createModelGateway>> | undefined;
   personal?(): Promise<SpaceIdentity>;
 }) {
@@ -86,7 +88,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     throw new StorageError('forbidden');
   }
-  async function authorizeModel(identity: SpaceIdentity) { await identityConnection(identity); }
+  async function authorizeModel(identity: SpaceIdentity) {
+    await identityConnection(identity);
+    await modelTaskAuthorization.getStore()?.();
+  }
   async function schoolModel(identity: SpaceIdentity) {
     const connection = await identityConnection(identity);
     const selection = modelSelectionSchema.parse(await call(connection, 'models/selection', undefined, true));
@@ -267,6 +272,42 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       || JSON.stringify(result.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
     return result;
   }
+  async function pollModelTasks(isOpen: () => boolean) {
+    if (!local?.models) return;
+    for (const item of await list()) {
+      if (!isOpen()) return;
+      const connection = await read(item.key.slice('school:'.length));
+      if (!connection.localBinding || !connection.grant) continue;
+      const { runtimeConnectionId } = connection.localBinding;
+      try {
+        const tasks = z.array(modelDeviceTaskSchema).max(16)
+          .parse(await authorityCall(connection, runtimeConnectionId, 'pollModelTasks'));
+        const task = tasks[0];
+        if (!task || !isOpen()) continue;
+        const route = task.operation === 'receive' ? 'models/calls' : `models/calls/${task.attemptId}`
+          + (task.operation === 'read' ? '' : `/${task.operation}`);
+        let receipt;
+        try {
+          const input = task.operation === 'receive' ? task.input : task.operation === 'read' ? undefined : {};
+          const identity = connection.grant.identity;
+          const value = await modelTaskAuthorization.run(async () => {
+            if (!isOpen()) throw new StorageError('maintenance');
+            // The Gateway checks again immediately before SDK dispatch, including in its background task.
+            await checkLocal(connection, runtimeConnectionId);
+          }, () => routeModels(local.models!, identity, route, input));
+          receipt = { ok: true, value: modelAttemptSchema.parse(value) };
+        } catch (error) {
+          const code = error instanceof StorageError ? error.code : 'invalid';
+          if (code !== 'forbidden' && code !== 'missing' && code !== 'conflict' && code !== 'invalid' && code !== 'unavailable') continue;
+          receipt = { ok: false, code };
+        }
+        if (!isOpen()) return;
+        await authorityCall(connection, runtimeConnectionId, 'completeModelTask', { taskId: task.taskId, receipt });
+      } catch {
+        // An offline or fenced pairing leaves the task at the school for authenticated reconciliation.
+      }
+    }
+  }
   async function configureLocal(value: unknown) {
     const input = z.object({ connectionId: z.uuid(), runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().parse(value);
     if (!local || JSON.stringify(input.target) !== JSON.stringify(local.target)) throw new StorageError('forbidden');
@@ -286,7 +327,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const sameIdentity = (identity: unknown) => {
       if (JSON.stringify(identity) !== JSON.stringify(connection.grant!.identity)) throw new StorageError('forbidden');
     };
-    const learning = local!.create({ async resolveBinding(identity) {
+    if (!local?.create) throw new StorageError('unavailable');
+    const learning = local.create({ async resolveBinding(identity) {
       sameIdentity(identity); return (await checkLocal(connection, binding.runtimeConnectionId)).target;
     } }, {
       async prepare(input) { sameIdentity(input.identity);
@@ -399,5 +441,5 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('receipts/')) return value === null ? null : check(value);
     return value;
   }
-  return { list, start, complete, configureLocal, forward, authorizeModel, schoolModel };
+  return { list, start, complete, configureLocal, forward, authorizeModel, schoolModel, pollModelTasks };
 }

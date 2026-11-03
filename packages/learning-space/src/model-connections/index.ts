@@ -15,6 +15,7 @@ import { createModelRouting, modelRoutingMigrations } from './routing.js';
 import { measuredCapabilities } from './capabilities.js';
 import { createModelResults } from './results.js';
 import { adapterReady } from './transport.js';
+import { createModelDeviceTasks, modelDeviceTaskMigration } from './device-tasks.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -32,7 +33,7 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
 ` }, { version: 9, name: 'messages-upstream-facts-contract', sql: `
   ALTER TABLE model_attempts ADD CONSTRAINT model_attempt_upstream_object
     CHECK (NOT (body ? 'upstream') OR jsonb_typeof(body->'upstream')='object');
-` }];
+` }, modelDeviceTaskMigration];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
@@ -208,6 +209,9 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   const images = createModelImages(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
   const routing = createModelRouting(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
   const results = createModelResults(storage, options.authorize);
+  const deviceTasks = createModelDeviceTasks(storage, options.authorize, () => {
+    if (writesClosed) throw new StorageError('maintenance');
+  });
   const segments = createChatWork(storage, images, { authorize: options.authorize, snapshot, assertDispatch,
     readPortable: results.read,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); } });
@@ -222,14 +226,28 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     },
   });
   async function validate() {
-    const { rows } = await storage.read('SELECT body FROM model_versions');
+    const { rows: invalidHeads } = await storage.read(`
+      WITH latest AS (SELECT DISTINCT ON (scope,id) scope,id,version,body
+        FROM model_versions ORDER BY scope,id,version DESC)
+      SELECT 1 FROM latest FULL JOIN model_connections AS head USING (scope,id)
+      WHERE latest.version IS DISTINCT FROM head.version OR latest.body IS DISTINCT FROM head.body LIMIT 1`);
+    if (invalidHeads.length) throw new StorageError('corrupt');
+    const { rows } = await storage.read('SELECT scope,id,version,body FROM model_versions');
     for (const row of rows) {
       const stored = row.body as StoredConnection;
       projection(stored);
+      if (stored.version !== row.version || stored.configuration.connectionId !== row.id)
+        throw new StorageError('corrupt');
       if (stored.credentialRef) {
-        const { rows: [credential] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1', [stored.credentialRef]);
+        const { rows: [credential] } = await storage.read(`SELECT binding,sealed FROM model_credentials
+          WHERE id=$1 AND scope=$2 AND temporary=false`, [stored.credentialRef, row.scope]);
         if (!credential) throw new StorageError('corrupt');
-        try { openCredential(key, credential.binding as string, credential.sealed as ReturnType<typeof sealCredential>); }
+        try {
+          const [scope, id, version, target] = JSON.parse(credential.binding as string);
+          if (scope !== row.scope || id !== row.id || !Number.isSafeInteger(version) || version < 1
+            || version > stored.version || target !== targetOf(stored.configuration)) throw new StorageError('corrupt');
+          openCredential(key, credential.binding as string, credential.sealed as ReturnType<typeof sealCredential>);
+        }
         catch { throw new StorageError('corrupt'); }
       }
     }
@@ -237,8 +255,9 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await selection.validate();
     await segments.validate();
     await routing.validate();
+    await deviceTasks.validate();
   }
-  return { list, save, school, selection, images, segments, routing, results, validate, checks,
+  return { list, save, school, selection, images, segments, routing, results, deviceTasks, validate, checks,
     closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
     resume() { writesClosed = false; checks.resume(); } };
 }

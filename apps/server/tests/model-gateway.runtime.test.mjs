@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 import { createServer } from 'node:http';
+import pg from 'pg';
 import { modelCommitRelay } from './model-commit-relay.mjs';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -285,10 +286,24 @@ test('a killed production dispatcher preserves unknown usage without replay and 
       process.kill(instance.pid, 'SIGKILL');
       await new Promise(resolve => setTimeout(resolve, 500));
       await runtime.start();
+      // Stop must reconcile the dead dispatcher even if no client has queried the attempt yet.
+      await runtime.stop();
+      await runtime.start();
+      const environment = (await runtime.status()).environment;
+      const descriptor = environment.services.find(service => service.unit === 'model-connection');
+      const binding = JSON.parse(await resolveCredential(root, 'storage-' + descriptor.serviceId));
+      const owner = new pg.Client(binding.connection);
+      try {
+        await owner.connect();
+        const { rows: [persisted] } = await owner.query(`SELECT physical_ended,body->>'reason' AS reason
+          FROM ${pg.escapeIdentifier(binding.schema)}.model_attempts WHERE id=$1`, [original.attemptId]);
+        assert.deepEqual(persisted, { physical_ended: true, reason: 'dispatcher-ended' });
+      } finally { await owner.end(); }
       const unknown = await api(`checks/${original.attemptId}`);
       assert.equal(unknown.value.state, 'unknown'); assert.equal(unknown.value.dispatched, true);
       assert.equal(unknown.value.resultRef, null);
       assert.equal(unknown.value.physicalRequestEnded, true);
+      assert.equal(unknown.value.reason, 'dispatcher-ended');
       assert.equal(unknown.value.usage.state, 'unknown');
       await api(`checks/${original.attemptId}/dispatch`, {});
       assert.equal(calls, 1);
