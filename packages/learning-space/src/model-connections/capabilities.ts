@@ -1,6 +1,7 @@
 import type { ModelConfiguration } from '@xunjie/contracts/model-connections';
 import { sdkVersion, nativeAdapterVersion } from './chat.js';
 import { responsesAdapterVersion } from './responses.js';
+import { messagesAdapterVersion, messagesSdkVersion, unsupportedMessagesRoute } from './messages.js';
 /** Reviewed route samples, never inferred from the display name or a successful connection check.
  * Evidence and counterexamples: docs/student-agent-implementation/wp06-chat-selection-acceptance.md.
  * They describe this dated parameter combination; credentials/availability remain separate facts. */
@@ -8,6 +9,13 @@ export function measuredCapabilities(configuration: ModelConfiguration) {
   const capabilities = { text: 'unknown', images: 'unknown', tools: 'unknown', strictSchema: 'unknown',
     nativeReplay: 'unknown', jsonMode: 'unknown', applicationSchema: 'verified' } as const;
   const endpoint = configuration.baseUrl.replace(/\/$/, '') + configuration.path;
+  if (unsupportedMessagesRoute(configuration)) return {
+    capabilities: { ...capabilities, text: 'unsupported' as const, images: 'unsupported' as const, tools: 'unsupported' as const,
+      nativeReplay: 'unsupported' as const, strictSchema: 'unsupported' as const, strictTools: 'unsupported' as const, jsonMode: 'unsupported' as const },
+    capabilityEvidence: { observedAt: '2026-11-03', sdk: messagesSdkVersion, adapter: messagesAdapterVersion, endpoint,
+      modelId: configuration.modelId, protocol: configuration.protocol, parameterMode: configuration.parameterMode,
+      testedToolChoice: 'not-tested' as const, toolImageStrategy: 'not-applicable' as const, limitations: ['provider-catalogue-excludes-messages'] },
+  };
   if (configuration.protocol === 'responses' && sdkVersion === 'openai@7.42.0' && responsesAdapterVersion === 'xunjie-responses-native-v1'
     && endpoint === 'https://api.deepseek.com/v1/responses' && configuration.modelId === 'deepseek-flash' && configuration.dialect === 'deepseek') {
     return { capabilities: { ...capabilities, text: 'verified' as const, strictTools: 'unknown' as const,

@@ -18,6 +18,7 @@
     "typecheck": "node ../../scripts/build.mjs learning-space:typecheck"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.1.0",
     "@xunjie/contracts": "0.1.0",
     "@xunjie/storage": "0.1.0",
     "ajv": "8.20.0",

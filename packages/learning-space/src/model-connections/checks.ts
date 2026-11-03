@@ -5,6 +5,7 @@ import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/m
 import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelTool } from '@xunjie/contracts/model-connections';
 import { connectionCheckPayload, limitPayload, runModel, type NativePayload } from './transport.js';
 import { validateResponsesNative } from './responses.js';
+import { validateMessagesNative, type MessagesPayload } from './messages.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -248,6 +249,14 @@ export function createChecks(storage: OwnedStorage, owner: {
             return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
           }) ?? [];
           validateResponsesNative(JSON.parse(Buffer.from(bytes).toString('utf8')), tools);
+        }
+        if (body.state === 'completed' && body.connection.protocol === 'messages') {
+          const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as MessagesPayload;
+          const tools = request.tools?.map(tool => {
+            if (!('input_schema' in tool)) throw new StorageError('corrupt');
+            return { name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema };
+          }) ?? [];
+          validateMessagesNative(JSON.parse(Buffer.from(bytes).toString('utf8')), tools);
         }
       }
       if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');

@@ -25,8 +25,8 @@ export const modelConnectionSchema = modelConfigurationSchema.safeExtend({ versi
     applicationSchema: capabilityStateSchema.optional(), strictTools: capabilityStateSchema.optional(),
     serverStorage: capabilityStateSchema.optional(), serverQuery: capabilityStateSchema.optional(), serverCancel: capabilityStateSchema.optional() }).strict(),
   capabilityEvidence: z.object({ observedAt: z.iso.date(), sdk: z.string(), adapter: z.string(), endpoint: z.url(), modelId: z.string(),
-    protocol: modelProtocolSchema, parameterMode: z.enum(['plain', 'thinking']), testedToolChoice: z.literal('auto'),
-    toolImageStrategy: z.enum(['paired-text-adjacent-user-image', 'native-function-output-image']), limitations: z.array(z.string()) }).strict().optional() });
+    protocol: modelProtocolSchema, parameterMode: z.enum(['plain', 'thinking']), testedToolChoice: z.enum(['auto', 'not-tested']),
+    toolImageStrategy: z.enum(['paired-text-adjacent-user-image', 'native-function-output-image', 'native-tool-result-image', 'not-applicable']), limitations: z.array(z.string()) }).strict().optional() });
 export type ModelConfiguration = z.infer<typeof modelConfigurationSchema>;
 export type ModelConnection = z.infer<typeof modelConnectionSchema>;
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;

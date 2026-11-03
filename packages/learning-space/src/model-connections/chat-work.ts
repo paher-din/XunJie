@@ -12,6 +12,8 @@ import type { z } from 'zod';
 import type OpenAI from 'openai';
 import { responsesCheckPayload, validateResponsesNative, type ResponsesPayload } from './responses.js';
 import type { NativePayload } from './transport.js';
+import type Anthropic from '@anthropic-ai/sdk';
+import { messagesCheckPayload, validateMessagesNative, type MessagesPayload } from './messages.js';
 
 export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-native-segments', sql: `
   CREATE TABLE model_images(id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL);
@@ -116,6 +118,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (forcedName && !input.prefix.tools.some(tool => tool.name === forcedName)) throw new StorageError('invalid');
     if (options?.applicationSchema) compileOutputSchema(options.applicationSchema);
     const snapshot = await owner.snapshot(identity, input.source);
+    if (snapshot.connection.protocol === 'messages' && options?.responseFormat?.kind === 'json-object') throw new StorageError('unavailable');
     if (forcedName && snapshot.connection.capabilityEvidence?.limitations.includes('thinking-forced-tool-unsupported') && !options?.capabilityProbe) throw new StorageError('unavailable');
     if (options?.responseFormat?.kind === 'json-schema' && options.responseFormat.strict
       && snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe) throw new StorageError('unavailable');
@@ -174,47 +177,65 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     await owner.assertDispatch(identity, { connection: segment.snapshot.connection, source: segment.snapshot.source,
       createdAt: new Date().toISOString() }, segment.snapshot.credentialRef);
     const responses = segment.snapshot.connection.protocol === 'responses';
+    const anthropic = segment.snapshot.connection.protocol === 'messages';
     const messages: ChatPayload['messages'] = [], items: OpenAI.Responses.ResponseInput = [];
+    const messageItems: Anthropic.MessageParam[] = [];
     const nativeImages = (content: Awaited<ReturnType<typeof images.materialize>>['content']) => content.map(part => ({
       type: 'input_image' as const, image_url: part.image_url.url, detail: 'auto' as const,
     }));
     function user(text: string, content: Awaited<ReturnType<typeof images.materialize>>['content'] = []) {
-      if (responses) items.push({ role: 'user', content: [...(text ? [{ type: 'input_text' as const, text }] : []), ...nativeImages(content)] });
+      if (anthropic) {
+        const parts: Anthropic.ContentBlockParam[] = [...(text ? [{ type: 'text' as const, text }] : []), ...messageImages(content)];
+        const last = messageItems.at(-1);
+        if (last?.role === 'user' && Array.isArray(last.content)) last.content.push(...parts);
+        else messageItems.push({ role: 'user', content: parts });
+      } else if (responses) items.push({ role: 'user', content: [...(text ? [{ type: 'input_text' as const, text }] : []), ...nativeImages(content)] });
       else messages.push({ role: 'user', content: [...(text ? [{ type: 'text' as const, text }] : []), ...content] });
+    }
+    function messageImages(content: Awaited<ReturnType<typeof images.materialize>>['content']): Anthropic.ImageBlockParam[] {
+      return content.map(part => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: part.image_url.url.slice('data:image/png;base64,'.length) } }));
     }
     const resultImages: Awaited<ReturnType<typeof images.materialize>>[] = [];
     let settlement: { attemptId: string; results: ModelToolResult[] } | null = null;
     if (segment.headAttemptId) {
       const prior = await attempt(identity, segment.headAttemptId);
       if (prior.state !== 'completed' || !prior.resultRef) throw new StorageError('conflict');
-      const native = JSON.parse(Buffer.from(await storage.readResource(prior.resultRef)).toString('utf8')) as { assistant?: NativeChatAssistant; output?: OpenAI.Responses.ResponseInput };
+      const native = JSON.parse(Buffer.from(await storage.readResource(prior.resultRef)).toString('utf8')) as { assistant?: NativeChatAssistant; output?: OpenAI.Responses.ResponseInput; message?: Anthropic.Message };
       const previous = JSON.parse(Buffer.from(await storage.readResource(prior.requestRef)).toString('utf8')) as NativePayload;
-      if (responses) {
+      if (anthropic) {
+        validateMessagesNative(native, segment.prefix.tools);
+        if (!native.message || !('messages' in previous)) throw new StorageError('corrupt');
+        messageItems.push(...(previous as MessagesPayload).messages, { role: 'assistant', content: native.message.content });
+      } else if (responses) {
         validateResponsesNative(native, segment.prefix.tools);
         if (!Array.isArray(native.output) || !('input' in previous) || !Array.isArray(previous.input)) throw new StorageError('corrupt');
         items.push(...previous.input, ...native.output);
       } else {
         if (!native.assistant || !('messages' in previous)) throw new StorageError('corrupt');
-        messages.push(...previous.messages, native.assistant);
+        messages.push(...(previous as ChatPayload).messages, native.assistant);
       }
       const saved = await toolResults(identity, prior.attemptId);
       if (saved && input.input.toolResults.length) throw new StorageError('conflict');
       const results = paired(prior, saved ?? input.input.toolResults);
       if (!saved && results.length) settlement = { attemptId: prior.attemptId, results };
+      const messageResults: Anthropic.ToolResultBlockParam[] = [];
       for (const result of results) {
         const image = await images.materialize(identity, result.images);
         resultImages.push(image);
         const text = result.outcome === 'success' ? result.text : JSON.stringify({ outcome: result.outcome, text: result.text });
-        if (responses) items.push({ type: 'function_call_output', call_id: result.callId,
+        if (anthropic) messageResults.push({ type: 'tool_result', tool_use_id: result.callId, is_error: result.outcome !== 'success',
+          content: [{ type: 'text', text }, ...messageImages(image.content)] });
+        else if (responses) items.push({ type: 'function_call_output', call_id: result.callId,
           output: image.content.length ? [{ type: 'input_text', text }, ...nativeImages(image.content)] : text });
         else {
           messages.push({ role: 'tool', tool_call_id: result.callId, content: text });
           if (image.content.length) messages.push({ role: 'user', content: image.content });
         }
       }
+      if (messageResults.length) messageItems.push({ role: 'user', content: messageResults });
     } else {
       if (input.input.toolResults.length) throw new StorageError('invalid');
-      if (!responses) messages.push({ role: 'system', content: segment.prefix.system });
+      if (!responses && !anthropic) messages.push({ role: 'system', content: segment.prefix.system });
       for (const portable of segment.portable) user(portable.text);
     }
     const image = await images.materialize(identity, input.input.images);
@@ -222,7 +243,13 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     for (const observation of input.input.observations) user(JSON.stringify(observation));
     const base = checkPayload(segment.snapshot.connection, input.limits.maxOutputTokens);
     const options = segment.prefix.options;
-    const payload: NativePayload = responses ? {
+    const payload: NativePayload = anthropic ? {
+      ...messagesCheckPayload(segment.snapshot.connection, input.limits.maxOutputTokens), system: segment.prefix.system, messages: messageItems,
+      ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({ name: tool.name, description: tool.description,
+        input_schema: tool.inputSchema as Anthropic.Tool.InputSchema, ...(tool.strict === undefined ? {} : { strict: tool.strict }) })), tool_choice: { type: 'auto' as const } } : {}),
+      ...(options?.toolChoice ? { tool_choice: typeof options.toolChoice === 'string' ? { type: options.toolChoice } : { type: 'tool' as const, name: options.toolChoice.name } } : {}),
+      ...(options?.responseFormat?.kind === 'json-schema' ? { output_config: { format: { type: 'json_schema' as const, schema: options.responseFormat.schema } } } : {}),
+    } satisfies MessagesPayload : responses ? {
       ...responsesCheckPayload(segment.snapshot.connection, input.limits.maxOutputTokens), instructions: segment.prefix.system, input: items,
       ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({ type: 'function' as const,
         name: tool.name, description: tool.description, parameters: tool.inputSchema, strict: tool.strict ?? false })), tool_choice: 'auto' as const } : {}),
@@ -240,7 +267,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
       if (Array.isArray(value)) return value.reduce((count, item) => count + countImages(item), 0);
       if (value && typeof value === 'object') {
         const object = value as Record<string, unknown>;
-        if (object.type === 'image_url' || object.type === 'input_image') return 1;
+        if (object.type === 'image_url' || object.type === 'input_image' || object.type === 'image') return 1;
         return Object.values(object).reduce<number>((count, item) => count + countImages(item), 0);
       }
       return 0;
