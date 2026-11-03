@@ -1,0 +1,650 @@
+{
+  "formatVersion": 1,
+  "issue": 183,
+  "sourceIssue": 168,
+  "scope": "real-cross-machine-mac-win",
+  "startedAt": "2026-11-03T10:50:01Z",
+  "topology": {
+    "school": "macOS profile=school",
+    "device": "Windows profile=model",
+    "schoolEndpoint": "https://192.168.3.16:19443",
+    "deviceEndpoint": "http://127.0.0.1:51554",
+    "wp01ConnectionId": "bd46551f-bebd-49f1-943c-d6604997590a",
+    "runtimeConnectionId": "4e220e08-f8bb-4726-bdd5-fd010b11fe97",
+    "grantId": "6ad72f89-5834-45c9-84ca-e38795cb0d47",
+    "installationId": "f76c52e6-47d8-418e-b512-72e7e663c891",
+    "schoolMember": {
+      "kind": "school",
+      "name": "学校学习空间",
+      "spaceId": "05c579bb-132e-4d90-8333-2209c2341297",
+      "principalId": "f31ab751-2b24-4743-86b2-c64e93c927a8",
+      "environmentId": "b234e3ac-0c84-4227-8fbb-2e3864801609"
+    },
+    "bindingTarget": {
+      "environmentId": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61",
+      "serviceId": "b2ff3fb4-e231-4477-9781-cfc035e395e2",
+      "version": 1
+    }
+  },
+  "device": {
+    "os": "Windows 11 家庭版 10.0.26200",
+    "architecture": "x64",
+    "profile": "model",
+    "environmentId": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61",
+    "installationId": "f76c52e6-47d8-418e-b512-72e7e663c891",
+    "modelConnectionServiceId": "b2ff3fb4-e231-4477-9781-cfc035e395e2",
+    "services": [
+      "client",
+      "space-course",
+      "model-connection"
+    ],
+    "learningData": false,
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "packageSha256": "c3c18be56e5d7e49d3bd159daa6fe9a0e11bad6eebe69698f865c1d811a99c51"
+  },
+  "school": {
+    "os": "macOS 27.2 (26B123)",
+    "chip": "Apple M5",
+    "architecture": "arm64",
+    "profile": "school",
+    "environmentId": "b234e3ac-0c84-4227-8fbb-2e3864801609",
+    "installationId": "a3926549-ec0e-4771-a2c0-3928ee2914f4",
+    "endpoint": "https://192.168.3.16:19443",
+    "postgres": "18.6",
+    "services": [
+      "client",
+      "space-course",
+      "learning-data",
+      "model-connection"
+    ]
+  },
+  "routes": {
+    "deepseek": "https://api.deepseek.com/v1/chat/completions deepseek-flash thinking",
+    "synthetic": "https://192.168.3.16:19500/v1/chat/completions cross-synthetic plain"
+  },
+  "steps": [
+    {
+      "name": "deepseek-receive",
+      "at": "2026-11-03T10:50:10Z",
+      "attempt": "4d71b924-08d9-4630-8d30-e803fb0c00c9",
+      "state": "accepted"
+    },
+    {
+      "name": "deepseek-dispatch",
+      "at": "2026-11-03T10:50:20Z",
+      "receipt": {
+        "ok": true,
+        "value": {
+          "attemptId": "4d71b924-08d9-4630-8d30-e803fb0c00c9",
+          "purpose": "chat-probe",
+          "source": {
+            "kind": "personal",
+            "ownerScope": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "feeSource": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "grantId": "a7985801-63d9-47c6-8b57-fd01f9140f18",
+            "grantVersion": 1
+          },
+          "connection": {
+            "connectionId": "8d4fc398-58da-4d85-9817-66c98f9c57c1",
+            "name": "Cross-machine DeepSeek",
+            "protocol": "chat-completions",
+            "baseUrl": "https://api.deepseek.com/v1",
+            "path": "/chat/completions",
+            "modelId": "deepseek-flash",
+            "dialect": "deepseek",
+            "parameterMode": "thinking",
+            "enabled": true,
+            "version": 1,
+            "routeId": "e650767f-65a9-4128-89bd-0ab28f854c79",
+            "hasCredential": true,
+            "adapterState": "ready",
+            "capabilities": {
+              "text": "verified",
+              "images": "verified",
+              "tools": "verified",
+              "strictSchema": "unknown",
+              "nativeReplay": "verified",
+              "jsonMode": "unknown",
+              "applicationSchema": "verified"
+            },
+            "capabilityEvidence": {
+              "observedAt": "2026-11-02",
+              "sdk": "openai@7.42.0",
+              "adapter": "xunjie-chat-native-v2",
+              "endpoint": "https://api.deepseek.com/v1/chat/completions",
+              "modelId": "deepseek-flash",
+              "protocol": "chat-completions",
+              "parameterMode": "thinking",
+              "testedToolChoice": "auto",
+              "toolImageStrategy": "paired-text-adjacent-user-image",
+              "limitations": [
+                "thinking-forced-tool-unsupported"
+              ]
+            }
+          },
+          "limits": {
+            "maxOutputTokens": 64,
+            "timeoutMs": 30000
+          },
+          "segment": {
+            "segmentId": "af4d5efe-f13b-4e6d-b9aa-11fd278f4532",
+            "sequence": 0
+          },
+          "state": "dispatched",
+          "dispatched": true,
+          "cancelRequested": false,
+          "physicalRequestEnded": false,
+          "upstreamStopped": "unknown",
+          "text": "",
+          "usage": {
+            "state": "unknown"
+          },
+          "reason": "",
+          "requestRef": "1858487c-8e41-40b3-b1fa-bb94a39f9e9c",
+          "resultRef": null,
+          "createdAt": "2026-11-03T10:50:10.248Z"
+        }
+      }
+    },
+    {
+      "name": "deepseek-complete",
+      "at": "2026-11-03T10:50:30Z",
+      "state": "completed",
+      "resultRef": "49b4a5b5-8667-4c87-900c-ad14be05295f"
+    },
+    {
+      "name": "synthetic-image-receive",
+      "at": "2026-11-03T10:50:40Z",
+      "attempt": "e72be354-3569-4530-b59c-06e3ce3eed2e",
+      "state": "accepted"
+    },
+    {
+      "name": "synthetic-image-dispatch",
+      "at": "2026-11-03T10:50:50Z",
+      "receipt": {
+        "ok": true,
+        "value": {
+          "attemptId": "e72be354-3569-4530-b59c-06e3ce3eed2e",
+          "purpose": "chat-probe",
+          "source": {
+            "kind": "personal",
+            "ownerScope": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "feeSource": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "grantId": "ca600cfb-9b17-44dc-a274-5fa6b6bf2031",
+            "grantVersion": 1
+          },
+          "connection": {
+            "connectionId": "171a313d-5399-483c-80f8-1a7bf52d6a87",
+            "name": "Cross-machine synthetic",
+            "protocol": "chat-completions",
+            "baseUrl": "https://192.168.3.16:19500/v1",
+            "path": "/chat/completions",
+            "modelId": "cross-synthetic",
+            "dialect": "standard",
+            "parameterMode": "plain",
+            "enabled": true,
+            "version": 1,
+            "routeId": "f5eefe5f-5347-4f23-881c-52f453c4e653",
+            "hasCredential": true,
+            "adapterState": "ready",
+            "capabilities": {
+              "text": "unknown",
+              "images": "unknown",
+              "tools": "unknown",
+              "strictSchema": "unknown",
+              "nativeReplay": "unknown",
+              "jsonMode": "unknown",
+              "applicationSchema": "verified"
+            }
+          },
+          "limits": {
+            "maxOutputTokens": 512,
+            "timeoutMs": 30000
+          },
+          "segment": {
+            "segmentId": "9e05f268-80ba-4d14-b9dc-db2ba74a9ffa",
+            "sequence": 0
+          },
+          "state": "dispatched",
+          "dispatched": true,
+          "cancelRequested": false,
+          "physicalRequestEnded": false,
+          "upstreamStopped": "unknown",
+          "text": "",
+          "usage": {
+            "state": "unknown"
+          },
+          "reason": "",
+          "requestRef": "b46d3a58-23dd-49f7-9d26-06f0ab477281",
+          "resultRef": null,
+          "createdAt": "2026-11-03T10:50:40.299Z"
+        }
+      }
+    },
+    {
+      "name": "synthetic-image-complete",
+      "at": "2026-11-03T10:50:59Z",
+      "state": "completed",
+      "toolIntents": [
+        {
+          "callId": "cross-marker",
+          "name": "read_marker",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "name": "synthetic-tool-result-receive",
+      "at": "2026-11-03T10:51:10Z",
+      "attempt": "3e4967d2-87d1-415e-9607-0a72a1bffed6",
+      "state": "accepted"
+    },
+    {
+      "name": "synthetic-tool-result-dispatch",
+      "at": "2026-11-03T10:51:20Z",
+      "receipt": {
+        "ok": true,
+        "value": {
+          "attemptId": "3e4967d2-87d1-415e-9607-0a72a1bffed6",
+          "purpose": "chat-probe",
+          "source": {
+            "kind": "personal",
+            "ownerScope": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "feeSource": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "grantId": "ca600cfb-9b17-44dc-a274-5fa6b6bf2031",
+            "grantVersion": 1
+          },
+          "connection": {
+            "connectionId": "171a313d-5399-483c-80f8-1a7bf52d6a87",
+            "name": "Cross-machine synthetic",
+            "protocol": "chat-completions",
+            "baseUrl": "https://192.168.3.16:19500/v1",
+            "path": "/chat/completions",
+            "modelId": "cross-synthetic",
+            "dialect": "standard",
+            "parameterMode": "plain",
+            "enabled": true,
+            "version": 1,
+            "routeId": "f5eefe5f-5347-4f23-881c-52f453c4e653",
+            "hasCredential": true,
+            "adapterState": "ready",
+            "capabilities": {
+              "text": "unknown",
+              "images": "unknown",
+              "tools": "unknown",
+              "strictSchema": "unknown",
+              "nativeReplay": "unknown",
+              "jsonMode": "unknown",
+              "applicationSchema": "verified"
+            }
+          },
+          "limits": {
+            "maxOutputTokens": 512,
+            "timeoutMs": 30000
+          },
+          "segment": {
+            "segmentId": "9e05f268-80ba-4d14-b9dc-db2ba74a9ffa",
+            "sequence": 1
+          },
+          "state": "dispatched",
+          "dispatched": true,
+          "cancelRequested": false,
+          "physicalRequestEnded": false,
+          "upstreamStopped": "unknown",
+          "text": "",
+          "usage": {
+            "state": "unknown"
+          },
+          "reason": "",
+          "requestRef": "ccde9160-245b-4298-aaee-7db83bea6cbd",
+          "resultRef": null,
+          "createdAt": "2026-11-03T10:51:10.214Z"
+        }
+      }
+    },
+    {
+      "name": "synthetic-tool-result-complete",
+      "at": "2026-11-03T10:51:29Z",
+      "state": "completed",
+      "text": "cross-machine tool OK"
+    },
+    {
+      "name": "duplicate-dispatch-completed",
+      "at": "2026-11-03T10:51:39Z",
+      "before": 2,
+      "after": 2,
+      "state": "completed"
+    },
+    {
+      "name": "cancel-receive",
+      "at": "2026-11-03T10:51:50Z",
+      "attempt": "5d6020c1-c98e-4b43-a52c-a7c478c342ed",
+      "state": "accepted"
+    },
+    {
+      "name": "cancel-dispatch",
+      "at": "2026-11-03T10:52:00Z",
+      "receipt": {
+        "ok": true,
+        "value": {
+          "attemptId": "5d6020c1-c98e-4b43-a52c-a7c478c342ed",
+          "purpose": "chat-probe",
+          "source": {
+            "kind": "personal",
+            "ownerScope": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "feeSource": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "grantId": "ca600cfb-9b17-44dc-a274-5fa6b6bf2031",
+            "grantVersion": 1
+          },
+          "connection": {
+            "connectionId": "171a313d-5399-483c-80f8-1a7bf52d6a87",
+            "name": "Cross-machine synthetic",
+            "protocol": "chat-completions",
+            "baseUrl": "https://192.168.3.16:19500/v1",
+            "path": "/chat/completions",
+            "modelId": "cross-synthetic",
+            "dialect": "standard",
+            "parameterMode": "plain",
+            "enabled": true,
+            "version": 1,
+            "routeId": "f5eefe5f-5347-4f23-881c-52f453c4e653",
+            "hasCredential": true,
+            "adapterState": "ready",
+            "capabilities": {
+              "text": "unknown",
+              "images": "unknown",
+              "tools": "unknown",
+              "strictSchema": "unknown",
+              "nativeReplay": "unknown",
+              "jsonMode": "unknown",
+              "applicationSchema": "verified"
+            }
+          },
+          "limits": {
+            "maxOutputTokens": 512,
+            "timeoutMs": 30000
+          },
+          "segment": {
+            "segmentId": "9e05f268-80ba-4d14-b9dc-db2ba74a9ffa",
+            "sequence": 2
+          },
+          "state": "dispatched",
+          "dispatched": true,
+          "cancelRequested": false,
+          "physicalRequestEnded": false,
+          "upstreamStopped": "unknown",
+          "text": "",
+          "usage": {
+            "state": "unknown"
+          },
+          "reason": "",
+          "requestRef": "93c98c9f-56de-4942-b8c9-f19150b56f51",
+          "resultRef": null,
+          "createdAt": "2026-11-03T10:51:50.234Z"
+        }
+      }
+    },
+    {
+      "name": "cancel-request-held",
+      "at": "2026-11-03T10:52:00Z",
+      "upstream": {
+        "requests": [
+          {
+            "index": 1,
+            "remoteAddress": "192.168.3.8",
+            "model": "cross-synthetic",
+            "hasImage": true,
+            "hasToolResult": false,
+            "at": "2026-11-03T10:50:50.031Z"
+          },
+          {
+            "index": 2,
+            "remoteAddress": "192.168.3.8",
+            "model": "cross-synthetic",
+            "hasImage": true,
+            "hasToolResult": true,
+            "at": "2026-11-03T10:51:20.256Z"
+          },
+          {
+            "index": 3,
+            "remoteAddress": "192.168.3.8",
+            "model": "cross-synthetic",
+            "hasImage": true,
+            "hasToolResult": true,
+            "at": "2026-11-03T10:52:00.223Z"
+          }
+        ],
+        "held": true,
+        "streamClosed": false,
+        "aborted": false
+      }
+    },
+    {
+      "name": "cancel-complete",
+      "at": "2026-11-03T10:52:20Z",
+      "state": "cancelled",
+      "upstreamStopped": "unknown"
+    },
+    {
+      "name": "duplicate-dispatch-cancelled",
+      "at": "2026-11-03T10:52:30Z",
+      "before": 3,
+      "after": 3,
+      "state": "cancelled"
+    },
+    {
+      "name": "reconnect-read-enqueued",
+      "at": "2026-11-03T10:52:30Z",
+      "taskId": "9d1c0563-260a-4ea7-990d-c316b8a43362"
+    },
+    {
+      "name": "school-stopped",
+      "at": "2026-11-03T10:52:30Z",
+      "state": "stopped",
+      "exit": 0
+    },
+    {
+      "name": "school-restarted",
+      "at": "2026-11-03T10:52:46Z",
+      "state": "ready",
+      "exit": 0
+    },
+    {
+      "name": "reconnect-read-receipt",
+      "at": "2026-11-03T10:52:49Z",
+      "state": "completed",
+      "sameResultRef": true
+    },
+    {
+      "name": "post-restart-read",
+      "at": "2026-11-03T10:53:00Z",
+      "state": "completed",
+      "sameResultRef": true
+    }
+  ],
+  "attempts": {
+    "deepseekText": {
+      "attemptId": "4d71b924-08d9-4630-8d30-e803fb0c00c9",
+      "state": "completed",
+      "reason": "stop",
+      "text": "cross-machine-ok",
+      "usage": {
+        "state": "final",
+        "inputTokens": 44,
+        "outputTokens": 15,
+        "totalTokens": 59,
+        "cachedTokens": 0,
+        "reasoningTokens": 10
+      },
+      "resultRef": "49b4a5b5-8667-4c87-900c-ad14be05295f"
+    },
+    "imageAndTool": {
+      "attemptId": "e72be354-3569-4530-b59c-06e3ce3eed2e",
+      "state": "completed",
+      "reason": "tool_calls",
+      "usage": {
+        "state": "unknown"
+      },
+      "resultRef": "52aac2f9-c3a0-408e-b2c5-9e200a991633",
+      "toolIntents": [
+        {
+          "callId": "cross-marker",
+          "name": "read_marker",
+          "arguments": {}
+        }
+      ]
+    },
+    "toolRoundTrip": {
+      "attemptId": "3e4967d2-87d1-415e-9607-0a72a1bffed6",
+      "state": "completed",
+      "reason": "stop",
+      "text": "cross-machine tool OK",
+      "usage": {
+        "state": "unknown"
+      },
+      "resultRef": "02b91c79-4b27-462a-a802-f6687c7c1481"
+    },
+    "duplicateDispatchCompleted": {
+      "attemptId": "3e4967d2-87d1-415e-9607-0a72a1bffed6",
+      "state": "completed",
+      "resultRef": "02b91c79-4b27-462a-a802-f6687c7c1481",
+      "before": 2,
+      "after": 2,
+      "sameResultRef": true
+    },
+    "cancel": {
+      "attemptId": "5d6020c1-c98e-4b43-a52c-a7c478c342ed",
+      "cancelReceipt": {
+        "ok": true,
+        "value": {
+          "attemptId": "5d6020c1-c98e-4b43-a52c-a7c478c342ed",
+          "purpose": "chat-probe",
+          "source": {
+            "kind": "personal",
+            "ownerScope": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "feeSource": "4433a65b-cad5-4f11-8e8e-6bc99d15cc61.c895ded1-f776-47a2-a6eb-08bffbcfe606.bf363532-02e3-4081-b2a5-bac3199fffca",
+            "grantId": "ca600cfb-9b17-44dc-a274-5fa6b6bf2031",
+            "grantVersion": 1
+          },
+          "connection": {
+            "connectionId": "171a313d-5399-483c-80f8-1a7bf52d6a87",
+            "name": "Cross-machine synthetic",
+            "protocol": "chat-completions",
+            "baseUrl": "https://192.168.3.16:19500/v1",
+            "path": "/chat/completions",
+            "modelId": "cross-synthetic",
+            "dialect": "standard",
+            "parameterMode": "plain",
+            "enabled": true,
+            "version": 1,
+            "routeId": "f5eefe5f-5347-4f23-881c-52f453c4e653",
+            "hasCredential": true,
+            "adapterState": "ready",
+            "capabilities": {
+              "text": "unknown",
+              "images": "unknown",
+              "tools": "unknown",
+              "strictSchema": "unknown",
+              "nativeReplay": "unknown",
+              "jsonMode": "unknown",
+              "applicationSchema": "verified"
+            }
+          },
+          "limits": {
+            "maxOutputTokens": 512,
+            "timeoutMs": 30000
+          },
+          "segment": {
+            "segmentId": "9e05f268-80ba-4d14-b9dc-db2ba74a9ffa",
+            "sequence": 2
+          },
+          "toolIntents": [],
+          "state": "cancelled",
+          "dispatched": true,
+          "cancelRequested": true,
+          "physicalRequestEnded": true,
+          "upstreamStopped": "unknown",
+          "text": "partial",
+          "usage": {
+            "state": "unknown"
+          },
+          "reason": "client-abort",
+          "requestRef": "93c98c9f-56de-4942-b8c9-f19150b56f51",
+          "resultRef": "6a0a9a93-8c4f-4210-bc5c-260d84f92da7",
+          "createdAt": "2026-11-03T10:51:50.234Z"
+        }
+      },
+      "state": "cancelled",
+      "reason": "client-abort",
+      "upstreamStopped": "unknown",
+      "physicalRequestEnded": true,
+      "usage": {
+        "state": "unknown"
+      },
+      "resultRef": "6a0a9a93-8c4f-4210-bc5c-260d84f92da7"
+    },
+    "duplicateDispatchCancelled": {
+      "attemptId": "5d6020c1-c98e-4b43-a52c-a7c478c342ed",
+      "state": "cancelled",
+      "before": 3,
+      "after": 3,
+      "cancelRequested": true
+    },
+    "reconnectRead": {
+      "taskId": "9d1c0563-260a-4ea7-990d-c316b8a43362",
+      "state": "completed",
+      "resultRef": "49b4a5b5-8667-4c87-900c-ad14be05295f",
+      "sameResultRef": true,
+      "text": "cross-machine-ok",
+      "usage": {
+        "state": "final",
+        "inputTokens": 44,
+        "outputTokens": 15,
+        "totalTokens": 59,
+        "cachedTokens": 0,
+        "reasoningTokens": 10
+      }
+    },
+    "postRestartRead": {
+      "taskId": "026f3fcf-600b-4f60-9ecf-8000273d559f",
+      "state": "completed",
+      "resultRef": "49b4a5b5-8667-4c87-900c-ad14be05295f",
+      "sameResultRef": true
+    }
+  },
+  "upstream": {
+    "requests": [
+      {
+        "index": 1,
+        "remoteAddress": "192.168.3.8",
+        "model": "cross-synthetic",
+        "hasImage": true,
+        "hasToolResult": false,
+        "at": "2026-11-03T10:50:50.031Z"
+      },
+      {
+        "index": 2,
+        "remoteAddress": "192.168.3.8",
+        "model": "cross-synthetic",
+        "hasImage": true,
+        "hasToolResult": true,
+        "at": "2026-11-03T10:51:20.256Z"
+      },
+      {
+        "index": 3,
+        "remoteAddress": "192.168.3.8",
+        "model": "cross-synthetic",
+        "hasImage": true,
+        "hasToolResult": true,
+        "at": "2026-11-03T10:52:00.223Z"
+      }
+    ],
+    "streamClosed": true,
+    "held": true,
+    "totalRequests": 3
+  },
+  "actualDeepSeekRequests": 1,
+  "status": "passed",
+  "finishedAt": "2026-11-03T10:53:00Z"
+}

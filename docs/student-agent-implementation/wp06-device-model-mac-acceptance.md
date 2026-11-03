@@ -1,6 +1,6 @@
 # WP06 #168 · Apple Silicon Mac 验收交接
 
-2026-11-03 已在 Apple Silicon Mac 上执行（提交 `b35fad3`），结果见文末「Mac 验收记录」。负责人已同意延期真实跨机验收。以下步骤使用同一台 Mac 上的两个正式产品进程，记录为同机双进程。Windows、Mac、真实上游和跨机结果分别登记。关联 [#168](https://github.com/paher-din/XunJie/issues/168) 与 [Mac 汇总 #178](https://github.com/paher-din/XunJie/issues/178)。
+2026-11-03 已在 Apple Silicon Mac 上执行（提交 `b35fad3`），结果见文末「Mac 验收记录」。真实跨机验收随后按负责人指示执行：macOS 为学校宿主，Windows 为学生侧独立模型 owner，结果见「真实跨机验收」。以下步骤使用同一台 Mac 上的两个正式产品进程，记录为同机双进程。Windows、Mac、真实上游和跨机结果分别登记。关联 [#168](https://github.com/paher-din/XunJie/issues/168) 与 [Mac 汇总 #178](https://github.com/paher-din/XunJie/issues/178)。
 
 ## 环境和正式构建
 
@@ -45,7 +45,7 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e -w @xunjie/web -- \
 
 ## 回填
 
-逐项填写通过、失败、跳过或未执行。分开登记工程、正式包、普通 Web Chrome、产品包 Chrome、真实上游、同机双进程、独立装配、升级与接管。真实跨机标为延期，教学效果标为未评估。
+逐项填写通过、失败、跳过或未执行。分开登记工程、正式包、普通 Web Chrome、产品包 Chrome、真实上游、同机双进程、独立装配、升级与接管。真实跨机单独登记，教学效果标为未评估。
 
 ## Mac 验收记录
 
@@ -53,7 +53,7 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e -w @xunjie/web -- \
 
 | 项目 | 结果 |
 | --- | --- |
-| 工程与正式包 | `npm run typecheck`、`npm run check:docs`（180 份文档、1455 个本地目标、0 失败）、`npm run build` 通过。四个 PostgreSQL 运行时测试文件 21/21 通过、0 跳过、0 失败，322 秒。`darwin-arm64` 完整包构建成功，包内 Node 24.21.0 与 PostgreSQL 18.6 可执行。 |
+| 工程与正式包 | `npm run typecheck`、`npm run check:docs`（180 份文档、1459 个本地目标、0 失败）、`npm run build` 通过。四个 PostgreSQL 运行时测试文件 21/21 通过、0 跳过、0 失败，322 秒。`darwin-arm64` 完整包构建成功，包内 Node 24.21.0 与 PostgreSQL 18.6 可执行。 |
 | 独立 `model` 装配 | `xunjie install --profile model`、`start`、`status`、`stop` 通过；`循阶.command` 的 `start`、`status`、`stop` 同样通过。服务为 `client`、`space-course`、`model-connection`，无 `learning-data`；PostgreSQL 18.6 为 ready；`model-connection` schema 为 `storage/1;owner/10`；停止后维护记录 `safeToStop=true`。 |
 | 普通 Web Chrome | 普通构建 `apps/web/dist` 上 11/11 通过、0 跳过；`channel=chrome`、有头、单 worker。覆盖选用与撤权、断连后重新读取、迟到回执不覆盖新输入、未配置渠道禁用调用，以及“此环境已完成接管”提示。[报告](evidence/wp06-device-model-e2e-normal-web-mac.json) |
 | 产品包 Chrome | 完整产品包上 11/11 通过、0 跳过；同样使用安装版 Chrome、有头、单 worker，由包内 Node/PostgreSQL 在仓库外临时 root 启动。[报告](evidence/wp06-device-model-e2e-package-mac.json) |
@@ -62,7 +62,7 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e -w @xunjie/web -- \
 | 维护与中断 | 生产派发进程被杀后保留 unknown usage 且不重放，并回收已死本机槽位；维护等待已接收结果落盘后才关闭并恢复可用槽位；原生结果未可靠发布时不报完成、不释放仍在运行的物理请求。对应运行时用例通过。 |
 | 旧 schema 升级 | 用 `cf076b5` 构建 owner 9 完整包创建连接、已完成与已取消检查；当前包正常启动被精确兼容闸拒绝（`Storage operation failed: incompatible`）。经正式 `upgrade`、隔离 `maintenance`、`takeover` 到 `owner/10`，目标 `ready`。连接、凭据、原结果引用、用量和取消事实保留；历史尝试重复派发未外发；新调用完成（共 3 次上游请求）；旧源启动被拒绝（`Recovery: source-retired`）。[脱敏证据](evidence/wp06-schema9-to-10-mac.json) |
 | 真实 DeepSeek Chat | 核心用例通过（最终轮）；前 4 轮受上游 503 影响，尝试次数、能力限制与用量见下节。[最终报告](evidence/wp06-device-model-deepseek-mac.json) [尝试记录](evidence/wp06-device-model-deepseek-mac-attempts.json) |
-| 真实跨机 | 延期（负责人已同意）。同机双进程与独立模型接管已单独登记，不充抵真实跨机。 |
+| 真实跨机 | macOS 学校宿主 ↔ Windows 学生侧独立模型 owner 通过：WP01 审批与 WP02 绑定一致，设备主动拉取任务；DeepSeek 文本、固定图片、工具往返、在途取消、断连重连与原结果查询完成。重复派发不增加外发，取消保留 `upstreamStopped=unknown`。外发共 4 次（DeepSeek 1 次，可控上游 3 次）。[脱敏证据](evidence/wp06-device-model-cross-machine-mac-win.json) |
 | 教学效果 | 未评估。 |
 
 ### 真实 DeepSeek Chat
@@ -70,3 +70,19 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e -w @xunjie/web -- \
 使用获准私有凭据与既定路线 `https://api.deepseek.com/v1/chat/completions` / `deepseek-flash`（thinking），SDK `openai@7.42.0`、adapter `xunjie-chat-native-v2`、`maxRetries=0`，每次最多 2048 输出 token、30 秒。5 轮显式探针共 18 次实际生成尝试，明细见 [脱敏尝试记录](evidence/wp06-device-model-deepseek-mac-attempts.json)。
 
 前 4 轮（16 次）受已确认的 DeepSeek V4.1 Flash 上游事件影响：图片/工具与 JSON 用例收到 HTTP 503；native strict schema 与 thinking 下强制具名工具按已测限制返回 HTTP 400；首轮 JSON mode 应用校验成功。事件开始于 2026-11-03T08:58:16Z，状态页当时报告 “DeepSeek V4.1 Flash API and Chat Service are partially unavailable”。恢复后的最终核心轮次（2 次）通过：固定图片与双工具往返完成（usage 输入 600 / 输出 76 / 总计 676），重启后原生续接保留（native 保真、工具返图与 nonce 核对通过，usage 输入 934 / 输出 57 / 总计 991，缓存 640、推理 21），见 [最终报告](evidence/wp06-device-model-deepseek-mac.json)。失败保留 `physicalRequestEnded=true`、usage unknown，SDK 未重试。Command Code 复验已豁免。
+
+### 真实跨机验收（macOS 学校 ↔ Windows 学生）
+
+2026-11-03T10:50–10:53Z 使用两台实际设备、直接局域网连接执行，未使用 SSH 隧道或端口转发。学校宿主为本机 macOS 27.2（26B123）、Apple M5 / arm64，`profile=school`，PostgreSQL 18.6，服务为 `client`、`space-course`、`learning-data`、`model-connection`，HTTPS 端点 `https://192.168.3.16:19443`。学生设备为 Windows 11 家庭版 10.0.26200 x64，Node 24.21.0、PostgreSQL 18.6，`profile=model`，服务为 `client`、`space-course`、`model-connection`，无 `learning-data`；使用 `b35fad3` 构建的 win32-x64 完整包（unsigned candidate，`distribution.json` SHA-256 `c3c18be56e5d7e49d3bd159daa6fe9a0e11bad6eebe69698f865c1d811a99c51`）。
+
+学生设备通过 WP01 已认证通道主动连接并拉取学校任务：连接 ID `bd46551f-…`、授权 `6ad72f89-…`、设备安装 `f76c52e6-…`，审批与交换完成；WP02 成员、空间、主体和学习环境绑定一致（`spaceId 05c579bb-…`、`principalId f31ab751-…`、目标环境 `4433a65b-…` / 服务 `b2ff3fb4-…` / 版本 1），学习数据仅留在学校侧。学校侧仅见脱敏投影。
+
+| 用例 | 结果 |
+| --- | --- |
+| DeepSeek Chat 文本 | 经既定路线 `https://api.deepseek.com/v1/chat/completions` / `deepseek-flash`（thinking）完成，文本 `cross-machine-ok`，usage 输入 44 / 输出 15 / 总计 59，推理 10，结果引用 `49b4a5b5-…`；实际 DeepSeek 请求 1 次。 |
+| 固定图片与工具 | 固定 PNG 送达可控上游并触发 `read_marker`（`callId=cross-marker`），结果引用 `52aac2f9-…`；工具结果回传后完成 `cross-machine tool OK`，结果引用 `02b91c79-…`。 |
+| 重复派发 | 已完成尝试重复派发前后外发 2 → 2，结果引用不变；已取消尝试重复派发前后 3 → 3，未增加外发。 |
+| 在途取消 | 可控上游持有请求时取消，终态 `cancelled`、`reason=client-abort`、`upstreamStopped=unknown`、`physicalRequestEnded=true`，取消回执保留结果引用 `6a0a9a93-…`，未虚报上游已停止。 |
+| 断连重连与查询 | 学校停止 15 秒后重启，设备重新拉取到原任务，结果引用仍为 `49b4a5b5-…` 且文本一致；重启后按原 task ID 再次查询结果一致。 |
+
+可控上游记录的 3 次请求 `remoteAddress` 均为 `192.168.3.8`（学生设备），证明图片、工具和取消请求由 Windows 设备经同机双进程以外的真实跨机路径发出。学校自签证书由 Windows Node 通过本地 CA 信任，产品流量直连局域网，未使用隧道。与交接文档的既定 Ubuntu 学校宿主不同，本轮学校宿主为 macOS，已作为平台差异登记。密钥、认证头和原生推理正文未写入证据。[脱敏跨机证据](evidence/wp06-device-model-cross-machine-mac-win.json)。教学效果未评估。

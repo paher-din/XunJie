@@ -22,7 +22,7 @@
     "typecheck": "passed",
     "docLinks": {
       "files": 180,
-      "targets": 1455,
+      "targets": 1459,
       "failures": 0
     },
     "build": "passed",
@@ -142,7 +142,82 @@
     "sourceRetired": true,
     "evidence": "evidence/wp06-schema9-to-10-mac.json"
   },
-  "realCrossMachine": "deferred-by-owner",
+  "realCrossMachine": {
+    "status": "passed",
+    "schoolDevice": {
+      "os": "macOS 27.2 (26B123)",
+      "chip": "Apple M5",
+      "role": "school",
+      "profile": "school",
+      "endpoint": "https://192.168.3.16:19443"
+    },
+    "studentDevice": {
+      "os": "Windows 11 家庭版 10.0.26200",
+      "architecture": "x64",
+      "role": "student",
+      "profile": "model",
+      "endpoint": "http://127.0.0.1:51554",
+      "learningData": false
+    },
+    "wp01": {
+      "connectionId": "bd46551f-bebd-49f1-943c-d6604997590a",
+      "runtimeConnectionId": "4e220e08-f8bb-4726-bdd5-fd010b11fe97",
+      "grantId": "6ad72f89-5834-45c9-84ca-e38795cb0d47",
+      "installationId": "f76c52e6-47d8-418e-b512-72e7e663c891",
+      "schoolPrincipalId": "f31ab751-2b24-4743-86b2-c64e93c927a8",
+      "targetServiceId": "b2ff3fb4-e231-4477-9781-cfc035e395e2"
+    },
+    "deepseekText": {
+      "state": "completed",
+      "text": "cross-machine-ok",
+      "usage": {
+        "inputTokens": 44,
+        "outputTokens": 15,
+        "totalTokens": 59,
+        "reasoningTokens": 10
+      },
+      "resultRef": "49b4a5b5-8667-4c87-900c-ad14be05295f",
+      "actualRequests": 1
+    },
+    "fixedImageAndTool": {
+      "state": "completed",
+      "reason": "tool_calls",
+      "toolCallId": "cross-marker",
+      "resultRef": "52aac2f9-c3a0-408e-b2c5-9e200a991633"
+    },
+    "toolRoundTrip": {
+      "state": "completed",
+      "text": "cross-machine tool OK",
+      "resultRef": "02b91c79-4b27-462a-a802-f6687c7c1481"
+    },
+    "duplicateDispatch": {
+      "completedBefore": 2,
+      "completedAfter": 2,
+      "cancelledBefore": 3,
+      "cancelledAfter": 3
+    },
+    "cancel": {
+      "state": "cancelled",
+      "reason": "client-abort",
+      "upstreamStopped": "unknown",
+      "physicalRequestEnded": true,
+      "resultRef": "6a0a9a93-8c4f-4210-bc5c-260d84f92da7"
+    },
+    "reconnect": {
+      "schoolStoppedSeconds": 15,
+      "originalResultRefPreserved": true,
+      "postRestartResultRefPreserved": true
+    },
+    "upstream": {
+      "syntheticRequests": 3,
+      "remoteAddresses": [
+        "192.168.3.8"
+      ],
+      "deepseekRequests": 1
+    },
+    "platformNote": "School host ran on macOS 27.2 rather than the documented Ubuntu 24.04 target; no product code change.",
+    "evidence": "evidence/wp06-device-model-cross-machine-mac-win.json"
+  },
   "teachingEffect": "not-evaluated",
   "deepSeek": {
     "endpoint": "https://api.deepseek.com/v1/chat/completions",
