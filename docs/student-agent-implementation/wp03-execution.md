@@ -1,13 +1,13 @@
 # #170 浏览器计算与持久执行请求
 
-日期：2026-11-03。状态：本地候选实现（Apple Silicon Mac 与 Windows 11 x64 两台机器都用真实浏览器、真实 Worker/WASM、原生 PostgreSQL 验证通过）；基线前后对照截图仍未执行，不标记本票完整验收。
+日期：2026-11-03。本文记录 #170 的实现、原验收以及与 #171、PR #182 整合后的最终审查。实时议题与合并状态以 GitHub 为准。
 
 ## 依据与授权
 
 - [实施票 #170](https://github.com/paher-din/XunJie/issues/170)、[WP03 规范](specs/wp03-course-components-and-execution.md) §8–§14 与 Testing Decisions。
 - 基线 `3c906528`（`fix(wp03): renew component channels and persist operation receipts`），分支 `wp03`。
 - 本票只做浏览器有限作业链：固定输入 → 可靠接收 → 真实计算 → 查询/停止 → 结果重读。持续会话（§10）、远端节点与 WP07 Agent 命令不在本票。
-- 未创建 PR、未合并 main、未关闭 #170。
+- 本轮负责人授权最后审查、整合 [PR #182](https://github.com/paher-din/XunJie/pull/182)、推送 `wp03` 并在验收后关闭 #170。
 
 ## 方案与写集
 
@@ -109,7 +109,7 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 ## 未执行与已知失败
 
 npm 11.19 默认不执行安装脚本，机器上需 `npm install-scripts approve esbuild better-sqlite3` + `npm rebuild esbuild`（环境准入，不是仓库缺陷）。**原第 ② 项（Windows 打包 `--outDir` 引号）与下面的构建锁缺陷已在同票修复**，见“发现并修复”。
-- **基线前后对照截图**：未重新在基线 `3c90652` 上采集「修改前」。正文 `wp03-169-after-light.png` 是同一活动在 #170 之前的产品 UI（无运行/停止与「计算记录」），仅作参照；本票新增界面的对照图属未执行项。
+- **界面对照来源**：修改前采用 #169 已留存的真实中心工具区截图；最终运行界面见文末对照。未宣称重新运行旧基线；对照中的教学组件分别为原材料标注与新增表格聚合。
 - **`tools/xj-dev` 曾报 `LOCKFILE_MISMATCH`**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 的 `collectCode` 从 `HEAD` 树取 `package-lock.json`，本票新增 `wabt` / `fake-indexeddb` 时尚未提交；提交后两组随 tools 一起通过。
 - **`tools` 组三项曾失败（`integration.test.mjs`、`local-status.test.mjs`、`repro-e2e.test.mjs`）**：它们各自运行 `npm run build --workspace @xunjie/contracts`，而构建脚本每跑一次就会删除自己在 `.cache/xunjie-build/locks/` 的锁票据。本次会话的沙箱对「同一工具调用内的批量删除」有阈值保护，超过阈值后第 N 次删除被拒，构建脚本退出 1，xj-dev 把它报成 `CONTRACT_BUILD_FAILED`。三项单独跑（`node --test`）与整组跑（`node scripts/verify.mjs --group tools --jobs 2`，45/45）都通过；把该阈值调高后完整 `npm run verify` 也全绿。这是执行环境的保护策略与本仓库构建脚本的交互，不是本票改动引入的问题。
 - **构建锁曾被一个残留票据永久卡住**（已修复，见“发现并修复”）：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
@@ -118,3 +118,40 @@ npm 11.19 默认不执行安装脚本，机器上需 `npm install-scripts approv
 ## 保留消费者
 
 `CODE_TOOLS` 仍由 `pages/WorkspacePage.tsx` 消费，`textscope-c` 仍由 `pages/PrepWorkspacePage.tsx` 消费；本票未删除仍有消费者的旧接线，也未把执行能力并入旧课程分支。
+
+
+## 最终审查与 PR #182 整合
+
+审查范围：本地 #170 从 `3c90652` 起的提交、远程 #171 的准备实现及 `c159cd6` 的 PR #182。代码整合与主要补修位于 `467535c`、`55e0c0e`、`7aea132`。规范审查没有未决违规；需求审查发现的执行边界问题均已修复：
+
+- WASM 只允许受预算约束的宿主内存，拒绝模块自定义内存和 table，真实 WAT 负例覆盖额外 257 页内存与超大 table。
+- 原执行器观察持久停止记录，另一标签页可停止正在运行的真实 Worker；停止请求与实际终态分开，完成/停止竞争按账本事实裁决。
+- 组件查询和停止必须匹配原实例、组件版本与定义摘要；未知请求不允许取消其他实例的动作。
+- 当前资格用于接收、查询、产物读取及下载的异步前后复核；等待本机交接期间也再次检查资格。
+- 执行依据在摘要计算前取得独立副本，可靠动作消费该副本；表格视图立即把每次编辑交给宿主，运行与状态更新按同一通道排序，后续编辑不改变旧请求。
+- 新运行开始后隐藏旧内嵌结果，历史结果仍留在各自的计算记录中。
+
+整合保留 #171 的算法资源之外的依赖、报告、准备缓存与维护校验，修正学校转发的依赖/报告路由分段。#182 的严格消息信封同时支持执行回复及准备协议，状态、操作回执、问题草稿和非执行事件保持各自语义。材料标注新版改用 v3，原 v1/v2 可继续读取；表格聚合改用 v2，均分配新资源身份。新材料标注 v3、表格聚合 v2 与保留的准备组件 v2 在 Windows/Mac 打包的定义与入口摘要已逐项核对一致。[版本说明](../../components/material-annotation/README.md)。
+
+最终验证与证据见 [审查记录](evidence/wp03-final-review.json)：
+
+| 验证 | 最终结果 |
+| --- | --- |
+| `npm run verify -- --jobs 2` | 五组全通过：prepare 4、build:test 1、unit 24、server 78、tools 45；Web 68 个文件、802 项通过 |
+| 正式桌面 Chrome 执行探针 | Apple Silicon Mac / Windows 11 x64 各 14/14，含运行中跨标签停止、5000 ms 真实超时、输入快照与旧结果隔离 |
+| PR #182 组件探针 | 两平台各 26/26，含真实 IndexedDB/API/PostgreSQL、状态裁决、导航保护、协议与撤权 |
+| 可靠作品/动作/草稿/产品 UI | Chrome 45/45；最后授权补修后又定向验证相关 2/2 |
+| 原生执行 owner、组件 owner、学校客户端 | 两平台各 5/5；Windows 执行/组件单元另有 91/91 |
+| #171 / 断网续传 / 学校网页 | Mac 分别 18/18、6/6、7/7；范围与源提交分别记录，学校网页为同机 owner 路径 |
+
+Mac 为 arm64、Chrome 156.0.8078.80；Windows 为 x64、系统 10.0.26200、Chrome 156.0.8078.79。两端 Node 24.21.0、原生 PostgreSQL 18.6.1；Windows 最终候选重新由仓库打包。此前失败包括依赖重装时的文件短暂缺失、并发高负载下的进程测试等待超时、浏览器截图/选区时序失败；依赖就绪及隔离重测后均通过，未将失败计作通过。工程门禁、真实计算、浏览器与教学效果分别记录；本轮没有产生教学效果判断，真实跨机远端执行仍由 #175 承接。已有系统输入法记录保留原来源，本轮未重复宣称系统候选验收。
+
+### 真实界面对照
+
+新增运行、停止、状态与 CSV 下载集中放在原中心工具区，计算控制器独立于 iframe，切换工具后仍可核对原记录。原有导航和作品/问题草稿入口继续复用。修改前图来自先前实际运行的材料标注活动，修改后图来自本轮实际运行的表格聚合活动；不是同一组件的像素差分。
+
+| 修改前：中心工具区中的材料标注，无计算记录 | 修改后：表格聚合及所属计算记录 |
+| --- | --- |
+| ![修改前实际界面](evidence/wp03-169-after-light.png) | ![最终计算界面](evidence/wp03-final-execution-light.png) |
+
+#182 的字体、按钮与状态保护整合另有同类活动对照：[修改前](evidence/wp03-169-remediation-before.png) · [最终修改后](evidence/wp03-final-component-light.png)。[最终深色](evidence/wp03-final-execution-dark.png)与[窄桌面](evidence/wp03-final-execution-narrow.png)均取自本轮桌面 Chrome。
