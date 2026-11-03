@@ -51,6 +51,26 @@ const componentOperationSchema = z.object({ operationId: identifier, effect: z.l
   /** Declared per-operation budgets; never larger than the adapter's own ceiling. */
   budgets: z.object({ timeMs: z.number().int().min(50).max(5000), outputBytes: z.number().int().min(1).max(1048576) }).strict()
 }).strict();
+/**
+ * A native stateful adapter shipped with the product. The manifest names it and declares the
+ * bounded input/observation shapes; it never supplies a command, path or environment.
+ */
+const componentSessionSchema = z.object({
+  adapterId: identifier, adapterVersion: z.number().int().positive(),
+  /** Fixed parameters the session is created with; the input operation has its own shape. */
+  parameters: stateShapeSchema,
+  operation: z.object({ operationId: identifier, parameters: stateShapeSchema, result: stateShapeSchema }).strict(),
+  budgets: z.object({
+    operationTimeoutMs: z.number().int().min(50).max(30000),
+    idleMs: z.number().int().min(1000).max(3600000),
+    maxMs: z.number().int().min(1000).max(86400000),
+    memoryMiB: z.number().int().min(16).max(512),
+    inputBytes: z.number().int().min(1).max(1048576),
+    outputBytes: z.number().int().min(1).max(1048576),
+    concurrentSessions: z.number().int().min(1).max(4),
+    queuedSessions: z.number().int().min(0).max(16),
+  }).strict(),
+}).strict();
 export const componentManifestSchema = z.object({
   formatVersion: z.literal(1), componentId: z.uuid(), version: z.number().int().positive(),
   hostApiVersion: z.literal(1), title: z.string().min(1).max(100),
@@ -59,6 +79,7 @@ export const componentManifestSchema = z.object({
   requiredCapabilities: z.array(z.enum(['workspace.read', 'workspace.change', 'execution.submit'])).max(3),
   algorithm: componentAlgorithmSchema.optional(),
   operations: z.array(componentOperationSchema).max(4).optional(),
+  session: componentSessionSchema.optional(),
 }).strict()
   .refine(value => acceptsState(value.stateShape, value.initialState), 'Initial state does not match its declared structure')
   .refine(value => !value.operations || value.algorithm !== undefined, 'Declared operations require a restricted algorithm resource')
@@ -66,7 +87,10 @@ export const componentManifestSchema = z.object({
   .refine(value => !value.operations || new Set(value.operations.map(item => item.operationId)).size === value.operations.length,
     'Operation identities must be unique')
   .refine(value => !value.algorithm || value.algorithm.resource.mediaType === value.algorithm.mediaType,
-    'Algorithm resource media type must be WebAssembly');
+    'Algorithm resource media type must be WebAssembly')
+  .refine(value => !value.session || (!value.algorithm && !value.operations), 'A native session component carries no browser algorithm')
+  .refine(value => !value.session || value.requiredCapabilities.includes('execution.submit'),
+    'A native session component requires the execution capability');
 export type ComponentManifest = z.infer<typeof componentManifestSchema>;
 export const componentCapabilities = ['workspace.read', 'workspace.change', 'material.highlight'] as const;
 export type ComponentCapability = typeof componentCapabilities[number];

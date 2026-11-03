@@ -11,3 +11,14 @@
 .execution-note { margin: 0 0 8px; font-size: 12px; background: var(--chip-bg); padding: 6px 8px; border-radius: 4px; }
 .execution-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .execution-actions .ws-btn { font-size: 12px; }
+.native-session-empty { display: grid; gap: 8px; justify-items: start; }
+.native-session-observation { margin: 0 0 8px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.native-session-input { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.native-session-input label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.native-session-input input { width: 120px; height: 32px; border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 0 10px; background: var(--canvas); color: var(--ink); font: inherit; font-size: 14px;
+  font-variant-numeric: tabular-nums; }
+.native-session-history { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; }
+.native-session-history li { display: flex; gap: 8px; border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 8px; font-size: 12px; color: var(--muted); }
+.native-session-history li span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }

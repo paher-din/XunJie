@@ -534,6 +534,7 @@ function LearningView() {
     {context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
+        nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} account={schoolControls}
         error={error || notice ? feedback : null} details={<>

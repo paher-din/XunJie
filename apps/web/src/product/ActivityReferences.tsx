@@ -16,7 +16,8 @@ import { ComponentInteractions } from '../component-host/interactions'
 import { BrowserExecutionReceiver } from '../tool-execution/receiver'
 import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
-import { createExecutionTransport } from './executionTransport'
+import { createExecutionTransport, createSessionTransport } from './executionTransport'
+import { NativeSessionController } from '../tool-execution/session-controller'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -75,19 +76,22 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     return new ExecutionController(scope, receiver, actions,
       createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace), undefined, () => access.current && !workspace.accessDenied())
   }, [scope, actions, activity, spaceKey, namespace])
+  const sessions = useMemo(() => new NativeSessionController(scope,
+    createSessionTransport(activity, spaceKey, namespace),
+    () => access.current && !workspace.accessDenied()), [scope, activity, spaceKey, namespace, workspace])
   useEffect(() => {
     let active = true
     const unregister = actions.registerLocalExecution(execution.receiver)
     void Promise.allSettled([draft.open(), workspace.open()]).then(() => { if (active) return actions.open() })
-      .then(() => { if (active) return execution.open() })
+      .then(() => { if (active) return Promise.all([execution.open(), sessions.open()]) })
       .catch(() => { /* Each partition reports initialization failure and retains its own contents. */ })
     return () => { active = false; unregister(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
-  }, [draft, workspace, actions, execution])
+  }, [draft, workspace, actions, execution, sessions])
   useEffect(() => {
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, interactions }}>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }

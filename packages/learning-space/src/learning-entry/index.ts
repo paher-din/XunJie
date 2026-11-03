@@ -10,6 +10,9 @@ import type { createCourses } from '../courses/index.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
+export type { ActionIntentOptions, NativeSessionHostOptions } from '../learning-data/index.js';
+export { SupervisedSession, productNativeAdapters, fourStateAccumulatorSource } from '../learning-data/native-process.js';
+export type { NativeAdapter, NativeObservation, NativeSessionExit, NativeSessionLimits } from '../learning-data/native-process.js';
 
 export async function readLearningBody(request: IncomingMessage, limit = 65536): Promise<Record<string, unknown>> {
   if (!request.headers['content-type']?.startsWith('application/json')) throw new StorageError('invalid');
@@ -227,7 +230,11 @@ export function createLearningEntry(options: {
         const parts = route.split('/');
         if (parts.length === 2 && method === 'POST')
           result = await learning.executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
+        else if (parts.length === 3 && parts[2] === 'sessions' && method === 'GET')
+          result = await learning.executions.sessions(identity, parts[1]!);
         else if (parts.length === 3 && method === 'GET') result = await learning.executions.read(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 4 && parts[3] === 'control' && method === 'POST')
+          result = await learning.executions.control(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
         else if (parts.length === 4 && parts[3] === 'report' && method === 'POST')
           result = await learning.executions.report(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
         else if (parts.length === 4 && parts[3] === 'stop' && method === 'POST')
