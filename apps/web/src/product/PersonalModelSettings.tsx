@@ -23,6 +23,9 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   const [loading, setLoading] = useState(false), [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState<{ key: string; message: string } | null>(null)
   const actions = useRef(new Map<string, number>())
+  const reads = useRef(0)
+  // Pending polls must not prevent a completed read from publishing.
+  const appliedRead = useRef(0)
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const request = useCallback(async (route: string, body?: unknown) => {
@@ -36,12 +39,19 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     return result as unknown
   }, [identity.environmentId, identity.spaceId, identity.principalId, spaceKey, namespace])
   const reload = useCallback(async (visible = false) => {
+    const generation = ++reads.current
     if (visible) setLoading(true)
     try {
       const [configurations, checks] = await Promise.all([request('connections'), request('checks')])
-      if (!live.current) return
+      if (!live.current || generation < appliedRead.current) return
+      appliedRead.current = generation
       setConnections(z.array(modelConnectionSchema).parse(configurations)); setAttempts(z.array(modelAttemptSchema).parse(checks)); setLoadError('')
-    } catch (error) { if (live.current) setLoadError(error instanceof Error ? error.message : '暂时无法读取原配置。') }
+    } catch (error) {
+      if (live.current && generation >= appliedRead.current) {
+        appliedRead.current = generation
+        setLoadError(error instanceof Error ? error.message : '暂时无法读取原配置。')
+      }
+    }
     finally { if (live.current && visible) setLoading(false) }
   }, [request])
   useEffect(() => { void reload(true); const timer = setInterval(() => { void reload() }, 1000); return () => clearInterval(timer) }, [reload])
@@ -68,14 +78,22 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   }
   const cancel = async (attempt: ModelAttempt) => { await request('checks/' + attempt.attemptId + '/cancel', {}); await reload() }
   const readConnection = async (connectionId: string) => {
+    const generation = ++reads.current
     const configurations = z.array(modelConnectionSchema).parse(await request('connections'))
-    if (live.current) setConnections(configurations)
+    if (live.current && generation >= appliedRead.current) {
+      appliedRead.current = generation
+      setConnections(configurations)
+    }
     return configurations.find(item => item.connectionId === connectionId) ?? null
   }
   const save = async (input: SaveModelConnection) => {
     const saved = modelConnectionSchema.parse(await request('connections', input))
     // The POST receipt is authoritative; a subsequent read failure cannot undo it.
     if (live.current) {
+      // Invalidate every read started before this receipt, including explicit reads.
+      appliedRead.current = ++reads.current
+      setConnections(previous => previous.some(item => item.connectionId === saved.connectionId)
+        ? previous.map(item => item.connectionId === saved.connectionId ? saved : item) : [saved, ...previous])
       void reload()
       void selection.reload().catch(() => {})
     }

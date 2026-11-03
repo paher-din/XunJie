@@ -1,0 +1,167 @@
+{
+  "measuredAt": "2026-11-03T13:07:25.481Z",
+  "base": "5aeb49ee2e9fae7319331a732111cfbce15b967f",
+  "status": "failed",
+  "topology": {
+    "school": "macOS school host",
+    "device": "Windows independent model owner",
+    "ssh": "control only; no tunnels"
+  },
+  "commandCode": "waived-by-user",
+  "paidLimit": 5,
+  "stages": [
+    {
+      "name": "school-start",
+      "status": "passed",
+      "environmentId": "bb469d99-1f2d-4cf1-a318-dd8df80a3f93",
+      "endpoint": "https://192.168.3.16:19445"
+    },
+    {
+      "name": "authenticated-mac-windows-pairing",
+      "status": "passed",
+      "installationId": "edd77b24-7551-45e7-b3f3-f48b241cf0bc",
+      "deviceEnvironment": "ff9bb1a0-d234-40a9-a9d1-348ae185969a",
+      "modelOnly": true,
+      "subject": "e159e734-513b-43e2-b1a1-e6484de5a89f"
+    },
+    {
+      "name": "school-member-target-boundary",
+      "status": "passed",
+      "deniedSaved": 3,
+      "deniedDraft": 3,
+      "upstreamRequests": 0
+    },
+    {
+      "name": "capability-decision-before-send",
+      "status": "passed",
+      "missing": [
+        "images",
+        "nativeReplay"
+      ],
+      "statusCode": 422
+    },
+    {
+      "name": "fixed-image-and-two-tools",
+      "status": "passed",
+      "attemptId": "94d24590-ee01-416f-82a0-55fd92968ed0",
+      "resultRef": "012320bc-c4b3-47ce-a44d-b70db708ea65",
+      "toolCalls": [
+        "image-first",
+        "marker-second"
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 7,
+        "outputTokens": 4,
+        "totalTokens": 11
+      }
+    },
+    {
+      "name": "windows-restart-native-replay-and-first-tool-image",
+      "status": "passed",
+      "resultRef": "534de53d-10f5-4a1d-bb27-2294c69c6e84",
+      "originalAssistantPreserved": true,
+      "completeToolGroup": true,
+      "imageSha256": "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46",
+      "repeatedDispatchRequests": [
+        2,
+        2
+      ]
+    },
+    {
+      "name": "cross-machine-physical-cancellation",
+      "status": "passed",
+      "state": "cancelled",
+      "reason": "client-abort",
+      "upstreamStopped": "unknown",
+      "physicalRequestEnded": true,
+      "repeatedDispatchRequests": [
+        3,
+        3
+      ]
+    },
+    {
+      "name": "escaped-credential-through-authenticated-device-task",
+      "status": "passed",
+      "state": "failed",
+      "reason": "credential-in-tool-output",
+      "nativeWithheld": true,
+      "noExecutableTool": true
+    },
+    {
+      "name": "device-offline-queue-without-school-fallback",
+      "status": "passed",
+      "offlineRequests": 0,
+      "queuedTaskPreserved": true,
+      "resultRef": "5ad01a79-66fa-48e6-9129-96bbb0dc6075"
+    },
+    {
+      "name": "school-disconnect-reconnect-original-result",
+      "status": "passed",
+      "sameResultRef": true,
+      "noRegeneration": true
+    },
+    {
+      "name": "bounded-deepseek-real-endpoints",
+      "status": "failed",
+      "error": "ERR_ASSERTION"
+    }
+  ],
+  "upstreamRequests": [
+    {
+      "peer": "192.168.3.8",
+      "mode": "tools",
+      "number": 1
+    },
+    {
+      "peer": "192.168.3.8",
+      "mode": "tools",
+      "number": 2
+    },
+    {
+      "peer": "192.168.3.8",
+      "mode": "hold",
+      "number": 3
+    },
+    {
+      "peer": "192.168.3.8",
+      "mode": "sensitive",
+      "number": 4
+    },
+    {
+      "peer": "192.168.3.8",
+      "mode": "offline",
+      "number": 5
+    }
+  ],
+  "paid": [
+    {
+      "case": "chat-completions-text",
+      "state": "unknown",
+      "reason": "result-unconfirmed",
+      "resultRef": null,
+      "usage": {
+        "state": "unknown"
+      },
+      "expectedText": false
+    }
+  ],
+  "failure": {
+    "code": "ERR_ASSERTION",
+    "frames": [
+      "at file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:256:14",
+      "at async stage (file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:28:31)",
+      "at async file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:243:3"
+    ]
+  },
+  "cleanup": [
+    {
+      "stopped": true,
+      "environmentDeleted": true
+    },
+    {
+      "schoolStopped": true,
+      "schoolEnvironmentDeleted": true
+    }
+  ]
+}

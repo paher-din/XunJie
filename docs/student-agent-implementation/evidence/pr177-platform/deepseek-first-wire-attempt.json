@@ -1,0 +1,87 @@
+{
+  "measuredAt": "2026-11-03T13:16:51.209Z",
+  "base": "5aeb49ee2e9fae7319331a732111cfbce15b967f",
+  "status": "failed",
+  "scope": "paid",
+  "topology": {
+    "school": "macOS school host",
+    "device": "Windows independent model owner",
+    "ssh": "control only; no tunnels"
+  },
+  "commandCode": "waived-by-user",
+  "paidLimit": 5,
+  "stages": [
+    {
+      "name": "school-start",
+      "status": "passed",
+      "environmentId": "4f4e12f1-0481-4c1f-97f9-8e2f488f0ba0",
+      "endpoint": "https://192.168.3.16:19445"
+    },
+    {
+      "name": "bounded-deepseek-real-endpoints",
+      "status": "failed",
+      "error": "ERR_ASSERTION"
+    }
+  ],
+  "upstreamRequests": [],
+  "paid": [
+    {
+      "case": "chat-completions-text",
+      "state": "completed",
+      "reason": "stop",
+      "resultRef": "4da5e580-fbea-47da-b1a7-4603dd949a6b",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 5,
+        "totalTokens": 19,
+        "cachedTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      },
+      "expectedText": false
+    }
+  ],
+  "failure": {
+    "code": "ERR_ASSERTION",
+    "frames": [
+      "at file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:260:55",
+      "at async stage (file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:28:31)",
+      "at async file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:247:3"
+    ]
+  },
+  "cleanup": [
+    {
+      "stopped": true,
+      "environmentDeleted": true
+    },
+    {
+      "schoolStopped": true,
+      "schoolEnvironmentDeleted": true
+    }
+  ],
+  "deviceWitnesses": [
+    {
+      "label": "paid",
+      "witness": {
+        "requests": [
+          {
+            "number": 1,
+            "endpoint": "https://api.deepseek.com/v1/chat/completions",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [
+              "system",
+              "user"
+            ],
+            "toolCalls": [],
+            "images": [],
+            "toolGroupInterruptions": [],
+            "status": 200
+          }
+        ]
+      }
+    }
+  ]
+}

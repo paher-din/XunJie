@@ -1,0 +1,9 @@
+$base='D:\XunJie-acceptance\pr177-platform'
+foreach($case in @('fixture','paid')){
+ $token=[guid]::NewGuid().ToString()+[guid]::NewGuid().ToString()
+ [IO.File]::WriteAllText((Join-Path $base ('cross-'+$case+'-control.key')),$token)
+ $action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$base+'\device-server.ps1" -Case '+$case)
+ $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value) -LogonType Interactive -RunLevel Limited
+ $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+ Register-ScheduledTask -TaskName ('XunJie-PR177-Device-'+$case) -Action $action -Principal $principal -Settings $settings -Force | Select-Object TaskName,State
+}
