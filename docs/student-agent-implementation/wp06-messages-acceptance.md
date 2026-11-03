@@ -16,9 +16,11 @@ Messages↔Chat、Messages↔Responses 只在工具结清、物理调用结束�
 
 DeepSeek 用量采用最终 message_delta.usage，累计值覆盖而不相加；缺失不由初始占位零补齐。input_tokens 不含缓存命中，cachedTokens 分列；Messages 没有原生 total_tokens，因此不捏造总量。取消仅证明本机停止接收，服务端计算/费用仍未知。凭据回显时禁止消费并移除可能重建 key 的原生正文/分片；SDK 日志关闭，公开证据不含 key、推理正文或 signature。
 
+审查补齐 `ModelAttempt.upstream`：白名单保存实际 HTTP 状态、有限 request-id、retry-after 秒数或 HTTP 日期。该事实与原生结果同次发布，重启查询不重发；不返回原始 headers/body，不把等待提示当自动重试授权。含当前 key 的 request-id 丢弃。owner 9 为新增调用事实追加 JSON 约束和版本标记，旧 owner 8 数据须走 WP01 正式 schema upgrade；正常启动不静默升级。
+
 ## 真实端点与能力反例
 
-[脱敏端点证据](evidence/wp06-messages-real-win.json)保存日期、路径、参数模式、SDK/adapter、终态、原生比较、用量及失败。探针 [probe-model-messages.mjs](../../scripts/probe-model-messages.mjs)从用户获准私有配置读取凭据；按 native/schemas/controls/check/cancel 分组在独立环境运行，单组最多 6 次，累计本轮 **11 次有限生成**，自动重试 0。真实原生探针通过独立宿主子进程，重启 PID 后从同一私有数据根读取，再观察下一轮真实 HTTPS wire；原生正文仅在内存比较。
+[脱敏端点证据](evidence/wp06-messages-real-win.json)保存日期、路径、参数模式、SDK/adapter、终态、原生比较、用量及失败。探针 [probe-model-messages.mjs](../../scripts/probe-model-messages.mjs)从用户获准私有配置读取凭据；按 native/schemas/controls/check/cancel 分组在独立环境运行，单组最多 6 次，累计本轮 **12 次有限生成**，自动重试 0（含审查修复后 1 次正式检查，HTTP 200，upstream 状态可查询）。真实原生探针通过独立宿主子进程，重启 PID 后从同一私有数据根读取，再观察下一轮真实 HTTPS wire；原生正文仅在内存比较。首轮原生链路在 owner 8 验证，后续追加的 owner 9 只增加错误事实/约束，不改变原生 payload/聚合；新版本恢复及 wire 回归单列。
 
 | 路线/参数 | 结果与限制 |
 | --- | --- |
@@ -46,6 +48,7 @@ DeepSeek 用量采用最终 message_delta.usage，累计值覆盖而不相加；
 | 正式检查、工具/签名/图片/重启 | 已通过；含空/null、交错工具、UTF-8 分片的最终加强回归待汇总 |
 | 故障与终态 | 10/10（9 个反例 + 父用例），0 跳过；负用量二次异常已 red→green 修复 |
 | 用量、取消、HTTP 不重试、格式边界 | 各定向分组通过；缺最终字段、真实零值与累计覆盖分开断言 |
+| 上游错误元数据 | 429/request-id/retry-after 秒数、503/HTTP 日期、敏感 header 过滤及重启查询 red→green 通过 |
 | 维护恢复 | 真实备份→隔离还原→严格接管后原签名/工具/固定图片续接通过，旧源被拒绝重开 |
 | 跨协议段 | Messages↔Chat、Messages↔Responses 两组及父用例 3/3 通过 |
 | Windows 桌面 Chrome | 原入口红灯及改动前截图已取得；普通正式 Web 的 Messages 两项 2/2；完整包和 legacy 设置/选择回归待汇总 |
@@ -55,10 +58,12 @@ DeepSeek 用量采用最终 message_delta.usage，累计值覆盖而不相加；
 
 Chrome 使用安装版 156.0.8078.76、Windows 11 x64（10.0.26200）、headed、单 worker；Node 24.21.0、原生 PostgreSQL 18.6。没有物理 Windows 中文输入法候选窗验收；既有 CDP 中文输入/焦点回归不冒充物理输入。最终包、脱敏工程 JSON、前后截图及双轴审查结果在交付前回填。
 
+首轮七文件原生回归 98/102 通过、4 个失败计数（两处 Windows EBUSY 临时目录清理失败及其父用例）；业务断言没有报失败。仅为本轮创建的 Messages/Responses 临时目录增加有界 fs.rm 重试，不忽略最终错误，受影响文件隔离复跑另列。首次直接 node 打包的 Windows fallback 把 outDir 引号当成路径内容，改用根 package.json 的正式 `npm run package:product` 入口；该失败保留，不冒充完整包通过。
+
 ## Standards
 
 待最终固定提交进行独立审查，并按发现补回归。
 
 ## Spec
 
-待最终固定提交核对 #167/母规范；Mac 和完整跨机后续范围分别登记，不冒充通过。
+初审 1 项 P2：缺少母规范要求的上游状态/请求身份及 retry-after 事实；已补白名单持久化、公开投影、owner 9 标记及重启回归，待审查者复核。Mac 和完整跨机后续范围分别登记，不冒充通过。

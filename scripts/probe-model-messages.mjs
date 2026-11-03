@@ -111,7 +111,8 @@ async function main() {
   async function finish(id, sequence = 0, input = {}) {
     const attempt = await receive(id, sequence, input); await api('calls/' + attempt.attemptId + '/dispatch', {}); return wait(attempt.attemptId);
   }
-  const publicFact = fact => ({ attemptId: fact.attemptId, state: fact.state, reason: fact.reason, usage: fact.usage, resultReadable: !!fact.resultRef, toolCount: fact.toolIntents?.length ?? 0, physicalRequestEnded: fact.physicalRequestEnded });
+  const publicFact = fact => ({ attemptId: fact.attemptId, state: fact.state, reason: fact.reason, usage: fact.usage,
+    ...(fact.upstream ? { upstream: fact.upstream } : {}), resultReadable: !!fact.resultRef, toolCount: fact.toolIntents?.length ?? 0, physicalRequestEnded: fact.physicalRequestEnded });
   async function wire(index) { const until = Date.now() + 35000; while (Date.now() < until) { if (observed[index] && observed[index].raw !== null) return observed[index]; await delay(); } throw new Error('Missing wire witness'); }
   try {
     await runtime.install({ profile: 'local' }); await start();

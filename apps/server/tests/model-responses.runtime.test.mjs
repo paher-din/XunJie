@@ -49,7 +49,7 @@ async function product(handler, run, overrides = {}, credential = 'synthetic-res
       async restart() { await runtime.stop(); endpoint = (await runtime.start()).endpoint; } });
   } finally {
     await runtime.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 const send = (response, value) => response.write('data: ' + JSON.stringify(value) + '\n\n');
@@ -406,7 +406,7 @@ test('Responses real backup isolated restore and strict takeover retain pending 
       await runtime.stop();
       await assert.rejects(runtime.start(), error => error.code === 'source-retired', 'retired installation cannot reopen dispatch');
       assert.equal(received.length, 2);
-    } finally { if (target) await target.stop(); await rm(directory, { recursive: true, force: true }); }
+    } finally { if (target) await target.stop(); await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
   });
 });
 

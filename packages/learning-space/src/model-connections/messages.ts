@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { StorageError } from '@xunjie/storage';
-import type { ModelConfiguration, ModelTool, ModelToolIntent } from '@xunjie/contracts/model-connections';
+import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
 export { validateMessagesNative } from './messages-native.js';
@@ -19,12 +19,24 @@ export function messagesCheckPayload(configuration: ModelConfiguration, tokens: 
 }
 export async function runMessages(configuration: ModelConfiguration, apiKey: string, payload: MessagesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>) {
-  let limited = false;
+  let limited = false, upstream: ModelUpstream | undefined;
+  const responseFacts = (status: number, headers: Headers): ModelUpstream => {
+    const facts: ModelUpstream = { httpStatus: status };
+    const id = headers.get('request-id') ?? headers.get('x-request-id');
+    if (id && /^[A-Za-z0-9._:-]{1,200}$/.test(id) && (!apiKey || !id.includes(apiKey))) facts.requestId = id;
+    const retry = headers.get('retry-after'), milliseconds = headers.get('retry-after-ms');
+    const numeric = retry && /^\d+(?:\.\d+)?$/.test(retry) ? Number(retry)
+      : !retry && milliseconds && /^\d+(?:\.\d+)?$/.test(milliseconds) ? Number(milliseconds) / 1000 : undefined;
+    if (numeric !== undefined && Number.isFinite(numeric) && numeric <= 31536000) facts.retryAfterSeconds = numeric;
+    else if (retry && /^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(retry) && Number.isFinite(Date.parse(retry)))
+      facts.retryAt = new Date(retry).toISOString();
+    return facts;
+  };
   const client = new Anthropic({ apiKey, baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0,
     timeout: timeoutMs, logLevel: 'off', fetchOptions: { redirect: 'error' },
     ...(configuration.dialect === 'deepseek' ? { defaultHeaders: { 'anthropic-version': '2023-06-01' } } : {}),
     fetch: async (input, init) => {
-      const response = await fetch(input, init); if (!response.body) return response;
+      const response = await fetch(input, init); upstream = responseFacts(response.status, response.headers); if (!response.body) return response;
       let received = 0;
       return new Response(response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) {
         received += chunk.byteLength;
@@ -41,6 +53,7 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     for await (const event of stream) { events.push(structuredClone(event)); assembler.add(event); }
   } catch (error) {
     const status = error instanceof Anthropic.APIError ? error.status : undefined;
+    if (!upstream && status && error instanceof Anthropic.APIError) upstream = responseFacts(status, error.headers ?? new Headers());
     const malformed = error instanceof StorageError || error instanceof SyntaxError;
     const type = error instanceof Anthropic.APIError && error.error && typeof error.error === 'object'
       ? JSON.stringify(error.error) : '';
@@ -72,8 +85,8 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
       || applicationSchema && !compileOutputSchema(applicationSchema)(value)
       || format && !compileOutputSchema(format.schema)(value)) throw new Error();
   } catch { state = 'failed'; reason = 'invalid-structured-output'; }
-  let native: { formatVersion: number; sdk: string; adapter: string; events: unknown[]; message: typeof message; redacted?: boolean }
-    = { formatVersion: 1, sdk: messagesSdkVersion, adapter: messagesAdapterVersion, events, message };
+  let native: { formatVersion: number; sdk: string; adapter: string; events: unknown[]; message: typeof message; redacted?: boolean; upstream?: ModelUpstream }
+    = { formatVersion: 1, sdk: messagesSdkVersion, adapter: messagesAdapterVersion, events, message, ...(upstream ? { upstream } : {}) };
   const fields = new Map<string, string>();
   const clean = (value: string) => apiKey ? value.split(apiKey).join('[redacted]') : value;
   function redact(value: unknown, field = ''): unknown {
@@ -89,5 +102,5 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   }
   if (state === 'completed') try { validateMessagesNative(native, nativeTools); }
   catch { state = 'failed'; reason = 'invalid-native-result'; }
-  return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [], native };
+  return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [], native, ...(upstream ? { upstream } : {}) };
 }

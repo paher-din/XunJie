@@ -65,6 +65,9 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
   reasoningTokens: z.number().nonnegative().optional() }).strict();
+export const modelUpstreamSchema = z.object({ httpStatus: z.number().int().min(100).max(599).optional(),
+  requestId: z.string().regex(/^[A-Za-z0-9._:-]{1,200}$/).optional(),
+  retryAfterSeconds: z.number().nonnegative().max(31536000).optional(), retryAt: z.iso.datetime().optional() }).strict();
 export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.literal(1) }).strict();
 export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
   dataBase64: z.string().min(1).max(350000), source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
@@ -111,11 +114,13 @@ export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.enu
   state: z.enum(['accepted', 'dispatched', 'completed', 'incomplete', 'failed', 'cancelled', 'unknown']),
   dispatched: z.boolean(), cancelRequested: z.boolean(), physicalRequestEnded: z.boolean(),
   upstreamStopped: z.literal('unknown'), text: z.string(), usage: modelUsageSchema,
+  upstream: modelUpstreamSchema.optional(),
   reason: z.string().max(100), requestRef: z.uuid(), resultRef: z.uuid().nullable(), createdAt: z.string(),
 }).strict();
 export type ModelCheckInput = z.infer<typeof modelCheckInputSchema>;
 export type ModelAttempt = z.infer<typeof modelAttemptSchema>;
 export type ModelUsage = z.infer<typeof modelUsageSchema>;
+export type ModelUpstream = z.infer<typeof modelUpstreamSchema>;
 export type ModelChatInput = z.infer<typeof modelChatInputSchema>;
 export type ModelAttemptInput = z.infer<typeof modelAttemptInputSchema>;
 export type ModelTool = z.infer<typeof modelToolSchema>;

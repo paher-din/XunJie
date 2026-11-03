@@ -213,6 +213,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attempt.attemptId]);
         const body = modelAttemptSchema.parse(current!.body);
         const next = { ...body, state: result.state, reason: result.reason, text: result.text, usage: result.usage,
+          ...('upstream' in result && result.upstream ? { upstream: result.upstream } : {}),
           ...(attempt.segment ? { toolIntents: result.toolIntents } : {}),
           physicalRequestEnded: true, resultRef: resource.resourceId };
         await tx.reference('model-result:' + attempt.attemptId, resource.resourceId);

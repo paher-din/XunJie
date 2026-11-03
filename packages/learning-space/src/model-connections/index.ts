@@ -29,6 +29,9 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
   CREATE UNIQUE INDEX model_school_default ON model_connections(scope) WHERE scope LIKE 'school:%';
 ` }, ...selectionMigrations, ...chatWorkMigrations, ...modelRoutingMigrations, { version: 8, name: 'native-call-input-validation-metadata', sql: `
   ALTER TABLE model_attempts ADD COLUMN input_metadata jsonb;
+` }, { version: 9, name: 'messages-upstream-facts-contract', sql: `
+  ALTER TABLE model_attempts ADD CONSTRAINT model_attempt_upstream_object
+    CHECK (NOT (body ? 'upstream') OR jsonb_typeof(body->'upstream')='object');
 ` }];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');

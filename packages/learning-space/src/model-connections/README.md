@@ -89,4 +89,6 @@ system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_to
 
 应用 schema 由显式 applicationSchema 验证。未验证/不支持的原生格式（含 strict:false）及 strict 工具请求在外发前拒绝；受控 capabilityProbe 才能验证反例，不会自动晋升。Messages 不编码 JSON object mode，不把 prompt 或输出 200 当能力。实际 DeepSeek plain output_config.format 与不可满足严格工具 schema 的反例均由本地校验拒绝；thinking+具名强制工具有 HTTP 400 反例。Command Code 目标型号 2026-11-03 目录不含 Messages，配置可读、检查拒绝，不借别的型号替代；目录变化后显式复验更新证据。
 
+`ModelAttempt.upstream` 只保存可确认 HTTP 状态、有限 request-id、retry-after 秒数或绝对日期，不投影其他 headers/body；含凭据的请求 ID 丢弃，等待提示不授权自动重试。该事实同结果一次提交并纳入 owner 9 的 JSON 约束/版本；旧 owner 8 环境通过 WP01 正式 schema upgrade，正常启动不偷偷迁移。
+
 主测试 [model-messages.runtime.test.mjs](../../../../apps/server/tests/model-messages.runtime.test.mjs)、[桌面 Chrome 用例](../../../../apps/web/e2e/messagesModelSettings.spec.ts)和[真实端点探针](../../../../scripts/probe-model-messages.mjs)均消费生产入口。探针按 `--case native|schemas|controls|check|cancel` 分组，显式提供获准私有配置与脱敏输出，单组最多 6 次，输出只含状态、哈希、保真比较和用量。完整行为、反例与验证限制见 [#167 交付](../../../../docs/student-agent-implementation/wp06-messages-acceptance.md)。

@@ -1,11 +1,11 @@
 {
-  "measuredAt": "2026-11-03T04:05:21.581Z",
+  "measuredAt": "2026-11-03T04:29:16.200Z",
   "platform": "Windows 11 x64",
   "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
   "model": "deepseek-flash",
   "sdk": "@anthropic-ai/sdk@1.1.0",
   "adapter": "xunjie-messages-native-v1",
-  "generationAttempts": 11,
+  "generationAttempts": 12,
   "automaticRetries": 0,
   "limits": {
     "maxOutputTokens": 2048,
@@ -332,6 +332,46 @@
         200,
         200,
         400
+      ]
+    },
+    {
+      "measuredAt": "2026-11-03T04:25:37.254Z",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "model": "deepseek-flash",
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "adapter": "xunjie-messages-native-v1",
+      "apiVersion": "2023-06-01",
+      "maxGenerations": 1,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "cases": [
+        {
+          "name": "formal-plain-check",
+          "attemptId": "7d33f7cc-0af2-4d73-9b35-05253e2ef5a7",
+          "state": "completed",
+          "reason": "end_turn",
+          "usage": {
+            "state": "final",
+            "inputTokens": 14,
+            "outputTokens": 1,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ],
+      "status": "completed",
+      "generationAttempts": 1,
+      "httpStatuses": [
+        200
       ]
     }
   ]

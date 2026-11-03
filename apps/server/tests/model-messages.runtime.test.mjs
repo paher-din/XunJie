@@ -49,7 +49,7 @@ async function product(handler, run, overrides = {}, credential = 'synthetic-mes
       async restart() { await runtime.stop(); endpoint = (await runtime.start()).endpoint; } });
   } finally {
     await runtime.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 const send = (response, value) => response.write('event: ' + value.type + '\ndata: ' + JSON.stringify(value) + '\n\n');
@@ -310,7 +310,7 @@ test('Messages native blocks pending tools and fixed images survive real backup 
       assert.equal(received[1].messages[0].content[1].source.data, png); assert.equal(received[1].messages[2].content[0].content[1].source.data, png);
       assert.equal(received[1].messages[2].content[0].is_error, true); assert.equal(JSON.stringify(final.value).includes('PRIVATE-'), false);
       await runtime.stop(); await assert.rejects(runtime.start(), error => error.code === 'source-retired'); assert.equal(received.length, 2);
-    } finally { if (targetRuntime) await targetRuntime.stop(); await rm(directory, { recursive: true, force: true }); }
+    } finally { if (targetRuntime) await targetRuntime.stop(); await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
   });
 });
 test('Messages crosses Chat and Responses only at settled boundaries using visible portable facts', { timeout: 180000 }, async t => {
@@ -416,5 +416,28 @@ test('Messages capability evidence belongs to the exact route mode SDK and real 
     assert.equal(unknown.capabilityEvidence, undefined);
     assert.equal((await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source: { connectionId: configuration.connectionId, version },
       prefix: { system: '', tools: [], options: { requiredCapabilities: ['nativeReplay'] } }, portable: [] })).status, 503);
+  });
+});
+test('Messages errors retain safe upstream status request identity and retry timing after restart', { timeout: 180000 }, async () => {
+  let requests = 0;
+  await product((_request, response) => {
+    requests++;
+    response.writeHead(requests === 1 ? 429 : 503, { 'content-type': 'application/json',
+      'request-id': requests === 1 ? 'req-messages-rate-limit' : 'synthetic-messages-key',
+      'retry-after': requests === 1 ? '7' : 'Wed, 04 Nov 2026 00:00:00 GMT',
+      'set-cookie': 'private-header-must-not-be-projected', 'x-internal-secret': 'private-error-header' });
+    response.end('{"type":"error","error":{"type":"rate_limit_error","message":"synthetic private upstream body"}}');
+  }, async ({ api, source, finish, restart }) => {
+    const first = await finish(call(await segment(api, source)));
+    assert.equal(first.state, 'failed'); assert.equal(first.reason, 'rate-limited');
+    assert.deepEqual(first.upstream, { httpStatus: 429, requestId: 'req-messages-rate-limit', retryAfterSeconds: 7 });
+    assert.equal(JSON.stringify(first).includes('private-'), false);
+    await restart(); const after = (await api('calls/' + first.attemptId)).value;
+    assert.deepEqual(after.upstream, first.upstream); assert.equal(after.resultRef, first.resultRef);
+    assert.equal((await api('calls/' + first.attemptId + '/dispatch', {})).status, 200); assert.equal(requests, 1);
+    const second = await finish(call(await segment(api, source)));
+    assert.equal(second.state, 'failed'); assert.equal(second.reason, 'upstream-http');
+    assert.deepEqual(second.upstream, { httpStatus: 503, retryAt: '2026-11-04T00:00:00.000Z' });
+    assert.equal(JSON.stringify(second).includes('synthetic-messages-key'), false); assert.equal(requests, 2);
   });
 });
