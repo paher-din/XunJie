@@ -1,0 +1,17 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "sourceCommit": "cf076b5",
+  "targetCommit": "879c8f8",
+  "sourceSchema": "storage/1;owner/9",
+  "targetSchema": "storage/1;owner/10",
+  "isolatedBeforeTakeover": true,
+  "sourceRetired": true,
+  "configurationAndCredentialPreserved": true,
+  "originalResultRefPreserved": true,
+  "originalUsagePreserved": true,
+  "historicalRedispatchSent": false,
+  "freshCallCompleted": true,
+  "sdkRequests": 2
+}

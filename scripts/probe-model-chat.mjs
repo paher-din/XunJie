@@ -9,19 +9,23 @@ import { join, resolve, dirname } from 'node:path';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' }, provider: { type: 'string' } } });
-if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN) throw new Error('Requires --credentials-file, --out and native PostgreSQL.');
+if (!values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN) throw new Error('Requires --out and native PostgreSQL.');
 const credentials = new Map();
-for (const line of (await readFile(resolve(values['credentials-file']), 'utf8')).split(/\r?\n/).filter(Boolean)) {
-  const provider = /command\s*code/i.test(line) ? 'command-code' : /deepseek/i.test(line) ? 'deepseek' : null;
-  const tokens = line.replace(/https?:\/\/\S+/g, '').match(/[A-Za-z0-9_-]{20,}/g) ?? [];
-  if (provider && tokens.length === 1) credentials.set(provider, tokens[0]);
+if (values['credentials-file']) {
+  for (const line of (await readFile(resolve(values['credentials-file']), 'utf8')).split(/\r?\n/).filter(Boolean)) {
+    const provider = /command\s*code/i.test(line) ? 'command-code' : /deepseek/i.test(line) ? 'deepseek' : null;
+    const tokens = line.replace(/https?:\/\/\S+/g, '').match(/[A-Za-z0-9_-]{20,}/g) ?? [];
+    if (provider && tokens.length === 1) credentials.set(provider, tokens[0]);
+  }
+} else if (values.provider === 'deepseek' && process.env.DEEPSEEK_API_KEY?.trim()) {
+  credentials.set('deepseek', process.env.DEEPSEEK_API_KEY.trim());
 }
-if (credentials.size !== 2) throw new Error('The private file must identify exactly one credential per target provider.');
 const routes = [
   { dialect: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', modelId: 'deepseek-flash', mode: 'thinking' },
   { dialect: 'command-code', baseUrl: 'https://api.commandcode.ai/provider/v1', modelId: 'deepseek/deepseek-v4.1-flash', mode: 'plain' },
 ].filter(route => !values.provider || values.provider === route.dialect);
 if (!routes.length) throw new Error('Unsupported probe provider.');
+if (routes.some(route => !credentials.has(route.dialect))) throw new Error('Provide a private credential for each selected provider.');
 const report = { measuredAt: new Date().toISOString(), sdk: 'openai@7.42.0', adapter: 'xunjie-chat-native-v2',
   maxGenerations: routes.reduce((sum, route) => sum + (route.dialect === 'deepseek' ? 6 : 5), 0), limits: { maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 }, results: [] };
 const sha = value => createHash('sha256').update(value).digest('hex');
