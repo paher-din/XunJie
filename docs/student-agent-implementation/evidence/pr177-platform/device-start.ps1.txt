@@ -1,0 +1,7 @@
+param([ValidateSet('fixture','paid')][string]$Case)
+$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue'
+Start-ScheduledTask -TaskName ('XunJie-PR177-Device-'+$Case)
+$port=if($Case -eq 'fixture'){19447}else{19448}
+$base='D:\XunJie-acceptance\pr177-platform'
+& "$base\product-win\resources\node\node.exe" "$base\model-device-bridge.mjs" $port "$base\cross-$Case-control.key"
+exit $LASTEXITCODE

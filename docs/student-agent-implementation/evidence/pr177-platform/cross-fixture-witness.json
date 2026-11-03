@@ -1,0 +1,89 @@
+{
+  "requests": [
+    {
+      "number": 1,
+      "endpoint": "https://192.168.3.16:19446/v1/chat/completions",
+      "model": "fixture-model",
+      "assistantHashes": [],
+      "roles": [
+        "system",
+        "user"
+      ],
+      "toolCalls": [],
+      "images": [
+        "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46"
+      ],
+      "toolGroupInterruptions": [],
+      "status": 200
+    },
+    {
+      "number": 2,
+      "endpoint": "https://192.168.3.16:19446/v1/chat/completions",
+      "model": "fixture-model",
+      "assistantHashes": [
+        "efd5e0cc8a120a25609564a48e77e65ca35b3d068047846f364c35e4a4da5693"
+      ],
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "user",
+        "user"
+      ],
+      "toolCalls": [
+        "image-first",
+        "marker-second"
+      ],
+      "images": [
+        "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46",
+        "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46"
+      ],
+      "toolGroupInterruptions": [],
+      "status": 200
+    },
+    {
+      "number": 3,
+      "endpoint": "https://192.168.3.16:19446/v1/chat/completions",
+      "model": "fixture-model",
+      "assistantHashes": [],
+      "roles": [
+        "system",
+        "user"
+      ],
+      "toolCalls": [],
+      "images": [],
+      "toolGroupInterruptions": [],
+      "status": 200
+    },
+    {
+      "number": 4,
+      "endpoint": "https://192.168.3.16:19446/v1/chat/completions",
+      "model": "fixture-model",
+      "assistantHashes": [],
+      "roles": [
+        "system",
+        "user"
+      ],
+      "toolCalls": [],
+      "images": [],
+      "toolGroupInterruptions": [],
+      "status": 200
+    },
+    {
+      "number": 5,
+      "endpoint": "https://192.168.3.16:19446/v1/chat/completions",
+      "model": "fixture-model",
+      "assistantHashes": [],
+      "roles": [
+        "system",
+        "user"
+      ],
+      "toolCalls": [],
+      "images": [],
+      "toolGroupInterruptions": [],
+      "status": 200
+    }
+  ]
+}

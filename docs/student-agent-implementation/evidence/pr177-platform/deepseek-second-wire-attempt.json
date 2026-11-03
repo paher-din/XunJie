@@ -1,0 +1,120 @@
+{
+  "measuredAt": "2026-11-03T13:18:52.948Z",
+  "base": "5aeb49ee2e9fae7319331a732111cfbce15b967f",
+  "status": "failed",
+  "scope": "paid",
+  "topology": {
+    "school": "macOS school host",
+    "device": "Windows independent model owner",
+    "ssh": "control only; no tunnels"
+  },
+  "commandCode": "waived-by-user",
+  "paidLimit": 5,
+  "stages": [
+    {
+      "name": "school-start",
+      "status": "passed",
+      "environmentId": "d42efdc6-fd0d-4a7b-9bea-b76d4cbf84bb",
+      "endpoint": "https://192.168.3.16:19445"
+    },
+    {
+      "name": "bounded-deepseek-real-endpoints",
+      "status": "failed",
+      "error": "ERR_ASSERTION"
+    }
+  ],
+  "upstreamRequests": [],
+  "paid": [
+    {
+      "case": "chat-completions-text",
+      "state": "completed",
+      "reason": "stop",
+      "resultRef": "4da5e580-fbea-47da-b1a7-4603dd949a6b",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 5,
+        "totalTokens": 19,
+        "cachedTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      },
+      "expectedText": false
+    },
+    {
+      "case": "responses-text",
+      "state": "incomplete",
+      "reason": "incomplete",
+      "resultRef": "490652ef-bf3d-4b13-a25f-0582ba919055",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 128,
+        "totalTokens": 142,
+        "cachedTokens": 0,
+        "reasoningTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      },
+      "nonemptyText": true,
+      "textSha256": "b2fcdd49ba88327e32c32a50f193bfa1e24f1c4699d9aaf8b3596ce2649db755"
+    }
+  ],
+  "resumedCompletedCases": [
+    "chat-completions-text"
+  ],
+  "failure": {
+    "code": "ERR_ASSERTION",
+    "frames": [
+      "at file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:268:14",
+      "at async stage (file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:34:31)",
+      "at async file:///Users/robertwu/.codex/worktrees/71aa/XunJie/scripts/probe-model-paired-device.mjs:253:3"
+    ]
+  },
+  "cleanup": [
+    {
+      "stopped": true,
+      "environmentDeleted": true
+    },
+    {
+      "schoolStopped": true,
+      "schoolEnvironmentDeleted": true
+    }
+  ],
+  "deviceWitnesses": [
+    {
+      "label": "paid",
+      "witness": {
+        "requests": [
+          {
+            "number": 1,
+            "endpoint": "https://api.deepseek.com/v1/chat/completions",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [
+              "system",
+              "user"
+            ],
+            "toolCalls": [],
+            "images": [],
+            "toolGroupInterruptions": [],
+            "status": 200
+          },
+          {
+            "number": 2,
+            "endpoint": "https://api.deepseek.com/v1/responses",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [],
+            "toolCalls": [],
+            "images": [],
+            "toolGroupInterruptions": [],
+            "status": 200
+          }
+        ]
+      }
+    }
+  ]
+}

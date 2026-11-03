@@ -1,0 +1,16 @@
+{
+  "retained": [
+    "D:\\XunJie-acceptance\\pr177-platform\\product-win-r2",
+    "D:\\XunJie-acceptance\\pr177-platform\\native-tests\\r2\\evidence"
+  ],
+  "remainingProcesses": 0,
+  "taskRemoved": true,
+  "tempRemoved": true,
+  "taskName": "XunJie-PR177-Acceptance-R2-PG-Chrome",
+  "finishedAt": "2026-11-03T13:13:48.8661628Z",
+  "testRootsRemoved": [
+    {
+      "Name": "xj-models-chrome-uDJJMx"
+    }
+  ]
+}

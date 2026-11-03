@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: school HTTP identity cannot save or check host-local targets; approved school default can dispatch
+ok 1 - school HTTP identity cannot save or check host-local targets; approved school default can dispatch
+  ---
+  duration_ms: 17292.04
+  type: 'test'
+  ...
+# Subtest: decoded and fragmented credentials never publish tools or persist reconstructable native bodies
+ok 2 - decoded and fragmented credentials never publish tools or persist reconstructable native bodies
+  ---
+  duration_ms: 13922.2518
+  type: 'test'
+  ...
+# Subtest: Chat terminal/reset and truncated final usage remain durable and query never regenerates
+ok 3 - Chat terminal/reset and truncated final usage remain durable and query never regenerates
+  ---
+  duration_ms: 13843.7159
+  type: 'test'
+  ...
+# Subtest: three protocol HTTP facts survive owner persistence and restart with no retries
+ok 4 - three protocol HTTP facts survive owner persistence and restart with no retries
+  ---
+  duration_ms: 13616.5095
+  type: 'test'
+  ...
+# Subtest: Messages truncated JSON and empty end_turn keep final facts through PostgreSQL and restart
+ok 5 - Messages truncated JSON and empty end_turn keep final facts through PostgreSQL and restart
+  ---
+  duration_ms: 12567.1115
+  type: 'test'
+  ...
+# Subtest: capability preflight and segment rejection expose identical complete gaps without dispatch
+ok 6 - capability preflight and segment rejection expose identical complete gaps without dispatch
+  ---
+  duration_ms: 9673.449
+  type: 'test'
+  ...
+# Subtest: raw SSE comments are bounded before SDK parsing and their failure stays readable after restart
+ok 7 - raw SSE comments are bounded before SDK parsing and their failure stays readable after restart
+  ---
+  duration_ms: 13162.7092
+  type: 'test'
+  ...
+# Subtest: incomplete or malformed structured credentials are withheld from every durable protocol result
+ok 8 - incomplete or malformed structured credentials are withheld from every durable protocol result
+  ---
+  duration_ms: 14311.7119
+  type: 'test'
+  ...
+# Subtest: rejected tool events cannot persist escaped credentials in Messages or Responses resources
+ok 9 - rejected tool events cannot persist escaped credentials in Messages or Responses resources
+  ---
+  duration_ms: 13151.6816
+  type: 'test'
+  ...
+# Subtest: rejected initial and final snapshots plus reasoning fragments cannot retain credentials
+ok 10 - rejected initial and final snapshots plus reasoning fragments cannot retain credentials
+  ---
+  duration_ms: 14504.9113
+  type: 'test'
+  ...
+# Subtest: malformed native input is withheld instead of preserving uninterpretable JSON and logical fragments
+ok 11 - malformed native input is withheld instead of preserving uninterpretable JSON and logical fragments
+  ---
+  duration_ms: 13295.9036
+  type: 'test'
+  ...
+# Subtest: ordered logprob tokens cannot leak a credential through a durable successful Responses snapshot
+ok 12 - ordered logprob tokens cannot leak a credential through a durable successful Responses snapshot
+  ---
+  duration_ms: 12680.8187
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 162239.4732

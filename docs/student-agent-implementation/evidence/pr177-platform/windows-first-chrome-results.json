@@ -1,0 +1,466 @@
+{
+  "config": {
+    "argv": [
+      "D:\\XunJie-acceptance\\pr177-platform\\product-win\\resources\\node\\node.exe",
+      "D:\\XunJie-acceptance\\pr177-platform\\source\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/personalModelSettings.spec.ts",
+      "--headed",
+      "--workers=1",
+      "--reporter=list,json",
+      "--output",
+      "D:\\XunJie-acceptance\\pr177-platform\\native-tests\\evidence\\test-results"
+    ],
+    "configFile": "D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\playwright.config.ts",
+    "rootDir": "D:/XunJie-acceptance/pr177-platform/source/apps/web/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/XunJie-acceptance/pr177-platform/native-tests/evidence/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "D:/XunJie-acceptance/pr177-platform/source/apps/web/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "D:\\XunJie-acceptance\\pr177-platform\\native-tests\\evidence\\test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "chromium",
+        "testDir": "D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e",
+        "snapshotDir": "D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 60000,
+        "use": {
+          "trace": "retain-on-failure",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium",
+          "channel": "chrome",
+          "headless": false
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "chromium"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "personalModelSettings.spec.ts",
+      "file": "personalModelSettings.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "formal model settings save and reopen a personal connection without a legacy session",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2775,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:49:50.561Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-a569ba7fb2b4231e57bb",
+          "file": "personalModelSettings.spec.ts",
+          "line": 56,
+          "column": 1
+        },
+        {
+          "title": "a delayed save confirmation preserves later form input and its next versioned save",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 873,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:05.516Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-ab6f7d52e70fdc026897",
+          "file": "personalModelSettings.spec.ts",
+          "line": 88,
+          "column": 1
+        },
+        {
+          "title": "dialog keyboard focus, Chinese composition, blank-key reuse and ordinary navigation remain usable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1500,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:06.398Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-ba2c244eebc5ab174296",
+          "file": "personalModelSettings.spec.ts",
+          "line": 118,
+          "column": 1
+        },
+        {
+          "title": "Responses settings check drafts, save, reopen and cancel through the formal owner",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 13556,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('正在检查', { exact: true })\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('正在检查', { exact: true }) with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText('正在检查', { exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('正在检查', { exact: true })\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('正在检查', { exact: true }) with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText('正在检查', { exact: true })\u001b[22m\n\n    at D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e\\personalModelSettings.spec.ts:173:57",
+                    "location": {
+                      "file": "D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e\\personalModelSettings.spec.ts",
+                      "column": 57,
+                      "line": 173
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 171 |\u001b[39m   \u001b[36mawait\u001b[39m dialog\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'保存'\u001b[39m\u001b[33m,\u001b[39m exact\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m })\u001b[33m.\u001b[39mclick()\n \u001b[90m 172 |\u001b[39m   \u001b[36mawait\u001b[39m card\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'连接检查'\u001b[39m\u001b[33m,\u001b[39m exact\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m })\u001b[33m.\u001b[39mclick()\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 173 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[32m'正在检查'\u001b[39m\u001b[33m,\u001b[39m { exact\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m }))\u001b[33m.\u001b[39mtoBeVisible()\n \u001b[90m     |\u001b[39m                                                         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 174 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'停止检查'\u001b[39m\u001b[33m,\u001b[39m exact\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m })\u001b[33m.\u001b[39mclick()\n \u001b[90m 175 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[32m'已停止本机检查'\u001b[39m\u001b[33m,\u001b[39m { exact\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m }))\u001b[33m.\u001b[39mtoBeVisible()\n \u001b[90m 176 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mscreenshot({ path\u001b[33m:\u001b[39m fileURLToPath(\u001b[36mnew\u001b[39m \u001b[33mURL\u001b[39m(\u001b[32m'../../../.verification/164/responses-settings.png'\u001b[39m\u001b[33m,\u001b[39m \u001b[36mimport\u001b[39m\u001b[33m.\u001b[39mmeta\u001b[33m.\u001b[39murl))\u001b[33m,\u001b[39m fullPage\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m })\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e\\personalModelSettings.spec.ts",
+                        "column": 57,
+                        "line": 173
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('正在检查', { exact: true })\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('正在检查', { exact: true }) with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText('正在检查', { exact: true })\u001b[22m\n\n\n  171 |   await dialog.getByRole('button', { name: '保存', exact: true }).click()\n  172 |   await card.getByRole('button', { name: '连接检查', exact: true }).click()\n> 173 |   await expect(page.getByText('正在检查', { exact: true })).toBeVisible()\n      |                                                         ^\n  174 |   await page.getByRole('button', { name: '停止检查', exact: true }).click()\n  175 |   await expect(page.getByText('已停止本机检查', { exact: true })).toBeVisible()\n  176 |   await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/responses-settings.png', import.meta.url)), fullPage: true })\n    at D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e\\personalModelSettings.spec.ts:173:57"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:07.906Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "D:\\XunJie-acceptance\\pr177-platform\\native-tests\\evidence\\test-results\\personalModelSettings-Resp-20786-el-through-the-formal-owner-chromium\\error-context.md"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "D:\\XunJie-acceptance\\pr177-platform\\native-tests\\evidence\\test-results\\personalModelSettings-Resp-20786-el-through-the-formal-owner-chromium\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "D:\\XunJie-acceptance\\pr177-platform\\source\\apps\\web\\e2e\\personalModelSettings.spec.ts",
+                    "column": 57,
+                    "line": 173
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-4619741b0e87836f2253",
+          "file": "personalModelSettings.spec.ts",
+          "line": 147,
+          "column": 1
+        },
+        {
+          "title": "rejected connection actions remain visible across successful polls until that action succeeds",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3310,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:24.697Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-1d978020760ab973a61b",
+          "file": "personalModelSettings.spec.ts",
+          "line": 192,
+          "column": 1
+        },
+        {
+          "title": "two tabs explicitly reconcile CAS while preserving the draft and keep credential intent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10261,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:37.689Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-f970d2f31f6bc474ecf1",
+          "file": "personalModelSettings.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "two tabs explicitly reconcile CAS while preserving the draft and replace credential intent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10244,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:47.963Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-b2b8c1e76a39941b3f55",
+          "file": "personalModelSettings.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "two tabs explicitly reconcile CAS while preserving the draft and clear credential intent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 8490,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:50:58.216Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-77021c9f98ac6619df7d",
+          "file": "personalModelSettings.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "a lost save ACK is reconciled by the identical POST before submitting later edits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1503,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T12:51:06.718Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5909b7ed09bf223e7f1d-78510a6da243f74716e4",
+          "file": "personalModelSettings.spec.ts",
+          "line": 272,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-03T12:49:48.719Z",
+    "duration": 81755.96,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

@@ -68,4 +68,4 @@ npx playwright test e2e/personalModelSettings.spec.ts --workers=1 --headed
 
 ## 验证边界
 
-本轮重新执行的是上述 macOS 工程、真实 PG/SDK、同机独立进程配对和桌面 Chrome 路径。Windows 原生包/物理输入法、真实跨机与真实付费端点未重跑，不以既有 WP06 记录替代本轮结果；它们此前记录的限制继续适用。教学效果未评估。物理中文输入法不由浏览器组合事件测试代替。
+首轮重新执行的是上述 macOS 工程、真实 PG/SDK、同机独立进程配对和桌面 Chrome 路径，当时未重跑 Windows、真实跨机与付费端点。负责人随后追加补验并继续豁免 Command Code，当前结果与新发现的保存版本竞态修复见 [Windows、真实跨机与 DeepSeek 补验](wp06-pr177-platform-acceptance.md)，不再将首轮未执行状态当作最终验收结论。教学效果未评估。物理中文输入法不由浏览器组合事件测试代替。

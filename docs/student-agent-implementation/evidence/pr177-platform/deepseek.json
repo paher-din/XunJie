@@ -1,0 +1,312 @@
+{
+  "measuredAt": "2026-11-03T13:20:51.276Z",
+  "base": "5aeb49ee2e9fae7319331a732111cfbce15b967f",
+  "status": "passed",
+  "scope": "paid",
+  "topology": {
+    "school": "macOS school host",
+    "device": "Windows independent model owner",
+    "ssh": "control only; no tunnels"
+  },
+  "commandCode": "waived-by-user",
+  "paidLimit": 5,
+  "stages": [
+    {
+      "name": "school-start",
+      "status": "passed",
+      "environmentId": "1c8d56aa-8c0b-419b-adb1-01007348482e",
+      "endpoint": "https://192.168.3.16:19445"
+    },
+    {
+      "name": "bounded-deepseek-real-endpoints",
+      "status": "passed",
+      "requests": 5,
+      "retries": 0,
+      "deviceGenerationWitnesses": 5
+    }
+  ],
+  "upstreamRequests": [],
+  "paid": [
+    {
+      "case": "chat-completions-text",
+      "state": "completed",
+      "reason": "stop",
+      "resultRef": "4da5e580-fbea-47da-b1a7-4603dd949a6b",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 5,
+        "totalTokens": 19,
+        "cachedTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      },
+      "expectedText": false
+    },
+    {
+      "case": "responses-text",
+      "state": "incomplete",
+      "reason": "incomplete",
+      "resultRef": "490652ef-bf3d-4b13-a25f-0582ba919055",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 128,
+        "totalTokens": 142,
+        "cachedTokens": 0,
+        "reasoningTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      },
+      "nonemptyText": true,
+      "textSha256": "b2fcdd49ba88327e32c32a50f193bfa1e24f1c4699d9aaf8b3596ce2649db755"
+    },
+    {
+      "case": "messages-text",
+      "state": "completed",
+      "reason": "end_turn",
+      "resultRef": "194af9dc-d1a3-4eee-9355-80d90b3c5dbf",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 6,
+        "cachedTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      },
+      "nonemptyText": true,
+      "textSha256": "a8066d7016d54945fcccdad2e6047a541a473020a39087b8ef0409ea3bff3d62"
+    },
+    {
+      "case": "chat-image-two-tools",
+      "state": "completed",
+      "reason": "tool_calls",
+      "toolCount": 2,
+      "initialImageRead": true,
+      "usage": {
+        "state": "final",
+        "inputTokens": 602,
+        "outputTokens": 52,
+        "totalTokens": 654,
+        "cachedTokens": 0,
+        "reasoningTokens": 0
+      },
+      "upstream": {
+        "httpStatus": 200
+      }
+    },
+    {
+      "case": "chat-restart-tool-image-continuation",
+      "state": "completed",
+      "reason": "stop",
+      "correctNonce": true,
+      "toolImageRead": true,
+      "nativePreserved": true,
+      "completeToolGroup": true,
+      "exactImageResource": true,
+      "usage": {
+        "state": "final",
+        "inputTokens": 978,
+        "outputTokens": 81,
+        "totalTokens": 1059,
+        "cachedTokens": 640,
+        "reasoningTokens": 43
+      },
+      "upstream": {
+        "httpStatus": 200
+      }
+    }
+  ],
+  "resumedCompletedCases": [
+    "chat-completions-text",
+    "responses-text"
+  ],
+  "paidWitness": {
+    "requests": [
+      {
+        "number": 1,
+        "endpoint": "https://api.deepseek.com/v1/chat/completions",
+        "model": "deepseek-flash",
+        "assistantHashes": [],
+        "roles": [
+          "system",
+          "user"
+        ],
+        "toolCalls": [],
+        "images": [],
+        "toolGroupInterruptions": [],
+        "status": 200
+      },
+      {
+        "number": 2,
+        "endpoint": "https://api.deepseek.com/v1/responses",
+        "model": "deepseek-flash",
+        "assistantHashes": [],
+        "roles": [],
+        "toolCalls": [],
+        "images": [],
+        "toolGroupInterruptions": [],
+        "status": 200
+      },
+      {
+        "number": 3,
+        "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+        "model": "deepseek-flash",
+        "assistantHashes": [],
+        "roles": [
+          "user"
+        ],
+        "toolCalls": [],
+        "images": [],
+        "toolGroupInterruptions": [],
+        "status": 200
+      },
+      {
+        "number": 4,
+        "endpoint": "https://api.deepseek.com/v1/chat/completions",
+        "model": "deepseek-flash",
+        "assistantHashes": [],
+        "roles": [
+          "system",
+          "user"
+        ],
+        "toolCalls": [],
+        "images": [
+          "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46"
+        ],
+        "toolGroupInterruptions": [],
+        "status": 200
+      },
+      {
+        "number": 5,
+        "endpoint": "https://api.deepseek.com/v1/chat/completions",
+        "model": "deepseek-flash",
+        "assistantHashes": [
+          "91e618bf6d14d7b7c8232b594995016a8cc08f5c0f1054226ddd887aa6a076a6"
+        ],
+        "roles": [
+          "system",
+          "user",
+          "assistant",
+          "tool",
+          "tool",
+          "user",
+          "user"
+        ],
+        "toolCalls": [
+          "call_00_ET_dumFLxT1OVcXYA7Se1VR6458",
+          "call_01_ET_6ju69IFsG7zTgVd7TM4h4440"
+        ],
+        "images": [
+          "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46",
+          "6f969b9d456abd1449ec430c4f2d562f9f690b4d3c86610dea21afa3d3b98738"
+        ],
+        "toolGroupInterruptions": [],
+        "status": 200
+      }
+    ]
+  },
+  "cleanup": [
+    {
+      "stopped": true,
+      "environmentDeleted": true
+    },
+    {
+      "schoolStopped": true,
+      "schoolEnvironmentDeleted": true
+    }
+  ],
+  "deviceWitnesses": [
+    {
+      "label": "paid",
+      "witness": {
+        "requests": [
+          {
+            "number": 1,
+            "endpoint": "https://api.deepseek.com/v1/chat/completions",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [
+              "system",
+              "user"
+            ],
+            "toolCalls": [],
+            "images": [],
+            "toolGroupInterruptions": [],
+            "status": 200
+          },
+          {
+            "number": 2,
+            "endpoint": "https://api.deepseek.com/v1/responses",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [],
+            "toolCalls": [],
+            "images": [],
+            "toolGroupInterruptions": [],
+            "status": 200
+          },
+          {
+            "number": 3,
+            "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [
+              "user"
+            ],
+            "toolCalls": [],
+            "images": [],
+            "toolGroupInterruptions": [],
+            "status": 200
+          },
+          {
+            "number": 4,
+            "endpoint": "https://api.deepseek.com/v1/chat/completions",
+            "model": "deepseek-flash",
+            "assistantHashes": [],
+            "roles": [
+              "system",
+              "user"
+            ],
+            "toolCalls": [],
+            "images": [
+              "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46"
+            ],
+            "toolGroupInterruptions": [],
+            "status": 200
+          },
+          {
+            "number": 5,
+            "endpoint": "https://api.deepseek.com/v1/chat/completions",
+            "model": "deepseek-flash",
+            "assistantHashes": [
+              "91e618bf6d14d7b7c8232b594995016a8cc08f5c0f1054226ddd887aa6a076a6"
+            ],
+            "roles": [
+              "system",
+              "user",
+              "assistant",
+              "tool",
+              "tool",
+              "user",
+              "user"
+            ],
+            "toolCalls": [
+              "call_00_ET_dumFLxT1OVcXYA7Se1VR6458",
+              "call_01_ET_6ju69IFsG7zTgVd7TM4h4440"
+            ],
+            "images": [
+              "48800118460aab252e972e95577b3627c13537c4f198dfeb38192d397dad3b46",
+              "6f969b9d456abd1449ec430c4f2d562f9f690b4d3c86610dea21afa3d3b98738"
+            ],
+            "toolGroupInterruptions": [],
+            "status": 200
+          }
+        ]
+      }
+    }
+  ]
+}

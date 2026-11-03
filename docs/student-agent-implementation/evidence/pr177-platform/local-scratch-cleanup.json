@@ -1,0 +1,37 @@
+{
+  "removed": [
+    "inspect-repo.ps1",
+    "device-start.ps1",
+    "product-win-r2.tar.gz",
+    "product-mac",
+    "product-win.tar.gz",
+    "dns-probe.ps1",
+    "remote.py",
+    "source.tar",
+    "device-proof.ps1",
+    "device-status.ps1",
+    "cross-lab",
+    "remove-scratch.ps1",
+    "dns-diagnostics.ps1",
+    "public-dns-probe.ps1",
+    "device-inspect.ps1",
+    "device-prepare.ps1",
+    "tls",
+    "hosts-temporary.ps1",
+    "hosts-restore.ps1",
+    "prepare.ps1",
+    "inspect.ps1",
+    "paid-lab",
+    "product-win",
+    "run.json",
+    "device-server.ps1",
+    "device-launch.cmd",
+    "run-paid.json",
+    "cleanup.ps1"
+  ],
+  "retained": [
+    "product-mac-r2",
+    "product-win-r2"
+  ],
+  "privateTlsRemoved": true
+}

@@ -1,0 +1,10 @@
+{
+  "sessionId": 1,
+  "node": "v24.21.0",
+  "startedAt": "2026-11-03T13:09:32.1986009Z",
+  "user": "LAPTOP-S7A4IQFU\\h",
+  "isAdministrator": false,
+  "postgres": "postgres (PostgreSQL) 18.6",
+  "package": "D:\\XunJie-acceptance\\pr177-platform\\product-win-r2",
+  "temp": "D:\\XunJie-acceptance\\pr177-platform\\native-tests\\r2\\temp"
+}

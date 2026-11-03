@@ -1,0 +1,29 @@
+
+ RUN  v3.2.7 /Users/robertwu/.codex/worktrees/71aa/XunJie/apps/web
+
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > checks the acknowledged version immediately and ignores pre-save reads without pinning future restored data 84ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > preserves an action error through late reads, two polls and explicit reads; clears it on successful related retry 30ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward 26ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > clears recovered read errors without erasing an action failure 17ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > drops old subject errors, drafts and late responses after an identity change 33ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > refreshes and confirms CAS without closing or losing keep credential intent 39ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > refreshes and confirms CAS without closing or losing replace credential intent 44ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > refreshes and confirms CAS without closing or losing clear credential intent 43ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > resolves before-commit transport loss using the same identity and frozen payload before saving later edits 44ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > resolves after-commit transport loss using the same identity and frozen payload before saving later edits 45ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > moves an uncommitted unknown request to explicit CAS recovery if another tab wins 31ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > requires a successful refresh and another confirmation when the remote version advances again 33ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > confirms a lost ACK without an extra version or losing keep intent 22ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > confirms a lost ACK without an extra version or losing clear intent 25ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > retains the frozen unknown submission across another transport loss and more edits 26ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > allows a corrected new submission after a definitive invalid rejection 19ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > does not discard an uncertain identity when a later reconciliation is denied 20ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > does not turn an identity conflict into a fresh blind write 20ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > keeps later edits after a delayed successful ACK, then uses its acknowledged version 32ms
+ ✓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > does not misclassify a confirmed save as unknown when refreshing model selection fails 14ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  21:01:55
+   Duration  1.09s (transform 88ms, setup 0ms, collect 115ms, tests 838ms, environment 0ms, prepare 28ms)
+
