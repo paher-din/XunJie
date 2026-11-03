@@ -2,6 +2,8 @@
 
 日期：2026-11-03。对应[组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171)及[实施方案](specs/wp03-component-preparation.md)。当前 Windows 修复结果不能代替 Mac 验收；本页给出接手者可直接执行的路径，不声明 Mac 已通过。
 
+本轮实际结果已由 [#179 / #181 验收记录](wp03-mac-school-acceptance.md)接续：`6171351` 完整 Mac 包、工程/Chrome 及四条真实学校路径已完成，当前仅待解锁 Mac 后的系统中文输入法补验。下列保留通用操作入口，不要求把已经通过的检查重复一轮。
+
 ## 固定源码与设备
 
 使用真实 Apple Silicon Mac、原生 ARM64 Node.js 24.21.0、PostgreSQL 18.6 和已安装的桌面 Google Chrome；不用 Rosetta、平台模拟、headless 或 Linux 结果替代。记录 `sw_vers`、`uname -m`、`node --version` 和 Chrome 的实际版本。

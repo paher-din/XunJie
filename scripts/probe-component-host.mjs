@@ -109,6 +109,7 @@ try {
   assert.equal(metrics.height, 32); assert.equal(metrics.size, '13px'); assert.equal(metrics.loaded, true);
   assert.match(metrics.titleFont, /XunJieTitle/);
   passed('shared isolated controls follow DESIGN and load the verified title font without network access');
+  await frame.locator('#materials p').click();
   await frame.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
     const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
   await frame.getByRole('button', { name: '标注选中文字' }).click();
@@ -225,6 +226,7 @@ try {
     });
     const add = async (target, text) => {
       const view = target.frameLocator('iframe[title="材料标注"]');
+      await view.locator('#materials p').click();
       await view.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
         const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
       await view.getByRole('button', { name: '标注选中文字' }).click();
@@ -262,6 +264,7 @@ try {
   await failing.getByRole('tab', { name: '材料标注', exact: true }).click();
   const failingFrame = failing.frameLocator('iframe[title="材料标注"]');
   await expect(failingFrame.getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+  await failingFrame.locator('#materials p').click();
   await failingFrame.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
     const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
   await failingFrame.getByRole('button', { name: '标注选中文字' }).click();
@@ -375,6 +378,7 @@ try {
     return { id, page, frame, works: async () => (await context.request.get(endpoint + '/api/learning/workspaces/' + id)).json() };
   };
   const addNote = async (sample, text) => {
+    await sample.frame.locator('#materials p').click();
     await sample.frame.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
       const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
     await sample.frame.getByRole('button', { name: '标注选中文字' }).click();
