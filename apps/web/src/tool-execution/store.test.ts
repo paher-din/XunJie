@@ -147,6 +147,25 @@ describe('the execution controller owns the real worker lifetime', () => {
     })
     return new ExecutionController(scopeKey, receiver, actions, offline as never, provider, run as never)
   }
+  /** A controller whose service can be cut and restored, to observe the local-first delivery ledger. */
+  function resumable(scope: string,
+    run: (job: unknown, signal: AbortSignal) => Promise<unknown>, transport?: Record<string, unknown>) {
+    const receiver = new BrowserExecutionReceiver(identityReceiver, scope, 1)
+    const actions = { async createExecution(options: { requestId: string; receiver: ActionReceiverIdentity
+      execution: ExecutionAction['execution'] }) {
+      const action = executionActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: options.requestId,
+        scope: identity, receiver: options.receiver, execution: options.execution })
+      await receiver.accept(action, digestOf(action))
+      return action
+    }, async cancel() { return null } }
+    const provider = { load: async () => ({ bytes: new ArrayBuffer(8), entry: 'aggregate', memoryPages: 1,
+      result: { type: 'object', properties: { rows: { type: 'number' } } } as const }) }
+    return { receiver, execution: new ExecutionController(scope, receiver, actions,
+      (transport ?? offline) as never, provider, run as never) }
+  }
+  /** Each case keeps its own scope: `open()` flushes every record in a scope, and shared fixtures must not ride along. */
+  const isolatedScope = () => JSON.stringify(['school', identity.environmentId, identity.spaceId, identity.principalId,
+    crypto.randomUUID()])
   it('stops a live worker, keeps the original acceptance and records the real terminal fact', async () => {
     const receiver = new BrowserExecutionReceiver(identityReceiver, scopeKey, 1)
     const signal: { current: AbortSignal | null } = { current: null }
@@ -189,4 +208,76 @@ describe('the execution controller owns the real worker lifetime', () => {
     expect((await receiver.store.stops(scopeKey)).filter(stop => stop.requestId === requestId).map(stop => stop.stopId)).toEqual([stopId])
     execution.dispose()
   })
+  it('reports the real running and queued counts while jobs are claimed and waiting', async () => {
+    const scope = isolatedScope()
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const outcome = { result: { rows: 12 }, artifact: { name: '聚合结果-sum.csv',
+      mediaType: 'text/csv;charset=utf-8', text: '小组,计数\nA,4' } }
+    const run = async () => { await gate; return outcome }
+    const { receiver, execution } = resumable(scope, run)
+    const first = crypto.randomUUID(), second = crypto.randomUUID()
+    await execution.submit(actionOf(first))
+    await until(async () => (await receiver.store.read(scope, first))?.startedAt !== null)
+    expect(execution.counts()).toEqual({ running: 1, queued: 0 })
+    await execution.submit(actionOf(second))
+    await until(async () => execution.counts().queued === 1)
+    // One claim is running and the other is admitted to the queue, exactly as declared.
+    expect(execution.counts()).toEqual({ running: 1, queued: 1 })
+    release()
+    await until(async () => ['succeeded', 'failed'].includes((await receiver.store.read(scope, first))!.query.state)
+      && ['succeeded', 'failed'].includes((await receiver.store.read(scope, second))!.query.state))
+    expect(execution.counts()).toEqual({ running: 0, queued: 0 })
+    execution.dispose()
+  })
+  it('keeps an unreachable-service run local and delivers its facts exactly once when the service returns', async () => {
+    const scope = isolatedScope()
+    const attempts: string[] = [], sent: string[] = []
+    const service = { online: false }
+    const delivery = async (kind: string, value: unknown) => {
+      attempts.push(kind)
+      if (!service.online) throw new Error('offline')
+      sent.push(kind)
+      return value
+    }
+    const transport = {
+      accept: async () => delivery('accept', queryOf(crypto.randomUUID())),
+      report: async () => delivery('report', queryOf(crypto.randomUUID())),
+      stop: async () => delivery('stop', queryOf(crypto.randomUUID())),
+      result: async () => delivery('result', queryOf(crypto.randomUUID())),
+      read: async () => { attempts.push('read'); if (!service.online) throw new Error('offline'); return null },
+    }
+    const run = async () => ({ result: { rows: 12 }, artifact: { name: '聚合结果-sum.csv',
+      mediaType: 'text/csv;charset=utf-8', text: '小组,计数\nA,4' } })
+    const { receiver, execution } = resumable(scope, run, transport)
+    const requestId = crypto.randomUUID()
+    await execution.submit(actionOf(requestId))
+    await until(async () => (await receiver.store.read(scope, requestId))!.query.state === 'succeeded')
+    // The run is usable from the local record alone, and the failed delivery left no sync ledger entry.
+    await until(async () => attempts.includes('accept'))
+    expect(sent).toEqual([])
+    expect(await receiver.store.synced(scope, requestId)).toBeUndefined()
+    const finished = (await receiver.store.read(scope, requestId))!
+    expect(finished.query.output?.artifact?.name).toBe('聚合结果-sum.csv')
+    // Connectivity returns; the same run's own queue resumes without a new command.
+    service.online = true
+    await execution.open()
+    await until(async () => sent.includes('result'))
+    expect(sent).toEqual(['accept', 'report', 'result'])
+    const synced = (await receiver.store.synced(scope, requestId))!
+    expect([synced.command, synced.result]).toEqual([true, true])
+    expect(synced.factSeq).toBe(finished.query.confirmedSeq)
+    // A second open consults the same sync ledger: the service is not written to twice.
+    const firstSyncAt = synced.at
+    await new Promise(resolve => setTimeout(resolve, 5))
+    await execution.open()
+    await until(async () => (await receiver.store.synced(scope, requestId))!.at > firstSyncAt)
+    expect(sent).toEqual(['accept', 'report', 'result'])
+    execution.dispose()
+  })
 })
+
+function queryOf(requestId: string) {
+  return { requestId, inputDigest: 'a'.repeat(64), scope: { environmentId: '', spaceId: '', principalId: '', activityId: '' },
+    state: 'succeeded', statusKnowledge: 'confirmed', confirmedSeq: 1, stopRequested: false, output: null, reason: null }
+}

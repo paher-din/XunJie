@@ -147,6 +147,7 @@ export class ExecutionController {
         const claimed = await this.receiver.claim(requestId)
         if (!claimed) return
         claimedNow = true
+        this.started++
         await this.refresh()
         const algorithm = await this.provider.load(record.action)
         // The ABI, not this executor, decides how a fixed command becomes a worker job.
