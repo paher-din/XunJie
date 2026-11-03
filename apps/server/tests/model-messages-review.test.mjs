@@ -83,7 +83,8 @@ test('SPC-06: tool publication still requires complete valid parameters', async 
     const events = [start(), ...block('tool_use', fragments), ...finish(reason)];
     const result = await run(events);
     assert.equal(result.state, state); assert.deepEqual(result.usage, { state: 'final', inputTokens: 7, outputTokens: 4 });
-    assert.equal(result.native.message.stop_reason, reason); assert.deepEqual(result.native.events, events);
+    if (result.state === 'failed') { assert.equal(result.native.message, null); assert.deepEqual(result.native.events, []); }
+    else { assert.equal(result.native.message.stop_reason, reason); assert.deepEqual(result.native.events, events); }
     if (state === 'completed') {
       assert.deepEqual(result.toolIntents, [{ callId: 'call-review', name: tool.name, arguments: { nonce: 'A' } }]);
       assert.deepEqual(validateMessagesNative(result.native, [tool]).intents, result.toolIntents);

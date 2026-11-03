@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { modelUsageSchema } from '@xunjie/contracts/model-connections';
 import { createChatAssembler, compileOutputSchema, chatSensitiveValues } from './chat-native.js';
-import { createSensitiveOutput } from './sensitive-output.js';
+import { createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts } from './upstream-facts.js';
 
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
@@ -119,11 +119,17 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
     = { formatVersion: 1, sdk: sdkVersion, adapter: nativeTools ? nativeAdapterVersion : chatAdapterVersion,
       chunks, finishReason, upstreamError, assistant: assembled.assistant, choices: assembled.choices, ...(upstream ? { upstream } : {}) };
   const sensitiveTools = sensitive.contains(assembled.decodedArguments);
-  if (sensitiveTools || sensitive.contains([text, structuredOutput, native, chatSensitiveValues(chunks)])) {
+  const structured = !!(applicationSchema || payload.response_format && payload.response_format.type !== 'text');
+  const sensitiveStructured = structured && sensitive.contains(protocolJsonStrings(text));
+  if (sensitiveTools || sensitiveStructured || sensitive.contains([text, structuredOutput, native, chatSensitiveValues(chunks, structured), protocolTokenSequences(native)])) {
     if (state === 'completed') state = 'failed';
     reason = sensitiveTools ? 'credential-in-tool-output' : 'credential-in-output';
-    if (sensitive.contains(structuredOutput)) text = '';
+    if (sensitiveStructured || sensitive.contains(structuredOutput)) text = '';
     // Do not alter replay bytes or retain fragments from a sensitive result.
+    native = { ...native, chunks: [], assistant: null, choices: [], finishReason: null, upstreamError: null, redacted: true };
+  }
+  if (['malformed-response', 'invalid-native-result'].includes(reason)) {
+    // Rejected protocol data has no trustworthy replay interpretation. Retain facts, not raw bytes.
     native = { ...native, chunks: [], assistant: null, choices: [], finishReason: null, upstreamError: null, redacted: true };
   }
   return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? assembled.intents : [],

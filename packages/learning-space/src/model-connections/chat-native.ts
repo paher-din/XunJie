@@ -30,7 +30,7 @@ export function toolValidators(tools: ModelTool[]) {
 }
 
 /** Inspect protocol fields even in the final chunk rejected by the assembler. */
-export function chatSensitiveValues(chunks: unknown[]) {
+export function chatSensitiveValues(chunks: unknown[], structuredText = false) {
   const fields = new Map<string, string>(), decoded: unknown[] = [];
   const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown> : {};
@@ -43,7 +43,7 @@ export function chatSensitiveValues(chunks: unknown[]) {
     const choices = record(chunk).choices;
     for (const value of Array.isArray(choices) ? choices : []) {
       const choice = record(value), delta = record(choice.delta), prefix = String(choice.index);
-      for (const [key, part] of Object.entries(delta)) append(`${prefix}:${key}`, part);
+      for (const [key, part] of Object.entries(delta)) append(`${prefix}:${key}`, part, structuredText && key === 'content');
       for (const value of Array.isArray(delta.tool_calls) ? delta.tool_calls : []) {
         const tool = record(value), fn = record(tool.function), key = `${prefix}:tool:${String(tool.index)}`;
         append(`${key}:name`, fn.name); append(`${key}:arguments`, fn.arguments, true);
@@ -53,7 +53,7 @@ export function chatSensitiveValues(chunks: unknown[]) {
       }
     }
   }
-  for (const [key, value] of fields) if (key.endsWith(':arguments')) {
+  for (const [key, value] of fields) if (key.endsWith(':arguments') || structuredText && key.endsWith(':content')) {
     decoded.push(protocolJsonStrings(value));
   }
   return [...fields.values(), ...decoded];

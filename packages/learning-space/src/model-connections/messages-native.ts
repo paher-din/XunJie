@@ -11,6 +11,51 @@ function object(value: unknown): ObjectValue {
   requireValue(value !== null && typeof value === 'object' && !Array.isArray(value)); return value as ObjectValue;
 }
 function string(value: unknown): string { requireValue(typeof value === 'string'); return value as string; }
+/** Inspect protocol fields even when sequence/index validation rejects their event. */
+export function messagesEventSensitiveValues(events: unknown[], structuredText = false): unknown[] {
+  const fragments = new Map<string, string[]>(), decoded: unknown[] = [], visible: string[] = [];
+  function append(index: string | number, field: string, part: unknown) {
+    if (typeof part !== 'string') return;
+    const key = index + ':' + field, parts = fragments.get(key) ?? [];
+    parts.push(part); fragments.set(key, parts);
+    if (field === 'text') visible.push(part);
+    if (field === 'partial_json' || structuredText && field === 'text') decoded.push(protocolJsonStrings(part));
+  }
+  for (const value of events) {
+    if (!value || typeof value !== 'object') continue;
+    const event = value as ObjectValue, index = String(event.index);
+    if (event.type === 'message_start' && event.message && typeof event.message === 'object') {
+      const content = (event.message as ObjectValue).content;
+      if (Array.isArray(content)) {
+        const visible: string[] = [];
+        content.forEach((value: unknown, index: number) => {
+          if (!value || typeof value !== 'object') return;
+          const part = value as ObjectValue;
+          if (part.type === 'text') { append(index, 'text', part.text); if (typeof part.text === 'string') visible.push(part.text); }
+          else if (part.type === 'thinking') { append(index, 'thinking', part.thinking); append(index, 'signature', part.signature); }
+          else if (part.type === 'tool_use' && typeof part.input === 'string') decoded.push(protocolJsonStrings(part.input));
+        });
+        decoded.push(visible.join(''));
+        if (structuredText) decoded.push(protocolJsonStrings(visible.join('')));
+      }
+    }
+    const change = (event.type === 'content_block_delta' ? event.delta
+      : event.type === 'content_block_start' ? event.content_block : null) as ObjectValue | null;
+    if (!change || typeof change !== 'object') continue;
+    if (event.type === 'content_block_start' && change.type === 'thinking' && typeof change.signature === 'string') {
+      append(index, 'signature', change.signature);
+    }
+    const field = change.type === 'input_json_delta' ? 'partial_json' : change.type === 'text_delta' || change.type === 'text' ? 'text'
+      : change.type === 'thinking_delta' || change.type === 'thinking' ? 'thinking' : change.type === 'signature_delta' ? 'signature' : '';
+    const part = change[field];
+    if (!field || typeof part !== 'string') continue;
+    append(index, field, part);
+  }
+  for (const [field, parts] of fragments) if (field.endsWith(':partial_json') || structuredText && field.endsWith(':text')) decoded.push(protocolJsonStrings(parts.join('')));
+  decoded.push(visible.join(''));
+  if (structuredText) decoded.push(protocolJsonStrings(visible.join('')));
+  return [...[...fragments.values()].map(parts => parts.join('')), ...decoded];
+}
 export function messagesUsage(value: unknown, final: boolean): ModelUsage {
   const native = object(value), usage: ModelUsage = { state: 'partial' };
   for (const [key, target] of [['input_tokens', 'inputTokens'], ['output_tokens', 'outputTokens'], ['cache_read_input_tokens', 'cachedTokens']] as const) {

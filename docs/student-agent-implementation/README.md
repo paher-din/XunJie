@@ -14,6 +14,7 @@
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
+| PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |
 | WP06 学校/个人来源选择、Chat 图片工具与原生续接的实际交付 | [选择与原生 Chat 验收](wp06-chat-selection-acceptance.md) · [模型 owner](../../packages/learning-space/src/model-connections/README.md) |

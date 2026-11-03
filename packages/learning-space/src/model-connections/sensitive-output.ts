@@ -22,6 +22,22 @@ export function createSensitiveOutput(apiKey: string) {
   return { clean, contains, containsFragments };
 }
 
+/** Only the ordered primary logprob tokens are a deterministic output field. */
+export function protocolTokenSequences(value: unknown): string[] {
+  const sequences: string[] = [], pending = [value], seen = new Set<object>();
+  while (pending.length) {
+    const current = pending.pop();
+    if (!current || typeof current !== 'object' || seen.has(current)) continue;
+    seen.add(current);
+    for (const [field, item] of Object.entries(current)) {
+      if (field === 'logprobs' && Array.isArray(item)) sequences.push(item.map(part => part && typeof part === 'object'
+        && typeof part.token === 'string' ? part.token : '').join(''));
+      else if (field !== 'top_logprobs') pending.push(item);
+    }
+  }
+  return [...sequences, sequences.toReversed().join('')];
+}
+
 /** Decode string tokens only at a protocol-defined JSON argument boundary.
  * An unfinished string may already contain a whole secret. This is inspection,
  * never a repaired object or permission to publish incomplete tool arguments.

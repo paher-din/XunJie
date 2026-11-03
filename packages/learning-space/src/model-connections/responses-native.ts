@@ -35,15 +35,61 @@ export function responsesSensitiveValues(response: unknown): unknown[] {
     ? [decodedArguments(item.arguments)] : []);
 }
 
-export function responsesEventSensitiveValues(events: unknown[]): unknown[] {
-  return events.flatMap(value => {
-    if (!value || typeof value !== 'object') return [];
-    const event = value as ObjectValue;
-    const item = event.item as ObjectValue | undefined;
-    return [...responsesSensitiveValues(event.response),
-      ...(item?.type === 'function_call' && typeof item.arguments === 'string' ? [decodedArguments(item.arguments)] : []),
-      ...(event.type === 'response.function_call_arguments.done' && typeof event.arguments === 'string' ? [decodedArguments(event.arguments)] : [])];
-  });
+export function responsesEventSensitiveValues(events: unknown[], structuredText = false) {
+  const fragments = new Map<string, string[]>(), toolArguments: unknown[] = [], text: unknown[] = [], visible: string[] = [];
+  function append(kind: string, identity: unknown, position: unknown, value: unknown) {
+    if (typeof value !== 'string') return;
+    const key = [kind, identity, position ?? 0].join(':');
+    const parts = fragments.get(key) ?? []; parts.push(value); fragments.set(key, parts);
+    if (kind === 'function_call_arguments') toolArguments.push(decodedArguments(value));
+    else { text.push(value); if (kind === 'output_text') visible.push(value);
+      if (structuredText && kind === 'output_text') text.push(protocolJsonStrings(value)); }
+  }
+  function item(value: unknown, position: unknown): string {
+    if (!value || typeof value !== 'object') return '';
+    const output = value as ObjectValue, identity = output.id ?? position;
+    const visible: string[] = [];
+    if (output.type === 'function_call') append('function_call_arguments', identity, 0, output.arguments);
+    for (const [index, value] of Array.isArray(output.content) ? output.content.entries() : []) {
+      if (!value || typeof value !== 'object') continue;
+      const part = value as ObjectValue;
+      if (part.type === 'output_text') { append('output_text', identity, index, part.text); if (typeof part.text === 'string') visible.push(part.text); }
+      else if (part.type === 'refusal') append('refusal', identity, index, part.refusal);
+      else if (part.type === 'reasoning_text') append('reasoning_text', identity, index, part.text);
+    }
+    for (const [index, value] of Array.isArray(output.summary) ? output.summary.entries() : []) {
+      if (value && typeof value === 'object') append('reasoning_summary_text', identity, index, (value as ObjectValue).text);
+    }
+    const projection = visible.join(''); text.push(projection);
+    if (structuredText) text.push(protocolJsonStrings(projection));
+    return projection;
+  }
+  for (const value of events) {
+    if (!value || typeof value !== 'object') continue;
+    const event = value as ObjectValue, response = event.response as ObjectValue | undefined;
+    if (Array.isArray(response?.output)) {
+      const projection = response.output.map(item).join(''); text.push(projection);
+      if (structuredText) text.push(protocolJsonStrings(projection));
+    }
+    item(event.item, event.output_index);
+    const match = typeof event.type === 'string' && /^response\.(function_call_arguments|output_text|refusal|reasoning_text|reasoning_summary_text)\.(delta|done)$/.exec(event.type);
+    const identity = event.item_id ?? event.output_index, position = event.content_index ?? event.summary_index;
+    if (match) append(match[1]!, identity, position, match[2] === 'delta' ? event.delta
+      : event[match[1] === 'function_call_arguments' ? 'arguments' : match[1] === 'refusal' ? 'refusal' : 'text']);
+    const part = event.part as ObjectValue | undefined;
+    if (part?.type === 'output_text') append('output_text', identity, position, part.text);
+    else if (part?.type === 'reasoning_text') append('reasoning_text', identity, position, part.text);
+    else if (part?.type === 'summary_text') append('reasoning_summary_text', identity, position, part.text);
+    else if (part?.type === 'refusal') append('refusal', identity, position, part.refusal);
+  }
+  for (const [field, parts] of fragments) {
+    const combined = parts.join('');
+    if (field.startsWith('function_call_arguments:')) toolArguments.push(combined, decodedArguments(combined));
+    else { text.push(combined); if (structuredText && field.startsWith('output_text:')) text.push(protocolJsonStrings(combined)); }
+  }
+  text.push(visible.join(''));
+  if (structuredText) text.push(protocolJsonStrings(visible.join('')));
+  return { toolArguments, text };
 }
 
 export function responsesUsage(value: unknown, final: boolean): ModelUsage {

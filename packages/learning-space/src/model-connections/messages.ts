@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUpstream } from '@xunjie/contracts/model-connections';
-import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative } from './messages-native.js';
+import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative, messagesEventSensitiveValues } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
-import { createSensitiveOutput } from './sensitive-output.js';
+import { createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts } from './upstream-facts.js';
 export { validateMessagesNative } from './messages-native.js';
 
@@ -84,7 +84,8 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   } catch { state = 'failed'; reason = 'invalid-structured-output'; }
   let native: { formatVersion: number; sdk: string; adapter: string; events: unknown[]; message: typeof message; redacted?: boolean; upstream?: ModelUpstream }
     = { formatVersion: 1, sdk: messagesSdkVersion, adapter: messagesAdapterVersion, events, message, ...(upstream ? { upstream } : {}) };
-  if (sensitive.contains([text, structuredOutput, native, assembler.inputJson, assembler.inputStrings])) {
+  const structured = !!(applicationSchema || format), sensitiveStructured = structured && sensitive.contains(protocolJsonStrings(text));
+  if (sensitiveStructured || sensitive.contains([text, structuredOutput, native, assembler.inputJson, assembler.inputStrings, messagesEventSensitiveValues(events, structured), protocolTokenSequences(native)])) {
     if (state === 'completed') state = 'failed';
     reason = 'credential-in-output'; text = '';
     // Sensitive replay bytes (including signed thinking) cannot be rewritten and reused.
@@ -92,5 +93,7 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   }
   if (state === 'completed') try { validateMessagesNative(native, nativeTools); }
   catch { state = 'failed'; reason = 'invalid-native-result'; }
+  if (['malformed-response', 'invalid-native-result'].includes(reason))
+    native = { ...native, events: [], message: null, redacted: true };
   return { state, reason, text: sensitive.clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [], native, ...(upstream ? { upstream } : {}) };
 }

@@ -3,7 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { compileOutputSchema } from './chat-native.js';
 import { createResponsesAssembler, object, responsesOutput, responsesUsage, responsesSensitiveValues, responsesEventSensitiveValues, validateResponsesNative } from './responses-native.js';
-import { createSensitiveOutput } from './sensitive-output.js';
+import { createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts } from './upstream-facts.js';
 export { validateResponsesNative } from './responses-native.js';
 
@@ -127,11 +127,14 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
   const originalNative = { formatVersion: 1, sdk: 'openai@7.42.0', adapter: responsesAdapterVersion,
     events, response, output: Array.isArray(response?.output) ? response.output : [], upstreamError, ...(upstream ? { upstream } : {}) };
   let native: typeof originalNative & { redacted?: boolean } = originalNative;
-  const sensitiveTools = sensitive.contains([toolIntents, responsesSensitiveValues(response), responsesEventSensitiveValues(events)]);
-  if (sensitiveTools || sensitive.contains([text, structuredOutput, native, assembler.sensitiveValues])) {
+  const structured = !!(applicationSchema || format && format.type !== 'text');
+  const eventValues = responsesEventSensitiveValues(events, structured);
+  const sensitiveTools = sensitive.contains([toolIntents, responsesSensitiveValues(response), eventValues.toolArguments]);
+  const sensitiveStructured = structured && sensitive.contains([protocolJsonStrings(text), eventValues.text]);
+  if (sensitiveTools || sensitiveStructured || sensitive.contains([text, structuredOutput, native, assembler.sensitiveValues, eventValues.text, protocolTokenSequences(native)])) {
     if (state === 'completed') state = 'failed';
     reason = sensitiveTools ? 'credential-in-tool-output' : 'credential-in-output';
-    if (sensitive.contains(structuredOutput)) text = '';
+    if (sensitiveStructured || sensitive.contains(structuredOutput)) text = '';
     // Split deltas can reconstruct a credential even when no individual delta contains it.
     // A sensitive result is non-consumable; withhold its native body instead of retaining fragments.
     native = { ...originalNative, events: [], response: null, output: [], upstreamError: null, redacted: true };
@@ -140,6 +143,8 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     try { validateResponsesNative(native, nativeTools ?? []); }
     catch { state = 'failed'; reason = 'invalid-native-result'; }
   }
+  if (['malformed-response', 'invalid-native-result'].includes(reason))
+    native = { ...native, events: [], response: null, output: [], upstreamError: null, redacted: true };
   return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [],
     native, ...(upstream ? { upstream } : {}) };
 }

@@ -4,14 +4,17 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
+import { join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
+const productPackage = process.env.XUNJIE_PRODUCT_TEST_PACKAGE && resolve(process.env.XUNJIE_PRODUCT_TEST_PACKAGE);
+const { openProductRuntime, resolveCredential } = await import(productPackage
+  ? pathToFileURL(join(productPackage, 'app/product-runtime.js')).href : '@xunjie/product-runtime');
+const packaged = productPackage ? JSON.parse(await readFile(join(productPackage, 'resources.json'), 'utf8')) : null;
+const postgresBin = productPackage ? join(productPackage, packaged.postgresBin) : process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
-const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
-  webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
+const resources = { nodePath: productPackage ? join(productPackage, packaged.nodePath) : process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
+  webRoot: productPackage ? join(productPackage, packaged.webRoot) : fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
   windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
 const key = 'synthetic-review-"key\\-private';
 const config = (baseUrl, overrides = {}) => ({ requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0,
@@ -246,5 +249,162 @@ test('raw SSE comments are bounded before SDK parsing and their failure stays re
     assert.equal(result.state, 'incomplete'); assert.equal(result.reason, 'response-limit'); assert.deepEqual(result.toolIntents, []);
     await restart(); assert.equal((await api(`models/calls/${result.attemptId}`)).value.resultRef, result.resultRef);
     assert.equal((await api(`models/calls/${result.attemptId}/dispatch`, {})).value.reason, 'response-limit'); assert.equal(requests(), 1);
+  });
+});
+
+const encodedKey = [...key].map(character => '\\u' + character.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+const secretJson = '{"nonce":"' + encodedKey + '"}';
+const messageStart = { type: 'message_start', message: { id: 'sensitive-message', type: 'message', role: 'assistant', model: 'review-fixture',
+  content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 7, output_tokens: 0 } } };
+const responseText = (text, status) => ({ type: 'response.' + status, response: { id: 'sensitive-response', object: 'response', status,
+  output: [{ id: 'sensitive-text', type: 'message', role: 'assistant', status, content: [{ type: 'output_text', text, annotations: [] }] }],
+  usage: { input_tokens: 7, output_tokens: 4, total_tokens: 11 } } });
+const messageEnd = stop_reason => [{ type: 'message_delta', delta: { stop_reason, stop_sequence: null }, usage: { input_tokens: 7, output_tokens: 4 } }, { type: 'message_stop' }];
+function sendEvents(response, events) {
+  response.writeHead(200, { 'content-type': 'text/event-stream' });
+  for (const event of events) response.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+  response.end();
+}
+test('incomplete or malformed structured credentials are withheld from every durable protocol result', { timeout: 180000 }, async () => {
+  await product('local', (request, response, body) => {
+    const messages = body.messages, mode = messages ? messages.at(-1).content[0].text : body.input.at(-1).content[0].text;
+    const text = mode === 'malformed' ? secretJson.slice(0, -1) : secretJson;
+    if (request.url.endsWith('/chat/completions')) {
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      send(response, chat({ content: text }, mode === 'malformed' ? 'stop' : 'length')); response.end('data: [DONE]\n\n');
+    } else if (request.url.endsWith('/responses')) sendEvents(response, [responseText(text, mode === 'malformed' ? 'completed' : 'incomplete')]);
+    else sendEvents(response, [messageStart, { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } }, { type: 'content_block_stop', index: 0 },
+      ...messageEnd(mode === 'malformed' ? 'end_turn' : 'max_tokens')]);
+  }, async ({ api, baseUrl, segment, finish, native, restart, requests }) => {
+    const results = [];
+    for (const protocol of ['chat-completions', 'responses', 'messages']) {
+      const connection = config(protocol === 'messages' ? baseUrl.replace(/\/v1$/, '') : baseUrl,
+        { protocol, path: protocol === 'responses' ? '/responses' : protocol === 'messages' ? '/v1/messages' : '/chat/completions' });
+      assert.equal((await api('models/connections', connection)).status, 200);
+      for (const mode of ['incomplete', 'malformed']) {
+        const result = await finish(input(await segment(connection, { system: 'Structured boundary', tools: [], options: { applicationSchema: tool.inputSchema } }), mode));
+        assert.notEqual(result.state, 'completed'); assert.equal(result.reason, 'credential-in-output'); assert.equal(result.text, '');
+        assert.deepEqual(result.toolIntents, []); const stored = await native(result); assert.equal(stored.redacted, true);
+        assert.deepEqual(protocol === 'chat-completions' ? stored.chunks : stored.events, []); results.push(result);
+      }
+    }
+    await restart();
+    for (const result of results) {
+      const read = (await api(`models/calls/${result.attemptId}`)).value;
+      assert.equal(read.resultRef, result.resultRef); assert.equal(read.text, '');
+      assert.equal((await api(`models/calls/${result.attemptId}/dispatch`, {})).value.resultRef, result.resultRef);
+    }
+    assert.equal(requests(), 6);
+  });
+});
+test('rejected tool events cannot persist escaped credentials in Messages or Responses resources', { timeout: 180000 }, async () => {
+  await product('model', (request, response, body) => {
+    const messages = body.messages, mode = messages ? messages.at(-1).content[0].text : body.input.at(-1).content[0].text;
+    if (request.url.endsWith('/messages')) {
+      const tail = { type: 'content_block_delta', index: mode === 'late' ? 0 : 99, delta: { type: 'input_json_delta', partial_json: secretJson } };
+      sendEvents(response, mode === 'late' ? [messageStart, ...messageEnd('end_turn'), tail] : [messageStart, tail]);
+    } else {
+      const tail = { type: 'response.function_call_arguments.delta', item_id: 'sensitive-call', output_index: 0, delta: secretJson,
+        ...(mode === 'late' ? {} : { sequence_number: 42 }) };
+      sendEvents(response, mode === 'late' ? [responseText('OK', 'completed'), tail]
+        : [{ type: 'response.created', sequence_number: 0, response: { id: 'sensitive-response', object: 'response', status: 'in_progress', output: [] } }, tail]);
+    }
+  }, async ({ api, baseUrl, segment, finish, native, restart, requests }) => {
+    const results = [];
+    for (const protocol of ['responses', 'messages']) {
+      const connection = config(protocol === 'messages' ? baseUrl.replace(/\/v1$/, '') : baseUrl, { protocol, path: protocol === 'messages' ? '/v1/messages' : '/responses' });
+      assert.equal((await api('models/connections', connection)).status, 200);
+      for (const mode of ['late', 'invalid-order']) {
+        const result = await finish(input(await segment(connection), mode));
+        assert.equal(result.state, 'failed'); assert.deepEqual(result.toolIntents, []);
+        const stored = await native(result); assert.equal(stored.redacted, true); assert.deepEqual(stored.events, []); results.push(result);
+      }
+    }
+    await restart();
+    for (const result of results) assert.equal((await api(`models/calls/${result.attemptId}`)).value.resultRef, result.resultRef);
+    assert.equal(requests(), 4);
+  });
+});
+
+test('rejected initial and final snapshots plus reasoning fragments cannot retain credentials', { timeout: 180000 }, async () => {
+  await product('model', (request, response, body) => {
+    if (request.url.endsWith('/messages')) return sendEvents(response, [{ ...messageStart, message: { ...messageStart.message,
+      content: [{ type: 'text', text: secretJson.slice(0, 18) }, { type: 'text', text: secretJson.slice(18) }] } }]);
+    const mode = body.input.at(-1).content[0].text;
+    if (mode === 'snapshot') {
+      const snapshot = responseText('', 'completed'); snapshot.sequence_number = 2;
+      snapshot.response.output[0].content = [{ type: 'output_text', text: secretJson.slice(0, 18), annotations: [] },
+        { type: 'output_text', text: secretJson.slice(18), annotations: [] }];
+      return sendEvents(response, [{ type: 'response.created', sequence_number: 0,
+        response: { id: 'sensitive-response', object: 'response', status: 'in_progress', output: [] } }, snapshot]);
+    }
+    const initial = mode === 'part' ? { type: 'response.reasoning_summary_part.added', sequence_number: 0, output_index: 0,
+      item_id: 'reason-1', summary_index: 0, part: { type: 'summary_text', text: key.slice(0, 12) } }
+      : { type: 'response.output_item.added', sequence_number: 0, output_index: 0,
+        item: { id: 'reason-1', type: 'reasoning', summary: [{ type: 'summary_text', text: key.slice(0, 12) }] } };
+    sendEvents(response, [initial, { type: 'response.reasoning_summary_text.delta', sequence_number: 2, output_index: 0,
+      item_id: 'reason-1', summary_index: 0, delta: key.slice(12) }]);
+  }, async ({ api, baseUrl, segment, finish, native, restart, requests }) => {
+    const results = [];
+    for (const protocol of ['responses', 'messages']) {
+      const connection = config(protocol === 'messages' ? baseUrl.replace(/\/v1$/, '') : baseUrl, { protocol, path: protocol === 'messages' ? '/v1/messages' : '/responses' });
+      assert.equal((await api('models/connections', connection)).status, 200);
+      for (const mode of protocol === 'responses' ? ['snapshot', 'part', 'item'] : ['snapshot']) {
+        const result = await finish(input(await segment(connection, { system: 'Snapshot boundary', tools: [], options: { applicationSchema: tool.inputSchema } }), mode));
+        assert.equal(result.state, 'failed'); assert.deepEqual(result.toolIntents, []);
+        const stored = await native(result); assert.equal(stored.redacted, true); assert.deepEqual(stored.events, []); results.push(result);
+      }
+    }
+    await restart();
+    for (const result of results) assert.equal((await api(`models/calls/${result.attemptId}`)).value.resultRef, result.resultRef);
+    assert.equal(requests(), 4);
+  });
+});
+
+test('malformed native input is withheld instead of preserving uninterpretable JSON and logical fragments', { timeout: 180000 }, async () => {
+  await product('model', (request, response, body) => {
+    const x = secretJson.slice(0, 18), y = secretJson.slice(18, 38), z = secretJson.slice(38);
+    if (request.url.endsWith('/messages')) return sendEvents(response, [messageStart,
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: x } },
+      { type: 'content_block_start', index: 1, content_block: { type: 'text', text: z } }, { type: 'content_block_stop', index: 0 },
+      { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: y } }]);
+    const mode = body.input.at(-1).content[0].text;
+    if (mode === 'logical') return sendEvents(response, [[0, 0, x], [1, 1, z], [3, 0, y]].map(([sequence_number, content_index, delta]) => ({
+      type: 'response.output_text.delta', sequence_number, output_index: 0, item_id: 'message-1', content_index, delta })));
+    if (mode === 'mcp') return sendEvents(response, [{ type: 'response.output_item.added', output_index: 0,
+      item: { type: 'mcp_call', id: 'mcp-1', name: 'fixture', server_label: 'fixture', arguments: secretJson } }]);
+    const prefix = '{"nonce":"' + encodedKey.slice(0, 30), item = { id: 'f', type: 'function_call', call_id: 'call-f', name: 'read_marker', arguments: prefix };
+    sendEvents(response, [{ type: 'response.created', sequence_number: 0,
+      response: { id: 'sensitive-response', object: 'response', status: 'in_progress', output: [item] } },
+    { type: 'response.output_item.added', sequence_number: 1, output_index: 0, item },
+    { type: 'response.function_call_arguments.delta', sequence_number: 3, output_index: 0, item_id: 'f', delta: encodedKey.slice(30) + '"}' }]);
+  }, async ({ api, baseUrl, segment, finish, native, restart, requests }) => {
+    const results = [];
+    for (const protocol of ['responses', 'messages']) {
+      const connection = config(protocol === 'messages' ? baseUrl.replace(/\/v1$/, '') : baseUrl, { protocol, path: protocol === 'messages' ? '/v1/messages' : '/responses' });
+      assert.equal((await api('models/connections', connection)).status, 200);
+      for (const mode of protocol === 'responses' ? ['logical', 'mcp', 'duplicate'] : ['logical']) {
+        const result = await finish(input(await segment(connection, { system: 'Malformed boundary', tools: [], options: { applicationSchema: tool.inputSchema } }), mode));
+        assert.equal(result.state, 'failed'); assert.deepEqual(result.toolIntents, []);
+        const stored = await native(result); assert.equal(stored.redacted, true); assert.deepEqual(stored.events, []); results.push(result);
+      }
+    }
+    await restart();
+    for (const result of results) assert.equal((await api(`models/calls/${result.attemptId}`)).value.resultRef, result.resultRef);
+    assert.equal(requests(), 4);
+  });
+});
+test('ordered logprob tokens cannot leak a credential through a durable successful Responses snapshot', { timeout: 180000 }, async () => {
+  await product('model', (_request, response) => {
+    const terminal = responseText('OK', 'completed'); terminal.response.output[0].content[0].logprobs = [key.slice(0, 12), key.slice(12)]
+      .map(token => ({ token, logprob: -1, top_logprobs: [] })); sendEvents(response, [terminal]);
+  }, async ({ api, baseUrl, segment, finish, native, restart, requests }) => {
+    const connection = config(baseUrl, { protocol: 'responses', path: '/responses' });
+    assert.equal((await api('models/connections', connection)).status, 200);
+    const result = await finish(input(await segment(connection)));
+    assert.equal(result.state, 'failed'); assert.equal(result.reason, 'credential-in-output'); assert.deepEqual(result.toolIntents, []);
+    const stored = await native(result); assert.equal(stored.redacted, true); assert.deepEqual(stored.events, []);
+    await restart(); assert.equal((await api(`models/calls/${result.attemptId}`)).value.resultRef, result.resultRef); assert.equal(requests(), 1);
   });
 });

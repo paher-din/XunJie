@@ -110,3 +110,15 @@ system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_to
 `ModelAttempt.upstream` 只保存可确认 HTTP 状态、有限 request-id、retry-after 秒数或绝对日期，不投影其他 headers/body；含凭据的请求 ID 丢弃，等待提示不授权自动重试。该事实同结果一次提交并纳入 owner 9 的 JSON 约束/版本；旧 owner 8 环境通过 WP01 正式 schema upgrade，正常启动不偷偷迁移。
 
 主测试 [model-messages.runtime.test.mjs](../../../../apps/server/tests/model-messages.runtime.test.mjs)、[桌面 Chrome 用例](../../../../apps/web/e2e/messagesModelSettings.spec.ts)和[真实端点探针](../../../../scripts/probe-model-messages.mjs)均消费生产入口。探针按 `--case native|schemas|controls|check|cancel` 分组，显式提供获准私有配置与脱敏输出，单组最多 6 次，输出只含状态、哈希、保真比较和用量。完整行为、反例与验证限制见 [#167 交付](../../../../docs/student-agent-implementation/wp06-messages-acceptance.md)。
+
+## PR #177 审查修复
+
+模型 owner 的网络资格由可信产品装配给出：学校普通成员的个人连接只允许公网 HTTPS；`manage/model-default` 由管理员显式批准学校内部端点；`local/model` 持有方可访问本人设备的 loopback/私网模型。浏览器不能自报持有方或提高资格。保存、草稿/已保存快照和派发均检查目标；公网域名的全部解析结果都必须获准，SDK 使用紧邻外发重新校验后固定的 DNS 地址，禁止重定向。link-local、元数据与其他特殊网段不开放。已有学校配置不能借用设备网络资格，离线设备不回退到学校宿主。
+
+`POST models/capabilities` 接收 `{source,prefix}`，与段创建使用同一固定配置判定器。公开结果包含 `routeId/configurationVersion`、全部必需项的 available/unknown/unsupported、证据、限制及实际装配方式；缺项的段创建返回 HTTP 422 / `capability-unavailable` 与相同 decision。学校转发保留该结果；探针不会晋升证据或更换路线。
+
+三协议在协议定义的参数解析与分片聚合后使用共享敏感值门禁，明确结构化输出边界的检查独立于成功状态。凭据命中不发布成功或工具意图，并清除可重建凭据的原生正文；签名/隐藏块不改写为可回放内容。被解析器拒绝或原生结果无效的正文整体扣留，保留安全结果 envelope 与已确认状态/用量/上游事实；合法截断仍保留可解释的原生片段。已知 logprobs 主 token 序列同样检查。Chat 在完整有效终态后保留传输断开前的事实，格式错误、显式错误及资源超限仍拒绝消费；最终 usage 独立于输出 completed/incomplete。2 MB 原始响应限界位于 SDK 解析前，包含 SSE 注释与未闭合行。三协议持久保存同一白名单上游 HTTP 事实。
+
+Chat 先补齐同一组全部工具回复，再追加用户图片消息；每张工具图携带原 callId 与固定资源版本。Messages 截断工具 JSON 时继续读取有界终态与用量，合法空 end_turn 可完成；半截参数始终不产生工具意图。设置页后台读取不会清除操作失败；冲突时保留草稿与密钥意图，显式读取/核对后重试；未知提交使用原 requestId 与原 payload 核对。
+
+定向单测见 [协议](../../../../apps/server/tests/model-protocol-review.test.mjs)、[Messages](../../../../apps/server/tests/model-messages-review.test.mjs)、[网络政策](../../../../apps/server/tests/model-network-policy.test.mjs)、[能力和图片](../../../../apps/server/tests/model-capability-images.test.mjs)。真实 PostgreSQL、宿主权限、持久化和重启回归见 [model-review.runtime.test.mjs](../../../../apps/server/tests/model-review.runtime.test.mjs)；修复矩阵与实际验收见 [PR #177 修复记录](../../../../docs/student-agent-implementation/wp06-pr177-review-fixes.md)。
