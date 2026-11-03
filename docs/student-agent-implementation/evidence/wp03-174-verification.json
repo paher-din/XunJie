@@ -1,0 +1,187 @@
+{
+  "date": "2026-11-04",
+  "measuredAtUtc": "2026-11-03T16:42:52.9642421Z",
+  "branch": "codex/issue-174-session-recovery",
+  "baseCommit": "e5b3743849338dcf37d7712d13c0e2e658d09bda",
+  "worktreeUncommitted": true,
+  "status": "passed-with-deferred-platform",
+  "checks": [
+    {
+      "name": "product-runtime:test build",
+      "status": "passed"
+    },
+    {
+      "name": "full workspace typecheck",
+      "status": "passed"
+    },
+    {
+      "passed": 12,
+      "failed": 0,
+      "name": "public contract browser exports"
+    },
+    {
+      "files": 7,
+      "passed": 66,
+      "failed": 0,
+      "name": "frontend component/reference/execution/session regressions"
+    },
+    {
+      "passed": 44,
+      "failed": 0,
+      "name": "owner/source/checkpoint/native/PostgreSQL regressions"
+    },
+    {
+      "passed": 2,
+      "failed": 0,
+      "name": "school client forwarding boundary (controlled HTTP peer)"
+    },
+    {
+      "passed": 21,
+      "failed": 0,
+      "name": "installed Chrome original drafts/actions/IDB upgrade"
+    },
+    {
+      "passed": 9,
+      "failed": 0,
+      "name": "installed Chrome session recovery and maintenance"
+    }
+  ],
+  "failuresBeforeCorrection": [
+    "New adapter omitted ready handshake; fixed and real-process tests rerun.",
+    "Screenshot inspection found missing iframe theme tokens; fixed and actual dark CSS asserted.",
+    "New mock static type failed compilation; corrected and typecheck/build rerun.",
+    "Earlier owner batch passed 42/43 with Windows EBUSY fixture cleanup; isolated rerun and final full 44/44 batch passed.",
+    "New fixture cleanup EBUSY initially masked errors; retained primary failure and retried only its owned temporary directory.",
+    "Maintenance probe read queued executor observation too early; now waits for actual paused recovery; final 9/9 passed."
+  ],
+  "deferred": [
+    "Apple Silicon Mac",
+    "real cross-machine execution",
+    "new product distribution package and AppContainer helper acceptance",
+    "native system IME candidate operation",
+    "teaching effectiveness"
+  ],
+  "browserReport": "wp03-174-browser-report.json",
+  "sourceFiles": [
+    {
+      "sha256": "fb188b849234422e1404295a069277cf9553cbc963ffb1d2cc5106f00208cead",
+      "path": "apps/server/tests/native-session.test.mjs"
+    },
+    {
+      "sha256": "6923c1cec25892fa93251bdaf2144891d1bd2ca1cd8c2c4b841d9eb43b0cee22",
+      "path": "apps/server/tests/session-checkpoints.test.mjs"
+    },
+    {
+      "sha256": "291b5d44294cb9d34654968006b974b650cbcf21c7db484c8d9c11faf1e117f5",
+      "path": "apps/server/tests/session-recovery.runtime.test.mjs"
+    },
+    {
+      "sha256": "2ca919c98f8817ecb9da1792519b2f25ae8df5c9f8f4d4d68b4757156176de7f",
+      "path": "apps/web/e2e/questionDrafts.spec.ts"
+    },
+    {
+      "sha256": "ca24d0d29a7069918e228d6d05e0ee3a35f9f76b6e470804634e220ec6e4ba79",
+      "path": "apps/web/src/product/ActivityReferences.tsx"
+    },
+    {
+      "sha256": "837a9b594064696962838cadc60e116e8a18c65ec9e076218e57c9037fff2e15",
+      "path": "apps/web/src/product/execution-panel.css"
+    },
+    {
+      "sha256": "4b7550e45fe9546576d7108c9e1a3c4cebc1a1339a22521f2aa96ec031ac341a",
+      "path": "apps/web/src/product/executionTransport.ts"
+    },
+    {
+      "sha256": "af670bbe8b432b92f61eee1220185432d35a7e6aa2bd31670e71e7408148a29b",
+      "path": "apps/web/src/product/NativeSessionPanel.tsx"
+    },
+    {
+      "sha256": "db6795ee3034fc51bad5eea00806666a74f917bebc3490bdb71db7665b2de9b0",
+      "path": "apps/web/src/reliable-workspace/draft-store.ts"
+    },
+    {
+      "sha256": "c93d28bcd0f20049503a5f464f67a304060516c7c34a6e7bc6c8a30bb4f89b93",
+      "path": "apps/web/src/tool-execution/session-controller.ts"
+    },
+    {
+      "sha256": "594929ce758185130b5aa6ba07755b2f41ed79ffd5de39a1451aee80effc1ad4",
+      "path": "apps/web/src/tool-execution/session-requests.ts"
+    },
+    {
+      "sha256": "b2147f0d6475b4519625dac3dd5e1cda9dc767c60a008f2795b3b1022c398b35",
+      "path": "apps/web/src/tool-execution/session.test.ts"
+    },
+    {
+      "sha256": "6e67da68396fd48005796b52390d5295a02ba8416b7393fc01d6c1719fc2d16d",
+      "path": "apps/web/src/tool-execution/session.ts"
+    },
+    {
+      "sha256": "65e6867ab743ed9dc0b0fd1bec5ceb8baabaef5573611e3f48e5bd27d4f53c9d",
+      "path": "components/state-accumulator/package.d.mts"
+    },
+    {
+      "sha256": "3569f1ecb41a76405ef8cd1a6fe6a2c30da6d9688fa74b58cf625bb212ffb8ee",
+      "path": "components/state-accumulator/package.mjs"
+    },
+    {
+      "sha256": "a1cdb08846efdd29217311383d65c9322efa10c7c227b64d9adcbfafede3d23d",
+      "path": "components/state-accumulator/README.md"
+    },
+    {
+      "sha256": "4c914c8a91fc3b7e3b99a1889ba40019daca114bbfeea51387c3d2a1f663d2da",
+      "path": "components/state-accumulator/view-v2.html"
+    },
+    {
+      "sha256": "6252cd9178ec7062a09ae73dfc79ac70abac143faa726c84c8f9d27db699db2c",
+      "path": "packages/contracts/src/components.ts"
+    },
+    {
+      "sha256": "d620251297f678f39c06566b76021a3be3ed0b5aeafdce5111ef1671fcd8d07c",
+      "path": "packages/contracts/src/execution.ts"
+    },
+    {
+      "sha256": "5aca43ddff393871120c102a6552a1bb43da9a9037db8f78a1f02387af53119d",
+      "path": "packages/learning-space/src/learning-data/accumulator-recovery.ts"
+    },
+    {
+      "sha256": "623d636eab9e0fbdbb2098e05b491bd864b9dbfe96e72ce88f1c4913d5b5b599",
+      "path": "packages/learning-space/src/learning-data/executions.ts"
+    },
+    {
+      "sha256": "7fa790751abab107cd714fc9c11901db2bc604b41d07379645e307ea6f97a9ac",
+      "path": "packages/learning-space/src/learning-data/index.ts"
+    },
+    {
+      "sha256": "8efe51473ac99c0fc8e46b90c27729ef122875ccb2436f47c27e292ae86f8bd9",
+      "path": "packages/learning-space/src/learning-data/native-process.ts"
+    },
+    {
+      "sha256": "9c2734fcbd2230be4ff7a8824e6eb495efd46037f78cb2112fc6d064588dffdf",
+      "path": "packages/learning-space/src/learning-data/native-sessions.ts"
+    },
+    {
+      "sha256": "a5418fc7ab6e189cf79d68f690d72fd9d1adb41dd50388eeb6178ccabb95b744",
+      "path": "packages/learning-space/src/learning-data/session-checkpoints.ts"
+    },
+    {
+      "sha256": "b9d98005e46cf9802927c895199784d40ef4f704219f363d080a449727eb3742",
+      "path": "packages/learning-space/src/learning-entry/index.ts"
+    },
+    {
+      "sha256": "2157c8df76335bacbfd433f9d8b0d549ce39b7aac28efe41575c8ca0bc8a90a3",
+      "path": "packages/product-runtime/src/learning-entry.ts"
+    },
+    {
+      "sha256": "52e9434f4a9d22ce36125f33565cfdc6442c4bb9a8435ce14599e915583a2380",
+      "path": "packages/product-runtime/src/school-client.ts"
+    },
+    {
+      "sha256": "b970e6d8f52cf9fafc419523b44f697ecbee0bd88c62cd771d9fff697ded206a",
+      "path": "packages/product-runtime/test/school-client.test.mjs"
+    },
+    {
+      "sha256": "0751312e04ba67abee3739437d4d7d6825d95cdeb2703c3568567a4fac3cd419",
+      "path": "scripts/probe-session-recovery.mjs"
+    }
+  ]
+}

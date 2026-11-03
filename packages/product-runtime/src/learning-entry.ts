@@ -83,7 +83,9 @@ export async function createProductLearningApplication(context: {
         validateService: validate });
       const participant = recoveryOwner.participant;
       owners.push(module === data ? { ...recoveryOwner, participant: { ...participant,
-        async closeDispatch() { learning.intents.closeDispatch(); await participant.closeDispatch(); },
+        // Persist real exit/checkpoint boundaries while this owner's writes are still open.
+        async closeWrites() { learning.executions.closeNativeDispatch(); await learning.executions.shutdown(); await participant.closeWrites(); },
+        async closeDispatch() { learning.intents.closeDispatch(); learning.executions.closeNativeDispatch(); await participant.closeDispatch(); },
         async drain() { await learning.intents.drain(); await learning.executions.shutdown(); await participant.drain(); },
         async resume() { await participant.resume(); learning.intents.resume(); await learning.executions.recoverNative(); },
       } } : recoveryOwner);

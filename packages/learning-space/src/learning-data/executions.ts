@@ -271,8 +271,16 @@ export function createExecutions(storage: OwnedStorage, options: {
     return executionQuerySchema.parse(saved.result);
   }
   return { accept, read, report, stop, result, control, sessions,
+    checkpoints: async (identity: SpaceIdentity, activityId: string, cursor?: string) => {
+      await authorize(identity, activityId);
+      return native ? native.checkpointPage(identity, activityId, cursor) : { items: [], nextCursor: null };
+    },
+    controlReceipt: async (identity: SpaceIdentity, activityId: string, requestId: string, controlId: string) =>
+      native ? native.controlReceipt(identity, activityId, requestId, controlId) : null,
+    closeActivity: async (identity: SpaceIdentity, activityId: string) => { await native?.closeActivity(identity, activityId); },
     /** Maintenance recovery runs after the storage gate reopens, never against a closed owner. */
-    recoverNative: async () => { await native?.ensureReady(); },
+    recoverNative: async () => { await native?.resume(); },
+    closeNativeDispatch: () => { native?.closeDispatch(); },
     /** Maintenance stops own their live processes before the storage owner drains. */
     shutdown: async () => { await native?.shutdown(); } };
 }

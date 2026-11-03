@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { appContainerIsolation, planSeatbelt, supervisorWatchdogSource, unboundedIsolation } from './native-sandbox.js';
 import type { NativeSessionIsolation, SeatbeltPlan } from './native-sandbox.js';
+import { recoverableAccumulatorSource } from './accumulator-recovery.js';
+import type { SessionControlEffect } from '@xunjie/contracts/execution';
 
 const exec = promisify(execFile);
 /** A confirmed stop waits for the managed group to be empty, not only for the direct child. */
@@ -21,6 +23,8 @@ export interface NativeAdapter {
   adapterVersion: number;
   /** A self-contained ES module, executed with the product's own Node runtime. */
   source: string;
+  controls?: readonly SessionControlEffect[];
+  checkpointVersion?: number;
 }
 export interface NativeSessionLimits {
   operationTimeoutMs: number;
@@ -34,6 +38,8 @@ export interface NativeObservation {
   controlId: string;
   state: unknown;
   at: string;
+  sessionState?: 'running' | 'paused';
+  checkpoint?: unknown;
 }
 export interface NativeSessionExit {
   /** The supervisor asked the process to end, so a non-zero exit is not the student's outcome. */
@@ -397,7 +403,11 @@ export class SupervisedSession {
   }
 
   async input(controlId: string, seq: number, parameters: unknown): Promise<NativeObservation> {
-    const reply = await this.send<Reply>({ type: 'input', controlId, seq, parameters },
+    return this.control('input', controlId, seq, parameters);
+  }
+
+  async control(effect: SessionControlEffect, controlId: string, seq: number, parameters: unknown): Promise<NativeObservation> {
+    const reply = await this.send<Reply>({ type: effect === 'input' ? 'input' : 'control', effect, controlId, seq, parameters },
       candidate => candidate.type === 'observation' && candidate.controlId === controlId
         || candidate.type === 'error',
       this.start.limits.operationTimeoutMs, 'resource-unavailable', '本机会话未在时限内确认这次输入。');
@@ -406,7 +416,22 @@ export class SupervisedSession {
       const code = reply.code === 'identity-conflict' ? 'algorithm-error' : 'algorithm-error';
       throw new NativeSessionError(code, typeof reply.detail === 'string' ? reply.detail : '本机会话拒绝了这次输入。');
     }
-    return { seq: Number(reply.seq), controlId: String(reply.controlId), state: reply.state, at: String(reply.at) };
+    return this.observation(reply);
+  }
+
+  private observation(reply: Reply): NativeObservation {
+    return { seq: Number(reply.seq), controlId: String(reply.controlId), state: reply.state, at: String(reply.at),
+      ...(reply.sessionState === 'running' || reply.sessionState === 'paused' ? { sessionState: reply.sessionState } : {}),
+      ...(reply.checkpoint !== undefined ? { checkpoint: reply.checkpoint } : {}) };
+  }
+
+  async restore(snapshot: unknown): Promise<{ state: unknown; sessionState: 'running' | 'paused' }> {
+    const reply = await this.send<Reply>({ type: 'restore', snapshot }, candidate => candidate.type === 'restored' || candidate.type === 'error',
+      this.start.limits.operationTimeoutMs, 'resource-unavailable', '检查点恢复未得到执行器确认。');
+    if (reply.type === 'error' || !['running', 'paused'].includes(String(reply.sessionState)))
+      throw new NativeSessionError('algorithm-error', '检查点与执行器版本不兼容。');
+    this.resetIdle();
+    return { state: reply.observation, sessionState: reply.sessionState as 'running' | 'paused' };
   }
 
   async reconcile(controlId: string): Promise<NativeObservation | null> {
@@ -416,13 +441,12 @@ export class SupervisedSession {
     if (reply.type === 'error' || reply.applied !== true || !reply.observation)
       return null;
     const value = reply.observation as Reply;
-    return { seq: Number(value.seq), controlId: String(value.controlId), state: value.state, at: String(value.at) };
+    return this.observation(value);
   }
 
   async snapshot(): Promise<unknown> {
     const reply = await this.send<Reply>({ type: 'status' }, candidate => candidate.type === 'status',
       this.start.limits.operationTimeoutMs, 'resource-unavailable', '本机会话未在时限内返回状态。');
-    this.resetIdle();
     return reply.observation ?? null;
   }
 
@@ -522,4 +546,6 @@ export const fourStateAccumulatorSource = [
 
 export const productNativeAdapters: readonly NativeAdapter[] = Object.freeze([
   Object.freeze({ adapterId: 'four-state-accumulator', adapterVersion: 1, source: fourStateAccumulatorSource }),
+  Object.freeze({ adapterId: 'four-state-accumulator', adapterVersion: 2, source: recoverableAccumulatorSource,
+    controls: ['pause', 'resume', 'step', 'reset', 'checkpoint'] as const, checkpointVersion: 1 }),
 ]);

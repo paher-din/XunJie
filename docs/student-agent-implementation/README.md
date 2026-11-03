@@ -17,6 +17,7 @@
 | WP03 标注对象与真实聚合结果的固定选区、来源核验和定位 | [#172 交付](wp03-semantic-references.md) · [实施方案](specs/wp03-nontext-references.md) · [#185 Apple Silicon 验收](wp03-185-mac-references.md) |
 | WP03 第三项：真实依赖准备、独立自检、版本缓存及失败继续的方案与验收 | [#171 实施与验收](specs/wp03-component-preparation.md) · [Mac 交接](wp03-171-mac-handoff.md) |
 | WP03 第四项：本机原生有状态会话、连续输入、持久会话事实与真实停止 | [设计与边界](specs/wp03-native-sessions.md) · [实施与验收](wp03-native-sessions.md) · [四态累加样例](../../components/state-accumulator/README.md) |
+| WP03 第五项：会话控制、可靠检查点与关联恢复实例 | [实施方案](specs/wp03-session-recovery.md) · [实现与验证](wp03-session-recovery.md) |
 | WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
 | 学习空间身份、学校接入及无课程活动的生产入口和验证边界 | [学习空间身份与活动交接](wp02-identity-activity.md) |

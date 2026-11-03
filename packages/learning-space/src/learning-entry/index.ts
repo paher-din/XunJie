@@ -234,7 +234,11 @@ export function createLearningEntry(options: {
           result = await learning.executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
         else if (parts.length === 3 && parts[2] === 'sessions' && method === 'GET')
           result = await learning.executions.sessions(identity, parts[1]!);
+        else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && method === 'GET')
+          result = await learning.executions.checkpoints(identity, parts[1]!, parts[3]);
         else if (parts.length === 3 && method === 'GET') result = await learning.executions.read(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 5 && parts[3] === 'controls' && method === 'GET')
+          result = await learning.executions.controlReceipt(identity, parts[1]!, parts[2]!, parts[4]!);
         else if (parts.length === 4 && parts[3] === 'control' && method === 'POST')
           result = await learning.executions.control(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
         else if (parts.length === 4 && parts[3] === 'report' && method === 'POST')

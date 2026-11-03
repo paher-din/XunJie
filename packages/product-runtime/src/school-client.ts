@@ -8,7 +8,7 @@ import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/le
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
 import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema, componentPreparationReportsSchema,
   componentPreparationReportReceiptSchema } from '@xunjie/contracts/components';
-import { executionQuerySchema } from '@xunjie/contracts/execution';
+import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
@@ -197,7 +197,12 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (parts[0] === 'executions') {
       // A run is owned by the same activity the grant names; the fixed basis never travels elsewhere.
       if (parts.length === 2 && body !== undefined) return learning.executions.accept(identity, parts[1]!, body);
+      if (parts.length === 3 && parts[2] === 'sessions' && body === undefined) return learning.executions.sessions(identity, parts[1]!);
+      if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && body === undefined)
+        return learning.executions.checkpoints(identity, parts[1]!, parts[3]);
       if (parts.length === 3 && body === undefined) return learning.executions.read(identity, parts[1]!, parts[2]!);
+      if (parts.length === 5 && parts[3] === 'controls' && body === undefined) return learning.executions.controlReceipt(identity, parts[1]!, parts[2]!, parts[4]!);
+      if (parts.length === 4 && parts[3] === 'control' && body !== undefined) return learning.executions.control(identity, parts[1]!, parts[2]!, body);
       if (parts.length === 4 && body !== undefined && parts[3] === 'report') return learning.executions.report(identity, parts[1]!, parts[2]!, body);
       if (parts.length === 4 && body !== undefined && parts[3] === 'stop') return learning.executions.stop(identity, parts[1]!, parts[2]!, body);
       if (parts.length === 4 && body !== undefined && parts[3] === 'result') return learning.executions.result(identity, parts[1]!, parts[2]!, body);
@@ -214,7 +219,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|${id}(?:/(?:report|stop|result|control))?))?|connections/revoke)$`).test(route)) {
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control)|/controls/${id})?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -272,14 +277,28 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('executions/')) {
       if (value === null) return null;
       const identity = connection.grant!.identity;
-      const checkQuery = (candidate: unknown) => {
-        // A run under another activity or principal is not this grant's business.
-        const query = parsed(executionQuerySchema, candidate), scope = query.scope;
+      const checkScope = (scope: ExecutionQuery['scope']) => {
         if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId
           || scope.principalId !== identity.principalId || scope.activityId !== route.split('/')[1]) throw new StorageError('forbidden');
+      };
+      const checkQuery = (candidate: unknown) => {
+        const query = parsed(executionQuerySchema, candidate);
+        checkScope(query.scope);
         return query;
       };
+      if (route.split('/')[2] === 'checkpoints') {
+        const page = parsed(checkpointPageSchema, value);
+        page.items.forEach(item => checkScope(item.scope));
+        return page;
+      }
       if (route.endsWith('/sessions')) return Array.isArray(value) ? value.map(checkQuery) : checkQuery(value);
+      if (route.split('/')[3] === 'controls') {
+        const receipt = parsed(executionControlReceiptSchema, value), parts = route.split('/');
+        checkQuery(receipt.query);
+        if (receipt.requestId !== parts[2] || receipt.controlId !== parts[4] || receipt.executionRef !== receipt.query.executionRef)
+          throw new StorageError('forbidden');
+        return receipt;
+      }
       return checkQuery(value);
     }
     if (route.startsWith('releases/')) {
