@@ -72,3 +72,48 @@ XUNJIE_PRODUCT_POSTGRES_BIN=<产品自带 PostgreSQL bin> XUNJIE_E2E_BROWSER_CHA
 - **教学效果**：未评估，不产生结论。
 - **界面前后对照**：本次为在既有中心工具区下方增加面板。交付附实际运行后的浅色/深色/窄桌面截图；修改前采用既有中心工具区的 #170 证据，没有重新构建修改前基线。
 - 自动浏览器测试使用 Playwright 驱动的独立 Chrome 窗口，不是人手操作；进程、PostgreSQL、组件资源与页面流量均为真实。
+
+## #173 收口方案（待确认）
+
+按隔离探针、正式接入、双平台验收三个阶段推进。平台候选通过前，现有会话仅作为功能基线，验收记录维持部分通过。
+
+1. 先做独立探针。Windows 候选验证受限身份与 Job Object，子进程在执行入口前完成归组，监督器退出时终止整组。Apple Silicon 候选验证可签名分发的沙盒 helper 与进程监督。两边用真实越界读写、出站连接、父进程先退出、监督器崩溃、内存/输出超限等探针，记录权限、版本、退出和资源证据。文件和网络限制须由平台强制。现有停止路径以直接子进程退出作为确认，正式接入应改为由监督器确认受管执行单元已退出。
+2. 探针通过后，接入产品打包和共同准备机制。锁定每个平台的 helper、模拟器、摘要、权限要求与独立自检；准备失败按权限待确认、可重试故障或能力不可用投影。复核安装/恢复代际、启动实例、心跳和撤权，并用真实数据库验证接受回包丢失、进程消费后丢确认、停止竞争、排空超时与重启查询。未确认的操作保留原身份与待核实状态。
+3. 在执行所有者登记保留规则。优先验证能否用现有表、资源引用及维护入口实现容量和时间上限。仅处理超期且已确认终态、没有未处理命令或有效引用的记录；活动中和待核实的记录继续保留。实施前单列保留期限、引用影响和清理方案供负责人确认，任何 schema 变更或数据迁移单独确认。
+4. 固定同一候选提交，在两台干净目标设备用产品包、真实 PostgreSQL 与 headed Chrome 验收。分别记录准备、状态序列、跨会话隔离、异常回收、重开核对与相关回归；采用同一布局和活动取得实际前后界面证据。Apple Silicon 需要可执行验收的设备或交接窗口。
+
+### Windows Job Object 探针
+
+在 Windows 11 10.0.26200 x64、Python 3.14.4 运行 `python scripts/probe-native-windows-job.py`，退出码 0。128 MiB Job 提交内存上限拒绝了 256 MiB 的 VirtualAlloc 请求（1455）。直接子进程退出后，持有真实进程句柄确认其后代仍在运行；关闭最后一个 Job 句柄后，5 秒内观察到该后代退出。
+
+探针用受信子进程等待准入信号来建立测试顺序。正式 helper 必须在运行第一条子进程指令前完成归组，并验证监督器异常退出、受管单元终止确认、受限身份、文件和网络访问。该次探针只覆盖 Job 内存与后代回收，尚不能通过平台选型门槛。Windows 文件和网络候选使用零网络能力 AppContainer 配合明确目录授权，仍需验证实际产品二进制可加载、可通信并可清理。
+
+第二轮用 C helper 直接调用 CreateProcessW（CREATE_SUSPENDED），归组后才 ResumeThread。驱动保留监督器、直接子进程和后代的真实进程句柄，先确认直接子进程已退出且后代仍活着，再强制终止监督器。Windows 11 10.0.26200 x64 实测通过，监督器和后代均在检查时限内退出。复跑命令如下，在既有 `.tmp` 目录生成开发探针二进制。
+
+```powershell
+gcc -municode -Wall -Wextra -Werror scripts/probe-native-windows-crash.c -o .tmp/probe-native-windows-crash.exe
+python scripts/probe-native-windows-job.py --crash-probe .tmp/probe-native-windows-crash.exe
+```
+
+该证据覆盖挂起归组和监督器崩溃回收。候选产品 helper 的 AppContainer 文件与网络隔离、运行时终止确认、打包与共同准备仍待实测，Apple Silicon 尚未验收。
+
+### Windows AppContainer 与 Job Object 组合探针
+
+Windows 11 10.0.26200 x64 上，使用零网络能力 AppContainer 创建挂起进程，加入带内存上限和关闭回收的 Job 后才恢复执行。普通身份和受限身份使用相同测试可执行文件。普通身份可打开两个文件并连接监听器；受限身份的 token 确认为 AppContainer，可以读写授权文件，对未授权文件的读和写均被系统拒绝。loopback 和本机非 loopback IPv4 的 TCP 连接在 1 秒内未建立，两个监听器均无受限进程连接。结果只覆盖本次 TCP 对照及测试资源，正式 Node/IPC 与产品包仍需单独验收。
+
+```powershell
+gcc -municode -Wall -Wextra -Werror scripts/probe-native-windows-appcontainer.c -o .tmp/probe-native-windows-appcontainer.exe -luserenv -ladvapi32 -lws2_32
+python scripts/probe-native-windows-appcontainer.py .tmp/probe-native-windows-appcontainer.exe <本机非-loopback-IPv4>
+```
+
+探针会登记可重复使用的本机测试 AppContainer profile，并在 .tmp 下留下隔离的测试 fixture。Apple Silicon 真机工作由 [Apple Silicon 原生会话隔离与产品包验收](https://github.com/paher-din/XunJie/issues/184) 承接。
+
+固定 Node 24.21.0 复验通过。第二个测试 profile 独占授权另一会话目录，首个 profile 对其文件的读写仍被拒绝。用受控的 stdin/stdout/stderr 句柄白名单启动现有四态适配器，真实回包依次为 ready、1、3、1、stopped。Windows 上直接用脚本文件作为 Node 入口遇到盘根 lstat EPERM；现有产品使用的 module eval 入口通过。创建 AppContainer 时启动器需要系统用户目录信息，实验只传入探针所需环境，未继承服务凭据。
+
+```powershell
+python scripts/probe-native-windows-appcontainer.py .tmp/probe-native-windows-appcontainer.exe <本机非-loopback-IPv4> --node <产品固定的node.exe>
+```
+
+正式 helper 可用受控身份槽位实现会话目录隔离。每个活跃槽位有独立身份，目录 ACL 只授予对应槽位，身份仅在进程树已确认退出且上一份资源已隔离后才可复用。会话观察仍由持久执行所有者保存。helper 接口应固定可执行文件、参数、资源摘要和标准流句柄，安装和启动自检失败时拒绝启用；停止确认以受管 Job 内活动进程数为零为条件。当前探针包含开发用命令行入口，正式安装包需使用收窄后的入口。
+
+保留策略待决项集中在可查询窗口与稳定请求身份。建议以 30 天作为可确认终态观察与结果的初始窗口，未确认执行、仍有引用或未投递的操作不进入清理。窗口到期后仍需保留足够的原身份与摘要事实，旧请求不得因结果已过期而被重新接受。实际容量阈值、引用清单及清理方式须先通过维护和恢复演练，再单独确认。
