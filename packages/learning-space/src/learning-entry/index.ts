@@ -3,9 +3,13 @@ import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
+import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
+import type { createModelGateway } from '../model-connections/index.js';
+import { routeModels } from '../model-connections/wire.js';
+import { ModelCapabilityError } from '../model-connections/capabilities.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -26,6 +30,10 @@ export function sendLearning(response: ServerResponse, code: number, value: unkn
   response.end(JSON.stringify(value));
 }
 export function learningFailure(response: ServerResponse, error: unknown) {
+  if (error instanceof ModelCapabilityError) {
+    sendLearning(response, 422, { error: error.code, decision: error.decision });
+    return;
+  }
   const code = error instanceof StorageError ? error.code : error instanceof z.ZodError ? 'invalid' : 'unavailable';
   const status = code === 'forbidden' ? 403 : code === 'missing' ? 404 : code === 'invalid' ? 400
     : ['conflict', 'identity-conflict', 'commit-unknown'].includes(code) ? 409 : 503;
@@ -39,6 +47,8 @@ export function createLearningEntry(options: {
   spaces?: ReturnType<typeof createSpaces>;
   learning?: ReturnType<typeof createLearningData>;
   courses?: ReturnType<typeof createCourses>;
+  models?: Awaited<ReturnType<typeof createModelGateway>>;
+  restoredInstallation?(): Promise<boolean>;
   administratorToken: string;
   client?: {
     list(): Promise<{ key: string; identity: SpaceIdentity }[]>;
@@ -49,6 +59,7 @@ export function createLearningEntry(options: {
   };
 }) {
   const { spaces, learning, environment } = options;
+  const personalProfile = environment.profile === 'local' || environment.profile === 'model';
   const cookieName = `xj_${environment.environmentId.replaceAll('-', '')}`;
   const endpoint = new URL(environment.services[0]!.endpoint);
   // The same product may be opened as 127.0.0.1, localhost or [::1] on a loopback listener.
@@ -64,7 +75,7 @@ export function createLearningEntry(options: {
   async function current(request: IncomingMessage): Promise<SpaceIdentity> {
     if (!spaces) throw new StorageError('forbidden');
     if (request.headers['x-xj-space'] === 'personal') {
-      if (environment.profile !== 'local' || !options.target) throw new StorageError('forbidden');
+      if (!personalProfile || !options.target) throw new StorageError('forbidden');
       const personal = await spaces.personal();
       await spaces.bindMember(personal, options.target);
       return personal;
@@ -79,7 +90,7 @@ export function createLearningEntry(options: {
     try {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       const route = pathname.slice('/api/learning/'.length);
-      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')) && request.headers['x-xj-namespace']
+      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/') || route.startsWith('models/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -89,7 +100,7 @@ export function createLearningEntry(options: {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route.startsWith('intents/') ? 16000000 : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
+          route === 'models/images' ? 360000 : route.startsWith('intents/') ? 16000000 : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -99,7 +110,7 @@ export function createLearningEntry(options: {
         result = await options.client.configureLocal(await readLearningBody(request));
       } else if (route === 'context' && method === 'GET') {
         const identities: { key: string; identity: SpaceIdentity }[] = [];
-        if (environment.profile === 'local') {
+        if (personalProfile) {
           if (!spaces || !options.target) throw new StorageError('unavailable');
           const personal = await spaces.personal();
           await spaces.bindMember(personal, options.target);
@@ -111,8 +122,11 @@ export function createLearningEntry(options: {
         }
         result = { profile: environment.profile, clientNamespace: environment.clientNamespace,
           identities: [...identities, ...await options.client?.list() ?? []] };
-      } else if (!spaces || !learning || !options.target) throw new StorageError('forbidden');
-      else if (route === 'login' && method === 'POST') {
+      } else if (!spaces || !options.target) throw new StorageError('forbidden');
+      else if (route === 'access' && method === 'GET') {
+        const identity = await current(request);
+        result = { identity, target: await spaces.resolveBinding(identity) };
+      } else if (route === 'login' && method === 'POST') {
         const input = z.object({ loginName: z.string(), password: z.string() }).strict().parse(await readLearningBody(request));
         const login = await spaces.login(input.loginName, input.password);
         response.setHeader('set-cookie', `${cookieName}=${login.token}${cookieFlags}; Max-Age=28800`);
@@ -124,7 +138,10 @@ export function createLearningEntry(options: {
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
-        if (route === 'manage/course-import') {
+        if (route === 'manage/model-default') {
+          if (!options.models) throw new StorageError('unavailable');
+          result = await options.models.school.save(await spaces.schoolSpace(), await readLearningBody(request));
+        } else if (route === 'manage/course-import') {
           if (!options.courses) throw new StorageError('forbidden');
           result = await options.courses.registerRelease(await readLearningBody(request, 64 * 1024 * 1024));
         } else if (route === 'manage/course-result') {
@@ -173,7 +190,17 @@ export function createLearningEntry(options: {
         else if (parts.length === 3 && parts[1] === 'materials') {
           result = await options.courses.readMaterial(await current(request), parts[0]!, parts[2]!);
         } else throw new StorageError('missing');
-      } else if (route === 'course-activities' && method === 'POST') {
+      } else if (route.startsWith('models/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (!options.models) throw new StorageError('unavailable');
+        if (method !== 'GET' && method !== 'POST') throw new StorageError('missing');
+        result = await routeModels(options.models, identity, route, method === 'POST'
+          ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
+          personalProfile ? await spaces.personal() : undefined);
+      } else if (!learning) throw new StorageError('forbidden');
+      else if (route === 'course-activities' && method === 'POST') {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
@@ -218,6 +245,8 @@ export function createLearningEntry(options: {
         z.object({ requestId: z.uuid(), activityId: z.uuid(), status: z.enum(['open', 'closed']) }).strict().parse(await readLearningBody(request)));
       else if (route.startsWith('receipts/') && method === 'GET') result = await learning.receipt(await current(request), route.slice(9));
       else throw new StorageError('missing');
+      if (route === 'models/selection' && method === 'GET' && await options.restoredInstallation?.())
+        result = { ...modelSelectionSchema.parse(result), restoredInstallation: true };
       sendLearning(response, 200, result);
     } catch (error) { learningFailure(response, error); }
     return true;

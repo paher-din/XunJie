@@ -106,7 +106,7 @@ function validateManifest(value: unknown): asserts value is RecoveryManifest {
   record(source, ['formatVersion', 'environmentId', 'installationId', 'clientNamespace', 'profile', 'services']);
   requireValue(source.formatVersion === 1);
   identifier(source.environmentId); identifier(source.installationId); text(source.clientNamespace);
-  requireValue(/^[a-z0-9._-]+$/i.test(source.clientNamespace) && ['local', 'school', 'remote'].includes(source.profile as string));
+  requireValue(/^[a-z0-9._-]+$/i.test(source.clientNamespace) && ['local', 'school', 'remote', 'model'].includes(source.profile as string));
   requireValue(Array.isArray(source.services) && source.services.length <= 1000);
   const sourceIds: string[] = [];
   for (const item of source.services) {

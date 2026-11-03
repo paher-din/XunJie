@@ -1,0 +1,114 @@
+{
+  "measuredAtLocal": "2026-11-03 Asia/Shanghai",
+  "baseline": "478bac7a18dca6db5fdbb57a9af43122de9b257e",
+  "runtime": {
+    "browserExitCode": 0,
+    "architecture": "AMD64",
+    "node": "v24.21.0",
+    "chrome": "156.0.8078.79",
+    "packageSha256": "1C42E5B290F812E65A4D9027FEC10AD5F234BA244246C39CDDE17FF445CB95DA",
+    "os": "Microsoft Windows 11 家庭版 中文版"
+  },
+  "browser": {
+    "web": {
+      "channel": "chrome",
+      "headed": true,
+      "workers": 1,
+      "stats": {
+        "startTime": "2026-11-02T18:11:46.713Z",
+        "duration": 44889.356999999996,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "name": "school website explicitly selects and revokes a personal model and preserves learning without a model",
+          "ok": true
+        },
+        {
+          "name": "installed client exposes the device connection to the actual school subject and keeps space choices separate",
+          "ok": true
+        },
+        {
+          "name": "a late school selection receipt cannot replace a new personal-space view or its form input",
+          "ok": true
+        },
+        {
+          "name": "a confirmed selection conflict can be reloaded and retried without refreshing the page",
+          "ok": true
+        },
+        {
+          "name": "formal model settings save and reopen a personal connection without a legacy session",
+          "ok": true
+        },
+        {
+          "name": "a delayed save confirmation preserves later form input and its next versioned save",
+          "ok": true
+        },
+        {
+          "name": "dialog keyboard focus, Chinese composition, blank-key reuse and ordinary navigation remain usable",
+          "ok": true
+        },
+        {
+          "name": "Responses settings check drafts, save, reopen and cancel through the formal owner",
+          "ok": true
+        }
+      ]
+    },
+    "package": {
+      "channel": "chrome",
+      "headed": true,
+      "workers": 1,
+      "stats": {
+        "startTime": "2026-11-02T18:27:02.161Z",
+        "duration": 54630.834,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "tests": [
+        {
+          "name": "school website explicitly selects and revokes a personal model and preserves learning without a model",
+          "ok": true
+        },
+        {
+          "name": "installed client exposes the device connection to the actual school subject and keeps space choices separate",
+          "ok": true
+        },
+        {
+          "name": "a late school selection receipt cannot replace a new personal-space view or its form input",
+          "ok": true
+        },
+        {
+          "name": "a confirmed selection conflict can be reloaded and retried without refreshing the page",
+          "ok": true
+        },
+        {
+          "name": "formal model settings save and reopen a personal connection without a legacy session",
+          "ok": true
+        },
+        {
+          "name": "a delayed save confirmation preserves later form input and its next versioned save",
+          "ok": true
+        },
+        {
+          "name": "dialog keyboard focus, Chinese composition, blank-key reuse and ordinary navigation remain usable",
+          "ok": true
+        },
+        {
+          "name": "Responses settings check drafts, save, reopen and cancel through the formal owner",
+          "ok": true
+        }
+      ]
+    }
+  },
+  "package": {
+    "platform": "win32-x64",
+    "profile": "full",
+    "distributionSha256": "1c42e5b290f812e65a4d9027fec10ad5f234ba244246c39cdde17ff445cb95da"
+  },
+  "productionSourceSha256": "d4c670f6d2d488c6528b0ca4ce525f9c77ce628136296f356da855ee96da8036"
+}

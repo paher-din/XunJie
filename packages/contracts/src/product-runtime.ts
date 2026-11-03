@@ -18,7 +18,7 @@ export const runtimeEnvironmentSchema = z.object({
   environmentId: z.uuid(),
   installationId: z.uuid(),
   clientNamespace: z.string().min(1),
-  profile: z.enum(['local', 'school', 'remote']),
+  profile: z.enum(['local', 'school', 'remote', 'model']),
   services: z.array(runtimeServiceSchema),
 });
 export type RuntimeEnvironment = z.infer<typeof runtimeEnvironmentSchema>;

@@ -1,0 +1,169 @@
+[
+  {
+    "test": "chat-normal-terminal",
+    "requests": 1,
+    "bytesSent": 421,
+    "state": "completed",
+    "reason": "stop",
+    "text": "Complete text",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4,
+      "totalTokens": 11
+    },
+    "toolIntents": [],
+    "finishReason": "stop"
+  },
+  {
+    "test": "chat-terminal-then-reset",
+    "requests": 1,
+    "bytesSent": 407,
+    "state": "completed",
+    "reason": "stop",
+    "text": "Complete text",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4,
+      "totalTokens": 11
+    },
+    "toolIntents": [],
+    "finishReason": "stop"
+  },
+  {
+    "test": "chat-tool-terminal-then-reset",
+    "requests": 1,
+    "bytesSent": 527,
+    "state": "completed",
+    "reason": "tool_calls",
+    "text": "",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4,
+      "totalTokens": 11
+    },
+    "toolIntents": [
+      {
+        "callId": "call-1",
+        "name": "read_marker",
+        "arguments": {
+          "nonce": "A"
+        }
+      }
+    ],
+    "finishReason": "tool_calls"
+  },
+  {
+    "test": "chat-terminal-then-abort",
+    "requests": 1,
+    "bytesSent": 407,
+    "state": "completed",
+    "reason": "stop",
+    "text": "Complete text",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4,
+      "totalTokens": 11
+    },
+    "toolIntents": [],
+    "finishReason": "stop"
+  },
+  {
+    "test": "chat-length-final-usage",
+    "requests": 1,
+    "bytesSent": 423,
+    "state": "incomplete",
+    "reason": "length",
+    "text": "Complete text",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4,
+      "totalTokens": 11
+    },
+    "toolIntents": [],
+    "finishReason": "length"
+  },
+  {
+    "test": "chat-over-limit-sse-comment",
+    "requests": 1,
+    "bytesSent": 2100424,
+    "state": "incomplete",
+    "reason": "response-limit",
+    "text": "",
+    "usage": {
+      "state": "unknown"
+    },
+    "toolIntents": [],
+    "finishReason": null
+  },
+  {
+    "test": "messages-truncated-tool-json",
+    "requests": 1,
+    "bytesSent": 813,
+    "state": "incomplete",
+    "reason": "max_tokens",
+    "text": "",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4
+    },
+    "toolIntents": [],
+    "nativeMessageStopReason": "max_tokens",
+    "nativeEventTypes": [
+      "message_start",
+      "content_block_start",
+      "content_block_delta",
+      "content_block_stop",
+      "message_delta",
+      "message_stop"
+    ]
+  },
+  {
+    "test": "messages-complete-tool-json-at-limit",
+    "requests": 1,
+    "bytesSent": 813,
+    "state": "incomplete",
+    "reason": "max_tokens",
+    "text": "",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4
+    },
+    "toolIntents": [],
+    "nativeMessageStopReason": "max_tokens",
+    "nativeEventTypes": [
+      "message_start",
+      "content_block_start",
+      "content_block_delta",
+      "content_block_stop",
+      "message_delta",
+      "message_stop"
+    ]
+  },
+  {
+    "test": "messages-empty-end-turn",
+    "requests": 1,
+    "bytesSent": 435,
+    "state": "completed",
+    "reason": "end_turn",
+    "text": "",
+    "usage": {
+      "state": "final",
+      "inputTokens": 7,
+      "outputTokens": 4
+    },
+    "toolIntents": [],
+    "nativeMessageStopReason": "end_turn",
+    "nativeEventTypes": [
+      "message_start",
+      "message_delta",
+      "message_stop"
+    ]
+  }
+]

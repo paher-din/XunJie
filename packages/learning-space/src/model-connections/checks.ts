@@ -1,0 +1,297 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
+import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelTool } from '@xunjie/contracts/model-connections';
+import { connectionCheckPayload, limitPayload, runModel, type NativePayload } from './transport.js';
+import { validateResponsesNative } from './responses.js';
+import { validateMessagesNative, type MessagesPayload } from './messages.js';
+
+export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
+  CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
+    credential_ref uuid,state text NOT NULL,physical_ended boolean NOT NULL,dispatcher_id text,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
+  CREATE INDEX model_attempt_scope ON model_attempts(scope,created_at);
+` }];
+export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
+  policy?: ModelCheckPolicy; payload?: NativePayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
+const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
+const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+export function createChecks(storage: OwnedStorage, owner: {
+  dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } | undefined;
+  authorize(identity: SpaceIdentity): Promise<void>;
+  snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
+  prepareChat(identity: SpaceIdentity, input: ModelChatInput): Promise<CheckSnapshot>;
+  publishChat(tx: OwnedTransaction, attempt: ModelAttempt): Promise<void>;
+  credential(identity: SpaceIdentity, ref: string): Promise<string>;
+  assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
+  requestFetch?(identity: SpaceIdentity, attempt: ModelAttempt): Promise<typeof fetch>;
+}) {
+  const active = new Map<string, { controller: AbortController; task: Promise<void> }>();
+  const unsentClaims = new Map<string, { attemptId: string; identity: SpaceIdentity; requestId: string; fingerprint: string }>();
+  let closed = false;
+  let admissionClosed = false;
+  let starting = 0;
+  async function settleUnsentClaims() {
+    for (const [requestId, claim] of unsentClaims) {
+      const id = claim.attemptId;
+      const receipt = await storage.receipt(claim.requestId, claim.fingerprint);
+      if (!receipt) continue;
+      if (receipt.result === true) await update(claim.identity, id, body => body.state === 'dispatched' && !active.has(id)
+        ? { ...body, state: 'failed', reason: 'dispatch-not-started', physicalRequestEnded: true, dispatched: false } : body);
+      unsentClaims.delete(requestId);
+    }
+  }
+  async function reconcileDispatchers() {
+    if (admissionClosed) return;
+    await settleUnsentClaims();
+    const { rows: expired } = await storage.read("SELECT id FROM model_attempts WHERE state='accepted' AND created_at < clock_timestamp()-interval '60 seconds'");
+    for (const item of expired) {
+      await storage.request({ requestId: 'model-grant-expired:' + item.id, fingerprint: 'model-check-grant-v1' }, async tx => {
+        const { rows: [current] } = await tx.query('SELECT body,credential_ref FROM model_attempts WHERE id=$1 FOR UPDATE', [item.id]);
+        const body = modelAttemptSchema.parse(current!.body);
+        if (body.state !== 'accepted') return null;
+        const next = { ...body, state: 'cancelled', reason: 'authorization-expired' };
+        await tx.query('UPDATE model_attempts SET body=$2,state=$3 WHERE id=$1', [item.id, next, 'cancelled']);
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [current!.credential_ref]);
+        if (body.segment) await owner.publishChat(tx, modelAttemptSchema.parse(next));
+        return { expired: true };
+      });
+    }
+    await reconcileEndedDispatchers();
+  }
+  async function reconcileEndedDispatchers() {
+    if (!owner.dispatcher) return;
+    const { rows } = await storage.read('SELECT id,dispatcher_id,credential_ref FROM model_attempts WHERE physical_ended=false');
+    for (const row of rows) {
+      const dispatcherId = row.dispatcher_id as string | null;
+      if (!dispatcherId || dispatcherId === owner.dispatcher.id || !await owner.dispatcher.hasEnded(dispatcherId)) continue;
+      // Confirm only the dead local client. Upstream compute and usage remain unknown and admission is not refunded.
+      await storage.request({ requestId: 'model-dispatch-ended:' + row.id, fingerprint: dispatcherId }, async tx => {
+        const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [row.id]);
+        if (!current) return null;
+        const body = modelAttemptSchema.parse(current.body);
+        if (body.physicalRequestEnded) return null;
+        const next = { ...body, physicalRequestEnded: true, state: 'unknown', reason: 'dispatcher-ended' };
+        await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [row.id, next, 'unknown']);
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [row.credential_ref]);
+        if (body.segment) await owner.publishChat(tx, modelAttemptSchema.parse(next));
+        return { reconciled: true };
+      });
+    }
+  }
+  async function row(identity: SpaceIdentity, attemptId: string) {
+    await owner.authorize(identity);
+    const { rows: [found] } = await storage.read('SELECT * FROM model_attempts WHERE id=$1 AND scope=$2', [attemptId, scopeOf(identity)]);
+    if (!found) throw new StorageError('missing');
+    return found;
+  }
+  const project = (body: unknown) => {
+    const result = modelAttemptSchema.parse(body);
+    return result.state === 'dispatched' && !active.has(result.attemptId) ? { ...result, state: 'unknown' as const, reason: 'dispatch-unconfirmed' } : result;
+  };
+  async function read(identity: SpaceIdentity, attemptId: string) {
+    await owner.authorize(identity);
+    await reconcileDispatchers();
+    const result = project((await row(identity, attemptId)).body);
+    if (result.resultRef) await storage.readResource(result.resultRef);
+    return result;
+  }
+  async function list(identity: SpaceIdentity) {
+    await owner.authorize(identity);
+    await reconcileDispatchers();
+    const { rows } = await storage.read('SELECT body FROM model_attempts WHERE scope=$1 ORDER BY created_at DESC LIMIT 50', [scopeOf(identity)]);
+    return Promise.all(rows.map(async item => {
+      const fact = project(item.body);
+      if (fact.resultRef) await storage.readResource(fact.resultRef);
+      return fact;
+    }));
+  }
+  async function receive(identity: SpaceIdentity, value: unknown) {
+    if (admissionClosed) throw new StorageError('maintenance');
+    await owner.authorize(identity);
+    const input = modelAttemptInputSchema.parse(value), scope = scopeOf(identity), fingerprint = digest({ scope, input });
+    const prior = await storage.receipt('model-check:' + input.attemptId, fingerprint);
+    if (prior) return read(identity, input.attemptId);
+    const snapshot = input.purpose === 'connection-check' ? await owner.snapshot(identity, input.source) : await owner.prepareChat(identity, input);
+      const limits = snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
+        timeoutMs: Math.min(input.limits.timeoutMs, snapshot.policy.timeoutMs) } : input.limits;
+      const payload = snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
+        : connectionCheckPayload(snapshot.connection, limits.maxOutputTokens);
+      const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
+        bytes: Buffer.from(JSON.stringify(payload)), mediaType: 'application/json', contentVersion: 1 });
+      const body: ModelAttempt = { attemptId: input.attemptId, purpose: input.purpose, connection: snapshot.connection,
+        limits, ...(snapshot.source ? { source: snapshot.source } : {}), ...(snapshot.segment ? { segment: snapshot.segment } : {}),
+        state: 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
+        upstreamStopped: 'unknown', text: '', usage: { state: 'unknown' }, reason: '', requestRef: request.resourceId, resultRef: null,
+        createdAt: new Date().toISOString() };
+      await storage.request({ requestId: 'model-check:' + input.attemptId, fingerprint }, async tx => {
+        await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-admission:' + scope]);
+        if (snapshot.source) {
+          await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-budget:' + snapshot.source.feeSource]);
+          const { rows: [billed] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE (body->'source'->>'feeSource'=$1 OR (body->'source' IS NULL AND scope=$1)) AND created_at > clock_timestamp()-interval '1 hour'", [snapshot.source.feeSource]);
+          if (Number(billed!.total) >= (snapshot.policy?.maxChecksPerHour ?? 6)) throw new StorageError('resource-busy');
+        }
+        const { rows: [count] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE scope=$1 AND created_at > clock_timestamp()-interval '1 hour'", [scope]);
+        if (Number(count!.total) >= 6) throw new StorageError('resource-busy');
+        await snapshot.retain?.(tx);
+        await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended,input_metadata) VALUES($1,$2,$3,$4,$5,$6,true,$7)',
+          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted', input.purpose === 'chat-probe'
+            ? { input: input.input, ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
+        await tx.reference('model-request:' + input.attemptId, request.resourceId);
+        return { attemptId: input.attemptId };
+      });
+      return read(identity, input.attemptId);
+  }
+  async function update(identity: SpaceIdentity, id: string, effect: (body: ModelAttempt) => ModelAttempt) {
+    return storage.request({ requestId: randomUUID(), fingerprint: 'model-transition:' + id }, async tx => {
+      const { rows: [found] } = await tx.query('SELECT body,credential_ref FROM model_attempts WHERE id=$1 AND scope=$2 FOR UPDATE', [id, scopeOf(identity)]);
+      if (!found) throw new StorageError('missing');
+      const body = effect(modelAttemptSchema.parse(found.body));
+      await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=$4 WHERE id=$1', [id, body, body.state, body.physicalRequestEnded]);
+      if (body.physicalRequestEnded && body.state !== 'accepted')
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [found.credential_ref]);
+      if (body.segment && body.physicalRequestEnded && body.state !== 'accepted') await owner.publishChat(tx, body);
+      return body;
+    });
+  }
+  async function dispatch(identity: SpaceIdentity, attemptId: string) {
+    if (closed) throw new StorageError('maintenance');
+    starting++;
+    try {
+    await owner.authorize(identity);
+    await reconcileDispatchers();
+    const found = await row(identity, attemptId), original = modelAttemptSchema.parse(found.body);
+    if (original.state !== 'accepted') return read(identity, attemptId);
+    if (closed) throw new StorageError('maintenance');
+    await storage.pendingIntents();
+    await owner.assertDispatch(identity, original, found.credential_ref as string);
+    const claim = { requestId: randomUUID(), fingerprint: 'model-dispatch:' + attemptId };
+    let claimed;
+    try { claimed = await storage.request(claim, async tx => {
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-physical-slots']);
+      const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attemptId]);
+      const body = modelAttemptSchema.parse(current!.body);
+      if (body.state !== 'accepted' || closed) return false;
+      const { rows: [count] } = await tx.query('SELECT count(*)::integer AS total,count(*) FILTER (WHERE scope=$1)::integer AS personal FROM model_attempts WHERE physical_ended=false', [scopeOf(identity)]);
+      if (Number(count!.total) >= 2 || Number(count!.personal) >= 1) throw new StorageError('resource-busy');
+      const next = { ...body, state: 'dispatched', dispatched: true, physicalRequestEnded: false };
+      await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=false,dispatcher_id=$4 WHERE id=$1', [attemptId, next, 'dispatched', owner.dispatcher?.id ?? null]);
+      return true;
+    }); } catch (error) {
+      if (!(error instanceof StorageError) || error.code !== 'commit-unknown') throw error;
+      // This invocation has not started an SDK request. Confirm its own claim receipt, never replay it.
+      unsentClaims.set(claim.requestId, { attemptId, identity, ...claim });
+      await settleUnsentClaims();
+      return read(identity, attemptId);
+    }
+    if (!claimed.result) return read(identity, attemptId);
+    const controller = new AbortController();
+    const task = deliver(identity, original, found.credential_ref as string, controller, found.input_metadata as { applicationSchema?: Record<string, unknown> } | null);
+    active.set(attemptId, { controller, task });
+    void task.finally(() => active.delete(attemptId)).catch(() => {});
+    return read(identity, attemptId);
+    } finally { starting--; }
+  }
+  async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController, metadata: { applicationSchema?: Record<string, unknown> } | null) {
+    const timeout = setTimeout(() => controller.abort('timeout'), attempt.limits.timeoutMs);
+    try {
+      await owner.assertDispatch(identity, attempt, ref);
+      await storage.pendingIntents();
+      if (closed) throw new StorageError('maintenance');
+      const current = await row(identity, attempt.attemptId);
+      if ((current.body as ModelAttempt).cancelRequested) controller.abort('cancel');
+      const credential = await owner.credential(identity, ref);
+      const payload = JSON.parse(Buffer.from(await storage.readResource(attempt.requestRef)).toString('utf8')) as NativePayload;
+      await owner.assertDispatch(identity, attempt, ref);
+      await storage.pendingIntents();
+      if (closed) throw new StorageError('maintenance');
+      const requestFetch = await owner.requestFetch?.(identity, attempt);
+      const result = controller.signal.aborted
+        ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
+        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, !!attempt.segment, metadata?.applicationSchema, requestFetch);
+      const interruption = controller.signal.reason;
+      if ((interruption === 'timeout' || interruption === 'maintenance') && !['completed', 'failed'].includes(result.state)) {
+        result.state = 'unknown';
+        result.reason = interruption === 'maintenance' ? 'maintenance-interrupted' : 'timeout';
+        result.toolIntents = [];
+      }
+      const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-result:' + attempt.attemptId,
+        bytes: Buffer.from(JSON.stringify(result.native)), mediaType: 'application/json', contentVersion: 1 });
+      await storage.request({ requestId: randomUUID(), fingerprint: 'model-result:' + attempt.attemptId }, async tx => {
+        const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attempt.attemptId]);
+        const body = modelAttemptSchema.parse(current!.body);
+        const next = { ...body, state: result.state, reason: result.reason, text: result.text, usage: result.usage,
+          ...('upstream' in result && result.upstream ? { upstream: result.upstream } : {}),
+          ...(attempt.segment ? { toolIntents: result.toolIntents } : {}),
+          physicalRequestEnded: true, resultRef: resource.resourceId };
+        await tx.reference('model-result:' + attempt.attemptId, resource.resourceId);
+        await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [attempt.attemptId, next, next.state]);
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [ref]);
+        if (next.segment) await owner.publishChat(tx, next);
+        return { resultRef: resource.resourceId };
+      });
+    } catch {
+      // No success without the resource and result transaction. Never replay a dispatched attempt.
+      await update(identity, attempt.attemptId, body => body.resultRef || body.physicalRequestEnded ? body
+        : { ...body, state: 'unknown', reason: 'result-unconfirmed', physicalRequestEnded: true }).catch(() => {});
+    } finally { clearTimeout(timeout); }
+  }
+  async function cancel(identity: SpaceIdentity, attemptId: string) {
+    await row(identity, attemptId);
+    await update(identity, attemptId, body => ['accepted', 'dispatched', 'unknown'].includes(body.state)
+      ? { ...body, cancelRequested: true, ...(body.state === 'accepted' ? { state: 'cancelled' as const, reason: 'not-started' } : {}) } : body);
+    active.get(attemptId)?.controller.abort('cancel');
+    return read(identity, attemptId);
+  }
+  async function validate() {
+    const { rows } = await storage.read('SELECT body FROM model_attempts');
+    for (const row of rows) {
+      const body = modelAttemptSchema.parse(row.body);
+      await storage.readResource(body.requestRef);
+      if (body.resultRef) {
+        const bytes = await storage.readResource(body.resultRef);
+        if (body.state === 'completed' && body.connection.protocol === 'responses') {
+          const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as NativePayload;
+          if (!('input' in request)) throw new StorageError('corrupt');
+          const tools = request.tools?.map(tool => {
+            if (tool.type !== 'function') throw new StorageError('corrupt');
+            return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
+          }) ?? [];
+          validateResponsesNative(JSON.parse(Buffer.from(bytes).toString('utf8')), tools);
+        }
+        if (body.state === 'completed' && body.connection.protocol === 'messages') {
+          const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as MessagesPayload;
+          const tools = request.tools?.map(tool => {
+            if (!('input_schema' in tool)) throw new StorageError('corrupt');
+            return { name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema };
+          }) ?? [];
+          validateMessagesNative(JSON.parse(Buffer.from(bytes).toString('utf8')), tools);
+        }
+      }
+      if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');
+    }
+  }
+  return { receive, read, list, dispatch, cancel, validate,
+    closeAdmission() { admissionClosed = true; },
+    closeDispatch() { closed = true; },
+    async drain() {
+      // Leave time in the runtime's 30-second maintenance window for durable result publication.
+      const interrupt = setTimeout(() => {
+        for (const { controller } of active.values()) controller.abort('maintenance');
+      }, 20_000);
+      try {
+        await settleUnsentClaims();
+        while (starting || active.size) {
+          await Promise.allSettled([...active.values()].map(value => value.task));
+          if (starting) await new Promise(resolve => setTimeout(resolve, 5));
+        }
+        await settleUnsentClaims();
+        if (unsentClaims.size) throw new StorageError('resource-busy');
+        await reconcileEndedDispatchers();
+        // The local task map cannot account for abandoned claims or another host's dispatcher.
+        const { rows } = await storage.read('SELECT id FROM model_attempts WHERE physical_ended=false LIMIT 1');
+        if (rows.length) throw new StorageError('resource-busy');
+      } finally { clearTimeout(interrupt); }
+    },
+    resume() { closed = false; admissionClosed = false; } };
+}

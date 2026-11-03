@@ -1,0 +1,150 @@
+{
+  "measuredAt": "2026-11-02T16:22:19.287Z",
+  "platform": "Windows 11 x64",
+  "kernel": "10.0.26200",
+  "featureSnapshot": "5b86ead591c1f2e80ba5d432ed302020af7671a0",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "build": "passed",
+  "typecheck": "passed",
+  "browserContracts": {
+    "passedExports": 11,
+    "failed": 0
+  },
+  "trackedDocumentLinks": {
+    "files": 174,
+    "targets": 1390,
+    "failures": 0,
+    "scope": "Tracked maintained Markdown; excludes docs/archive and unrelated untracked files"
+  },
+  "nativeGroups": [
+    {
+      "description": "Four production model test files before review fixes",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "c0322d2022f54ff0dca7f6dda9524d801c2b0b1007bd440951299f7064c3b3ec"
+    },
+    {
+      "description": "Backup/restore, fixed UTF16 digest and cross-holder bridge after review fixes",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "7899b40e0592df0a400815d27ff14bbc5143b74d49bfbbf2ec573e179511c605"
+    },
+    {
+      "description": "Explicit strict refusal, same-holder boundary and enriched bidirectional holder/authorization/restart",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "4be968d7cf9c6100d853cdb39e6c1aa10ae5f09c9f6332afa37843e5c0c9e227"
+    },
+    {
+      "description": "Nonempty, empty-string and null reasoning replay after real restart",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "98662aa41b6ee4773e134b6a688c38030b21c51473459c2b4bb74c329cf5da45"
+    }
+  ],
+  "claimAcknowledgementRegression": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "note": "Two concurrent lost COMMIT acknowledgements; unchanged reliability path"
+  },
+  "uniqueModelScenariosCovered": 25,
+  "note": "Groups overlap; their passed counts must not be added as unique cases.",
+  "schemaUpgrade": {
+    "from": "storage/1;owner/3",
+    "to": "storage/1;owner/8",
+    "result": "passed",
+    "credentialsRetained": true,
+    "originalCancelledAttemptUnchanged": true,
+    "newGrantAndSelectionUsable": true
+  },
+  "fullLocalTestFileTasks": {
+    "total": 146,
+    "passed": 131,
+    "failed": 15,
+    "failures": [
+      "packages/product-runtime/test/recovery-files.test.mjs",
+      "packages/storage/test/blobs.test.mjs",
+      "apps/server/tests/account-control.test.ts",
+      "apps/server/tests/application-database.test.ts",
+      "tools/i0-cloud/backup-retained.test.mjs",
+      "tools/i0-cloud/build-runtime-artifact.test.mjs",
+      "tools/i0-cloud/capacity-run-failure.test.mjs",
+      "tools/i0-cloud/deploy-artifact.test.py",
+      "tools/xj-dev-access/package-service.test.mjs",
+      "tools/xj-dev-access/server.test.mjs",
+      "tools/xj-dev/tests/baseline-team.test.mjs",
+      "tools/xj-dev/tests/enrollment-client.test.mjs",
+      "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+      "tools/xj-dev/tests/package-transfer.test.mjs",
+      "tools/xj-dev/tests/repro.test.mjs"
+    ],
+    "allFailedFilesAlsoFailedIn164": true,
+    "preparationBuildPassed": true,
+    "terminatedAfterOwnershipCheck": [
+      "tools/xj-dev/tests/package-transfer.test.mjs"
+    ],
+    "note": "One full suite run; the transfer task exceeded 18 minutes. Failure and termination do not count as passing."
+  },
+  "chrome": {
+    "platform": "win32",
+    "os": "10.0.26200",
+    "browser": "installed Chrome",
+    "browserVersion": "156.0.8078.76",
+    "headless": false,
+    "measuredAt": "2026-11-02T16:18:48.836Z",
+    "cases": [
+      {
+        "title": "school website explicitly selects and revokes a personal model and preserves learning without a model",
+        "status": "passed",
+        "duration": 1966
+      },
+      {
+        "title": "installed client exposes the device connection to the actual school subject and keeps space choices separate",
+        "status": "passed",
+        "duration": 2541
+      },
+      {
+        "title": "a late school selection receipt cannot replace a new personal-space view or its form input",
+        "status": "passed",
+        "duration": 2156
+      },
+      {
+        "title": "a confirmed selection conflict can be reloaded and retried without refreshing the page",
+        "status": "passed",
+        "duration": 1566
+      }
+    ],
+    "ordinaryFormalWeb": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "completeProductPackage": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "physicalWindowsImeCandidateWindow": "not-tested; CDP composition is not a physical IME test"
+  },
+  "package": {
+    "platform": "win32-x64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-11-02T16:16:55.999Z",
+    "cliSha256": "5836916b50dfc9560820e796419c4abdf5f8882c62868ea7c8a57a2630ced221"
+  },
+  "review": {
+    "standardsRemaining": 0,
+    "specRemaining": 0,
+    "staticReviewSnapshot": "5b86ead"
+  },
+  "mac": "not-run; handed off to #178",
+  "completeIndependentCrossHostDeployment": "separate #168",
+  "teachingOutcome": "not-evaluated"
+}

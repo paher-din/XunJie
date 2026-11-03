@@ -26,6 +26,11 @@
 | `GET/POST intents/:activityId` / `GET intents/:activityId/:requestId` | 列出、固定准备或查询原动作；内容确认不等于业务接受 |
 | `GET intents/:activityId/capabilities` | 当前原活动已注册的接收能力；默认空列表，不挂载测试接收器 |
 | `POST intents/:activityId/:requestId/dispatch` / `cancel` | 沿原身份派发、核实及持久协调取消；未知不伪装为未接收或已撤回 |
+| `GET/POST models/connections` | 当前主体的模型配置投影与期望版本保存；凭据不会读回 |
+| `GET/POST models/checks` / `GET models/checks/:id` | 列表、固定接收及结果查询；只读不生成模型请求 |
+| `POST models/checks/:id/dispatch` / `cancel` | 同一有限检查最多一次 Chat 外发或持久协调取消 |
+
+模型生命周期及恢复边界见 [model-connections](../model-connections/README.md)。正式设置使用此 owner，旧个人聊天与教师配置/预算保持各自 legacy 控制器。
 
 `x-xj-space` 只选择已认证空间，不接受主体身份注入。个人空间仅由本机产品组合提供；学校会话及客户端 grant 每次都核验当前学校授权。客户端失联或被拒绝后不会静默换到个人数据服务。跨源浏览器调用拒绝；共享学校监听沿用产品 HTTPS 配置。
 

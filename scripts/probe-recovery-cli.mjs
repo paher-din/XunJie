@@ -36,7 +36,11 @@ async function cli(pkg, environmentRoot, command, args = [], reject = false) {
 }
 try {
   await cli(sourcePackage, source, 'install'); await cli(sourcePackage, source, 'start');
-  const installedB = await cli(targetPackage, b, 'install'); await cli(targetPackage, b, 'start');
+  await cli(targetPackage, b, 'install'); await cli(targetPackage, b, 'start');
+  // install only reports the configured client unit; start brings up the full service set.
+  // Compare two status snapshots so "unrelated environment B unchanged" still means the
+  // takeover touched nothing, without comparing an install reply against a running host.
+  const bBefore = await cli(targetPackage, b, 'status');
   const keyFile = join(root, 'recovery.key'); await cli(sourcePackage, source, 'recovery-key', ['--out', keyFile]);
   const backupDirectory = join(root, 'independent-backups');
   const policy = await json('policy.json', { directory: backupDirectory, keyFile, intervalMs: 86_400_000, keep: 1, minimumFreeBytes: 64 * 1024 * 1024 });
@@ -74,7 +78,7 @@ try {
   const ready = await cli(targetPackage, target, 'status'); assert.equal(ready.state, 'ready');
   await cli(sourcePackage, source, 'start', [], true);
   const bAfter = await cli(targetPackage, b, 'status');
-  assert.equal(bAfter.state, 'ready'); assert.deepEqual(bAfter.environment, installedB.environment);
+  assert.equal(bAfter.state, 'ready'); assert.deepEqual(bAfter.environment, bBefore.environment);
   evidence.endpoint = ready.endpoint; evidence.targetRoot = target; evidence.backupId = manifest;
   evidence.environment = ready.environment; evidence.engineUpgrade = sourcePackage !== targetPackage;
   evidence.originalBUnchanged = true; evidence.status = 'passed'; evidence.browser = 'not-run';

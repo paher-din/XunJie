@@ -1,0 +1,121 @@
+{
+  "measuredAt": "2026-11-03T09:13:04.955Z",
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-native-v2",
+  "maxGenerations": 6,
+  "limits": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "results": [
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "nativeMode": "thinking",
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "tool_calls",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 112,
+            "totalTokens": 712,
+            "cachedTokens": 0,
+            "reasoningTokens": 60
+          },
+          "resultRef": "90c21d2e-3bcc-4c2c-a819-35b7e7963b1a",
+          "physicalRequestEnded": true,
+          "toolCount": 2,
+          "inputImageRead": true
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 971,
+            "outputTokens": 62,
+            "totalTokens": 1033,
+            "cachedTokens": 640,
+            "reasoningTokens": 25
+          },
+          "resultRef": "54df3c9f-0175-4a6a-9eb7-94e0c4cad972",
+          "physicalRequestEnded": true,
+          "nativePreserved": true,
+          "nativeSha256": "6ea7f87f9d80af1afe394f32587343f66f39b5284798e0748690cf057e4e645e",
+          "nativeFields": [
+            "role",
+            "content",
+            "reasoning_content",
+            "tool_calls"
+          ],
+          "reasoningValue": "nonempty",
+          "correctNonce": true,
+          "returnedImageRead": true,
+          "pairedImageStrategy": true,
+          "exactImageResourceReplay": true
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "configVersion": 2,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 41,
+            "outputTokens": 5,
+            "totalTokens": 46,
+            "cachedTokens": 0
+          },
+          "resultRef": "050af8fb-d792-45d9-90a2-09764bcd19fe",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 200
+        },
+        {
+          "name": "native-schema-positive",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "9a827658-117a-4cf1-a200-84f02a82b6f0",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "c1d750f7-5c5b-4868-8901-7cf8b6ce8065",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        },
+        {
+          "name": "thinking-with-forced-tool-counterexample",
+          "configVersion": 3,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "e1a743b5-c40d-4e43-8a74-606eaac1db7e",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        }
+      ]
+    }
+  ],
+  "actualGenerations": 6
+}

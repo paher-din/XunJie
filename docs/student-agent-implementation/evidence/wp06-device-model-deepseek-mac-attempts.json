@@ -1,0 +1,283 @@
+{
+  "formatVersion": 1,
+  "issue": 183,
+  "route": {
+    "endpoint": "https://api.deepseek.com/v1/chat/completions",
+    "model": "deepseek-flash",
+    "protocol": "chat-completions",
+    "nativeMode": "thinking"
+  },
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-native-v2",
+  "limits": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "runs": [
+    {
+      "label": "run1",
+      "measuredAt": "2026-11-03T10:21:26.957Z",
+      "credentialSource": "approved-private-magpie",
+      "actualGenerations": 5,
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "cea03b4b-51cf-4842-9eb4-78a61b99ee2c",
+          "toolCount": 0,
+          "inputImageRead": false
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 41,
+            "outputTokens": 5,
+            "totalTokens": 46,
+            "cachedTokens": 0
+          },
+          "resultRef": "395f1f15-b0fe-419c-87fd-9053cbdf1c6f",
+          "upstreamStatus": 200
+        },
+        {
+          "name": "native-schema-positive",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "325cfc10-50e2-4255-911c-31a584f73d8c",
+          "upstreamStatus": 400
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "dff8a40f-4ea0-4177-9fcc-5b6da134be04",
+          "upstreamStatus": 400
+        },
+        {
+          "name": "thinking-with-forced-tool-counterexample",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "9d488eb9-ede5-447f-9cbb-f80e5e0068d5",
+          "upstreamStatus": 400
+        }
+      ],
+      "failure": null
+    },
+    {
+      "label": "run2",
+      "measuredAt": "2026-11-03T10:22:34.376Z",
+      "credentialSource": "approved-private-magpie",
+      "actualGenerations": 5,
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "c5fee3ac-f70e-4d08-aca9-20be1512c3c2",
+          "upstreamStatus": 503,
+          "toolCount": 0,
+          "inputImageRead": false
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "ddfce4fb-e9d7-42b0-8964-0f9e7ae6cd4c",
+          "upstreamStatus": 503
+        },
+        {
+          "name": "native-schema-positive",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "c40299cb-37b2-40b1-91fb-baa9496c8b49",
+          "upstreamStatus": 400
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "8b361f2c-8319-4d62-a68b-8973944def44",
+          "upstreamStatus": 400
+        },
+        {
+          "name": "thinking-with-forced-tool-counterexample",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "23a98561-156c-4ea5-ab2b-715926693c4a",
+          "upstreamStatus": 400
+        }
+      ],
+      "failure": null
+    },
+    {
+      "label": "run3-core",
+      "measuredAt": "2026-11-03T10:23:53.556Z",
+      "credentialSource": "approved-private-magpie",
+      "actualGenerations": 1,
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "e265e6aa-641e-4843-936f-76b1712c4a9f",
+          "upstreamStatus": 503,
+          "toolCount": 0,
+          "inputImageRead": false
+        }
+      ],
+      "failure": null
+    },
+    {
+      "label": "run4",
+      "measuredAt": "2026-11-03T10:25:11.438Z",
+      "credentialSource": "approved-private-channel",
+      "actualGenerations": 5,
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "e95e6128-735c-431f-a3ec-f929b204185b",
+          "toolCount": 0,
+          "inputImageRead": false
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "4b43e4c6-a4c5-4e3d-abe0-7e5da63ded1c",
+          "upstreamStatus": 503
+        },
+        {
+          "name": "native-schema-positive",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "013e7fb1-1699-4145-9f77-883b4f1e8dbb",
+          "upstreamStatus": 400
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "25329a2a-7145-44de-ae15-77118d78090e",
+          "upstreamStatus": 400
+        },
+        {
+          "name": "thinking-with-forced-tool-counterexample",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "8a63d3a2-4b88-4a5a-9b1d-237319d68f8a",
+          "upstreamStatus": 400
+        }
+      ],
+      "failure": null
+    },
+    {
+      "label": "run5-final-core",
+      "measuredAt": "2026-11-03T10:31:09.109Z",
+      "credentialSource": "approved-private-channel",
+      "actualGenerations": 2,
+      "coreOnly": true,
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "state": "completed",
+          "reason": "tool_calls",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 76,
+            "totalTokens": 676,
+            "cachedTokens": 0,
+            "reasoningTokens": 0
+          },
+          "resultRef": "94bbb215-b87f-497d-ad01-176c4feff16a",
+          "upstreamStatus": 200,
+          "toolCount": 2,
+          "inputImageRead": true
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 934,
+            "outputTokens": 57,
+            "totalTokens": 991,
+            "cachedTokens": 640,
+            "reasoningTokens": 21
+          },
+          "resultRef": "c98c3efd-6348-42d6-bbc9-07b44118c58a",
+          "nativePreserved": true,
+          "correctNonce": true,
+          "returnedImageRead": true
+        }
+      ],
+      "failure": null
+    }
+  ],
+  "totalActualGenerations": 18,
+  "upstreamIncident": {
+    "source": "https://status.deepseek.com",
+    "observedAt": "2026-11-03T10:25:44Z",
+    "startedAt": "2026-11-03T08:58:16Z",
+    "summary": "DeepSeek V4.1 Flash API and Chat Service partially unavailable; fix implemented and results under monitoring."
+  },
+  "outcome": "passed-core-after-upstream-recovery",
+  "finalPass": {
+    "run": "run5-final-core",
+    "imageAndTools": true,
+    "restartNativeToolImageReplay": true,
+    "sdkRetries": 0
+  }
+}

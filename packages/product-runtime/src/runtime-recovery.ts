@@ -90,7 +90,8 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
         if (!options.databaseCredential) throw new RecoveryError('target-database-credential-required');
         await storeCredential(options.root, databaseConfiguration.credentialRef, options.databaseCredential);
       }
-      const installed = await runtime.install({ profile: databaseConfiguration.mode === 'none' ? 'remote' : databaseConfiguration.mode === 'external' ? 'school' : 'local',
+      const installed = await runtime.install({ profile: source.profile === 'model' ? 'model'
+        : databaseConfiguration.mode === 'none' ? 'remote' : databaseConfiguration.mode === 'external' ? 'school' : 'local',
         ...options.installation, database: databaseConfiguration,
         requiredServiceIds: data.configuration.requiredServiceIds });
       const environment: RuntimeEnvironment = { ...source, installationId: randomUUID(),

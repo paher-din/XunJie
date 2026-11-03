@@ -1,0 +1,50 @@
+{
+  "requests": 3,
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "state": "failed",
+      "reason": "rate-limited",
+      "upstream": {
+        "httpStatus": 429,
+        "requestId": "fixture-429-request",
+        "retryAfterSeconds": 17
+      },
+      "nativeUpstream": {
+        "httpStatus": 429,
+        "requestId": "fixture-429-request",
+        "retryAfterSeconds": 17
+      }
+    },
+    {
+      "protocol": "responses",
+      "state": "failed",
+      "reason": "rate-limited",
+      "upstream": {
+        "httpStatus": 429,
+        "requestId": "fixture-429-request",
+        "retryAfterSeconds": 17
+      },
+      "nativeUpstream": {
+        "httpStatus": 429,
+        "requestId": "fixture-429-request",
+        "retryAfterSeconds": 17
+      }
+    },
+    {
+      "protocol": "messages",
+      "state": "failed",
+      "reason": "rate-limited",
+      "upstream": {
+        "httpStatus": 429,
+        "requestId": "fixture-429-request",
+        "retryAfterSeconds": 17
+      },
+      "nativeUpstream": {
+        "httpStatus": 429,
+        "requestId": "fixture-429-request",
+        "retryAfterSeconds": 17
+      }
+    }
+  ]
+}

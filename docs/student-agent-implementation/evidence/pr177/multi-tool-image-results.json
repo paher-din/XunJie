@@ -1,0 +1,35 @@
+{
+  "roles": [
+    {
+      "role": "system"
+    },
+    {
+      "role": "user"
+    },
+    {
+      "role": "assistant"
+    },
+    {
+      "role": "tool",
+      "toolCallId": "call-a"
+    },
+    {
+      "role": "tool",
+      "toolCallId": "call-b"
+    },
+    {
+      "role": "user",
+      "contentTypes": [
+        "text",
+        "image_url"
+      ]
+    },
+    {
+      "role": "user",
+      "contentTypes": [
+        "text"
+      ]
+    }
+  ],
+  "interruptions": []
+}

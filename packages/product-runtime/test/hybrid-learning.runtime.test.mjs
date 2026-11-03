@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:http';
 import { openProductRuntime, resolveCredential, restoreProductRecovery, createOutboundConnection } from '@xunjie/product-runtime';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -13,13 +14,33 @@ const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgres
   webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
   windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
 
-test('a managed school binding stores school activity works only in its installed client owner', { timeout: 360000 }, async () => {
+async function exercisePairedDevice(profile) {
   const root = await mkdtemp(join(tmpdir(), 'xj-hybrid-'));
   const schoolRoot = join(root, 'school'), deviceRoot = join(root, 'device');
   const school = openProductRuntime({ root: schoolRoot, resources });
   const device = openProductRuntime({ root: deviceRoot, resources });
+  const requests = [];
+  let streamClosed = false;
+  const upstream = createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    requests.push(JSON.parse(Buffer.concat(chunks)));
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    if (requests.length === 3) {
+      response.once('close', () => { streamClosed = true; });
+      response.write('data: {"choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}\n\n');
+      return;
+    }
+    const first = requests.length === 1, sensitive = requests.length === 4;
+    const encodedKey = [...'synthetic-device-chat'].map(character => '\\u' + character.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+    const delta = sensitive ? { tool_calls: [{ index: 0, id: 'paired-sensitive', type: 'function', function: { name: 'read_marker', arguments: '{"nonce":"' + encodedKey + '"}' } }] }
+      : first ? { tool_calls: [{ index: 0, id: 'paired-marker', type: 'function', function: { name: 'read_marker', arguments: '{}' } }] }
+      : { content: 'paired OK' };
+    response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: first || sensitive ? 'tool_calls' : 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   try {
-    await school.install({ profile: 'local' }); await device.install({ profile: 'local' });
+    await school.install({ profile: 'local' }); await device.install({ profile });
     const schoolStatus = await school.start(), deviceStatus = await device.start();
     const call = (endpoint, path, body, headers = {}) => fetch(new URL('/api/learning/' + path, endpoint), {
       headers: { 'content-type': 'application/json', ...headers },
@@ -28,7 +49,7 @@ test('a managed school binding stores school activity works only in its installe
       const response = await call(endpoint, path, body, headers);
       assert.equal(response.status, 200, await response.clone().text()); return response.json();
     };
-    const targetService = deviceStatus.environment.services.find(s => s.unit === 'learning-data');
+    const targetService = deviceStatus.environment.services.find(s => s.unit === (profile === 'model' ? 'model-connection' : 'learning-data'));
     const target = { environmentId: targetService.environmentId, serviceId: targetService.serviceId, version: 1 };
     const password = randomUUID(), loginName = 'hybrid-' + randomUUID();
     const admin = { authorization: 'Bearer ' + await resolveCredential(schoolRoot, 'control') };
@@ -55,7 +76,109 @@ test('a managed school binding stores school activity works only in its installe
     assert.equal((await call(deviceStatus.endpoint, 'manage/local-binding', { connectionId: requestId,
       runtimeConnectionId: optionalConnectionId, target }, deviceAdmin)).status, 403, 'required authority must not be downgraded to optional readiness');
     await api(deviceStatus.endpoint, 'manage/local-binding', { connectionId: requestId, runtimeConnectionId, target }, deviceAdmin);
+    const binding = { grantId: runtimeGrant.grantId, installationId: deviceStatus.environment.installationId };
+    const modelTask = { taskId: randomUUID(), attemptId: randomUUID(), operation: 'read' };
+    const enqueue = { operation: 'enqueue', identity: member, binding, task: modelTask };
+    assert.deepEqual(await school.modelTask(enqueue), modelTask);
+    assert.deepEqual(await school.modelTask(enqueue), modelTask);
+    const query = { operation: 'read', identity: member, binding, taskId: modelTask.taskId };
+    const deadline = Date.now() + 30_000;
+    let receipt;
+    do {
+      receipt = (await school.modelTask(query)).receipt;
+      if (!receipt) await new Promise(resolve => setTimeout(resolve, 250));
+    } while (!receipt && Date.now() < deadline);
+    assert.deepEqual(receipt, { ok: false, code: 'missing' });
+    assert.deepEqual((await school.modelTask(query)).receipt, receipt);
+    await assert.rejects(school.modelTask({ ...query, binding: { ...binding, installationId: randomUUID() } }));
     const selected = { 'x-xj-space': 'school:' + requestId };
+    const connectionId = randomUUID(), grantId = randomUUID(), segmentId = randomUUID(), imageId = randomUUID();
+    await api(deviceStatus.endpoint, 'models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
+      name: 'Paired Chat', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
+      path: '/chat/completions', modelId: 'paired-chat', dialect: 'standard', parameterMode: 'plain', enabled: true,
+      credential: { action: 'replace', value: 'synthetic-device-chat' } }, { 'x-xj-space': 'personal' });
+    await api(deviceStatus.endpoint, 'models/grants', { requestId: randomUUID(), connectionId, grantId, owner: 'device' }, selected);
+    await api(deviceStatus.endpoint, 'models/selection', { requestId: randomUUID(), expectedVersion: 0,
+      source: { kind: 'personal', connectionId, grantId } }, selected);
+    await api(deviceStatus.endpoint, 'models/images', { requestId: randomUUID(), imageId, mediaType: 'image/png',
+      dataBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=' }, selected);
+    await api(deviceStatus.endpoint, 'models/segments', { requestId: randomUUID(), segmentId,
+      source: { selected: true, selectionVersion: 1 }, prefix: { system: 'Paired Chat', options: { capabilityProbe: true }, tools: [
+        { name: 'read_marker', description: '', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+      ] }, portable: [] }, selected);
+    let attemptId = randomUUID();
+    async function submit(operation, input) {
+      const taskId = randomUUID();
+      await school.modelTask({ ...enqueue, task: { taskId, attemptId, operation, ...(input ? { input } : {}) } });
+      const limit = Date.now() + 35_000;
+      do {
+        const fact = (await school.modelTask({ ...query, taskId })).receipt;
+        if (fact) { assert.equal(fact.ok, true, JSON.stringify(fact)); return fact.value; }
+        await new Promise(resolve => setTimeout(resolve, 250));
+      } while (Date.now() < limit);
+      assert.fail(`Missing paired ${operation} receipt`);
+    }
+    assert.equal((await submit('receive', { attemptId, purpose: 'chat-probe', segmentId, expectedSequence: 0,
+      input: { text: 'Inspect the fixed image', images: [{ imageId, version: 1 }], toolResults: [] },
+      limits: { maxOutputTokens: 64, timeoutMs: 15000 } })).state, 'accepted');
+    await submit('dispatch');
+    const toolCall = await submit('read');
+    assert.equal(toolCall.state, 'completed');
+    assert.deepEqual(toolCall.toolIntents, [{ callId: 'paired-marker', name: 'read_marker', arguments: {} }]);
+    attemptId = randomUUID();
+    assert.equal((await submit('receive', { attemptId, purpose: 'chat-probe', segmentId, expectedSequence: 1,
+      input: { text: 'Use the marker', images: [], toolResults: [{ callId: 'paired-marker', outcome: 'success', text: 'fixed marker', images: [] }] },
+      limits: { maxOutputTokens: 64, timeoutMs: 15000 } })).state, 'accepted');
+    await submit('dispatch');
+    const generated = await submit('read');
+    assert.equal(generated.state, 'completed');
+    assert.equal(generated.text, 'paired OK');
+    assert.ok(generated.resultRef);
+    assert.equal((await submit('cancel')).resultRef, generated.resultRef);
+    assert.equal(requests.length, 2);
+    assert.ok(JSON.stringify(requests[0]).includes('data:image/png;base64,'));
+    assert.ok(requests[1].messages.some(message => message.role === 'tool' && message.tool_call_id === 'paired-marker'));
+    attemptId = randomUUID();
+    await submit('receive', { attemptId, purpose: 'chat-probe', segmentId, expectedSequence: 2,
+      input: { text: 'Hold this stream', images: [], toolResults: [] }, limits: { maxOutputTokens: 64, timeoutMs: 30000 } });
+    await submit('dispatch');
+    const streamingDeadline = Date.now() + 5000;
+    while (requests.length < 3 && Date.now() < streamingDeadline) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(requests.length, 3);
+    assert.equal(streamClosed, false);
+    assert.equal((await submit('cancel')).cancelRequested, true);
+    const cancelled = await submit('read');
+    assert.equal(cancelled.state, 'cancelled');
+    assert.equal(cancelled.reason, 'client-abort');
+    assert.equal(cancelled.physicalRequestEnded, true);
+    assert.equal(cancelled.upstreamStopped, 'unknown');
+    assert.equal(streamClosed, true);
+    assert.equal((await submit('dispatch')).state, 'cancelled');
+    assert.equal(requests.length, 3);
+    const sensitiveSegmentId = randomUUID();
+    await api(deviceStatus.endpoint, 'models/segments', { requestId: randomUUID(), segmentId: sensitiveSegmentId,
+      source: { selected: true, selectionVersion: 1 }, prefix: { system: 'Credential boundary over authenticated device tasks', tools: [
+        { name: 'read_marker', description: '', inputSchema: { type: 'object', properties: { nonce: { type: 'string' } }, required: ['nonce'], additionalProperties: false } },
+      ] }, portable: [] }, selected);
+    attemptId = randomUUID();
+    await submit('receive', { attemptId, purpose: 'chat-probe', segmentId: sensitiveSegmentId, expectedSequence: 0,
+      input: { text: 'Synthetic escaped credential fixture', images: [], toolResults: [] }, limits: { maxOutputTokens: 64, timeoutMs: 15000 } });
+    await submit('dispatch');
+    const sensitiveResult = await submit('read');
+    assert.equal(sensitiveResult.state, 'failed'); assert.equal(sensitiveResult.reason, 'credential-in-tool-output');
+    assert.deepEqual(sensitiveResult.toolIntents, []); assert.equal(JSON.stringify(sensitiveResult).includes('synthetic-device-chat'), false);
+    const modelOwner = deviceStatus.environment.services.find(service => service.unit === 'model-connection');
+    const storedBytes = await readFile(join(deviceRoot, 'learning-resources/model-connection', deviceStatus.environment.environmentId, modelOwner.serviceId, sensitiveResult.resultRef));
+    const storedNative = JSON.parse(storedBytes.subarray(storedBytes.indexOf(10) + 1).toString());
+    assert.equal(storedNative.redacted, true); assert.deepEqual(storedNative.chunks, []);
+    await device.stop(); await device.start();
+    assert.equal((await submit('read')).resultRef, sensitiveResult.resultRef);
+    assert.equal((await submit('dispatch')).state, 'failed'); assert.equal(requests.length, 4);
+    if (profile === 'model') {
+      assert.equal(deviceStatus.environment.services.some(service => service.unit === 'learning-data'), false);
+      assert.equal((await call(deviceStatus.endpoint, 'activities', undefined, selected)).status, 503);
+      return;
+    }
     const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID(), materialId = randomUUID();
     const materialText = '# 混合部署课程\n' + 'x'.repeat(1_100_000) + '\r\n选中😀尾部\r\n';
     const material = Buffer.from(materialText);
@@ -133,6 +256,7 @@ test('a managed school binding stores school activity works only in its installe
     assert.equal((await call(deviceStatus.endpoint, 'workspaces/' + activity.activityId, sync, selected)).status, 503);
     assert.equal((await call(deviceStatus.endpoint, draftPath, undefined, selected)).status, 503);
     await school.start();
+    assert.deepEqual((await school.modelTask(query)).receipt, receipt);
     assert.deepEqual(await api(deviceStatus.endpoint, 'workspaces/' + activity.activityId + '/receipts/' + sync.requestId, undefined, selected), { revision: 1, files: [file] });
     await api(schoolStatus.endpoint, 'manage/course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: false }, admin);
     assert.equal((await call(deviceStatus.endpoint, 'workspaces/' + activity.activityId, sync, selected)).status, 403);
@@ -142,7 +266,8 @@ test('a managed school binding stores school activity works only in its installe
     const key = randomBytes(32), directory = join(root, 'backups');
     await device.setCredential('hybrid-recovery-key', key.toString('base64'));
     const backup = await device.recovery.backup({ directory, recoveryKeyRef: 'hybrid-recovery-key', leaveClosed: true });
-    assert.equal(backup.services.length, 3);
+    assert.deepEqual(backup.services.map(service => service.serviceId).sort(),
+      deviceStatus.environment.services.map(service => service.serviceId).sort());
     const receiver = { id: schoolStatus.environment.environmentId + '/' + schoolStatus.environment.services[0].serviceId, root: schoolRoot };
     assert.deepEqual(backup.receiverIds, [receiver.id]);
     const restoredRoot = join(root, 'restored');
@@ -191,5 +316,13 @@ test('a managed school binding stores school activity works only in its installe
       await api(schoolStatus.endpoint, 'manage/connection', { connectionId: reconnect }, admin);
       assert.equal((await call(isolated.endpoint, 'workspaces/' + activity.activityId, undefined, restoredSpace)).status, 403);
     } finally { await targetRuntime.stop().catch(() => {}); }
-  } finally { await device.stop().catch(() => {}); await school.stop().catch(() => {}); }
-});
+  } finally {
+    await device.stop().catch(() => {});
+    await school.stop().catch(() => {});
+    upstream.closeAllConnections();
+    await new Promise(resolve => upstream.close(resolve));
+  }
+}
+
+test('a managed school binding stores school activity works only in its installed client owner', { timeout: 480000 }, () => exercisePairedDevice('local'));
+test('a paired independent model owner serves Chat and cancellation without a learning-data owner', { timeout: 360000 }, () => exercisePairedDevice('model'));

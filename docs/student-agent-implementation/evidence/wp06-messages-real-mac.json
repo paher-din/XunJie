@@ -1,0 +1,373 @@
+{
+  "measuredAt": "2026-11-03T06:49:19.827079+00:00",
+  "platform": "macOS 27.2 (26B123) arm64 Apple M5",
+  "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+  "model": "deepseek-flash",
+  "protocol": "messages",
+  "sdk": "@anthropic-ai/sdk@1.1.0",
+  "adapter": "xunjie-messages-native-v1",
+  "apiVersion": "2023-06-01",
+  "generationBudget": {
+    "total": 13,
+    "byCase": {
+      "check": 1,
+      "native": 2,
+      "schemas": 6,
+      "controls": 3,
+      "cancel": 1
+    },
+    "actual": 13,
+    "note": "Groups overlap (thinking-forced-tool appears in schemas and controls); 13 is the bounded outbound-attempt budget, not a unique-case count."
+  },
+  "automaticRetries": 0,
+  "limits": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000
+  },
+  "probes": [
+    {
+      "case": "check",
+      "maxGenerations": 1,
+      "generationAttempts": 1,
+      "httpStatuses": [
+        200
+      ],
+      "cases": [
+        {
+          "name": "formal-plain-check",
+          "attemptId": "d5d0b9dd-005d-43ee-94c1-29469a0ce671",
+          "state": "completed",
+          "reason": "end_turn",
+          "usage": {
+            "state": "final",
+            "inputTokens": 14,
+            "outputTokens": 1,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ]
+    },
+    {
+      "case": "native",
+      "maxGenerations": 2,
+      "generationAttempts": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "cases": [
+        {
+          "name": "thinking-auto-image-tools-native-restart",
+          "first": {
+            "attemptId": "b8c841e6-5e7e-43e3-a2e9-b08446729c10",
+            "state": "completed",
+            "reason": "tool_use",
+            "usage": {
+              "state": "final",
+              "inputTokens": 585,
+              "outputTokens": 105,
+              "cachedTokens": 0
+            },
+            "upstream": {
+              "httpStatus": 200
+            },
+            "resultReadable": true,
+            "toolCount": 2,
+            "physicalRequestEnded": true
+          },
+          "nativeContentSha256": "f3b4a68d3843a1f3e64d5b184901e771aeddc8f2625afbaf4960412a9267ab69",
+          "signaturePresent": true,
+          "actualProcessRestart": true,
+          "sameResultRefAfterRestart": true,
+          "second": {
+            "attemptId": "96155908-111c-461c-9e10-ef690b977c01",
+            "state": "completed",
+            "reason": "end_turn",
+            "usage": {
+              "state": "final",
+              "inputTokens": 307,
+              "outputTokens": 90,
+              "cachedTokens": 640
+            },
+            "upstream": {
+              "httpStatus": 200
+            },
+            "resultReadable": true,
+            "toolCount": 0,
+            "physicalRequestEnded": true
+          },
+          "nativeContentWireEqual": true,
+          "nativeToolImagePairing": true,
+          "nonceCorrect": true,
+          "originalImageCorrect": true,
+          "toolImageCorrect": true
+        }
+      ]
+    },
+    {
+      "case": "schemas",
+      "maxGenerations": 6,
+      "generationAttempts": 6,
+      "httpStatuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        400
+      ],
+      "cases": [
+        {
+          "name": "application-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "0d9663a3-b3dc-4534-a0b1-f398c7d47b04",
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 35,
+            "outputTokens": 9,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "native-format-valid",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "74e3be8a-6811-4cf1-b8fb-43daba14abeb",
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 35,
+            "outputTokens": 10,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "native-format-invalid-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "c135793e-5368-4d5f-8e1d-4c439de2a37d",
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 35,
+            "outputTokens": 6,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "strict-tool-valid",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "85e0a882-b5ee-44be-823c-2f4a2feb0564",
+          "state": "completed",
+          "reason": "tool_use",
+          "usage": {
+            "state": "final",
+            "inputTokens": 301,
+            "outputTokens": 33,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 1,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "strict-tool-impossible-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "7320a857-11a1-4a83-b20d-37d7d3dc6e77",
+          "state": "failed",
+          "reason": "invalid-native-result",
+          "usage": {
+            "state": "final",
+            "inputTokens": 306,
+            "outputTokens": 33,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "thinking-forced-tool",
+          "mode": "thinking",
+          "httpStatus": 400,
+          "attemptId": "1ced087e-0af4-43de-95ed-8cd753ba737a",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "upstream": {
+            "httpStatus": 400
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ]
+    },
+    {
+      "case": "controls",
+      "maxGenerations": 3,
+      "generationAttempts": 3,
+      "httpStatuses": [
+        200,
+        200,
+        400
+      ],
+      "cases": [
+        {
+          "name": "application-schema-explicit-json",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "268e4f49-1418-4594-8560-fc0a51db5127",
+          "state": "completed",
+          "reason": "end_turn",
+          "usage": {
+            "state": "final",
+            "inputTokens": 57,
+            "outputTokens": 5,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "strict-tool-impossible-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "bd9264b4-5b77-4b67-b61f-ac31d497149d",
+          "state": "failed",
+          "reason": "invalid-native-result",
+          "usage": {
+            "state": "final",
+            "inputTokens": 328,
+            "outputTokens": 33,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "thinking-forced-tool",
+          "mode": "thinking",
+          "httpStatus": 400,
+          "attemptId": "422b80ae-e913-40c8-aa68-d22946adc46e",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "upstream": {
+            "httpStatus": 400
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ]
+    },
+    {
+      "case": "cancel",
+      "maxGenerations": 1,
+      "generationAttempts": 1,
+      "httpStatuses": [
+        200
+      ],
+      "cases": [
+        {
+          "name": "client-cancel",
+          "httpStatus": 200,
+          "cancelRequested": true,
+          "upstreamStopped": "unknown",
+          "attemptId": "59b70b96-0b2f-4660-970c-0176aa7d397f",
+          "state": "cancelled",
+          "reason": "client-abort",
+          "usage": {
+            "state": "partial",
+            "inputTokens": 30,
+            "outputTokens": 0,
+            "cachedTokens": 0
+          },
+          "upstream": {
+            "httpStatus": 200
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ]
+    }
+  ],
+  "commandCode": {
+    "measuredAt": "2026-11-03T06:43:41Z",
+    "endpoint": "https://api.commandcode.ai/provider/v1/models",
+    "httpStatus": 200,
+    "method": "GET",
+    "model": "deepseek/deepseek-v4.1-flash",
+    "modelFound": true,
+    "supportedEndpoints": [
+      "/chat/completions",
+      "/responses"
+    ],
+    "generationAttempts": 0,
+    "dateHeader": "Tue, 03 Nov 2026 06:43:41 GMT",
+    "note": "Public support catalogue only; no Messages request sent, no model substitution."
+  },
+  "interpretation": {
+    "formalPlainCheck": "completed/end_turn; input 14, output 1, cached 0, final",
+    "nativeImageToolsProcessRestartAndNextWire": "completed; two tools, user image and tool_result image; actual process restart; same resultRef; exact next wire; nonce and both image colors correct",
+    "usage": "final cumulative replacement; input excludes cached; cached separate; no invented total_tokens",
+    "applicationSchema": "explicit JSON sample completed; generic exact-JSON prompt failed local validation; application validation is separate from native enforcement",
+    "nativeFormat": "valid/invalid output_config.format both HTTP 200 and failed local validation; not native strict support",
+    "strictTools": "valid schema completed; unsatisfiable schema HTTP 200 but invalid native result rejected locally; native strictTools unsupported",
+    "thinkingForcedTool": "HTTP 400; no automatic downgrade",
+    "clientCancel": "HTTP 200 then cancelled/client-abort; usage partial; upstream stop unknown",
+    "commandCode": "support catalogue declares only /chat/completions and /responses; Messages remains unsupported; generation 0"
+  },
+  "confidentiality": "No credential, key, native reasoning text or signature value is stored here. Signatures/reasoning were compared only in private owner/probe memory; this report keeps states, usage, hashes and wire-equality booleans."
+}
