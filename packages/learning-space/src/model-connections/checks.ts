@@ -24,6 +24,7 @@ export function createChecks(storage: OwnedStorage, owner: {
   publishChat(tx: OwnedTransaction, attempt: ModelAttempt): Promise<void>;
   credential(identity: SpaceIdentity, ref: string): Promise<string>;
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
+  requestFetch?(identity: SpaceIdentity, attempt: ModelAttempt): Promise<typeof fetch>;
 }) {
   const active = new Map<string, { controller: AbortController; task: Promise<void> }>();
   const unsentClaims = new Map<string, { attemptId: string; identity: SpaceIdentity; requestId: string; fingerprint: string }>();
@@ -204,9 +205,10 @@ export function createChecks(storage: OwnedStorage, owner: {
       await owner.assertDispatch(identity, attempt, ref);
       await storage.pendingIntents();
       if (closed) throw new StorageError('maintenance');
+      const requestFetch = await owner.requestFetch?.(identity, attempt);
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
-        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, !!attempt.segment, metadata?.applicationSchema);
+        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, !!attempt.segment, metadata?.applicationSchema, requestFetch);
       const interruption = controller.signal.reason;
       if ((interruption === 'timeout' || interruption === 'maintenance') && !['completed', 'failed'].includes(result.state)) {
         result.state = 'unknown';

@@ -3,6 +3,8 @@ import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
+import { createSensitiveOutput } from './sensitive-output.js';
+import { responseFacts } from './upstream-facts.js';
 export { validateMessagesNative } from './messages-native.js';
 
 export const messagesSdkVersion = '@anthropic-ai/sdk@1.1.0';
@@ -18,25 +20,15 @@ export function messagesCheckPayload(configuration: ModelConfiguration, tokens: 
       ? { type: 'enabled' as const, budget_tokens: 1024 } : { type: 'disabled' as const } } : {}) };
 }
 export async function runMessages(configuration: ModelConfiguration, apiKey: string, payload: MessagesPayload,
-  signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>) {
+  signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>,
+  requestFetch: typeof fetch = fetch) {
   let limited = false, upstream: ModelUpstream | undefined;
-  const responseFacts = (status: number, headers: Headers): ModelUpstream => {
-    const facts: ModelUpstream = { httpStatus: status };
-    const id = headers.get('request-id') ?? headers.get('x-request-id');
-    if (id && /^[A-Za-z0-9._:-]{1,200}$/.test(id) && (!apiKey || !id.includes(apiKey))) facts.requestId = id;
-    const retry = headers.get('retry-after'), milliseconds = headers.get('retry-after-ms');
-    const numeric = retry && /^\d+(?:\.\d+)?$/.test(retry) ? Number(retry)
-      : !retry && milliseconds && /^\d+(?:\.\d+)?$/.test(milliseconds) ? Number(milliseconds) / 1000 : undefined;
-    if (numeric !== undefined && Number.isFinite(numeric) && numeric <= 31536000) facts.retryAfterSeconds = numeric;
-    else if (retry && /^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(retry) && Number.isFinite(Date.parse(retry)))
-      facts.retryAt = new Date(retry).toISOString();
-    return facts;
-  };
+  const sensitive = createSensitiveOutput(apiKey);
   const client = new Anthropic({ apiKey, baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0,
     timeout: timeoutMs, logLevel: 'off', fetchOptions: { redirect: 'error' },
     ...(configuration.dialect === 'deepseek' ? { defaultHeaders: { 'anthropic-version': '2023-06-01' } } : {}),
     fetch: async (input, init) => {
-      const response = await fetch(input, init); upstream = responseFacts(response.status, response.headers); if (!response.body) return response;
+      const response = await requestFetch(input, init); upstream = responseFacts(response.status, response.headers, apiKey); if (!response.body) return response;
       let received = 0;
       return new Response(response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) {
         received += chunk.byteLength;
@@ -54,7 +46,7 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   } catch (error) {
     const status = (error instanceof Anthropic.APIError ? error.status : undefined)
       ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
-    if (!upstream && status && error instanceof Anthropic.APIError) upstream = responseFacts(status, error.headers ?? new Headers());
+    if (!upstream && status && error instanceof Anthropic.APIError) upstream = responseFacts(status, error.headers ?? new Headers(), apiKey);
     const malformed = error instanceof StorageError || error instanceof SyntaxError;
     const confirmedStreamError = error instanceof Anthropic.APIError && !(error instanceof Anthropic.APIConnectionError)
       && !(error instanceof Anthropic.APIUserAbortError);
@@ -83,28 +75,22 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     state = 'failed'; reason = 'tool-choice-not-honored';
   }
   const format = payload.output_config?.format;
+  let structuredOutput: unknown;
   if (state === 'completed' && !toolIntents.length && (applicationSchema || format)) try {
-    const value: unknown = JSON.parse(text);
-    if (value === null || typeof value !== 'object' || Array.isArray(value)
-      || applicationSchema && !compileOutputSchema(applicationSchema)(value)
-      || format && !compileOutputSchema(format.schema)(value)) throw new Error();
+    structuredOutput = JSON.parse(text) as unknown;
+    if (structuredOutput === null || typeof structuredOutput !== 'object' || Array.isArray(structuredOutput)
+      || applicationSchema && !compileOutputSchema(applicationSchema)(structuredOutput)
+      || format && !compileOutputSchema(format.schema)(structuredOutput)) throw new Error();
   } catch { state = 'failed'; reason = 'invalid-structured-output'; }
   let native: { formatVersion: number; sdk: string; adapter: string; events: unknown[]; message: typeof message; redacted?: boolean; upstream?: ModelUpstream }
     = { formatVersion: 1, sdk: messagesSdkVersion, adapter: messagesAdapterVersion, events, message, ...(upstream ? { upstream } : {}) };
-  const fields = new Map<string, string>();
-  const clean = (value: string) => apiKey ? value.split(apiKey).join('[redacted]') : value;
-  function redact(value: unknown, field = ''): unknown {
-    if (typeof value === 'string') { fields.set(field, (fields.get(field) ?? '') + value); return clean(value); }
-    if (Array.isArray(value)) return value.map(item => redact(item, field));
-    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [clean(key), redact(item, key)]));
-    return value;
-  }
-  const safe = redact(native);
-  if (JSON.stringify(safe) !== JSON.stringify(native) || [...fields.values()].some(value => clean(value) !== value)) {
-    if (state === 'completed') { state = 'failed'; reason = 'credential-in-output'; }
+  if (sensitive.contains([text, structuredOutput, native, assembler.inputJson, assembler.inputStrings])) {
+    if (state === 'completed') state = 'failed';
+    reason = 'credential-in-output'; text = '';
+    // Sensitive replay bytes (including signed thinking) cannot be rewritten and reused.
     native = { ...native, events: [], message: null, redacted: true };
   }
   if (state === 'completed') try { validateMessagesNative(native, nativeTools); }
   catch { state = 'failed'; reason = 'invalid-native-result'; }
-  return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [], native, ...(upstream ? { upstream } : {}) };
+  return { state, reason, text: sensitive.clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [], native, ...(upstream ? { upstream } : {}) };
 }

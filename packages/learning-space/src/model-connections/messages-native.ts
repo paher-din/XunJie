@@ -3,6 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import type { ModelTool, ModelToolIntent, ModelUsage } from '@xunjie/contracts/model-connections';
 import { modelToolIntentSchema } from '@xunjie/contracts/model-connections';
 import { toolValidators } from './chat-native.js';
+import { protocolJsonStrings } from './sensitive-output.js';
 
 type ObjectValue = Record<string, unknown>;
 const requireValue = (value: unknown): void => { if (!value) throw new StorageError('corrupt'); };
@@ -37,8 +38,8 @@ export function createMessagesAssembler() {
     }
     requireValue(message);
     if (type === 'message_delta') {
-      requireValue(blocks.size && [...blocks.values()].every(block => block.stopped));
       const next = object(event.delta), usage = object(event.usage);
+      requireValue((blocks.size > 0 || next.stop_reason === 'end_turn') && [...blocks.values()].every(block => block.stopped));
       requireValue(['end_turn', 'tool_use', 'max_tokens', 'stop_sequence', 'refusal', 'pause_turn', 'model_context_window_exceeded'].includes(string(next.stop_reason)));
       requireValue(next.stop_sequence === null || typeof next.stop_sequence === 'string');
       requireValue(!delta || message!.stop_reason === next.stop_reason);
@@ -63,7 +64,12 @@ export function createMessagesAssembler() {
     const block = blocks.get(index); requireValue(block && !block.stopped);
     if (!block) throw new StorageError('corrupt');
     if (type === 'content_block_stop') {
-      if (block.inputDelta) block.content.input = object(JSON.parse(block.input));
+      if (block.inputDelta) {
+        // max_tokens can end a tool block in the middle of its JSON. Keep reading
+        // the message terminal and usage; only successful publication requires an object.
+        try { block.content.input = JSON.parse(block.input) as unknown; }
+        catch { block.content.input = block.input; }
+      }
       block.stopped = true; return;
     }
     requireValue(type === 'content_block_delta'); const change = object(event.delta);
@@ -79,6 +85,8 @@ export function createMessagesAssembler() {
     }
   }
   return { add, get message() { return snapshot(); }, get terminal() { return terminal; }, get finalUsage() { return finalUsage; },
+    get inputJson() { return [...blocks.values()].filter(block => block.inputDelta).map(block => block.input); },
+    get inputStrings() { return [...blocks.values()].filter(block => block.inputDelta).flatMap(block => protocolJsonStrings(block.input)); },
     get text() { return content().flatMap(part => part.type === 'text' ? [string(part.text)] : []).join(''); } };
 }
 export function messagesOutput(messageValue: unknown, tools: ModelTool[]) {

@@ -23,6 +23,7 @@
     "@xunjie/storage": "0.1.0",
     "ajv": "8.20.0",
     "openai": "7.42.0",
+    "undici": "7.30.0",
     "zod": "4.6.5"
   },
   "devDependencies": {

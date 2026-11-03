@@ -13,11 +13,11 @@ import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
-import { modelDeviceTaskSchema, routeModels } from '@xunjie/learning-space';
+import { modelDeviceTaskSchema, routeModels, ModelCapabilityError } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
-  modelPortableResultSchema, modelSegmentBoundarySchema, modelSegmentProvenanceSchema } from '@xunjie/contracts/model-connections';
+  modelPortableResultSchema, modelSegmentBoundarySchema, modelSegmentProvenanceSchema, modelCapabilityInputSchema, modelCapabilityFailureSchema } from '@xunjie/contracts/model-connections';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, exists, readJson } from './io.js';
@@ -64,7 +64,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       });
     } catch { throw new StorageError('unavailable'); }
     if (!response.ok) {
-      const failure = z.object({ error: z.enum(storageErrorCodes) }).safeParse(await response.json().catch(() => null));
+      const value = await response.json().catch(() => null);
+      const capability = modelCapabilityFailureSchema.safeParse(value);
+      if (capability.success) throw new ModelCapabilityError(capability.data.decision);
+      const failure = z.object({ error: z.enum(storageErrorCodes) }).safeParse(value);
       if (failure.success) throw new StorageError(failure.data.error);
       const code = response.status === 403 ? 'forbidden' : response.status === 404 ? 'missing'
         : 'unavailable';
@@ -104,6 +107,17 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const personal = await local?.personal?.();
     const localCall = (input = body) => routeModels(models, identity, route, input, personal);
     const remoteCall = (input = body) => call(connection, route, input, true);
+    if (route === 'models/capabilities' && body !== undefined) {
+      const input = modelCapabilityInputSchema.parse(body);
+      if ('school' in input.source) return remoteCall(input);
+      if ('selected' in input.source) {
+        const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
+        if (selected.version !== input.source.selectionVersion) throw new StorageError('conflict');
+        if (selected.selected?.kind === 'school') return remoteCall({ ...input, source: { school: {
+          connectionId: selected.selected.connection.connectionId, version: selected.selected.connection.version } } });
+      }
+      return localCall(input);
+    }
     type Binding = Awaited<ReturnType<typeof models.routing.bind>>;
     async function portableResult(resultRef: string) {
       try { return { ...await models!.results.read(identity, resultRef), destination: 'local' as const }; }
@@ -371,7 +385,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?` +
-      `|models/(?:selection|connections|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
+      `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);

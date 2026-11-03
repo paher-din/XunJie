@@ -266,10 +266,15 @@ test('Messages application validation and explicit output constraints do not bec
     const segmentId = randomUUID();
     assert.equal((await api('segments', { requestId: randomUUID(), segmentId, source, prefix: { system: 'invalid', tools: [], options: { applicationSchema: schema } }, portable: [] })).status, 200);
     const bad = await finish(call(segmentId)); assert.equal(bad.state, 'failed'); assert.equal(bad.reason, 'invalid-structured-output');
-    for (const options of [{ responseFormat: { kind: 'json-schema', name: 'strict', schema, strict: true } },
-      { responseFormat: { kind: 'json-schema', name: 'not-an-implicit-local-fallback', schema, strict: false } },
-      { responseFormat: { kind: 'json-object' }, capabilityProbe: true }])
-      assert.equal((await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '', tools: [], options }, portable: [] })).status, 503);
+    for (const [options, capability, status] of [
+      [{ responseFormat: { kind: 'json-schema', name: 'strict', schema, strict: true } }, 'nativeStrict', 'unknown'],
+      [{ responseFormat: { kind: 'json-schema', name: 'not-an-implicit-local-fallback', schema, strict: false } }, 'nativeStrict', 'unknown'],
+      [{ responseFormat: { kind: 'json-object' }, capabilityProbe: true }, 'jsonMode', 'unsupported'],
+    ]) {
+      const rejected = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '', tools: [], options }, portable: [] });
+      assert.equal(rejected.status, 422); assert.equal(rejected.value.error, 'capability-unavailable');
+      assert.deepEqual(rejected.value.decision.missing.map(item => [item.capability, item.status]), [[capability, status]]);
+    }
     assert.equal(requests, 2);
   });
 });
@@ -415,8 +420,10 @@ test('Messages capability evidence belongs to the exact route mode SDK and real 
     assert.equal(plain.capabilities.images, 'unknown'); assert.equal(plain.capabilities.strictSchema, 'unsupported'); assert.equal(plain.capabilities.strictTools, 'unsupported');
     const unknown = await save({ baseUrl: 'https://synthetic.invalid/anthropic' }); assert.equal(unknown.capabilities.nativeReplay, 'unknown');
     assert.equal(unknown.capabilityEvidence, undefined);
-    assert.equal((await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source: { connectionId: configuration.connectionId, version },
-      prefix: { system: '', tools: [], options: { requiredCapabilities: ['nativeReplay'] } }, portable: [] })).status, 503);
+    const rejected = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source: { connectionId: configuration.connectionId, version },
+      prefix: { system: '', tools: [], options: { requiredCapabilities: ['nativeReplay'] } }, portable: [] });
+    assert.equal(rejected.status, 422); assert.equal(rejected.value.error, 'capability-unavailable');
+    assert.deepEqual(rejected.value.decision.missing.map(item => [item.capability, item.status]), [['nativeReplay', 'unknown']]);
   });
 });
 test('Messages errors retain safe upstream status request identity and retry timing after restart', { timeout: 180000 }, async () => {

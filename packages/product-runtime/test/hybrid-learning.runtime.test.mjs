@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,10 +31,12 @@ async function exercisePairedDevice(profile) {
       response.write('data: {"choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}\n\n');
       return;
     }
-    const first = requests.length === 1;
-    const delta = first ? { tool_calls: [{ index: 0, id: 'paired-marker', type: 'function', function: { name: 'read_marker', arguments: '{}' } }] }
+    const first = requests.length === 1, sensitive = requests.length === 4;
+    const encodedKey = [...'synthetic-device-chat'].map(character => '\\u' + character.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+    const delta = sensitive ? { tool_calls: [{ index: 0, id: 'paired-sensitive', type: 'function', function: { name: 'read_marker', arguments: '{"nonce":"' + encodedKey + '"}' } }] }
+      : first ? { tool_calls: [{ index: 0, id: 'paired-marker', type: 'function', function: { name: 'read_marker', arguments: '{}' } }] }
       : { content: 'paired OK' };
-    response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: first ? 'tool_calls' : 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+    response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: first || sensitive ? 'tool_calls' : 'stop' }] }) + '\n\ndata: [DONE]\n\n');
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   try {
@@ -153,6 +155,25 @@ async function exercisePairedDevice(profile) {
     assert.equal(streamClosed, true);
     assert.equal((await submit('dispatch')).state, 'cancelled');
     assert.equal(requests.length, 3);
+    const sensitiveSegmentId = randomUUID();
+    await api(deviceStatus.endpoint, 'models/segments', { requestId: randomUUID(), segmentId: sensitiveSegmentId,
+      source: { selected: true, selectionVersion: 1 }, prefix: { system: 'Credential boundary over authenticated device tasks', tools: [
+        { name: 'read_marker', description: '', inputSchema: { type: 'object', properties: { nonce: { type: 'string' } }, required: ['nonce'], additionalProperties: false } },
+      ] }, portable: [] }, selected);
+    attemptId = randomUUID();
+    await submit('receive', { attemptId, purpose: 'chat-probe', segmentId: sensitiveSegmentId, expectedSequence: 0,
+      input: { text: 'Synthetic escaped credential fixture', images: [], toolResults: [] }, limits: { maxOutputTokens: 64, timeoutMs: 15000 } });
+    await submit('dispatch');
+    const sensitiveResult = await submit('read');
+    assert.equal(sensitiveResult.state, 'failed'); assert.equal(sensitiveResult.reason, 'credential-in-tool-output');
+    assert.deepEqual(sensitiveResult.toolIntents, []); assert.equal(JSON.stringify(sensitiveResult).includes('synthetic-device-chat'), false);
+    const modelOwner = deviceStatus.environment.services.find(service => service.unit === 'model-connection');
+    const storedBytes = await readFile(join(deviceRoot, 'learning-resources/model-connection', deviceStatus.environment.environmentId, modelOwner.serviceId, sensitiveResult.resultRef));
+    const storedNative = JSON.parse(storedBytes.subarray(storedBytes.indexOf(10) + 1).toString());
+    assert.equal(storedNative.redacted, true); assert.deepEqual(storedNative.chunks, []);
+    await device.stop(); await device.start();
+    assert.equal((await submit('read')).resultRef, sensitiveResult.resultRef);
+    assert.equal((await submit('dispatch')).state, 'failed'); assert.equal(requests.length, 4);
     if (profile === 'model') {
       assert.equal(deviceStatus.environment.services.some(service => service.unit === 'learning-data'), false);
       assert.equal((await call(deviceStatus.endpoint, 'activities', undefined, selected)).status, 503);

@@ -3,6 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import type { ModelTool, ModelToolIntent, ModelUsage } from '@xunjie/contracts/model-connections';
 import { modelToolIntentSchema, modelUsageSchema } from '@xunjie/contracts/model-connections';
 import { toolValidators } from './chat-native.js';
+import { protocolJsonStrings } from './sensitive-output.js';
 
 type ObjectValue = Record<string, unknown>;
 export function object(value: unknown): ObjectValue {
@@ -20,6 +21,29 @@ function array(value: unknown): unknown[] { requireValue(Array.isArray(value)); 
 function same(value: unknown, expected: unknown) { requireValue(isDeepStrictEqual(value, expected)); }
 function contiguous(values: Map<number, unknown>) {
   [...values.keys()].sort((a, b) => a - b).forEach((value, position) => requireValue(value === position));
+}
+
+// Only function-call arguments are JSON-encoded by this protocol. Visible text,
+// signatures and encrypted reasoning must retain their original representation.
+function decodedArguments(value: string): unknown {
+  return protocolJsonStrings(value);
+}
+export function responsesSensitiveValues(response: unknown): unknown[] {
+  if (!response || typeof response !== 'object' || !('output' in response) || !Array.isArray(response.output)) return [];
+  return response.output.flatMap((item: unknown) => item && typeof item === 'object' && 'type' in item
+    && item.type === 'function_call' && 'arguments' in item && typeof item.arguments === 'string'
+    ? [decodedArguments(item.arguments)] : []);
+}
+
+export function responsesEventSensitiveValues(events: unknown[]): unknown[] {
+  return events.flatMap(value => {
+    if (!value || typeof value !== 'object') return [];
+    const event = value as ObjectValue;
+    const item = event.item as ObjectValue | undefined;
+    return [...responsesSensitiveValues(event.response),
+      ...(item?.type === 'function_call' && typeof item.arguments === 'string' ? [decodedArguments(item.arguments)] : []),
+      ...(event.type === 'response.function_call_arguments.done' && typeof event.arguments === 'string' ? [decodedArguments(event.arguments)] : [])];
+  });
 }
 
 export function responsesUsage(value: unknown, final: boolean): ModelUsage {
@@ -247,7 +271,10 @@ export function createResponsesAssembler() {
     }
   }
   return { add, get response() { return terminal; }, get terminalType() { return terminalType; },
-    get partialText() { return partialText; }, get streamError() { return streamError; } };
+    get partialText() { return partialText; }, get streamError() { return streamError; },
+    // Retain aggregation for safety checks even if EOF/reset arrives before a terminal.
+    get sensitiveValues() { return [...items.values()].flatMap(item => [...item.fields].flatMap(([key, field]) =>
+      key === 'arguments' ? [field.value, decodedArguments(field.value)] : [field.value])); } };
 }
 
 /** Non-completed records remain evidence; only a complete, understood native result can be replayed. */

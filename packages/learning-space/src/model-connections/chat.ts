@@ -1,7 +1,9 @@
 import OpenAI from 'openai';
-import type { ModelConfiguration, ModelUsage, ModelTool } from '@xunjie/contracts/model-connections';
+import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { modelUsageSchema } from '@xunjie/contracts/model-connections';
-import { createChatAssembler, compileOutputSchema } from './chat-native.js';
+import { createChatAssembler, compileOutputSchema, chatSensitiveValues } from './chat-native.js';
+import { createSensitiveOutput } from './sensitive-output.js';
+import { responseFacts } from './upstream-facts.js';
 
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
 export const sdkVersion = 'openai@7.42.0';
@@ -14,28 +16,41 @@ export function checkPayload(configuration: ModelConfiguration, maxOutputTokens:
     ...(configuration.dialect === 'deepseek' ? { thinking: { type: configuration.parameterMode === 'thinking' ? 'enabled' : 'disabled' } } : {}) };
 }
 export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
-  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>) {
-  const clean = (value: string) => apiKey ? value.split(apiKey).join('[redacted]') : value;
+  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>, requestFetch: typeof fetch = fetch) {
+  const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const chunks: unknown[] = [];
-  const assembler = nativeTools ? createChatAssembler(configuration.dialect) : null;
+  const assembler = createChatAssembler(configuration.dialect);
   let text = '', finishReason: string | null = null, bytes = 0, usage: ModelUsage = { state: 'unknown' };
-  let upstreamError: unknown = null;
+  let upstreamError: unknown = null, upstream: ModelUpstream | undefined;
+  let responseLimited = false, finalUsage = false;
+  const deadline = AbortSignal.timeout(timeoutMs), requestSignal = AbortSignal.any([signal, deadline]);
   let reason = 'missing-terminal', state: 'completed' | 'incomplete' | 'failed' | 'unknown' | 'cancelled' = 'incomplete';
   const client = new OpenAI({ apiKey, baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0, timeout: timeoutMs,
-    fetchOptions: { redirect: 'error' } });
+    logLevel: 'off', fetchOptions: { redirect: 'error' }, fetch: async (input, init) => {
+      const response = await requestFetch(input, init);
+      upstream = responseFacts(response.status, response.headers, apiKey);
+      if (!response.body) return response;
+      let received = 0;
+      const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) {
+        received += chunk.byteLength;
+        if (received > 2_000_000) { responseLimited = true; controller.error(new Error('response-limit')); }
+        else controller.enqueue(chunk);
+      } }));
+      return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+    } });
   try {
-    const stream = await client.chat.completions.create(payload, { signal });
+    const stream = await client.chat.completions.create(payload, { signal: requestSignal });
     for await (const value of stream) {
-      const encoded = clean(JSON.stringify(value));
+      const encoded = JSON.stringify(value);
       bytes += Buffer.byteLength(encoded);
-      if (bytes > 2_000_000) { stream.controller.abort(); reason = 'response-limit'; break; }
+      if (bytes > 2_000_000) { responseLimited = true; stream.controller.abort(); reason = 'response-limit'; break; }
       chunks.push(JSON.parse(encoded));
-      if (assembler) { try { assembler.add(value); } catch { throw new MalformedResponse(); } }
+      try { assembler.add(value); } catch { throw new MalformedResponse(); }
       if (!Array.isArray(value.choices)) throw new MalformedResponse();
       const choice = value.choices.find(item => item.index === 0);
       if (choice && (!choice.delta || choice.delta.content != null && typeof choice.delta.content !== 'string'
         || choice.finish_reason != null && typeof choice.finish_reason !== 'string')) throw new MalformedResponse();
-      if (choice?.delta.content) text += clean(choice.delta.content);
+      if (choice?.delta.content) text += choice.delta.content;
       if (choice?.finish_reason) finishReason = choice.finish_reason;
       if (value.usage) {
         const native = value.usage;
@@ -50,27 +65,40 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
           ...(typeof native.completion_tokens_details?.reasoning_tokens === 'number' ? { reasoningTokens: native.completion_tokens_details.reasoning_tokens } : {}) });
         if (!parsed.success) throw new MalformedResponse();
         usage = Object.keys(parsed.data).length > 1 ? parsed.data : { state: 'unknown' };
+        // A usage-bearing chunk at/after the protocol finish is the final usage fact.
+        finalUsage = !!finishReason && usage.inputTokens !== undefined
+          && usage.outputTokens !== undefined && usage.totalTokens !== undefined;
       }
     }
-    if (reason !== 'response-limit') {
-      reason = finishReason ?? 'missing-terminal';
-      state = finishReason === 'stop' || nativeTools && finishReason === 'tool_calls' ? 'completed' : 'incomplete';
-      if (state === 'completed' && usage.inputTokens !== undefined && usage.outputTokens !== undefined && usage.totalTokens !== undefined)
-        usage = { ...usage, state: 'final' };
-    }
   } catch (error) {
-    const status = error instanceof OpenAI.APIError ? error.status : undefined;
+    const status = (error instanceof OpenAI.APIError ? error.status : undefined)
+      ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
+    if (!upstream && status && error instanceof OpenAI.APIError) upstream = responseFacts(status, error.headers ?? new Headers(), apiKey);
+    const malformed = error instanceof MalformedResponse || error instanceof SyntaxError;
+    const explicitError = error instanceof OpenAI.APIError && !(error instanceof OpenAI.APIConnectionError)
+      && !(error instanceof OpenAI.APIUserAbortError);
     const unsupported = error instanceof OpenAI.APIError && ['unsupported_model', 'model_not_supported', 'model_not_found',
       'unsupported_parameter', 'unsupported_value'].includes(error.code ?? '');
-    if (error instanceof OpenAI.APIError && error.error) upstreamError = JSON.parse(clean(JSON.stringify(error.error)));
-    reason = error instanceof MalformedResponse ? 'malformed-response' : signal.aborted ? 'client-abort' : status === 401 || status === 403 ? 'authentication'
-      : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http' : 'upstream-stream';
-    state = error instanceof MalformedResponse ? 'failed' : signal.aborted ? 'cancelled' : status || upstreamError ? 'failed' : chunks.length ? 'incomplete' : 'unknown';
+    if (error instanceof OpenAI.APIError && error.error) upstreamError = error.error;
+    reason = malformed ? 'malformed-response' : status === 401 || status === 403 ? 'authentication'
+      : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http' : explicitError ? 'upstream-stream-error'
+      : signal.aborted ? 'client-abort' : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
+    state = malformed || status || explicitError ? 'failed' : signal.aborted ? 'cancelled' : chunks.length ? 'incomplete' : 'unknown';
   }
-  // The SDK may end its iterator cleanly after abort rather than throwing.
-  // A terminal response already received still wins a later cancellation race.
-  if (signal.aborted && finishReason !== 'stop' && !(nativeTools && finishReason === 'tool_calls')) { state = 'cancelled'; reason = 'client-abort'; }
-  const assembled = assembler?.result(nativeTools ?? [], clean);
+  // Only transport loss/abort may yield to an already received protocol terminal.
+  // Format errors, explicit upstream errors and resource limits remain authoritative.
+  if (state !== 'failed') {
+    if (finishReason) {
+      reason = finishReason;
+      state = finishReason === 'stop' || nativeTools && finishReason === 'tool_calls' ? 'completed' : 'incomplete';
+    } else if (requestSignal.aborted) {
+      state = signal.aborted ? 'cancelled' : chunks.length ? 'incomplete' : 'unknown';
+      reason = signal.aborted ? 'client-abort' : 'upstream-timeout';
+    }
+  }
+  if (responseLimited) { state = 'incomplete'; reason = 'response-limit'; }
+  if (finalUsage) usage = { ...usage, state: 'final' };
+  const assembled = assembler.result(nativeTools ?? []);
   if (state === 'completed' && assembled && !assembled.valid) { state = 'failed'; reason = 'invalid-native-result'; }
   if (state === 'completed' && assembled?.assistant?.refusal) { state = 'failed'; reason = 'content-refused'; }
   if (state === 'completed' && (payload.tool_choice === 'none' && assembled?.intents.length
@@ -78,14 +106,26 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       && (assembled?.intents.length !== 1 || assembled.intents[0]?.name !== payload.tool_choice.function.name))) {
     state = 'failed'; reason = 'tool-choice-not-honored';
   }
+  let structuredOutput: unknown;
   if (state === 'completed' && finishReason === 'stop' && (applicationSchema || payload.response_format && payload.response_format.type !== 'text')) {
     try {
-      const value: unknown = JSON.parse(text);
+      const value: unknown = JSON.parse(text); structuredOutput = value;
       if (value === null || typeof value !== 'object' || Array.isArray(value) || applicationSchema && !compileOutputSchema(applicationSchema)(value)) throw new Error();
       if (payload.response_format?.type === 'json_schema' && !compileOutputSchema(payload.response_format.json_schema.schema ?? {})(value)) throw new Error();
     } catch { state = 'failed'; reason = 'invalid-structured-output'; }
   }
-  return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? assembled?.intents ?? [] : [],
-    native: { formatVersion: 1, sdk: sdkVersion, adapter: nativeTools ? nativeAdapterVersion : chatAdapterVersion, chunks, finishReason, upstreamError,
-      ...(assembled ? { assistant: assembled.assistant, choices: assembled.choices } : {}) } };
+  let native: { formatVersion: number; sdk: string; adapter: string; chunks: unknown[]; finishReason: string | null;
+    upstreamError: unknown; assistant: typeof assembled.assistant | null; choices: typeof assembled.choices; redacted?: boolean; upstream?: ModelUpstream }
+    = { formatVersion: 1, sdk: sdkVersion, adapter: nativeTools ? nativeAdapterVersion : chatAdapterVersion,
+      chunks, finishReason, upstreamError, assistant: assembled.assistant, choices: assembled.choices, ...(upstream ? { upstream } : {}) };
+  const sensitiveTools = sensitive.contains(assembled.decodedArguments);
+  if (sensitiveTools || sensitive.contains([text, structuredOutput, native, chatSensitiveValues(chunks)])) {
+    if (state === 'completed') state = 'failed';
+    reason = sensitiveTools ? 'credential-in-tool-output' : 'credential-in-output';
+    if (sensitive.contains(structuredOutput)) text = '';
+    // Do not alter replay bytes or retain fragments from a sensitive result.
+    native = { ...native, chunks: [], assistant: null, choices: [], finishReason: null, upstreamError: null, redacted: true };
+  }
+  return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? assembled.intents : [],
+    native, ...(upstream ? { upstream } : {}) };
 }

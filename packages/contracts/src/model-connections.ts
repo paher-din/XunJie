@@ -89,6 +89,41 @@ export const modelChatOptionsSchema = z.object({
   requiredCapabilities: z.array(z.enum(['text', 'images', 'tools', 'nativeReplay', 'jsonMode', 'applicationSchema', 'nativeStrict', 'strictTools'])).max(8).optional(),
   capabilityProbe: z.boolean().optional(),
 }).strict();
+/** Read-only request: credentials/drafts are deliberately excluded. */
+export const modelCapabilityInputSchema = z.object({
+  source: z.union([
+    z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
+    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
+    z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
+  ]),
+  prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),
+}).strict();
+export const modelCapabilityRequirementSchema = z.enum([
+  'text', 'images', 'tools', 'nativeReplay', 'jsonMode', 'applicationSchema', 'nativeStrict', 'strictTools', 'forcedTool',
+]);
+export const modelCapabilityItemSchema = z.object({
+  capability: modelCapabilityRequirementSchema, status: z.enum(['available', 'unknown', 'unsupported']),
+  evidence: z.object({ state: capabilityStateSchema,
+    source: z.enum(['measured-route', 'unmeasured-route', 'application-validator', 'adapter-constraint']) }).strict(),
+}).strict();
+/** Only fixed route identity and reviewed capability facts, never endpoint, scopes or credential references. */
+export const modelCapabilityDecisionSchema = z.object({
+  connectionId: z.uuid(), routeId: z.uuid(), configurationVersion: z.number().int().positive(),
+  protocol: modelProtocolSchema, parameterMode: z.enum(['plain', 'thinking']),
+  required: z.array(modelCapabilityRequirementSchema), items: z.array(modelCapabilityItemSchema),
+  available: z.boolean(), missing: z.array(modelCapabilityItemSchema), limitations: z.array(z.string()),
+  evidence: z.object({ observedAt: z.iso.date(), sdk: z.string(), adapter: z.string(),
+    testedToolChoice: z.enum(['auto', 'named', 'not-tested']) }).strict().optional(),
+  assembly: z.object({
+    toolImages: z.enum(['paired-text-adjacent-user-image', 'native-function-output-image', 'native-tool-result-image']),
+    replay: z.literal('full-native-history'),
+    output: z.enum(['text', 'native-json-object', 'native-json-schema']), applicationValidation: z.boolean(),
+  }).strict(),
+}).strict();
+export const modelCapabilityFailureSchema = z.object({ error: z.literal('capability-unavailable'), decision: modelCapabilityDecisionSchema }).strict();
+export type ModelCapabilityInput = z.infer<typeof modelCapabilityInputSchema>;
+export type ModelCapabilityDecision = z.infer<typeof modelCapabilityDecisionSchema>;
+export type ModelCapabilityRequirement = z.infer<typeof modelCapabilityRequirementSchema>;
 export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId: z.uuid(), source: modelCheckInputSchema.shape.source,
   prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),
   portable: z.array(z.object({ text: z.string().max(8192), resultRef: z.uuid().optional() }).strict()).max(8),

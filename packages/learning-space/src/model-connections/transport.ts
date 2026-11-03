@@ -21,14 +21,14 @@ export function limitPayload(configuration: ModelConfiguration, payload: NativeP
     : { ...payload as ChatPayload, max_tokens: tokens };
 }
 export async function runModel(configuration: ModelConfiguration, apiKey: string, payload: NativePayload,
-  signal: AbortSignal, timeoutMs: number, segment: boolean, applicationSchema?: Record<string, unknown>) {
+  signal: AbortSignal, timeoutMs: number, segment: boolean, applicationSchema?: Record<string, unknown>, requestFetch: typeof fetch = fetch) {
   if (configuration.protocol === 'responses') {
     const request = payload as ResponsesPayload;
     const tools = segment ? request.tools?.map(tool => {
       if (tool.type !== 'function') throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
     }) ?? [] : undefined;
-    return runResponses(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema);
+    return runResponses(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema, requestFetch);
   }
   if (configuration.protocol === 'messages') {
     const request = payload as MessagesPayload;
@@ -36,7 +36,7 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
       if (!('input_schema' in tool)) throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema };
     }) ?? [] : [];
-    return runMessages(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema);
+    return runMessages(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema, requestFetch);
   }
   if (configuration.protocol !== 'chat-completions') throw new StorageError('unavailable');
   const request = payload as ChatPayload;
@@ -44,5 +44,5 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
     if (tool.type !== 'function') throw new StorageError('corrupt');
     return { name: tool.function.name, description: tool.function.description ?? '', inputSchema: tool.function.parameters ?? {} };
   }) ?? [] : undefined;
-  return runChat(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema);
+  return runChat(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema, requestFetch);
 }

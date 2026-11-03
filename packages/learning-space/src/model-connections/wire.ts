@@ -14,6 +14,7 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   }
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
   if (route === 'models/connections') return body === undefined ? models.list(identity) : models.save(identity, body);
+  if (route === 'models/capabilities' && body !== undefined) return models.segments.decideCapabilities(identity, body);
   if (route === 'models/images' && body !== undefined) return models.images.upload(identity, body);
   if (/^models\/results\/[^/]+$/.test(route) && body === undefined) return models.results.read(identity, route.split('/')[2]!);
   if (route === 'models/segments' && body !== undefined) return models.segments.create(identity, body);

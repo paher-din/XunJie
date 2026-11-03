@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelSegmentInputSchema, modelAttemptSchema, settleModelToolsSchema, modelToolResultSchema, modelSegmentCloseSchema, modelSegmentBoundarySchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelChatInput, ModelCheckInput, ModelTool, ModelToolResult } from '@xunjie/contracts/model-connections';
+import { modelSegmentInputSchema, modelCapabilityInputSchema, modelAttemptSchema, settleModelToolsSchema, modelToolResultSchema, modelSegmentCloseSchema, modelSegmentBoundarySchema } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelChatInput, ModelCheckInput, ModelCapabilityInput, ModelTool, ModelToolResult } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
 import { toolValidators, compileOutputSchema, type NativeChatAssistant } from './chat-native.js';
 import { checkPayload, type ChatPayload } from './chat.js';
@@ -14,6 +14,7 @@ import { responsesCheckPayload, validateResponsesNative, type ResponsesPayload }
 import type { NativePayload } from './transport.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { messagesCheckPayload, validateMessagesNative, type MessagesPayload } from './messages.js';
+import { decideModelCapabilities, ModelCapabilityError } from './capabilities.js';
 
 export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-native-segments', sql: `
   CREATE TABLE model_images(id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL);
@@ -107,34 +108,31 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     });
     return { ...await read(identity, id), boundary: modelSegmentBoundarySchema.parse(result.result) };
   }
+  function validatePrefix(prefix: ModelCapabilityInput['prefix']) {
+    toolValidators(prefix.tools);
+    const forcedName = typeof prefix.options?.toolChoice === 'object' ? prefix.options.toolChoice.name : undefined;
+    if (forcedName && !prefix.tools.some(tool => tool.name === forcedName)) throw new StorageError('invalid');
+    if (prefix.options?.applicationSchema) compileOutputSchema(prefix.options.applicationSchema);
+  }
+  async function decideCapabilities(identity: SpaceIdentity, value: unknown) {
+    await owner.authorize(identity);
+    const input = modelCapabilityInputSchema.parse(value);
+    validatePrefix(input.prefix);
+    const snapshot = await owner.snapshot(identity, input.source);
+    return decideModelCapabilities(snapshot.connection, input.prefix);
+  }
   async function create(identity: SpaceIdentity, value: unknown) {
     owner.assertWritable(); await owner.authorize(identity);
     const input = modelSegmentInputSchema.parse(value), scope = modelScopeOf(identity), hash = digest({ scope, input });
     const prior = await storage.receipt('model-segment:' + input.requestId, hash); if (prior) return read(identity, input.segmentId);
     if ('draft' in input.source) throw new StorageError('invalid');
-    toolValidators(input.prefix.tools);
+    validatePrefix(input.prefix);
     const options = input.prefix.options;
-    const forcedName = typeof options?.toolChoice === 'object' ? options.toolChoice.name : undefined;
-    if (forcedName && !input.prefix.tools.some(tool => tool.name === forcedName)) throw new StorageError('invalid');
-    if (options?.applicationSchema) compileOutputSchema(options.applicationSchema);
     const snapshot = await owner.snapshot(identity, input.source);
-    if (snapshot.connection.protocol === 'messages' && options?.responseFormat
-      && (options.responseFormat.kind === 'json-object' || snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe)) throw new StorageError('unavailable');
-    if (forcedName && snapshot.connection.capabilityEvidence?.limitations.includes('thinking-forced-tool-unsupported') && !options?.capabilityProbe) throw new StorageError('unavailable');
-    if (options?.responseFormat?.kind === 'json-schema' && options.responseFormat.strict
-      && snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe) throw new StorageError('unavailable');
-    if (input.prefix.tools.some(tool => tool.strict) && snapshot.connection.capabilities.strictTools !== 'verified'
-      && !options?.capabilityProbe) throw new StorageError('unavailable');
-    for (const capability of options?.requiredCapabilities ?? []) {
-      const supported = capability === 'applicationSchema' || capability === 'text' && snapshot.connection.capabilities.text === 'verified'
-        || capability === 'images' && snapshot.connection.capabilities.images === 'verified'
-        || capability === 'tools' && snapshot.connection.capabilities.tools === 'verified'
-        || capability === 'nativeReplay' && snapshot.connection.capabilities.nativeReplay === 'verified'
-        || capability === 'jsonMode' && snapshot.connection.capabilities.jsonMode === 'verified'
-        || capability === 'nativeStrict' && snapshot.connection.capabilities.strictSchema === 'verified'
-        || capability === 'strictTools' && snapshot.connection.capabilities.strictTools === 'verified';
-      if (!supported && !options?.capabilityProbe) throw new StorageError('unavailable');
-    }
+    const decision = decideModelCapabilities(snapshot.connection, input.prefix);
+    // Preserve explicit diagnostic probes without upgrading evidence. Messages has no JSON-object wire form.
+    if (!decision.available && (!options?.capabilityProbe
+      || snapshot.connection.protocol === 'messages' && options.responseFormat?.kind === 'json-object')) throw new ModelCapabilityError(decision);
     if (input.previousSegmentId) {
       const old = await stored(identity, input.previousSegmentId);
       if (old.pendingAttemptId) throw new StorageError('resource-busy');
@@ -220,6 +218,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
       const results = paired(prior, saved ?? input.input.toolResults);
       if (!saved && results.length) settlement = { attemptId: prior.attemptId, results };
       const messageResults: Anthropic.ToolResultBlockParam[] = [];
+      const chatImageMessages: ChatPayload['messages'] = [];
       for (const result of results) {
         const image = await images.materialize(identity, result.images);
         resultImages.push(image);
@@ -230,9 +229,13 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
           output: image.content.length ? [{ type: 'input_text', text }, ...nativeImages(image.content)] : text });
         else {
           messages.push({ role: 'tool', tool_call_id: result.callId, content: text });
-          if (image.content.length) messages.push({ role: 'user', content: image.content });
+          if (image.content.length) chatImageMessages.push({ role: 'user', content: image.content.flatMap((part, index) => [
+            { type: 'text' as const, text: JSON.stringify({ kind: 'tool-result-image', callId: result.callId, source: result.images[index] }) }, part,
+          ]) });
         }
       }
+      // A Chat tool group must be complete before starting the adjacent image user turns.
+      messages.push(...chatImageMessages);
       if (messageResults.length) messageItems.push({ role: 'user', content: messageResults });
     } else {
       if (input.input.toolResults.length) throw new StorageError('invalid');
@@ -314,5 +317,5 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     }
     await images.validate();
   }
-  return { create, read, settle, close, prepare, publish, validate };
+  return { create, decideCapabilities, read, settle, close, prepare, publish, validate };
 }

@@ -88,6 +88,7 @@ export async function createProductLearningApplication(context: {
     const model = deferModel ? undefined : await owner('model-connection', modelMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
     const models = model ? await createModelGateway(model.storage, {
+      holder: environment.profile === 'school' ? 'school' : 'device',
       async authorize(identity) {
         if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
         if (!client || identity.kind !== 'school') throw new StorageError('forbidden');

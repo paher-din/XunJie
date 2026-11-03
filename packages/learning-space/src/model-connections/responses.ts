@@ -1,8 +1,10 @@
 import OpenAI from 'openai';
 import { StorageError } from '@xunjie/storage';
-import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage } from '@xunjie/contracts/model-connections';
+import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { compileOutputSchema } from './chat-native.js';
-import { createResponsesAssembler, object, responsesOutput, responsesUsage, validateResponsesNative } from './responses-native.js';
+import { createResponsesAssembler, object, responsesOutput, responsesUsage, responsesSensitiveValues, responsesEventSensitiveValues, validateResponsesNative } from './responses-native.js';
+import { createSensitiveOutput } from './sensitive-output.js';
+import { responseFacts } from './upstream-facts.js';
 export { validateResponsesNative } from './responses-native.js';
 
 export const responsesAdapterVersion = 'xunjie-responses-native-v1';
@@ -16,36 +18,20 @@ export function responsesCheckPayload(configuration: ModelConfiguration, maxOutp
 
 class MalformedResponse extends Error {}
 export async function runResponses(configuration: ModelConfiguration, apiKey: string, payload: ResponsesPayload,
-  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>) {
-  const clean = (value: string) => apiKey ? value.split(apiKey).join('[redacted]') : value;
-  function redact<T>(value: T): T {
-    if (typeof value === 'string') {
-      const cleaned = clean(value);
-      // Tool arguments are JSON inside a native string. Preserve their exact bytes unless
-      // their parsed form contains a credential escaped by JSON serialization.
-      if (cleaned === value && /^\s*[\[{]/.test(value)) {
-        try {
-          const parsed: unknown = JSON.parse(value), sanitized = redact(parsed);
-          if (JSON.stringify(parsed) !== JSON.stringify(sanitized)) return JSON.stringify(sanitized) as T;
-        } catch { /* Ordinary native text need not be JSON. */ }
-      }
-      return cleaned as T;
-    }
-    if (Array.isArray(value)) return value.map(item => redact(item)) as T;
-    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
-      .map(([key, item]) => [clean(key), redact(item)])) as T;
-    return value;
-  }
+  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>, requestFetch: typeof fetch = fetch) {
+  const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const events: unknown[] = [], assembler = createResponsesAssembler();
   let state: 'completed' | 'incomplete' | 'failed' | 'unknown' | 'cancelled' = 'incomplete';
   let reason = 'missing-terminal', bytes = 0, text = '', usage: ModelUsage = { state: 'unknown' };
   let toolIntents: ModelToolIntent[] = [], upstreamError: unknown = null;
+  let upstream: ModelUpstream | undefined;
   const deadline = AbortSignal.timeout(timeoutMs), requestSignal = AbortSignal.any([signal, deadline]);
   let responseLimited = false;
   const client = new OpenAI({ apiKey, baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0,
-    timeout: timeoutMs, fetchOptions: { redirect: 'error' },
+    timeout: timeoutMs, logLevel: 'off', fetchOptions: { redirect: 'error' },
     fetch: async (input, init) => {
-      const response = await fetch(input, init);
+      const response = await requestFetch(input, init);
+      upstream = responseFacts(response.status, response.headers, apiKey);
       if (!response.body) return response;
       let received = 0;
       const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) {
@@ -84,7 +70,9 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     }
   } catch (error) {
     text = assembler.partialText;
-    const status = error instanceof OpenAI.APIError ? error.status : undefined;
+    const status = (error instanceof OpenAI.APIError ? error.status : undefined)
+      ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
+    if (!upstream && status && error instanceof OpenAI.APIError) upstream = responseFacts(status, error.headers ?? new Headers(), apiKey);
     const unsupported = error instanceof OpenAI.APIError && ['unsupported_model', 'model_not_supported', 'model_not_found',
       'unsupported_parameter', 'unsupported_value'].includes(error.code ?? '');
     if (error instanceof OpenAI.APIError && error.error) upstreamError = error.error;
@@ -127,20 +115,23 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     state = 'failed'; reason = 'tool-choice-not-honored';
   }
   const format = payload.text?.format;
+  let structuredOutput: unknown;
   if (state === 'completed' && !toolIntents.length && (applicationSchema || format && format.type !== 'text')) {
     try {
-      const value: unknown = JSON.parse(clean(text)); object(value);
+      const value: unknown = JSON.parse(text); structuredOutput = value; object(value);
       if (applicationSchema && !compileOutputSchema(applicationSchema)(value)
         || format?.type === 'json_schema' && !compileOutputSchema(format.schema)(value)) throw new Error();
     } catch { state = 'failed'; reason = 'invalid-structured-output'; }
   }
   const response = assembler.response;
   const originalNative = { formatVersion: 1, sdk: 'openai@7.42.0', adapter: responsesAdapterVersion,
-    events, response, output: Array.isArray(response?.output) ? response.output : [], upstreamError };
-  let native: typeof originalNative & { redacted?: boolean } = redact(originalNative);
-  const sensitiveTools = JSON.stringify(redact(toolIntents)) !== JSON.stringify(toolIntents);
-  if (sensitiveTools || clean(text) !== text || JSON.stringify(native) !== JSON.stringify(originalNative)) {
-    if (state === 'completed') { state = 'failed'; reason = sensitiveTools ? 'credential-in-tool-output' : 'credential-in-output'; }
+    events, response, output: Array.isArray(response?.output) ? response.output : [], upstreamError, ...(upstream ? { upstream } : {}) };
+  let native: typeof originalNative & { redacted?: boolean } = originalNative;
+  const sensitiveTools = sensitive.contains([toolIntents, responsesSensitiveValues(response), responsesEventSensitiveValues(events)]);
+  if (sensitiveTools || sensitive.contains([text, structuredOutput, native, assembler.sensitiveValues])) {
+    if (state === 'completed') state = 'failed';
+    reason = sensitiveTools ? 'credential-in-tool-output' : 'credential-in-output';
+    if (sensitive.contains(structuredOutput)) text = '';
     // Split deltas can reconstruct a credential even when no individual delta contains it.
     // A sensitive result is non-consumable; withhold its native body instead of retaining fragments.
     native = { ...originalNative, events: [], response: null, output: [], upstreamError: null, redacted: true };
@@ -150,5 +141,5 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     catch { state = 'failed'; reason = 'invalid-native-result'; }
   }
   return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? toolIntents : [],
-    native };
+    native, ...(upstream ? { upstream } : {}) };
 }

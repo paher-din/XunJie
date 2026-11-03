@@ -51,7 +51,7 @@ async function product(upstreamHandler, run, overrides = {}, profile = 'local') 
   if (failure) throw failure;
 }
 
-test('fixed images and multi-tool reasoning survive persistence and restart into the next actual SDK payload', { timeout: 180000 }, async () => {
+test('first-tool images and reversed tool results survive persistence and restart into the next actual SDK payload', { timeout: 180000 }, async () => {
   const received = [];
   await product(async (request, response) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
@@ -60,9 +60,9 @@ test('fixed images and multi-tool reasoning survive persistence and restart into
     const send = value => response.write('data: ' + JSON.stringify(value) + '\n\n');
     if (received.length === 1) {
       send({ id: 'tools-result', choices: [{ index: 0, delta: { role: 'assistant', content: null, reasoning_content: 'PRIVATE-REASONING-甲' }, finish_reason: null }] });
-      send({ choices: [{ index: 0, delta: { reasoning_content: '乙', tool_calls: [{ index: 1, id: 'tool-image', type: 'function', function: { name: 'produce_image', arguments: '{' } },
-        { index: 0, id: 'tool-marker', type: 'function', function: { name: 'read_marker', arguments: '{"nonce"' } }] }, finish_reason: null }] });
-      send({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: ' : "A"}' } }, { index: 1, function: { arguments: '}' } }] }, finish_reason: 'tool_calls' }] });
+      send({ choices: [{ index: 0, delta: { reasoning_content: '乙', tool_calls: [{ index: 1, id: 'tool-marker', type: 'function', function: { name: 'read_marker', arguments: '{"nonce"' } },
+        { index: 0, id: 'tool-image', type: 'function', function: { name: 'produce_image', arguments: '{' } }] }, finish_reason: null }] });
+      send({ choices: [{ index: 0, delta: { tool_calls: [{ index: 1, function: { arguments: ' : "A"}' } }, { index: 0, function: { arguments: '}' } }] }, finish_reason: 'tool_calls' }] });
       send({ choices: [], usage: { prompt_tokens: 7, completion_tokens: 4, total_tokens: 11 } });
     } else send({ id: 'final-result', choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: received.length === 3 ? null : '', content: 'nonce-X' }, finish_reason: 'stop' }] });
     response.end('data: [DONE]\n\n');
@@ -79,30 +79,43 @@ test('fixed images and multi-tool reasoning survive persistence and restart into
     const first = await finish({ attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 0,
       input: { text: '读取固定图片并请求两个工具', images: [image], toolResults: [] }, limits: { maxOutputTokens: 512, timeoutMs: 10000 } });
     assert.equal(first.state, 'completed'); assert.equal(first.reason, 'tool_calls'); assert.equal(first.usage.state, 'final');
-    assert.deepEqual(first.toolIntents.map(tool => [tool.callId, tool.name, tool.arguments]), [['tool-marker', 'read_marker', { nonce: 'A' }], ['tool-image', 'produce_image', {}]]);
+    assert.deepEqual(first.toolIntents.map(tool => [tool.callId, tool.name, tool.arguments]), [['tool-image', 'produce_image', {}], ['tool-marker', 'read_marker', { nonce: 'A' }]]);
     assert.equal(JSON.stringify(first).includes('PRIVATE-REASONING'), false);
     await runtime.stop(); await runtime.start(); assert.equal(received.length, 1);
     assert.equal((await api(`calls/${first.attemptId}`)).value.resultRef, first.resultRef);
+    const toolResults = [
+      { callId: 'tool-marker', outcome: 'success', text: 'nonce-X', images: [] },
+      { callId: 'tool-image', outcome: 'success', text: '配对图像结果', images: [image] },
+    ];
+    assert.deepEqual(toolResults.map(result => result.callId), first.toolIntents.map(tool => tool.callId).toReversed());
     const second = await finish({ attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 1,
-      input: { text: '继续', images: [], toolResults: [
-        { callId: 'tool-marker', outcome: 'success', text: 'nonce-X', images: [] },
-        { callId: 'tool-image', outcome: 'success', text: '配对图像结果', images: [image] },
-      ] }, limits: { maxOutputTokens: 512, timeoutMs: 10000 } });
+      input: { text: '继续', images: [], toolResults }, limits: { maxOutputTokens: 512, timeoutMs: 10000 } });
     assert.equal(second.state, 'completed'); assert.equal(second.text, 'nonce-X'); assert.equal(received.length, 2);
     const assistant = received[1].messages.find(message => message.role === 'assistant');
     assert.equal(assistant.reasoning_content, 'PRIVATE-REASONING-甲乙'); assert.equal(assistant.content, null);
     assert.deepEqual(assistant.tool_calls, [
-      { id: 'tool-marker', type: 'function', function: { name: 'read_marker', arguments: '{"nonce" : "A"}' } },
       { id: 'tool-image', type: 'function', function: { name: 'produce_image', arguments: '{}' } },
+      { id: 'tool-marker', type: 'function', function: { name: 'read_marker', arguments: '{"nonce" : "A"}' } },
     ]);
     const paired = received[1].messages.findIndex(message => message.tool_call_id === 'tool-image');
-    assert.equal(received[1].messages[paired + 1].role, 'user');
-    assert.equal(received[1].messages[paired + 1].content[0].image_url.url, 'data:image/png;base64,' + png);
+    assert.deepEqual(received[1].messages.slice(paired, paired + 2), [
+      { role: 'tool', tool_call_id: 'tool-image', content: '配对图像结果' },
+      { role: 'tool', tool_call_id: 'tool-marker', content: 'nonce-X' },
+    ]);
+    const picture = received[1].messages[paired + 2];
+    assert.equal(picture.role, 'user');
+    assert.equal(picture.content[0].type, 'text');
+    assert.deepEqual(JSON.parse(picture.content[0].text), { kind: 'tool-result-image', callId: 'tool-image', source: image });
+    assert.equal(picture.content[1].type, 'image_url');
+    assert.equal(picture.content[1].image_url.url, 'data:image/png;base64,' + png);
+    assert.deepEqual(received[1].messages[paired + 3], { role: 'user', content: [{ type: 'text', text: '继续' }] });
     assert.equal(received[0].messages[1].content[1].image_url.url, 'data:image/png;base64,' + png);
     await runtime.stop(); await runtime.start();
     const third = await finish({ attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 2,
       input: { text: '再次续接', images: [], toolResults: [] }, limits: { maxOutputTokens: 512, timeoutMs: 10000 } });
     assert.equal(third.state, 'completed');
+    assert.deepEqual(received[2].messages.slice(0, received[1].messages.length), received[1].messages,
+      'restart must replay the complete paired tool group, fixed image bytes and call/version label unchanged');
     assert.equal(received[2].messages.filter(message => message.role === 'assistant')[1].reasoning_content, '');
     await runtime.stop(); await runtime.start();
     const fourth = await finish({ attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 3,
@@ -277,9 +290,9 @@ test('explicit JSON mode and application validation keep their own outcomes and 
     response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta, finish_reason: received.length === 3 ? 'tool_calls' : 'stop' }] }) + '\n\ndata: [DONE]\n\n');
   }, async ({ api, source, finish }) => {
     for (const [index, options] of [
-      { responseFormat: { kind: 'json-object' } },
-      { responseFormat: { kind: 'json-object' }, applicationSchema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'], additionalProperties: false } },
-      { toolChoice: { name: 'read_marker' } },
+      { responseFormat: { kind: 'json-object' }, capabilityProbe: true },
+      { responseFormat: { kind: 'json-object' }, applicationSchema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'], additionalProperties: false }, capabilityProbe: true },
+      { toolChoice: { name: 'read_marker' }, capabilityProbe: true },
     ].entries()) {
       const segmentId = randomUUID();
       const created = await api('segments', { requestId: randomUUID(), segmentId, source, prefix: { system: '调用方要求返回 JSON',
@@ -296,10 +309,14 @@ test('explicit JSON mode and application validation keep their own outcomes and 
     assert.deepEqual(received[2].tool_choice, { type: 'function', function: { name: 'read_marker' } });
     const rejected = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '', tools: [],
       options: { requiredCapabilities: ['nativeStrict'] } }, portable: [] });
-    assert.equal(rejected.status, 503); assert.equal(received.length, 3);
+    assert.equal(rejected.status, 422); assert.equal(rejected.value.error, 'capability-unavailable');
+    assert.deepEqual(rejected.value.decision.missing.map(item => [item.capability, item.status]), [['nativeStrict', 'unknown']]);
+    assert.equal(received.length, 3);
     const explicitStrict = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '', tools: [],
       options: { responseFormat: { kind: 'json-schema', name: 'unsupported_strict', schema: { type: 'object' }, strict: true } } }, portable: [] });
-    assert.equal(explicitStrict.status, 503, 'an explicit strict requirement cannot silently become application-only validation');
+    assert.equal(explicitStrict.status, 422, 'an explicit strict requirement cannot silently become application-only validation');
+    assert.equal(explicitStrict.value.error, 'capability-unavailable');
+    assert.deepEqual(explicitStrict.value.decision.missing.map(item => [item.capability, item.status]), [['nativeStrict', 'unknown']]);
   });
 });
 

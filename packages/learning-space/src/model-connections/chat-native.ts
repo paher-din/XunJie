@@ -2,6 +2,7 @@ import { Ajv, type ValidateFunction } from 'ajv';
 import { StorageError } from '@xunjie/storage';
 import type { ModelTool, ModelToolIntent } from '@xunjie/contracts/model-connections';
 import { modelToolIntentSchema } from '@xunjie/contracts/model-connections';
+import { protocolJsonStrings } from './sensitive-output.js';
 
 export type NativeChatAssistant = { role: 'assistant'; content: string | null; reasoning_content?: string | null;
   tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[]; [field: string]: unknown };
@@ -26,6 +27,36 @@ export function toolValidators(tools: ModelTool[]) {
     compiled.set(tool.name, compileOutputSchema(tool.inputSchema));
   }
   return compiled;
+}
+
+/** Inspect protocol fields even in the final chunk rejected by the assembler. */
+export function chatSensitiveValues(chunks: unknown[]) {
+  const fields = new Map<string, string>(), decoded: unknown[] = [];
+  const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown> : {};
+  function append(key: string, value: unknown, json = false) {
+    if (typeof value !== 'string') return;
+    fields.set(key, (fields.get(key) ?? '') + value);
+    if (json) decoded.push(protocolJsonStrings(value));
+  }
+  for (const chunk of chunks) {
+    const choices = record(chunk).choices;
+    for (const value of Array.isArray(choices) ? choices : []) {
+      const choice = record(value), delta = record(choice.delta), prefix = String(choice.index);
+      for (const [key, part] of Object.entries(delta)) append(`${prefix}:${key}`, part);
+      for (const value of Array.isArray(delta.tool_calls) ? delta.tool_calls : []) {
+        const tool = record(value), fn = record(tool.function), key = `${prefix}:tool:${String(tool.index)}`;
+        append(`${key}:name`, fn.name); append(`${key}:arguments`, fn.arguments, true);
+      }
+      for (const value of Array.isArray(delta.reasoning_details) ? delta.reasoning_details : []) {
+        const detail = record(value); append(`${prefix}:detail:${String(detail.index)}`, detail.text);
+      }
+    }
+  }
+  for (const [key, value] of fields) if (key.endsWith(':arguments')) {
+    decoded.push(protocolJsonStrings(value));
+  }
+  return [...fields.values(), ...decoded];
 }
 export function createChatAssembler(dialect: string) {
   type ReasoningText = { type: 'reasoning.text'; text: string; format: string; index: number };
@@ -75,14 +106,19 @@ export function createChatAssembler(dialect: string) {
       if (choice.finish_reason) current.finish = choice.finish_reason;
     }
   }
-  function result(tools: ModelTool[], clean: (value: string) => string) {
+  function result(tools: ModelTool[]) {
     const all = [...choices].sort(([a], [b]) => a - b).map(([index, choice]) => ({ index, finishReason: choice.finish,
       assistant: { ...choice.assistant, ...(choice.details.size ? { reasoning_details: [...choice.details].sort(([a], [b]) => a - b).map(([, value]) => value) } : {}),
         ...(choice.tools.size ? { tool_calls: [...choice.tools].sort(([a], [b]) => a - b).map(([, value]) => value) } : {}) } as NativeChatAssistant }));
     const primary = all.find(choice => choice.index === 0);
-    const nativeChoices = JSON.parse(clean(JSON.stringify(all))) as typeof all;
-    const assistant = nativeChoices.find(choice => choice.index === 0)?.assistant;
+    const assistant = primary?.assistant;
     const intents: ModelToolIntent[] = [];
+    const decodedArguments: unknown[] = [];
+    // Decode only the protocol's function.arguments field, including incomplete results
+    // and non-primary choices. Schema failures must not hide an escaped credential.
+    for (const choice of all) for (const tool of choice.assistant.tool_calls ?? []) {
+      try { decodedArguments.push(JSON.parse(tool.function.arguments)); } catch { /* Partial JSON remains raw evidence. */ }
+    }
     let valid = !unsupported && all.length === 1 && !!primary && !!assistant;
     if (primary && [...choices.get(0)!.tools.keys()].sort((a, b) => a - b).some((index, position) => index !== position)) valid = false;
     if (valid && primary!.finishReason === 'tool_calls') {
@@ -96,7 +132,7 @@ export function createChatAssembler(dialect: string) {
         } catch { valid = false; }
       }
     } else if (assistant?.tool_calls?.length) valid = false;
-    return { valid, choices: nativeChoices, assistant, intents: valid ? intents : [] };
+    return { valid, choices: all, assistant, decodedArguments, intents: valid ? intents : [] };
   }
   return { add, result };
 }

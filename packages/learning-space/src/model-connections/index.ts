@@ -16,6 +16,7 @@ import { measuredCapabilities } from './capabilities.js';
 import { createModelResults } from './results.js';
 import { adapterReady } from './transport.js';
 import { createModelDeviceTasks, modelDeviceTaskMigration } from './device-tasks.js';
+import { modelTargetFetch, validateModelTarget, type ModelTargetClass } from './network-policy.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -39,12 +40,16 @@ const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(va
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
 export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void>;
+  /** Trusted product composition; omitted holders use the school/public policy. */
+  holder?: 'school' | 'device';
   schoolDefault?(identity: SpaceIdentity): Promise<z.infer<typeof schoolModelSchema> | null>;
   dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } }
 
 /** Independently owned PostgreSQL schema/resources; no activity, Run or legacy Session is required. */
 export async function createModelGateway(storage: OwnedStorage, options: ModelGatewayOptions) {
   let writesClosed = false;
+  const targetClass = (source?: ModelAttempt['source']): ModelTargetClass => source?.kind === 'school'
+    ? 'school-approved' : options.holder === 'device' ? 'device' : 'public';
   const { rows: [existingKey] } = await storage.read('SELECT resource_id FROM model_vault WHERE id=$1', ['credentials']);
   let keyId = existingKey?.resource_id as string | undefined;
   if (!keyId) {
@@ -87,6 +92,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       const { rows: [row] } = await tx.query('SELECT body FROM model_connections WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, input.connectionId]);
       const previous = row?.body as StoredConnection | undefined;
       if ((previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
+      await validateModelTarget(configuration, policy ? 'school-approved' : targetClass());
       let credentialRef = previous?.credentialRef ?? null;
       if (input.credential.action === 'keep' && credentialRef && previous && targetOf(previous.configuration) !== targetOf(configuration))
         throw new StorageError('conflict');
@@ -136,7 +142,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     if (!row) throw new StorageError('missing');
     return row.body as StoredConnection;
   }
-  async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
+  async function uncheckedSnapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
     await options.authorize(identity);
     if ('school' in source) {
       const current = await schoolDefault(identity);
@@ -189,6 +195,11 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
       source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
   }
+  async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
+    const fixed = await uncheckedSnapshot(identity, source);
+    await validateModelTarget(fixed.connection, targetClass(fixed.source));
+    return fixed;
+  }
   async function assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt'>, ref: string) {
       await options.authorize(identity);
       if (Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
@@ -205,6 +216,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         if (!current.configuration.enabled || current.credentialRef !== ref) throw new StorageError('forbidden');
         if (attempt.source?.kind === 'school' && !current.policy?.checksAllowed) throw new StorageError('forbidden');
       }
+      await validateModelTarget(attempt.connection, targetClass(attempt.source));
   }
   const images = createModelImages(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
   const routing = createModelRouting(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
@@ -218,6 +230,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   const checks = createChecks(storage, {
     dispatcher: options.dispatcher,
     authorize: options.authorize, snapshot, assertDispatch, prepareChat: segments.prepare, publishChat: segments.publish,
+    async requestFetch(_identity, attempt) { return modelTargetFetch(attempt.connection, targetClass(attempt.source)); },
     async credential(_identity, ref) {
       // The private dispatcher already checked this attempt's actor and immutable owner scope.
       const { rows: [row] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1', [ref]);

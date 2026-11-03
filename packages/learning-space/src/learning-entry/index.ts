@@ -9,6 +9,7 @@ import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
 import type { createModelGateway } from '../model-connections/index.js';
 import { routeModels } from '../model-connections/wire.js';
+import { ModelCapabilityError } from '../model-connections/capabilities.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -29,6 +30,10 @@ export function sendLearning(response: ServerResponse, code: number, value: unkn
   response.end(JSON.stringify(value));
 }
 export function learningFailure(response: ServerResponse, error: unknown) {
+  if (error instanceof ModelCapabilityError) {
+    sendLearning(response, 422, { error: error.code, decision: error.decision });
+    return;
+  }
   const code = error instanceof StorageError ? error.code : error instanceof z.ZodError ? 'invalid' : 'unavailable';
   const status = code === 'forbidden' ? 403 : code === 'missing' ? 404 : code === 'invalid' ? 400
     : ['conflict', 'identity-conflict', 'commit-unknown'].includes(code) ? 409 : 503;

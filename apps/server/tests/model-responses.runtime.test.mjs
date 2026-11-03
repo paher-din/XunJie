@@ -247,7 +247,9 @@ test('Responses schema format and application validation fail closed while expli
       for (const capability of ['nativeStrict', 'strictTools']) {
         const rejected = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source,
           prefix: { system: '', tools: [], options: { requiredCapabilities: [capability] } }, portable: [] });
-        assert.equal(rejected.status, 503);
+        assert.equal(rejected.status, 422);
+        assert.equal(rejected.value.error, 'capability-unavailable');
+        assert.deepEqual(rejected.value.decision.missing.map(item => [item.capability, item.status]), [[capability, 'unknown']]);
       }
       assert.equal(received.length, 4);
     });
@@ -448,7 +450,9 @@ test('Chat to Responses to Chat requires settled tools and crosses only approved
     await t.test('new Responses route rechecks unknown required capability', async () => {
       const rejected = await api('segments', { ...toResponses, requestId: randomUUID(), segmentId: randomUUID(),
         prefix: { ...toResponses.prefix, options: { requiredCapabilities: ['nativeStrict'] } } });
-      assert.equal(rejected.status, 503); assert.equal(received.length, 1);
+      assert.equal(rejected.status, 422); assert.equal(rejected.value.error, 'capability-unavailable');
+      assert.deepEqual(rejected.value.decision.missing.map(item => [item.capability, item.status]), [['nativeStrict', 'unknown']]);
+      assert.equal(received.length, 1);
     });
     assert.equal((await api('segments', toResponses)).status, 200);
     const second = await finish(call(toResponses.segmentId)); assert.equal(second.state, 'completed');
@@ -464,8 +468,10 @@ test('Chat to Responses to Chat requires settled tools and crosses only approved
         results: [{ callId: 'responses-native-call', outcome: 'success', text: '不携带 Responses 工具结果', images: [] }] })).status, 200);
     });
     await t.test('new Chat route rechecks unknown required capability', async () => {
-      assert.equal((await api('segments', { ...toChat, requestId: randomUUID(), segmentId: randomUUID(),
-        prefix: { ...toChat.prefix, options: { requiredCapabilities: ['nativeStrict'] } } })).status, 503);
+      const rejected = await api('segments', { ...toChat, requestId: randomUUID(), segmentId: randomUUID(),
+        prefix: { ...toChat.prefix, options: { requiredCapabilities: ['nativeStrict'] } } });
+      assert.equal(rejected.status, 422); assert.equal(rejected.value.error, 'capability-unavailable');
+      assert.deepEqual(rejected.value.decision.missing.map(item => [item.capability, item.status]), [['nativeStrict', 'unknown']]);
       assert.equal(received.length, 2);
     });
     assert.equal((await api('segments', toChat)).status, 200);

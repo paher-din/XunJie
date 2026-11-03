@@ -57,6 +57,16 @@ test('installed client uses the real school subject to choose school or device m
     const selected = await clientApi('models/selection', undefined, headers);
     assert.equal(selected.status, 200); assert.equal(selected.value.selected.kind, 'school');
     assert.equal(selected.value.options.find(item => item.origin === 'device').connection.connectionId, deviceConfig.connectionId);
+    const prefix = { system: 'Check school capabilities through the installed client', tools: [],
+      options: { requiredCapabilities: ['images', 'nativeReplay'] } };
+    const preflight = await clientApi('models/capabilities', { source: { selected: true, selectionVersion: 0 }, prefix }, headers);
+    assert.equal(preflight.status, 200); assert.equal(preflight.value.connectionId, schoolConfig.connectionId);
+    assert.deepEqual(preflight.value.missing.map(item => item.capability), ['images', 'nativeReplay']);
+    const capabilityFailure = await clientApi('models/segments', { requestId: randomUUID(), segmentId: randomUUID(),
+      source: { selected: true, selectionVersion: 0 }, prefix, portable: [] }, headers);
+    assert.equal(capabilityFailure.status, 422); assert.equal(capabilityFailure.value.error, 'capability-unavailable');
+    assert.deepEqual(capabilityFailure.value.decision, preflight.value);
+    assert.equal(requests.length, 0);
     const finish = async source => {
       const attemptId = randomUUID();
       const accepted = await clientApi('models/checks', { attemptId, purpose: 'connection-check', source, limits: { maxOutputTokens: 64, timeoutMs: 10000 } }, headers);

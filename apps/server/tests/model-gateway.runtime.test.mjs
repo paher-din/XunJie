@@ -63,7 +63,7 @@ test('the formal owner commits versioned personal connections and never projects
   });
 });
 
-test('a saved connection check uses the actual SDK once and persists its original completion and usage', { timeout: 180000 }, async () => {
+test('a saved connection check uses the actual SDK once and persists a rejected credential echo and final usage', { timeout: 180000 }, async () => {
   const received = [];
   const upstream = createServer(async (request, response) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
@@ -97,10 +97,11 @@ test('a saved connection check uses the actual SDK once and persists its origina
       let result;
       for (let count = 0; count < 100; count++) {
         result = await api(`checks/${check.attemptId}`);
-        if (result.value.state === 'completed') break;
+        if (result.value.physicalRequestEnded) break;
         await new Promise(resolve => setTimeout(resolve, 25));
       }
-      assert.equal(result.value.state, 'completed');
+      assert.equal(result.value.state, 'failed');
+      assert.equal(result.value.reason, 'credential-in-output');
       assert.equal(result.value.text, '连接成功😀[redacted]');
       assert.equal(result.value.usage.state, 'final');
       assert.equal(result.value.usage.inputTokens, 7);
@@ -116,6 +117,7 @@ test('a saved connection check uses the actual SDK once and persists its origina
       assert.equal((await api('checks', { ...check, limits: { ...check.limits, maxOutputTokens: 63 } })).status, 409);
       await runtime.stop(); await runtime.start();
       const after = await api(`checks/${check.attemptId}`);
+      assert.equal(after.value.state, 'failed'); assert.equal(after.value.reason, 'credential-in-output');
       assert.equal(after.value.resultRef, result.value.resultRef);
       assert.equal(after.value.text, result.value.text);
       assert.equal((await api(`checks/${check.attemptId}/dispatch`, {})).value.resultRef, result.value.resultRef);
@@ -129,6 +131,11 @@ test('a saved connection check uses the actual SDK once and persists its origina
       const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
       const service = environment.services.find(service => service.unit === 'model-connection');
       const resourcePath = join(root, 'learning-resources', 'model-connection', environment.environmentId, service.serviceId, result.value.resultRef);
+      const stored = await readFile(resourcePath);
+      const native = JSON.parse(stored.subarray(stored.indexOf(10) + 1).toString());
+      assert.equal(native.redacted, true); assert.deepEqual(native.chunks, []);
+      assert.equal(native.assistant, null); assert.deepEqual(native.choices, []);
+      assert.equal(JSON.stringify(native).includes(input.credential.value), false);
       await writeFile(resourcePath, 'damaged-native-resource');
       assert.equal((await api(`checks/${check.attemptId}`)).status, 503, 'a result without its verified native resource is not readable');
       assert.equal((await api('checks')).status, 503, 'the polling list verifies the same resource boundary');
