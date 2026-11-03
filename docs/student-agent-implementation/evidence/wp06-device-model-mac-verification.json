@@ -1,0 +1,210 @@
+{
+  "formatVersion": 1,
+  "issue": 183,
+  "sourceIssue": 168,
+  "measuredAt": "2026-11-03T10:31:30Z",
+  "commit": "b35fad36f63f1bbc353a8c7cefac480fb11e445d",
+  "branch": "wp06",
+  "device": {
+    "model": "MacBook Air (Mac17,3)",
+    "chip": "Apple M5",
+    "architecture": "arm64",
+    "memoryGiB": 16,
+    "os": "macOS 27.2 (build 26B123)"
+  },
+  "versions": {
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "postgres": "18.6 (distribution 18.6.1)",
+    "chrome": "156.0.8078.80"
+  },
+  "engineering": {
+    "typecheck": "passed",
+    "docLinks": {
+      "files": 180,
+      "targets": 1455,
+      "failures": 0
+    },
+    "build": "passed",
+    "runtimeTests": {
+      "files": 4,
+      "tests": 21,
+      "pass": 21,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 322260,
+      "names": [
+        "hybrid-learning.runtime",
+        "model-client.runtime",
+        "model-gateway.runtime",
+        "model-chat.runtime"
+      ]
+    }
+  },
+  "package": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "distributionSha256": "cb892f4bc5bdbcf255a4393aba25dc064b16637a5b0dbbc5c0869b81bdd69a89",
+    "bundledNode": "24.21.0",
+    "bundledPostgres": "18.6"
+  },
+  "independentModelEnvironment": {
+    "install": "installed",
+    "start": "ready",
+    "stop": "stopped",
+    "postgres": "ready 18.6",
+    "services": [
+      "client",
+      "space-course",
+      "model-connection"
+    ],
+    "learningData": false,
+    "modelConnectionSchema": "storage/1;owner/10",
+    "maintenanceSafeToStop": true,
+    "launchers": {
+      "xunjie": "install/start/status/stop passed",
+      "command": "start/status/stop passed"
+    }
+  },
+  "pairedSameMachine": {
+    "test": "a paired independent model owner serves Chat and cancellation without a learning-data owner",
+    "state": "passed",
+    "durationMs": 132892,
+    "fixedImage": true,
+    "toolRoundTrip": true,
+    "inFlightCancel": true,
+    "cancelReason": "client-abort",
+    "upstreamStopped": "unknown",
+    "duplicateTaskId": "same-task",
+    "missingReceipt": "missing",
+    "foreignInstallationRejected": true,
+    "learningData": false,
+    "upstreamRequests": 3,
+    "duplicateDispatchNoExtraRequest": true
+  },
+  "independentModelTakeover": {
+    "test": "independent model deployment backup, isolated restore and takeover retain grants, images and native tools",
+    "state": "passed",
+    "durationMs": 3677,
+    "profile": "model",
+    "learningData": false,
+    "grantPreserved": true,
+    "imagePreserved": true,
+    "nativeToolPreserved": true,
+    "originalResultRefPreserved": true,
+    "restoredInstallation": true,
+    "freshCallCompleted": true
+  },
+  "chrome": {
+    "channel": "chrome",
+    "headed": true,
+    "workers": 1,
+    "normalWeb": {
+      "specs": [
+        "personalModelSettings",
+        "modelSelection",
+        "messagesModelSettings"
+      ],
+      "total": 11,
+      "expected": 11,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "productPackage": {
+      "specs": [
+        "personalModelSettings",
+        "modelSelection",
+        "messagesModelSettings"
+      ],
+      "total": 11,
+      "expected": 11,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    }
+  },
+  "schemaUpgrade": {
+    "from": "storage/1;owner/9",
+    "to": "storage/1;owner/10",
+    "silentStartRejected": true,
+    "compatibilityGate": "Storage operation failed: incompatible",
+    "isolatedState": "maintenance",
+    "takeoverPhase": "active",
+    "targetState": "ready",
+    "configurationAndCredentialPreserved": true,
+    "originalResultRefPreserved": true,
+    "originalUsagePreserved": true,
+    "cancelledFactPreserved": true,
+    "historicalRedispatchSent": false,
+    "freshCallCompleted": true,
+    "sdkRequests": 3,
+    "sourceRetired": true,
+    "evidence": "evidence/wp06-schema9-to-10-mac.json"
+  },
+  "realCrossMachine": "deferred-by-owner",
+  "teachingEffect": "not-evaluated",
+  "deepSeek": {
+    "endpoint": "https://api.deepseek.com/v1/chat/completions",
+    "model": "deepseek-flash",
+    "nativeMode": "thinking",
+    "sdk": "openai@7.42.0",
+    "adapter": "xunjie-chat-native-v2",
+    "retries": 0,
+    "actualGenerationsTotal": 18,
+    "runs": 5,
+    "jsonModeApplicationValidation": "passed-run1",
+    "nativeStrictSchema": "http-400-expected-limit",
+    "thinkingForcedTool": "http-400-expected-limit",
+    "upstreamIncident": "DeepSeek V4.1 Flash partial unavailability from 2026-11-03T08:58:16Z; runs 1-4 received HTTP 503",
+    "finalCoreRun": {
+      "measuredAt": "2026-11-03T10:31:09.109Z",
+      "actualGenerations": 2,
+      "imageAndTools": true,
+      "toolCount": 2,
+      "inputImageRead": true,
+      "restartNativeReplay": true,
+      "nativePreserved": true,
+      "correctNonce": true,
+      "returnedImageRead": true,
+      "usages": [
+        {
+          "name": "image-and-multiple-tools",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 76,
+            "totalTokens": 676,
+            "cachedTokens": 0,
+            "reasoningTokens": 0
+          }
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "usage": {
+            "state": "final",
+            "inputTokens": 934,
+            "outputTokens": 57,
+            "totalTokens": 991,
+            "cachedTokens": 640,
+            "reasoningTokens": 21
+          }
+        }
+      ]
+    },
+    "evidence": [
+      "evidence/wp06-device-model-deepseek-mac.json",
+      "evidence/wp06-device-model-deepseek-mac-attempts.json"
+    ]
+  },
+  "maintenanceAndInterruption": {
+    "killedDispatcherPreservesUnknownUsageWithoutReplay": true,
+    "maintenanceDrainsAdmittedResultsBeforeClosing": true,
+    "unpublishedNativeResultKeepsPhysicalSlot": true,
+    "tests": [
+      "a killed production dispatcher preserves unknown usage without replay and reconciles its dead local client slot",
+      "production maintenance finishes admitted checks before closing their result writes and reopens usable slots",
+      "a failed native result publication never publishes completion or releases a still running physical request"
+    ]
+  }
+}
