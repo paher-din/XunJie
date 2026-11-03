@@ -1,0 +1,18 @@
+{
+  "measuredAt": "2026-11-03T12:33:06.637Z",
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "node": "v24.21.0",
+  "browser": "installed Chrome",
+  "browserVersion": "156.0.8078.76",
+  "headless": false,
+  "backend": "product runtime, native PostgreSQL, bundled native adapter",
+  "cases": [
+    {
+      "name": "the central tool area starts, advances, reappears and stops a real native session",
+      "status": "passed",
+      "durationMs": 5054
+    }
+  ]
+}

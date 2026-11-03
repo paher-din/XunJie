@@ -12,7 +12,10 @@ import { createQuestionDrafts, questionDraftMigration, validateQuestionDrafts } 
 import { createActionIntents, actionIntentMigration, validateActionIntents } from './intents.js';
 import type { ActionIntentOptions } from './intents.js';
 import { createExecutions, executionMigration, validateExecutions } from './executions.js';
+import { nativeSessionMigration, validateNativeSessions } from './native-sessions.js';
+import type { NativeSessionHostOptions } from './native-sessions.js';
 export type { ActionIntentOptions } from './intents.js';
+export type { NativeSessionHostOptions } from './native-sessions.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,
@@ -26,7 +29,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
     activity_id uuid NOT NULL,input_digest text NOT NULL,state text NOT NULL CHECK(state IN ('pending','accepted','rejected')),
     binding jsonb,result jsonb,error text,updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX course_activity_requests_scope ON course_activity_requests(space_environment_id,space_id,principal_id);
-` }, questionDraftMigration, actionIntentMigration, executionMigration];
+` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -50,6 +53,7 @@ export async function validateLearningData(storage: OwnedStorage) {
   await validateQuestionDrafts(storage);
   await validateActionIntents(storage);
   await validateExecutions(storage);
+  await validateNativeSessions(storage);
   const { rows } = await storage.read('SELECT id,body,space_environment_id,space_id,principal_id FROM activities');
   for (const row of rows) {
     const a = activitySchema.parse(row.body);
@@ -77,7 +81,8 @@ export async function validateLearningData(storage: OwnedStorage) {
 }
 
 /** Only this module writes activities. Authority supplies a narrow, current member binding. */
-export function createLearningData(storage: OwnedStorage, authority: SpaceAuthority, courses?: CourseBindingAuthority, actions: ActionIntentOptions = {}) {
+export function createLearningData(storage: OwnedStorage, authority: SpaceAuthority, courses?: CourseBindingAuthority,
+  actions: ActionIntentOptions = {}, native?: NativeSessionHostOptions) {
   async function access(identity: SpaceIdentity) {
     const target = await authority.resolveBinding(identity);
     if (target.environmentId !== storage.owner.environmentId || target.serviceId !== storage.owner.serviceId || target.version !== 1) fail('forbidden');
@@ -256,7 +261,8 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   const works = createWorks(storage, open);
   const drafts = createQuestionDrafts(storage, { activity: open, works, courses });
   const intents = createActionIntents(storage, { activity: open, works, drafts, ...actions });
-  const executions = createExecutions(storage, { activity: open, works });
+  const executions = createExecutions(storage, { activity: open, works,
+    ...(native ? { native: { ...native, activity: open, works } } : {}) });
   return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, intents, executions,
     validate: () => validateLearningData(storage) };
 }

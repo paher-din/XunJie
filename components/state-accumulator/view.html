@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>四态累加模拟</title><style>
+:root{color-scheme:light dark;font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:var(--ink);background:var(--canvas)}
+*{box-sizing:border-box}body{margin:0}main{padding:20px;max-width:760px}
+h1,h2{font-size:16px;font-weight:600;line-height:1.5;margin:0 0 12px}
+p{margin:0 0 12px}.muted{color:var(--muted);font-size:13px}
+.states{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
+.state{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
+  background:var(--chip);font-size:18px;font-variant-numeric:tabular-nums;font-weight:600}
+.arrow{color:var(--muted)}
+.example{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--chip);border-radius:8px;padding:10px 12px}
+.note{border-left:2px solid var(--accent);padding:8px 10px;background:var(--chip);border-radius:6px;font-size:13px}
+#status{font-size:13px;color:var(--muted)}
+</style></head><body><main>
+<h1>四态累加模拟</h1>
+<p>每次输入一个整数，累加后的状态对 4 取余，在 0、1、2、3 四个值之间循环。状态保存在真实运行的本机进程里，前一次结果决定后一次。</p>
+<div class="states" aria-label="四个状态">
+  <span class="state">0</span><span class="arrow">→</span><span class="state">1</span><span class="arrow">→</span>
+  <span class="state">2</span><span class="arrow">→</span><span class="state">3</span><span class="arrow">→</span><span class="state">0</span>
+</div>
+<p>例如从 0 开始依次输入 1、2、2，观察到的状态是 1、3、1。另开一个会话，同样的输入会从 0 独立开始。</p>
+<div class="example">state ← (state + input) mod 4</div>
+<p class="note">在下方「本机会话」面板启动会话、连续输入、核对状态或停止。切换工具视图不会丢掉原会话引用；关闭页面也不等于停止。</p>
+<p id="status" role="status">正在连接…</p>
+</main>
+<script>
+(() => {
+  let connection, port, initialized = false;
+  const status = document.getElementById('status');
+  const send = (method, payload) => port.postMessage({ hostApiVersion: 1, connectionId: connection.connectionId,
+    instanceId: connection.instanceId, messageId: crypto.randomUUID(), method, payload });
+  const receive = event => {
+    const message = event.data;
+    if (!message || message.method !== 'host.initialize' || message.hostApiVersion !== 1) return;
+    connection = { connectionId: message.connectionId, instanceId: message.instanceId };
+    if (!initialized) send('component.ready', {});
+    initialized = true;
+    status.textContent = '组件已就绪。请在下方「本机会话」面板操作。';
+  };
+  window.addEventListener('message', event => {
+    if (event.source !== parent || !event.ports[0] || event.data?.method !== 'host.initialize') return;
+    port?.close();
+    port = event.ports[0];
+    port.onmessage = receive;
+    initialized = false;
+    receive(event);
+  });
+})();
+</script></body></html>

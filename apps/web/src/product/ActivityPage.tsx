@@ -9,10 +9,11 @@ import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } 
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
 import { ExecutionPanel } from './ExecutionPanel'
+import { NativeSessionPanel } from './NativeSessionPanel'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
-  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
+  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
   details: ReactNode; account: ReactNode; error: ReactNode
@@ -28,14 +29,21 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
   const [toolError, setToolError] = useState('')
   const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
     ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
-  // A component may declare a restricted run; its record, stop and download stay in this area.
+  // A component may declare a restricted run or a native stateful session; both keep their
+  // record, query and stop in this area instead of inside the opaque view.
   const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
-    (binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.operations?.length
+    (binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
       ? <div key={binding.key} className="component-tool">
         <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
-        <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />
+        {nativeAvailable ? <NativeSessionPanel activity={activity} binding={binding} authorized={authorized} />
+          : <p className="execution-hint">当前运行方式不提供本机会话；已有作品与记录仍保留。</p>}
       </div>
-      : <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />)]))
+      : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.operations?.length
+        ? <div key={binding.key} className="component-tool">
+          <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
+          <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />
+        </div>
+        : <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />)]))
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
   return <div className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">

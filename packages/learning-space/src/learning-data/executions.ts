@@ -9,6 +9,8 @@ import { advanceExecution, defaultExecutionLimits, executionAcceptanceSchema, ex
   executionQuerySchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
+import { createNativeSessions } from './native-sessions.js';
+import type { NativeSessionOptions } from './native-sessions.js';
 
 /**
  * The `tool-execution` owner keeps the command basis the service really received, the original
@@ -60,8 +62,10 @@ function sameIdentity(left: { requestId: string; inputDigest: string; executionR
 export function createExecutions(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   works: ReturnType<typeof createWorks>;
+  native?: NativeSessionOptions;
 }) {
   const { activity: authorize, works } = options;
+  const native = options.native ? createNativeSessions(storage, options.native) : null;
   async function find(activityId: string, requestId: string) {
     const { rows: [row] } = await storage.read('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2',
       [activityId, requestId]);
@@ -118,6 +122,11 @@ export function createExecutions(storage: OwnedStorage, options: {
   }
   /** Acceptance is a real answer under this exact identity; the receipt is the browser's original one. */
   async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
+    const location = (value as { action?: { execution?: { plan?: { location?: unknown } } } })?.action?.execution?.plan?.location;
+    if (location === 'native') {
+      if (!native) fail('missing');
+      return native.accept(identity, activityId, value);
+    }
     const activity = await authorize(identity, activityId);
     const input = z.object({ action: executionActionSchema, acceptance: executionAcceptanceSchema }).strict().parse(value);
     const { action, acceptance } = input;
@@ -160,12 +169,22 @@ export function createExecutions(storage: OwnedStorage, options: {
   }
   async function read(identity: SpaceIdentity, activityId: string, requestId: string) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (native && await native.owns(activityId, requestId)) return native.read(identity, activityId, requestId);
     const found = await find(activityId, requestId);
     return found ? found.query : null;
+  }
+  /** The native session list lets a reopened view find its original reference, never a new run. */
+  async function sessions(identity: SpaceIdentity, activityId: string): Promise<ExecutionQuery[]> {
+    return native ? native.list(identity, activityId) : [];
+  }
+  async function control(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
+    if (!native) fail('missing');
+    return native.control(identity, activityId, requestId, value);
   }
   /** A reported fact advances only forward; a confirmed terminal fact is never rewritten. */
   async function report(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (native && await native.owns(activityId, requestId)) fail('invalid');
     const next = executionQuerySchema.parse(value);
     if (next.requestId !== requestId) fail('invalid');
     const result = await storage.request({ requestId: 'execution-fact:' + randomUUID(), fingerprint: requestId }, async tx => {
@@ -190,6 +209,7 @@ export function createExecutions(storage: OwnedStorage, options: {
   /** Stopping names the original run; the original acceptance is left exactly as it was. */
   async function stop(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (native && await native.owns(activityId, requestId)) return native.stop(identity, activityId, requestId, value);
     const input = z.object({ stopId: z.uuid(), reason: z.string().max(200) }).strict().parse(value);
     const result = await storage.request({ requestId: 'execution-stop:' + input.stopId,
       fingerprint: digest({ activityId, requestId, stopId: input.stopId }) }, async tx => {
@@ -210,6 +230,7 @@ export function createExecutions(storage: OwnedStorage, options: {
   /** The bytes are stored once under the run's own identity; a lost reply re-reads, never recomputes. */
   async function result(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (native && await native.owns(activityId, requestId)) fail('invalid');
     const input = z.object({ contentId: z.uuid(), output: z.unknown(), text: z.string().max(2000000),
       name: z.string().min(1).max(120), mediaType: z.string().min(1).max(120),
       sha256: z.string().regex(/^[a-f0-9]{64}$/), byteLength: z.number().int().positive().max(1048576) }).strict().parse(value);
@@ -249,7 +270,11 @@ export function createExecutions(storage: OwnedStorage, options: {
     });
     return executionQuerySchema.parse(saved.result);
   }
-  return { accept, read, report, stop, result };
+  return { accept, read, report, stop, result, control, sessions,
+    /** Maintenance recovery runs after the storage gate reopens, never against a closed owner. */
+    recoverNative: async () => { await native?.ensureReady(); },
+    /** Maintenance stops own their live processes before the storage owner drains. */
+    shutdown: async () => { await native?.shutdown(); } };
 }
 
 /** Recovery validation: every stored command still names its own activity, basis and artifact. */

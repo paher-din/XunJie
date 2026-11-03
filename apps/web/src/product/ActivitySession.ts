@@ -4,9 +4,11 @@ import type { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import type { ReliableActions } from '../reliable-workspace/actions'
 import type { ComponentInteractions } from '../component-host/interactions'
 import type { ExecutionController } from '../tool-execution/controller'
+import type { NativeSessionController } from '../tool-execution/session-controller'
 
 export const ActivitySessionContext = createContext<{
-  workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions; execution: ExecutionController; interactions: ComponentInteractions
+  workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions; execution: ExecutionController
+  sessions: NativeSessionController; interactions: ComponentInteractions
 } | null>(null)
 export function useActivitySession() {
   const session = useContext(ActivitySessionContext)

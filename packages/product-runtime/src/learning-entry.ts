@@ -68,7 +68,11 @@ export async function createProductLearningApplication(context: {
     const data = await owner('learning-data', learningMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
     const courses = createCourses(space.storage, spaces);
-    const learning = createLearningData(data.storage, spaces, courses, actions);
+    // A personal install supervises real local sessions; a school host does not run a student's
+    // local native experiment, so the capability stays unavailable until its own ticket lands.
+    const native = environment.profile === 'local' ? { nodePath: process.execPath,
+      sessionRoot: join(root, 'native-sessions'), nodeId: 'local-native' } : undefined;
+    const learning = createLearningData(data.storage, spaces, courses, actions, native);
     for (const [module, validate] of [[space, async () => { await spaces.validate(); await courses.validate(); }],
       [data, learning.validate]] as const) {
       const recoveryOwner = createStorageRecoveryOwner({ storage: module.storage, binding: module.binding, migrations: module.migrations,
@@ -77,8 +81,8 @@ export async function createProductLearningApplication(context: {
       const participant = recoveryOwner.participant;
       owners.push(module === data ? { ...recoveryOwner, participant: { ...participant,
         async closeDispatch() { learning.intents.closeDispatch(); await participant.closeDispatch(); },
-        async drain() { await learning.intents.drain(); await participant.drain(); },
-        async resume() { await participant.resume(); learning.intents.resume(); },
+        async drain() { await learning.intents.drain(); await learning.executions.shutdown(); await participant.drain(); },
+        async resume() { await participant.resume(); learning.intents.resume(); await learning.executions.recoverNative(); },
       } } : recoveryOwner);
     }
     const localTarget = { ...data.storage.owner, version: 1 as const };

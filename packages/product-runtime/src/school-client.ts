@@ -214,7 +214,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/${id}(?:/(?:report|stop|result))?)?|connections/revoke)$`).test(route)) {
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|${id}(?:/(?:report|stop|result|control))?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -271,11 +271,16 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'courses') return parsed(courseCatalogSchema, value);
     if (route.startsWith('executions/')) {
       if (value === null) return null;
-      // A run under another activity or principal is not this grant's business.
-      const query = parsed(executionQuerySchema, value), scope = query.scope, identity = connection.grant!.identity;
-      if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId
-        || scope.principalId !== identity.principalId || scope.activityId !== route.split('/')[1]) throw new StorageError('forbidden');
-      return query;
+      const identity = connection.grant!.identity;
+      const checkQuery = (candidate: unknown) => {
+        // A run under another activity or principal is not this grant's business.
+        const query = parsed(executionQuerySchema, candidate), scope = query.scope;
+        if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId
+          || scope.principalId !== identity.principalId || scope.activityId !== route.split('/')[1]) throw new StorageError('forbidden');
+        return query;
+      };
+      if (route.endsWith('/sessions')) return Array.isArray(value) ? value.map(checkQuery) : checkQuery(value);
+      return checkQuery(value);
     }
     if (route.startsWith('releases/')) {
       const parts = route.split('/');

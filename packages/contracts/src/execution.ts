@@ -19,10 +19,32 @@ export type ExecutionLimits = z.infer<typeof executionLimitsSchema>;
 export const defaultExecutionLimits: ExecutionLimits = { timeMs: 5000, memoryPages: 256, inputBytes: 1048576,
   outputBytes: 1048576, concurrentJobs: 2, queuedJobs: 4 };
 
-/** One fixed run plan. A browser adapter supports `job` only; later native work adds locations, not new verbs. */
+/** One fixed run plan. A location names who really executes it; the kind never crosses locations. */
 export const executionPlanSchema = z.object({ planId: identifier, planVersion: z.number().int().positive(),
-  planDigest: digest, location: z.literal('browser'), kind: z.literal('job') }).strict();
+  planDigest: digest, location: z.enum(['browser', 'native']), kind: z.enum(['job', 'session']) }).strict()
+  .refine(value => value.location === 'browser' ? value.kind === 'job' : value.kind === 'session',
+    { message: 'A browser plan is a job and a native plan is a session' });
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
+
+/**
+ * Limits a native session supervisor both declares and enforces. Memory is the child's V8 heap
+ * allowance, not a WebAssembly linear memory or a promise about total process RSS.
+ */
+export const nativeSessionLimitsSchema = z.object({
+  operationTimeoutMs: z.number().int().min(50).max(30000),
+  idleMs: z.number().int().min(1000).max(3600000),
+  maxMs: z.number().int().min(1000).max(86400000),
+  memoryMiB: z.number().int().min(16).max(512),
+  concurrentSessions: z.number().int().min(1).max(4),
+  queuedSessions: z.number().int().min(0).max(16),
+}).strict();
+export type NativeSessionLimits = z.infer<typeof nativeSessionLimitsSchema>;
+
+/** A native session names a product-shipped adapter, never a command line or a file path. */
+export const executionSessionRequestSchema = z.object({
+  adapterId: identifier, adapterVersion: z.number().int().positive(), limits: nativeSessionLimitsSchema,
+}).strict();
+export type ExecutionSessionRequest = z.infer<typeof executionSessionRequestSchema>;
 
 export const executionInstanceSchema = z.object({ instanceId: z.string().min(1).max(300), key: identifier,
   componentId: z.uuid(), componentVersion: z.number().int().positive(),
@@ -47,15 +69,29 @@ export type ExecutionBasis = z.infer<typeof executionBasisSchema>;
 export const executionActionSchema = z.object({ protocolVersion: z.literal(2), kind: z.literal('execution'),
   requestId: z.uuid(), scope: actionScopeSchema, receiver: actionReceiverSchema,
   execution: z.object({ instance: executionInstanceSchema,
-    operation: z.object({ operationId: identifier, effect: z.literal('execute') }).strict(),
+    operation: z.object({ operationId: identifier, effect: z.enum(['execute', 'input']) }).strict(),
     parameters: z.unknown(), basis: executionBasisSchema, limits: executionLimitsSchema,
     plan: executionPlanSchema,
+    /** Present only for a native session; the adapter and its limits are fixed by the host manifest. */
+    session: executionSessionRequestSchema.optional(),
     initiator: z.object({ kind: z.enum(['student', 'agent', 'self-check', 'teacher-preview']),
       principalId: z.uuid() }).strict() }).strict() }).strict()
   .refine(value => value.receiver.kind === 'execution', { message: 'An execution action needs an execution receiver' })
   .refine(value => value.execution.initiator.principalId === value.scope.principalId, { message: 'The initiator must be the fixed scope principal' })
+  .refine(value => value.execution.plan.location === 'native'
+    ? value.execution.session !== undefined && value.execution.operation.effect === 'input'
+    : value.execution.session === undefined && value.execution.operation.effect === 'execute',
+    { message: 'Only a native session plan carries an input operation and a session adapter' })
   .refine(value => JSON.stringify(value).length <= 4000000, { message: 'fixed execution input exceeds its supported recovery envelope' });
 export type ExecutionAction = z.infer<typeof executionActionSchema>;
+export function isNativeSessionAction(action: ExecutionAction): boolean {
+  return action.execution.plan.location === 'native';
+}
+
+/** One session input with its own stable identity and the sequence the caller last observed. */
+export const executionControlSchema = z.object({ controlId: z.uuid(), operationId: identifier,
+  effect: z.literal('input'), expectedSeq: z.number().int().nonnegative(), parameters: z.unknown() }).strict();
+export type ExecutionControl = z.infer<typeof executionControlSchema>;
 
 export const fixedActionSchema = z.union([actionInputSchema, executionActionSchema]);
 export type FixedAction = z.infer<typeof fixedActionSchema>;
@@ -86,11 +122,27 @@ export const executionOutputSchema = z.object({ contentId: z.uuid(), output: z.u
     byteLength: z.number().int().positive().max(1048576), sha256: digest }).strict().nullable() }).strict();
 export type ExecutionOutput = z.infer<typeof executionOutputSchema>;
 
+/** One confirmed input observation, bound to the operation identity that produced it. */
+export const executionObservationSchema = z.object({ seq: z.number().int().positive(), controlId: z.uuid(),
+  state: z.unknown(), at: z.string().min(1).max(40) }).strict();
+export type ExecutionObservation = z.infer<typeof executionObservationSchema>;
+
+/** Stable session identity plus what the real supervisor confirmed; unknown never means stopped. */
+export const executionSessionViewSchema = z.object({
+  adapterId: identifier, adapterVersion: z.number().int().positive(),
+  instanceId: z.string().min(1).max(300), instanceKey: identifier,
+  nodeId: z.string().min(1).max(80), installGeneration: z.string().min(1).max(120),
+  supervisorEpoch: z.uuid(), executorInstanceId: z.uuid(),
+  appliedSeq: z.number().int().nonnegative(), lastControlId: z.uuid().nullable(),
+  observation: z.unknown().nullable(), observations: z.array(executionObservationSchema).max(64),
+}).strict();
+export type ExecutionSessionView = z.infer<typeof executionSessionViewSchema>;
+
 /** `state` under `unknown` knowledge is the last confirmed state, never a guess about a live worker. */
 export const executionQuerySchema = z.object({ requestId: z.uuid(), inputDigest: digest, scope: actionScopeSchema,
   executionRef: z.uuid(), state: executionStateSchema, statusKnowledge: z.enum(['confirmed', 'unknown']),
   stopRequested: z.boolean(), confirmedSeq: z.number().int().nonnegative(), reason: executionFailureSchema.nullable(),
-  output: executionOutputSchema.nullable() }).strict()
+  output: executionOutputSchema.nullable(), session: executionSessionViewSchema.nullable().optional() }).strict()
   .refine(value => value.statusKnowledge === 'confirmed' || value.reason !== null,
     { message: 'An unconfirmed status must say why it is unknown' });
 export type ExecutionQuery = z.infer<typeof executionQuerySchema>;
@@ -113,7 +165,9 @@ export function advanceExecution(current: ExecutionQuery | null, next: Execution
   if (!current) return next;
   if (current.executionRef !== next.executionRef || current.requestId !== next.requestId
     || current.inputDigest !== next.inputDigest) throw new Error('invalid-input');
-  const merged: ExecutionQuery = { ...next, stopRequested: current.stopRequested || next.stopRequested };
+  const session = next.session ?? current.session;
+  const merged: ExecutionQuery = { ...next, stopRequested: current.stopRequested || next.stopRequested,
+    ...(session ? { session } : {}) };
   if (current.statusKnowledge === 'confirmed' && isTerminalExecutionState(current.state)) return current;
   if (next.statusKnowledge === 'unknown' && current.statusKnowledge === 'confirmed') {
     // The state stays the last one the executor confirmed; only reachability became unknown.
