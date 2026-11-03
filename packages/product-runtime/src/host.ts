@@ -2,6 +2,7 @@ import { readFile, realpath, rm, stat } from 'node:fs/promises';
 import { createServer as httpServer } from 'node:http';
 import type { IncomingMessage, ServerResponse, Server } from 'node:http';
 import { createServer as httpsServer } from 'node:https';
+import type { Socket } from 'node:net';
 import { extname, join, resolve, sep } from 'node:path';
 import type { RuntimeDependencyStatus, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority, createOutboundConnection } from './connections.js';
@@ -39,8 +40,11 @@ const listen = (server: Server, port: number, host: string) => new Promise<void>
   server.once('error', reject);
   server.listen(port, host, () => { server.removeListener('error', reject); done(); });
 });
-const close = (server: Server) => new Promise<void>((done, reject) => {
+const close = (server: Server, sockets?: ReadonlySet<Socket>) => new Promise<void>((done, reject) => {
   server.close(error => error ? reject(error) : done());
+  // Unrequested TCP/TLS preconnections are not HTTP idle requests. Once the
+  // business owners have drained, they cannot keep this owned listener alive.
+  for (const socket of sockets ?? []) socket.destroy();
 });
 
 /** School and local hosts compose this same lifecycle with their real owners. */
@@ -213,6 +217,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   };
   const publicServer = config.tls ? httpsServer({ cert: await readFile(config.tls.certificateFile),
     key: await readFile(config.tls.keyFile) }, handle(publicRequest)) : httpServer(handle(publicRequest));
+  const publicSockets = new Set<Socket>();
+  publicServer.on('connection', socket => {
+    publicSockets.add(socket);
+    socket.once('close', () => publicSockets.delete(socket));
+  });
   const controlToken = await resolveCredential(root, 'control');
   const controlServer = httpServer(handle(async (request, response) => {
     if (request.headers.authorization !== `Bearer ${controlToken}`) { send(response, 401, { error: 'unauthorized' }); return; }
@@ -316,7 +325,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     if (scheduler) clearInterval(scheduler);
     for (const owner of suppliedOwners) await owner.close?.();
     await atomicJson(join(root, 'status.json'), { state: 'stopped', environment, dependencies: [] } satisfies RuntimeStatus);
-    await Promise.all([close(publicServer), close(controlServer)]);
+    await Promise.all([close(publicServer, publicSockets), close(controlServer)]);
     await rm(join(root, 'instance.json'), { force: true });
     await rm(join(root, 'launch.json'), { force: true });
     await releaseOnce();
@@ -364,7 +373,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     return { status, stop, maintenance, recovery, environment, endpoint };
   } catch (error) {
     completeStartup();
-    await Promise.allSettled([close(publicServer), close(controlServer)]);
+    await Promise.allSettled([close(publicServer, publicSockets), close(controlServer)]);
     await releaseOnce();
     await atomicJson(join(root, 'status.json'), { state: 'failed', environment, dependencies: [], reason: (error as Error).message });
     throw error;
