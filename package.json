@@ -24,7 +24,9 @@
     "probe:execution": "node scripts/probe-execution.mjs",
     "probe:execution-sync": "node scripts/probe-execution-sync.mjs",
     "probe:execution-ime": "node scripts/probe-execution-ime.mjs",
-    "probe:execution-school-web": "node scripts/probe-execution-school-web.mjs"
+    "probe:execution-school-web": "node scripts/probe-execution-school-web.mjs",
+    "probe:native-isolation": "node scripts/probe-native-macos-isolation.mjs",
+    "probe:native-product": "node scripts/probe-native-macos-product.mjs"
   },
   "devDependencies": {
     "entities": "9.0.0",

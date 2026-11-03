@@ -13,6 +13,8 @@ export { createLearningData, learningMigrations, validateLearningData } from '..
 export type { ActionIntentOptions, NativeSessionHostOptions } from '../learning-data/index.js';
 export { SupervisedSession, productNativeAdapters, fourStateAccumulatorSource } from '../learning-data/native-process.js';
 export type { NativeAdapter, NativeObservation, NativeSessionExit, NativeSessionLimits } from '../learning-data/native-process.js';
+export { planSeatbelt, seatbeltLauncherPath, seatbeltProfileVersion, supervisorWatchdogSource } from '../learning-data/native-sandbox.js';
+export type { NativeSessionIsolation, SeatbeltPlan } from '../learning-data/native-sandbox.js';
 
 export async function readLearningBody(request: IncomingMessage, limit = 65536): Promise<Record<string, unknown>> {
   if (!request.headers['content-type']?.startsWith('application/json')) throw new StorageError('invalid');

@@ -1,11 +1,16 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
+import { appContainerIsolation, planSeatbelt, supervisorWatchdogSource, unboundedIsolation } from './native-sandbox.js';
+import type { NativeSessionIsolation, SeatbeltPlan } from './native-sandbox.js';
 
 const exec = promisify(execFile);
+/** A confirmed stop waits for the managed group to be empty, not only for the direct child. */
+const groupReapMs = 3000;
+const memorySampleMs = 400;
 
 /**
  * A native session is a real supervised child process. The adapter source is fixed product code
@@ -33,7 +38,7 @@ export interface NativeObservation {
 export interface NativeSessionExit {
   /** The supervisor asked the process to end, so a non-zero exit is not the student's outcome. */
   requested: boolean;
-  expired: 'idle' | 'max' | 'output' | null;
+  expired: 'idle' | 'max' | 'output' | 'memory' | null;
   code: number | null;
   confirmed: boolean;
 }
@@ -47,6 +52,10 @@ export interface NativeSessionStart {
   sessionRoot?: string;
   nodePath?: string;
   windowsHelper?: string;
+  /** macOS only. `false` keeps the POSIX process-group baseline for probes and non-product hosts. */
+  macosSandbox?: boolean;
+  /** Directories the sandbox refuses to read besides the fixed protected roots and the home directory. */
+  protectRoots?: readonly string[];
   events?: NativeSessionEvents;
 }
 
@@ -67,6 +76,23 @@ const delay = (milliseconds: number) => new Promise<void>(resolve => { setTimeou
 const lineLimit = 256 * 1024;
 const stderrLimit = 8192;
 
+/** Residency of the whole managed group, in KiB; a session cannot grow past its budget unnoticed. */
+async function groupResidentKib(pid: number): Promise<number> {
+  const { stdout } = await exec('ps', ['-axo', 'pgid=,rss='], { timeout: 2000, maxBuffer: 4 * 1024 * 1024 });
+  let kib = 0;
+  for (const line of stdout.split('\n')) {
+    const [pgid, rss] = line.trim().split(/\s+/);
+    if (Number(pgid) === pid) kib += Number(rss) || 0;
+  }
+  return kib;
+}
+
+/** macOS must run inside the seatbelt profile; a machine without the launcher never falls back. */
+function seatbeltFor(nodePath: string, sessionDirectory: string, protectRoots: readonly string[]): SeatbeltPlan | null {
+  if (process.platform !== 'darwin') return null;
+  return planSeatbelt(nodePath, sessionDirectory, protectRoots);
+}
+
 /**
  * One live child process. Every command is serialized by `tail`, so a retried input can never
  * overtake the operation before it and a reply cannot be attributed to a different control.
@@ -83,19 +109,26 @@ export class SupervisedSession {
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private maxTimer: ReturnType<typeof setTimeout> | undefined;
   private helperStopTimer: ReturnType<typeof setTimeout> | undefined;
+  private memoryTimer: ReturnType<typeof setInterval> | undefined;
+  private memoryBaselineKib = 0;
+  private memorySampling = false;
   private readonly exited: Promise<boolean>;
   private readonly settleExit: (value: boolean) => void;
   private exit: NativeSessionExit | null = null;
   private requestedStop = false;
-  private expired: 'idle' | 'max' | 'output' | null = null;
+  private expired: 'idle' | 'max' | 'output' | 'memory' | null = null;
   private ready = false;
   private initial: unknown = null;
   private disposed = false;
+  /** POSIX sessions are their own process group, so a stop can be confirmed by the group being empty. */
+  private readonly managesGroup: boolean;
 
   private constructor(private readonly start: NativeSessionStart, readonly instanceId: string,
-    readonly sessionDirectoryInput: string, child: ChildProcess, private readonly windowsProfile?: string) {
+    readonly sessionDirectoryInput: string, child: ChildProcess, private readonly windowsProfile?: string,
+    readonly isolation: NativeSessionIsolation = unboundedIsolation) {
     this.child = child;
     this.sessionDirectory = sessionDirectoryInput;
+    this.managesGroup = process.platform !== 'win32' && !windowsProfile;
     let settle!: (value: boolean) => void;
     this.exited = new Promise<boolean>(resolve => { settle = resolve });
     this.settleExit = settle;
@@ -111,7 +144,14 @@ export class SupervisedSession {
     const helper = options.windowsHelper;
     const profile = helper ? 'XunJie.NativeSession.' + randomUUID() : undefined;
     const systemRoot = process.env.SystemRoot ?? 'C:\\Windows';
-    const nodeArgs = [`--max-old-space-size=${options.limits.memoryMiB}`, '--input-type=module', '-e', options.adapter.source];
+    const sandbox = helper || options.macosSandbox === false ? null
+      : seatbeltFor(nodePath, sessionDirectory, [...(options.protectRoots ?? []), dirname(root)]);
+    if (!sandbox && !helper && process.platform === 'darwin' && options.macosSandbox !== false) {
+      await rm(sessionDirectory, { recursive: true, force: true }).catch(() => {});
+      throw new NativeSessionError('resource-unavailable', '本机缺少可用的沙盒启动器，会话没有在强制隔离下启动。');
+    }
+    const nodeArgs = [`--max-old-space-size=${options.limits.memoryMiB}`, '--input-type=module', '-e',
+      helper ? options.adapter.source : supervisorWatchdogSource + '\n' + options.adapter.source];
     const env = {
       ...(process.platform === 'win32' ? { SystemRoot: systemRoot, windir: systemRoot } : {}),
       TEMP: sessionDirectory, TMP: sessionDirectory, TMPDIR: sessionDirectory,
@@ -132,19 +172,30 @@ export class SupervisedSession {
           argument.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/g, '$1$1') + '"').join(' ');
         child = spawn(helper, [profile, executable, sessionDirectory, command, SupervisedSession.stopEvent(profile)],
           { cwd: sessionDirectory, env: helperEnv, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+      } else if (sandbox) {
+        const profilePath = join(sessionDirectory, 'session.sb');
+        await writeFile(profilePath, sandbox.profileText, { mode: 0o600 });
+        // The fourth pipe reports supervisor death to the session; it carries no learning fact.
+        child = spawn(sandbox.launcher, ['-f', profilePath, nodePath, ...nodeArgs],
+          { cwd: sessionDirectory, env, stdio: ['pipe', 'pipe', 'pipe', 'pipe'], windowsHide: true, detached: true });
       } else {
-        child = spawn(nodePath, nodeArgs, { cwd: sessionDirectory, env, stdio: ['pipe', 'pipe', 'pipe'],
+        child = spawn(nodePath, nodeArgs, { cwd: sessionDirectory, env,
+          stdio: process.platform === 'win32' ? ['pipe', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe', 'pipe'],
           windowsHide: true, detached: process.platform !== 'win32' });
       }
     } catch (error) {
       if (helper && profile) await exec(helper, ['--release', profile], { windowsHide: true, timeout: 10000 }).catch(() => {});
       await rm(sessionDirectory, { recursive: true, force: true }).catch(() => {});
       if (helper) throw new NativeSessionError('resource-unavailable', 'Windows 会话隔离准备失败，请检查产品资源与当前用户权限后重试。');
+      if (sandbox) throw new NativeSessionError('resource-unavailable', '本机会话无法在沙盒中启动，请检查系统沙盒启动器。');
       throw error;
     }
-    const session = new SupervisedSession(options, instanceId, sessionDirectory, child, profile);
+    const isolation = sandbox?.isolation ?? (helper ? appContainerIsolation : unboundedIsolation);
+    const session = new SupervisedSession(options, instanceId, sessionDirectory, child, profile, isolation);
     try {
       await session.waitReady();
+      if (child.pid) await session.primeMemory(child.pid);
+      session.startMemoryWatch();
       return session;
     } catch (error) {
       await session.dispose();
@@ -202,23 +253,88 @@ export class SupervisedSession {
 
   private finish(code: number | null, error: Error | null) {
     if (this.exit) return;
-    const confirmed = !this.windowsProfile || code === 0 || code === 1;
-    this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed };
-    clearTimeout(this.idleTimer); clearTimeout(this.maxTimer); clearTimeout(this.helperStopTimer);
+    this.clearTimers();
     const pending = this.pending;
     this.pending = null;
     if (pending) { clearTimeout(pending.timer); pending.reject(error ?? new NativeSessionError('worker-terminated', '本机会话进程已结束。')) }
-    this.settleExit(confirmed);
-    if (confirmed) {
-      void rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
-      if (this.start.windowsHelper && this.windowsProfile) {
-        void exec(this.start.windowsHelper, ['--release', this.windowsProfile], { windowsHide: true, timeout: 10000 }).catch(() => {});
+    if (!this.managesGroup) {
+      const confirmed = !this.windowsProfile || code === 0 || code === 1;
+      this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed };
+      this.settleExit(confirmed);
+      if (confirmed) this.releaseSession();
+      this.start.events?.onExit?.(this.exit);
+      return;
+    }
+    // The direct child exited, but a stop is only confirmed once the managed group is empty.
+    this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed: false };
+    void this.confirmGroup();
+  }
+
+  private async confirmGroup() {
+    const pid = this.child.pid;
+    let empty = !pid;
+    if (pid) {
+      try { process.kill(-pid, 'SIGKILL') } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ESRCH') empty = true;
       }
     }
+    const deadline = Date.now() + groupReapMs;
+    while (!empty && pid && Date.now() < deadline) {
+      await delay(25);
+      try { process.kill(-pid, 0) } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ESRCH') empty = true;
+      }
+    }
+    if (!this.exit) return;
+    this.exit.confirmed = empty;
+    this.settleExit(empty);
+    if (empty) this.releaseSession();
     this.start.events?.onExit?.(this.exit);
   }
 
-  private terminate(reason: 'idle' | 'max' | 'output') {
+  private clearTimers() {
+    clearTimeout(this.idleTimer); clearTimeout(this.maxTimer); clearTimeout(this.helperStopTimer);
+    if (this.memoryTimer) clearInterval(this.memoryTimer);
+    this.memoryTimer = undefined;
+  }
+
+  private releaseSession() {
+    void rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
+    if (this.start.windowsHelper && this.windowsProfile) {
+      void exec(this.start.windowsHelper, ['--release', this.windowsProfile], { windowsHide: true, timeout: 10000 }).catch(() => {});
+    }
+  }
+
+  /**
+   * The V8 heap cap only bounds JavaScript objects. A working set that grows past the baseline plus
+   * the declared budget is stopped here, so off-heap buffers cannot leave the session unbounded.
+   */
+  private startMemoryWatch() {
+    if (this.managesGroup === false || process.platform === 'win32') return;
+    const pid = this.child.pid;
+    if (!pid) return;
+    this.memoryTimer = setInterval(() => { void this.sampleMemory(pid) }, memorySampleMs);
+    this.memoryTimer.unref?.();
+  }
+
+  private async sampleMemory(pid: number) {
+    if (this.exit || this.memorySampling) return;
+    this.memorySampling = true;
+    try {
+      const kib = await groupResidentKib(pid);
+      if (kib <= 0) return;
+      if (!this.memoryBaselineKib) { this.memoryBaselineKib = kib; return }
+      if (kib > this.memoryBaselineKib + this.start.limits.memoryMiB * 1024) this.terminate('memory');
+    } catch { /* A failed sample is not evidence that the session exceeded its budget. */ }
+    finally { this.memorySampling = false; }
+  }
+
+  /** The baseline is taken before the session is handed out, so an early allocation cannot inflate it. */
+  private async primeMemory(pid: number) {
+    try { this.memoryBaselineKib = await groupResidentKib(pid) } catch { /* The first sample then sets it. */ }
+  }
+
+  private terminate(reason: 'idle' | 'max' | 'output' | 'memory') {
     if (this.exit || this.expired) return;
     this.expired = reason;
     this.requestedStop = true;
@@ -315,9 +431,16 @@ export class SupervisedSession {
     if (!this.exit) this.idleTimer = setTimeout(() => this.terminate('idle'), this.start.limits.idleMs);
   }
 
+  /** Resolves once the exit fact is final: the direct child is gone and its group is empty. */
+  async settled(timeoutMs = groupReapMs + 2000): Promise<NativeSessionExit | null> {
+    await Promise.race([this.exited, delay(timeoutMs)]);
+    return this.exit;
+  }
+
   /** A confirmed stop is the OS process really exiting, never just the accepted request. */
   async stop(timeoutMs = 3000): Promise<boolean> {
-    if (this.exit) return this.exit.confirmed;
+    // An exit that is still confirming its group must not be reported as a stopped session.
+    if (this.exit) return Promise.race([this.exited, delay(timeoutMs).then(() => false)]);
     this.requestedStop = true;
     try { this.child.stdin?.write(JSON.stringify({ type: 'stop' }) + '\n') } catch { /* Kill follows. */ }
     const clean = await Promise.race([this.exited, delay(timeoutMs).then(() => false)]);
@@ -330,7 +453,7 @@ export class SupervisedSession {
     if (this.disposed) return;
     this.disposed = true;
     if (!this.exit) { this.requestedStop = true; this.killTree() }
-    await Promise.race([this.exited, delay(2000)]);
+    await Promise.race([this.exited, delay(groupReapMs + 1000)]);
     if (this.exit?.confirmed) await rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
   }
 

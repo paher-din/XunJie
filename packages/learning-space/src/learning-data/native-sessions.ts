@@ -319,7 +319,9 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
               ? reasonOf('budget-exceeded', '会话达到最长持续时间，已结束。')
               : expired === 'output'
                 ? reasonOf('output-too-large', '会话输出超过声明上限，已结束。')
-                : exit.requested
+                : expired === 'memory'
+                  ? reasonOf('budget-exceeded', '会话工作集超过声明的内存预算，已结束。')
+                  : exit.requested
                   ? reasonOf('worker-terminated', '本机会话已按请求停止。')
                   : reasonOf('resource-unavailable', '本机会话进程意外结束，原内部状态不可继续。');
           await tx.query(`UPDATE native_sessions SET state=$2,status_knowledge='confirmed',confirmed_seq=confirmed_seq+1,
