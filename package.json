@@ -22,7 +22,8 @@
     "verify": "node apps/server/tools/check-runtime.mjs && node scripts/verify.mjs",
     "test:storage:native": "node scripts/build.mjs server && node scripts/probe-storage.mjs",
     "probe:execution": "node scripts/probe-execution.mjs",
-    "probe:execution-sync": "node scripts/probe-execution-sync.mjs"
+    "probe:execution-sync": "node scripts/probe-execution-sync.mjs",
+    "probe:execution-ime": "node scripts/probe-execution-ime.mjs"
   },
   "devDependencies": {
     "entities": "9.0.0",

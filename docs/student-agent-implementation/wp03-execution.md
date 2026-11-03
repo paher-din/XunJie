@@ -72,6 +72,16 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 
 流量统计（attempt/ok）：offline-run 1/0、resumed-1 3/3、resumed-2 0/0、offline-failed 1/0、failed-resumed-1 2/2、failed-resumed-2 0/0。截图 `evidence/wp03-execution-sync-offline.png`、`-resumed.png`。同轮 `npm run verify` 五组全绿（prepare 4 / build:test 1 / unit 24 / server 78 / tools 45，`.verification/2026-11-03T03-38-46-167Z-hWYqkQ/summary.json`）。
 
+### 系统中文输入法候选
+
+8 项系统中文输入法候选验收全部通过（`scripts/probe-execution-ime.mjs`，证据 `evidence/wp03-execution-system-ime.json`）。环境：macOS 27.2（build 26B123）、Apple M5（arm64）、Node 24.21.0、桌面 Google Chrome 156.0.8078.79（非 headless）、原生 PostgreSQL 18.6.1、豆包拼音（`com.bytedance.inputmethod.doubaoime.pinyin`）。
+
+方法与 Playwright 按键注入明确区分：文本全部由自建注入器 `xjkeys` 经 `CGEventPost(.cghidEventTap, .hidSystemState)` 投递到系统 HID tap，先经 WindowServer 与 TIS 选中的系统输入法，再进入 Chrome 与组件 iframe；Playwright 只做导航、点非文本按钮和读页面，从不 `fill`/`insertText`/合成 composition。输入法切换走 `select_ime`（`TISSelectInputSource status=0`），验收后恢复 `com.apple.keylayout.ABC`。
+
+1. TIS 选中豆包拼音后开始组字；2. `nihao` 组字后真实 Space 选候选上屏「你好」；3. `shanghai` 组字后真实数字键 `1` 在候选条上选中「上海」（候选条实拍：`evidence/wp03-execution-system-ime-candidates.png`，可见「1 上海 2 伤害 3 商海…」）；4. `shijie` + Space 上屏「世界」；5. `zhongguo` + Space 上屏「中国」。页面侧只读观测：35 次 trusted keydown 中 31 次 `keyCode=229`，4 次 `compositionstart`、31 次 `compositionupdate`、4 次 `compositionend`（`isTrusted:false` 属浏览器在提交时合成，符合装置说明）；31 条 `insertCompositionText` 从 `n`→`ni`→`ni'h`→`ni'ha`→`ni'hao`→`你好` 逐段增长，得分列的 `insertText` 仅有 ASCII 数字 `9/0/8/0`。6. 组字期间窗体截屏含系统候选条，未用合成 composition 充抵；7. IME 写入的中文分组键「上海」「中国」进入真实 Worker/WASM 计算，结果为「共 14 行、5 组」，结果表含上海/中国两行（浅色 `evidence/wp03-execution-system-ime-light.png`、深色 `-dark.png`）；8. 浅色/深色截图取自这次真实运行。
+
+已知限制：操作者是自动化会话驱动的 OS 级键击注入，不是人手在硬件键盘上敲击；输入法管线本身（WindowServer → 系统候选条 → Chrome）全程真实。本机 Apple SCIM 拼音未在 TIS 可选列表中启用，未复测；`beijing` 在豆包首选是「背景」不是「北京」，故改用无歧义拼音。教学效果不因此项产生结论。
+
 ## 发现并修复
 
 - 记录作用域用了命令中的对象而读取用工作区键，导致查询查不到：`accept` 改为接收工作区作用域，读写同键。
@@ -93,7 +103,7 @@ npm 11.19 默认不执行安装脚本，机器上需 `npm install-scripts approv
 - **`tools/xj-dev` 曾报 `LOCKFILE_MISMATCH`**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 的 `collectCode` 从 `HEAD` 树取 `package-lock.json`，本票新增 `wabt` / `fake-indexeddb` 时尚未提交；提交后两组随 tools 一起通过。
 - **`tools` 组三项曾失败（`integration.test.mjs`、`local-status.test.mjs`、`repro-e2e.test.mjs`）**：它们各自运行 `npm run build --workspace @xunjie/contracts`，而构建脚本每跑一次就会删除自己在 `.cache/xunjie-build/locks/` 的锁票据。本次会话的沙箱对「同一工具调用内的批量删除」有阈值保护，超过阈值后第 N 次删除被拒，构建脚本退出 1，xj-dev 把它报成 `CONTRACT_BUILD_FAILED`。三项单独跑（`node --test`）与整组跑（`node scripts/verify.mjs --group tools --jobs 2`，45/45）都通过；把该阈值调高后完整 `npm run verify` 也全绿。这是执行环境的保护策略与本仓库构建脚本的交互，不是本票改动引入的问题。
 - **构建锁曾被一个残留票据永久卡住**（已修复，见“发现并修复”）：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
-- 未验证：系统中文输入法候选、Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。这四项都不是本票代码的已知缺陷，而是“条件不具备”的验收项，所以登记为未验证而不是缺陷：输入法候选要真人在真实浏览器里切换系统 IME，Playwright 的按键注入不产生系统级候选；跨机远端执行的范围在后续子票（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替。（断网-重连下 `executionSync` 的真实续传已补做验证，见“断网-重连续传”，不在本清单内。）
+- 未验证：Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。这三项都不是本票代码的已知缺陷，而是“条件不具备”的验收项，所以登记为未验证而不是缺陷：跨机远端执行的范围在后续子票（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替。（断网-重连下 `executionSync` 的真实续传已补做验证，见“断网-重连续传”；系统中文输入法候选已补做验证，见“系统中文输入法候选”。）
 
 ## 保留消费者
 
