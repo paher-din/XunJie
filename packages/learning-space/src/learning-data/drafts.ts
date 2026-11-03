@@ -1,4 +1,5 @@
 import { activitySchema } from '@xunjie/contracts/learning-data';
+import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { verifySemanticReference } from './semantic-references.js';
 import { validateComponentFiles } from './component-state.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -90,6 +91,45 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     return questionDraftViewSchema.parse((saved.result as { draft: unknown }).draft);
   }
 
+  /** Only this owner's immutable records and resource pins establish historical provenance. */
+  async function savedReference(identity: SpaceIdentity, activityId: string, reference: QuestionDraftSync['references'][number]) {
+    if (reference.source.kind !== 'component') return false;
+    const draftId = draftIdFor(activityId);
+    const match = JSON.stringify({ references: [{ referenceId: reference.referenceId }] });
+    const { rows } = await storage.read(`SELECT r.body,r.content_digest,r.revision_id,r.revision,NULL::uuid AS request_id
+      FROM question_draft_revisions r JOIN question_drafts h ON h.draft_id=r.draft_id
+      WHERE h.draft_id=$1 AND h.activity_id=$2 AND h.space_environment_id=$3 AND h.space_id=$4 AND h.principal_id=$5
+        AND r.body @> $6::jsonb
+      UNION ALL
+      SELECT body,input_digest AS content_digest,NULL::uuid AS revision_id,NULL::integer AS revision,request_id
+      FROM action_intents WHERE activity_id=$2 AND body->'draft' @> $6::jsonb`,
+      [draftId, ...scope(identity, activityId), match]);
+    for (const row of rows) {
+      let references: QuestionDraftSync['references'], pin: string;
+      if (row.request_id) {
+        const action = actionInputSchema.parse(row.body);
+        if (action.scope.activityId !== activityId || action.scope.environmentId !== identity.environmentId
+          || action.scope.spaceId !== identity.spaceId || action.scope.principalId !== identity.principalId
+          || action.requestId !== row.request_id || digest(action) !== row.content_digest) return fail('corrupt');
+        references = action.draft.references;
+        pin = `action/${action.requestId}/reference/${reference.referenceId}`;
+      } else {
+        const draft = questionDraftViewSchema.parse(row.body);
+        if (draft.draftId !== draftId || draft.revisionId !== row.revision_id || draft.revision !== Number(row.revision)
+          || digest({ question: draft.question, references: draft.references }) !== row.content_digest) return fail('corrupt');
+        if (draft.references.some(item => item.copyDigest !== copyDigest(item.copy))) return fail('corrupt');
+        references = draft.references;
+        pin = `question-reference/${draftId}/${draft.revisionId}/${reference.referenceId}`;
+      }
+      const previous = references.find(item => item.referenceId === reference.referenceId);
+      if (!previous || questionReferenceKey(previous) !== questionReferenceKey(reference) || previous.copy !== reference.copy) continue;
+      const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [pin]);
+      if (links.length !== 1 || links[0]!.resource_id !== reference.source.contentId) return fail('corrupt');
+      return true;
+    }
+    return false;
+  }
+
   async function verifySources(identity: SpaceIdentity, activity: LearningActivity, input: Pick<QuestionDraftSync, 'bases' | 'references'>) {
     const bases = new Map<string, QuestionDraftSync['bases'][number]>();
     for (const basis of input.bases) {
@@ -107,8 +147,7 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
           validateComponentFiles(activity, [basis]);
           await works.registerBasis(identity, activity.activityId, basis);
         }
-        const previous = (await head(identity, activity.activityId)).draft.references.find(item => item.referenceId === reference.referenceId);
-        const historical = !!previous && questionReferenceKey(previous) === questionReferenceKey(reference) && previous.copy === reference.copy;
+        const historical = await savedReference(identity, activity.activityId, reference);
         if (!historical) {
           if (!activity.course || !courses?.verifyComponentReference) throw new StorageError('unavailable');
           await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId, key: source.bindingKey, definitionDigest: source.definitionDigest });
