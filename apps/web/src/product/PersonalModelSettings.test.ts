@@ -105,6 +105,37 @@ afterEach(async () => {
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
 describe('personal model settings recovery through real React controls', () => {
+  it('checks the acknowledged version immediately and ignores pre-save reads without pinning future restored data', async () => {
+    await click('编辑'); await type('连接名称', '已确认配置')
+    let releaseOld!: () => void, releaseFresh!: () => void
+    holdRead = new Promise(resolve => { releaseOld = resolve })
+    await poll() // Capture version 1 before the save, but deliver it after the ACK.
+    holdRead = new Promise(resolve => { releaseFresh = resolve })
+    try {
+      await click('保存')
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
+      expect(card.textContent).toContain('chat-completions · 版本 2')
+      expect(card.textContent).toContain('已确认配置')
+      rejectCheck = false
+      await click('连接检查', card)
+      const submittedSource = () => JSON.parse(vi.mocked(fetch).mock.calls.filter(([path, options]) =>
+        String(path).endsWith('/models/checks') && options?.method === 'POST').at(-1)![1]!.body as string).source
+      expect(submittedSource()).toEqual({ connectionId: initial.connectionId, version: 2 })
+      await act(async () => { releaseOld(); await settle() })
+      expect(card.textContent).toContain('chat-completions · 版本 2')
+      await click('连接检查', card)
+      expect(submittedSource()).toEqual({ connectionId: initial.connectionId, version: 2 })
+      await act(async () => { releaseFresh(); await settle() }); holdRead = undefined
+      server = { ...initial, name: '恢复的配置' }; await poll()
+      expect(card.textContent).toContain('chat-completions · 版本 1')
+      expect(card.textContent).toContain('恢复的配置')
+      expect(card.textContent).not.toContain('已确认配置')
+    } finally {
+      await act(async () => { releaseOld(); releaseFresh(); await settle() }); holdRead = undefined
+    }
+  })
+
   it('preserves an action error through late reads, two polls and explicit reads; clears it on successful related retry', async () => {
     let release!: () => void; holdRead = new Promise(resolve => { release = resolve })
     await poll(); await click('连接检查')
@@ -114,6 +145,28 @@ describe('personal model settings recovery through real React controls', () => {
     expect(alerts()).toContain('检查频次或并发已达上限')
     rejectCheck = false; await click('连接检查')
     expect(alerts()).not.toContain('检查频次或并发已达上限')
+  })
+
+  it('publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward', async () => {
+    let releaseFirst!: () => void, releaseSecond!: () => void, releaseLast!: () => void
+    server = { ...server, name: '较早读取' }
+    holdRead = new Promise(resolve => { releaseFirst = resolve }); await poll()
+    server = { ...server, name: '已完成读取' }
+    holdRead = new Promise(resolve => { releaseSecond = resolve }); await poll()
+    server = { ...server, name: '仍在读取' }
+    holdRead = new Promise(resolve => { releaseLast = resolve }); await poll()
+    try {
+      await act(async () => { releaseSecond(); await settle() })
+      const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
+      expect(card.textContent).toContain('已完成读取')
+      await act(async () => { releaseFirst(); await settle() })
+      expect(card.textContent).toContain('已完成读取')
+      expect(card.textContent).not.toContain('较早读取')
+      await act(async () => { releaseLast(); await settle() })
+      expect(card.textContent).toContain('仍在读取')
+    } finally {
+      await act(async () => { releaseFirst(); releaseSecond(); releaseLast(); await settle() }); holdRead = undefined
+    }
   })
 
   it('clears recovered read errors without erasing an action failure', async () => {
