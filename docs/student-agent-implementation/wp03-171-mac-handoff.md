@@ -2,7 +2,7 @@
 
 日期：2026-11-03。对应[组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171)及[实施方案](specs/wp03-component-preparation.md)。当前 Windows 修复结果不能代替 Mac 验收；本页给出接手者可直接执行的路径，不声明 Mac 已通过。
 
-本轮实际结果已由 [#179 / #181 验收记录](wp03-mac-school-acceptance.md)接续：`6171351` 完整 Mac 包、工程/Chrome 及四条真实学校路径已完成，当前仅待解锁 Mac 后的系统中文输入法补验。下列保留通用操作入口，不要求把已经通过的检查重复一轮。
+本轮实际结果已由 [#179 / #181 验收记录](wp03-mac-school-acceptance.md)接续：`6171351` 完整 Mac 包、工程/Chrome、18 项真实 macOS 系统输入法及四条真实学校路径均已完成，所属测试环境已清理。下列保留通用操作入口，不要求把已经通过的检查重复一轮。
 
 ## 固定源码与设备
 

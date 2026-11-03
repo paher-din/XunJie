@@ -2,7 +2,7 @@
 
 日期：2026-11-03（Asia/Shanghai）。对应 [#179](https://github.com/paher-din/XunJie/issues/179) 与 [#181](https://github.com/paher-din/XunJie/issues/181)。本轮固定生产候选为 `6171351171025bae457b9afbc1d33fc18ab5e481`，起点为干净的 `692fa066b2990d7d1c18524dabba4d758b607460`。后续验收脚本、截图与文档提交不改变这个产品源码身份。
 
-**当前仅剩真实 macOS 系统中文输入法补验。** 工程、完整包、Chrome、四条真实学校跨机路径与所属环境清理均完成；不以后台 Chrome 的字符串填充代替系统输入法，两票保持开放，尚未按最后一步推送。教学效果不作通过结论。本页记录本轮实际证据，早先 Windows、表格聚合及同机 school profile 报告不充抵本轮缺项。逐项结果与原始报告摘要见[脱敏证据](evidence/wp03-179-181-acceptance.json)。
+**两票全部适用验收已完成。** 工程、完整包、真实 Chrome、macOS 系统中文输入法、四条真实学校跨机路径与所属环境清理均通过；教学效果未评估。本页记录本轮实际证据，早先 Windows、表格聚合及同机 school profile 报告不充抵本轮结果。逐项结果与原始报告摘要见[脱敏证据](evidence/wp03-179-181-acceptance.json)。本轮只关闭独立验收票 #179、#181，不自动关闭 #169、#171 或母票，不合 main、不部署。
 
 ## 固定候选与设备
 
@@ -29,6 +29,7 @@
 | `probe-component-host.mjs` | 新候选 26/26，真实 Chrome/IndexedDB/API/PG；R1–R6、S1 及实际导航/存储故障/旧状态修复反例通过 |
 | `probe-component-preparation.mjs` | 新候选 18/18，冷/热、真实依赖执行、双标签身份、坏缓存、加载超时、失败降级、激活事务及撤权通过 |
 | `productUi.spec.ts worksEditor.spec.ts --headed --workers=1` | 新候选 25/25，0 跳过、0 重试；`XUNJIE_E2E_BROWSER_CHANNEL=chrome`，`XUNJIE_XJ_DEV_URL=1` 禁用无关开发服务 |
+| `probe-component-ime.mjs` | 新完整包 18/18；真实系统拼音候选、OS 按键、v3/v2、持久化重读、缓存恢复和后来版本隔离，退出 0 |
 
 最终准备报告明确记录 `platform=darwin`、`arch=arm64`、`headless=false`、`status=passed`、`mac=passed`、`sourceDirty=false`、固定源码/源码摘要和 `cleanup=owned product stopped`。本轮冷准备记录为 39 ms、16917 依赖字节；热开 0 次依赖取得。这个耗时是准备模块报告的阶段计时，字节是取得的依赖量，均不代表安装总耗时、浏览器内存或课程容量。
 
@@ -86,9 +87,20 @@ Windows 实际环境为 Windows 11 Home China、10.0.26200、x64、Chrome 156.0.
 
 ## 系统中文输入法
 
-当前 Mac 前台为 `loginwindow`，系统键盘事件无法送到 Chrome。此前 IME 尝试因无焦点而失败，没有计为通过；自动填字、合成 composition 和已有表格聚合 IME 报告均不替代本项。
+最终自动运行于 2026-11-03 17:20:50–17:21:49（Asia/Shanghai），**18/18，退出 0**；报告为 `darwin/arm64`、`headless=false`、`status=passed`、`mac=passed`。使用相同 `6171351` 完整产品包、自带 Node/PG、独立私有 root，经正式 CLI 安装/启动/导入；整棵 Web 摘要前后不变，最后正常 stop/start/stop，私有 root 已删除。执行时仓库 HEAD 为 `907d051`，生产目录 `sourceDirty=false`；探针自身 SHA256 单独记录，产品身份仍由上述固定包摘要确定。
 
-`scripts/probe-component-ime.mjs` 已准备 v3/v2 的真实系统候选、Space/数字确认、Escape 取消、中英文/换行、Tab/Meta、组合期间切焦点/工具、高亮/缓存恢复、刷新和新版本保留验收。它要求解锁桌面和已经获准的 OS 按键工具，开始前检测锁屏并拒绝执行；最终仍须实际运行、核对 trusted 组合事件、候选窗截图及持久化 UTF-8 字节后才可勾选。
+`scripts/probe-component-ime.mjs` 自动驱动已安装的豆包拼音，文字只经 `CGEventPost` HID 和 System Events 系统按键到达 Chrome。Playwright 仅导航、选择材料、聚焦和观察，不使用 `fill`、`insertText`、CDP composition 或合成 DOM 输入。负责人解锁桌面后，最终运行无需人工界面操作。v3、prepared v2 均通过 Space/数字候选确认、Escape 取消、连续输入、中英文切换、换行、Tab/Meta、组合期间切焦点/工具；v2 另通过实际高亮、清除依赖缓存后的恢复。两种组件均在切换、刷新和 PostgreSQL 业务 API 重读后保持相同文本；导入独立 v4 后原活动仍绑定原发布、组件摘要和原笔记。
+
+已确认的正文为 `你好世界\nabc上海`。失焦和工具切换时，该输入法保留未确认拼音，实际最终文本为 `你好世界\nabc上海bei'jing'hang'zhou`，UTF-8 为 40 bytes、1 个换行，SHA256 为 `c7ba250dff8d4f618748f81c3e2fa0200092aab073eaa2eb536f9a0cd04cdc3c`。逐次比较切换前后的完整值，既没有丢失已确认字节，也没有重复插入；没有把未确认拼音误报为已选定的“北京/杭州”。
+
+两种组件各观察到 5 次可信 `compositionstart`，`keydown`、`compositionupdate`、`beforeinput`、`input` 全部可信；“你好/世界/上海”各自都有携带中文的可信 `beforeinput` 和 `input`（`insertCompositionText`），另保留实际候选窗截图。当前 Chrome/输入法组合的 4 次 `compositionend` 均为 `isTrusted=false`；报告如实记录，不用这些结束事件充当原生输入证明，也不要求仍未确认的最后一段提前结束。
+
+此前尝试的失败分别为锁屏/系统焦点不属于测试 Chrome，以及过严的探针假设。自动脚本改为先选择输入源、再按实际 PID 将测试 Chrome 置前并核对系统焦点；每次输入源切换后重新聚焦。另一次已通过 15 项后，v4 测试数据复用了 v2 的依赖资源身份，导入被正确拒绝为 409；为新版本分配独立资源身份后完整重跑通过。失败尝试不计通过，产品代码未为此修改。最终运行和脱敏报告保留；失败尝试留下的本轮独立 root 在核对安装归属、CLI 停止及 `pg_ctl status=3` 后删除。
+
+![v3 真实系统拼音候选窗](evidence/wp03-179-181-ime-v3-candidate.png)
+![prepared v2 真实系统拼音候选窗](evidence/wp03-179-181-ime-v2-candidate.png)
+![v2 深色：输入、保存和恢复后](evidence/wp03-179-181-ime-v2-dark.png)
+![v2 窄桌面：原文保留](evidence/wp03-179-181-ime-v2-narrow.png)
 
 ## 可重复入口
 
@@ -102,4 +114,4 @@ XUNJIE_PRODUCT_PACKAGE="$PWD/dist/wp03-179-181-6171351" \
   dist/wp03-179-181-6171351/resources/node/bin/node scripts/probe-component-ime.mjs
 ```
 
-真实学校 harness 为 `scripts/probe-component-school.mjs`；它消费仓库外本轮私有 actor 配置，不能将密码或管理 token 填到命令行/文档。CLI、浏览器与网络清理按对应拥有者执行，只撤销本次新增规则/CA，不改现有学校服务。两票只有在所有适用路径和系统 IME 实际通过后才能关闭；当前不据工程全绿关闭。
+真实学校 harness 为 `scripts/probe-component-school.mjs`；它消费仓库外本轮私有 actor 配置，不能将密码或管理 token 填到命令行/文档。CLI、浏览器与网络清理按对应拥有者执行，只撤销本次新增规则/CA，不改现有学校服务。两票关闭依据是上述全部适用路径的实际通过证据。

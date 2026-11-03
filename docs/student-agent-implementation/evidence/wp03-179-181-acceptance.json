@@ -2,10 +2,8 @@
   "formatVersion": 1,
   "date": "2026-11-03",
   "codeCommit": "6171351171025bae457b9afbc1d33fc18ab5e481",
-  "status": "incomplete",
-  "remaining": [
-    "actual macOS system IME for canonical v3 and prepared v2"
-  ],
+  "status": "passed",
+  "remaining": [],
   "hardware": {
     "model": "MacBook Air",
     "modelIdentifier": "Mac17,3",
@@ -14,6 +12,96 @@
     "macOS": "27.2",
     "build": "26B123",
     "architecture": "arm64"
+  },
+  "product": {
+    "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+    "sourceDirty": false,
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-03T08:09:35.644Z",
+    "distributionSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+    "resourcesJsonSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "resources": [
+      {
+        "id": "node",
+        "version": "24.21.0",
+        "distribution": {
+          "mode": "controlled-subset",
+          "retainedFiles": [
+            "bin/node",
+            "LICENSE"
+          ],
+          "upstreamArchiveVerifiedInFull": true,
+          "retainedFileContentsModified": false
+        },
+        "source": "https://nodejs.org/dist/v24.21.0/",
+        "license": {
+          "spdx": "MIT",
+          "bundledThirdParty": "See the complete LICENSE file for bundled third-party terms",
+          "url": "https://github.com/nodejs/node/blob/v24.21.0/LICENSE",
+          "preserve": [
+            "LICENSE"
+          ]
+        },
+        "archive": {
+          "filename": "node-v24.21.0-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+          "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+          "bytes": 52909993,
+          "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+          "archiveRoot": "node-v24.21.0-darwin-arm64"
+        },
+        "entryHashes": {
+          "bin/node": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+        }
+      },
+      {
+        "id": "postgres",
+        "version": "18.6",
+        "distributionVersion": "18.6.1",
+        "distribution": {
+          "mode": "complete-upstream-archive"
+        },
+        "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/18.6.1",
+        "license": {
+          "spdx": "PostgreSQL",
+          "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+          "url": "https://www.postgresql.org/about/licence/",
+          "preserve": [
+            "LICENSE",
+            "dependency-notices",
+            "source-input.json",
+            "build-manifest.json",
+            "runtime-dependencies.json",
+            "target-validation.json"
+          ],
+          "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+        },
+        "archive": {
+          "filename": "postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+          "sha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6",
+          "bytes": 88814625,
+          "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.sha256",
+          "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.manifest.json",
+          "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.spdx.json",
+          "archiveRoot": "postgresql-18.6.1-aarch64-apple-darwin"
+        },
+        "target": "aarch64-apple-darwin",
+        "entryHashes": {
+          "bin/initdb": "4e043f105a92dc499ecb09dccda47cc9fa51136164deb27b736b902c16f8b11e",
+          "bin/postgres": "d6688852af4db60285432f3bec9486e17b838c2f3f772b7484029abb0e4ff770",
+          "bin/pg_ctl": "5853c3fdc3ef70c1dd57fe618d5960587d16665b61cd026cdd593033fa5307dd",
+          "bin/pg_controldata": "845e8f80435e9bc04fbcc2b63c58e53fb34f38a817acfaa9d058056afbc37eb6",
+          "bin/psql": "8977c163014533f59369a5606a221a2c39b635e9076057866bc5a782f75c6ec9",
+          "bin/pg_dump": "9737872967beb2b73445a9ae2cbbc6dcf17eecdcdea2137dcaa263e5780e5b9d",
+          "bin/pg_dumpall": "919a521284653ffee8f623e72ab40873ff9d7b780dd67c5f7bdcee72298667d5",
+          "bin/pg_restore": "469bbe82fce0696bfa4faf170f858db3e51cb3a0e56c7c106adcb654e0023942",
+          "bin/pg_upgrade": "5238511bd9278587b30ff7698de225a7355b98669214d0af8964e6fca0d737e3"
+        }
+      }
+    ],
+    "resourceCatalogSha256": "9d64fbd2179c045176c2b470ab59de320be1e5e4b05f7b557d7fbe96fc130608"
   },
   "engineering": {
     "prepare": {
@@ -1087,6 +1175,11 @@
           "kind": "school",
           "name": "学校学习空间"
         },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
+        },
         "status": "open",
         "createdAt": "2026-11-03T08:14:47.567Z",
         "course": {
@@ -1348,6 +1441,11 @@
           "principalId": "8dc5f594-ec78-4aff-acf0-6f2045eb3f10",
           "kind": "school",
           "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
         },
         "status": "open",
         "createdAt": "2026-11-03T08:21:58.530Z",
@@ -1653,6 +1751,11 @@
           "kind": "school",
           "name": "学校学习空间"
         },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
+        },
         "status": "open",
         "createdAt": "2026-11-03T08:16:58.379Z",
         "course": {
@@ -1921,6 +2024,11 @@
           "principalId": "c3b62238-9ff1-44f2-811b-134a6dced80a",
           "kind": "school",
           "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
         },
         "status": "open",
         "createdAt": "2026-11-03T08:28:56.121Z",
@@ -2268,15 +2376,733 @@
     "Original legacy product cannot back up its uppercase record (corrupt). UUID-specific validation uses explicit registered owner migrations; no automatic startup upgrade or successful restore/takeover claim.",
     "Two final host probe attempts timed out at different annotation-selection/save steps. Focusing the material with a real click before setting the range preserved every assertion; final 26 cases passed.",
     "First Mac school canonical reload assertion used the default five-second deadline while the product still showed loading. Waiting for the actual component followed by original-text verification passed.",
-    "Initial IME attempts could not own OS focus; the macOS desktop was locked (frontmost loginwindow). No physical IME pass claimed.",
+    "Initial IME attempts failed while locked or without OS focus. Selecting the input source first and then automatically raising the actual test Chrome PID resolved focus; later acceptance used only the automatic probe.",
+    "The real IME exposes untrusted compositionend events in this Chrome pair. Native proof requires trusted keydown/compositionstart/update plus trusted beforeinput and input containing each confirmed Chinese word; the end flags remain recorded.",
+    "An IME probe reached 15 passing cases before its synthetic v4 import reused the v2 dependency resource identity and correctly returned 409. The fixture now assigns new resource identities to the later version; product code did not change.",
     "Two Mac client stop/start attempts exposed a real shutdown hang caused by public preconnections. 6171351 closes owned public sockets after business drain; the minimal regression was red before the fix, and shutdown/drain/lifecycle tests passed 13/13 after it."
   ],
   "systemIme": {
-    "status": "not-run",
-    "reason": "macOS desktop locked; no OS focus or system composition acceptance",
-    "priorAttemptStatus": "failed",
-    "priorAttemptSource": "692fa066b2990d7d1c18524dabba4d758b607460",
-    "probeSyntax": "passed"
+    "ticket": [
+      "#179",
+      "#181"
+    ],
+    "startedAt": "2026-11-03T09:20:50.045Z",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0",
+    "osBuild": "26B123",
+    "sourceRevision": "907d0516ee3727ddc9db1db8f2aea907a0f69a44",
+    "sourceDirty": false,
+    "probeSha256": "fd3e962c7bf1b228a561942498a55519d3758b2edda64895c4011d9def446746",
+    "productDistributionSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+    "frontendBefore": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+    "node": "v24.21.0",
+    "postgres": "postgres (PostgreSQL) 18.6",
+    "browser": "Google Chrome",
+    "inputMethod": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "injection": "CGEventPost HID and System Events physical key codes",
+    "syntheticText": false,
+    "cases": [
+      "host-v3: system candidate Space and digit selection commit Chinese once",
+      "host-v3: Escape cancels the live composition and preserves committed text",
+      "host-v3: language switch, newline, Tab and Meta editing retain exact text",
+      "host-v3: switching tools during composition retains the previously protected note",
+      "host-v3: moving focus during composition preserves all previously confirmed bytes",
+      "host-v3: trusted composition events prove the system IME path independently of final strings",
+      "host-v3: tool switch, refresh and PostgreSQL reread preserve UTF-8 bytes and newlines",
+      "prepared-v2: system candidate Space and digit selection commit Chinese once",
+      "prepared-v2: Escape cancels the live composition and preserves committed text",
+      "prepared-v2: language switch, newline, Tab and Meta editing retain exact text",
+      "prepared-v2: switching tools during composition retains the previously protected note",
+      "prepared-v2: moving focus during composition preserves all previously confirmed bytes",
+      "prepared-v2: trusted composition events prove the system IME path independently of final strings",
+      "prepared-v2: highlighting and actual dependency-cache recovery retain IME-authored notes",
+      "prepared-v2: tool switch, refresh and PostgreSQL reread preserve UTF-8 bytes and newlines",
+      "importing a later prepared version preserves both pinned activities and their original IME annotations",
+      "full product CLI install/start/import/use leaves the entire packaged Web tree unchanged",
+      "the complete packaged CLI stops and restarts its owned environment normally"
+    ],
+    "variants": [
+      {
+        "variant": "host-v3",
+        "component": {
+          "manifest": {
+            "formatVersion": 1,
+            "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+            "version": 3,
+            "hostApiVersion": 1,
+            "title": "材料标注",
+            "entry": {
+              "resourceId": "d0c86f21-5856-49ce-b9b3-f8fcc7697127",
+              "sha256": "efaf3ddef0171f7ddf12601c8ddfd8dc1908a2aebc51eda124d7d3d447a1c53f",
+              "byteLength": 479855,
+              "mediaType": "text/html"
+            },
+            "stateVersion": 1,
+            "stateShape": {
+              "type": "object",
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "maxLength": 36
+                      },
+                      "note": {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      "quote": {
+                        "type": "string",
+                        "maxLength": 4000
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "initialState": {
+              "annotations": []
+            },
+            "requiredCapabilities": [
+              "workspace.read",
+              "workspace.change"
+            ]
+          },
+          "digest": "3623d7656d0a295496f63b0348fda7013effcea0ae974c64b67cc706569b8352"
+        },
+        "finalText": "你好世界\nabc上海bei'jing'hang'zhou",
+        "utf8Sha256": "c7ba250dff8d4f618748f81c3e2fa0200092aab073eaa2eb536f9a0cd04cdc3c",
+        "byteLength": 40,
+        "newlineCount": 1
+      },
+      {
+        "variant": "prepared-v2",
+        "component": {
+          "manifest": {
+            "formatVersion": 2,
+            "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+            "version": 2,
+            "hostApiVersion": 1,
+            "preparationProtocolVersion": 1,
+            "title": "材料标注",
+            "entry": {
+              "resourceId": "702493fc-1bb0-4483-a695-e66694509656",
+              "sha256": "6c5045dbe0758dc4bd0412fe3f17bd420cab3405ae8162ec2388fdc244fd6081",
+              "byteLength": 16690,
+              "mediaType": "text/html"
+            },
+            "dependencies": [
+              {
+                "dependencyId": "mark-js",
+                "package": "mark.js",
+                "version": "8.11.1",
+                "role": "script",
+                "resourceId": "0445d39b-51ce-4481-9a60-798b92d3a2e6",
+                "sha256": "21d62e1053f7589fe6365cccd7c636d1781abf7879a605d8ce5f1f5b81a7b8fa",
+                "byteLength": 16917,
+                "mediaType": "text/javascript",
+                "loadOrder": 0,
+                "preparationTypes": [
+                  "browser"
+                ]
+              }
+            ],
+            "environment": {
+              "preparationType": "browser",
+              "preparationProtocolVersion": 1,
+              "requiredFeatures": [
+                "message-port",
+                "crypto-subtle",
+                "indexeddb",
+                "sandboxed-iframe"
+              ],
+              "selfTestVersion": 1,
+              "capabilityDependencies": [
+                {
+                  "capability": "workspace.read",
+                  "dependencyIds": []
+                },
+                {
+                  "capability": "workspace.change",
+                  "dependencyIds": []
+                },
+                {
+                  "capability": "material.highlight",
+                  "dependencyIds": [
+                    "mark-js"
+                  ]
+                }
+              ]
+            },
+            "budget": {
+              "resourceCount": 2,
+              "totalResourceBytes": 65536,
+              "messageBytes": 131072,
+              "preparationTimeoutMs": 60000,
+              "selfTestTimeoutMs": 30000,
+              "parallelism": 1,
+              "cacheScope": "device-local"
+            },
+            "selfTest": {
+              "selfTestVersion": 1,
+              "material": {
+                "title": "自检样例材料",
+                "text": "观察与解释\n\n阅读材料时，先区分观察到的事实与自己的解释。\n记录问题，再寻找可以核对的依据。\n\n再次核对时，先区分观察到的事实与新的解释。"
+              },
+              "steps": [
+                {
+                  "kind": "dependency-loads",
+                  "checkId": "loads-highlight-library",
+                  "dependencyIds": [
+                    "mark-js"
+                  ],
+                  "expect": {
+                    "globalName": "Mark"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-chinese-sentence",
+                  "quote": "阅读材料时，先区分观察到的事实与自己的解释。",
+                  "expect": {
+                    "marks": 1,
+                    "markedText": "阅读材料时，先区分观察到的事实与自己的解释。"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-repeated-phrase",
+                  "quote": "先区分观察到的事实",
+                  "expect": {
+                    "marks": 2,
+                    "markedText": "先区分观察到的事实"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-across-newline",
+                  "quote": "自己的解释。\n记录问题",
+                  "expect": {
+                    "marks": 1,
+                    "markedText": "自己的解释。\n记录问题"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-absent-quote",
+                  "quote": "这段文字不在样例材料中",
+                  "expect": {
+                    "marks": 0,
+                    "markedText": ""
+                  }
+                },
+                {
+                  "kind": "highlight-releases",
+                  "checkId": "release-restores-body",
+                  "quote": "记录问题，再寻找可以核对的依据。",
+                  "expect": {
+                    "marks": 0,
+                    "bodyText": "观察与解释\n\n阅读材料时，先区分观察到的事实与自己的解释。\n记录问题，再寻找可以核对的依据。\n\n再次核对时，先区分观察到的事实与新的解释。"
+                  }
+                },
+                {
+                  "kind": "annotation-roundtrip",
+                  "checkId": "annotation-temp-roundtrip",
+                  "quote": "观察到的事实",
+                  "note": "自检写入的临时笔记",
+                  "expect": {
+                    "annotations": 1,
+                    "note": "自检写入的临时笔记"
+                  }
+                },
+                {
+                  "kind": "invalid-input-rejected",
+                  "checkId": "reject-overlong-quote",
+                  "quote": "字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字",
+                  "expect": {
+                    "annotations": 1,
+                    "rejected": true
+                  }
+                },
+                {
+                  "kind": "invalid-input-rejected",
+                  "checkId": "reject-blank-quote",
+                  "quote": "   ",
+                  "expect": {
+                    "annotations": 1,
+                    "rejected": true
+                  }
+                }
+              ]
+            },
+            "stateVersion": 1,
+            "stateShape": {
+              "type": "object",
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "maxLength": 36
+                      },
+                      "note": {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      "quote": {
+                        "type": "string",
+                        "maxLength": 4000
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "initialState": {
+              "annotations": []
+            },
+            "requiredCapabilities": [
+              "workspace.read",
+              "workspace.change",
+              "material.highlight"
+            ]
+          },
+          "digest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a"
+        },
+        "finalText": "你好世界\nabc上海bei'jing'hang'zhou",
+        "utf8Sha256": "c7ba250dff8d4f618748f81c3e2fa0200092aab073eaa2eb536f9a0cd04cdc3c",
+        "byteLength": 40,
+        "newlineCount": 1
+      }
+    ],
+    "status": "passed",
+    "teachingOutcome": "not-evaluated",
+    "browserVersion": "156.0.8078.80",
+    "browserArguments": [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "--disable-field-trial-config",
+      "--disable-background-networking",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-back-forward-cache",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-extensions-with-background-pages",
+      "--disable-component-update",
+      "--no-default-browser-check",
+      "--disable-default-apps",
+      "--disable-dev-shm-usage",
+      "--disable-edgeupdater",
+      "--disable-extensions",
+      "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+      "--enable-features=CDPScreenshotNewSurface",
+      "--allow-pre-commit-input",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-popup-blocking",
+      "--disable-prompt-on-repost",
+      "--disable-renderer-backgrounding",
+      "--disable-updater-scheduler",
+      "--force-color-profile=srgb",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--password-store=basic",
+      "--use-mock-keychain",
+      "--no-service-autorun",
+      "--export-tagged-pdf",
+      "--disable-search-engine-choice-screen",
+      "--unsafely-disable-devtools-self-xss-warnings",
+      "--edge-skip-compat-layer-relaunch",
+      "--disable-infobars",
+      "--disable-search-engine-choice-screen",
+      "--disable-sync",
+      "--enable-unsafe-swiftshader",
+      "--no-sandbox",
+      "--enable-automation",
+      "--window-size=1360,980",
+      "--user-data-dir=<temporary-path>",
+      "--remote-debugging-pipe",
+      "--no-startup-window",
+      "--flag-switches-begin",
+      "--flag-switches-end",
+      "--enable-unsafe-swiftshader"
+    ],
+    "headless": false,
+    "focusDiagnostics": [
+      {
+        "browserPid": 9061,
+        "systemPid": 9061,
+        "frame": {
+          "focused": true,
+          "active": true,
+          "tag": "TEXTAREA"
+        },
+        "page": true
+      },
+      {
+        "browserPid": 9061,
+        "systemPid": 9061,
+        "frame": {
+          "focused": true,
+          "active": true,
+          "tag": "TEXTAREA"
+        },
+        "page": true
+      }
+    ],
+    "compositionTransitions": [
+      {
+        "variant": "host-v3",
+        "confirmedPrefix": "你好世界\nabc上海",
+        "beforeBlur": "你好世界\nabc上海bei'jing",
+        "afterBlur": "你好世界\nabc上海bei'jing",
+        "beforeToolChange": "你好世界\nabc上海bei'jing'hang'zhou",
+        "afterToolChange": "你好世界\nabc上海bei'jing'hang'zhou"
+      },
+      {
+        "variant": "prepared-v2",
+        "confirmedPrefix": "你好世界\nabc上海",
+        "beforeBlur": "你好世界\nabc上海bei'jing",
+        "afterBlur": "你好世界\nabc上海bei'jing",
+        "beforeToolChange": "你好世界\nabc上海bei'jing'hang'zhou",
+        "afterToolChange": "你好世界\nabc上海bei'jing'hang'zhou"
+      }
+    ],
+    "eventObservations": [
+      {
+        "variant": "host-v3",
+        "starts": 5,
+        "ends": 4,
+        "nativeEventTypes": [
+          "keydown",
+          "compositionstart",
+          "compositionupdate",
+          "beforeinput",
+          "input"
+        ],
+        "nativeEventsTrusted": true,
+        "compositionEndTrust": [
+          {
+            "data": "你好",
+            "trusted": false
+          },
+          {
+            "data": "世界",
+            "trusted": false
+          },
+          {
+            "data": "",
+            "trusted": false
+          },
+          {
+            "data": "上海",
+            "trusted": false
+          }
+        ],
+        "counts": [
+          {
+            "type": "keydown",
+            "trusted": true,
+            "count": 46
+          },
+          {
+            "type": "compositionstart",
+            "trusted": true,
+            "count": 5
+          },
+          {
+            "type": "compositionupdate",
+            "trusted": true,
+            "count": 38
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "compositionend",
+            "trusted": false,
+            "count": 4
+          }
+        ],
+        "chineseCommitEvents": [
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "ni'hao"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好shi'jie"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabcshang'hai"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabc上海"
+          }
+        ]
+      },
+      {
+        "variant": "prepared-v2",
+        "starts": 5,
+        "ends": 4,
+        "nativeEventTypes": [
+          "keydown",
+          "compositionstart",
+          "compositionupdate",
+          "beforeinput",
+          "input"
+        ],
+        "nativeEventsTrusted": true,
+        "compositionEndTrust": [
+          {
+            "data": "你好",
+            "trusted": false
+          },
+          {
+            "data": "世界",
+            "trusted": false
+          },
+          {
+            "data": "",
+            "trusted": false
+          },
+          {
+            "data": "上海",
+            "trusted": false
+          }
+        ],
+        "counts": [
+          {
+            "type": "keydown",
+            "trusted": true,
+            "count": 46
+          },
+          {
+            "type": "compositionstart",
+            "trusted": true,
+            "count": 5
+          },
+          {
+            "type": "compositionupdate",
+            "trusted": true,
+            "count": 38
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "compositionend",
+            "trusted": false,
+            "count": 4
+          }
+        ],
+        "chineseCommitEvents": [
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "ni'hao"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好shi'jie"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabcshang'hai"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabc上海"
+          }
+        ]
+      }
+    ],
+    "frontendAfter": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+    "mac": "passed",
+    "cleanup": "owned product stopped",
+    "privateRoot": "removed",
+    "finishedAt": "2026-11-03T09:21:49.012Z"
+  },
+  "systemImeCleanup": {
+    "status": "passed",
+    "ownership": "exact task IME prefix, product installation node path, stopped CLI and PostgreSQL",
+    "environments": [
+      {
+        "rootName": "xj-component-system-ime-2341gp",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-EPtTOc",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-FGwF90",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-K22qTg",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-Ob5seI",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-bp4T1e",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-gVfO91",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-iTMgap",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-jX4yo2",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-jt8dMD",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      }
+    ],
+    "removedCount": 10,
+    "remainingOwnedRoots": 0,
+    "finishedAt": "2026-11-03T09:22:19.476337+00:00"
   },
   "runtimeShutdown": {
     "codeCommit": "6171351171025bae457b9afbc1d33fc18ab5e481",
@@ -2301,7 +3127,7 @@
     "scripts/probe-component-school.mjs": "f965fc6e3c48a5dbe0028e09ffa7b54a1a2d92792e3ad9cff8c7f1d51a9ea2ba",
     "scripts/probe-component-package.mjs": "c1c9fb1fbf1b220321d5da6c500867fb713024d19a92a009e1a23132490489f7",
     "scripts/probe-component-legacy.mjs": "9ca816d6299292b7d8836245e6c78903a0b90dbf2423f80cb598c4a0483e777c",
-    "scripts/probe-component-ime.mjs": "ea9e1bffa4dd12c4d918ad2d9326fea5b8e2947ae217ec6d5d93893a6321f8c0",
+    "scripts/probe-component-ime.mjs": "fd3e962c7bf1b228a561942498a55519d3758b2edda64895c4011d9def446746",
     "scripts/probe-component-school-lifecycle.mjs": "9ba91b4055af40fe91a55dd4971a8a20d0f016536c195fe0ed51ee939b0fd364",
     "scripts/probe-component-host.mjs": "dc78f6031953bb2360faca74b799ebb9f2c774ccff7ee6b9b352b1ea561f9c9e"
   },
@@ -2329,6 +3155,7 @@
     ".verification/wp03-179-181-school/candidate6171351/product-linux-x64-provenance.json": "a8dd9415cc56af9d61290c2b34c0e0c9c595ec1583dd5cef7b3207fff70aa914",
     ".verification/wp03-179-181-school/candidate6171351/product-win32-x64-provenance.json": "05660ca58712976cb5a78a20f409512d57613219df8b71d503a4d8dfca64a088",
     ".verification/wp03-179-181-school/candidate6171351/manifest-audit.json": "50db881d8d269d4671f24ed1b06e12cd40a495d20588641e3b7f7527fc112bbd",
-    ".verification/wp03-179-181/ime/component-ime-report.json": "675f977840b74b9950406364538f7d4ac7832bbfa55363d0bdc9a2ab1c8cd477"
+    ".verification/wp03-179-181/ime/component-ime-report.json": "e6300210222336e90e4b94d12911cc67934e3deaea22fa2e4e5bf05d842d9e2b",
+    ".verification/wp03-179-181/ime/cleanup.json": "c86f16bff58428f2158e0acfda567aaa7fa0173ebb44be607292972942095dba"
   }
 }

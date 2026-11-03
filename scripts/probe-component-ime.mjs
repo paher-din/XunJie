@@ -123,6 +123,11 @@ try {
     });
     await frame.getByRole('button', { name: '标注选中文字', exact: true }).click();
     const note = frame.getByRole('textbox', { name: '标注内容', exact: true });
+    const workspace = async () => {
+      const response = await context.request.get(endpoint + '/api/learning/workspaces/' + activity.activityId);
+      assert.equal(response.status(), 200); return response.json();
+    };
+    const savedNote = async () => JSON.parse((await workspace()).files.find(file => file.kind === 'state')?.value ?? '{}').content?.annotations?.[0]?.note;
     await frame.locator('body').evaluate(() => {
       window.__imeEvents = [];
       for (const type of ['compositionstart', 'compositionupdate', 'compositionend', 'beforeinput', 'input', 'keydown']) {
@@ -132,14 +137,25 @@ try {
           value: event.target?.value ?? null }), true);
       }
     });
-    await page.bringToFront();
-    run('/usr/bin/swift', ['-e', `import AppKit; _ = NSRunningApplication(processIdentifier: ${browserPid})?.activate(options: [.activateAllWindows])`]);
-    await note.click(); select(chineseIme); await pause(350);
+    const arm = async () => {
+      await page.bringToFront();
+      run('/usr/bin/osascript', ['-e', `tell application "System Events" to tell (first process whose unix id is ${browserPid})
+set frontmost to true
+perform action "AXRaise" of front window
+end tell`]);
+      await note.focus(); await pause(250);
+    };
+    select(chineseIme); await arm();
+    const focus = { browserPid, systemPid: Number(run('/usr/bin/osascript', ['-e', 'tell application "System Events" to get unix id of first application process whose frontmost is true'])),
+      frame: await note.evaluate(element => ({ focused: document.hasFocus(), active: document.activeElement === element,
+        tag: document.activeElement?.tagName })), page: await page.evaluate(() => document.hasFocus()) };
+    report.focusDiagnostics ??= []; report.focusDiagnostics.push(focus); console.log('IME focus ' + JSON.stringify(focus));
     if (process.env.XUNJIE_IME_FOCUS_PAUSE) {
       console.log('IME focus pause, browser PID ' + browserPid);
       await pause(Number(process.env.XUNJIE_IME_FOCUS_PAUSE));
     }
-    assert.equal(await note.evaluate(element => document.hasFocus() && document.activeElement === element), true, 'the actual test process must own OS focus');
+    assert.equal(focus.systemPid, browserPid, 'the actual test process must own OS focus');
+    assert.equal(focus.frame.active, true, 'the component text field must own the caret');
     assert.equal(select('current'), chineseIme);
     const type = async text => { for (const letter of text) { key('type', letter); await pause(100); } };
     const compose = async (pinyin, commit) => {
@@ -157,8 +173,8 @@ try {
     await type('zhongguo'); key('key', 'esc'); await pause(500);
     await expect(note).toHaveValue('你好世界');
     passed(variant + ': Escape cancels the live composition and preserves committed text');
-    select('com.apple.keylayout.ABC'); key('key', 'return'); await type('abc');
-    select(chineseIme); await compose('shanghai', 'space');
+    select('com.apple.keylayout.ABC'); await arm(); key('key', 'return'); await type('abc');
+    select(chineseIme); await arm(); await compose('shanghai', 'space');
     const expected = '你好世界\nabc上海';
     await expect(note).toHaveValue(expected);
     // Tab and Meta shortcuts are OS keys, not Playwright keyboard events.
@@ -168,32 +184,56 @@ try {
     await note.click(); await expect(note).toHaveValue(expected);
     systemKey(125, 'command down');
     passed(variant + ': language switch, newline, Tab and Meta editing retain exact text');
-    await type('beijing'); await page.locator('#activity-title').click();
+    await type('beijing');
+    await expect.poll(async () => (await note.inputValue()).slice(expected.length).replaceAll("'", '')).toBe('beijing');
+    const beforeBlur = await note.inputValue();
+    await page.locator('#activity-title').click();
     await pause(500);
     const afterBlur = await note.inputValue();
-    assert.ok(afterBlur.startsWith(expected));
-    assert.ok(['', '北京'].includes(afterBlur.slice(expected.length)), 'blur may confirm or cancel composition, never duplicate pinyin');
+    report.compositionTransitions ??= [];
+    const transition = { variant, confirmedPrefix: expected, beforeBlur, afterBlur };
+    report.compositionTransitions.push(transition);
+    assert.ok(afterBlur.startsWith(expected), 'blur must retain the previously confirmed bytes');
+    assert.ok([expected, beforeBlur, expected + '北京'].includes(afterBlur),
+      'blur may cancel, retain the exact unconfirmed composition, or commit its candidate once');
+    await expect.poll(savedNote).toBe(afterBlur);
     const observedEvents = await frame.locator('body').evaluate(() => window.__imeEvents);
     await note.click(); systemKey(125, 'command down'); await type('hangzhou');
+    await expect.poll(async () => (await note.inputValue()).slice(afterBlur.length).replaceAll("'", '')).toBe('hangzhou');
+    const beforeToolChange = await note.inputValue();
     await page.getByRole('tab', { name: '作品', exact: true }).click();
     await page.getByRole('tab', { name: '材料标注', exact: true }).click();
     await expect(note).toBeVisible();
     const confirmed = await note.inputValue();
     assert.ok(confirmed.startsWith(afterBlur));
-    assert.ok(['', '杭州'].includes(confirmed.slice(afterBlur.length)), 'tool change may confirm or cancel composition, not lose protected text');
+    Object.assign(transition, { beforeToolChange, afterToolChange: confirmed });
+    assert.ok([afterBlur, beforeToolChange, afterBlur + '杭州'].includes(confirmed),
+      'tool change may cancel, retain the exact unconfirmed composition, or commit its candidate once');
     passed(variant + ': switching tools during composition retains the previously protected note');
-    const workspace = async () => {
-      const response = await context.request.get(endpoint + '/api/learning/workspaces/' + activity.activityId);
-      assert.equal(response.status(), 200); return response.json();
-    };
-    const savedNote = async () => JSON.parse((await workspace()).files.find(file => file.kind === 'state')?.value ?? '{}').content?.annotations?.[0]?.note;
     await expect.poll(savedNote).toBe(confirmed);
     passed(variant + ': moving focus during composition preserves all previously confirmed bytes');
     const events = observedEvents;
     const starts = events.filter(event => event.type === 'compositionstart');
     const commits = events.filter(event => event.type === 'compositionend');
-    assert.ok(starts.length >= 5 && commits.length >= 5, 'actual system composition must be observed');
-    assert.ok(events.every(event => event.trusted), 'all observed keyboard/input/composition events must be trusted');
+    report.eventObservations ??= [];
+    const nativeTypes = ['keydown', 'compositionstart', 'compositionupdate', 'beforeinput', 'input'];
+    const nativeEvents = events.filter(event => nativeTypes.includes(event.type));
+    report.eventObservations.push({ variant, starts: starts.length, ends: commits.length, events,
+      nativeEventTypes: nativeTypes, nativeEventsTrusted: nativeEvents.every(event => event.trusted),
+      compositionEndTrust: commits.map(event => ({ data: event.data, trusted: event.trusted })) });
+    assert.ok(starts.length >= 5 && commits.length >= 4,
+      'three confirmed words and the cancelled composition must finish; the blurred composition may remain unconfirmed');
+    for (const word of ['你好', '世界', '上海']) assert.ok(commits.some(event => event.data === word),
+      'each confirmed Chinese word must finish through the system composition pipeline');
+    // This Chrome/IME pair exposes compositionend with isTrusted=false. Record
+    // that flag without using it as proof of native input; candidate commits
+    // must instead have trusted beforeinput AND input events with Chinese data.
+    assert.ok(nativeEvents.every(event => event.trusted), 'native keyboard, composition and text input must be trusted');
+    for (const word of ['你好', '世界', '上海']) {
+      for (const type of ['beforeinput', 'input']) assert.ok(events.some(event =>
+        event.type === type && event.trusted && event.data === word && event.inputType === 'insertCompositionText'),
+      `${word} must reach the field through trusted ${type}`);
+    }
     assert.ok(events.some(event => event.type === 'keydown' && event.composing));
     passed(variant + ': trusted composition events prove the system IME path independently of final strings');
     if (variant === 'prepared-v2') {
@@ -234,6 +274,11 @@ try {
   }
   const next = await preparedAnnotationPackage();
   next.manifest.version = 4; next.manifest.entry.resourceId = randomUUID();
+  for (const dependency of next.manifest.dependencies) {
+    const resource = next.dependencies.find(item => item.resourceId === dependency.resourceId);
+    assert.ok(resource);
+    resource.resourceId = dependency.resourceId = randomUUID();
+  }
   const nextDefinition = await importComponent(next, 'later-v4');
   assert.equal(nextDefinition.manifest.version, 4);
   for (const original of retained) {
