@@ -123,19 +123,23 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     }
   }
   change(files: WorkFile[], retainInput = false) {
-    this.validateComponents(files)
+    this.validateComponentEdits(files)
     if (!retainInput) workFilesSchema.parse(files)
     this.editEpoch++; this.dirty = true
     this.notify({ files: structuredClone(files) })
     if (retainInput) workFilesSchema.parse(files)
   }
-  private validateComponents(files: WorkFile[]) {
+  private validateComponentBindings(files: WorkFile[]) {
     if (!this.components) return
     for (const file of files) {
       const binding = this.components.bindings.find(binding => componentStateName(binding.key) === file.name)
       if (binding ? !matchesComponentState(binding, this.components.activityId, file) : file.mediaType === componentStateMediaType)
         throw new Error('组件状态身份和位置由活动绑定固定，不能作为普通文件更改。')
     }
+  }
+  private validateComponentEdits(files: WorkFile[]) {
+    this.validateComponentBindings(files)
+    if (!this.components) return
     for (const previous of this.state.files.filter(file => file.mediaType === componentStateMediaType)) {
       const file = files.find(file => file.objectId === previous.objectId)
       if (!file || file.mediaType !== componentStateMediaType || file.kind !== 'state' || file.encoding !== 'json')
@@ -288,7 +292,9 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     if (!conflict) return
     if (this.dirty) throw new Error('当前比较内容仍在保护中。')
     workFilesSchema.parse(files)
-    this.validateComponents(files)
+    // An explicit choice may adopt another client's object or its valid empty state.
+    // Keep binding validation, but do not impose ordinary-edit identity retention.
+    this.validateComponentBindings(files)
     if (conflict.source === 'remote') files = files.map(file =>
       this.record.confirmedFiles?.some(old => old.objectId === file.objectId) && !conflict.other.some(other => other.objectId === file.objectId)
         ? { ...file, objectId: crypto.randomUUID(), contentId: crypto.randomUUID() } : file)

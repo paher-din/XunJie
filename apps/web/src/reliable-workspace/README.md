@@ -38,6 +38,8 @@ owner 明确判定无效的待发请求（例如问题超过长度限制，服�
 
 作品同步同样使用可选 pendingRejected：仅直接同步的明确 invalid 拒绝可持久标记；修正正文已保护时用新请求接续。未知接收、丢回包或查询失败仍保留原身份。历史 invalid pending 不要求清库；状态位置修正后继续查证原请求，再安全接续，详见 [#169 修复](../../../../docs/student-agent-implementation/wp03-component-remediation.md)。
 
+组件状态的普通编辑与显式冲突裁决分开：普通编辑禁止删除或替换现有状态对象身份；裁决校验目标候选的完整绑定、路径与结构，允许选择合法的对方对象或空状态。裁决沿用原保护事务和 pending 身份处理，不把普通文件编辑当作状态重置。
+
 ## 边界
 
 [#153 的 `workspace.actions(draft, transport)`](../../../../docs/student-agent-implementation/wp02-action-intents.md) 将同步捕获的固定输入与动作保存在同库 v3 分区；独立依赖登记不推进当前作品/草稿 head。待发、取消和原接收回执按原身份协调；新命名空间不自动消费旧队列，显式接回先核实原范围及请求结果。没有真实接收器时正式输入区继续明确不可发送。

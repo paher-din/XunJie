@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createComponentBridge, componentError } from './bridge'
 import { ReliableWorkspace } from '../reliable-workspace'
-import { WorkStore } from '../reliable-workspace/store'
+import { WorkStore, pendingFor, type WorkRecord, type WorkConflict } from '../reliable-workspace/store'
+import type { WorkFile } from '@xunjie/contracts/learning-data'
 import { ComponentInteractions } from './interactions'
 import { componentManifestSchema, componentReply, componentHostMessageSchema, componentInitializeSchema, componentRequestSchema, type ComponentBinding } from '@xunjie/contracts/components'
 
@@ -68,6 +69,7 @@ it('public workspace mutations protect component identities and reserved paths w
   expect(() => workspace.rename(state.objectId, 'renamed.json')).toThrow()
   expect(() => workspace.remove(state.objectId)).toThrow()
   expect(() => workspace.edit(state.objectId, '{}')).toThrow()
+  expect(() => workspace.change([{ ...state, objectId: crypto.randomUUID() }])).toThrow()
   expect(() => workspace.create('components/notes.json', 'text')).toThrow()
   expect(workspace.snapshot().files).toEqual([state])
   const ordinary = workspace.create('ordinary.txt', 'text'); workspace.rename(ordinary, 'renamed.txt')
@@ -98,4 +100,63 @@ it('consumes four typed non-execution events once, rejects identity reuse and ou
     messageId: crypto.randomUUID(), method: 'component.event', payload: { formatVersion: 1, eventId: crypto.randomUUID(), sequence: 6, kind: 'confirmation', targetId: 'x', confirmed: true } })).rejects.toThrow('conflict')
   expect(componentRequestSchema.safeParse({ hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
     messageId: crypto.randomUUID(), method: 'component.event', payload: { eventId: crypto.randomUUID(), sequence: 5, kind: 'interaction' } }).success).toBe(false)
+})
+
+// These tests control the storage boundary; they do not claim real IndexedDB coverage.
+describe('explicit component conflict choices', () => {
+  async function fixture(source: WorkConflict['source']) {
+    const activityId = crypto.randomUUID()
+    const stateFile = (text: string): WorkFile => ({ objectId: crypto.randomUUID(), contentId: crypto.randomUUID(),
+      name: 'components/notes.json', kind: 'state', encoding: 'json', mediaType: 'application/vnd.xunjie.component-state+json',
+      value: JSON.stringify({ formatVersion: 1, instanceId: `${activityId}:notes`, componentId: binding.definition.manifest.componentId,
+        version: 1, stateVersion: 1, definitionDigest: binding.definition.digest, operationId: crypto.randomUUID(), content: { text } }) })
+    const local = stateFile('local first annotation'), other = stateFile('other first annotation')
+    const conflict: WorkConflict = { source, local: [local], other: [other], at: 1, remoteRevision: 1 }
+    let saved: WorkRecord = { key: 'conflict-choice', localRevision: 1, remoteRevision: 0, confirmedFiles: [], files: [local],
+      pending: pendingFor([local], 0), conflict }
+    const originalPending = saved.pending
+    vi.spyOn(WorkStore.prototype, 'read').mockImplementation(async () => saved)
+    vi.spyOn(WorkStore.prototype, 'candidates').mockResolvedValue([])
+    const write = vi.spyOn(WorkStore.prototype, 'change').mockImplementation(async (_key, update) => { saved = update(saved); return saved })
+    class Workspace extends ReliableWorkspace { initializeForTest() { return this.load() } }
+    const transport = { read: vi.fn(), receipt: vi.fn(), sync: vi.fn() }
+    const workspace = new Workspace('conflict-choice', transport, { activityId, bindings: [binding] })
+    workspace.suspend() // Only exercise durable choice; dispatch is tested separately.
+    await workspace.initializeForTest()
+    return { workspace, local, other, originalPending, write, saved: () => saved }
+  }
+  for (const source of ['local', 'remote'] as const) for (const choice of ['local', 'other', 'empty'] as const) {
+    it(`${source} conflict permits an explicit ${choice} candidate without dropping an unknown local request`, async () => {
+      const f = await fixture(source)
+      const files = choice === 'empty' ? [] : [f[choice]]
+      if (choice === 'empty') f.workspace.state.conflict!.other = []
+      await f.workspace.resolve(files)
+      expect(f.workspace.snapshot().files).toEqual(files)
+      expect(f.workspace.snapshot().conflict).toBeUndefined()
+      expect(f.saved().files).toEqual(files)
+      if (source === 'local') expect(f.saved().pending).toEqual(f.originalPending)
+      else {
+        expect(f.saved().pending?.files).toEqual(files)
+        expect(f.saved().pending?.baseRevision).toBe(1)
+        expect(f.saved().pending?.requestId).not.toBe(f.originalPending?.requestId)
+      }
+    })
+  }
+  for (const invalid of ['path', 'instance', 'version', 'reserved-text', 'shape'] as const) {
+    it(`refuses a ${invalid} candidate and keeps both sides without a durable write`, async () => {
+      const f = await fixture('remote'), file = structuredClone(f.other)
+      if (invalid === 'path') file.name = 'unbound.json'
+      if (invalid === 'reserved-text') { file.kind = 'text'; file.encoding = 'utf8'; file.mediaType = 'text/plain'; file.value = 'ordinary text' }
+      if (invalid === 'instance' || invalid === 'version' || invalid === 'shape') {
+        const state = JSON.parse(file.value)
+        if (invalid === 'instance') state.instanceId = `${crypto.randomUUID()}:notes`; else if (invalid === 'version') state.version++; else state.content = { unexpected: 'invalid shape' }
+        file.value = JSON.stringify(state)
+      }
+      const before = structuredClone(f.workspace.snapshot())
+      await expect(f.workspace.resolve([file])).rejects.toThrow()
+      expect(f.workspace.snapshot().files).toEqual(before.files)
+      expect(f.workspace.snapshot().conflict).toEqual(before.conflict)
+      expect(f.write).not.toHaveBeenCalled()
+    })
+  }
 })

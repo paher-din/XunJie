@@ -205,6 +205,56 @@ try {
   await expect(page.getByRole('heading', { name: '作品存在分歧', exact: true })).toBeVisible({ timeout: 10000 });
   await expect(page.getByText('本页保留的冲突候选', { exact: false }).first()).toBeVisible();
   passed('a stale component edit is protected as a conflict candidate before unmounting');
+  // Separate browser storage partitions reproduce independent first-state object identities.
+  const competing = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+  const competingId = (await competing.json()).activityId;
+  const competingContext = await browser.newContext({ storageState: await context.storageState(), viewport: { width: 1440, height: 1000 } });
+  let releaseReads;
+  const heldReads = new Promise(resolve => { releaseReads = resolve; });
+  try {
+    const first = await context.newPage(), other = await competingContext.newPage();
+    const url = endpoint + '?space=school&activity=' + competingId;
+    for (const target of [first, other]) {
+      await target.goto(url); await target.getByRole('tab', { name: '材料标注', exact: true }).click();
+      await expect(target.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+    }
+    // Delay real reads, rather than returning invented workspace facts.
+    await other.route('**/api/learning/workspaces/' + competingId, async route => {
+      if (route.request().method() === 'GET') await heldReads;
+      await route.continue();
+    });
+    const add = async (target, text) => {
+      const view = target.frameLocator('iframe[title="材料标注"]');
+      await view.locator('#materials p').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element);
+        const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range); });
+      await view.getByRole('button', { name: '标注选中文字' }).click();
+      await view.getByRole('textbox', { name: '标注内容', exact: true }).fill(text);
+    };
+    await add(first, '另一客户端的首次标注');
+    const remoteWorks = async () => (await context.request.get(endpoint + '/api/learning/workspaces/' + competingId)).json();
+    await expect.poll(async () => JSON.parse((await remoteWorks()).files[0]?.value ?? '{}').content?.annotations?.[0]?.note).toBe('另一客户端的首次标注');
+    const remoteFile = (await remoteWorks()).files[0];
+    await add(other, '本页独立创建的首次标注');
+    await expect.poll(() => other.evaluate(id => new Promise((resolve, reject) => {
+      const request = indexedDB.open('xunjie-reliable-works-v1', 4);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => { const db = request.result, tx = db.transaction('workspaces', 'readonly');
+        const rows = tx.objectStore('workspaces').getAll();
+        tx.oncomplete = () => { const file = rows.result.find(row => row.key.includes(id))?.files?.[0]; db.close(); resolve(file); };
+        tx.onabort = () => { db.close(); reject(tx.error); };
+      };
+    }), competingId)).toMatchObject({ objectId: expect.not.stringMatching(remoteFile.objectId), name: 'components/annotation.json', value: expect.stringContaining('本页独立创建的首次标注') });
+    releaseReads();
+    await other.getByRole('tab', { name: '作品', exact: true }).click();
+    await expect(other.getByRole('heading', { name: '作品存在分歧', exact: true })).toBeVisible();
+    await other.getByRole('button', { name: '采用另一版本', exact: true }).click();
+    await expect(other.getByRole('heading', { name: '作品存在分歧', exact: true })).toHaveCount(0);
+    await expect.poll(async () => (await remoteWorks()).files[0]).toEqual(remoteFile);
+    await other.reload(); await other.getByRole('tab', { name: '材料标注', exact: true }).click();
+    await expect(other.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('另一客户端的首次标注');
+    passed('independent first component states can adopt the other client through the real conflict UI and recover after reload');
+    await first.close();
+  } finally { releaseReads(); await competingContext.close(); }
   const failingActivity = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
   const failingId = (await failingActivity.json()).activityId;
   const failing = await context.newPage();
