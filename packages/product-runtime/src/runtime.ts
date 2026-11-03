@@ -13,7 +13,7 @@ import { acquireLock, assertRoot, atomicJson, exists, initializeRoot, ownsProces
 import type { ProcessOwner } from './io.js';
 import { databaseBinding, freePort, inspectDatabase, prepareDatabase, resolveCredential, stopDatabase, storeCredential } from './postgres.js';
 import type { DatabaseConfiguration, RuntimeResources } from './postgres.js';
-import { prepareProductPrerequisites, ProductInstallationRequiredError } from './prerequisites.js';
+import { checkWindowsSessionPrerequisite, prepareProductPrerequisites, ProductInstallationRequiredError } from './prerequisites.js';
 import type { ProductPrerequisiteResult } from './prerequisites.js';
 import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
 import { RecoveryError } from './recovery.js';
@@ -112,6 +112,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     // A new product may supply its helper for old metadata. Saved Node/PG/data
     // resources are never replaced, including during a reinstall.
     const helper = resources.windowsPrerequisitePath ?? options.windowsPrerequisitePath ?? options.resources?.windowsPrerequisitePath;
+    if ((input?.profile ?? (await environment()).profile) === 'local') await checkWindowsSessionPrerequisite(resources);
     return prepareProductPrerequisites(helper ? { ...resources, windowsPrerequisitePath: helper } : resources, database);
   }
   async function requirePrepared(input?: InstallOptions, reinstall = false): Promise<void> {

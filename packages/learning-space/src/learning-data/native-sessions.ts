@@ -45,6 +45,7 @@ export interface NativeSessionOptions {
   works: ReturnType<typeof createWorks>;
   adapters?: readonly NativeAdapter[];
   nodePath?: string;
+  windowsHelper?: string;
   sessionRoot?: string;
   nodeId?: string;
   supervisorEpoch?: string;
@@ -239,6 +240,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       spawned = await SupervisedSession.create({
         adapter, instanceId: executorInstanceId,
         ...(options.nodePath ? { nodePath: options.nodePath } : {}),
+        ...(options.windowsHelper ? { windowsHelper: options.windowsHelper } : {}),
         ...(options.sessionRoot ? { sessionRoot: options.sessionRoot } : {}),
         limits: { operationTimeoutMs: action.execution.limits.timeMs, idleMs: sessionLimits.idleMs,
           maxMs: sessionLimits.maxMs, memoryMiB: sessionLimits.memoryMiB,
@@ -284,7 +286,10 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       const { rows: [row] } = await tx.query(`SELECT * FROM native_sessions WHERE activity_id=$1 AND request_id=$2 FOR UPDATE`,
         [activityId, requestId]);
       if (!row) fail('missing');
-      if (row.state === 'queued') {
+      if (row.state === 'queued' && code === 'termination-unconfirmed') {
+        await tx.query(`UPDATE native_sessions SET status_knowledge='unknown',reason=$2,updated_at=clock_timestamp()
+          WHERE session_ref=$1`, [row.session_ref, JSON.stringify(failure)]);
+      } else if (row.state === 'queued') {
         await tx.query(`UPDATE native_sessions SET state='failed',status_knowledge='confirmed',confirmed_seq=2,
           reason=$2,updated_at=clock_timestamp() WHERE session_ref=$1`, [row.session_ref, JSON.stringify(failure)]);
       }
@@ -301,6 +306,11 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         async tx => {
           const { rows: [row] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
           if (!row || ['succeeded', 'failed', 'cancelled'].includes(String(row.state))) return row ?? null;
+          if (!exit.confirmed) {
+            await tx.query(`UPDATE native_sessions SET status_knowledge='unknown', updated_at=clock_timestamp()
+              WHERE session_ref=$1`, [sessionRef]);
+            return null;
+          }
           const expired = exit.expired;
           const state = expired ? 'failed' : exit.requested ? 'cancelled' : 'failed';
           const failure = expired === 'idle'

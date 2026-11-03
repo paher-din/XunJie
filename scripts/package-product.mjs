@@ -327,18 +327,28 @@ export async function packageProduct(options) {
       await mkdir(dirname(join(staging, windowsPrerequisitePath)), { recursive: true });
       await cp(join(root, 'scripts/windows-prereq-prepare.ps1'), join(staging, windowsPrerequisitePath));
     }
+    const windowsSessionHelper = windowsPrerequisitePath ? 'resources/native/windows-session.exe' : undefined;
+    if (windowsSessionHelper) {
+      const helper = join(staging, windowsSessionHelper);
+      await mkdir(dirname(helper), { recursive: true });
+      await run(process.platform === 'win32' ? 'gcc' : 'x86_64-w64-mingw32-gcc',
+        ['-municode', '-O2', '-Wall', '-Wextra', '-Werror', '-static',
+          join(root, 'packages/product-runtime/native/windows-session.c'), '-o', helper, '-luserenv', '-ladvapi32']);
+    }
     for (const file of await walk(web)) {
       if (/\.map$/i.test(file.name)) throw new Error(`Source map in product web: ${file.name}`);
       if (/\.(?:js|json|html|css)$/i.test(file.name)) await assertNoWorkspacePath(file.path);
     }
     const runtimeResources = { nodePath: `resources/node/${catalog.node.platforms[platform].executable}`, nodeVersion: catalog.node.version,
       ...(profile === 'full' ? { postgresBin: 'resources/postgres/bin', postgresVersion: postgres.version } : {}),
-      ...(windowsPrerequisitePath ? { windowsPrerequisitePath } : {}), webRoot: 'web' };
+      ...(windowsPrerequisitePath ? { windowsPrerequisitePath } : {}),
+      ...(windowsSessionHelper ? { windowsSessionHelper, windowsSessionHelperSha256: await sha256(join(staging, windowsSessionHelper)) } : {}), webRoot: 'web' };
     await json(join(staging, 'resources.json'), runtimeResources);
     await json(join(staging, 'package.json'), { name: '@xunjie/product-distribution', private: true, type: 'module' });
     const launchers = await writeLaunchers(staging, platform);
     const entryHashes = {};
     if (windowsPrerequisitePath) entryHashes[windowsPrerequisitePath] = { sha256: await sha256(join(staging, windowsPrerequisitePath)) };
+    if (windowsSessionHelper) entryHashes[windowsSessionHelper] = { sha256: runtimeResources.windowsSessionHelperSha256 };
     for (const directory of ['app', 'web']) {
       for (const file of await walk(join(staging, directory))) entryHashes[`${directory}/${file.name}`] = file.symlink
         ? { symlink: await readlink(file.path) } : { sha256: await sha256(file.path) };

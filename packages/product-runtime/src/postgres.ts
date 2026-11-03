@@ -16,6 +16,8 @@ export interface RuntimeResources {
   postgresBin?: string;
   postgresVersion?: string;
   windowsPrerequisitePath?: string;
+  windowsSessionHelper?: string;
+  windowsSessionHelperSha256?: string;
   webRoot: string;
 }
 export type DatabaseConfiguration = { mode: 'managed' } | { mode: 'none' } | {

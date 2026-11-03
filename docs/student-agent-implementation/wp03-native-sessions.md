@@ -117,3 +117,21 @@ python scripts/probe-native-windows-appcontainer.py .tmp/probe-native-windows-ap
 正式 helper 可用受控身份槽位实现会话目录隔离。每个活跃槽位有独立身份，目录 ACL 只授予对应槽位，身份仅在进程树已确认退出且上一份资源已隔离后才可复用。会话观察仍由持久执行所有者保存。helper 接口应固定可执行文件、参数、资源摘要和标准流句柄，安装和启动自检失败时拒绝启用；停止确认以受管 Job 内活动进程数为零为条件。当前探针包含开发用命令行入口，正式安装包需使用收窄后的入口。
 
 保留策略待决项集中在可查询窗口与稳定请求身份。建议以 30 天作为可确认终态观察与结果的初始窗口，未确认执行、仍有引用或未投递的操作不进入清理。窗口到期后仍需保留足够的原身份与摘要事实，旧请求不得因结果已过期而被重新接受。实际容量阈值、引用清单及清理方式须先通过维护和恢复演练，再单独确认。
+
+### Windows 产品接入
+
+新增 `packages/product-runtime/native/windows-session.c`，将挂起创建、AppContainer 身份、标准流句柄白名单、Job 内存限制和终止确认集中在一个原生启动器。正常结束和显式强制停止均先确认 Job 内活动进程为零。退出码 125 表示启动或回收无法确认，产品接线需将该状态保留为待核实。
+
+```powershell
+gcc -municode -Wall -Wextra -Werror packages/product-runtime/native/windows-session.c -o .tmp/windows-session.exe -luserenv
+python scripts/probe-native-windows-appcontainer.py .tmp/probe-native-windows-appcontainer.exe --node <产品固定的node.exe> --helper .tmp/windows-session.exe
+```
+
+在 Node 24.21.0 实测真实适配器 ready、1、3、1、stopped，并在独立会话中通过停止事件终止运行，启动器确认 Job 清空。独立探针采用预先准备的测试身份和目录。正式运行路径按每条会话自动准备独立身份、Node 副本及目录 ACL。
+
+
+完整 Windows 构建使用 MinGW-w64 GCC 编译并随包分发启动器，产品安装与启动校验清单摘要并试建、回收测试身份。学生机器只使用包内可执行文件。启动器将 AppContainer、显式标准流与 Job 列表作为同一次进程创建的属性，子进程初始挂起，因此没有启动器在创建与归组之间崩溃的窗口。固定模拟器的 Job 限制为 128 MiB 提交内存和一个活动进程。空闲、持续时间和输出继续由产品监督器限制，超限使用受控停止事件请求 Job 回收。会话所有者只在 helper 确认后记录终态；启动器异常退出或自检后无法确认回收，持久记录保持待核实。
+
+隔离运行时验收通过：Node 24.21.0、真实 PostgreSQL 18.6.1、Windows 11 x64。工程 typecheck 通过，真实原生与 PostgreSQL 回归 4/4，桌面 Chrome 156 headed 1/1。隔离运行时的 Chrome 报告在 `.verification/wp03-173-windows-isolation/browser-report.json`。完整产品包由同一 Chrome 用例通过 `XUNJIE_NATIVE_SESSION_PRODUCT` 选项使用包内 CLI 安装与启动，独立保存证据。
+
+完整 Windows x64 产品包构建通过。打包器核对了锁定的 Node 与 PostgreSQL 上游归档，包内清单记录 helper SHA-256。用包内 CLI 在新测试根目录安装和启动，运行包内 Node 24.21.0、PostgreSQL 18.6.1、隔离启动器与正式 Web，桌面 Chrome 156 headed 1/1。覆盖启动、连续输入 1/2/2、观察 1/3/1、切换与刷新恢复、停止后禁用输入，以及新会话独立从 0 开始。[Chrome 报告](evidence/wp03-173-windows-product-chrome.json)。本轮无 UI 实现变更，浅色、深色和窄桌面复验截图存于 `.verification/wp03-173-windows-product/`。此包为本地验收候选，未发布；Apple Silicon 与教学效果本轮未验收。
