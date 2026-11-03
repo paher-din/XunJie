@@ -7,7 +7,7 @@ import { messagesCheckPayload, runMessages, unsupportedMessagesRoute, type Messa
 export type NativePayload = ChatPayload | ResponsesPayload | MessagesPayload;
 export function adapterReady(configuration: ModelConfiguration) {
   return ['chat-completions', 'responses', 'messages'].includes(configuration.protocol)
-    && (configuration.protocol !== 'messages' || !unsupportedMessagesRoute(configuration) && !configuration.baseUrl.replace(/\/$/, '').endsWith('/v1'))
+    && (configuration.protocol !== 'messages' || !unsupportedMessagesRoute(configuration) && !configuration.baseUrl.replace(/\/+$/, '').endsWith('/v1'))
     && (configuration.parameterMode === 'plain' || configuration.dialect === 'deepseek');
 }
 export function connectionCheckPayload(configuration: ModelConfiguration, tokens: number): NativePayload {

@@ -52,17 +52,21 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     const stream = await client.messages.create(payload, { signal: requestSignal });
     for await (const event of stream) { events.push(structuredClone(event)); assembler.add(event); }
   } catch (error) {
-    const status = error instanceof Anthropic.APIError ? error.status : undefined;
+    const status = (error instanceof Anthropic.APIError ? error.status : undefined)
+      ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
     if (!upstream && status && error instanceof Anthropic.APIError) upstream = responseFacts(status, error.headers ?? new Headers());
     const malformed = error instanceof StorageError || error instanceof SyntaxError;
+    const confirmedStreamError = error instanceof Anthropic.APIError && !(error instanceof Anthropic.APIConnectionError)
+      && !(error instanceof Anthropic.APIUserAbortError);
     const type = error instanceof Anthropic.APIError && error.error && typeof error.error === 'object'
       ? JSON.stringify(error.error) : '';
     const unsupported = /unsupported_model|model_not_supported|model_not_found|unsupported_parameter|unsupported_value/.test(type);
-    state = malformed || status || error instanceof Anthropic.APIError && !requestSignal.aborted ? 'failed'
+    state = malformed || status || confirmedStreamError ? 'failed'
       : signal.aborted ? 'cancelled' : events.length ? 'incomplete' : 'unknown';
-    reason = malformed ? 'malformed-response' : signal.aborted ? 'client-abort' : status === 401 || status === 403 ? 'authentication'
+    reason = malformed ? 'malformed-response' : status === 401 || status === 403 ? 'authentication'
       : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
-      : deadline.aborted ? 'upstream-timeout' : error instanceof Anthropic.APIError ? 'upstream-stream-error' : 'upstream-stream';
+      : confirmedStreamError ? 'upstream-stream-error' : signal.aborted ? 'client-abort'
+      : deadline.aborted || error instanceof Anthropic.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
   }
   const message = assembler.message;
   const counters = configuration.dialect === 'deepseek' && assembler.finalUsage ? assembler.finalUsage : message?.usage ?? {};

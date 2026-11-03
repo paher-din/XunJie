@@ -187,6 +187,7 @@ test('Messages rejects an unsupported target and duplicated v1 base before any n
   for (const fixture of [
     { name: 'Command Code catalogue excludes this Messages model', overrides: { baseUrl: 'https://api.commandcode.ai/provider', modelId: 'deepseek/deepseek-v4.1-flash', dialect: 'command-code', parameterMode: 'plain' }, unsupported: true },
     { name: 'Messages base must not already end in v1', overrides: { baseUrl: 'http://127.0.0.1:12345/anthropic/v1' } },
+    { name: 'multiple trailing slashes must not hide an existing v1', overrides: { baseUrl: 'http://127.0.0.1:12345/anthropic/v1///' } },
   ]) await t.test(fixture.name, async () => {
     await product((_request, response) => { response.writeHead(500); response.end(); }, async ({ api, saved, source }) => {
       assert.equal(saved.adapterState, 'not-integrated');
@@ -439,5 +440,15 @@ test('Messages errors retain safe upstream status request identity and retry tim
     assert.equal(second.state, 'failed'); assert.equal(second.reason, 'upstream-http');
     assert.deepEqual(second.upstream, { httpStatus: 503, retryAt: '2026-11-04T00:00:00.000Z' });
     assert.equal(JSON.stringify(second).includes('synthetic-messages-key'), false); assert.equal(requests, 2);
+  });
+});
+test('Messages transport loss before response headers remains unknown and cannot implicitly resend', { timeout: 180000 }, async () => {
+  let requests = 0;
+  await product((request, _response) => { requests++; request.socket.destroy(); }, async ({ api, source, finish, restart }) => {
+    const first = await finish(call(await segment(api, source)));
+    assert.equal(first.state, 'unknown'); assert.equal(first.reason, 'upstream-stream'); assert.equal(first.upstream, undefined);
+    assert.equal(first.usage.state, 'unknown'); assert.deepEqual(first.toolIntents, []);
+    await restart(); assert.equal((await api('calls/' + first.attemptId)).value.resultRef, first.resultRef);
+    assert.equal((await api('calls/' + first.attemptId + '/dispatch', {})).status, 200); assert.equal(requests, 1);
   });
 });

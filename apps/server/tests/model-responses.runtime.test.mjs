@@ -95,7 +95,8 @@ test('formal Responses connection check uses the actual SDK path, model and boun
   });
 });
 
-test('only complete understood terminal responses publish schema-validated tool intents', { timeout: 180000 }, async t => {
+// Eleven independent native PG installations may exceed three minutes on Windows; per-request limits stay unchanged.
+test('only complete understood terminal responses publish schema-validated tool intents', { timeout: 600000 }, async t => {
   const tool = { type: 'function_call', id: 'item-1', call_id: 'call-1', name: 'read_marker', arguments: '{"nonce":"A"}', status: 'completed' };
   const fixtures = [
     { name: 'arguments done without a response terminal', state: 'incomplete', events: [
