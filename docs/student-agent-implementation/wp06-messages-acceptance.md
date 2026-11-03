@@ -1,6 +1,6 @@
 # WP06 #167：Anthropic Messages 接入与验收
 
-2026-11-03（Asia/Shanghai），依据 [#167](https://github.com/paher-din/XunJie/issues/167)、[母规范](specs/wp06-model-connections.md)与[实施方案](specs/wp06-messages.md)。同步基线为 `wp06 @ 92e8cea6b5ad06fb8b967bf56e1450be06f257a4`；继续在同一 `wp06` 提交，由已有 PR #177 承载，保持草稿且不合并。Mac 后续具体清单交接 [#178](https://github.com/paher-din/XunJie/issues/178)，完整独立部署/真实跨机接管仍属 #168。
+2026-11-03（Asia/Shanghai），依据 [#167](https://github.com/paher-din/XunJie/issues/167)、[母规范](specs/wp06-model-connections.md)与[实施方案](specs/wp06-messages.md)。同步基线为 `wp06 @ 92e8cea6b5ad06fb8b967bf56e1450be06f257a4`；继续在同一 `wp06` 提交，由已有 PR #177 承载，保持草稿且不合并。Mac 具体清单在 [#178](https://github.com/paher-din/XunJie/issues/178) 执行并回填，完整独立部署/真实跨机接管仍属 #168。
 
 ## 已交付行为
 
@@ -56,7 +56,7 @@ DeepSeek 用量采用最终 message_delta.usage，累计值覆盖而不相加；
 | Responses 终态回归 | 最终隔离运行 12/12、0 失败/取消/跳过；覆盖完整/不完整/失败终态、流内错误、非法工具/schema、未知块/事件、身份复用及终态后错误 |
 | Windows 桌面 Chrome | 普通正式 Web 11/11、最终完整 Windows 包 11/11，均 0 失败/跳过；各含 Messages 3 项和原有个人设置/选择/Responses 8 项 |
 | 全量本地测试 | 一次 npm test，131/146 个文件任务通过、15 失败；失败文件集合与 #165 相同。build:test 另通过；unit 21/23、server 76/78、tools 34/45。旧包传输任务运行 27 分 45 秒仍未退出，核对进程树归属后终止并计失败，不宣称全量通过 |
-| Mac | 本票未执行，具体清单交接 #178，不沿用 #165/#166 的平台结果 |
+| Mac | 完成：完整包与源码路径 Chrome 各 11/11；Messages 原生 29/29、模型回归 76/76；owner 8→9 升级、错误事实恢复、物理中文输入法 5/5、真实 DeepSeek 13 次有限生成；详见下方 Mac 章节 |
 | 教学效果 | 未评估；连接和合成工具验收不证明完整 Agent 或教学效果 |
 
 Chrome 使用安装版 156.0.8078.76、Windows 11 x64（10.0.26200）、headed、单 worker；Node 24.21.0、原生 PostgreSQL 18.6。最终功能快照 `3a90baa`；完整 `win32-x64` / `full` 包为 unsigned candidate，使用包内 Node/PG 和仓库外私有 root。[脱敏工程记录](evidence/wp06-messages-win-verification.json)包含包的创建时间、CLI SHA256、各原生组、实际失败清单、恢复与 Chrome 结果。普通正式 Web 11 项运行于 owner 9 的 `47648e3`；最终完整包另覆盖末尾斜杠及错误分类修复后的同一 UI。没有物理 Windows 中文输入法候选窗验收；既有 CDP 中文输入/焦点回归不冒充物理输入。
@@ -74,6 +74,32 @@ Chrome 使用安装版 156.0.8078.76、Windows 11 x64（10.0.26200）、headed�
 ![Messages 改动后](evidence/wp06-messages-after-win.png)
 
 ![安装客户端深色窄桌面与学校主体下本机模型选用](evidence/wp06-messages-dark-narrow-win.png)
+
+## Mac（Apple Silicon）
+
+2026-11-03 在 `wp06 @ cf076b5` 完成 [#178 的 #167 待验清单](https://github.com/paher-din/XunJie/issues/178)。环境为 macOS 27.2（构建 26B123）、arm64、Apple M5、16 GiB；安装版桌面 Chrome 156.0.8078.80；Node 24.21.0、npm 11.19.0；PostgreSQL 18.6（发行版 18.6.1）；直接 SDK `@anthropic-ai/sdk@1.1.0`、adapter `xunjie-messages-native-v1`。`.agents/skills/xunjie-development` 为忽略的软链，未提交。私有凭据只由获准文件读入探针内存，未写入仓库、数据库或日志。
+
+- **环境与工程检查**：`npm ci` 装入 334 包；`npm run build`、`npm run typecheck` 均退出 0（保留既有大 chunk / zod 注释警告）；浏览器公共契约 11 个导出、0 失败；受维护文档 178 份、1444 个本地目标、0 失败（含本节新增证据链接）。
+- **全量测试**：首次在终端 C locale 下运行 146/147，唯一失败为 `tools/xj-dev/tests/env-removal.test.mjs`——`ps` 把含中文的工作树路径解码为乱码，xj-dev 误判“外来进程”，不是产品断言失败。以 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` 重跑 **147/147、exit 0**，build:test 1、unit 23、server 78、tools 45；两次结果均保留，不用重跑覆盖首次失败。
+- **完整包**：`darwin-arm64` / `full` unsigned candidate，4088 个文件 / 411 MB，创建于 2026-11-03T14:31:50+08:00；`app/cli.js` SHA256 `24b23e2b26b5f64077dcf29af4da37a1ce7d820e73c6a8caf32586b22c45895d`。包内 Node 24.21.0、PostgreSQL 18.6；正式 CLI 在仓库外 root 用包内 Node/PG 启动到 `ready`，四个 owner 与 PostgreSQL 依赖就绪。签名/公证状态据实为 unsigned candidate。
+- **Messages 原生组**：[`model-messages.runtime.test.mjs`](../../apps/server/tests/model-messages.runtime.test.mjs) **29/29**、0 失败/取消/跳过。覆盖精确 `/v1/messages` 与 `anthropic-version: 2023-06-01`、system、thinking/plain、交错工具、UTF-8/input_json/thinking/signature 分片、非空/空字符串/null 签名、图像与 tool_result 图像、重启后下一轮 wire、终态/截断/拒绝/半截参数/未知块/200 后流内错误、用量与取消、跨协议段和真实备份恢复。
+- **模型回归**：gateway、claim concurrency、selection、chat、responses、client 六文件 **76/76**、0 失败/取消/跳过（Messages 与回归分组有重叠，不相加当作独立用例总数）。
+- **owner 9 恢复与升级**：owner 8 旧包（`92e8cea` 构建，CLI SHA256 `272fd1d6…`）生成真实旧数据后，当前包正常 `start` 被精确兼容闸拒绝（`Storage operation failed: incompatible`），未静默迁移。经 WP01 正式 `upgrade` 从 `storage/1;owner/8` 到 `owner/9`，旧连接/凭据、completed 结果引用 `259aa67d…`、cancelled/client-abort 与 usage 保留；新授权与选用可读；旧源重开被拒绝。证据见 [`wp06-messages-owner-upgrade-mac.json`](evidence/wp06-messages-owner-upgrade-mac.json)。
+- **错误事实恢复**：Messages 429 上游事实 `httpStatus 429`、`request-id`、`retry-after: 7` 只外发 1 次；真实备份→隔离 restore→严格 takeover 后原样可查，连接凭据保留，旧源 `source-retired` 拒绝重开。证据见 [`wp06-messages-error-recovery-mac.json`](evidence/wp06-messages-error-recovery-mac.json)。
+- **桌面 Chrome E2E**：安装版 Chrome、headed、单 worker。普通正式 `apps/web/dist` **11/11**（Messages 3、选择 4、个人设置 4），完整产品包 **11/11**，均 0 失败/跳过；`headless:false`、Chrome 156.0.8078.80 已记入两份 JSON。证据见 [`wp06-messages-e2e-normal-mac.json`](evidence/wp06-messages-e2e-normal-mac.json) 与 [`wp06-messages-e2e-package-mac.json`](evidence/wp06-messages-e2e-package-mac.json)。
+- **手工界面与物理输入法**：浅色/深色、1280×900 与 720×900 窄桌面、Enter/Tab/Escape/焦点、Meta 复制粘贴均通过；使用 macOS 系统简体拼音 + System Events 物理按键完成组字、提交、换行「你好\n世界」及切换空间后新输入保持，5/5 通过，未用 CDP composition/fill/insertText 充抵。证据见 [`wp06-messages-physical-ime-mac.json`](evidence/wp06-messages-physical-ime-mac.json)。
+- **真实 DeepSeek**：本轮预算 13 次有限生成（check 1、native 2、schemas 6、controls 3、cancel 1），实际 13 次，SDK/adapter 自动重试 0，每次最多 2048 输出 token / 30 秒。native 完成双工具、用户图与 tool_result 图、独立宿主重启、同一 resultRef、下一轮 wire 完全一致、nonce 与两张图颜色正确；usage 585/105/0 与 307/90/cached 640。cancel 为 HTTP 200 后 cancelled/client-abort、usage partial、上游停止未知。证据见 [`wp06-messages-real-mac.json`](evidence/wp06-messages-real-mac.json)。
+- **格式/严格能力反例**：plain 应用 schema 通用提示未通过本地校验，显式 JSON 样本 completed；有效/无效 native `output_config.format` 均 HTTP 200 且输出未通过本地校验；不可满足 strict 工具 schema HTTP 200 但本地拒绝、无工具意图；thinking 强制具名工具 HTTP 400。native strict/format 不因 HTTP 200 或一般答对而标为支持；未知组合保持 unknown。
+- **Command Code**：2026-11-03 支持目录 GET HTTP 200，目标 `deepseek/deepseek-v4.1-flash` 只声明 `/chat/completions` 与 `/responses`，Messages 仍明确不支持，generation 0；未换型号凑验收。证据见 [`wp06-messages-command-code-mac.json`](evidence/wp06-messages-command-code-mac.json)。
+- **UI 前后截图**：owner 8 界面为「Messages（适配器待接入）」且保存前检查禁用；当前包为「Anthropic Messages」、显示实际 `/v1/messages` 路径与地址说明、检查可用并完成。截图见下方。
+
+![Mac 改动前：Messages 适配器待接入](evidence/wp06-messages-before-mac.png)
+
+![Mac 改动后：Anthropic Messages 可用](evidence/wp06-messages-after-mac.png)
+
+![Mac 深色 720×900 窄桌面](evidence/wp06-messages-dark-narrow-mac.png)
+
+**Mac 限制与未执行项**：完整独立跨机部署/恢复接管仍待 #168，同机两进程不冒充跨主机；教学效果未评估；Windows 物理中文输入法候选窗本轮未重跑，Mac 物理输入法已单独取证。首次 C locale 全量失败已保留，不宣称单次 147/147。工程摘要见 [`wp06-messages-mac-verification.json`](evidence/wp06-messages-mac-verification.json)。
 
 ## Standards
 

@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "issue": 178,
+  "sourceIssue": 167,
+  "scope": "messages-physical-ime",
+  "startedAt": "2026-11-03T06:48:08.671Z",
+  "steps": [
+    {
+      "id": "physical-ime-compose-and-commit",
+      "passed": true,
+      "composingLength": 17,
+      "committed": "zhongwen中文"
+    },
+    {
+      "id": "physical-ime-tab-escape-focus",
+      "passed": true,
+      "focused": "添加供应商"
+    },
+    {
+      "id": "physical-ime-meta-edit",
+      "passed": true,
+      "before": "编辑",
+      "after": "编辑编辑"
+    },
+    {
+      "id": "physical-ime-multiline-goal",
+      "passed": true,
+      "value": "你好\n世界"
+    },
+    {
+      "id": "physical-ime-space-switch-keeps-input",
+      "passed": true,
+      "before": "中文",
+      "after": "中文",
+      "viewClean": true,
+      "trigger": "授权并选用#1",
+      "cards": 2
+    }
+  ],
+  "protocol": "messages",
+  "dialect": "deepseek",
+  "committedText": "zhongwen中文",
+  "status": "passed",
+  "finishedAt": "2026-11-03T06:48:30.229Z"
+}
