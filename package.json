@@ -23,7 +23,8 @@
     "test:storage:native": "node scripts/build.mjs server && node scripts/probe-storage.mjs",
     "probe:execution": "node scripts/probe-execution.mjs",
     "probe:execution-sync": "node scripts/probe-execution-sync.mjs",
-    "probe:execution-ime": "node scripts/probe-execution-ime.mjs"
+    "probe:execution-ime": "node scripts/probe-execution-ime.mjs",
+    "probe:execution-school-web": "node scripts/probe-execution-school-web.mjs"
   },
   "devDependencies": {
     "entities": "9.0.0",

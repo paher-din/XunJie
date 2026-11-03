@@ -1,0 +1,135 @@
+{
+  "kind": "school-web-execution-path",
+  "ticket": "#170",
+  "startedAt": "2026-11-03T04:29:19.980Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-school-web-JQVWrn",
+  "browser": "Google Chrome",
+  "cases": [
+    "a school-shared member without a device target is enrolled on the school host",
+    "the school web entry loads for a browser with no local product or database",
+    "the component view renders inside the school web workspace",
+    "the restricted Worker/WASM algorithm computes inside the school web page",
+    "execution accept, facts and result are readable from the school learning-data owner",
+    "a reload re-queries the school owner instead of recomputing",
+    "school web execution screenshots captured from the real run"
+  ],
+  "traffic": [
+    {
+      "phase": "setup",
+      "kind": "accept",
+      "requestId": "395cd6f9-348f-4145-ac71-9205a12574a5",
+      "event": "attempt"
+    },
+    {
+      "phase": "setup",
+      "kind": "accept",
+      "requestId": "395cd6f9-348f-4145-ac71-9205a12574a5",
+      "event": "ok"
+    },
+    {
+      "phase": "setup",
+      "kind": "report",
+      "requestId": "395cd6f9-348f-4145-ac71-9205a12574a5",
+      "event": "attempt"
+    },
+    {
+      "phase": "setup",
+      "kind": "report",
+      "requestId": "395cd6f9-348f-4145-ac71-9205a12574a5",
+      "event": "ok"
+    },
+    {
+      "phase": "school-run",
+      "kind": "accept",
+      "requestId": "3dc81aa8-5022-417a-a33d-9ed858f4a4e2",
+      "event": "attempt"
+    },
+    {
+      "phase": "school-run",
+      "kind": "accept",
+      "requestId": "3dc81aa8-5022-417a-a33d-9ed858f4a4e2",
+      "event": "ok"
+    },
+    {
+      "phase": "school-run",
+      "kind": "report",
+      "requestId": "3dc81aa8-5022-417a-a33d-9ed858f4a4e2",
+      "event": "attempt"
+    },
+    {
+      "phase": "school-run",
+      "kind": "report",
+      "requestId": "3dc81aa8-5022-417a-a33d-9ed858f4a4e2",
+      "event": "ok"
+    },
+    {
+      "phase": "school-run",
+      "kind": "result",
+      "requestId": "3dc81aa8-5022-417a-a33d-9ed858f4a4e2",
+      "event": "attempt"
+    },
+    {
+      "phase": "school-run",
+      "kind": "result",
+      "requestId": "3dc81aa8-5022-417a-a33d-9ed858f4a4e2",
+      "event": "ok"
+    }
+  ],
+  "status": "passed",
+  "headless": false,
+  "endpoint": "http://127.0.0.1:56135",
+  "environment": {
+    "profile": "school",
+    "clientNamespace": "xunjie.v1.533f3d3e-5625-446b-a945-aa5f71501c50",
+    "services": [
+      {
+        "unit": "client",
+        "serviceId": "81ee4216-65ee-4da9-9bd8-62059670b6b2"
+      },
+      {
+        "unit": "space-course",
+        "serviceId": "23ce2805-9dc3-497e-a18c-4a0c59364c28"
+      },
+      {
+        "unit": "learning-data",
+        "serviceId": "6ac7a20e-cbfa-4657-a9a4-cd2185a53726"
+      }
+    ]
+  },
+  "browserVersion": "156.0.8078.80",
+  "activityId": "94f23806-2677-4f69-a6af-2ba0121b6b14",
+  "context": {
+    "profile": "school",
+    "clientNamespace": "xunjie.v1.533f3d3e-5625-446b-a945-aa5f71501c50",
+    "identities": [
+      {
+        "key": "school",
+        "identity": {
+          "environmentId": "533f3d3e-5625-446b-a945-aa5f71501c50",
+          "spaceId": "5836f48c-d84d-4c70-93a9-8565bf57d5d6",
+          "principalId": "b046b4da-e14f-481d-86a5-7d1388388be5",
+          "kind": "school",
+          "name": "学校学习空间"
+        }
+      }
+    ]
+  },
+  "schoolTraffic": {
+    "acceptCount": 1,
+    "reportCount": 1,
+    "resultCount": 1,
+    "remote": {
+      "state": "succeeded",
+      "contentId": "c0ca6925-85bb-48a2-a9b6-fc7af677fb8e"
+    }
+  },
+  "screenshots": {
+    "light": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-170/execution-school-web-light.png",
+    "dark": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-170/execution-school-web-dark.png"
+  },
+  "finishedAt": "2026-11-03T04:29:27.958Z"
+}

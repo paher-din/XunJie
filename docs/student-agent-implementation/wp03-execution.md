@@ -82,6 +82,16 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 
 已知限制：操作者是自动化会话驱动的 OS 级键击注入，不是人手在硬件键盘上敲击；输入法管线本身（WindowServer → 系统候选条 → Chrome）全程真实。本机 Apple SCIM 拼音未在 TIS 可选列表中启用，未复测；`beijing` 在豆包首选是「背景」不是「北京」，故改用无歧义拼音。教学效果不因此项产生结论。
 
+### 学校网页执行路径
+
+7 项学校网页执行路径验收全部通过（`scripts/probe-execution-school-web.mjs`，证据 `evidence/wp03-execution-school-web.json`）。环境：Apple Silicon Mac（macOS 27.2 build 26B123、Apple M5 arm64）、Node 24.21.0、桌面 Google Chrome 156.0.8078.79（非 headless）、原生 PostgreSQL 18.6.1。
+
+与本机产品包路径（`probe-execution.mjs`）的区分：安装形态是 `profile: 'school'`（部署本身就是学校主机，无个人空间、无 school-client 转发）；学员是**未绑定设备 target 的学校共享成员**，学习数据留在学校 learning-data owner；「学生设备」只开了 Chrome，不装产品包、不装数据库。`/api/learning/context` 实测 `profile=school` 且身份只有 `school`（无 `personal`）。
+
+1. 学校共享成员在课程下可见表格聚合组件；2. 组件视图在学校网页工作区内正常渲染；3. 非数值单元格由真实算法拒绝并指出「第 2 行」；4. 受限 Worker/WASM 算出「共 12 行、3 组」、A 组求和 332；5. 浏览器到学校 owner 的真实流量 accept/report/result 各 **1** 次成功，服务端回读同一 `executionRef`、状态 `succeeded`、结果 `contentId` 存在；6. 整页刷新只重新查询学校 owner，同一 `contentId` 不重算；7. 浅色/深色截图取自这次真实运行（`evidence/wp03-execution-school-web-light.png`、`-dark.png`）。
+
+已知限制：学校主机与 Chrome 同在一台 Apple Silicon Mac（loopback 入口），验证的是学校网页**访问路径与 owner 归属**；严格 HTTPS、公网入口与真跨机仍属 #175「课程运行方案与真实远端执行」，本项不替代。
+
 ## 发现并修复
 
 - 记录作用域用了命令中的对象而读取用工作区键，导致查询查不到：`accept` 改为接收工作区作用域，读写同键。
@@ -103,7 +113,7 @@ npm 11.19 默认不执行安装脚本，机器上需 `npm install-scripts approv
 - **`tools/xj-dev` 曾报 `LOCKFILE_MISMATCH`**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 的 `collectCode` 从 `HEAD` 树取 `package-lock.json`，本票新增 `wabt` / `fake-indexeddb` 时尚未提交；提交后两组随 tools 一起通过。
 - **`tools` 组三项曾失败（`integration.test.mjs`、`local-status.test.mjs`、`repro-e2e.test.mjs`）**：它们各自运行 `npm run build --workspace @xunjie/contracts`，而构建脚本每跑一次就会删除自己在 `.cache/xunjie-build/locks/` 的锁票据。本次会话的沙箱对「同一工具调用内的批量删除」有阈值保护，超过阈值后第 N 次删除被拒，构建脚本退出 1，xj-dev 把它报成 `CONTRACT_BUILD_FAILED`。三项单独跑（`node --test`）与整组跑（`node scripts/verify.mjs --group tools --jobs 2`，45/45）都通过；把该阈值调高后完整 `npm run verify` 也全绿。这是执行环境的保护策略与本仓库构建脚本的交互，不是本票改动引入的问题。
 - **构建锁曾被一个残留票据永久卡住**（已修复，见“发现并修复”）：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
-- 未验证：Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。这三项都不是本票代码的已知缺陷，而是“条件不具备”的验收项，所以登记为未验证而不是缺陷：跨机远端执行的范围在后续子票（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替。（断网-重连下 `executionSync` 的真实续传已补做验证，见“断网-重连续传”；系统中文输入法候选已补做验证，见“系统中文输入法候选”。）
+- 未验证：跨机远端执行（属后续子票 #175）、教学效果判断。这两项都不是本票代码的已知缺陷，而是“条件不具备/范围在外”的验收项：跨机远端执行的范围在 #175（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替。（断网-重连下 `executionSync` 的真实续传已补做验证，见“断网-重连续传”；系统中文输入法候选已补做验证，见“系统中文输入法候选”；学校网页执行路径已补做验证，见“学校网页执行路径”。）
 
 ## 保留消费者
 
