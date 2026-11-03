@@ -1,0 +1,53 @@
+{
+  "ticket": "paher-din/XunJie#170",
+  "workPackage": "WP03 浏览器计算与持久执行请求",
+  "subject": "断网-重连下 executionSync 的真实续传（恰好一次投递）",
+  "date": "2026-11-03",
+  "environment": {
+    "machine": "Apple Silicon Mac",
+    "os": "macOS 27.2（build 26B123）",
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "node": "24.21.0",
+    "browser": "Google Chrome 156.0.8078.80（非 headless）",
+    "postgres": "产品自带原生 PostgreSQL 18.6.1",
+    "entrypoint": "npm run probe:execution-sync（scripts/probe-execution-sync.mjs）"
+  },
+  "method": {
+    "networkIsolation": "Playwright 在 Chromium 网络层注入：context.route('**/api/learning/executions/**', route => route.abort('connectionfailed')) 切断执行服务；context.setOffline(true) 完全断网。应用代码零桩，算法在真实 Worker 中计算。",
+    "resumeTrigger": "page.reload() → execution.open()（页面自身的续传入口）",
+    "assertions": ["本机 IndexedDB 账本（executionCommands/executionSync/executionResults）",
+      "浏览器到执行服务的真实 POST 流量按 accept/report/result 分类计数",
+      "服务端 executions API 回读（executionRef、contentId、结果 sha256）"]
+  },
+  "cases": [
+    "执行服务不可达时受限算法照常算出「共 12 行、3 组」，记录已完成",
+    "本机账本保留命令、终态事实与结果字节，executionSync 无条目（失败投递不写同步账）",
+    "恢复连接后整页刷新恰好一次投递 accept/report/result（各 1 次成功）",
+    "再次刷新读同一同步账本，0 次新写，服务端保持单份结果",
+    "完全断网时新运行在取算法资源处真实失败，本地记未完成且不投递",
+    "重连后失败事实恰好一次投递（accept+report 各 1，不发明结果），再次刷新 0 次新写"
+  ],
+  "traffic": {
+    "offline-run": { "attempts": 1, "ok": 0, "failed": 1 },
+    "resumed-1": { "attempts": 3, "ok": 3, "failed": 0 },
+    "resumed-2": { "attempts": 0, "ok": 0, "failed": 0 },
+    "offline-failed": { "attempts": 1, "ok": 0, "failed": 1 },
+    "failed-resumed-1": { "attempts": 2, "ok": 2, "failed": 0 },
+    "failed-resumed-2": { "attempts": 0, "ok": 0, "failed": 0 }
+  },
+  "identity": {
+    "runA": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8（succeeded）",
+    "runB": "19054658-ff67-4e66-8f6a-89bbce6f4b3c（failed）",
+    "serviceReadBack": "runA：executionRef 与本机 acceptance 一致，output.contentId 与本机一致，结果 sha256 与本机一致；runB：state=failed 无结果"
+  },
+  "unitRegression": {
+    "apps/web": "725/725（含 store.test.ts 12/12）",
+    "newTests": ["运行/排队真实计数（counts() 的 started 自增回归）",
+      "断服务运行本地留存、恢复后 accept/report/result 恰好一次、二次 open() 不再写"],
+    "bugFixed": "controller.counts() 的运行数只有减没有加（claim 后漏 started++），一次运行结束即上报 running:-1"
+  },
+  "result": "passed",
+  "report": ".verification/wp03-170/execution-sync-report.json",
+  "screenshots": ["evidence/wp03-execution-sync-offline.png", "evidence/wp03-execution-sync-resumed.png"]
+}

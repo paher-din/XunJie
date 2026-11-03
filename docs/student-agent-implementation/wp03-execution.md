@@ -64,6 +64,14 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 - Apple Silicon Mac + 桌面 Chrome：上述 10 项通过，浅色/深色/窄桌面均实际渲染（深色截图底板取到 `#1f1f1f`，不是浅色误报）。
 - Windows 11 x64 + 桌面 Chrome：同一探针 10 项通过（PROBE_EXIT=0）。环境为 Windows 11 家庭版中文版（`10.0.26200`）、Intel Core Ultra 9 285H、Node 24.21.0、桌面 Google Chrome 156.0.8078.79（非 headless）、本机打出的正式产品包 `dist/product-win32-x64`（自带 PostgreSQL 18.6.1、Node 24.21.0），VC 运行库 14.51.36247.0 已就绪。报告 `evidence/wp03-170-windows-browser-report.json`，截图 `evidence/wp03-170-windows-light.png`、`-dark.png`、`-narrow.png`（深色图确认为真实渲染，`计算记录` 里同时有「已取消」「已完成」「未完成」三条）。
 
+### 断网-重连续传
+
+6 项续传探针全部通过（`.verification/wp03-170/execution-sync-report.json`，证据副本 `evidence/wp03-execution-sync-offline-resume.json`）。环境：macOS 27.2（build 26B123）、Apple M5（arm64）、Node 24.21.0、桌面 Google Chrome 156.0.8078.80（非 headless）、原生 PostgreSQL 18.6.1。执行不可达由 Chromium 在网络层注入（abort / 断网），应用代码零桩；断言同时打在本机 IndexedDB 账本、浏览器到执行服务的真实流量与服务端回读上。
+
+1. 执行服务不可达（只 abort `**/api/learning/executions/**`）时受限算法照常在真实 Worker 里算出「共 12 行、3 组」，记录「已完成」；2. 本机账本保留命令、终态事实与结果字节（`executionResults` 可重读，CSV 以 `小组,计数` 开头），`executionSync` 无条目——失败的投递不写同步账；3. 恢复连接后整页刷新（页面自身的续传入口）把命令、事实与结果**恰好一次**投递出去（accept/report/result 各 1 次成功；服务端回读同一 `executionRef`、同一 `contentId`、同一结果 sha256）；4. 再次刷新读同一个同步账本，0 次新写，服务端保持单份结果；5. 完全断网（`context.setOffline`）时新运行在取算法资源处真实失败，本地记为「未完成」且不投递任何写；6. 重连后该失败事实恰好一次投递（accept+report 各 1，不发明结果），再次刷新 0 次新写。
+
+流量统计（attempt/ok）：offline-run 1/0、resumed-1 3/3、resumed-2 0/0、offline-failed 1/0、failed-resumed-1 2/2、failed-resumed-2 0/0。截图 `evidence/wp03-execution-sync-offline.png`、`-resumed.png`。同轮 `npm run verify` 五组全绿（prepare 4 / build:test 1 / unit 24 / server 78 / tools 45，`.verification/2026-11-03T03-38-46-167Z-hWYqkQ/summary.json`）。
+
 ## 发现并修复
 
 - 记录作用域用了命令中的对象而读取用工作区键，导致查询查不到：`accept` 改为接收工作区作用域，读写同键。
@@ -76,6 +84,7 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
   - **Windows 打包 `--outDir` 引号**：`scripts/build.mjs` 新增 `normalizePassthroughArgs`，在 Windows 上剥掉 npm/cmd 重建命令行时加上的引号层；`scripts/package-product.mjs` 新增 `npmCommand`，各平台优先直接执行 `npm-cli.js`（少一层 `cmd.exe` / `npm.cmd` 重引号），Windows 只有拿不到 CLI 时才回退到原来的 env+cmd 写法。在那台 Windows 11（`10.0.26200`、Core Ultra 9 285H、Node 24.21.0、npm 11.19.0）上先复现失败（`package-product: cmd.exe failed (1)`，npm 回显 `--outDir ^"\^"C:\...\.product-Mt5eDM\web\^"^"`），再换修复版重跑同一命令产出 `Unsigned product candidate`、`web/index.html` 187 个文件、sha256 `9980c7ae…`。
   - **构建锁被 pid 复用卡死**：`scripts/build-cache.mjs` 的 Lamport 锁给票据加心跳（`updatedAt`）、陈旧判定与硬等待超时，并用进程启动标记（Linux `/proc/<pid>/stat`、macOS `ps -o lstart=`、Windows PowerShell `StartTime`）识别 pid 复用；持锁者只清理“确定死亡”的票据。只有“确认持有者已不在”的票据才会被忽略，票据变旧本身不再放行——等待者也持有并刷新自己的票据，否则一个排队很久的构建会被后来者抢先、两个构建同时进临界区。默认心跳 15s / 陈旧 120s / 轮询 50ms / 等待上限 10 分钟 / 等待 0.5s 后才核对启动标记，可用 `XUNJIE_BUILD_LOCK_*` 覆盖；陈旧阈值与等待上限由代码保证 `staleMs ≥ 4×heartbeatMs`、`waitMs ≥ 2×staleMs`。
   - 回归：`scripts/build.test.mjs` 21/21（新增 Windows 重引号剥离、pid 复用票据过期、活跃持有者不被误判因而两进程严格串行、三进程下陈旧票据不被抢先、等待超时带诊断、时限默认值关系），新增 `scripts/package-product.test.mjs` 1/1；`npm run verify` 五组全绿（prepare 4 / build:test 1 / unit 24 / server 78 / tools 45）。三进程那条在“等待者不刷新 + 陈旧即忽略”的写法下会真的失败（`EEXIST exclusive`，两个构建同时进入临界区），修复后三者严格串行。证据 `evidence/wp03-build-lock-and-windows-packaging.json`。
+- 本轮复查发现并修复：`counts()` 的运行数只有减没有加（claim 后漏了 `started++`），一次运行结束即上报 `running: -1`、排队数虚高。补上自增，并新增两条单测：运行/排队真实计数（1 运行 1 排队 → 0/0）；断服务运行本地留存、恢复后 accept/report/result 恰好一次、二次 `open()` 读同一同步账本不再写（`store.test.ts` 12/12）。
 
 ## 未执行与已知失败
 
@@ -84,8 +93,7 @@ npm 11.19 默认不执行安装脚本，机器上需 `npm install-scripts approv
 - **`tools/xj-dev` 曾报 `LOCKFILE_MISMATCH`**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 的 `collectCode` 从 `HEAD` 树取 `package-lock.json`，本票新增 `wabt` / `fake-indexeddb` 时尚未提交；提交后两组随 tools 一起通过。
 - **`tools` 组三项曾失败（`integration.test.mjs`、`local-status.test.mjs`、`repro-e2e.test.mjs`）**：它们各自运行 `npm run build --workspace @xunjie/contracts`，而构建脚本每跑一次就会删除自己在 `.cache/xunjie-build/locks/` 的锁票据。本次会话的沙箱对「同一工具调用内的批量删除」有阈值保护，超过阈值后第 N 次删除被拒，构建脚本退出 1，xj-dev 把它报成 `CONTRACT_BUILD_FAILED`。三项单独跑（`node --test`）与整组跑（`node scripts/verify.mjs --group tools --jobs 2`，45/45）都通过；把该阈值调高后完整 `npm run verify` 也全绿。这是执行环境的保护策略与本仓库构建脚本的交互，不是本票改动引入的问题。
 - **构建锁曾被一个残留票据永久卡住**（已修复，见“发现并修复”）：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
-- 仅 `executionSync` 的续传逻辑按“已确认则不重发”实现；未在真实断网-重连中注入验证。
-- 未验证：系统中文输入法候选、Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。这四项都不是本票代码的已知缺陷，而是“条件不具备”的验收项，所以登记为未验证而不是缺陷：输入法候选要真人在真实浏览器里切换系统 IME，Playwright 的按键注入不产生系统级候选；跨机远端执行的范围在后续子票（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替；断网-重连可用 CDP 离线模拟补做探针，但本次未做，故不声称已验证。
+- 未验证：系统中文输入法候选、Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。这四项都不是本票代码的已知缺陷，而是“条件不具备”的验收项，所以登记为未验证而不是缺陷：输入法候选要真人在真实浏览器里切换系统 IME，Playwright 的按键注入不产生系统级候选；跨机远端执行的范围在后续子票（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替。（断网-重连下 `executionSync` 的真实续传已补做验证，见“断网-重连续传”，不在本清单内。）
 
 ## 保留消费者
 
