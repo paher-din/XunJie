@@ -44,26 +44,41 @@ DeepSeek 用量采用最终 message_delta.usage，累计值覆盖而不相加；
 
 | 验证 | 记录 |
 | --- | --- |
-| 中间 build / 类型检查 | Messages 模块 build 与 learning-space:typecheck 已通过；最终工程检查待汇总 |
-| 正式检查、工具/签名/图片/重启 | 已通过；含空/null、交错工具、UTF-8 分片的最终加强回归待汇总 |
+| build / 类型检查 / 浏览器契约 | 全工程 build、typecheck 通过；最终边界修复后 local-runtime build、learning-space:typecheck 与完整包构建通过；浏览器公共契约 11 个导出、0 失败 |
+| 正式检查、工具/签名/图片/重启 | 生产 Gateway 原生组通过；加强回归 4/4，含空/null、交错工具、UTF-8 分片、8 图边界、凭据回显及能力范围 |
 | 故障与终态 | 10/10（9 个反例 + 父用例），0 跳过；负用量二次异常已 red→green 修复 |
 | 用量、取消、HTTP 不重试、格式边界 | 各定向分组通过；缺最终字段、真实零值与累计覆盖分开断言 |
 | 上游错误元数据 | 429/request-id/retry-after 秒数、503/HTTP 日期、敏感 header 过滤及重启查询 red→green 通过 |
+| 最终故障/地址回归 | 17/17、0 跳过：终态反例、取消/超时、错误元数据、重复 /v1/// 和响应头前断线 unknown/重启不重发；已确认 HTTP/SSE 失败不被迟到取消覆盖 |
 | 维护恢复 | 真实备份→隔离还原→严格接管后原签名/工具/固定图片续接通过，旧源被拒绝重开 |
+| 旧 schema 正式升级 | #165 旧完整包生成 owner 8 凭据与尝试，经 WP01 upgrade→隔离还原→严格接管为 owner 9；旧凭据/尝试不变，新授权/选择可用，最终再验通过 |
 | 跨协议段 | Messages↔Chat、Messages↔Responses 两组及父用例 3/3 通过 |
-| Windows 桌面 Chrome | 原入口红灯及改动前截图已取得；普通正式 Web 的 Messages 两项 2/2；完整包和 legacy 设置/选择回归待汇总 |
-| 全量本地测试 | 尚未执行最终一次全量运行，后续按实际任务数和失败清单回填；跳过不记通过 |
+| Responses 终态回归 | 最终隔离运行 12/12、0 失败/取消/跳过；覆盖完整/不完整/失败终态、流内错误、非法工具/schema、未知块/事件、身份复用及终态后错误 |
+| Windows 桌面 Chrome | 普通正式 Web 11/11、最终完整 Windows 包 11/11，均 0 失败/跳过；各含 Messages 3 项和原有个人设置/选择/Responses 8 项 |
+| 全量本地测试 | 一次 npm test，131/146 个文件任务通过、15 失败；失败文件集合与 #165 相同。build:test 另通过；unit 21/23、server 76/78、tools 34/45。旧包传输任务运行 27 分 45 秒仍未退出，核对进程树归属后终止并计失败，不宣称全量通过 |
 | Mac | 本票未执行，具体清单交接 #178，不沿用 #165/#166 的平台结果 |
 | 教学效果 | 未评估；连接和合成工具验收不证明完整 Agent 或教学效果 |
 
-Chrome 使用安装版 156.0.8078.76、Windows 11 x64（10.0.26200）、headed、单 worker；Node 24.21.0、原生 PostgreSQL 18.6。没有物理 Windows 中文输入法候选窗验收；既有 CDP 中文输入/焦点回归不冒充物理输入。最终包、脱敏工程 JSON、前后截图及双轴审查结果在交付前回填。
+Chrome 使用安装版 156.0.8078.76、Windows 11 x64（10.0.26200）、headed、单 worker；Node 24.21.0、原生 PostgreSQL 18.6。最终功能快照 `3a90baa`；完整 `win32-x64` / `full` 包为 unsigned candidate，使用包内 Node/PG 和仓库外私有 root。[脱敏工程记录](evidence/wp06-messages-win-verification.json)包含包的创建时间、CLI SHA256、各原生组、实际失败清单、恢复与 Chrome 结果。普通正式 Web 11 项运行于 owner 9 的 `47648e3`；最终完整包另覆盖末尾斜杠及错误分类修复后的同一 UI。没有物理 Windows 中文输入法候选窗验收；既有 CDP 中文输入/焦点回归不冒充物理输入。
 
-首轮七文件原生回归 98/102 通过、4 个失败计数（两处 Windows EBUSY 临时目录清理失败及其父用例）；业务断言没有报失败。仅为本轮创建的 Messages/Responses 临时目录增加有界 fs.rm 重试，不忽略最终错误，受影响文件隔离复跑另列。首次直接 node 打包的 Windows fallback 把 outDir 引号当成路径内容，改用根 package.json 的正式 `npm run package:product` 入口；该失败保留，不冒充完整包通过。
+原生组存在重叠，不能相加当作独立用例总数。首轮七文件回归 98/102 通过、4 个失败计数（两处 Windows EBUSY 临时目录清理失败及其父用例）；业务断言没有报失败，其他五文件 25/25 通过。仅为本轮创建的 Messages/Responses 临时目录增加有界 fs.rm 重试，不忽略最终错误。owner 9 两文件隔离运行：Messages 全组 27/27；Responses 11-fixture 父用例在全量测试负载下超出 180 秒，合计 74/78、2 失败和 2 取消。仅延长这份含 11 次独立 PG 安装的父测试至 600 秒，每请求 deadline 不变。再次定向运行 10/12，依赖类型检查重建共享 dist 期间有一处宿主未启动，保留失败；停止构建后的最终串行回归 12/12 通过。最终 17/17 是增加响应头前断线及地址边界后的分组。
+
+首次直接 node 打包的 Windows fallback 把 outDir 引号当成路径内容，改用根 package.json 的正式 `npm run package:product` 入口；该失败保留。随后完整包构建及 Chrome 11/11 通过。没有用前次失败或跳过充抵通过。
+
+## 实际截图
+
+同一桌面 Chrome 表单，改动前 Messages 仍为待接入且保存前检查不可用；改动后通过检查并显示实际路径与地址说明。截图仅使用本机合成凭据，没有真实 key。
+
+![Messages 改动前](evidence/wp06-messages-before-win.png)
+
+![Messages 改动后](evidence/wp06-messages-after-win.png)
+
+![安装客户端深色窄桌面与学校主体下本机模型选用](evidence/wp06-messages-dark-narrow-win.png)
 
 ## Standards
 
-待最终固定提交进行独立审查，并按发现补回归。
+对固定基线 `92e8cea` 的全量变更独立审查，并复核最终 `3a90baa` 增量：硬规范违规 0、值得报告的 Fowler smell 0。静态审查不冒充执行测试。
 
 ## Spec
 
-初审 1 项 P2：缺少母规范要求的上游状态/请求身份及 retry-after 事实；已补白名单持久化、公开投影、owner 9 标记及重启回归，待审查者复核。Mac 和完整跨机后续范围分别登记，不冒充通过。
+初审 1 项 P2：缺少母规范要求的上游状态/请求身份及 retry-after 事实；已补白名单持久化、公开投影、owner 9 标记及重启回归。独立审查复核至 `3a90baa`，剩余 0 项。Mac 和完整跨机后续范围分别登记，不冒充通过。
