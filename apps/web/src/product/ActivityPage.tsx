@@ -27,7 +27,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
     ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
   // A component may declare a restricted run; its record, stop and download stay in this area.
   const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
-    (binding.definition.manifest.operations?.length
+    (binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.operations?.length
       ? <div key={binding.key} className="component-tool">
         <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
         <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />

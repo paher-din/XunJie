@@ -19,10 +19,11 @@ export function bindingFor(activity: LearningActivity, instanceId: string): Comp
 export function createAlgorithmProvider(activity: LearningActivity, spaceKey: string, namespace: string): AlgorithmProvider {
   return { async load(action: ExecutionAction) {
     const binding = bindingFor(activity, action.execution.instance.instanceId)
-    const algorithm = binding?.definition.manifest.algorithm
-    if (!binding || !algorithm || !activity.course)
+    const manifest = binding?.definition.manifest
+    const algorithm = manifest?.formatVersion === 1 ? manifest.algorithm : undefined
+    if (!binding || manifest?.formatVersion !== 1 || !algorithm || !activity.course)
       throw new AlgorithmError('capability-unavailable', '当前组件没有可用的受限算法资源。')
-    const operation = binding.definition.manifest.operations?.find(item => item.operationId === action.execution.operation.operationId)
+    const operation = manifest.operations?.find(item => item.operationId === action.execution.operation.operationId)
     if (!operation) throw new AlgorithmError('capability-unavailable', '组件版本已变化，不能沿用原执行输入。')
     if (binding.definition.digest !== action.execution.instance.definitionDigest)
       throw new AlgorithmError('capability-unavailable', '组件版本已变化，不能沿用原执行输入。')

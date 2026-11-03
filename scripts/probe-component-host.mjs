@@ -7,7 +7,7 @@ import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { annotationPackage } from '../components/material-annotation/package.mjs';
 
-const output = resolve('.verification/wp03-169');
+const output = resolve(process.env.XUNJIE_COMPONENT_REPORT_DIR ?? '.verification/wp03-169');
 const webRoot = resolve(process.env.XUNJIE_COMPONENT_BASELINE_WEB ?? process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 async function artifactDigest(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -23,7 +23,7 @@ const root = await mkdtemp(join(tmpdir(), 'xj-component-browser-'));
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Native PostgreSQL required');
 const report = { platform: process.platform, arch: process.arch, os: release(), root, cases: [], status: 'running',
-  browser: 'Google Chrome', node: process.version, mac: 'not-run', teachingOutcome: 'not-evaluated' };
+  browser: 'Google Chrome', node: process.version, mac: process.platform === 'darwin' && process.arch === 'arm64' ? 'running' : 'not-run', teachingOutcome: 'not-evaluated' };
 const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
   postgresVersion: '18.6', webRoot, windowsPrerequisitePath: resolve('scripts/windows-prereq-prepare.ps1') } });
 let browser;
@@ -319,6 +319,7 @@ try {
 } catch (error) {
   report.status = 'failed'; report.error = error instanceof Error ? error.message : String(error); throw error;
 } finally {
+  if (process.platform === 'darwin' && process.arch === 'arm64') report.mac = report.status;
   await browser?.close();
   try { await runtime.stop(); report.cleanup = 'owned product stopped'; } catch (error) { report.cleanup = String(error); }
   await writeFile(join(output, process.env.XUNJIE_COMPONENT_BASELINE_WEB ? 'baseline-browser-report.json' : 'browser-report.json'), JSON.stringify(report, null, 2));

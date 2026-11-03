@@ -77,6 +77,7 @@ export function createExecutions(storage: OwnedStorage, options: {
       || manifest.componentId !== instance.componentId || manifest.version !== instance.componentVersion
       || manifest.stateVersion !== instance.stateVersion || manifest.hostApiVersion !== instance.hostApiVersion
       || binding.definition.digest !== instance.definitionDigest) fail('identity-conflict');
+    if (manifest.formatVersion !== 1) fail('missing');
     const operation = manifest.operations?.find(item => item.operationId === action.execution.operation.operationId);
     if (!operation || operation.effect !== action.execution.operation.effect) fail('missing');
     const limits = action.execution.limits;

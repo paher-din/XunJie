@@ -34,9 +34,12 @@
 ```sh
 node components/material-annotation/package.mjs
 node apps/local-runtime/dist/cli.js component-import --root <产品私有目录> --file dist/material-annotation/component.json
+node apps/local-runtime/dist/cli.js component-import --root <产品私有目录> --file dist/material-annotation/component-v2.json
 node apps/local-runtime/dist/cli.js component-read --root <产品私有目录> --file <查询.json>
 node apps/local-runtime/dist/cli.js component-status --root <产品私有目录> --file <状态.json>
 ```
+
+`component-v2.json` 携带 `dependencies: [{dependencyId, path}]`；CLI 仍从导入目录读取 `path`、拒绝越界，`resourceId` 取自清单声明。版本 1 的 `component.json` 与入口字节未变。
 
 查询文件 `{componentId,version}`，状态文件如上节。课程清单的 definition 使用登记结果，不自行拼造摘要。样例首次登记使用生成文件固定 requestId；改版必须改组件版本、资源身份及登记身份，不能同版热替换。CLI 从导入目录读取 path 并拒绝越界，API 再验证字节。私有输入和授权不进入仓库。
 
@@ -100,3 +103,15 @@ Windows 未签名候选包在本地 `dist/wp03-169-review`；打包第一次误�
 最终修复包为本地 `dist/wp03-169-r3`。该包 Web/原生 PostgreSQL 资源上的 Chrome 17/17 通过，包含 257 次确认后的原回执重放和 12 条连续条件请求、iframe 新连接及旧身份拒绝、整页重开回执恢复；所有运行环境均已停止。报告摘要 `455463dbf5148af34a599a9de3dd6b19a9e1e312f0e2bd42fab42da162873d53` 对应使用前后不变的整个前端文件树。
 
 推送判断：三项审查缺陷已修复并取证，可作为仍待跨平台验收的实现提交到 wp03 开发分支；必须先经负责人审核同意，不创建 PR、不合 main，也不关闭 #169。按此前约定，Mac、系统输入法和组件跨机路径仍作为明确交接项，未执行不计通过；不能把开发分支推送解释为本票完整验收。
+
+## #171 增量：依赖准备、自检与报告
+
+本节只记录本票对上述宿主契约的扩展，不改变 #169 的验收结论。方案与验收矩阵见 [组件依赖准备实施方案](specs/wp03-component-preparation.md)。
+
+- 清单新增 `formatVersion=2` 联合分支；`formatVersion=1` 的规范化结果与摘要不变（运行测试以固定摘要硬断言）。准备协议单独版本化：`preparationProtocolVersion=1`，宿主与组件必须显式声明，旧宿主拒绝而不是忽略后继续写入。
+- 课程 owner 新增迁移 9 `component_preparation_reports`；依赖资源各自使用保留引用 `component/<componentId>/<version>/dependency/<dependencyId>`，entry 引用 ID 不变，因此旧数据与旧校验继续成立。
+- 学习入口新增三个固定路由，均沿用原资格校验、拒绝任意路径：`GET releases/<releaseId>/components/<key>/dependencies/<dependencyId>`、`POST .../preparation-report`、`GET .../preparation-reports`；学校转发允许列表与响应校验同步扩展。
+- Web 准备 Module 位于 `apps/web/src/component-preparation/`，持久于独立 IndexedDB `xunjie-component-preparation-v1`，不进入学生作品库。`ComponentView` 对格式 1 保持原路径，对格式 2 先准备、激活环境后挂载并以同一 MessagePort 交付已验证依赖；组件再按清单摘要与长度独立复核后才执行脚本。
+- 标注样例新增版本 2，真实消费锁定 `mark.js@8.11.1`；版本 1 入口未改。
+
+本票新增验证：`node scripts/probe-component-preparation.mjs` 在真实桌面 Chrome 上 13 项通过，`node --test apps/server/tests/component-host.runtime.test.mjs` 2 项通过（真实 PostgreSQL 18.6）。既有 `probe-component-host.mjs` 15 项保持通过。Apple Silicon Mac 与教学效果未执行。Windows 平台限制导致的既有失败（本地 socket uid 检查、符号链接 `EPERM`、临时目录 `EBUSY`、GNU tar 盘符解析）不在本票写集内，未修改。

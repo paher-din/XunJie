@@ -52,7 +52,7 @@ export async function executionAction(input: {
   expectedContentId: string | null; requestId: string
 }): Promise<ExecutionAction> {
   const manifest = input.binding.definition.manifest
-  if (!manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
+  if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
   const operation = manifest.operations.find(item => item.operationId === input.operationId)
   if (!operation) throw new Error('capability-unavailable')
   if (!acceptsState(operation.parameters, input.parameters)) throw new Error('invalid-input')

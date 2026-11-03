@@ -6,7 +6,8 @@ import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
-import { componentAlgorithmBundleSchema, componentBundleSchema } from '@xunjie/contracts/components';
+import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema, componentPreparationReportsSchema,
+  componentPreparationReportReceiptSchema } from '@xunjie/contracts/components';
 import { executionQuerySchema } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
@@ -207,10 +208,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   }
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string) {
     const id = '[0-9a-f-]{36}';
+    const key = '[a-z][a-z0-9-]{0,47}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
-      `|releases/${id}/materials/${id}|releases/${id}/components/[a-z][a-z0-9-]{0,47}(?:/algorithm)?|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?` +
-      `|executions/${id}(?:/${id}(?:/(?:report|stop|result))?)?|connections/revoke)$`).test(route)) {
+      `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
+      `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/${id}(?:/(?:report|stop|result))?)?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -274,11 +276,15 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return query;
     }
     if (route.startsWith('releases/')) {
-      if (route.split('/')[2] === 'components') {
-        if (route.split('/')[4] === 'algorithm') return parsed(componentAlgorithmBundleSchema, value);
+      const parts = route.split('/');
+      if (parts[2] === 'components') {
+        if (parts[4] === 'algorithm') return parsed(componentAlgorithmBundleSchema, value);
+        if (parts[4] === 'dependencies') return parsed(componentDependencyContentSchema, value);
+        if (parts[4] === 'preparation-reports') return parsed(componentPreparationReportsSchema, value);
+        if (parts[4] === 'preparation-report') return parsed(componentPreparationReportReceiptSchema, value);
         return parsed(componentBundleSchema, value);
       }
-      return route.split('/').length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
+      return parts.length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
     }
     if (route.startsWith('course-activity-results/')) {
       if (value === null) return null;

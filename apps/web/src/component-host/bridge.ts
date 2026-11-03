@@ -33,7 +33,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
   /** The host, not the component, assembles the fixed basis, plan and limits from the manifest. */
   async function submitExecution(raw: unknown) {
     const input = componentExecutionSubmitSchema.parse(raw)
-    if (!manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
+    if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
     if (!execution || !execution.canRun()) throw new Error('capability-unavailable')
     const action = await executionAction({ workspace, binding, instanceId, receiver: {
       receiverId: execution.controller.receiver.identity.receiverId, location: 'local', kind: 'execution' },
@@ -58,7 +58,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     const capability = message.method
     if (capability === 'execution.capabilities') {
       z.object({}).strict().parse(message.payload)
-      if (!manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
+      if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
       const runnable = !!execution && execution.canRun()
       // Exactly the plan and limits the accepted command will carry, plus the executor's real counts.
       const counts = execution ? execution.controller.counts() : { running: 0, queued: 0 }

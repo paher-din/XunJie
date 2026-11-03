@@ -59,7 +59,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
       const current = readComponentState(workspace, binding, instanceId)
       const action = await executionAction({ workspace, binding, instanceId,
         receiver: { receiverId: execution.receiver.identity.receiverId, location: 'local', kind: 'execution' },
-        operationId: binding.definition.manifest.operations?.[0]?.operationId ?? 'aggregate',
+        operationId: binding.definition.manifest.formatVersion === 1 ? binding.definition.manifest.operations?.[0]?.operationId ?? 'aggregate' : 'aggregate',
         parameters: (current.content as { parameters: unknown }).parameters,
         expectedContentId: current.contentId, requestId: crypto.randomUUID() })
       await execution.submit(action)
