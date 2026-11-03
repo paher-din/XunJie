@@ -14,7 +14,7 @@
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
 | WP03 的浏览器有限作业：固定执行请求、持久接收、真实 Worker/WASM 计算、查询/停止与结果重读 | [浏览器计算与持久执行](wp03-execution.md) · [固定表格聚合样例](../../components/table-aggregation/README.md) |
-| WP03 标注对象与真实聚合结果的固定选区、来源核验和定位 | [#172 交付](wp03-semantic-references.md) · [实施方案](specs/wp03-nontext-references.md) |
+| WP03 标注对象与真实聚合结果的固定选区、来源核验和定位 | [#172 交付](wp03-semantic-references.md) · [实施方案](specs/wp03-nontext-references.md) · [#185 Apple Silicon 验收](wp03-185-mac-references.md) |
 | WP03 第三项：真实依赖准备、独立自检、版本缓存及失败继续的方案与验收 | [#171 实施与验收](specs/wp03-component-preparation.md) · [Mac 交接](wp03-171-mac-handoff.md) |
 | WP03 第四项：本机原生有状态会话、连续输入、持久会话事实与真实停止 | [设计与边界](specs/wp03-native-sessions.md) · [实施与验收](wp03-native-sessions.md) · [四态累加样例](../../components/state-accumulator/README.md) |
 | WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |

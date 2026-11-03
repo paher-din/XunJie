@@ -1,6 +1,6 @@
 # #172 非文本选区与固定结果引用：实施方案
 
-日期：2026-11-03（Asia/Shanghai）。状态：本地实现及 Windows 验证已完成；具体证据、未执行项见[交付记录](../wp03-semantic-references.md)，Mac 按负责人要求暂缓。任务来源：[issue #172](https://github.com/paher-din/XunJie/issues/172)，继承[WP03 母规范](wp03-course-components-and-execution.md) §3、§5及相关维护/验收要求。
+日期：2026-11-03（Asia/Shanghai）。状态：本地实现、Windows 验证及 Apple Silicon Mac 验收均已完成；具体证据与未执行项见[#172 交付记录](../wp03-semantic-references.md)和[#185 Apple Silicon 验收](../wp03-185-mac-references.md)。任务来源：[issue #172](https://github.com/paher-din/XunJie/issues/172)，继承[WP03 母规范](wp03-course-components-and-execution.md) §3、§5及相关维护/验收要求。
 
 ## 基线与前置
 
@@ -34,4 +34,4 @@
 
 本方案已落地；阶段验证与失败记录见交付记录。推送、PR 和合并按后续明确授权执行；已有工作树无关改动保持原状。
 
-Mac 验收独立跟踪于 [#185](https://github.com/paher-din/XunJie/issues/185)，暂不指派任何人，待团队分配。创建该票不等于 Mac 已通过或 #172 全平台验收完成；验收应基于审查修复与最新 wp03 集成后的最终候选。
+Mac 验收独立跟踪于 [#185](https://github.com/paher-din/XunJie/issues/185)。该票已于 Apple Silicon Mac（`Mac17,3`/arm64、macOS 27.2、Node 24.21.0、PostgreSQL 18.6、桌面 Chrome 156.0.8078.80）在 `wp03@6620596` 上完成，逐项结果与未执行项见[#185 Apple Silicon 验收](../wp03-185-mac-references.md)。跨机学校路径、Windows 复验、签名/公证/干净机器与教学效果仍未执行，不以本机结果替代，也不据此称全平台通过。

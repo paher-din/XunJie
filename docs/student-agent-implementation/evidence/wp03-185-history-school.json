@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-03",
+  "codeSha": "6620596dd10f014fb773ce81970448dae21b24e7",
+  "status": "passed",
+  "cases": [
+    "removed reference restores with its original adapter",
+    "retired adapter permits a reference absent from head to restore from an old revision",
+    "retired adapter permits a cancelled action-only reference to restore without a draft revision containing it",
+    "retired adapter refuses forged copy, range and new reference identity",
+    "disabled component permits revision/action history but refuses a new reference",
+    "retained revisions and cancelled action validate on owner restart"
+  ],
+  "browser": "installed Chrome",
+  "headless": false,
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "teaching": "not evaluated",
+  "receiver": "controlled receiver; no model invocation",
+  "profile": "school",
+  "browserVersion": "156.0.8078.80"
+}

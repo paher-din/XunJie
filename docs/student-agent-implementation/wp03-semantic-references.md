@@ -1,8 +1,14 @@
 # #172 非文本选区与固定结果引用
 
-日期：2026-11-03（Asia/Shanghai）。实现基线 `wp03@6e7d13e`，本地分支 `codex/issue-172-nontext-references`。依据 [#172](https://github.com/paher-din/XunJie/issues/172)、[实施方案](specs/wp03-nontext-references.md)及母规范。实现和 Windows 验证已完成；Mac 按负责人明确要求暂缓，不据此关闭全平台验收。负责人已授权提交审查修复、集成最新上游并推送至上游 `wp03`；不创建 PR、不合 main。
+日期：2026-11-03（Asia/Shanghai）。实现基线 `wp03@6e7d13e`，本地分支 `codex/issue-172-nontext-references`。依据 [#172](https://github.com/paher-din/XunJie/issues/172)、[实施方案](specs/wp03-nontext-references.md)及母规范。实现和 Windows 验证已完成；负责人已授权提交审查修复、集成最新上游并推送至上游 `wp03`；不创建 PR、不合 main。
 
-Mac 独立验收已交接至 [#185](https://github.com/paher-din/XunJie/issues/185)，暂不指派任何人，待团队分配；该票要求在集成最新 wp03 且包含审查修复的最终候选上取证，不以其他工作包或 Windows 验收替代。审查修复提交为 `93865a4`；上游 `wp03@9c965a1`（新增 #173）通过合并提交 `d652231` 集成；推送前再次出现的 `b288410`（Windows 会话隔离）通过 `120b8bb` 追加集成，均无需手工解决冲突。合并后的构建、类型和下列相关回归均已完成。
+Mac 独立验收已交接至 [#185](https://github.com/paher-din/XunJie/issues/185)：在集成最新 wp03 且包含审查修复的 `wp03@6620596` 上由 Apple Silicon Mac 独立取证，不以其他工作包或 Windows 验收替代，结论见 [#185 Apple Silicon 验收](wp03-185-mac-references.md)。审查修复提交为 `93865a4`；上游 `wp03@9c965a1`（新增 #173）通过合并提交 `d652231` 集成；推送前再次出现的 `b288410`（Windows 会话隔离）通过 `120b8bb` 追加集成，均无需手工解决冲突。合并后的构建、类型和下列相关回归均已完成。
+
+## Mac（Apple Silicon）验收结论
+
+`wp03@6620596` 在 `Mac17,3`/`arm64`、macOS 27.2、候选内置 Node 24.21.0 与 PostgreSQL 18.6、安装版桌面 Chrome 156.0.8078.80 上通过：原有引用探针 13/13、历史恢复 6/6，本票新增端到端 22/22（本机与学校 profile 各一遍），系统中文拼音输入法 10/10。逐项对应 [#185 清单](wp03-185-mac-references.md#逐项结果)，含去重/顺序/移除/失焦/键盘定位、IndexedDB+API+PostgreSQL 三处一致、发送固定与迟到回包、修改/删除/同名重建、七个伪造负例、owner 重启后的旧连接、组件停用下的固定副本、原文本半开区间。工程侧在干净副本中从零构建（9 个任务）与类型检查（7 个任务）通过，unit 25/25（Web 814 项）、server 81/81、来源边界 24/24。
+
+学校 profile 仍与客户端同机（同一台 Mac 回环），跨机学校路径、Windows 复验、签名/公证/干净机器与教学效果未执行，均按未通过记录在 #185，不用本机结果替代。
 
 ## 已实现行为
 
@@ -38,9 +44,9 @@ Mac 独立验收已交接至 [#185](https://github.com/paher-din/XunJie/issues/1
 
 首次集成验证（代码候选 `d652231`）：运行目标构建、全工程类型检查通过；7 个前端测试文件 58/58；来源/历史恢复与真实原生子进程测试 26/26；真实 PostgreSQL 的组件宿主、浏览器执行和 #173 原生会话集成测试 4/4。安装版桌面 Chrome 的原本地引用端到端回归 13/13，历史恢复本地、学校 profile 各 6/6，均在合并后重跑通过。首次构建及前端测试在沙箱内因 Vite realpath 的 EPERM 失败，前端命令另曾误用工作区内不存在的 Vitest 路径；改用实际根依赖路径并在沙箱外重跑后通过，失败不计通过。
 
-追加集成验证（最终代码候选 `120b8bb`）：运行目标构建、全工程类型检查重新通过；上述来源/子进程/PostgreSQL 测试合并重跑 30/30，原 Chrome 引用全链路 13/13、历史恢复本地及学校路径各 6/6 再次通过。没有重新进行 #173 浏览器专用验收、AppContainer 分发包验收或 Mac 验收；本轮 native runtime 测试使用开发资源配置，未配置 Windows session helper，不能将此结果视为隔离分发包验收。
+追加集成验证（最终代码候选 `120b8bb`）：运行目标构建、全工程类型检查重新通过；上述来源/子进程/PostgreSQL 测试合并重跑 30/30，原 Chrome 引用全链路 13/13、历史恢复本地及学校路径各 6/6 再次通过。没有重新进行 #173 浏览器专用验收、AppContainer 分发包验收或 Mac 验收；本轮 native runtime 测试使用开发资源配置，未配置 Windows session helper，不能将此结果视为隔离分发包验收。Mac 侧随后在更后的 `wp03@6620596` 上由 [#185](https://github.com/paher-din/XunJie/issues/185) 独立补做，见[验收记录](wp03-185-mac-references.md)。
 
-审查修复追加验证：运行目标构建通过；来源与历史恢复边界测试 24/24（本轮新增 13 项），覆盖旧修订、仅存在于动作的引用、篡改副本/范围/ID、错误摘要、缺失资源保留及越主体动作。真实桌面 Chrome / PostgreSQL 的历史恢复回归在本地和学校 profile 各 6/6，包含取消动作、退役适配、停用组件和 owner 重启；原本地语义引用端到端回归重跑 13/13。详见[本地历史恢复证据](evidence/wp03-172-history-local.json)、[学校路径历史恢复证据](evidence/wp03-172-history-school.json)。学校 profile 仍为同一 Windows 主机，未新增 Mac、系统输入法或教学效果验收。首次新增回归脚本误将空间显示字段带入严格动作 scope，收到 400；修正脚本仅传契约字段后重跑通过。
+审查修复追加验证：运行目标构建通过；来源与历史恢复边界测试 24/24（本轮新增 13 项），覆盖旧修订、仅存在于动作的引用、篡改副本/范围/ID、错误摘要、缺失资源保留及越主体动作。真实桌面 Chrome / PostgreSQL 的历史恢复回归在本地和学校 profile 各 6/6，包含取消动作、退役适配、停用组件和 owner 重启；原本地语义引用端到端回归重跑 13/13。详见[本地历史恢复证据](evidence/wp03-172-history-local.json)、[学校路径历史恢复证据](evidence/wp03-172-history-school.json)。学校 profile 仍为同一 Windows 主机，未新增 Mac、系统输入法或教学效果验收（Mac 与系统输入法后由 [#185](https://github.com/paher-din/XunJie/issues/185) 在 `wp03@6620596` 补做；教学效果仍未评估）。首次新增回归脚本误将空间显示字段带入严格动作 scope，收到 400；修正脚本仅传契约字段后重跑通过。
 
 [脱敏证据](evidence/wp03-172-verification.json)。Windows 11 x64、Node 24.21.0、原生 PostgreSQL 18.6、安装版桌面 Chrome 156.0.8078.80，实际 headed。
 

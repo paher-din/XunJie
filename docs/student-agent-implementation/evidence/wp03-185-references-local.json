@@ -1,0 +1,189 @@
+{
+  "kind": "macos-semantic-reference-acceptance",
+  "ticket": "#185",
+  "parent": "#172",
+  "date": "2026-11-03",
+  "codeSha": "6620596dd10f014fb773ce81970448dae21b24e7",
+  "profile": "local",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "browser": "installed Google Chrome (headed)",
+  "headless": false,
+  "teaching": "not evaluated",
+  "receiver": "controlled receiver; no model invocation",
+  "status": "passed",
+  "checklist": {
+    "1": [
+      "annotation object lands in the existing question reference area",
+      "a real Worker/WASM aggregation group joins the same reference area without running anything"
+    ],
+    "2": [
+      "multi-source order follows selection order",
+      "repeated semantic selection is deduplicated",
+      "keyboard locate focuses the exact fixed group",
+      "keyboard removal keeps the remaining order",
+      "a removed reference returns at the end when selected again",
+      "blur keeps the reference area and the question",
+      "light, dark and narrow desktop are captured"
+    ],
+    "3": [
+      "IndexedDB carries the same three references before any server read",
+      "reload restores question and references from the business API",
+      "an explicit send fixes the three references while later edits stay independent",
+      "a later result change does not rewrite the fixed action",
+      "a late reply and the second execution never overwrite the later draft",
+      "PostgreSQL keeps the draft across a real owner restart"
+    ],
+    "4": [
+      "a modified source keeps the copy and refuses relocation",
+      "a deleted source keeps the copy and refuses relocation",
+      "a same-name rebuilt source is not treated as the original object",
+      "fixed copies render with the executable component disabled"
+    ],
+    "6": [
+      "forged subject, activity, object, range, copy and identity are refused without losing the draft",
+      "an old component connection is not reused after the owner restarts"
+    ],
+    "7": [
+      "the original text reference keeps its half-open interval beside the semantic one"
+    ]
+  },
+  "cases": [
+    {
+      "item": "1",
+      "name": "annotation object lands in the existing question reference area",
+      "detail": "one reference, no intent, no execution, empty question"
+    },
+    {
+      "item": "7",
+      "name": "the original text reference keeps its half-open interval beside the semantic one",
+      "detail": "range 0-4 of \"观察与解\""
+    },
+    {
+      "item": "1",
+      "name": "a real Worker/WASM aggregation group joins the same reference area without running anything",
+      "detail": "keyboard focus + Enter, one execution only, no intent"
+    },
+    {
+      "item": "2",
+      "name": "multi-source order follows selection order",
+      "detail": "[\"annotation-objects\",\"text\",\"aggregation-groups\"]"
+    },
+    {
+      "item": "2",
+      "name": "repeated semantic selection is deduplicated",
+      "detail": "annotation re-selected, still three"
+    },
+    {
+      "item": "2",
+      "name": "keyboard locate focuses the exact fixed group",
+      "detail": "focus moved to [data-group-key=\"A\"]"
+    },
+    {
+      "item": "2",
+      "name": "keyboard removal keeps the remaining order",
+      "detail": "text reference removed, annotation then group remain"
+    },
+    {
+      "item": "2",
+      "name": "a removed reference returns at the end when selected again",
+      "detail": "append order preserved"
+    },
+    {
+      "item": "2",
+      "name": "blur keeps the reference area and the question",
+      "detail": "focus left the composer, three references and the text remain"
+    },
+    {
+      "item": "2",
+      "name": "light, dark and narrow desktop are captured",
+      "detail": "three screenshots at the same three-reference state"
+    },
+    {
+      "item": "3",
+      "name": "IndexedDB carries the same three references before any server read",
+      "detail": "local revision 6"
+    },
+    {
+      "item": "3",
+      "name": "reload restores question and references from the business API",
+      "detail": "three copies readable"
+    },
+    {
+      "item": "3",
+      "name": "an explicit send fixes the three references while later edits stay independent",
+      "detail": "receiver got the original three"
+    },
+    {
+      "item": "3",
+      "name": "a later result change does not rewrite the fixed action",
+      "detail": "second execution, action references unchanged"
+    },
+    {
+      "item": "3",
+      "name": "a late reply and the second execution never overwrite the later draft",
+      "detail": "reload keeps the later text and two references"
+    },
+    {
+      "item": "4",
+      "name": "a modified source keeps the copy and refuses relocation",
+      "detail": "copy unchanged"
+    },
+    {
+      "item": "4",
+      "name": "a deleted source keeps the copy and refuses relocation",
+      "detail": "copy unchanged, no guessed replacement"
+    },
+    {
+      "item": "4",
+      "name": "a same-name rebuilt source is not treated as the original object",
+      "detail": "still the original copy"
+    },
+    {
+      "item": "6",
+      "name": "forged subject, activity, object, range, copy and identity are refused without losing the draft",
+      "detail": "seven negative cases, draft intact"
+    },
+    {
+      "item": "4",
+      "name": "fixed copies render with the executable component disabled",
+      "detail": "no annotation iframe, copies still displayed"
+    },
+    {
+      "item": "6",
+      "name": "an old component connection is not reused after the owner restarts",
+      "detail": "copies readable, locate reports unavailable instead of guessing"
+    },
+    {
+      "item": "3",
+      "name": "PostgreSQL keeps the draft across a real owner restart",
+      "detail": "two references and the later question readable"
+    }
+  ],
+  "screenshots": {
+    "references-light": ".verification/wp03-185-local/references-light.png",
+    "references-dark": ".verification/wp03-185-local/references-dark.png",
+    "references-narrow": ".verification/wp03-185-local/references-narrow.png",
+    "references-component-disabled": ".verification/wp03-185-local/references-component-disabled.png"
+  },
+  "unexecuted": [],
+  "deployment": {
+    "profile": "local",
+    "host": "127.0.0.1",
+    "port": "51742",
+    "database": "managed PostgreSQL",
+    "clientAndOwner": "same Mac, loopback listener",
+    "crossMachine": false
+  },
+  "browserVersion": "156.0.8078.80",
+  "indexedDb": {
+    "database": "xunjie-reliable-works-v1",
+    "drafts": 1,
+    "localRevision": 6,
+    "references": 3
+  },
+  "cleanup": "owned runtime stopped"
+}
