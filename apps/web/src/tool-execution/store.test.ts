@@ -46,6 +46,15 @@ function acceptanceOf(action: ExecutionAction, executionRef = crypto.randomUUID(
 }
 
 describe('the browser execution ledger keeps one command per identity', () => {
+  it('refuses a new acceptance as soon as its host knows the qualification was revoked', async () => {
+    let allowed = true
+    const receiver = new BrowserExecutionReceiver(actionOf(crypto.randomUUID()).receiver, crypto.randomUUID(), 1, () => allowed)
+    const action = actionOf(crypto.randomUUID())
+    allowed = false
+    await expect(receiver.accept(action, digestOf(action))).rejects.toMatchObject({ code: 'forbidden' })
+    expect(await receiver.store.read(receiver.scope, action.requestId)).toBeUndefined()
+  })
+
   it('stores the command under the workspace scope every later read, list and result lookup uses', async () => {
     const store = new ExecutionStore(), action = actionOf(crypto.randomUUID()), acceptance = acceptanceOf(action)
     const stored = await store.accept(scope, action, digestOf(action), acceptance, 1)

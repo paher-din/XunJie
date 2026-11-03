@@ -143,7 +143,9 @@ try {
   assert.equal(remote?.executionRef, remote?.posted.executionRef);
   passed('a queued run is stopped through the real worker path and the service keeps its original acceptance');
 
-  await frame.locator('#result').scrollIntoViewIfNeeded();
+  await expect(frame.locator('#result')).toBeHidden();
+  passed('a new or cancelled run cannot present the preceding run result as its own');
+  await panel.scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(output, 'execution-light.png'), fullPage: true });
 
   await page.reload();

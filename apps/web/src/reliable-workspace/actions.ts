@@ -353,6 +353,7 @@ export class ReliableActions {
         await this.storeLocalAcceptance(current, { ...blocked, receipt: { ...blocked.receipt, state: 'cancelled' } })
         return
       }
+      if (this.stopped || this.disposed || this.accessDenied() || this.cancellationRequests.has(action.requestId)) return
       const acceptance = await receiver.accept(action, digest)
       await this.storeLocalAcceptance(current, acceptance)
     } catch (error) { this.rejectAccess(error) /* Remains unknown and queries this exact receiver on recovery. */ }

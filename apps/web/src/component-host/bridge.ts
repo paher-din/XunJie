@@ -49,13 +49,13 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
       try {
         await preceding
         assertWritable()
-    const action = await executionAction({ workspace, binding, instanceId, receiver: {
-      receiverId: execution.controller.receiver.identity.receiverId, location: 'local', kind: 'execution' },
-      operationId: input.operationId, parameters: input.parameters, expectedContentId: input.expectedContentId,
-      requestId: input.requestId })
-    await execution.controller.submit(action)
-    submitted.add(action.requestId)
-    return action
+        const action = await executionAction({ workspace, binding, instanceId, receiver: {
+          receiverId: execution.controller.receiver.identity.receiverId, location: 'local', kind: 'execution' },
+          operationId: input.operationId, parameters: input.parameters, expectedContentId: input.expectedContentId,
+          requestId: input.requestId })
+        await execution.controller.submit(action)
+        submitted.add(action.requestId)
+        return action
       } finally { release() }
     })())
   }

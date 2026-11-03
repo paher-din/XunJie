@@ -71,7 +71,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   const execution = useMemo(() => {
     // One page load is one executor generation; an older page cannot adopt a newer run.
     const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' },
-      scope, Date.now())
+      scope, Date.now(), () => access.current && !workspace.accessDenied())
     return new ExecutionController(scope, receiver, actions,
       createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace), undefined, () => access.current && !workspace.accessDenied())
   }, [scope, actions, activity, spaceKey, namespace])

@@ -11,10 +11,11 @@ import type { ExecutionRecord } from './ledger'
 export class BrowserExecutionReceiver {
   readonly store = new ExecutionStore()
   private acceptListeners = new Set<(requestId: string) => void>()
-  constructor(readonly identity: ActionReceiverIdentity, readonly scope: string, readonly generation: number) {}
+  constructor(readonly identity: ActionReceiverIdentity, readonly scope: string, readonly generation: number, private canAccept: () => boolean = () => true) {}
   /** The controller observes real acceptances, not a polled guess about them. */
   onAccept(listener: (requestId: string) => void) { this.acceptListeners.add(listener); return () => { this.acceptListeners.delete(listener) } }
   async accept(action: ExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
+    if (!this.canAccept()) throw Object.assign(new Error('forbidden'), { code: 'forbidden' })
     const receipt = actionReceiptSchema.parse({ requestId: action.requestId, inputDigest, receiver: action.receiver,
       state: 'accepted', receiptId: 'browser:' + action.requestId, detail: '已在本机可靠保存命令与待处理事实。' })
     const record = await this.store.accept(this.scope, action, inputDigest, executionAcceptanceSchema.parse({ receipt,

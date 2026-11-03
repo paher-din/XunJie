@@ -201,6 +201,7 @@ pre{margin:0;overflow:auto;max-height:220px;font-size:12px;background:var(--chip
     if (!editable() || requestId) return;
     const snapshot = structuredClone(state), id = crypto.randomUUID();
     requestId = id; renderControls(); clearError();
+    document.querySelector('#result').hidden = true;
     document.querySelector('#status').textContent = '正在保存当前表格…';
     void persist(snapshot);
     const fixedContentId = contentId;
