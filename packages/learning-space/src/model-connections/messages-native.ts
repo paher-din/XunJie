@@ -56,7 +56,7 @@ export function createMessagesAssembler() {
       if (part.type === 'text') { string(part.text); requireValue(part.citations == null || Array.isArray(part.citations) && part.citations.length === 0); }
       else if (part.type === 'thinking') {
         requireValue(typeof part.thinking === 'string' || part.thinking === null);
-        requireValue(typeof part.signature === 'string' || part.signature === null);
+        requireValue(typeof part.signature === 'string' || part.signature === null || part.signature === undefined);
       } else { requireValue(string(part.id).length && string(part.name).length); object(part.input); }
       blocks.set(index, { content: part, input: '', inputDelta: false, stopped: false }); return;
     }
@@ -73,7 +73,9 @@ export function createMessagesAssembler() {
     } else {
       const field = change.type === 'text_delta' ? 'text' : change.type === 'thinking_delta' ? 'thinking' : change.type === 'signature_delta' ? 'signature' : '';
       requireValue(field && block.content.type === (field === 'text' ? 'text' : 'thinking'));
-      block.content[field] = string(block.content[field]) + string(change[field]);
+      const initial = block.content[field];
+      requireValue(typeof initial === 'string' || block.content.type === 'thinking' && initial == null);
+      block.content[field] = (initial ?? '') + string(change[field]);
     }
   }
   return { add, get message() { return snapshot(); }, get terminal() { return terminal; }, get finalUsage() { return finalUsage; },

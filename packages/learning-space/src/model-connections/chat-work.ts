@@ -118,7 +118,8 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (forcedName && !input.prefix.tools.some(tool => tool.name === forcedName)) throw new StorageError('invalid');
     if (options?.applicationSchema) compileOutputSchema(options.applicationSchema);
     const snapshot = await owner.snapshot(identity, input.source);
-    if (snapshot.connection.protocol === 'messages' && options?.responseFormat?.kind === 'json-object') throw new StorageError('unavailable');
+    if (snapshot.connection.protocol === 'messages' && options?.responseFormat
+      && (options.responseFormat.kind === 'json-object' || snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe)) throw new StorageError('unavailable');
     if (forcedName && snapshot.connection.capabilityEvidence?.limitations.includes('thinking-forced-tool-unsupported') && !options?.capabilityProbe) throw new StorageError('unavailable');
     if (options?.responseFormat?.kind === 'json-schema' && options.responseFormat.strict
       && snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe) throw new StorageError('unavailable');
@@ -267,12 +268,14 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
       if (Array.isArray(value)) return value.reduce((count, item) => count + countImages(item), 0);
       if (value && typeof value === 'object') {
         const object = value as Record<string, unknown>;
-        if (object.type === 'image_url' || object.type === 'input_image' || object.type === 'image') return 1;
+        if (object.type === 'image_url' || object.type === 'input_image') return 1;
         return Object.values(object).reduce<number>((count, item) => count + countImages(item), 0);
       }
       return 0;
     }
-    const imageCount = countImages(payload);
+    const imageCount = anthropic ? messageItems.reduce((count, message) => count + (message.role === 'user' && Array.isArray(message.content)
+      ? message.content.reduce((total, part) => total + (part.type === 'image' ? 1 : part.type === 'tool_result' && Array.isArray(part.content)
+        ? part.content.filter(item => item.type === 'image').length : 0), 0) : 0), 0) : countImages(payload);
     if (imageCount > 8) throw new StorageError('invalid');
     if (Buffer.byteLength(JSON.stringify(payload)) > 1000000) throw new StorageError('invalid');
     return { ...segment.snapshot, payload, tools: segment.prefix.tools, ...(options?.applicationSchema ? { applicationSchema: options.applicationSchema } : {}), segment: { segmentId: input.segmentId, sequence: input.expectedSequence },

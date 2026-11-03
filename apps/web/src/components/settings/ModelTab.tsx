@@ -30,7 +30,7 @@ export function ModelTab({ connections, attempts, loading, error, onNew, onEdit,
         <div className="st-provider-test"><button type="button" className="outline st-xs" disabled={loading || !connection.enabled || !connection.hasCredential || connection.adapterState !== 'ready'
           || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))}
           onClick={() => onCheck(connection)}>连接检查</button>
-          {connection.adapterState !== 'ready' && <span>该协议适配器尚未接入</span>}</div>
+          {connection.adapterState !== 'ready' && <span>{connection.capabilities.text === 'unsupported' ? '该目标路线不支持所选协议' : '当前协议、地址或型号组合不可用，请核对配置'}</span>}</div>
       </ModelProviderCard>)}
       <button type="button" className="st-add-provider" onClick={onNew}>添加供应商</button>
     </Section>

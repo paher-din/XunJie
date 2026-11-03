@@ -1,0 +1,338 @@
+{
+  "measuredAt": "2026-11-03T04:05:21.581Z",
+  "platform": "Windows 11 x64",
+  "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+  "model": "deepseek-flash",
+  "sdk": "@anthropic-ai/sdk@1.1.0",
+  "adapter": "xunjie-messages-native-v1",
+  "generationAttempts": 11,
+  "automaticRetries": 0,
+  "limits": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000
+  },
+  "interpretation": {
+    "nativeImageToolsProcessRestartAndNextWire": "passed",
+    "formalPlainCheck": "passed",
+    "realClientCancel": "cancelled; upstream stop unknown",
+    "applicationSchema": "explicit JSON sample accepted; invalid JSON rejected",
+    "nativeFormat": "unsupported in measured plain mode: invalid schema accepted with HTTP 200 and outputs failed local validation",
+    "strictTools": "unsupported in measured plain mode: impossible schema accepted with HTTP 200, invalid tool output rejected locally",
+    "thinkingForcedTool": "HTTP 400; no automatic downgrade",
+    "initialSchemaProbe": "failed locally before the fifth network request: the initial oneOf fixture was not accepted by bounded local schema validation; four real attempts retained",
+    "missingUsage": "unknown/partial; no invented total_tokens; input_tokens excludes cache hits",
+    "confidentiality": "No credentials, native reasoning text or signature values in this report"
+  },
+  "commandCode": {
+    "measuredAt": "2026-11-03T03:29:26.962Z",
+    "endpoint": "https://api.commandcode.ai/provider/v1/models",
+    "httpStatus": 200,
+    "model": "deepseek/deepseek-v4.1-flash",
+    "found": true,
+    "supported_endpoints": [
+      "/chat/completions",
+      "/responses"
+    ],
+    "generationAttempts": 0
+  },
+  "probes": [
+    {
+      "measuredAt": "2026-11-03T03:43:39.319Z",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "model": "deepseek-flash",
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "adapter": "xunjie-messages-native-v1",
+      "apiVersion": "2023-06-01",
+      "maxGenerations": 2,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "cases": [
+        {
+          "name": "thinking-auto-image-tools-native-restart",
+          "first": {
+            "state": "completed",
+            "reason": "tool_use",
+            "usage": {
+              "state": "final",
+              "inputTokens": 585,
+              "outputTokens": 222,
+              "cachedTokens": 0
+            },
+            "resultReadable": true,
+            "toolCount": 2,
+            "physicalRequestEnded": true
+          },
+          "nativeContentSha256": "d651205c81b0e2e5cf60b053abee8339cb6e0a00a4655eb8e65284a391417fe9",
+          "signaturePresent": true,
+          "actualProcessRestart": true,
+          "sameResultRefAfterRestart": true,
+          "second": {
+            "state": "completed",
+            "reason": "end_turn",
+            "usage": {
+              "state": "final",
+              "inputTokens": 298,
+              "outputTokens": 73,
+              "cachedTokens": 768
+            },
+            "resultReadable": true,
+            "toolCount": 0,
+            "physicalRequestEnded": true
+          },
+          "nativeContentWireEqual": true,
+          "nativeToolImagePairing": true,
+          "nonceCorrect": true,
+          "originalImageCorrect": true,
+          "toolImageCorrect": true
+        }
+      ],
+      "status": "completed",
+      "generationAttempts": 2,
+      "httpStatuses": [
+        200,
+        200
+      ]
+    },
+    {
+      "measuredAt": "2026-11-03T03:44:53.741Z",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "model": "deepseek-flash",
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "adapter": "xunjie-messages-native-v1",
+      "apiVersion": "2023-06-01",
+      "maxGenerations": 6,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "cases": [
+        {
+          "name": "application-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 35,
+            "outputTokens": 5,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "native-format-valid",
+          "mode": "plain",
+          "httpStatus": 200,
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 35,
+            "outputTokens": 5,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "native-format-invalid-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 35,
+            "outputTokens": 58,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "strict-tool-valid",
+          "mode": "plain",
+          "httpStatus": 200,
+          "state": "completed",
+          "reason": "tool_use",
+          "usage": {
+            "state": "final",
+            "inputTokens": 301,
+            "outputTokens": 33,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 1,
+          "physicalRequestEnded": true
+        }
+      ],
+      "status": "failed",
+      "failure": "bounded-probe-failure",
+      "generationAttempts": 4,
+      "httpStatuses": [
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "measuredAt": "2026-11-03T03:45:06.032Z",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "model": "deepseek-flash",
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "adapter": "xunjie-messages-native-v1",
+      "apiVersion": "2023-06-01",
+      "maxGenerations": 1,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "cases": [
+        {
+          "name": "formal-plain-check",
+          "state": "completed",
+          "reason": "end_turn",
+          "usage": {
+            "state": "final",
+            "inputTokens": 14,
+            "outputTokens": 1,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ],
+      "status": "completed",
+      "generationAttempts": 1,
+      "httpStatuses": [
+        200
+      ]
+    },
+    {
+      "measuredAt": "2026-11-03T03:45:14.444Z",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "model": "deepseek-flash",
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "adapter": "xunjie-messages-native-v1",
+      "apiVersion": "2023-06-01",
+      "maxGenerations": 1,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "cases": [
+        {
+          "name": "client-cancel",
+          "httpStatus": 200,
+          "cancelRequested": true,
+          "upstreamStopped": "unknown",
+          "state": "cancelled",
+          "reason": "client-abort",
+          "usage": {
+            "state": "partial",
+            "inputTokens": 30,
+            "outputTokens": 0,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ],
+      "status": "completed",
+      "generationAttempts": 1,
+      "httpStatuses": [
+        200
+      ]
+    },
+    {
+      "measuredAt": "2026-11-03T03:51:46.085Z",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "model": "deepseek-flash",
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "adapter": "xunjie-messages-native-v1",
+      "apiVersion": "2023-06-01",
+      "maxGenerations": 3,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "cases": [
+        {
+          "name": "application-schema-explicit-json",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "7bfec3e9-63ae-4292-a3f2-c45df7a19f3f",
+          "state": "completed",
+          "reason": "end_turn",
+          "usage": {
+            "state": "final",
+            "inputTokens": 57,
+            "outputTokens": 5,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "strict-tool-impossible-schema",
+          "mode": "plain",
+          "httpStatus": 200,
+          "attemptId": "149ea90f-0b78-4ed0-85f0-a539e21c9f64",
+          "state": "failed",
+          "reason": "invalid-native-result",
+          "usage": {
+            "state": "final",
+            "inputTokens": 328,
+            "outputTokens": 33,
+            "cachedTokens": 0
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        },
+        {
+          "name": "thinking-forced-tool",
+          "mode": "thinking",
+          "httpStatus": 400,
+          "attemptId": "2ac41e05-686e-4c0c-a822-ca1110a123c1",
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultReadable": true,
+          "toolCount": 0,
+          "physicalRequestEnded": true
+        }
+      ],
+      "status": "completed",
+      "generationAttempts": 3,
+      "httpStatuses": [
+        200,
+        200,
+        400
+      ]
+    }
+  ]
+}

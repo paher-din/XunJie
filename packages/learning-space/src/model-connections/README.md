@@ -1,6 +1,6 @@
-# 模型选择、有限检查与原生 Chat 续接
+# 模型选择、有限检查与三协议原生续接
 
-本模块承接 #164/#165 的 `ModelGateway`，由产品组合注入 WP02 的真实授权与所属 storage。配置、加密凭据、选择/授权、固定图片、工具结果、原生段和调用事实属于独立 `model-connection` owner。浏览器只消费 [公开 wire](../../../contracts/src/model-connections.ts)，不引用 SDK、数据库或旧 Session/store。验收见 [#164](../../../../docs/student-agent-implementation/wp06-personal-models-acceptance.md) 和 [#165](../../../../docs/student-agent-implementation/wp06-chat-selection-acceptance.md)。
+本模块承接 #164–#167 的 `ModelGateway`，由产品组合注入 WP02 的真实授权与所属 storage。配置、加密凭据、选择/授权、固定图片、工具结果、原生段和调用事实属于独立 `model-connection` owner。浏览器只消费 [公开 wire](../../../contracts/src/model-connections.ts)，不引用 SDK、数据库或旧 Session/store。验收见 [#164](../../../../docs/student-agent-implementation/wp06-personal-models-acceptance.md)、[#165](../../../../docs/student-agent-implementation/wp06-chat-selection-acceptance.md)、[#166](../../../../docs/student-agent-implementation/wp06-responses-acceptance.md)和 [#167](../../../../docs/student-agent-implementation/wp06-messages-acceptance.md)。
 
 ## 公开接口与生命周期
 
@@ -78,3 +78,15 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 owner 保存完整 events/response/output，并在维护和续接时校验格式、已观察增量与终态的一致性。工具 added 暂缺 arguments 合法，只有完整 completed、原生回放验证与工具参数应用校验都通过才发布意图。凭据回显拒绝成功，敏感原生正文及可重建的碎片不保存。图片使用固定所属资源；工具图片直接进入 `function_call_output.output`，按 call_id 配对，不使用 item ID。新段沿用结清工具与可移植上下文规则。
 
 主测试 [model-responses.runtime.test.mjs](../../../../apps/server/tests/model-responses.runtime.test.mjs) 使用生产 Gateway、真实 PG/资源和 SDK；含重启、备份还原、取消和 Chat 双向换段。[实际路线及能力边界](../../../../docs/student-agent-implementation/wp06-responses-acceptance.md)区分 JSON mode、应用 schema、原生 schema 与 strictTools；未知能力不自动晋升。显式实测工具 [probe-model-responses.mjs](../../../../scripts/probe-model-responses.mjs) 从获准 Magpie 私有配置读取 DeepSeek key，支持 `--case native|schemas`；每次最多六次有限生成，输出不含原生推理或密钥。Command Code 本轮由负责人豁免真实端点，合成 summary/缺 arguments 方言回归保留。
+
+## Anthropic Messages（#167）
+
+同一 Gateway、授权、费用、调用状态机和原生段支持 Messages；正式设置、学校网页与安装客户端消费同一 wire。直接 `@anthropic-ai/sdk@1.1.0`，adapter `xunjie-messages-native-v1`，retries=0。DeepSeek base 为 `https://api.deepseek.com/anthropic`，SDK 路径 `/v1/messages`，固定兼容 header `2023-06-01`；不改成 Claude 模型。末尾已有 `/v1` 的 base 可保留配置，但派发前拒绝，须由用户修正。
+
+system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_tokens，因此不把其 SDK 必填值当作有效思考预算，仍有请求输出上限。直接 SDK 事件流有界聚合并保存完整 assistant content、thinking/signature、工具身份与事件。SDK MessageStream 会覆盖 signature 片段，本模块显式拼接并以持久事件重建校验；未知关键块、缺整体 message_stop、拒绝、截断和无效 JSON/schema 不可消费。新格式纳入所属维护验证、资源保留、备份还原及接管，不新增状态权威。
+
+工具结果按 tool_use_id 原顺序放在下一条用户消息前部，含原生 tool_result 图像；error/not-executed 同时使用明确配对文字和 is_error，不依赖 DeepSeek 忽略的标志。用户图片和工具图均从获准固定资源物化；原生段与跨协议边界不改变旧规则。最终 usage 按方言覆盖累计值，缺失保持 partial/unknown；不捏造 total_tokens，input_tokens 与缓存命中分列。取消后上游计算/费用未知。
+
+应用 schema 由显式 applicationSchema 验证。未验证/不支持的原生格式（含 strict:false）及 strict 工具请求在外发前拒绝；受控 capabilityProbe 才能验证反例，不会自动晋升。Messages 不编码 JSON object mode，不把 prompt 或输出 200 当能力。实际 DeepSeek plain output_config.format 与不可满足严格工具 schema 的反例均由本地校验拒绝；thinking+具名强制工具有 HTTP 400 反例。Command Code 目标型号 2026-11-03 目录不含 Messages，配置可读、检查拒绝，不借别的型号替代；目录变化后显式复验更新证据。
+
+主测试 [model-messages.runtime.test.mjs](../../../../apps/server/tests/model-messages.runtime.test.mjs)、[桌面 Chrome 用例](../../../../apps/web/e2e/messagesModelSettings.spec.ts)和[真实端点探针](../../../../scripts/probe-model-messages.mjs)均消费生产入口。探针按 `--case native|schemas|controls|check|cancel` 分组，显式提供获准私有配置与脱敏输出，单组最多 6 次，输出只含状态、哈希、保真比较和用量。完整行为、反例与验证限制见 [#167 交付](../../../../docs/student-agent-implementation/wp06-messages-acceptance.md)。

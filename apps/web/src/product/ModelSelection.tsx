@@ -100,9 +100,14 @@ export function ModelSelection({ controller, onCheck }: { controller: ModelSelec
         <p className="detail">文字：{capabilities[choice.connection.capabilities.text]} · 图片：{capabilities[choice.connection.capabilities.images]} · 工具：{capabilities[choice.connection.capabilities.tools]}</p>
         <details><summary>能力验证范围</summary>
           <p className="detail">JSON 模式：{capabilities[choice.connection.capabilities.jsonMode ?? 'unknown']} · 应用校验：{capabilities[choice.connection.capabilities.applicationSchema ?? 'unknown']} · 原生 strict：{capabilities[choice.connection.capabilities.strictSchema]} · 原生续接：{capabilities[choice.connection.capabilities.nativeReplay ?? 'unknown']}</p>
-          {choice.connection.capabilityEvidence && <p className="detail">{choice.connection.capabilityEvidence.observedAt} 的固定路线样本；工具选择为 auto。图片结果通过配对文本和相邻用户图片发送。</p>}
+          {choice.connection.capabilityEvidence && <p className="detail">{choice.connection.capabilityEvidence.observedAt} 的固定路线证据；{choice.connection.capabilityEvidence.testedToolChoice === 'auto' ? '工具选择为 auto。' : choice.connection.capabilityEvidence.testedToolChoice === 'named' ? '已测试具名工具声明；完整往返按能力项判断。' : '工具调用未测试。'}{({
+            'paired-text-adjacent-user-image': '图片结果通过配对文本和相邻用户图片发送。',
+            'native-function-output-image': '图片结果位于原生 function_call_output 中。',
+            'native-tool-result-image': '图片结果位于原生 tool_result 中。',
+            'not-applicable': '模型目录未声明此协议支持。',
+          } as const)[choice.connection.capabilityEvidence.toolImageStrategy]}</p>}
         </details>
-        {!usable && <p className="detail">{!choice.connection.enabled ? '连接已停用' : !choice.connection.hasCredential ? '尚未保存密钥' : '该协议适配器尚未接入'}</p>}
+        {!usable && <p className="detail">{!choice.connection.enabled ? '连接已停用' : !choice.connection.hasCredential ? '尚未保存密钥' : choice.connection.capabilities.text === 'unsupported' ? '该目标路线不支持所选协议' : '当前协议、地址或型号组合不可用'}</p>}
         {active && choice.kind === 'personal' && choice.grantId && <button type="button" className="outline st-xs" disabled={busy}
           onClick={() => void revoke(choice)}>撤销此空间授权</button>}
       </ModelProviderCard>
