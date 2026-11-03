@@ -227,8 +227,21 @@ test('prepared component import, fixed dependency resources and preparation repo
       memoryNote: '仅统计准备实际取得的依赖字节数；未测量浏览器进程内存。' };
     const reportRoute = `releases/${releaseId}/components/annotation/preparation-report`;
     const submission = { reportId: randomUUID(), requestId: randomUUID(), report };
+    const subject = [activity.identity.environmentId, activity.identity.spaceId, activity.identity.principalId];
+    for (const index of [0, 1, 2]) {
+      const stale = [...subject]; stale[index] = randomUUID();
+      const staleHeaders = { ...headers, 'x-xj-expected-subject': stale.join('.') };
+      assert.equal((await api(dependencyRoute, undefined, staleHeaders)).status, 403,
+        'a live login must not serve dependency bytes to a page bound to another environment/space/principal');
+      assert.equal((await api(`releases/${releaseId}/components/annotation/preparation-reports`, undefined, staleHeaders)).status, 403);
+      assert.equal((await api(reportRoute, { ...submission, requestId: randomUUID(), reportId: randomUUID() }, staleHeaders)).status, 403,
+        'a stale page must not register a new preparation report under the current login');
+    }
+    const boundHeaders = { ...headers, 'x-xj-expected-subject': subject.join('.') };
+    assert.equal((await api(dependencyRoute, undefined, boundHeaders)).status, 200);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-reports`, undefined, boundHeaders)).value, []);
     assert.equal((await api(reportRoute, submission, outsiderHeaders)).status, 403);
-    const submitted = await api(reportRoute, submission, headers);
+    const submitted = await api(reportRoute, submission, boundHeaders);
     assert.equal(submitted.status, 200, JSON.stringify(submitted.value));
     assert.deepEqual((await api(reportRoute, submission, headers)).value, submitted.value, 'a repeated report submission returns its receipt');
     const forged = { ...submission, requestId: randomUUID(), report: { ...report, definitionDigest: 'f'.repeat(64) } };

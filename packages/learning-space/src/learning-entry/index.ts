@@ -195,7 +195,9 @@ export function createLearningEntry(options: {
       } else if (route.startsWith('releases/') && (method === 'GET' || componentReport)) {
         if (!options.courses) throw new StorageError('forbidden');
         const identity = await current(request);
-        if (componentView && request.headers['x-xj-expected-subject'] !== [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const expectedSubject = request.headers['x-xj-expected-subject'];
+        if ((componentView || expectedSubject !== undefined)
+          && expectedSubject !== [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         const parts = route.slice('releases/'.length).split('/');
         if (parts.length === 1) result = await options.courses.readRelease(await current(request), parts[0]!);
         else if (parts.length === 3 && parts[1] === 'components') {
