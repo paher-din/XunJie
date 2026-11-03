@@ -93,7 +93,7 @@ function defaultRoot(): string {
 async function resourcesFile(path: string): Promise<RuntimeResources> {
   const absolute = resolve(path);
   const value = await jsonFile(absolute, 'resources（安装需要应用包中的 resources.json，可用 --resources 指定）');
-  for (const key of ['nodePath', 'webRoot', 'postgresBin', 'windowsPrerequisitePath'] as const) {
+  for (const key of ['nodePath', 'webRoot', 'postgresBin', 'windowsPrerequisitePath', 'windowsSessionHelper'] as const) {
     if ((key === 'postgresBin' || key === 'windowsPrerequisitePath') && value[key] === undefined) continue;
     if (typeof value[key] !== 'string' || !value[key].trim()) {
       throw new Error(`resources 缺少有效的 ${key}`);

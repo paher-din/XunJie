@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,8 +19,11 @@ const sha256Json = value => createHash('sha256').update(JSON.stringify(canonical
 /** A real native session against real PostgreSQL: start, input, replay, query, stop and restart recovery. */
 test('native sessions keep real child state, ordered inputs and a separate owner reference', { timeout: 300000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'xj-native173-'));
+  const windowsSessionHelper = process.env.XUNJIE_NATIVE_SESSION_HELPER;
+  const windowsSessionHelperSha256 = windowsSessionHelper
+    ? createHash('sha256').update(await readFile(windowsSessionHelper)).digest('hex') : undefined;
   const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
-    postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
+    postgresVersion: '18.6', windowsSessionHelper, windowsSessionHelperSha256, webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } });
   try {
     await runtime.install({ profile: 'local' });

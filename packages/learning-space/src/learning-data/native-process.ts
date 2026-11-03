@@ -1,8 +1,11 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { promisify } from 'node:util';
+
+const exec = promisify(execFile);
 
 /**
  * A native session is a real supervised child process. The adapter source is fixed product code
@@ -32,6 +35,7 @@ export interface NativeSessionExit {
   requested: boolean;
   expired: 'idle' | 'max' | 'output' | null;
   code: number | null;
+  confirmed: boolean;
 }
 export interface NativeSessionEvents {
   onExit?(exit: NativeSessionExit): void;
@@ -42,11 +46,12 @@ export interface NativeSessionStart {
   instanceId?: string;
   sessionRoot?: string;
   nodePath?: string;
+  windowsHelper?: string;
   events?: NativeSessionEvents;
 }
 
 class NativeSessionError extends Error {
-  constructor(readonly code: 'resource-unavailable' | 'budget-exceeded' | 'worker-terminated' | 'algorithm-error',
+  constructor(readonly code: 'resource-unavailable' | 'budget-exceeded' | 'worker-terminated' | 'algorithm-error' | 'termination-unconfirmed',
     message: string) {
     super(message);
     this.name = 'NativeSessionError';
@@ -77,6 +82,7 @@ export class SupervisedSession {
     timer: ReturnType<typeof setTimeout> } | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private maxTimer: ReturnType<typeof setTimeout> | undefined;
+  private helperStopTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly exited: Promise<boolean>;
   private readonly settleExit: (value: boolean) => void;
   private exit: NativeSessionExit | null = null;
@@ -87,7 +93,7 @@ export class SupervisedSession {
   private disposed = false;
 
   private constructor(private readonly start: NativeSessionStart, readonly instanceId: string,
-    readonly sessionDirectoryInput: string, child: ChildProcess) {
+    readonly sessionDirectoryInput: string, child: ChildProcess, private readonly windowsProfile?: string) {
     this.child = child;
     this.sessionDirectory = sessionDirectoryInput;
     let settle!: (value: boolean) => void;
@@ -102,29 +108,54 @@ export class SupervisedSession {
     await mkdir(root, { recursive: true, mode: 0o700 });
     const sessionDirectory = await mkdtemp(join(root, 'session-'));
     const nodePath = options.nodePath ?? process.execPath;
-    const child = spawn(nodePath, [`--max-old-space-size=${options.limits.memoryMiB}`, '--input-type=module',
-      '-e', options.adapter.source], {
-      cwd: sessionDirectory,
-      // No inherited service credentials, database password or development loader flags.
-      env: {
-        ...(process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
-          windir: process.env.windir ?? process.env.SystemRoot ?? 'C:\\Windows' } : {}),
-        TEMP: sessionDirectory, TMP: sessionDirectory, TMPDIR: sessionDirectory,
-        XJ_SESSION_INSTANCE: instanceId, NO_COLOR: '1', TZ: 'UTC',
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-      detached: process.platform !== 'win32',
-    });
-    const session = new SupervisedSession(options, instanceId, sessionDirectory, child);
+    const helper = options.windowsHelper;
+    const profile = helper ? 'XunJie.NativeSession.' + randomUUID() : undefined;
+    const systemRoot = process.env.SystemRoot ?? 'C:\\Windows';
+    const nodeArgs = [`--max-old-space-size=${options.limits.memoryMiB}`, '--input-type=module', '-e', options.adapter.source];
+    const env = {
+      ...(process.platform === 'win32' ? { SystemRoot: systemRoot, windir: systemRoot } : {}),
+      TEMP: sessionDirectory, TMP: sessionDirectory, TMPDIR: sessionDirectory,
+      XJ_SESSION_INSTANCE: instanceId, NO_COLOR: '1', TZ: 'UTC',
+    };
+    let child: ChildProcess;
+    try {
+      if (helper && profile) {
+        const helperEnv = { ...env, USERPROFILE: process.env.USERPROFILE, LOCALAPPDATA: process.env.LOCALAPPDATA };
+        const { stdout } = await exec(helper, ['--prepare', profile], { env: helperEnv, windowsHide: true, timeout: 10000 });
+        const sid = stdout.trim();
+        if (!/^S-1-15-2-(?:\d+-)*\d+$/.test(sid)) throw new Error('Invalid AppContainer identity');
+        const executable = join(sessionDirectory, 'node.exe');
+        await copyFile(nodePath, executable);
+        await exec(join(systemRoot, 'System32', 'icacls.exe'),
+          [sessionDirectory, '/grant', `*${sid}:(OI)(CI)M`, '/T'], { windowsHide: true, timeout: 10000 });
+        const command = [executable, ...nodeArgs].map(argument => '"' +
+          argument.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/g, '$1$1') + '"').join(' ');
+        child = spawn(helper, [profile, executable, sessionDirectory, command, SupervisedSession.stopEvent(profile)],
+          { cwd: sessionDirectory, env: helperEnv, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+      } else {
+        child = spawn(nodePath, nodeArgs, { cwd: sessionDirectory, env, stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true, detached: process.platform !== 'win32' });
+      }
+    } catch (error) {
+      if (helper && profile) await exec(helper, ['--release', profile], { windowsHide: true, timeout: 10000 }).catch(() => {});
+      await rm(sessionDirectory, { recursive: true, force: true }).catch(() => {});
+      if (helper) throw new NativeSessionError('resource-unavailable', 'Windows 会话隔离准备失败，请检查产品资源与当前用户权限后重试。');
+      throw error;
+    }
+    const session = new SupervisedSession(options, instanceId, sessionDirectory, child, profile);
     try {
       await session.waitReady();
       return session;
     } catch (error) {
       await session.dispose();
+      if (profile && !session.exitFact?.confirmed) {
+        throw new NativeSessionError('termination-unconfirmed', 'Windows 会话未通过自检，隔离进程的回收结果待核实。');
+      }
       throw error;
     }
   }
+
+  private static stopEvent(profile: string): string { return 'Local\\' + profile; }
 
   /** The observation the adapter itself reported before any input was admitted. */
   get initialObservation(): unknown { return this.initial }
@@ -171,13 +202,19 @@ export class SupervisedSession {
 
   private finish(code: number | null, error: Error | null) {
     if (this.exit) return;
-    this.exit = { requested: this.requestedStop, expired: this.expired, code };
-    clearTimeout(this.idleTimer); clearTimeout(this.maxTimer);
+    const confirmed = !this.windowsProfile || code === 0 || code === 1;
+    this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed };
+    clearTimeout(this.idleTimer); clearTimeout(this.maxTimer); clearTimeout(this.helperStopTimer);
     const pending = this.pending;
     this.pending = null;
     if (pending) { clearTimeout(pending.timer); pending.reject(error ?? new NativeSessionError('worker-terminated', '本机会话进程已结束。')) }
-    this.settleExit(true);
-    void rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
+    this.settleExit(confirmed);
+    if (confirmed) {
+      void rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
+      if (this.start.windowsHelper && this.windowsProfile) {
+        void exec(this.start.windowsHelper, ['--release', this.windowsProfile], { windowsHide: true, timeout: 10000 }).catch(() => {});
+      }
+    }
     this.start.events?.onExit?.(this.exit);
   }
 
@@ -191,7 +228,14 @@ export class SupervisedSession {
   private killTree() {
     const pid = this.child.pid;
     if (!pid || this.child.exitCode !== null) return;
-    if (process.platform === 'win32') {
+    if (this.start.windowsHelper && this.windowsProfile) {
+      if (this.helperStopTimer) return;
+      // Losing the launcher still closes its Job handle. Without its explicit
+      // empty-Job result, the durable record must remain unconfirmed.
+      this.helperStopTimer = setTimeout(() => { this.child.kill(); }, 5000);
+      void exec(this.start.windowsHelper, ['--stop', SupervisedSession.stopEvent(this.windowsProfile)],
+        { windowsHide: true, timeout: 2000 }).catch(() => { this.child.kill(); });
+    } else if (process.platform === 'win32') {
       const killer = spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
       killer.once('error', () => { try { this.child.kill('SIGKILL') } catch { /* The exit handler records it. */ } });
     } else {
@@ -273,7 +317,7 @@ export class SupervisedSession {
 
   /** A confirmed stop is the OS process really exiting, never just the accepted request. */
   async stop(timeoutMs = 3000): Promise<boolean> {
-    if (this.exit) return true;
+    if (this.exit) return this.exit.confirmed;
     this.requestedStop = true;
     try { this.child.stdin?.write(JSON.stringify({ type: 'stop' }) + '\n') } catch { /* Kill follows. */ }
     const clean = await Promise.race([this.exited, delay(timeoutMs).then(() => false)]);
@@ -287,14 +331,15 @@ export class SupervisedSession {
     this.disposed = true;
     if (!this.exit) { this.requestedStop = true; this.killTree() }
     await Promise.race([this.exited, delay(2000)]);
-    await rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
+    if (this.exit?.confirmed) await rm(this.sessionDirectory, { recursive: true, force: true }).catch(() => {});
   }
 
   /** Last-resort cleanup from a synchronous process-exit hook; no learning fact depends on it. */
   terminateNow(): void {
     if (this.exit) return;
     this.requestedStop = true;
-    this.killTree();
+    if (this.windowsProfile) this.child.kill();
+    else this.killTree();
   }
 }
 

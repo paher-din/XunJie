@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { randomUUID } from 'node:crypto'
-import { mkdir, mkdtemp, rm, writeFile, cp } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { mkdir, mkdtemp, readFile, rm, writeFile, cp } from 'node:fs/promises'
 import { tmpdir, release } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,10 +10,18 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime'
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
-test.skip(!postgresBin, 'Requires the native PostgreSQL distribution')
+const product = process.env.XUNJIE_NATIVE_SESSION_PRODUCT
+const helper = process.env.XUNJIE_NATIVE_SESSION_HELPER
+const exec = promisify(execFile)
+const productCommand = async (command: string) => {
+  const { stdout } = await exec(join(product!, 'resources/node/node.exe'),
+    [join(product!, 'app/cli.js'), command, '--root', root, '--json'], { timeout: 120_000 })
+  return JSON.parse(stdout)
+}
+test.skip(!postgresBin && !product, 'Requires the native PostgreSQL distribution')
 test.use({ trace: 'off' })
 
-const output = fileURLToPath(new URL('../../../.verification/wp03-173', import.meta.url))
+const output = fileURLToPath(new URL('../../../.verification/' + (product ? 'wp03-173-windows-product' : helper ? 'wp03-173-windows-isolation' : 'wp03-173'), import.meta.url))
 const evidence = fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence', import.meta.url))
 let root = '', endpoint = '', activityId = '', spaceKey = '', cookie = { name: '', value: '' }
 let browserVersion = '', headless = true
@@ -22,11 +32,18 @@ test.beforeAll(async ({ browser }, info) => {
   browserVersion = browser.version(); headless = info.project.use.headless !== false
   await mkdir(output, { recursive: true })
   root = await mkdtemp(join(tmpdir(), 'xj-native-ui-'))
-  runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin: postgresBin!,
-    postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
-    windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
-  await runtime.install({ profile: 'local' })
-  const started = await runtime.start(); endpoint = started.endpoint!
+  if (product) {
+    test.setTimeout(150_000)
+    await productCommand('install')
+    endpoint = (await productCommand('start')).endpoint
+  } else {
+    const helperSha256 = helper ? createHash('sha256').update(await readFile(helper)).digest('hex') : undefined
+    runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin: postgresBin!,
+      postgresVersion: '18.6', windowsSessionHelper: helper, windowsSessionHelperSha256: helperSha256, webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
+      windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
+    await runtime.install({ profile: 'local' })
+    const started = await runtime.start(); endpoint = started.endpoint!
+  }
   const admin = { authorization: `Bearer ${await resolveCredential(root, 'control')}` }
   const api = async (route: string, body?: unknown, headers: Record<string, string> = {}) => {
     const response = await fetch(new URL('/api/learning/' + route, endpoint), { method: body === undefined ? 'GET' : 'POST',
@@ -62,15 +79,18 @@ test.beforeAll(async ({ browser }, info) => {
 })
 test.afterEach(async ({}, info) => { cases.push({ name: info.title, status: info.status, durationMs: info.duration }) })
 test.afterAll(async () => {
-  await runtime?.stop().catch(() => {})
+  if (product && root) await productCommand('stop').catch(() => {})
+  else await runtime?.stop().catch(() => {})
   await writeFile(join(output, 'browser-report.json'), JSON.stringify({ measuredAt: new Date().toISOString(),
     platform: process.platform, arch: process.arch, osRelease: release(), node: process.version,
-    browser: 'installed Chrome', browserVersion, headless, backend: 'product runtime, native PostgreSQL, bundled native adapter',
+    browser: 'installed Chrome', browserVersion, headless, backend: product ? 'Windows product package, native PostgreSQL, AppContainer and Job Object'
+      : helper ? 'product runtime, native PostgreSQL, AppContainer and Job Object'
+        : 'product runtime, native PostgreSQL, bundled native adapter',
     cases }, null, 2))
-  for (const file of ['native-session-light.png', 'native-session-dark.png', 'native-session-narrow.png']) {
+  if (!product && !helper) for (const file of ['native-session-light.png', 'native-session-dark.png', 'native-session-narrow.png']) {
     await cp(join(output, file), join(evidence, 'wp03-173-' + file)).catch(() => {})
   }
-  await cp(join(output, 'browser-report.json'), join(evidence, 'wp03-173-browser-report.json')).catch(() => {})
+  if (!product && !helper) await cp(join(output, 'browser-report.json'), join(evidence, 'wp03-173-browser-report.json')).catch(() => {})
   if (root) await rm(root, { recursive: true, force: true }).catch(() => {})
 })
 

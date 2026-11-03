@@ -35,6 +35,11 @@ second_sid = grant_fixture(sibling, {**os.environ, "XJ_PROBE_SECOND_PROFILE": "1
 if first_sid == second_sid:
     raise RuntimeError("Expected distinct AppContainer identities")
 arguments = sys.argv[2:]
+helper = None
+if "--helper" in arguments:
+    index = arguments.index("--helper")
+    helper = Path(arguments[index + 1]).resolve()
+    del arguments[index:index + 2]
 node_source = None
 if "--node" in arguments:
     index = arguments.index("--node")
@@ -104,13 +109,17 @@ try {
     command = subprocess.list2cmdline([str(node), "--max-old-space-size=32", "--input-type=module", "-e", source])
     instance_id = "appcontainer-probe"
     system_root = os.environ["SystemRoot"]
+    stop_event = "Local\\XunJie.NativeSession.Probe." + uuid.uuid4().hex
+    launch = ([helper, "XunJie.NativeSession.Probe", node, allowed, command, stop_event]
+              if helper else [launcher, node, "adapter", command, allowed])
+    environment = {"SystemRoot": system_root, "USERPROFILE": os.environ["USERPROFILE"],
+                   "LOCALAPPDATA": os.environ["LOCALAPPDATA"], "TEMP": str(allowed),
+                   "TMP": str(allowed), "XJ_SESSION_INSTANCE": instance_id}
     output = subprocess.run(
-        [launcher, node, "adapter", command, allowed], timeout=10, check=True,
+        launch, timeout=10, check=True,
         input="".join(json.dumps(message) + "\n" for message in messages),
         encoding="utf-8", stdout=subprocess.PIPE,
-        env={"SystemRoot": system_root, "USERPROFILE": os.environ["USERPROFILE"],
-             "LOCALAPPDATA": os.environ["LOCALAPPDATA"], "TEMP": str(allowed), "TMP": str(allowed),
-             "XJ_SESSION_INSTANCE": instance_id},
+        env=environment,
     ).stdout
     replies = [json.loads(line) for line in output.splitlines()]
     if (
@@ -120,3 +129,22 @@ try {
     ):
         raise RuntimeError(f"Unexpected fixed adapter replies: {replies}")
     print("Fixed adapter through AppContainer Job pipes: ready, 1, 3, 1, stopped")
+
+
+    if helper:
+        with subprocess.Popen(
+            launch, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+            encoding="utf-8", env=environment,
+        ) as running:
+            try:
+                running.stdin.write(json.dumps({"type": "ready"}) + "\n")
+                running.stdin.flush()
+                if json.loads(running.stdout.readline())["type"] != "ready":
+                    raise RuntimeError("Helper did not start the fixed adapter")
+                subprocess.run([helper, "--stop", stop_event], check=True, timeout=5)
+                if running.wait(timeout=5) != 0:
+                    raise RuntimeError("Helper could not confirm an empty job")
+            finally:
+                if running.poll() is None:
+                    running.kill()
+        print("Product helper confirmed empty Job after forced stop")

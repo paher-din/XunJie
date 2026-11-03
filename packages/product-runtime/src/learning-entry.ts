@@ -15,6 +15,7 @@ import type { RuntimeResources } from './postgres.js';
 import { RecoveryError } from './recovery.js';
 import type { RecoveryOwner } from './recovery-types.js';
 import { createSchoolClient } from './school-client.js';
+import { verifyWindowsSessionHelper } from './prerequisites.js';
 
 /** Normal product composition; no test hosts, account fixtures or legacy SQLite dependencies. */
 export async function createProductLearningApplication(context: {
@@ -70,7 +71,9 @@ export async function createProductLearningApplication(context: {
     const courses = createCourses(space.storage, spaces);
     // A personal install supervises real local sessions; a school host does not run a student's
     // local native experiment, so the capability stays unavailable until its own ticket lands.
+    const windowsHelper = environment.profile === 'local' ? await verifyWindowsSessionHelper(configuration.resources) : undefined;
     const native = environment.profile === 'local' ? { nodePath: process.execPath,
+      ...(windowsHelper ? { windowsHelper } : {}),
       sessionRoot: join(root, 'native-sessions'), nodeId: 'local-native' } : undefined;
     const learning = createLearningData(data.storage, spaces, courses, actions, native);
     for (const [module, validate] of [[space, async () => { await spaces.validate(); await courses.validate(); }],
