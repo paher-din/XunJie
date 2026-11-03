@@ -1,0 +1,25 @@
+{
+  "platform": "darwin",
+  "os": "27.2.0",
+  "browser": "installed Chrome",
+  "browserVersion": "156.0.8078.80",
+  "headless": false,
+  "measuredAt": "2026-11-03T06:44:33.269Z",
+  "cases": [
+    {
+      "title": "Messages formal draft check save reopen and cancel use the production owner",
+      "status": "passed",
+      "duration": 3780
+    },
+    {
+      "title": "Messages school identity and device selection stay isolated when returning to personal space",
+      "status": "passed",
+      "duration": 2507
+    },
+    {
+      "title": "unsupported Command Code Messages remains configurable but cannot send a model check",
+      "status": "passed",
+      "duration": 674
+    }
+  ]
+}

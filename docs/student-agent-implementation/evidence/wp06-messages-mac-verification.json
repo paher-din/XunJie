@@ -1,0 +1,295 @@
+{
+  "measuredAt": "2026-11-03T06:49:19.827759+00:00",
+  "platform": "macOS 27.2 (26B123)",
+  "architecture": "arm64",
+  "chip": "Apple M5",
+  "memoryGiB": 16,
+  "chrome": {
+    "normalWeb": {
+      "result": "11/11 passed",
+      "headless": false,
+      "browserVersion": "156.0.8078.80",
+      "specs": {
+        "messagesModelSettings": "3/3",
+        "modelSelection": "4/4",
+        "personalModelSettings": "4/4"
+      }
+    },
+    "fullPackage": {
+      "result": "11/11 passed",
+      "headless": false,
+      "browserVersion": "156.0.8078.80",
+      "specs": {
+        "messagesModelSettings": "3/3",
+        "modelSelection": "4/4",
+        "personalModelSettings": "4/4"
+      }
+    }
+  },
+  "node": "24.21.0",
+  "npm": "11.19.0",
+  "postgres": "18.6 (distribution 18.6.1)",
+  "sdk": "@anthropic-ai/sdk@1.1.0",
+  "adapter": "xunjie-messages-native-v1",
+  "ownerSchemaVersion": 9,
+  "branch": "wp06",
+  "commit": "cf076b5",
+  "build": {
+    "status": "passed"
+  },
+  "typecheck": {
+    "status": "passed"
+  },
+  "browserContracts": {
+    "passedExports": 11,
+    "failed": 0
+  },
+  "trackedDocumentLinks": {
+    "files": 178,
+    "targets": 1444,
+    "failures": 0,
+    "scope": "Tracked maintained Markdown only; excludes docs/archive and unrelated untracked documents",
+    "verifiedAfterEvidenceLinks": true
+  },
+  "fullSuite": {
+    "firstRun": {
+      "status": "failed",
+      "fileTasksPassed": 146,
+      "fileTasksTotal": 147,
+      "stages": {
+        "build:test": "1/1",
+        "unit": "23/23",
+        "server": "78/78",
+        "tools": "44/45"
+      },
+      "reason": "tools/xj-dev/tests/env-removal.test.mjs failed because the terminal C locale made ps decode the Chinese worktree path as mojibake; retained as an environment failure, not a product assertion failure."
+    },
+    "cleanRerun": {
+      "status": "passed",
+      "exitCode": 0,
+      "fileTasksPassed": 147,
+      "fileTasksTotal": 147,
+      "durationSeconds": 367,
+      "environment": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8",
+      "stages": {
+        "build:test": "1/1",
+        "unit": "23/23",
+        "server": "78/78",
+        "tools": "45/45"
+      }
+    }
+  },
+  "package": {
+    "profile": "full",
+    "platform": "darwin-arm64",
+    "files": 4088,
+    "bytesApprox": 430964736,
+    "createdAt": "2026-11-03T14:31:50+08:00",
+    "cliSha256": "24b23e2b26b5f64077dcf29af4da37a1ce7d820e73c6a8caf32586b22c45895d",
+    "signing": "unsigned candidate; no signing/notarization claimed",
+    "bundledNode": "24.21.0",
+    "bundledPostgres": "18.6",
+    "startVerification": "ready; four owners; PostgreSQL 18.6 ready; package Node/PG and repository-external root"
+  },
+  "nativeGroups": [
+    {
+      "description": "Messages native runtime group: exact path/header, formal check, thinking/signature, interleaved tools, UTF-8 fragments, empty/null signatures, images, restart and next wire, terminal/failure/cancel/usage/upstream facts, cross-protocol segments, backup/restore/takeover",
+      "total": 29,
+      "passed": 29,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "log": "native-messages.log"
+    },
+    {
+      "description": "Model regression: gateway, claim concurrency, selection, chat, responses, client",
+      "total": 76,
+      "passed": 76,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "log": "native-regression.log"
+    }
+  ],
+  "ownerUpgrade": {
+    "status": "passed",
+    "from": "storage/1;owner/8",
+    "to": "storage/1;owner/9",
+    "silentStart": {
+      "attempted": true,
+      "ok": false,
+      "failure": "{\"message\":\"运行库操作失败（start）：Runtime exited during startup; inspect logs/runtime.log.\"}\n",
+      "runtimeLog": "Storage operation failed: incompatible"
+    },
+    "retained": {
+      "connection": {
+        "connectionId": "244d6671-8687-4541-9802-8151627099e4",
+        "name": "Mac #167 owner8 旧连接",
+        "protocol": "chat-completions",
+        "baseUrl": "http://127.0.0.1:57721/v1",
+        "path": "/chat/completions",
+        "modelId": "fixture-old",
+        "dialect": "standard",
+        "parameterMode": "plain",
+        "enabled": true,
+        "version": 1,
+        "routeId": "f503c232-c304-4c2c-bdf8-81cded566e93",
+        "hasCredential": true,
+        "adapterState": "ready",
+        "capabilities": {
+          "text": "unknown",
+          "images": "unknown",
+          "tools": "unknown",
+          "strictSchema": "unknown",
+          "nativeReplay": "unknown",
+          "jsonMode": "unknown",
+          "applicationSchema": "verified"
+        }
+      },
+      "completed": {
+        "state": "completed",
+        "resultRef": "259aa67d-47b3-4564-8978-63e212b94de9",
+        "text": "旧检查保留",
+        "usage": {
+          "state": "final",
+          "inputTokens": 9,
+          "outputTokens": 2,
+          "totalTokens": 11,
+          "cachedTokens": 0
+        }
+      },
+      "cancelled": {
+        "state": "cancelled",
+        "reason": "client-abort",
+        "usage": {
+          "state": "unknown"
+        },
+        "cancelRequested": true
+      },
+      "upstreamRequests": 2
+    },
+    "newGrantAndSelection": {
+      "status": 200,
+      "grantId": "96fa4971-02ff-4db7-bcfa-4812525cab44",
+      "connectionId": "244d6671-8687-4541-9802-8151627099e4"
+    },
+    "retiredSource": {
+      "startRejected": true,
+      "failure": "{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+    }
+  },
+  "errorRecovery": {
+    "status": "passed",
+    "original": {
+      "attemptId": "f467b39b-2e25-4bef-9e78-680fa2620a1c",
+      "state": "failed",
+      "reason": "rate-limited",
+      "usage": {
+        "state": "unknown"
+      },
+      "upstream": {
+        "httpStatus": 429,
+        "requestId": "req-mac-167-owner9",
+        "retryAfterSeconds": 7
+      },
+      "resultReadable": true,
+      "requests": 1
+    },
+    "retained": {
+      "state": "failed",
+      "reason": "rate-limited",
+      "usage": {
+        "state": "unknown"
+      },
+      "upstream": {
+        "httpStatus": 429,
+        "requestId": "req-mac-167-owner9",
+        "retryAfterSeconds": 7
+      },
+      "resultReadable": true
+    },
+    "from": "storage/1;owner/9",
+    "retiredSource": {
+      "startRejected": true,
+      "failure": "{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+    }
+  },
+  "physicalIme": {
+    "status": "passed",
+    "protocol": "messages",
+    "dialect": "deepseek",
+    "steps": [
+      {
+        "id": "physical-ime-compose-and-commit",
+        "passed": true,
+        "composingLength": 17,
+        "committed": "zhongwen中文"
+      },
+      {
+        "id": "physical-ime-tab-escape-focus",
+        "passed": true,
+        "focused": "添加供应商"
+      },
+      {
+        "id": "physical-ime-meta-edit",
+        "passed": true,
+        "before": "编辑",
+        "after": "编辑编辑"
+      },
+      {
+        "id": "physical-ime-multiline-goal",
+        "passed": true,
+        "value": "你好\n世界"
+      },
+      {
+        "id": "physical-ime-space-switch-keeps-input",
+        "passed": true,
+        "before": "中文",
+        "after": "中文",
+        "viewClean": true,
+        "trigger": "授权并选用#1",
+        "cards": 2
+      }
+    ]
+  },
+  "uiBeforeAfter": {
+    "status": "passed",
+    "before": {
+      "protocolOptions": [
+        "chat-completions",
+        "responses",
+        "messages"
+      ],
+      "protocolLabels": [
+        "Chat Completions",
+        "Responses",
+        "Messages（适配器待接入）"
+      ],
+      "messagesPending": true,
+      "checkDisabledWhenMessages": true
+    },
+    "after": {
+      "protocolOptions": [
+        "chat-completions",
+        "responses",
+        "messages"
+      ],
+      "protocolLabels": [
+        "Chat Completions",
+        "Responses",
+        "Anthropic Messages"
+      ],
+      "messagesAvailable": true,
+      "protocol": "messages",
+      "dialect": "deepseek",
+      "checkText": "检查已完成 · 已记录用量"
+    }
+  },
+  "limitations": [
+    "Complete independent cross-machine deployment/recovery (#168) was not executed; same-machine two-process checks are not cross-host acceptance.",
+    "Teaching effect was not evaluated; connection and synthetic tool checks do not prove full Agent or teaching outcomes.",
+    "The first full-suite run under C locale failed one xj-dev fixture due to ps mojibake; the UTF-8 rerun passed 147/147 and both results are retained.",
+    "Windows physical Chinese IME candidate window was not re-run in this Mac round; Mac IME evidence is physical, CDP composition was not used as a substitute.",
+    "Command Code Messages remains unsupported by its dated support catalogue; no request was sent to another model to force acceptance."
+  ]
+}
