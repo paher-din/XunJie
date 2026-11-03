@@ -2,7 +2,7 @@
 
 实施日期：2026-11-03 至 2026-11-04（Asia/Shanghai）。分支 `codex/issue-174-session-recovery`，基线 `upstream/wp03@e5b3743`。依据 [#174](https://github.com/paher-din/XunJie/issues/174)、[实施方案](specs/wp03-session-recovery.md)和 [WP03 母规范](specs/wp03-course-components-and-execution.md)。负责人已授权先提交当前实现与审查修复，再完成验证并推送上游 `wp03`；不创建 PR、不合 main。Mac 独立交接至 [#187](https://github.com/paher-din/XunJie/issues/187)，保持无人指派，不据此关闭双平台验收。
 
-审查修复：新版组件字号/行高改为规范内的 17px/1.5；检查点改经 `executions/<activity>/checkpoints[/<cursor>]` 独立分页读取，每页至多 64 项，不依赖最近 16 次会话或单个会话的 64 项投影。读取不完整与确实不存在分别显示。对应跨页、异常游标、主体边界及真实 Chrome 历史恢复回归已补充，最终验证正在进行，后续追加结果。
+审查修复：新版组件字号/行高改为规范内的 17px/1.5；检查点改经 `executions/<activity>/checkpoints[/<cursor>]` 独立分页读取，每页至多 64 项，不依赖最近 16 次会话或单个会话的 64 项投影。读取不完整与确实不存在分别显示。实现与修复已提交为 `38b55f1` 并推送上游 `wp03`，Mac 验收仍独立暂缓。
 
 ## 实际行为
 
@@ -34,6 +34,8 @@ v2 声明跨视图继续、关页继续、关闭活动停止、重连先查询�
 
 ## 验证与限制
 
+审查修复后的[验证汇总](evidence/wp03-174-remediation-verification.json)、[历史检查点回归](evidence/wp03-174-history-regression.json)、[Chrome 实测报告](evidence/wp03-174-remediation-browser-report.json)：构建、全工程类型、12 项公共导出检查通过；前端回归 69/69；学校转发边界 2/2；真实 PostgreSQL 控制/恢复回归 1/1；Chrome 控制/恢复/维护 9/9。新增历史回归在真实 Chrome 验证第 17 次会话后仍能选择旧检查点并从界面恢复，另保存 65 项检查点，使单会话投影只剩 64 项，再经两页读回全部 66 项历史检查点；非法游标和跨主体读取拒绝。实际 iframe 验证字号 17px、代码行高 19.5px（13px × 1.5）。
+
 工程与浏览器结果以本目录的脱敏证据和本节最终记录为准。测试使用 Windows 11 x64、Node 24.21.0、原生 PostgreSQL 18.6 系列和安装版桌面 Chrome；公开契约浏览器检查覆盖 12 个导出。
 
 [首轮实现验证汇总与工作区文件摘要](evidence/wp03-174-verification.json)、[首轮正式 Chrome 实测报告](evidence/wp03-174-browser-report.json)。首轮运行目标构建、全工程类型检查通过；7 个前端文件 66/66；owner/来源/检查点/原生进程/PostgreSQL 回归整批 44/44；学校转发边界 2/2；原草稿/动作 Chrome 21/21；新增控制/恢复/维护 Chrome 9/9。首轮 Chrome 探针整体约 34 秒（包含准备与清理），创建 4 个实际执行器；宿主 Node RSS 约 145 MiB，不包含 Chrome、PostgreSQL 或子进程峰值，不据此推断课程容量。审查后新增修复另行验证，不将上述旧文件摘要视为新候选摘要。
@@ -58,3 +60,7 @@ v2 声明跨视图继续、关页继续、关闭活动停止、重连先查询�
 ![v2 会话控制与恢复](evidence/wp03-174-after-light.png)
 ![深色模式](evidence/wp03-174-after-dark.png)
 ![窄桌面与键盘焦点](evidence/wp03-174-after-narrow.png)
+
+审查修复后，最近会话窗口已不含原运行，但独立检查点目录仍提供可操作的恢复选择：
+
+![历史检查点仍可恢复](evidence/wp03-174-history-fixed.png)
