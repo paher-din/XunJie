@@ -1,3 +1,4 @@
+import { courseComponentReferenceVerificationSchema } from '@xunjie/contracts/courses';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -588,7 +589,12 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     if (!binding) return fail('missing');
     return components.readReports(binding.definition.manifest.componentId, binding.definition.manifest.version);
   }
-  return { components, readComponent, readComponentAlgorithm, readComponentDependency, submitComponentReport, readComponentReports,
+  async function verifyComponentReference(identity: SpaceIdentity, value: unknown) {
+    const input = courseComponentReferenceVerificationSchema.parse(value);
+    const bundle = await readComponent(identity, input.releaseId, input.key);
+    if (bundle.definition.digest !== input.definitionDigest) return fail('identity-conflict');
+  }
+  return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency, submitComponentReport, readComponentReports,
     registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

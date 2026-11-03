@@ -126,10 +126,10 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
     setQuestionState(text)
     revision.current++
   }
-  const locate = (reference: WorkspaceReference) => {
+  const locate = async (reference: WorkspaceReference) => {
     if (reference.workspaceKey !== workspaceKey) { setNotice('引用属于其他工作区，当前无法定位。'); return }
     try {
-      const result = sources.current.get(reference.sourceId)?.locate(reference)
+      const result = await sources.current.get(reference.sourceId)?.locate(reference)
       setNotice(result?.ok ? '已定位引用来源。' : result?.reason ?? '来源当前不可用；引用副本仍然保留。')
     } catch { setNotice('来源当前不可用；引用副本仍然保留。') }
   }

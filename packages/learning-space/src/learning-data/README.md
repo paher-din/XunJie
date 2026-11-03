@@ -15,3 +15,7 @@
 `learning.intents` 为 [#153 固定动作](../../../../docs/student-agent-implementation/wp02-action-intents.md)提供准备、查询、取消、派发和注册接收能力。固定内容独立保留，不推进可变 head；当前主体、资格和目标每次核验。派发先记录，未知先查询原接收方，同身份幂等，取消先落地的未派发动作不再发送；工作区内容确认不代替业务回执。
 
 `learningMigrations` 在 v4 草稿之后追加 v5 `durable-action-intents`，包含固定输入、派发/取消及真实回执；`validateLearningData` 同时核对原活动范围、不可变输入摘要、资源字节和固定引用。产品宿主将派发关闸/排空纳入同一维护及三 owner 备份恢复。活动、固定动作与已发布内容持续保留，不按页面或活动关闭删除；浏览器独有待发不在服务端备份中。
+
+## 非文本引用（#172）
+
+组件状态和真实执行结果通过注册语义范围生成固定副本，复用 drafts/intents 和 owner 内的资源引用。创建时核对当前课程 authority；保存后的未知适配只读恢复。历史修订、固定动作和资源 pin 参与恢复验证，不修改原迁移。具体格式、保留责任与验证见 [#172 交付](../../../../docs/student-agent-implementation/wp03-semantic-references.md)。

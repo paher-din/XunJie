@@ -12,12 +12,12 @@ export async function annotationPackage() {
     resolveDir: dirname(fileURLToPath(import.meta.url)) }, bundle: true, write: false, format: 'iife', globalName: 'XunJieComponentProtocol',
     platform: 'browser', target: 'es2022', minify: true, legalComments: 'none' });
   const runtime = (await protocol).outputFiles[0].text.replaceAll('</script', '<\\/script');
-  const source = (await readFile(new URL('./view.html', import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
+  const source = (await readFile(new URL('./view-v4.html', import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
   const styles = (await readFile(new URL('../shared/host.css', import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
   const bytes = Buffer.from(source.replace('/* xunjie-host-styles */', () => styles).replace('<!-- xunjie-contracts -->', () => `<script>${runtime}</script>`));
   const manifest = componentManifestSchema.parse({ formatVersion: 1,
-    componentId: '6237a554-67ee-4e74-ae33-36faf1223f12', version: 3, hostApiVersion: 1, title: '材料标注',
-    entry: { resourceId: 'd0c86f21-5856-49ce-b9b3-f8fcc7697127', mediaType: 'text/html',
+    componentId: '6237a554-67ee-4e74-ae33-36faf1223f12', version: 4, hostApiVersion: 1, title: '材料标注',
+    entry: { resourceId: '745f6a36-f0df-4604-8a7d-f5a4da0e9609', mediaType: 'text/html',
       sha256: createHash('sha256').update(bytes).digest('hex'), byteLength: bytes.length },
     stateVersion: 1, requiredCapabilities: ['workspace.read', 'workspace.change'],
     stateShape: { type: 'object', properties: { annotations: { type: 'array', maxItems: 100,
@@ -109,7 +109,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   await copyFile(new URL('./view-v2.html', import.meta.url), resolve(out, 'view-v2.html'));
   await copyFile(new URL('./vendor/mark.min.js', import.meta.url), resolve(out, 'vendor/mark.min.js'));
   await copyFile(new URL('./vendor/LICENSE-mark.js', import.meta.url), resolve(out, 'vendor/LICENSE-mark.js'));
-  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: 'cc3ff819-6fb6-4f3f-a96d-4f2c2ebde939', manifest: input.manifest, path: 'view.html' }, null, 2));
+  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: '326bb2ad-7dcb-4b76-a70e-3cdd0577077d', manifest: input.manifest, path: 'view.html' }, null, 2));
   await writeFile(resolve(out, 'component-v2.json'), JSON.stringify({ requestId: 'aa411f88-a147-4afb-9f4c-7156260c3b0c',
     manifest: prepared.manifest, path: 'view-v2.html',
     dependencies: [{ dependencyId: highlightDependencyId, path: 'vendor/mark.min.js' }] }, null, 2));

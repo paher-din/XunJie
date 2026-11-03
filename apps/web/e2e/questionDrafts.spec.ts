@@ -194,7 +194,7 @@ test('course text and requirements stay as fixed references through collapse, re
   await selectProductSpace(page, '个人空间')
   await expect(page.getByRole('heading', { name: '我的学习活动', exact: true })).toBeVisible()
   await selectProductSpace(page, '学校空间')
-  await expect(page.getByRole('heading', { name: '我的课程', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^我的课程/ })).toBeVisible()
   await page.getByRole('button', { name: '固定引用的任务', exact: true }).click()
   await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
   await openComposer(page)
@@ -289,7 +289,7 @@ test('an existing reliable workspace database upgrades without losing its work',
       const db = request.result
       resolve({ version: db.version, stores: [...db.objectStoreNames] })
     }
-  }))).toEqual({ version: 3, stores: ['actions', 'candidates', 'draftCandidates', 'drafts', 'workspaces'] })
+  }))).toEqual({ version: 5, stores: ['actions', 'candidates', 'draftCandidates', 'drafts', 'executionCommands', 'executionPending', 'executionResults', 'executionStops', 'executionSync', 'workOperations', 'workspaces'] })
 })
 
 async function draftDriver(page: Page, activityId: string) {

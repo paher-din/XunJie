@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { componentBundleSchema, componentInitializeSchema, componentPreparationMessageSchema,
+import { componentSource, useSemanticSource } from '../components/workspace/references/SemanticSource'
+import type { ReferenceSnapshot, LocateResult } from '../components/workspace/references/model'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { componentBundleSchema, componentHostMessageSchema, componentStateName, componentInitializeSchema, componentPreparationMessageSchema,
   componentPreparationReplySchema, componentReply, type ComponentBinding } from '@xunjie/contracts/components'
 import { z } from 'zod'
 import titleFontUrl from '../../public/fonts/lxgw-wenkai-regular.woff2?url'
@@ -34,6 +36,16 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
 }) {
   const { workspace, execution, interactions } = useActivitySession()
   const frame = useRef<HTMLIFrameElement>(null)
+  const work = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
+  const stateFile = work.files.find(file => file.name === componentStateName(binding.key))
+  let stateContent: unknown
+  try { stateContent = JSON.parse(stateFile?.value ?? '{}').content } catch { stateContent = null }
+  const locateReference = useRef<(reference: ReferenceSnapshot) => Promise<LocateResult>>(async () => ({ ok: false, reason: '组件当前无法定位，副本仍保留。' }))
+  const selectReference = useSemanticSource({ source: stateFile && authorized ? componentSource(activity, binding, stateFile.objectId, stateFile.contentId) : null,
+    title: binding.configuration.title, content: stateContent, ...(stateFile ? { basis: stateFile as import('@xunjie/contracts/question-drafts').QuestionWorkBasis } : {}),
+    locate: reference => locateReference.current(reference) })
+  const selection = useRef(selectReference); selection.current = selectReference
+
   const loaded = useRef<() => void>(() => {})
   const [document, setDocument] = useState('')
   const [error, setError] = useState('')
@@ -85,21 +97,48 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
           .some(declaration => declaration.capability === item.capability && declaration.dependencyIds.length > 0)
         return needsDependency ? { ...item, availability: 'unavailable', verification: 'failed', reason: 'dependency-load-failed' } : item
       }) })
-    const retire = () => { bridge?.close(); port?.close(); clearTimeout(handshakeTimer); clearTimeout(dependencyTimer); dependencyRequestId = undefined }
+    const locations = new Map<string, (located: boolean) => void>()
+    const retire = () => { for (const settle of locations.values()) settle(false); locations.clear(); bridge?.close(); port?.close(); clearTimeout(handshakeTimer); clearTimeout(dependencyTimer); dependencyRequestId = undefined }
     loaded.current = () => {
       if (!live || !frame.current?.contentWindow) return
       retire()
       const mount = createComponentBridge(workspace, activity.activityId, binding,
         () => live && allowed.current && !workspace.accessDenied(),
         { controller: execution, canRun: () => live && allowed.current && !workspace.accessDenied() && authorized },
-        event => interactions.accept({ instanceId: mount.instanceId, connectionId: mount.connectionId, event }))
+        event => interactions.accept({ instanceId: mount.instanceId, connectionId: mount.connectionId, event }), {
+          select: async ({ expectedContentId, ...requested }, assertCurrent) => {
+            await workspace.leave(); assertCurrent()
+            if (workspace.snapshot().files.find(file => file.name === componentStateName(binding.key))?.contentId !== expectedContentId) throw new Error('conflict')
+            return selection.current({ kind: 'semantic', formatVersion: 1, ...requested, start: 0, end: 1 }, () => frame.current?.getBoundingClientRect() ?? null)
+          },
+          locate: async (reference, assertCurrent) => {
+            assertCurrent()
+            const current = workspace.snapshot().files.find(file => file.name === componentStateName(binding.key))
+            return { located: !!current && JSON.stringify(reference.source) === JSON.stringify(componentSource(activity, binding, current.objectId, current.contentId)) }
+          },
+        })
       const channel = new MessageChannel()
       bridge = mount; port = channel.port1
+      locateReference.current = reference => new Promise(resolve => {
+        if (!live || bridge !== mount || !allowed.current || workspace.accessDenied()) { resolve({ ok: false, reason: '组件当前不可用，副本仍保留。' }); return }
+        const messageId = crypto.randomUUID()
+        const timer = setTimeout(() => { locations.delete(messageId); resolve({ ok: false, reason: '组件定位不可用，副本仍保留。' }) }, 3000)
+        locations.set(messageId, located => { clearTimeout(timer); resolve(located ? { ok: true } : { ok: false, reason: '来源已变化或不可用，副本仍保留。' }) })
+        channel.port1.postMessage({ hostApiVersion: 1, connectionId: mount.connectionId, instanceId: mount.instanceId,
+          messageId, method: 'reference.locate', payload: { source: reference.source, range: { ...reference.range, kind: reference.kind } } })
+      })
       setReady(false); setError('')
       // A port is bound to this document, unlike the WindowProxy, which survives iframe navigation.
       channel.port1.onmessage = async (event: MessageEvent) => {
         if (!live || bridge !== mount) return
         const raw = event.data
+        if (raw?.replyTo && locations.has(raw.replyTo)) {
+          const reply = componentHostMessageSchema.safeParse(raw)
+          if (reply.success && raw.connectionId === mount.connectionId && raw.instanceId === mount.instanceId && raw.method === 'reference.locate') {
+            locations.get(raw.replyTo)?.(raw.payload?.located === true); locations.delete(raw.replyTo)
+          }
+          return
+        }
         if (!raw || typeof raw !== 'object') return
         if ((raw as { preparationProtocolVersion?: unknown }).preparationProtocolVersion === 1) {
           // The component reports what the delivered bytes really defined; a failure costs only the gated capability.

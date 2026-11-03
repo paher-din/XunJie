@@ -1,3 +1,4 @@
+import { questionReferenceKey } from '@xunjie/contracts/question-drafts'
 import type { QuestionReferenceInput, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
 
 export interface DraftContent { question: string; references: QuestionReferenceInput[]; bases?: QuestionWorkBasis[] }
@@ -109,8 +110,7 @@ export class DraftStore {
   }
 }
 const normalizedContent = (value: DraftContent) => JSON.stringify({ question: value.question,
-  references: value.references.map(reference => ({ referenceId: reference.referenceId, source: reference.source,
-    range: { kind: reference.range.kind, start: reference.range.start, end: reference.range.end },
+  references: value.references.map(reference => ({ referenceId: reference.referenceId, identity: questionReferenceKey(reference), rangeKind: reference.range.kind,
     copy: reference.copy, sourceName: reference.sourceName })) })
 export const sameDraftContent = (a: DraftContent, b: DraftContent) =>
   normalizedContent(a) === normalizedContent(b)

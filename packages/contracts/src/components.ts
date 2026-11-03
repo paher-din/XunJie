@@ -1,3 +1,4 @@
+import { questionReferenceInputSchema, questionReferenceRangeSchema, questionReferenceSourceSchema } from './question-drafts.js';
 import { z } from 'zod';
 
 const identifier = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
@@ -309,6 +310,8 @@ export const componentEventSchema = z.discriminatedUnion('kind', [
   z.object({ ...eventIdentity, kind: z.literal('confirmation'), targetId: identifier, confirmed: z.boolean() }).strict(),
 ]);
 export type ComponentEvent = z.infer<typeof componentEventSchema>;
+export const componentReferenceLocateSchema = questionReferenceInputSchema;
+export const componentReferenceSelectionSchema = z.object({ expectedContentId: z.uuid(), typeId: z.string().min(1).max(80), version: z.number().int().positive(), target: z.record(z.string(), z.unknown()) }).strict();
 export const componentRequestSchema = z.union([
   componentMessageSchema.extend({ method: z.enum(['component.ready', 'component.close', 'workspace.read']), payload: z.object({}).strict() }),
   componentMessageSchema.extend({ method: z.literal('workspace.change'), payload: componentChangeSchema }),
@@ -319,6 +322,8 @@ const hostEnvelope = z.object({ hostApiVersion: z.literal(1), connectionId: z.uu
   messageId: z.uuid(), method: z.string().min(1).max(80) });
 const successEnvelope = hostEnvelope.extend({ replyTo: z.uuid() });
 export const componentSuccessSchema = z.union([
+  successEnvelope.extend({ method: z.literal('reference.select'), payload: z.object({ selected: z.literal(true) }).strict() }).strict(),
+  successEnvelope.extend({ method: z.literal('reference.locate'), payload: z.object({ located: z.boolean() }).strict() }).strict(),
   // Execution owners validate payloads with their own public execution schemas; this is the shared transport envelope.
   successEnvelope.extend({ method: z.enum(['execution.capabilities', 'execution.query', 'execution.stop']), payload: z.unknown() }).strict(),
   successEnvelope.extend({ method: z.literal('execution.submit'), payload: z.object({ requestId: z.uuid() }).strict() }).strict(),
@@ -334,7 +339,8 @@ export const componentErrorSchema = hostEnvelope.extend({ replyTo: z.uuid(), pay
   code: z.enum(['invalid-input', 'unsupported-version', 'capability-unavailable', 'forbidden', 'stale-connection', 'conflict', 'resource-unavailable', 'outcome-unknown']),
   next: z.string().min(1).max(1000),
 }).strict() }).strict();
-export const componentHostMessageSchema = z.union([componentInitializeSchema, componentSuccessSchema, componentErrorSchema]);
+export const componentLocateRequestSchema = hostEnvelope.extend({ method: z.literal('reference.locate'), payload: z.object({ source: questionReferenceSourceSchema, range: questionReferenceRangeSchema }).strict() }).strict();
+export const componentHostMessageSchema = z.union([componentLocateRequestSchema, componentInitializeSchema, componentSuccessSchema, componentErrorSchema]);
 export function componentReply(context: { connectionId: string; instanceId: string }, request: { messageId: string; method: string },
   outcome: { payload: unknown } | { error: unknown }, messageId: string) {
   return componentHostMessageSchema.parse({ hostApiVersion: 1, connectionId: context.connectionId, instanceId: context.instanceId, messageId,

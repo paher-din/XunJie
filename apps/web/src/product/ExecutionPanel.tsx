@@ -1,3 +1,5 @@
+import { componentSource, useSemanticSource } from '../components/workspace/references/SemanticSource'
+import type { ExecutionRecord } from '../tool-execution/ledger'
 import { useRef, useState, useSyncExternalStore } from 'react'
 import { componentStateName, type ComponentBinding } from '@xunjie/contracts/components'
 import { isTerminalExecutionState, type ExecutionAction } from '@xunjie/contracts/execution'
@@ -120,6 +122,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
             <p className="execution-hint">{`参数：按「${parameters.groupColumn || '未选'}」分组，数值列「${parameters.valueColumn || '未选'}」，方式 ${aggregates[parameters.aggregate] ?? parameters.aggregate}${rows === null ? '' : `；该次输入共 ${rows} 行`}。`}</p>
             {changed && <p className="execution-warn">当前表格已改动：这份结果对应提交时的表格，不是现在的内容。</p>}
             {result && <p className="execution-hint">总计 {display(result.value)}，共 {result.groups.length} 组。</p>}
+            {result && record.query.output && <ResultReferences activity={activity} binding={binding} record={record} authorized={canRead} />}
             {record.query.reason && <p className="execution-warn">{record.query.reason.detail}</p>}
             <div className="execution-actions">
               <button type="button" className="ws-btn ghost" disabled={!canRead} onClick={() => void query(record.requestId)}>核对状态</button>
@@ -131,4 +134,29 @@ export function ExecutionPanel({ activity, binding, authorized }: {
         })}
       </ol>}
   </section>
+}
+
+function ResultReferences({ activity, binding, record, authorized }: { activity: LearningActivity; binding: ComponentBinding; record: ExecutionRecord; authorized: boolean }) {
+  const output = record.query.output!, root = useRef<HTMLDetailsElement>(null)
+  const select = useSemanticSource({ source: authorized ? componentSource(activity, binding, record.requestId, output.contentId,
+    { requestId: record.requestId, executionRef: record.executionRef }) : null,
+    title: `${binding.configuration.title} · 固定聚合结果`, content: output.output,
+    locate: reference => {
+      const keys = reference.range.target?.groupKeys
+      if (!Array.isArray(keys)) return { ok: false, reason: '范围适配不可用，副本仍保留。' }
+      const row = root.current?.querySelector<HTMLButtonElement>(`[data-group-key="${CSS.escape(String(keys[0]))}"]`)
+      if (!row) return { ok: false, reason: '分组已不可用，副本仍保留。' }
+      root.current!.open = true; row.focus(); row.scrollIntoView({ block: 'nearest' }); return { ok: true }
+    } })
+  // Reference selections are snapshots; they never rerun the computation.
+  const result = output.output as { groups: { key: string; value: number; count: number }[] }
+  return <details ref={root}><summary>聚合分组</summary><ul>
+    {result.groups.map(group => <li key={group.key}>
+      <button type="button" className="ws-btn ghost" disabled={!authorized} data-group-key={group.key}
+        onClick={event => { const element = event.currentTarget; select({ kind: 'semantic', formatVersion: 1, typeId: 'aggregation-groups', version: 1,
+          target: { groupKeys: [group.key], fields: ['count', 'value'] }, start: 0, end: 1 }, () => element.getBoundingClientRect(), event.nativeEvent) }}>
+        {group.key || '空分组'}：{display(group.value)}（{group.count} 行）
+      </button>
+    </li>)}
+  </ul></details>
 }

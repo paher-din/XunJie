@@ -1,3 +1,6 @@
+import { activitySchema } from '@xunjie/contracts/learning-data';
+import { verifySemanticReference } from './semantic-references.js';
+import { validateComponentFiles } from './component-state.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -96,6 +99,24 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     const used = new Set<string>();
     for (const reference of input.references) {
       const source = reference.source;
+      if (source.kind === 'component') {
+        used.add(source.contentId);
+        const basis = bases.get(source.contentId);
+        if (basis) {
+          if (source.origin !== 'state' || basis.objectId !== source.objectId) return fail('invalid');
+          validateComponentFiles(activity, [basis]);
+          await works.registerBasis(identity, activity.activityId, basis);
+        }
+        const previous = (await head(identity, activity.activityId)).draft.references.find(item => item.referenceId === reference.referenceId);
+        const historical = !!previous && questionReferenceKey(previous) === questionReferenceKey(reference) && previous.copy === reference.copy;
+        if (!historical) {
+          if (!activity.course || !courses?.verifyComponentReference) throw new StorageError('unavailable');
+          await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId, key: source.bindingKey, definitionDigest: source.definitionDigest });
+        }
+        await verifySemanticReference(storage, activity, reference, historical);
+        continue;
+      }
+      if (reference.range.kind === 'semantic') return fail('invalid');
       if (source.kind === 'work') {
         used.add(source.contentId);
         const basis = bases.get(source.contentId);
@@ -165,7 +186,7 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
       for (const reference of draft.references) {
         // Course material retention belongs to its release in the course owner; this owner
         // only links work content it actually stores.
-        if (reference.source.kind === 'work')
+        if (reference.source.kind === 'work' || reference.source.kind === 'component')
           await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`, reference.source.contentId);
       }
       await tx.query('INSERT INTO question_draft_receipts(request_id,draft_id) VALUES($1,$2)', [input.requestId, draftId]);
@@ -200,12 +221,13 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
         if (text.slice(reference.range.start, reference.range.end) !== reference.copy) fail('corrupt');
       }
     }
-    const { rows: revisions } = await storage.read(`SELECT r.draft_id,r.revision,r.revision_id,r.body,r.content_digest
-      FROM question_draft_revisions r`);
+    const { rows: revisions } = await storage.read(`SELECT r.draft_id,r.revision,r.revision_id,r.body,r.content_digest,h.activity_id
+      FROM question_draft_revisions r JOIN question_drafts h ON h.draft_id=r.draft_id`);
     for (const row of revisions) {
       const draft = questionDraftViewSchema.parse(row.body);
       if (draft.draftId !== row.draft_id || draft.revision !== Number(row.revision) || draft.revisionId !== row.revision_id
         || row.content_digest !== digest({ question: draft.question, references: draft.references })) fail('corrupt');
+      await validateSemanticRevision(storage, String(row.activity_id), draft);
     }
     const { rows: receipts } = await storage.read('SELECT request_id,draft_id FROM question_draft_receipts');
     for (const receiptRow of receipts) {
@@ -218,4 +240,21 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
       // jsonb does not preserve key order; compare schema-normalized bodies.
       if (JSON.stringify(questionDraftViewSchema.parse(stored.body)) !== JSON.stringify(draft)) fail('corrupt');
     }
+}
+
+/** All revisions retain their own resource pins, including copies no longer in the current draft. */
+async function validateSemanticRevision(storage: OwnedStorage, activityId: string, draft: QuestionDraftView) {
+  const references = draft.references.filter(reference => reference.source.kind === 'component');
+  if (!references.length) return;
+  const { rows: [row] } = await storage.read('SELECT body FROM activities WHERE id=$1', [activityId]);
+  if (!row) return fail('corrupt');
+  const activity = activitySchema.parse(row.body);
+  for (const reference of references) {
+    if (reference.source.kind !== 'component') continue;
+    if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
+    await verifySemanticReference(storage, activity, reference, true);
+    const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+      [`question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}`]);
+    if (links.length !== 1 || links[0]!.resource_id !== reference.source.contentId) return fail('corrupt');
+  }
 }

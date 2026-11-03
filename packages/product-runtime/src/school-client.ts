@@ -168,6 +168,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       async confirm(input) { return courseBindingStateSchema.parse(await authorityCall(connection, binding.runtimeConnectionId, 'confirm', input)); },
       async authorize(identity, pointer) { sameIdentity(identity); await authorityCall(connection, binding.runtimeConnectionId, 'authorize', {
         associationId: pointer.associationId, releaseId: pointer.releaseId, contentDigest: pointer.contentDigest }); },
+      async verifyComponentReference(identity, reference) { sameIdentity(identity);
+        z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyComponentReference', reference)); },
       async verifyReference(identity, reference) { sameIdentity(identity);
         z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyReference', reference)); },
     });

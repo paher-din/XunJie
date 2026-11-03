@@ -87,3 +87,18 @@ describe('component host instance and operation boundary', () => {
     expect(componentError(new Error('I/O failure')).code).toBe('resource-unavailable')
   })
 })
+
+it('a retired semantic selection cannot acquire a draft mutation after asynchronous protection', async () => {
+  let release!: () => void, mutations = 0
+  const waiting = new Promise<void>(resolve => { release = resolve })
+  const workspace = {} as ReliableWorkspace
+  const bridge = createComponentBridge(workspace, crypto.randomUUID(), binding, () => true, undefined, undefined, {
+    select: async (_input, assertCurrent) => { await waiting; assertCurrent(); mutations++; return { selected: true } },
+    locate: async () => ({ located: false }),
+  })
+  const request = { hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
+    messageId: crypto.randomUUID(), method: 'reference.select', payload: { expectedContentId: crypto.randomUUID(), typeId: 'annotation-objects', version: 1, target: { objectIds: [crypto.randomUUID()] } } }
+  const pending = bridge.handle(request)
+  bridge.close(); release()
+  await expect(pending).rejects.toThrow('stale-connection'); expect(mutations).toBe(0)
+})

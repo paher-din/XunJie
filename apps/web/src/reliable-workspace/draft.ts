@@ -19,7 +19,7 @@ export interface QuestionDraftState { ready: boolean; error: string; question: s
 
 const inputReference = (reference: QuestionReferenceInput): QuestionReferenceInput => ({
   referenceId: reference.referenceId, source: reference.source,
-  range: { kind: reference.range.kind, start: reference.range.start, end: reference.range.end },
+  range: { ...reference.range },
   copy: reference.copy, sourceName: reference.sourceName,
 })
 const inputReferences = (references: QuestionReferenceInput[]) => references.map(inputReference)
@@ -34,12 +34,12 @@ function mergeBases(existing: QuestionWorkBasis[], added: QuestionWorkBasis[], r
   const merged = new Map<string, QuestionWorkBasis>()
   for (const basis of [...existing, ...added]) merged.set(basis.contentId, basis)
   const workContent = new Set(references.flatMap(reference =>
-    reference.source.kind === 'work' ? [reference.source.contentId] : []))
+    (reference.source.kind === 'work' || reference.source.kind === 'component') ? [reference.source.contentId] : []))
   return [...merged.values()].filter(basis => workContent.has(basis.contentId))
 }
 function matchesPending(view: QuestionDraftView, pending: NonNullable<DraftRecord['pending']>) {
   return view.revision === pending.baseRevision + 1 && view.question === pending.question
-    && JSON.stringify(inputReferences(view.references)) === JSON.stringify(inputReferences(pending.references))
+    && sameDraftContent(view, pending)
 }
 
 /** The page's only question-draft authority; it never calls a model or business receiver. */

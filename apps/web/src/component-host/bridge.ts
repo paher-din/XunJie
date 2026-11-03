@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { acceptsState, componentMessageSchema, componentChangeSchema, componentStateSchema,
-  componentStateName, componentInstanceId, componentExecutionSubmitSchema, componentExecutionQuerySchema,
+  componentStateName, componentInstanceId, componentReferenceSelectionSchema, componentReferenceLocateSchema, componentExecutionSubmitSchema, componentExecutionQuerySchema,
   componentExecutionStopSchema, componentEventSchema, type ComponentEvent, type ComponentBinding } from '@xunjie/contracts/components'
 import { executionCapabilitiesSchema } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
@@ -20,7 +20,10 @@ export function componentError(error: unknown) {
 /** A mount grants exactly one fixed instance and expires independently of other valid views. */
 export function createComponentBridge(workspace: ReliableWorkspace, activityId: string, binding: ComponentBinding,
   canWrite: () => boolean, execution?: { controller: ExecutionController; canRun: () => boolean },
-  consume: (event: ComponentEvent) => void = () => {}) {
+  consume: (event: ComponentEvent) => void = () => {}, references?: {
+    select(input: ReturnType<typeof componentReferenceSelectionSchema.parse>, assertCurrent: () => void): Promise<{ selected: true }>;
+    locate(input: ReturnType<typeof componentReferenceLocateSchema.parse>, assertCurrent: () => void): Promise<{ located: boolean }>;
+  }) {
   const connectionId = crypto.randomUUID(), instanceId = componentInstanceId(activityId, binding.key)
   const manifest = binding.definition.manifest
   const submitted = new Set<string>()
@@ -80,6 +83,14 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     if (!parsed.success) throw new Error('invalid-input')
     const message = parsed.data
     if (message.connectionId !== connectionId || message.instanceId !== instanceId) throw new Error('stale-connection')
+    if (message.method === 'reference.select') {
+      if (!references) throw new Error('capability-unavailable')
+      return references.select(componentReferenceSelectionSchema.parse(message.payload), assertWritable)
+    }
+    if (message.method === 'reference.locate') {
+      if (!references) throw new Error('capability-unavailable')
+      return references.locate(componentReferenceLocateSchema.parse(message.payload), assertWritable)
+    }
     if (message.method === 'component.close') { z.object({}).strict().parse(message.payload); active = false; return { closed: true } }
     if (message.method === 'component.ready') { z.object({}).strict().parse(message.payload); return { ready: true } }
     if (message.method === 'component.event') {

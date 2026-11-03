@@ -13,7 +13,7 @@ function displayReferences(references: readonly QuestionReferenceInput[], worksp
   return references.map(reference => Object.freeze({ id: reference.referenceId, workspaceKey,
     sourceId: sourceIdOf(reference), sourceName: reference.sourceName, kind: reference.range.kind,
     text: reference.copy, source: reference.source,
-    range: Object.freeze({ start: reference.range.start, end: reference.range.end }) }))
+    range: Object.freeze({ ...reference.range }) }))
 }
 export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode }
 /** Production host consumes the common workspace; availability comes only from registered receivers. */
@@ -42,7 +42,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     if (!snapshot || snapshot.workspaceKey !== workspaceKey || !sources.current.has(snapshot.sourceId)) return false
     if (!snapshot.source) { setNotice('来源未登记，不能加入引用。'); return false }
     const candidate: QuestionReferenceInput = { referenceId: crypto.randomUUID(), source: snapshot.source,
-      range: { kind: snapshot.kind, start: snapshot.range.start, end: snapshot.range.end },
+      range: { ...snapshot.range, kind: snapshot.kind } as QuestionReferenceInput['range'],
       copy: snapshot.text, sourceName: snapshot.sourceName }
     const current = inputs()
     if (current.some(reference => questionReferenceKey(reference) === questionReferenceKey(candidate))) return true
@@ -96,10 +96,10 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     draft.change(draft.snapshot().question, inputs().filter(reference => reference.referenceId !== id))
   }
   const setQuestion = (text: string) => { draft.change(text, inputs()) }
-  const locate = (reference: WorkspaceReference) => {
+  const locate = async (reference: WorkspaceReference) => {
     if (reference.workspaceKey !== workspaceKey || !reference.source) { setNotice('引用属于其他工作区，当前无法定位。'); return }
     try {
-      const result = sources.current.get(reference.sourceId)?.locate(reference)
+      const result = await sources.current.get(reference.sourceId)?.locate(reference)
       setNotice(result?.ok ? '已定位引用来源。' : result?.reason ?? '来源当前不可用；引用副本仍然保留。')
     } catch { setNotice('来源当前不可用；引用副本仍然保留。') }
   }

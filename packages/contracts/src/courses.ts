@@ -144,7 +144,10 @@ export const courseReferenceVerificationSchema = z.object({ source: courseRefere
 }).strict();
 export type CourseReferenceVerification = z.infer<typeof courseReferenceVerificationSchema>;
 /** Verify the exact selection at its source owner without transporting the full material. */
+export const courseComponentReferenceVerificationSchema = z.object({ releaseId: z.uuid(), key: z.string().min(1).max(80),
+  definitionDigest: courseDigestSchema }).strict();
 export interface CourseReferenceAuthority {
+  verifyComponentReference?(identity: SpaceIdentity, reference: z.infer<typeof courseComponentReferenceVerificationSchema>): Promise<void>;
   verifyReference(identity: SpaceIdentity, reference: CourseReferenceVerification): Promise<void>;
 }
 /** The learning-data owner consumes only this narrow, current-authority interface. */
