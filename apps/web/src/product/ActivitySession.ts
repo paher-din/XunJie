@@ -2,9 +2,10 @@ import { createContext, useContext } from 'react'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import type { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import type { ReliableActions } from '../reliable-workspace/actions'
+import type { ComponentInteractions } from '../component-host/interactions'
 
 export const ActivitySessionContext = createContext<{
-  workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions
+  workspace: ReliableWorkspace; draft: ReliableQuestionDraft; actions: ReliableActions; interactions: ComponentInteractions
 } | null>(null)
 export function useActivitySession() {
   const session = useContext(ActivitySessionContext)

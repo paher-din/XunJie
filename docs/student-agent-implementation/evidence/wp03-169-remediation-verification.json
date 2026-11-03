@@ -1,0 +1,302 @@
+{
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "sourceBase": "60f58c5917aeaef4d00e29f857a3cfad0c385bd5",
+  "branch": "codex/issue-169-review-remediation",
+  "candidate": "dist/wp03-169-remediation",
+  "distributionSha256": "a0325895d4536f38585ac918088b480f17cd4e4a2ece43fa2cea46e1c422f673",
+  "component": {
+    "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+    "version": 2,
+    "resourceId": "5c1960f3-e2ca-4c5b-baa8-c99a61cf56a7",
+    "sha256": "3a87a5714615d7aeef05872856d386ee82eec4ade5db63a27446a30ea21ff11c",
+    "byteLength": 468883
+  },
+  "engineering": {
+    "typecheck": "passed",
+    "fullBuild": "passed",
+    "browserExports": 11,
+    "unitTests": {
+      "passed": 12,
+      "failed": 0
+    },
+    "nativeIntegration": {
+      "uniquePassed": 8,
+      "skipped": 0,
+      "finalComponentRerunPassed": 1
+    },
+    "packagedCli": "install/start/component-import(v2)/component-read/stop passed",
+    "fullDocs": {
+      "status": "failed",
+      "failures": 9,
+      "cause": "pre-existing untracked .trae/documents links outside this write set"
+    }
+  },
+  "browser": {
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "cases": [
+      "dynamic imported HTML is mounted by the formal product workspace",
+      "shared isolated controls follow DESIGN and load the verified title font without network access",
+      "annotation controls support keyboard focus and Chinese multiline text (system IME not exercised)",
+      "real iframe input persists through IndexedDB and production API to PostgreSQL/resources",
+      "opaque frame and CSP reject host storage, parent access and direct business fetch",
+      "light/dark theme and narrow desktop rendering captured",
+      "reload recovers confirmed component state without any execution",
+      "257 real IndexedDB operations replay their original receipt and reject altered input",
+      "iframe reload rotates its private port/connection, rejects old identity and replays durable receipts",
+      "a full page restart recovers operation receipts from the existing workspace database",
+      "a second valid mount reads the same owner and persists its conditional update",
+      "a stale component edit is protected as a conflict candidate before unmounting",
+      "real IndexedDB write failure blocks unmount and retains input with a copyable export",
+      "receipt read failure reports outcome-unknown and protects input as an exportable workspace candidate",
+      "tool navigation waits for an in-flight operation before unmounting the component",
+      "the real v3 IndexedDB upgrades additively to v4 without losing existing workspace data",
+      "component-only workspace can navigate back/forward without a mounted editor ref",
+      "failed return/history preserves the same component, exportable input and draft, then recovery permits leaving",
+      "protected state paths and legacy invalid pending recovery preserve data and resume ordinary synchronization",
+      "activity return waits for asynchronous component admission before disposing its session",
+      "a real iframe replacement followed by late receipt failure cannot mutate the successor workspace",
+      "compatible component sends four typed events with stable receipts and no model/question dispatch",
+      "known course revocation is reported as forbidden by the real mounted host",
+      "component import and use leave the main frontend artifact unchanged",
+      "strict public v1 validator accepts all observed initialization, success and error messages"
+    ],
+    "status": "passed",
+    "browser": "Google Chrome",
+    "node": "v24.21.0",
+    "mac": "not-run",
+    "teachingOutcome": "not-evaluated",
+    "browserVersion": "156.0.8078.80",
+    "headless": false,
+    "frontendSha256": "1692c1be26a6d1bf15e67f95c32a97ece811d3e442ddf0faaa3b48bc77fb6677",
+    "cleanup": "owned product stopped"
+  },
+  "productUi": {
+    "measuredAt": "2026-11-02T16:44:07.361Z",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26200",
+    "node": "v24.21.0",
+    "browser": "installed Chrome",
+    "browserVersion": "156.0.8078.80",
+    "headless": false,
+    "backend": "production host, native PostgreSQL, built product UI",
+    "receiver": "controlled test receiver; no real Agent or teaching outcome",
+    "cases": [
+      {
+        "name": "default product entry uses shared UI and stable file identities through rename, deletion and recreation",
+        "status": "passed",
+        "durationMs": 7788
+      },
+      {
+        "name": "browser history cannot bypass a refused local protection transaction",
+        "status": "passed",
+        "durationMs": 4194
+      },
+      {
+        "name": "selection, fixed send and later input survive the integrated discussion panel and reload",
+        "status": "passed",
+        "durationMs": 5155
+      },
+      {
+        "name": "course content and shared navigation keep usable widths, theme and keyboard focus",
+        "status": "passed",
+        "durationMs": 5175
+      },
+      {
+        "name": "a late browser-history activity read cannot reopen the activity after forward returns to the list",
+        "status": "passed",
+        "durationMs": 1779
+      },
+      {
+        "name": "course browser history retires both visible and in-flight release details from the other course",
+        "status": "passed",
+        "durationMs": 1249
+      },
+      {
+        "name": "an initial activity reopen cannot undo browser back to the list while its read is pending",
+        "status": "passed",
+        "durationMs": 1031
+      },
+      {
+        "name": "component-only navigation protects an unretained action and its independent later question draft",
+        "status": "passed",
+        "durationMs": 5403
+      },
+      {
+        "name": "cross-space browser history waits for the destination list before reopening its activity",
+        "status": "passed",
+        "durationMs": 4029
+      },
+      {
+        "name": "a late older course result cannot clear the newer unknown request",
+        "status": "passed",
+        "durationMs": 1568
+      }
+    ]
+  },
+  "editor": {
+    "measuredAt": "2026-11-02T16:45:41.903Z",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26200",
+    "node": "v24.21.0",
+    "postgres": "18.6",
+    "browser": "installed Chrome",
+    "browserVersion": "156.0.8078.80",
+    "headless": false,
+    "backend": "production product host, native PostgreSQL and real filesystem resources",
+    "cases": [
+      {
+        "name": "course catalog returns after activity restoration races with discovery",
+        "status": "passed",
+        "durationMs": 2197
+      },
+      {
+        "name": "actual editor automatically protects and synchronizes Chinese original text across reload",
+        "status": "passed",
+        "durationMs": 4932
+      },
+      {
+        "name": "an opened activity survives API disconnection and reload, then continues its original pending sync",
+        "status": "passed",
+        "durationMs": 8324
+      },
+      {
+        "name": "late and lost confirmations never settle later editor content",
+        "status": "passed",
+        "durationMs": 6549
+      },
+      {
+        "name": "failed navigation leaves the editor able to continue automatic sync",
+        "status": "passed",
+        "durationMs": 3933
+      },
+      {
+        "name": "reopening an activity uses the latest body from another actual tab, not a retained editor model",
+        "status": "passed",
+        "durationMs": 8874
+      },
+      {
+        "name": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+        "status": "passed",
+        "durationMs": 7099
+      },
+      {
+        "name": "two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+        "status": "passed",
+        "durationMs": 5776
+      },
+      {
+        "name": "a remote conflict comparison includes input made while the original service read was delayed",
+        "status": "passed",
+        "durationMs": 7815
+      },
+      {
+        "name": "continuous input advances durable local and remote content before the student stops typing",
+        "status": "passed",
+        "durationMs": 6408
+      },
+      {
+        "name": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+        "status": "passed",
+        "durationMs": 2819
+      },
+      {
+        "name": "successful navigation protects input entered immediately before its delayed response",
+        "status": "passed",
+        "durationMs": 2487
+      },
+      {
+        "name": "initial storage refusal retries automatically after the browser permits transactions again",
+        "status": "passed",
+        "durationMs": 1233
+      },
+      {
+        "name": "confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+        "status": "passed",
+        "durationMs": 3857
+      },
+      {
+        "name": "confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+        "status": "passed",
+        "durationMs": 4581
+      }
+    ]
+  },
+  "legacy": {
+    "status": "passed",
+    "cases": [
+      "unchanged legacy product accepts uppercase UUID and fails lowercase read",
+      "fixed owner starts the original environment and preserves original manifest/digest for either query spelling",
+      "the original fixed activity, uppercase binding and saved student state remain readable byte-for-byte",
+      "second normal stop/start passes resource retention and recovery validation without rewriting legacy bytes"
+    ],
+    "cleanup": "stopped"
+  },
+  "originalBrowserCounterexamples": {
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "cases": [
+      "RED R1: original product return unmounts and loses the unprotected component input",
+      "RED R1: original component-only history navigation remains blocked",
+      "RED R2: correcting the display path leaves the invalid pending and blocks later ordinary files"
+    ],
+    "status": "passed",
+    "browser": "Google Chrome",
+    "node": "v24.21.0",
+    "mac": "not-run",
+    "teachingOutcome": "not-evaluated",
+    "browserVersion": "156.0.8078.80",
+    "headless": false
+  },
+  "retiredAuthorityCounterexamples": {
+    "status": "original counterexamples confirmed",
+    "results": [
+      {
+        "retired": "closed",
+        "lookupFailed": true,
+        "error": "outcome-unknown",
+        "changed": true,
+        "conflict": true
+      },
+      {
+        "retired": "closed",
+        "lookupFailed": false,
+        "error": "stale-connection",
+        "changed": false,
+        "conflict": false
+      },
+      {
+        "retired": "forbidden",
+        "lookupFailed": true,
+        "error": "outcome-unknown",
+        "changed": true,
+        "conflict": true
+      },
+      {
+        "retired": "forbidden",
+        "lookupFailed": false,
+        "error": "forbidden",
+        "changed": false,
+        "conflict": false
+      }
+    ]
+  },
+  "nativeWindowsIme": {
+    "status": "not-executed",
+    "reason": "Chrome Computer Use app authorization timed out before any native candidate input",
+    "postCheckStatus": "failed",
+    "postCheckError": "TypeError: Cannot read properties of undefined (reading '0')",
+    "cleanup": "stopped"
+  },
+  "notExecuted": [
+    "Apple Silicon Mac (independent issue #179)",
+    "Windows system Chinese IME candidate operations",
+    "real cross-machine component path",
+    "teaching outcomes"
+  ]
+}

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential } from '@xunjie/product-runtime'
 import { controlledActionReceiver } from '../../server/tests/support/action-receiver.mjs'
+import { annotationPackage } from '../../../components/material-annotation/package.mjs'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires the native PostgreSQL distribution')
@@ -275,7 +276,7 @@ test('an initial activity reopen cannot undo browser back to the list while its 
   } finally { releaseRead() }
 })
 
-async function courseHistoryFixture(page: Page) {
+async function courseHistoryFixture(page: Page, withComponent = false) {
   const control = await resolveCredential(root, 'control')
   const manage = async (path: string, data: unknown) => {
     const response = await page.request.post(endpoint + '/api/learning/manage/' + path, { headers: { authorization: 'Bearer ' + control }, data })
@@ -283,17 +284,61 @@ async function courseHistoryFixture(page: Page) {
   }
   const loginName = 'history-' + randomUUID(), password = randomUUID()
   const member = await manage('members', { requestId: randomUUID(), loginName, password })
+  const definition = withComponent ? await manage('component-import', { requestId: randomUUID(), ...await annotationPackage() }) : undefined
   const courses: { courseId: string; releaseId: string; name: string; title: string }[] = []
   for (const label of ['A', 'B']) {
     const courseId = randomUUID(), releaseId = randomUUID(), name = '课程历史 ' + label, title = '发布任务 ' + label
     await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name },
-      task: { taskId: randomUUID(), title, summary: '' }, release: { releaseId, objectives: ['固定课程依据'], requirements: '核对当前课程', materials: [], starterWorks: [], capabilities: [] }, resources: [] })
+      task: { taskId: randomUUID(), title, summary: '' }, release: { releaseId, objectives: ['固定课程依据'], requirements: '核对当前课程', materials: [], starterWorks: [], capabilities: [],
+        ...(definition ? { components: [{ key: 'annotation', definition, configuration: { title: '材料标注' }, materialIds: [] }] } : {}) }, resources: [] })
     await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true })
     courses.push({ courseId, releaseId, name, title })
   }
   await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })
   return courses
 }
+
+test('component-only navigation protects an unretained action and its independent later question draft', async ({ page }) => {
+  const [course] = await courseHistoryFixture(page, true)
+  const created = await page.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId: course.releaseId } })
+  expect(created.status()).toBe(200); const activity = await created.json()
+  await page.goto(endpoint + '?space=school&activity=' + activity.activityId)
+  await page.getByRole('tab', { name: '材料标注', exact: true }).click()
+  await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled()
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const input = page.getByRole('textbox', { name: '你的问题', exact: true })
+  await input.fill('动作中固定的问题')
+  await expect(page.getByRole('button', { name: '发送问题', exact: true })).toBeEnabled()
+  await page.evaluate(() => {
+    Object.assign(window, { actionStorageBlocked: true })
+    const original = IDBObjectStore.prototype.put
+    IDBObjectStore.prototype.put = function(...args) {
+      if (this.name === 'actions' && (window as unknown as { actionStorageBlocked: boolean }).actionStorageBlocked)
+        throw new DOMException('Controlled action storage refusal', 'QuotaExceededError')
+      return Reflect.apply(original, this, args)
+    }
+  })
+  const release = receiver.holdAccept()
+  try {
+    await page.getByRole('button', { name: '发送问题', exact: true }).click()
+    await expect(page.getByText('尚未可靠保留', { exact: true })).toBeVisible()
+    await input.fill('发送后继续写的独立草稿')
+    await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
+    await expect(page.locator('.product-workspace-notice [role="alert"]').first()).toBeVisible()
+    await expect(page.locator('iframe[title="材料标注"]')).toBeVisible()
+    await expect(input).toHaveValue('发送后继续写的独立草稿')
+    await page.evaluate(() => { Object.assign(window, { actionStorageBlocked: false }) })
+    await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
+    await expect(page.locator('#activity-title')).toHaveCount(0)
+    await page.locator(`[data-activity-id="${activity.activityId}"]`).click()
+    await page.getByRole('button', { name: '打开对话', exact: true }).click()
+    await expect(input).toHaveValue('发送后继续写的独立草稿')
+    release()
+    await expect.poll(() => receiver.acceptedIds().filter(id => receiver.acceptedInput(id)?.scope.activityId === activity.activityId).length).toBe(1)
+    const id = receiver.acceptedIds().find(id => receiver.acceptedInput(id)?.scope.activityId === activity.activityId)!
+    expect(receiver.acceptedInput(id)!.draft.question).toBe('动作中固定的问题')
+  } finally { release(); await page.evaluate(() => { Object.assign(window, { actionStorageBlocked: false }) }).catch(() => {}) }
+})
 
 test('cross-space browser history waits for the destination list before reopening its activity', async ({ page }) => {
   await courseHistoryFixture(page)

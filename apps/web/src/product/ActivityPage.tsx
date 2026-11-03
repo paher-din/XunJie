@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolSpec } from '../components/workspace/CenterToolArea'
@@ -20,7 +20,10 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
-  const { workspace } = useActivitySession()
+  const { workspace, draft, actions } = useActivitySession()
+  useImperativeHandle(workspaceRef, () => ({ leave: async () => {
+    await workspace.leave(); await draft.leave(); await actions.leave()
+  } }), [workspace, draft, actions])
   const [toolError, setToolError] = useState('')
   const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
     ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
@@ -56,7 +59,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
       <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         beforeToolChange={() => workspace.leave()}
         tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
-        designBody={<ActivityWorkspace ref={workspaceRef} activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
+        designBody={<ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
         <WorkspaceReferenceComposer closeFocusRef={ask} /><ActivityActions />
       </aside>}

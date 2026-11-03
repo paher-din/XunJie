@@ -15,10 +15,11 @@ export const componentDigest = (value: unknown) => createHash('sha256').update(J
 /** Course-owned definitions, independent of any student state. Resources share this owner's maintenance gate. */
 export function createComponents(storage: OwnedStorage) {
   async function read(componentId: string, version: number): Promise<ComponentDefinition> {
+    componentId = z.uuid().parse(componentId).toLowerCase();
     const { rows: [row] } = await storage.read('SELECT definition FROM course_components WHERE component_id=$1 AND version=$2', [componentId, version]);
     if (!row) throw new StorageError('missing');
     const result = componentDefinitionSchema.parse(row.definition);
-    if (result.digest !== componentDigest(result.manifest) || result.manifest.componentId !== componentId || result.manifest.version !== version) throw new StorageError('corrupt');
+    if (result.digest !== componentDigest(result.manifest) || result.manifest.componentId.toLowerCase() !== componentId || result.manifest.version !== version) throw new StorageError('corrupt');
     return result;
   }
   async function bytes(definition: ComponentDefinition) {
@@ -74,7 +75,8 @@ export function createComponents(storage: OwnedStorage) {
     for (const row of rows) {
       const definition = await read(String(row.component_id), Number(row.version));
       await bytes(definition);
-      const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [`component/${row.component_id}/${row.version}`]);
+      // Legacy manifests and their immutable digest/reference spelling must not be rewritten.
+      const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [`component/${definition.manifest.componentId}/${row.version}`]);
       if (links.length !== 1 || links[0]!.resource_id !== definition.manifest.entry.resourceId) throw new StorageError('corrupt');
     }
   }

@@ -3,8 +3,7 @@
 *{box-sizing:border-box}body{margin:0}main{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(240px,1fr);height:100vh}
 article,aside{padding:24px;overflow:auto}aside{border-left:1px solid var(--line)}h1,h2{font-size:17px;font-weight:600;line-height:1.5;margin:0 0 16px}
 p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 16px;max-width:70ch}.muted{color:var(--muted);font-size:13px}
-button,input,textarea{font:inherit;color:inherit}button{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
-button:hover{background:var(--hover)}button:disabled{cursor:default;opacity:.6}button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,textarea{font:inherit;color:inherit}/* xunjie-host-styles */
 textarea{display:block;width:100%;min-height:96px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--canvas)}
 label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:8px}.annotation{padding:16px 0;border-bottom:1px solid var(--line)}
 blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -12,15 +11,17 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
 @media(max-width:640px){main{grid-template-columns:1fr;height:auto}article,aside{padding:16px}aside{border-left:0;border-top:1px solid var(--line)}}
 </style></head><body><main><article aria-label="开放材料"><h1 id="title">材料标注</h1><div id="materials"></div><button id="add" disabled>标注选中文字</button></article>
 <aside aria-label="我的标注"><h2>我的标注</h2><p id="empty" class="muted">选中材料中的文字，记下你的理解或疑问。</p><p id="error" class="error" role="alert" hidden></p><div id="annotations"></div></aside></main>
+<!-- xunjie-contracts -->
 <script>
 (() => {
-  let connection, port, contentId = null, state, initialized = false, blocked = false;
+  let connection, port, contentId = null, state, initialized = false, blocked = false, sequence = 0;
   const pending = new Map();
   function request(method, payload, done) {
     const messageId = crypto.randomUUID();
-    if (done) pending.set(messageId, done);
-    port.postMessage({hostApiVersion:1,connectionId:connection.connectionId,instanceId:connection.instanceId,messageId,method,payload});
+    if (done) pending.set(messageId, {done,method});
+    port.postMessage(XunJieComponentProtocol.componentRequestSchema.parse({hostApiVersion:1,connectionId:connection.connectionId,instanceId:connection.instanceId,messageId,method,payload}));
   }
+  function interaction(event) { request('component.event', {formatVersion:1,eventId:crypto.randomUUID(),sequence:++sequence,...event}, () => {}); }
   function error(text) { blocked = true; const el = document.querySelector('#error'); el.hidden = false; el.textContent = text;
     document.querySelector('#add').disabled = true; document.querySelectorAll('#annotations textarea').forEach(input => { input.readOnly = true; }); }
   function change() {
@@ -38,7 +39,7 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
       const label = document.createElement('label'); label.textContent = '标注内容';
       const input = document.createElement('textarea'); input.value = item.note; input.maxLength = 4000;
       input.setAttribute('aria-label', '标注内容'); input.readOnly = blocked || connection.readOnly;
-      input.addEventListener('input', () => { item.note = input.value; change(); });
+      input.addEventListener('input', () => { item.note = input.value; interaction({kind:'control-change',controlId:'annotation-note',value:input.value}); change(); });
       label.append(input); const actions = document.createElement('div'); actions.className = 'actions';
       const remove = document.createElement('button'); remove.textContent = '移除此标注'; remove.disabled = blocked || connection.readOnly;
       remove.onclick = () => { state.annotations = state.annotations.filter(other => other.id !== item.id); change(); render(); };
@@ -50,7 +51,7 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
     const area = document.querySelector('#materials');
     if (blocked || !range || !area.contains(range.commonAncestorContainer)) return;
     const quote = selection.toString(); if (!quote.trim() || quote.length > 4000 || state.annotations.length >= 100) return;
-    state.annotations.push({id:crypto.randomUUID(),quote,note:''}); change(); render();
+    state.annotations.push({id:crypto.randomUUID(),quote,note:''}); interaction({kind:'confirmation',targetId:'annotation-selection',confirmed:true}); change(); render();
     document.querySelector('#annotations section:last-child textarea')?.focus();
   };
   const exportButton = document.createElement('button'); exportButton.textContent = '导出当前标注';
@@ -58,14 +59,22 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
     const output = document.createElement('textarea'); output.readOnly = true; output.value = text; output.setAttribute('aria-label','可复制的标注备份');
     document.querySelector('aside').append(output); output.select(); };
   document.querySelector('aside').append(exportButton);
-  function receive(event) {
-    if (event.data?.hostApiVersion !== 1) return;
-    const message = event.data;
+  async function receive(event) {
+    const validated = XunJieComponentProtocol.componentHostMessageSchema.safeParse(event.data);
+    if (!validated.success) { error('宿主响应未通过 v1 协议校验，请保留页面并导出内容。'); return; }
+    const message = validated.data;
     if (message.method === 'host.initialize') {
       if (connection && (connection.connectionId !== message.connectionId || connection.instanceId !== message.instanceId)) return;
       connection = {...message, readOnly:message.payload.readOnly};
       for (const [name,value] of Object.entries(message.payload.theme)) document.documentElement.style.setProperty('--'+name,value);
       if (initialized) return; initialized = true;
+      try {
+        const font = message.payload.titleFont;
+        const bytes = Uint8Array.from(atob(font.base64), char => char.charCodeAt(0));
+        const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value => value.toString(16).padStart(2,'0')).join('');
+        if (digest !== font.sha256) throw new Error('font digest mismatch');
+        const face = await new FontFace('XunJieTitle', bytes).load(); document.fonts.add(face);
+      } catch { error('标题字体资源校验失败，请保留页面后重新打开。'); return; }
       document.querySelector('#title').textContent = message.payload.binding.configuration.title;
       for (const material of message.payload.materials) {
         const heading = document.createElement('h2'); heading.textContent = material.title;
@@ -79,12 +88,14 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
         document.querySelector('#add').disabled = connection.readOnly;
       });
     } else if (connection && message.connectionId === connection.connectionId && message.instanceId === connection.instanceId && message.replyTo) {
-      const callback = pending.get(message.replyTo); pending.delete(message.replyTo); callback?.(message);
+      const callback = pending.get(message.replyTo); pending.delete(message.replyTo);
+      if (callback && callback.method !== message.method) { error('宿主响应与原请求方法不符，请保留页面并导出内容。'); return; }
+      callback?.done(message);
     }
   }
   window.addEventListener('message', event => {
     if (event.source !== parent || event.data?.method !== 'host.initialize' || event.data.hostApiVersion !== 1 || !event.ports[0]) return;
-    port?.close(); pending.clear(); initialized = false; connection = undefined;
+    port?.close(); pending.clear(); initialized = false; connection = undefined; sequence = 0;
     port = event.ports[0]; port.onmessage = receive; receive(event);
   });
 })();

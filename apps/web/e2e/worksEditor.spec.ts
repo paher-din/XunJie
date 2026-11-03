@@ -19,6 +19,7 @@ let activityId: string
 let activityGoal: string
 const cases: { name: string; status: string | undefined; durationMs: number }[] = []
 let browserVersion: string
+let headless = true
 function storageFaultBoundary(blocked: boolean) {
   const fault = { blocked }
   Object.assign(window, { workStorageFault: fault })
@@ -28,9 +29,10 @@ function storageFaultBoundary(blocked: boolean) {
     return Reflect.apply(put, this, args)
   }
 }
-test.beforeAll(async ({ browser }) => {
+test.beforeAll(async ({ browser }, info) => {
   await mkdir(fileURLToPath(new URL('../../../.verification/151', import.meta.url)), { recursive: true })
   browserVersion = browser.version()
+  headless = info.project.use.headless !== false
   const root = await mkdtemp(join(tmpdir(), 'xj-editor-browser-'))
   runtimeRoot = root
   runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
@@ -52,7 +54,7 @@ test.afterAll(async () => {
   await runtime?.stop()
   await writeFile(fileURLToPath(new URL('../../../.verification/151/chrome-results.json', import.meta.url)), JSON.stringify({
     measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, osRelease: osRelease(),
-    node: process.version, postgres: '18.6', browser: 'installed Chrome', browserVersion, headless: false,
+    node: process.version, postgres: '18.6', browser: 'installed Chrome', browserVersion, headless,
     backend: 'production product host, native PostgreSQL and real filesystem resources', cases,
   }, null, 2))
 })

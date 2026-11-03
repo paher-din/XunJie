@@ -12,6 +12,7 @@ import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action
 import { z } from 'zod'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
+import { ComponentInteractions } from '../component-host/interactions'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -25,6 +26,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; children: ReactNode
 }) {
   const scope = workspaceScope(namespace, activity)
+  const interactions = useMemo(() => new ComponentInteractions(), [scope])
   const draft = useMemo(() => {
     const id = activity.activityId
     const transport = {
@@ -46,7 +48,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       read: async () => workViewSchema.parse(await request('')),
       receipt: async id => { const value = await request('/receipts/' + id); return value === null ? null : workViewSchema.parse(value) },
       sync: async body => workViewSchema.parse(await request('', body)),
-    })
+    }, { activityId: activity.activityId, bindings: activity.course?.components ?? [] })
   }, [scope, spaceKey, namespace])
   const actions = useMemo(() => {
     const path = 'intents/' + activity.activityId
@@ -70,7 +72,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions }}>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, interactions }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }

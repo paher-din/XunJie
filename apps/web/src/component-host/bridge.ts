@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { acceptsState, componentMessageSchema, componentChangeSchema, componentStateSchema,
-  componentStateName, componentInstanceId, type ComponentBinding } from '@xunjie/contracts/components'
+  componentStateName, componentInstanceId, matchesComponentState, componentEventSchema, type ComponentBinding, type ComponentEvent } from '@xunjie/contracts/components'
 import type { ReliableWorkspace } from '../reliable-workspace'
 
 export const componentStateMediaType = 'application/vnd.xunjie.component-state+json'
@@ -19,20 +19,20 @@ function canonical(value: unknown): unknown {
   return value
 }
 /** A mount grants exactly one fixed instance and expires independently of other valid views. */
-export function createComponentBridge(workspace: ReliableWorkspace, activityId: string, binding: ComponentBinding, canWrite: () => boolean) {
+export function createComponentBridge(workspace: ReliableWorkspace, activityId: string, binding: ComponentBinding, canWrite: () => boolean,
+  consume: (event: ComponentEvent) => void = () => {}) {
   const connectionId = crypto.randomUUID(), instanceId = componentInstanceId(activityId, binding.key)
   const manifest = binding.definition.manifest
   let active = true
   let accepting = Promise.resolve()
+  let sequence = 0
+  const events = new Map<string, { input: string; receipt: { received: true; eventId: string; sequence: number; kind: ComponentEvent['kind'] } }>()
   const current = () => workspace.snapshot().files.find(file => file.name === componentStateName(binding.key))
   function read() {
     const file = current()
     if (!file) return { contentId: null, content: manifest.initialState }
     const value = componentStateSchema.parse(JSON.parse(file.value))
-    if (file.kind !== 'state' || file.encoding !== 'json' || file.mediaType !== componentStateMediaType
-      || value.componentId !== manifest.componentId || value.version !== manifest.version || value.stateVersion !== manifest.stateVersion
-      || value.instanceId !== instanceId || value.definitionDigest !== binding.definition.digest
-      || !acceptsState(manifest.stateShape, value.content)) throw new Error('invalid-input')
+    if (!matchesComponentState(binding, activityId, file)) throw new Error('invalid-input')
     return { contentId: file.contentId, content: value.content }
   }
   async function handle(raw: unknown) {
@@ -46,8 +46,15 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     if (message.method === 'component.close') { z.object({}).strict().parse(message.payload); active = false; return { closed: true } }
     if (message.method === 'component.ready') { z.object({}).strict().parse(message.payload); return { ready: true } }
     if (message.method === 'component.event') {
-      z.object({ eventId: z.uuid(), sequence: z.number().int().nonnegative(), kind: z.literal('interaction') }).strict().parse(message.payload)
-      return { received: true } // Transport acknowledgement only; no learning evidence or model call.
+      const event = componentEventSchema.parse(message.payload), input = JSON.stringify(canonical(event))
+      const previous = events.get(event.eventId)
+      if (previous) { if (previous.input !== input) throw new Error('conflict'); return previous.receipt }
+      if (event.sequence !== sequence + 1) throw new Error('conflict')
+      if (events.size >= 4096) throw new Error('capability-unavailable')
+      consume(event)
+      const receipt = { received: true as const, eventId: event.eventId, sequence: event.sequence, kind: event.kind }
+      events.set(event.eventId, { input, receipt }); sequence = event.sequence
+      return receipt
     }
     const capability = message.method
     if (capability !== 'workspace.read' && capability !== 'workspace.change') throw new Error('capability-unavailable')
@@ -89,7 +96,11 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
         workspace.change(files, true)
         // Preserve message arrival order through async admission; protection remains in the shared owner.
         release()
-      }, () => workspace.retainConflict(candidate().files))
+      }, () => {
+        if (!active) throw new Error('stale-connection')
+        if (!canWrite()) throw new Error('forbidden')
+        workspace.retainConflict(candidate().files)
+      })
       } finally { release() }
     })())
   }

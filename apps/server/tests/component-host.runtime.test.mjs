@@ -31,6 +31,12 @@ test('component import, fixed course binding and typed state use real product ow
     const imported = await api('manage/component-import', input, admin);
     assert.equal(imported.status, 200, JSON.stringify(imported.value));
     assert.deepEqual((await api('manage/component-import', input, admin)).value, imported.value);
+    const upper = structuredClone(input); upper.requestId = randomUUID(); upper.manifest.componentId = upper.manifest.componentId.toUpperCase();
+    assert.equal((await api('manage/component-import', upper, admin)).status, 400, 'noncanonical identities are rejected before storage');
+    const mixed = structuredClone(upper); mixed.manifest.componentId = mixed.manifest.componentId.replace('A', 'a');
+    assert.equal((await api('manage/component-import', mixed, admin)).status, 400);
+    const queried = await api('manage/component-read', { componentId: upper.manifest.componentId, version: input.manifest.version }, admin);
+    assert.equal(queried.status, 200); assert.deepEqual(queried.value, imported.value);
     assert.equal((await api('manage/component-import', { ...input, contentBase64: Buffer.from('tampered replay').toString('base64') }, admin)).status, 400);
     const changed = structuredClone(input); changed.requestId = randomUUID(); changed.manifest.title += ' changed';
     assert.equal((await api('manage/component-import', changed, admin)).status, 409);
@@ -62,7 +68,7 @@ test('component import, fixed course binding and typed state use real product ow
     const activity = created.value, works = `workspaces/${activity.activityId}`;
     assert.deepEqual(activity.course.components[0], binding);
     const state = { formatVersion: 1, instanceId: `${activity.activityId}:annotation`, componentId: input.manifest.componentId,
-      version: 1, definitionDigest: imported.value.digest, stateVersion: 1, operationId: randomUUID(), content: { annotations: [{ id: randomUUID(), quote: '公开材料', note: '我的理解\n第二行' }] } };
+      version: input.manifest.version, definitionDigest: imported.value.digest, stateVersion: 1, operationId: randomUUID(), content: { annotations: [{ id: randomUUID(), quote: '公开材料', note: '我的理解\n第二行' }] } };
     const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'components/annotation.json', kind: 'state', encoding: 'json',
       mediaType: 'application/vnd.xunjie.component-state+json', value: JSON.stringify(state) };
     const sync = { requestId: randomUUID(), baseRevision: 0, files: [file] };
@@ -79,6 +85,7 @@ test('component import, fixed course binding and typed state use real product ow
     assert.equal((await api(works, undefined, personalHeaders)).status, 404);
     const invalid = { ...sync, requestId: randomUUID(), baseRevision: 1, files: [{ ...file, contentId: randomUUID(), value: JSON.stringify({ ...state, content: { arbitrary: true } }) }] };
     assert.equal((await api(works, invalid, headers)).status, 400);
+    assert.equal((await api(works, { ...invalid, requestId: randomUUID(), files: [{ ...file, kind: 'text', encoding: 'utf8', mediaType: 'text/plain', value: 'cannot occupy a bound state path' }] }, headers)).status, 400);
     assert.equal((await api(works, { ...sync, requestId: randomUUID() }, headers)).status, 409);
     const other = await api('course-activities', { requestId: randomUUID(), releaseId }, headers);
     assert.deepEqual((await api(`workspaces/${other.value.activityId}`, undefined, headers)).value.files, []);
@@ -107,7 +114,7 @@ test('component import, fixed course binding and typed state use real product ow
     assert.equal((await api(path, undefined, headers)).status, 503);
     assert.equal((await api(works, undefined, headers)).value.files[0].value, file.value, 'a missing view cannot discard saved state');
     await writeFile(resourcePath, original);
-    const statusInput = { requestId: randomUUID(), componentId: input.manifest.componentId, version: 1, enabled: false };
+    const statusInput = { requestId: randomUUID(), componentId: input.manifest.componentId, version: input.manifest.version, enabled: false };
     assert.equal((await api('manage/component-status', statusInput, admin)).status, 200);
     assert.equal((await api(path, undefined, headers)).status, 503);
     assert.equal((await api(works, undefined, headers)).value.files[0].value, file.value);
