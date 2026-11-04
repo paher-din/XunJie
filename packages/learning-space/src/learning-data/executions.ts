@@ -5,13 +5,15 @@ import type { Migration, OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { componentInstanceId, componentStateName } from '@xunjie/contracts/components';
-import { advanceExecution, defaultExecutionLimits, executionAcceptanceSchema, executionActionSchema,
-  executionQuerySchema } from '@xunjie/contracts/execution';
+import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, executionActionSchema,
+  executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
 import { verifyPlannedExecution } from './plan.js';
 import { createNativeSessions } from './native-sessions.js';
 import type { NativeSessionOptions } from './native-sessions.js';
+import { createChannelExecutions } from './channel-executions.js';
+import type { createNativeChannel } from './native-channel.js';
 
 /**
  * The `tool-execution` owner keeps the command basis the service really received, the original
@@ -35,15 +37,12 @@ export const executionMigration: Migration = { version: 6, name: 'durable-browse
     execution_ref uuid NOT NULL,content_id uuid NOT NULL,sha256 text NOT NULL,byte_length integer NOT NULL,
     artifact jsonb NOT NULL,output jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
 ` };
+export const executionActionTextMigration: Migration = { version: 9, name: 'fixed-execution-action-text', sql: `
+  ALTER TABLE execution_commands ADD COLUMN action_text text;
+  ALTER TABLE native_sessions ADD COLUMN action_text text;
+` };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-/** Same canonical form the browser used for the plan and state digests it pinned into the command. */
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
-    .sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]));
-  return value;
-}
-const canonicalDigest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+const canonicalDigest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 const fail: (code: 'missing' | 'forbidden' | 'invalid' | 'corrupt' | 'identity-conflict') => never = code => {
   throw new StorageError(code);
 };
@@ -64,9 +63,11 @@ export function createExecutions(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   works: ReturnType<typeof createWorks>;
   native?: NativeSessionOptions;
+  channel?: ReturnType<typeof createNativeChannel>;
 }) {
   const { activity: authorize, works } = options;
   const native = options.native ? createNativeSessions(storage, options.native) : null;
+  const channel = options.channel ? createChannelExecutions(storage, { activity: authorize, works, channel: options.channel }) : null;
   async function find(activityId: string, requestId: string) {
     const { rows: [row] } = await storage.read('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2',
       [activityId, requestId]);
@@ -128,6 +129,8 @@ export function createExecutions(storage: OwnedStorage, options: {
   async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
     const location = (value as { action?: { execution?: { plan?: { location?: unknown } } } })?.action?.execution?.plan?.location;
     if (location === 'native') {
+      const receiver = (value as { action?: { receiver?: { location?: unknown } } })?.action?.receiver?.location;
+      if (channel && receiver === 'local') return channel.accept(identity, activityId, value);
       if (!native) fail('missing');
       return native.accept(identity, activityId, value);
     }
@@ -156,10 +159,10 @@ export function createExecutions(storage: OwnedStorage, options: {
     await storage.request({ requestId: 'execution-accept:' + action.requestId,
       fingerprint: digest({ identity, activityId, inputDigest }) }, async tx => {
       await tx.query(`INSERT INTO execution_commands(request_id,activity_id,input_digest,execution_ref,body,acceptance,
-        state,status_knowledge,stop_requested,confirmed_seq) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        state,status_knowledge,stop_requested,confirmed_seq,action_text) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
         ON CONFLICT(request_id) DO NOTHING`, [action.requestId, activityId, inputDigest, begun.executionRef,
         JSON.stringify(action), JSON.stringify(acceptance), begun.state, begun.statusKnowledge, begun.stopRequested,
-        begun.confirmedSeq]);
+        begun.confirmedSeq, JSON.stringify(action)]);
       const { rows: [row] } = await tx.query('SELECT * FROM execution_commands WHERE request_id=$1 FOR UPDATE', [action.requestId]);
       if (!row || row.activity_id !== activityId || row.input_digest !== inputDigest) fail('identity-conflict');
       for (const file of action.execution.basis.works) await tx.reference(`execution/${action.requestId}/work/${file.contentId}`, file.contentId);
@@ -173,21 +176,25 @@ export function createExecutions(storage: OwnedStorage, options: {
   }
   async function read(identity: SpaceIdentity, activityId: string, requestId: string) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (channel && await channel.owns(activityId, requestId)) return channel.read(identity, activityId, requestId);
     if (native && await native.owns(activityId, requestId)) return native.read(identity, activityId, requestId);
     const found = await find(activityId, requestId);
     return found ? found.query : null;
   }
   /** The native session list lets a reopened view find its original reference, never a new run. */
   async function sessions(identity: SpaceIdentity, activityId: string): Promise<ExecutionQuery[]> {
-    return native ? native.list(identity, activityId) : [];
+    const local = native ? await native.list(identity, activityId) : [];
+    return channel ? [...local, ...await channel.list(identity, activityId)] : local;
   }
   async function control(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
+    if (channel && await channel.owns(activityId, requestId)) return channel.control(identity, activityId, requestId, value);
     if (!native) fail('missing');
     return native.control(identity, activityId, requestId, value);
   }
   /** A reported fact advances only forward; a confirmed terminal fact is never rewritten. */
   async function report(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (channel && await channel.owns(activityId, requestId)) fail('invalid');
     if (native && await native.owns(activityId, requestId)) fail('invalid');
     const next = executionQuerySchema.parse(value);
     if (next.requestId !== requestId) fail('invalid');
@@ -213,8 +220,9 @@ export function createExecutions(storage: OwnedStorage, options: {
   /** Stopping names the original run; the original acceptance is left exactly as it was. */
   async function stop(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (channel && await channel.owns(activityId, requestId)) return channel.stop(identity, activityId, requestId, value);
     if (native && await native.owns(activityId, requestId)) return native.stop(identity, activityId, requestId, value);
-    const input = z.object({ stopId: z.uuid(), reason: z.string().max(200) }).strict().parse(value);
+    const input = executionStopSchema.parse(value);
     const result = await storage.request({ requestId: 'execution-stop:' + input.stopId,
       fingerprint: digest({ activityId, requestId, stopId: input.stopId }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2 FOR UPDATE',
@@ -234,6 +242,7 @@ export function createExecutions(storage: OwnedStorage, options: {
   /** The bytes are stored once under the run's own identity; a lost reply re-reads, never recomputes. */
   async function result(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (channel && await channel.owns(activityId, requestId)) fail('invalid');
     if (native && await native.owns(activityId, requestId)) fail('invalid');
     const input = z.object({ contentId: z.uuid(), output: z.unknown(), text: z.string().max(2000000),
       name: z.string().min(1).max(120), mediaType: z.string().min(1).max(120),
@@ -275,6 +284,10 @@ export function createExecutions(storage: OwnedStorage, options: {
     return executionQuerySchema.parse(saved.result);
   }
   return { accept, read, report, stop, result, control, sessions,
+    /** What the Linux restricted entry can enforce; `null` means it was not measured on this host. */
+    linuxEntryIsolation: async () => native ? await native.linuxEntryIsolation() : null,
+    /** Maintenance reclaims a session by its executor instance, not by a student's current eligibility. */
+    reclaim: async (sessionRef: string) => { if (!native) fail('missing'); return native.reclaim(sessionRef); },
     /** Maintenance recovery runs after the storage gate reopens, never against a closed owner. */
     recoverNative: async () => { await native?.ensureReady(); },
     /** Maintenance stops own their live processes before the storage owner drains. */
@@ -283,19 +296,36 @@ export function createExecutions(storage: OwnedStorage, options: {
 
 /** Recovery validation: every stored command still names its own activity, basis and artifact. */
 export async function validateExecutions(storage: OwnedStorage) {
+  const corrupt = (detail: string): never => {
+    const error = new StorageError('corrupt');
+    error.message += ` (execution recovery: ${detail})`;
+    throw error;
+  };
   const { rows } = await storage.read('SELECT * FROM execution_commands');
   for (const row of rows) {
     const stored = query(row), action = executionActionSchema.parse(row.body);
+    let inputDigest = digest(action);
+    if (row.action_text !== null && row.action_text !== undefined) {
+      if (typeof row.action_text !== 'string') corrupt('command text type');
+      let original: unknown;
+      try { original = JSON.parse(row.action_text as string); }
+      catch { corrupt('command text JSON'); }
+      const parsed = executionActionSchema.safeParse(original);
+      if (!parsed.success || canonicalDigest(original) !== canonicalDigest(action)
+        || canonicalDigest(parsed.data) !== canonicalDigest(action)) corrupt('command text projection');
+      inputDigest = createHash('sha256').update(row.action_text as string).digest('hex');
+    }
+    if (inputDigest !== stored.inputDigest) corrupt('command input digest');
     const acceptance = executionAcceptanceSchema.parse(row.acceptance);
     const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
     const body = activity?.body as LearningActivity | undefined, scope = action.scope;
     if (!body || scope.activityId !== row.activity_id || scope.environmentId !== body.identity.environmentId
       || scope.spaceId !== body.identity.spaceId || scope.principalId !== body.identity.principalId
-      || digest(action) !== stored.inputDigest || acceptance.receipt.requestId !== stored.requestId
+      || acceptance.receipt.requestId !== stored.requestId
       || acceptance.receipt.inputDigest !== stored.inputDigest || acceptance.receipt.state !== 'accepted'
       || !acceptance.execution || acceptance.execution.executionRef !== stored.executionRef
       || acceptance.execution.acceptedSeq > stored.confirmedSeq
-      || JSON.stringify(acceptance.receipt.receiver) !== JSON.stringify(action.receiver)) throw new StorageError('corrupt');
+      || JSON.stringify(acceptance.receipt.receiver) !== JSON.stringify(action.receiver)) corrupt('command identity or receipt');
     const state = action.execution.basis.state;
     if (state) {
       const { rows: [content] } = await storage.read(`SELECT activity_id,encoding,media_type FROM work_contents WHERE content_id=$1`,
@@ -314,11 +344,13 @@ export async function validateExecutions(storage: OwnedStorage) {
   const { rows: stops } = await storage.read('SELECT * FROM execution_stops');
   for (const row of stops) {
     const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
-    if (!activity || !row.reason) throw new StorageError('corrupt');
-    const { rows: [command] } = await storage.read('SELECT input_digest,stop_requested FROM execution_commands WHERE request_id=$1',
+    if (!activity || !row.reason) corrupt('stop activity or reason');
+    const { rows: [command] } = await storage.read('SELECT input_digest,stop_requested,state FROM execution_commands WHERE request_id=$1',
       [row.request_id]);
     if (!command || command.input_digest !== row.input_digest) throw new StorageError('corrupt');
-    if (!command.stop_requested) throw new StorageError('corrupt');
+    // A stop received after completion is recorded without rewriting the confirmed terminal fact.
+    if (!command.stop_requested && !['succeeded', 'failed', 'cancelled'].includes(String(command.state)))
+      throw new StorageError('corrupt');
   }
   const { rows: results } = await storage.read('SELECT * FROM execution_results');
   for (const row of results) {

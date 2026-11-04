@@ -4,10 +4,15 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
-import { appContainerIsolation, planSeatbelt, supervisorWatchdogSource, unboundedIsolation } from './native-sandbox.js';
+import { appContainerIsolation, linuxWatchdogSource, planSeatbelt, supervisorWatchdogSource, unboundedIsolation } from './native-sandbox.js';
 import type { NativeSessionIsolation, SeatbeltPlan } from './native-sandbox.js';
+import { linuxSessionUnit, stopUnit, unitStopped } from './linux-isolation.js';
+import type { LinuxSessionEntry } from './linux-isolation.js';
+import type { ExecutionPlatform } from '@xunjie/contracts/execution';
 
 const exec = promisify(execFile);
+/** Fixed product-level cap on tasks per session; the adapter's declared budgets do not cover forks. */
+const linuxTasksMax = 64;
 /** A confirmed stop waits for the managed group to be empty, not only for the direct child. */
 const groupReapMs = 3000;
 const memorySampleMs = 400;
@@ -19,6 +24,8 @@ const memorySampleMs = 400;
 export interface NativeAdapter {
   adapterId: string;
   adapterVersion: number;
+  /** Product-supported platforms; absent only for injected test adapters. */
+  platforms?: readonly ExecutionPlatform[];
   /** A self-contained ES module, executed with the product's own Node runtime. */
   source: string;
 }
@@ -56,6 +63,10 @@ export interface NativeSessionStart {
   macosSandbox?: boolean;
   /** Directories the sandbox refuses to read besides the fixed protected roots and the home directory. */
   protectRoots?: readonly string[];
+  /** Linux only: the fixed root entry that starts the session inside a restricted systemd unit. */
+  linuxEntry?: LinuxSessionEntry;
+  /** What `probeLinuxIsolation` measured for that entry. A session without it is not started. */
+  linuxIsolation?: NativeSessionIsolation;
   events?: NativeSessionEvents;
 }
 
@@ -125,10 +136,12 @@ export class SupervisedSession {
 
   private constructor(private readonly start: NativeSessionStart, readonly instanceId: string,
     readonly sessionDirectoryInput: string, child: ChildProcess, private readonly windowsProfile?: string,
-    readonly isolation: NativeSessionIsolation = unboundedIsolation) {
+    readonly isolation: NativeSessionIsolation = unboundedIsolation,
+    private readonly linuxUnit?: { entry: LinuxSessionEntry; unit: string }) {
     this.child = child;
     this.sessionDirectory = sessionDirectoryInput;
-    this.managesGroup = process.platform !== 'win32' && !windowsProfile;
+    // A unit owns the process tree on Linux; the supervisor cannot signal a group it does not own.
+    this.managesGroup = !linuxUnit && process.platform !== 'win32' && !windowsProfile;
     let settle!: (value: boolean) => void;
     this.exited = new Promise<boolean>(resolve => { settle = resolve });
     this.settleExit = settle;
@@ -136,8 +149,18 @@ export class SupervisedSession {
   }
 
   static async create(options: NativeSessionStart): Promise<SupervisedSession> {
+    const platform: ExecutionPlatform | null = process.platform === 'darwin' && process.arch === 'arm64' ? 'macos-arm64'
+      : process.platform === 'win32' && process.arch === 'x64' ? 'windows-x64'
+      : process.platform === 'linux' && process.arch === 'x64' ? 'linux-x64' : null;
+    if (options.adapter.platforms && (!platform || !options.adapter.platforms.includes(platform)))
+      throw new NativeSessionError('resource-unavailable', '当前设备不支持该适配器要求的平台能力。');
     const instanceId = options.instanceId ?? randomUUID();
-    const root = options.sessionRoot ?? join(tmpdir(), 'xunjie-native-sessions');
+    const linux = options.linuxEntry && process.platform === 'linux' ? options.linuxEntry : null;
+    if (linux && !options.linuxIsolation) {
+      throw new NativeSessionError('resource-unavailable',
+        '本机没有通过自检的受限会话入口，会话没有在强制隔离下启动。');
+    }
+    const root = linux ? linux.workRoot : options.sessionRoot ?? join(tmpdir(), 'xunjie-native-sessions');
     await mkdir(root, { recursive: true, mode: 0o700 });
     const sessionDirectory = await mkdtemp(join(root, 'session-'));
     const nodePath = options.nodePath ?? process.execPath;
@@ -158,8 +181,20 @@ export class SupervisedSession {
       XJ_SESSION_INSTANCE: instanceId, NO_COLOR: '1', TZ: 'UTC',
     };
     let child: ChildProcess;
+    const unit = linux ? linuxSessionUnit(instanceId) : null;
     try {
-      if (helper && profile) {
+      if (linux && unit) {
+        // The adapter is a real file so the unit runs exactly one fixed command; the client keeps
+        // the line protocol on inherited descriptors through `systemd-run --pipe`.
+        await writeFile(join(sessionDirectory, 'adapter.mjs'), linuxWatchdogSource + '\n' + options.adapter.source,
+          { mode: 0o600 });
+        // The entry reads the runtime budget in milliseconds and turns it into `RuntimeMaxSec`,
+        // so the unit outlives the session budget by a small margin and never cuts a legal run.
+        child = spawn(linux.sudo, ['-n', linux.entry, 'start', unit, sessionDirectory,
+          String(options.limits.memoryMiB), String(linuxTasksMax), String(options.limits.maxMs + 5000),
+          nodePath, instanceId], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
+          env: { PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', LANG: 'C' } });
+      } else if (helper && profile) {
         const helperEnv = { ...env, USERPROFILE: process.env.USERPROFILE, LOCALAPPDATA: process.env.LOCALAPPDATA };
         const { stdout } = await exec(helper, ['--prepare', profile], { env: helperEnv, windowsHide: true, timeout: 10000 });
         const sid = stdout.trim();
@@ -186,19 +221,24 @@ export class SupervisedSession {
     } catch (error) {
       if (helper && profile) await exec(helper, ['--release', profile], { windowsHide: true, timeout: 10000 }).catch(() => {});
       await rm(sessionDirectory, { recursive: true, force: true }).catch(() => {});
+      if (linux) throw new NativeSessionError('resource-unavailable', 'Linux 受限会话入口未能启动会话，请检查该入口的安装与 sudo 规则。');
       if (helper) throw new NativeSessionError('resource-unavailable', 'Windows 会话隔离准备失败，请检查产品资源与当前用户权限后重试。');
       if (sandbox) throw new NativeSessionError('resource-unavailable', '本机会话无法在沙盒中启动，请检查系统沙盒启动器。');
       throw error;
     }
-    const isolation = sandbox?.isolation ?? (helper ? appContainerIsolation : unboundedIsolation);
-    const session = new SupervisedSession(options, instanceId, sessionDirectory, child, profile, isolation);
+    const isolation = linux ? options.linuxIsolation! : sandbox?.isolation ?? (helper ? appContainerIsolation : unboundedIsolation);
+    const session = new SupervisedSession(options, instanceId, sessionDirectory, child, profile, isolation,
+      linux && unit ? { entry: linux, unit } : undefined);
     try {
       await session.waitReady();
-      if (child.pid) await session.primeMemory(child.pid);
+      if (child.pid && !linux) await session.primeMemory(child.pid);
       session.startMemoryWatch();
       return session;
     } catch (error) {
       await session.dispose();
+      if (linux && !session.exitFact?.confirmed) {
+        throw new NativeSessionError('termination-unconfirmed', 'Linux 会话未通过自检，受限单元的回收结果待核实。');
+      }
       if (profile && !session.exitFact?.confirmed) {
         throw new NativeSessionError('termination-unconfirmed', 'Windows 会话未通过自检，隔离进程的回收结果待核实。');
       }
@@ -257,6 +297,12 @@ export class SupervisedSession {
     const pending = this.pending;
     this.pending = null;
     if (pending) { clearTimeout(pending.timer); pending.reject(error ?? new NativeSessionError('worker-terminated', '本机会话进程已结束。')) }
+    if (this.linuxUnit) {
+      // The client exiting is not the unit exiting; only an inactive unit confirms the stop.
+      this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed: false };
+      void this.confirmUnit();
+      return;
+    }
     if (!this.managesGroup) {
       const confirmed = !this.windowsProfile || code === 0 || code === 1;
       this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed };
@@ -268,6 +314,21 @@ export class SupervisedSession {
     // The direct child exited, but a stop is only confirmed once the managed group is empty.
     this.exit = { requested: this.requestedStop, expired: this.expired, code, confirmed: false };
     void this.confirmGroup();
+  }
+
+  private async confirmUnit() {
+    const { entry, unit } = this.linuxUnit!;
+    const deadline = Date.now() + groupReapMs;
+    let empty = await unitStopped(entry, unit, this.instanceId);
+    while (!empty && Date.now() < deadline) {
+      await delay(50);
+      empty = await unitStopped(entry, unit, this.instanceId);
+    }
+    if (!this.exit) return;
+    this.exit.confirmed = empty;
+    this.settleExit(empty);
+    if (empty) this.releaseSession();
+    this.start.events?.onExit?.(this.exit);
   }
 
   private async confirmGroup() {
@@ -310,7 +371,8 @@ export class SupervisedSession {
    * the declared budget is stopped here, so off-heap buffers cannot leave the session unbounded.
    */
   private startMemoryWatch() {
-    if (this.managesGroup === false || process.platform === 'win32') return;
+    // A cgroup MemoryMax is enforced by the kernel; sampling the unit from outside adds nothing.
+    if (this.linuxUnit || this.managesGroup === false || process.platform === 'win32') return;
     const pid = this.child.pid;
     if (!pid) return;
     this.memoryTimer = setInterval(() => { void this.sampleMemory(pid) }, memorySampleMs);
@@ -342,6 +404,11 @@ export class SupervisedSession {
   }
 
   private killTree() {
+    if (this.linuxUnit) {
+      // Stopping the unit ends every process in its cgroup, including grandchildren.
+      void stopUnit(this.linuxUnit.entry, this.linuxUnit.unit, this.instanceId);
+      return;
+    }
     const pid = this.child.pid;
     if (!pid || this.child.exitCode !== null) return;
     if (this.start.windowsHelper && this.windowsProfile) {
@@ -520,6 +587,19 @@ export const fourStateAccumulatorSource = [
   "process.stdin.on('end', () => process.exit(0));",
 ].join('\n');
 
+/** A Linux process experiment observes real procfs data on every confirmed transition. */
+const linuxProcAccumulatorSource = [
+  "import { readFileSync as readProc } from 'node:fs';",
+  "if (process.platform !== 'linux') throw new Error('This experiment requires Linux procfs.');",
+  "const procState = () => { const text = readProc('/proc/self/status', 'utf8');",
+  "  return { pid: Number(text.match(/^Pid:\\s+(\\d+)/m)?.[1]), threads: Number(text.match(/^Threads:\\s+(\\d+)/m)?.[1]) }; };",
+  fourStateAccumulatorSource.replaceAll("adapterId: 'four-state-accumulator'", "adapterId: 'linux-proc-accumulator'")
+    .replaceAll('{ value, total, applied }', '{ value, total, applied, ...procState() }'),
+].join('\n');
+
 export const productNativeAdapters: readonly NativeAdapter[] = Object.freeze([
-  Object.freeze({ adapterId: 'four-state-accumulator', adapterVersion: 1, source: fourStateAccumulatorSource }),
+  Object.freeze({ adapterId: 'four-state-accumulator', adapterVersion: 1, source: fourStateAccumulatorSource,
+    platforms: Object.freeze(['linux-x64', 'macos-arm64', 'windows-x64'] as const) }),
+  Object.freeze({ adapterId: 'linux-proc-accumulator', adapterVersion: 1, source: linuxProcAccumulatorSource,
+    platforms: Object.freeze(['linux-x64'] as const) }),
 ]);

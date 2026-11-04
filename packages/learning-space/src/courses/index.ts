@@ -14,7 +14,7 @@ import type {
 } from '@xunjie/contracts/courses';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
+import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
 import { spaceMigrations } from '../spaces/index.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
@@ -87,12 +87,8 @@ function studentMaterials(content: StoredContent) {
     .map(({ materialId, title, mediaType, byteLength, sha256 }) => ({ materialId, title, mediaType, byteLength, sha256 }));
 }
 
-/** Canonical form the plan digest is computed over; identical to `courseExecutionPlanBasis` normalisation. */
-const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
-  : value && typeof value === 'object'
-    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]))
-    : value;
-const configurationDigest = (configuration: unknown) => digest(canonical(configuration));
+/** The plan and configuration digests share the contract's canonicalisation rule. */
+const configurationDigest = (configuration: unknown) => digest(canonicalValue(configuration));
 /** `courseExecutionPlanBasis` already returns canonical keys, so this is the one plan digest in the product. */
 const planDigest = (plan: Parameters<typeof courseExecutionPlanBasis>[0]) => digest(courseExecutionPlanBasis(plan));
 
@@ -118,12 +114,11 @@ function verifyExecutionPlan(content: StoredContent) {
   for (const planned of plan.components) {
     const binding = bindings.find(item => item.key === planned.key)!;
     const manifest = binding.definition.manifest;
-    // A prepared (format 2) component only prepares; it never declares a run a plan could pin.
-    if (manifest.formatVersion !== 1) fail('invalid');
     if (planned.definitionDigest !== binding.definition.digest) fail('invalid');
     if (planned.configurationDigest !== configurationDigest(binding.configuration)) fail('invalid');
     const declared = declaredOperations(manifest);
-    if (!declared.length || declared.length !== planned.operations.length
+    // Non-executable components still pin their identity and configuration, with no invented run.
+    if (declared.length !== planned.operations.length
       || declared.some(id => !planned.operations.includes(id))) fail('invalid');
   }
   // A plan may narrow what the components declare; it may never grant itself a capability they lack.

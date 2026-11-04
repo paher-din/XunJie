@@ -1,5 +1,6 @@
 import { acceptsState, type ComponentBinding, type StateShape } from '@xunjie/contracts/components'
 import { executionActionSchema, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
+import { decideExecutionPlacement, plannedExecutionScope, type CourseExecutionPlan, type ExecutionDevice } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 import { digestOf, readComponentState } from './action'
@@ -33,6 +34,21 @@ export async function nativePlan(binding: ComponentBinding, operationId: string)
       componentVersion: manifest.version, operationId }) }
 }
 
+export interface SessionPlacement {
+  plan: CourseExecutionPlan
+  device: ExecutionDevice
+  remoteAvailable: boolean
+}
+
+export function sessionPlacement(binding: ComponentBinding, placement: SessionPlacement) {
+  const session = declaredSession(binding)
+  if (!session || plannedExecutionScope(placement.plan, { key: binding.key,
+    definitionDigest: binding.definition.digest, operationId: session.operation.operationId,
+    location: 'native' }) !== 'allowed') throw new Error('not-planned')
+  return decideExecutionPlacement({ ...placement, operationId: session.operation.operationId, kind: 'session',
+    adapter: { adapterId: session.adapterId, adapterVersion: session.adapterVersion } })
+}
+
 /**
  * One assembly for opening a native session. The host, not the component, fixes the adapter,
  * the plan, the limits and the state copy the session cites.
@@ -40,17 +56,24 @@ export async function nativePlan(binding: ComponentBinding, operationId: string)
 export async function sessionAction(input: {
   workspace: ReliableWorkspace; binding: ComponentBinding; instanceId: string
   receiver: ExecutionAction['receiver']; parameters: unknown; requestId: string
+  placement?: SessionPlacement
 }): Promise<ExecutionAction> {
   input = { ...input, binding: structuredClone(input.binding), receiver: structuredClone(input.receiver),
-    parameters: structuredClone(input.parameters) }
+    parameters: structuredClone(input.parameters), placement: input.placement && structuredClone(input.placement) }
   const session = declaredSession(input.binding)
   const manifest = input.binding.definition.manifest
   if (manifest.formatVersion !== 1 || !session) throw new Error('capability-unavailable')
   if (!acceptsState(session.parameters, input.parameters)) throw new Error('invalid-input')
+  const decision = input.placement && sessionPlacement(input.binding, input.placement)
+  if (decision && (!decision.location || !decision.owner)) throw new Error(decision.detail)
+  if (input.placement) {
+    const component = input.placement.plan.components.find(item => item.key === input.binding.key)!
+    if (component.configurationDigest !== await digestOf(input.binding.configuration)) throw new Error('not-planned')
+  }
   const state = readComponentState(input.workspace, input.binding, input.instanceId)
   const scope = actionScopeFromWorkspaceKey(input.workspace.key)
   return executionActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: input.requestId, scope,
-    receiver: input.receiver,
+    receiver: decision ? { ...input.receiver, location: decision.owner === 'school-node' ? 'remote' : 'local' } : input.receiver,
     execution: {
       instance: { instanceId: input.instanceId, key: input.binding.key, componentId: manifest.componentId,
         componentVersion: manifest.version, definitionDigest: input.binding.definition.digest,
@@ -62,6 +85,7 @@ export async function sessionAction(input: {
         expected: { stateContentId: state.contentId }, resources: [] },
       limits: nativeLimits(session),
       plan: await nativePlan(input.binding, session.operation.operationId),
+      ...(input.placement ? { device: input.placement.device } : {}),
       session: { adapterId: session.adapterId, adapterVersion: session.adapterVersion, limits: {
         operationTimeoutMs: session.budgets.operationTimeoutMs, idleMs: session.budgets.idleMs,
         maxMs: session.budgets.maxMs, memoryMiB: session.budgets.memoryMiB,

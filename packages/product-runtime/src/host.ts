@@ -28,6 +28,9 @@ export interface ProductHostOptions {
   createApplication?: (context: { root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration }) => Promise<{
     owners: readonly RecoveryOwner[];
     capabilities?: Readonly<Record<string, CapabilityHandler>>;
+    /** Host facts an operator must be able to read before asking this node to run anything. */
+    facts?: () => Promise<readonly RuntimeDependencyStatus[]>;
+    lifecycle?: { pause(): Promise<void>; resume(): Promise<void>; close(): Promise<void> };
     handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
   } | undefined>;
 }
@@ -81,7 +84,10 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     ? await options.createRecoveryOwners({ root, environment }) : [])];
   const maintenance = createMaintenanceCoordinator({
     requiredServiceIds: [service.serviceId, ...config.requiredServiceIds],
-    record: state => atomicJson(join(root, 'maintenance.json'), state),
+    async record(state) {
+      await atomicJson(join(root, 'maintenance.json'), state);
+      if (state.phase === 'open') await application?.lifecycle?.resume();
+    },
     async beforeResume() {
       if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
       if (await exists(join(root, 'recovery-state.json'))
@@ -91,8 +97,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   const runtimeParticipant: MaintenanceParticipant = {
     descriptor: { serviceId: service.serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: ['installation'] },
     async closeWrites() { gatesClosed = true; },
-    async closeDispatch() { gatesClosed = true; },
+    async closeDispatch() { gatesClosed = true; await application?.lifecycle?.pause(); },
     async drain() {
+      await application?.lifecycle?.pause();
       const deadline = Date.now() + 15000;
       while (activeApplicationRequests) {
         if (Date.now() >= deadline) throw new Error('Learning requests have not drained.');
@@ -158,6 +165,14 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     }));
     const missing = maintenance.status().missingServiceIds;
     if (missing.length) dependencies.push({ name: 'maintenance-participants', required: true, state: 'unavailable', detail: missing.join(', ') });
+    // A fact the application measured itself (what it can confine, which entry it uses) belongs in
+    // the same list as every other dependency: an operator reads one answer, not two.
+    if (application?.facts) {
+      try { dependencies.push(...await application.facts()); }
+      catch (error) {
+        dependencies.push({ name: 'application-facts', required: false, state: 'unavailable', detail: (error as Error).message });
+      }
+    }
     const state: RuntimeStatus['state'] = !initialized || starting ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
       : await authorityClosed() ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
         : dependencies.some(value => value.state !== 'ready') ? 'degraded' : 'ready';
@@ -185,10 +200,14 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     }
     if (pathname.startsWith('/runtime/control/')) { send(response, 404, { error: 'not_found' }); return; }
     if (pathname.startsWith('/api/learning/')) {
-      if (gatesClosed || stopping) { send(response, 503, { error: 'maintenance' }); return; }
+      // Original claim capabilities can only confirm exit. Keep exact retries available after
+      // writes close; the module checks proofs read-only before considering any first write.
+      const terminalAcknowledgement = () => environment.profile === 'school' && request.method === 'POST'
+        && pathname === '/api/learning/native-channel/cleanup';
+      if ((gatesClosed || stopping) && !terminalAcknowledgement()) { send(response, 503, { error: 'maintenance' }); return; }
       activeApplicationRequests++;
       try {
-        if (await authorityClosed() || gatesClosed || stopping) { send(response, 503, { error: 'maintenance' }); return; }
+        if ((await authorityClosed() || gatesClosed || stopping) && !terminalAcknowledgement()) { send(response, 503, { error: 'maintenance' }); return; }
         if (application && await application.handle(request, response)) return;
       } finally { activeApplicationRequests--; }
     }
@@ -312,6 +331,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     stopping = true;
     try {
       await startupComplete;
+      // A killed owned database must recover its WAL before owners can persist their stop gates.
+      // The public dispatch gate closes first; an external database is never started or replaced.
+      gatesClosed = true;
+      if (!startupFailure && config.database.mode === 'managed')
+        await startDatabase(root, config.resources, config.database, { stoppedOnly: true });
       if (!maintenance.status().safeToStop) {
         const phase = maintenance.status().phase;
         if (phase !== 'open' && phase !== 'failed') throw new Error('Maintenance has not confirmed a safe stop boundary.');
@@ -323,6 +347,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   }
   async function shutdown() {
     if (scheduler) clearInterval(scheduler);
+    await application?.lifecycle?.close();
     for (const owner of suppliedOwners) await owner.close?.();
     await atomicJson(join(root, 'status.json'), { state: 'stopped', environment, dependencies: [] } satisfies RuntimeStatus);
     await Promise.all([close(publicServer, publicSockets), close(controlServer)]);
@@ -353,6 +378,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       await maintenance.enter('restart');
       await maintenance.resume();
     }
+    if (maintenance.status().phase === 'open') await application?.lifecycle?.resume();
     // start() must not observe readiness before a previous stop/restart gate reopens.
     initialized = true;
     await atomicJson(join(root, 'status.json'), await status());
@@ -373,7 +399,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     return { status, stop, maintenance, recovery, environment, endpoint };
   } catch (error) {
     completeStartup();
-    await Promise.allSettled([close(publicServer, publicSockets), close(controlServer)]);
+    await Promise.allSettled([application?.lifecycle?.close(), close(publicServer, publicSockets), close(controlServer)]);
     await releaseOnce();
     await atomicJson(join(root, 'status.json'), { state: 'failed', environment, dependencies: [], reason: (error as Error).message });
     throw error;

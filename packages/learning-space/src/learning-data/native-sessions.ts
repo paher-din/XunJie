@@ -6,10 +6,14 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { acceptsState, componentInstanceId, componentStateName } from '@xunjie/contracts/components';
 import type { StateShape } from '@xunjie/contracts/components';
-import { executionActionSchema, executionControlSchema, executionQuerySchema } from '@xunjie/contracts/execution';
+import { canonicalValue, decideExecutionPlacement, executionActionSchema, executionControlSchema,
+  executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionControl, ExecutionObservation, ExecutionQuery } from '@xunjie/contracts/execution';
 import { productNativeAdapters, SupervisedSession } from './native-process.js';
 import type { NativeAdapter, NativeSessionExit } from './native-process.js';
+import { linuxSessionUnit, probeLinuxIsolation, stopUnit, unitStopped } from './linux-isolation.js';
+import type { LinuxSessionEntry } from './linux-isolation.js';
+import type { NativeSessionIsolation } from './native-sandbox.js';
 import { verifyPlannedExecution } from './plan.js';
 import type { createWorks } from './works.js';
 
@@ -48,19 +52,22 @@ export interface NativeSessionOptions {
   nodePath?: string;
   windowsHelper?: string;
   sessionRoot?: string;
+  /** Linux only. Without a passing probe the owner refuses to start a session instead of running it unconfined. */
+  linuxEntry?: LinuxSessionEntry;
+  /** A measurement already taken by the host; otherwise the owner probes once on first use. */
+  linuxIsolation?: NativeSessionIsolation;
   nodeId?: string;
   supervisorEpoch?: string;
+  /** The host fixes its own role and transport; neither is taken from an execution command. */
+  placement?: { nodeClass: 'device' | 'school-execution-node'; secureTransport: boolean };
 }
 /** What a host configures; the activity and work owner stay inside the learning-data module. */
 export type NativeSessionHostOptions = Omit<NativeSessionOptions, 'activity' | 'works'>;
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
-  : value && typeof value === 'object'
-    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]))
-    : value;
-const canonicalDigest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+const canonicalDigest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 const componentStateMediaType = 'application/vnd.xunjie.component-state+json';
+const delay = (milliseconds: number) => new Promise<void>(resolve => { setTimeout(resolve, milliseconds) });
 function fail(code: 'missing' | 'forbidden' | 'invalid' | 'corrupt' | 'conflict' | 'identity-conflict'): never {
   throw new StorageError(code);
 }
@@ -94,7 +101,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   const live = new Map<string, LiveSession>();
   const starting = new Map<string, Promise<ExecutionQuery>>();
   const settling = new Set<Promise<void>>();
-  const installationGeneration = storage.generation;
+  /** The storage generation is live: a maintenance resume changes it without replacing this owner. */
+  const currentGeneration = () => String(storage.generation);
   /** An exit fact is written after the OS event; shutdown waits for those writes before storage drains. */
   function noteExit(sessionRef: string, exit: NativeSessionExit) {
     const task = settleExit(sessionRef, exit);
@@ -162,6 +170,25 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     return { manifest, session: declared };
   }
 
+  async function verifyPlacement(_identity: SpaceIdentity, activity: LearningActivity, action: ExecutionAction) {
+    const plan = activity.course?.executionPlan, placement = options.placement;
+    const school = placement?.nodeClass === 'school-execution-node' || nodeId.startsWith('school-');
+    if (!plan) { if (school) fail('forbidden'); return; }
+    const device = action.execution.device;
+    if (!device) fail('forbidden');
+    const session = action.execution.session!;
+    const adapter = adapters.get(`${session.adapterId}@${session.adapterVersion}`);
+    // The product registry corroborates a platform limitation. A missing install, permission or
+    // preparation can never turn a supported adapter into a remote-only operation.
+    if (school && (!placement?.secureTransport || !plan.remote || !device.platform
+      || !adapter?.platforms || adapter.platforms.includes(device.platform))) fail('forbidden');
+    const decision = decideExecutionPlacement({ operationId: action.execution.operation.operationId, kind: 'session',
+      adapter: { adapterId: session.adapterId, adapterVersion: session.adapterVersion }, plan, device,
+      remoteAvailable: school && placement?.secureTransport === true });
+    if (decision.location !== 'native' || decision.owner !== (school ? 'school-node' : 'device')) fail('forbidden');
+    if (action.receiver.location !== (school ? 'remote' : 'local')) fail('forbidden');
+  }
+
   function verifyState(action: ExecutionAction) {
     const state = action.execution.basis.state, expected = action.execution.basis.expected.stateContentId;
     if ((state?.contentId ?? null) !== expected) fail('invalid');
@@ -179,7 +206,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
     const input = z.object({ action: executionActionSchema, acceptance: z.unknown().optional() }).strict().parse(value);
     const action = input.action;
-    const key = activityId + ':' + action.requestId;
+    const key = digest({ identity, activityId, action });
     const running = starting.get(key);
     if (running) return running;
     const attempt = beginAccept(identity, activityId, action);
@@ -200,9 +227,11 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const existing = await find(activityId, action.requestId);
     if (existing) {
       if (existing.input_digest !== inputDigest) fail('identity-conflict');
+      await verifyPlacement(identity, activity, action);
       return queryOf(existing);
     }
     const { session: declared } = verifyAction(activity, action);
+    await verifyPlacement(identity, activity, action);
     const adapter = adapters.get(`${declared.adapterId}@${declared.adapterVersion}`);
     if (!adapter) fail('invalid');
     const sessionLimits = action.execution.session!.limits;
@@ -210,6 +239,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const busy = live.size + Math.max(0, starting.size - 1);
     if (busy >= sessionLimits.concurrentSessions) fail('invalid');
     verifyState(action);
+    const installationGeneration = currentGeneration();
     const sessionRef = randomUUID(), executorInstanceId = randomUUID();
     const begun = executionQuerySchema.parse({
       requestId: action.requestId, inputDigest, scope, executionRef: sessionRef, state: 'queued',
@@ -223,11 +253,11 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       fingerprint: digest({ identity, activityId, inputDigest }) }, async tx => {
       const inserted = await tx.query(`INSERT INTO native_sessions(session_ref,activity_id,request_id,input_digest,action,adapter_id,
         adapter_version,node_id,install_generation,supervisor_epoch,executor_instance_id,state,status_knowledge,
-        stop_requested,confirmed_seq,applied_seq,last_control_id,observation,observations)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'queued','confirmed',false,1,0,NULL,NULL,'[]'::jsonb)
+        stop_requested,confirmed_seq,applied_seq,last_control_id,observation,observations,action_text)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'queued','confirmed',false,1,0,NULL,NULL,'[]'::jsonb,$12)
         ON CONFLICT(request_id) DO NOTHING RETURNING session_ref`, [sessionRef, activityId, action.requestId, inputDigest,
         JSON.stringify(action), declared.adapterId, declared.adapterVersion, nodeId, installationGeneration,
-        supervisorEpoch, executorInstanceId]);
+        supervisorEpoch, executorInstanceId, JSON.stringify(action)]);
       const { rows: [row] } = await tx.query('SELECT * FROM native_sessions WHERE request_id=$1 FOR UPDATE',
         [action.requestId]);
       if (!row || row.activity_id !== activityId || row.input_digest !== inputDigest) fail('identity-conflict');
@@ -240,6 +270,15 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const reserved = reservation.result as { created: boolean; query: ExecutionQuery };
     // Another acceptance already owns this identity and its process; never spawn a second one.
     if (!reserved.created) return reserved.query;
+    let isolation: NativeSessionIsolation | undefined;
+    if (options.linuxEntry) {
+      const measured = await linuxFact();
+      if (!measured) {
+        return refuseStart(activityId, action.requestId, Object.assign(
+          new Error('本机受限会话入口未通过自检，原生会话没有启动。'), { code: 'resource-unavailable' }));
+      }
+      isolation = measured;
+    }
     let spawned: SupervisedSession;
     try {
       spawned = await SupervisedSession.create({
@@ -247,6 +286,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         ...(options.nodePath ? { nodePath: options.nodePath } : {}),
         ...(options.windowsHelper ? { windowsHelper: options.windowsHelper } : {}),
         ...(options.sessionRoot ? { sessionRoot: options.sessionRoot } : {}),
+        ...(options.linuxEntry ? { linuxEntry: options.linuxEntry } : {}),
+        ...(isolation ? { linuxIsolation: isolation } : {}),
         limits: { operationTimeoutMs: action.execution.limits.timeMs, idleMs: sessionLimits.idleMs,
           maxMs: sessionLimits.maxMs, memoryMiB: sessionLimits.memoryMiB,
           outputBytes: action.execution.limits.outputBytes },
@@ -255,10 +296,25 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     } catch (error) {
       return refuseStart(activityId, action.requestId, error);
     }
+    if (installationGeneration !== currentGeneration()) {
+      await spawned.dispose();
+      await assertGeneration((await findRef(sessionRef))!);
+    }
+    try {
+      const current = await options.activity(identity, activityId);
+      await verifyPlacement(identity, current, action);
+    } catch (error) { await spawned.dispose(); throw error; }
     if (spawned.exitFact) {
       await settleExit(sessionRef, spawned.exitFact);
       const stopped = await findRef(sessionRef);
       return stopped ? queryOf(stopped) : executionQuerySchema.parse(begun);
+    }
+    const reservedRow = await findRef(sessionRef);
+    if (!reservedRow || reservedRow.stop_requested || reservedRow.state !== 'queued'
+      || reservedRow.status_knowledge !== 'confirmed') {
+      await spawned.dispose();
+      if (spawned.exitFact) await settleExit(sessionRef, spawned.exitFact);
+      return queryOf((await findRef(sessionRef))!);
     }
     const resultShape = declared.operation.result;
     if (!acceptsState(resultShape, spawned.initialObservation)) {
@@ -270,12 +326,16 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const confirmed = await storage.request({ requestId: 'native-start:' + action.requestId,
       fingerprint: digest({ sessionRef, executorInstanceId }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
-      if (!row || row.state !== 'queued') return queryOf(row ?? fail('corrupt'));
+      if (!row || row.state !== 'queued' || row.stop_requested || row.status_knowledge !== 'confirmed'
+        || String(row.install_generation) !== currentGeneration()) return queryOf(row ?? fail('corrupt'));
       await tx.query(`UPDATE native_sessions SET state='running',confirmed_seq=2,observation=$2,updated_at=clock_timestamp()
         WHERE session_ref=$1`, [sessionRef, JSON.stringify(spawned.initialObservation)]);
       const { rows: [updated] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1', [sessionRef]);
       return queryOf(updated!);
     });
+    const registered = executionQuerySchema.parse(confirmed.result);
+    if (registered.state !== 'running' || registered.statusKnowledge !== 'confirmed' || registered.stopRequested)
+      await spawned.dispose();
     // A process can exit between readiness and registration; the exit fact must win over `running`.
     if (spawned.exitFact) await settleExit(sessionRef, spawned.exitFact);
     const current = await findRef(sessionRef);
@@ -291,7 +351,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       const { rows: [row] } = await tx.query(`SELECT * FROM native_sessions WHERE activity_id=$1 AND request_id=$2 FOR UPDATE`,
         [activityId, requestId]);
       if (!row) fail('missing');
-      if (row.state === 'queued' && code === 'termination-unconfirmed') {
+      if (row.state === 'queued' && (code === 'termination-unconfirmed'
+        || String(row.install_generation) !== currentGeneration())) {
         await tx.query(`UPDATE native_sessions SET status_knowledge='unknown',reason=$2,updated_at=clock_timestamp()
           WHERE session_ref=$1`, [row.session_ref, JSON.stringify(failure)]);
       } else if (row.state === 'queued') {
@@ -365,10 +426,27 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     if (manifest.formatVersion !== 1) fail('missing');
     if (!manifest.session) fail('missing');
     const declared = manifest.session;
+    verifyPlannedExecution(activity, { key: action.execution.instance.key,
+      definitionDigest: action.execution.instance.definitionDigest, operationId: control.operationId, location: 'native' });
     if (control.operationId !== declared.operation.operationId) fail('identity-conflict');
     if (!acceptsState(declared.operation.parameters, control.parameters)) fail('invalid');
     const encoded = JSON.stringify(control.parameters);
     if (Buffer.byteLength(encoded, 'utf8') > action.execution.limits.inputBytes) fail('invalid');
+  }
+
+  /** A run reserved by an older installation may be read, but it must never advance again. */
+  async function assertGeneration(row: Record<string, unknown>) {
+    if (String(row.install_generation) === currentGeneration()) return;
+    const sessionRef = String(row.session_ref);
+    const reason = JSON.stringify(reasonOf('resource-unavailable',
+      '安装代际已变化，旧安装不能再推进这条运行。'));
+    await storage.request({ requestId: 'native-generation-fence:' + randomUUID(),
+      fingerprint: digest({ sessionRef }) }, async tx => {
+      await tx.query(`UPDATE native_sessions SET status_knowledge='unknown',reason=$2,updated_at=clock_timestamp()
+        WHERE session_ref=$1 AND state NOT IN ('succeeded','failed','cancelled')`, [sessionRef, reason]);
+      return true;
+    }).catch(() => { /* An unwritable store cannot make the old authority valid again. */ });
+    fail('forbidden');
   }
 
   async function control(identity: SpaceIdentity, activityId: string, requestId: string,
@@ -378,11 +456,13 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const input = executionControlSchema.parse(value);
     const row = await find(activityId, requestId);
     if (!row) fail('missing');
+    await assertGeneration(row);
     const action = executionActionSchema.parse(row.action);
     const scope = action.scope;
     if (scope.activityId !== activityId || scope.environmentId !== identity.environmentId
       || scope.spaceId !== identity.spaceId || scope.principalId !== identity.principalId) fail('forbidden');
     verifyOperation(activity, action, input);
+    await verifyPlacement(identity, activity, action);
     const inputDigest = digest(input);
     const sessionRef = String(row.session_ref);
     const { rows: [previous] } = await storage.read('SELECT * FROM native_session_operations WHERE control_id=$1',
@@ -417,6 +497,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       fingerprint: digest({ sessionRef, inputDigest, seq }) }, async tx => {
       const { rows: [current] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
       if (!current) fail('missing');
+      if (String(current.install_generation) !== currentGeneration()
+        || current.supervisor_epoch !== supervisorEpoch || current.executor_instance_id !== entry.process.instanceId) fail('forbidden');
       if (['succeeded', 'failed', 'cancelled'].includes(String(current.state)) || current.stop_requested
         || current.status_knowledge !== 'confirmed' || current.state !== 'running') fail('invalid');
       if (Number(current.applied_seq) !== input.expectedSeq) fail('identity-conflict');
@@ -436,6 +518,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     });
     const booked = reserved.result as { seq: number; applied: boolean };
     if (booked.applied) return queryOf((await findRef(sessionRef))!);
+    await verifyPlacement(identity, await options.activity(identity, activityId), action);
+    await assertGeneration((await findRef(sessionRef))!);
     let observation;
     try {
       observation = await entry.process.input(input.controlId, booked.seq, input.parameters);
@@ -471,6 +555,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       if (!current) fail('missing');
       const { rows: [operation] } = await tx.query('SELECT * FROM native_session_operations WHERE control_id=$1', [controlId]);
       if (!operation) fail('missing');
+      if (operation.session_ref !== sessionRef || Number(operation.seq) !== seq) fail('identity-conflict');
       if (operation.status === 'applied') return queryOf(current);
       if (typeof operation.input_digest !== 'string' || operation.input_digest.length !== 64) fail('corrupt');
       const observations = Array.isArray(current.observations) ? current.observations : [];
@@ -478,7 +563,13 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       const next = [...observations.filter((item: ExecutionObservation) => item.controlId !== controlId), entry].slice(-64);
       await tx.query(`UPDATE native_session_operations SET status='applied',observation=$2,updated_at=clock_timestamp()
         WHERE control_id=$1`, [controlId, JSON.stringify(entry)]);
-      if (['succeeded', 'failed', 'cancelled'].includes(String(current.state))) return queryOf(current);
+      if (['succeeded', 'failed', 'cancelled'].includes(String(current.state)) || current.stop_requested) return queryOf(current);
+      if (String(current.install_generation) !== currentGeneration() || current.supervisor_epoch !== supervisorEpoch) {
+        await tx.query(`UPDATE native_sessions SET status_knowledge='unknown',reason=$2,updated_at=clock_timestamp()
+          WHERE session_ref=$1`, [sessionRef, JSON.stringify(reasonOf('resource-unavailable', '原执行代际已失权，迟到观察仅保存归档。'))]);
+        const { rows: [fenced] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1', [sessionRef]);
+        return queryOf(fenced!);
+      }
       await tx.query(`UPDATE native_sessions SET applied_seq=$2,last_control_id=$3,observation=$4,observations=$5,
         status_knowledge='confirmed',confirmed_seq=confirmed_seq+1,updated_at=clock_timestamp() WHERE session_ref=$1`,
         [sessionRef, seq, controlId, JSON.stringify(state), JSON.stringify(next)]);
@@ -504,7 +595,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   async function stop(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     await ensureReady();
     const activity = await options.activity(identity, activityId);
-    const input = z.object({ stopId: z.uuid(), reason: z.string().max(200) }).strict().parse(value);
+    const input = executionStopSchema.parse(value);
     const row = await find(activityId, requestId);
     if (!row) fail('missing');
     const query = queryOf(row);
@@ -554,21 +645,92 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     return executionQuerySchema.parse(receipt.result);
   }
 
-  async function recover() {
-    await storage.request({ requestId: 'native-recover:' + supervisorEpoch,
-      fingerprint: digest({ supervisorEpoch }) }, async tx => {
-      await tx.query(`UPDATE native_sessions SET status_knowledge='unknown',reason=$2,updated_at=clock_timestamp()
-        WHERE state IN ('queued','running','paused') AND supervisor_epoch <> $1`,
-        [supervisorEpoch, JSON.stringify(reasonOf('resource-unavailable',
-          '产品重启后原执行器实例不可核实，旧会话不再推进；已确认的观察仍保留。'))]);
+  /**
+   * The execution owner reclaims a process it already owns. It names the original executor
+   * instance, so a student whose membership was revoked does not need to be the caller; the
+   * confirmed terminal state is written only after the unit's cgroup is really gone.
+   */
+  async function reclaim(sessionRef: string): Promise<ExecutionQuery> {
+    z.uuid().parse(sessionRef);
+    const row = await findRef(sessionRef);
+    if (!row) fail('missing');
+    if (['succeeded', 'failed', 'cancelled'].includes(String(row.state))) return queryOf(row);
+    const instanceId = String(row.executor_instance_id);
+    await storage.request({ requestId: 'native-reclaim-request:' + randomUUID(),
+      fingerprint: digest({ sessionRef, instanceId }) }, async tx => {
+      await tx.query(`UPDATE native_sessions SET stop_requested=true,updated_at=clock_timestamp()
+        WHERE session_ref=$1 AND executor_instance_id=$2`, [sessionRef, instanceId]);
+      return true;
+    });
+    const active = live.get(sessionRef);
+    let confirmed = active && active.process.instanceId === instanceId ? await active.process.stop(3000) : false;
+    if (options.linuxEntry && !confirmed) {
+      const unit = linuxSessionUnit(instanceId);
+      await stopUnit(options.linuxEntry, unit, instanceId);
+      const deadline = Date.now() + 3000;
+      do {
+        confirmed = await unitStopped(options.linuxEntry, unit, instanceId);
+        if (confirmed) break;
+        await delay(50);
+      } while (Date.now() < deadline);
+    }
+    const receipt = await storage.request({ requestId: 'native-reclaim:' + randomUUID(),
+      fingerprint: digest({ sessionRef, instanceId, confirmed }) }, async tx => {
+      const { rows: [current] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
+      if (!current) fail('missing');
+      if (['succeeded', 'failed', 'cancelled'].includes(String(current.state))) return queryOf(current);
+      if (confirmed) {
+        await tx.query(`UPDATE native_sessions SET stop_requested=true,state='cancelled',status_knowledge='confirmed',
+          confirmed_seq=confirmed_seq+1,reason=$2,stopped_at=clock_timestamp(),updated_at=clock_timestamp()
+          WHERE session_ref=$1`, [sessionRef,
+          JSON.stringify(reasonOf('worker-terminated', '执行所有者已回收原进程。'))]);
+      } else {
+        await tx.query(`UPDATE native_sessions SET stop_requested=true,status_knowledge='unknown',reason=$2,
+          updated_at=clock_timestamp() WHERE session_ref=$1`, [sessionRef,
+          JSON.stringify(reasonOf('resource-unavailable', '执行所有者请求回收，但进程组退出尚未确认。'))]);
+      }
+      const { rows: [updated] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1', [sessionRef]);
+      return queryOf(updated!);
+    });
+    live.delete(sessionRef);
+    return executionQuerySchema.parse(receipt.result);
+  }
+
+  async function recover(generation: string) {
+    await storage.request({ requestId: 'native-recover:' + supervisorEpoch + ':' + generation,
+      fingerprint: digest({ supervisorEpoch, generation }) }, async tx => {
+      await tx.query(`UPDATE native_sessions SET status_knowledge='unknown',reason=$3,updated_at=clock_timestamp()
+        WHERE state IN ('queued','running','paused') AND (supervisor_epoch <> $1 OR install_generation <> $2)`,
+        [supervisorEpoch, generation, JSON.stringify(reasonOf('resource-unavailable',
+          '产品重启或安装代际变化后原执行器实例不可核实，旧会话不再推进；已确认的观察仍保留。'))]);
       return true;
     });
   }
 
-  const ready = { promise: null as Promise<void> | null };
-  /** Recovery writes only after the owner's storage gate opens; a failed attempt is retried. */
+  const probe = { promise: null as Promise<NativeSessionIsolation | null> | null };
+  /** The entry is measured once per process; a host that cannot confine a session never gets one. */
+  function linuxFact(): Promise<NativeSessionIsolation | null> {
+    if (!options.linuxEntry) return Promise.resolve(null);
+    if (options.linuxIsolation) return Promise.resolve(options.linuxIsolation);
+    if (!probe.promise) {
+      probe.promise = probeLinuxIsolation(options.linuxEntry, options.nodePath ?? process.execPath)
+        .catch(() => null);
+    }
+    return probe.promise;
+  }
+
+  const ready = { generation: '', promise: null as Promise<void> | null };
+  /** 恢复关闸重新打开后按当前代际重新失权，失败的恢复允许重试。 */
   function ensureReady(): Promise<void> {
-    if (!ready.promise) ready.promise = recover().catch(error => { ready.promise = null; throw error; });
+    const generation = currentGeneration();
+    if (!ready.promise || ready.generation !== generation) {
+      ready.generation = generation;
+      const attempt = recover(generation).catch(error => {
+        if (ready.promise === attempt) ready.promise = null;
+        throw error;
+      });
+      ready.promise = attempt;
+    }
     return ready.promise;
   }
 
@@ -581,8 +743,10 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
 
   return {
     ensureReady,
-    accept, read, list, control, stop, owns, shutdown,
+    accept, read, list, control, stop, owns, shutdown, reclaim,
     async validate() { await validateNativeSessions(storage); },
+    /** What the Linux restricted entry can actually enforce; `null` means it was not measured. */
+    linuxEntryIsolation: linuxFact,
     supervisorEpoch,
   };
 }
@@ -592,12 +756,17 @@ export async function validateNativeSessions(storage: OwnedStorage) {
   const { rows } = await storage.read('SELECT * FROM native_sessions');
   for (const row of rows) {
     const query = queryOf(row), action = executionActionSchema.parse(row.action);
+    const fixedText = typeof row.action_text === 'string' ? row.action_text : JSON.stringify(action);
+    let original: unknown;
+    try { original = executionActionSchema.parse(JSON.parse(fixedText)); } catch { throw new StorageError('corrupt'); }
+    if (canonicalDigest(original) !== canonicalDigest(action)) throw new StorageError('corrupt');
+    const fixedDigest = createHash('sha256').update(fixedText).digest('hex');
     const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
     const body = activity?.body as LearningActivity | undefined;
     if (!body || query.requestId !== row.request_id || query.executionRef !== row.session_ref
       || query.scope.activityId !== row.activity_id || query.scope.environmentId !== body.identity.environmentId
       || query.scope.spaceId !== body.identity.spaceId || query.scope.principalId !== body.identity.principalId
-      || digest(action) !== row.input_digest || Number(row.confirmed_seq) < 1
+      || fixedDigest !== row.input_digest || Number(row.confirmed_seq) < 1
       || Number(row.applied_seq) < 0 || Number(row.confirmed_seq) < Number(row.applied_seq)) throw new StorageError('corrupt');
     const observations = Array.isArray(row.observations) ? row.observations : [];
     for (const item of observations) {
@@ -607,10 +776,16 @@ export async function validateNativeSessions(storage: OwnedStorage) {
   }
   const { rows: operations } = await storage.read('SELECT * FROM native_session_operations');
   for (const row of operations) {
-    const { rows: [session] } = await storage.read('SELECT applied_seq,last_control_id FROM native_sessions WHERE session_ref=$1',
+    const { rows: [session] } = await storage.read('SELECT applied_seq,last_control_id,state,status_knowledge,stop_requested FROM native_sessions WHERE session_ref=$1',
       [row.session_ref]);
     if (!session) throw new StorageError('corrupt');
-    if (row.status === 'applied' && Number(row.seq) > Number(session.applied_seq)) throw new StorageError('corrupt');
+    if (row.status === 'applied') {
+      const observation = row.observation as ExecutionObservation | null;
+      if (!observation || observation.controlId !== row.control_id || observation.seq !== Number(row.seq)) throw new StorageError('corrupt');
+      // 终态、失权或停止后的迟到确认只归档操作事实，不改变会话的已确认位置。
+      if (Number(row.seq) > Number(session.applied_seq) && session.status_knowledge !== 'unknown'
+        && !session.stop_requested && !['succeeded', 'failed', 'cancelled'].includes(String(session.state))) throw new StorageError('corrupt');
+    }
   }
   const { rows: stops } = await storage.read('SELECT * FROM native_session_stops');
   for (const row of stops) {

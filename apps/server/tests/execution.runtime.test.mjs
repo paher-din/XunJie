@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,9 +23,11 @@ test('the execution owner keeps the original acceptance, the durable stop and on
   const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
     postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } });
+  let preserveRoot = false;
   try {
     await runtime.install({ profile: 'local' });
-    const started = await runtime.start(), endpoint = started.endpoint;
+    const started = await runtime.start();
+    let endpoint = started.endpoint;
     const admin = { authorization: `Bearer ${await resolveCredential(root, 'control')}` };
     const api = async (route, body, headers = {}) => {
       const response = await fetch(new URL('/api/learning/' + route, endpoint), { method: body === undefined ? 'GET' : 'POST',
@@ -139,10 +141,28 @@ test('the execution owner keeps the original acceptance, the durable stop and on
     // A confirmed terminal fact is never overwritten by a late or contradictory reply.
     assert.deepEqual((await api(`${path}/${requestId}/report`, { ...cancelled, state: 'succeeded', confirmedSeq: 9 }, headers)).value, cancelled);
 
+    // Stopping an already completed job records an audit without invalidating recovery validation.
+    const completedAction = actionOf(randomUUID(), action.execution.parameters);
+    const completed = (await api(path, { action: completedAction, acceptance: acceptFor(completedAction, randomUUID()) }, headers)).value;
+    const succeeded = { ...completed, state: 'succeeded', confirmedSeq: 2 };
+    assert.equal((await api(`${path}/${completedAction.requestId}/report`, succeeded, headers)).value.state, 'succeeded');
+    const terminalStop = await api(`${path}/${completedAction.requestId}/stop`, { stopId: randomUUID(), reason: '完成后核对停止。' }, headers);
+    assert.equal(terminalStop.value.state, 'succeeded');
+    assert.equal(terminalStop.value.stopRequested, false);
+    await runtime.stop();
+    const restarted = await runtime.start().catch(async error => {
+      preserveRoot = true;
+      throw new Error(`${root}\n${await readFile(join(root, 'logs', 'runtime.log'), 'utf8')}`, { cause: error });
+    });
+    assert.equal(restarted.state, 'ready');
+    endpoint = restarted.endpoint;
+    assert.deepEqual((await api(`${path}/${requestId}`, undefined, headers)).value, cancelled);
+    assert.deepEqual((await api(`${path}/${completedAction.requestId}`, undefined, headers)).value, terminalStop.value);
+
     // A run names its own activity: an unknown activity or no session never becomes a command.
     const elsewhere = randomUUID();
     const elsewhereAction = actionOf(elsewhere, action.execution.parameters);
     assert.equal((await api(`executions/${elsewhere}`, { action: elsewhereAction, acceptance: acceptFor(elsewhereAction) }, headers)).status, 404);
     assert.equal((await api(path, { action, acceptance: { ...acceptance, receipt: { ...acceptance.receipt, state: 'rejected' } } })).status, 403);
-  } finally { await runtime.stop().catch(() => {}); await rm(root, { recursive: true, force: true }); }
+  } finally { await runtime.stop().catch(() => {}); if (!preserveRoot) await rm(root, { recursive: true, force: true }); }
 });

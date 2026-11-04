@@ -176,7 +176,8 @@ export async function inspectDatabase(root: string, config: DatabaseConfiguratio
   } finally { await client.end().catch(() => {}); }
 }
 
-export async function startDatabase(root: string, resources: RuntimeResources, config: DatabaseConfiguration): Promise<void> {
+export async function startDatabase(root: string, resources: RuntimeResources, config: DatabaseConfiguration,
+  options: { stoppedOnly?: boolean } = {}): Promise<void> {
   if (config.mode === 'none') return;
   if (config.mode === 'external') { await inspectDatabase(root, config); return; }
   const data = join(root, 'pgdata');
@@ -185,6 +186,7 @@ export async function startDatabase(root: string, resources: RuntimeResources, c
   let running = false;
   try { await runPg(resources, 'pg_ctl', ['status', '-D', data]); running = true; }
   catch (error) { if ((error as { code?: number }).code !== 3) throw error; }
+  if (running && options.stoppedOnly) return;
   if (!running) {
     const { binding } = await readJson<ManagedDatabase>(join(root, 'database.json'));
     await runPg(resources, 'pg_ctl', ['start', '-D', data, '-l', join(root, 'postgres.log'), '-w', '-t', '30',

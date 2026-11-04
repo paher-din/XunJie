@@ -38,7 +38,7 @@ export type RuntimeConnection = z.infer<typeof runtimeConnectionSchema>;
 export interface RuntimeDependencyStatus {
   name: string;
   required: boolean;
-  state: 'ready' | 'unavailable';
+  state: 'ready' | 'starting' | 'unavailable';
   detail?: string;
 }
 

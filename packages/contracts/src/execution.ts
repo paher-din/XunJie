@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { workFilesSchema } from './learning-data.js';
 import { actionInputSchema, actionReceiptSchema, actionScopeSchema, actionReceiverSchema } from './action-intents.js';
-import { executionDecisionSchema } from './execution-plan.js';
+import { executionDecisionSchema, executionDeviceSchema } from './execution-plan.js';
 
 // A course execution plan lives in its own module so courses and learning data can share it without a cycle.
 export * from './execution-plan.js';
@@ -78,6 +78,8 @@ export const executionActionSchema = z.object({ protocolVersion: z.literal(2), k
     plan: executionPlanSchema,
     /** Present only for a native session; the adapter and its limits are fixed by the host manifest. */
     session: executionSessionRequestSchema.optional(),
+    /** Client-observed scheduling facts; course eligibility remains an owner-side authorization. */
+    device: executionDeviceSchema.optional(),
     initiator: z.object({ kind: z.enum(['student', 'agent', 'self-check', 'teacher-preview']),
       principalId: z.uuid() }).strict() }).strict() }).strict()
   .refine(value => value.receiver.kind === 'execution', { message: 'An execution action needs an execution receiver' })
@@ -96,6 +98,10 @@ export function isNativeSessionAction(action: ExecutionAction): boolean {
 export const executionControlSchema = z.object({ controlId: z.uuid(), operationId: identifier,
   effect: z.literal('input'), expectedSeq: z.number().int().nonnegative(), parameters: z.unknown() }).strict();
 export type ExecutionControl = z.infer<typeof executionControlSchema>;
+
+/** A stop keeps its original identity; an omitted explanation is represented by an empty string. */
+export const executionStopSchema = z.object({ stopId: z.uuid(), reason: z.string().max(200) }).strict();
+export type ExecutionStop = z.infer<typeof executionStopSchema>;
 
 export const fixedActionSchema = z.union([actionInputSchema, executionActionSchema]);
 export type FixedAction = z.infer<typeof fixedActionSchema>;

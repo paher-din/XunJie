@@ -35,8 +35,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     (binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
       ? <div key={binding.key} className="component-tool">
         <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
-        {nativeAvailable ? <NativeSessionPanel activity={activity} binding={binding} authorized={authorized} />
-          : <p className="execution-hint">当前运行方式不提供本机会话；已有作品与记录仍保留。</p>}
+        {nativeAvailable || activity.course?.executionPlan ? <NativeSessionPanel activity={activity} binding={binding} authorized={authorized} spaceKey={spaceKey} namespace={namespace} />
+          : <p className="execution-hint">当前运行方式不提供原生会话；已有作品与记录仍保留。</p>}
       </div>
       : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.operations?.length
         ? <div key={binding.key} className="component-tool">

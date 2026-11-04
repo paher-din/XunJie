@@ -26,6 +26,14 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
   }, placement?: { plan: CourseExecutionPlan; device: ExecutionDevice; remoteAvailable: boolean }) {
   const connectionId = crypto.randomUUID(), instanceId = componentInstanceId(activityId, binding.key)
   const manifest = binding.definition.manifest
+  /** A published course plan answers per operation; an operation the plan does not pin gets no answer. */
+  function decisionFor(operationId: string) {
+    if (!placement || manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) return undefined
+    try {
+      return decideExecutionPlacement({ operationId, kind: 'job', adapter: null,
+        plan: placement.plan, device: placement.device, remoteAvailable: placement.remoteAvailable })
+    } catch { return undefined } // The release and its plan disagree, so this operation states nothing.
+  }
   const submitted = new Set<string>()
   let active = true
   let accepting = Promise.resolve()
@@ -45,6 +53,8 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     const input = componentExecutionSubmitSchema.parse(raw)
     if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
     if (!execution || !execution.canRun()) throw new Error('capability-unavailable')
+    const decision = decisionFor(input.operationId)
+    if (decision && decision.location !== 'browser') throw new Error('capability-unavailable')
     const preceding = accepting
     let release!: () => void
     accepting = new Promise<void>(resolve => { release = resolve })
@@ -112,20 +122,16 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
       // Exactly the plan and limits the accepted command will carry, plus the executor's real counts.
       const counts = execution ? execution.controller.counts() : { running: 0, queued: 0 }
       // A published course plan answers per operation; an operation the plan does not pin gets no answer.
-      const decisions = placement
-        ? manifest.operations.map(item => {
-          try {
-            return decideExecutionPlacement({ operationId: item.operationId, kind: 'job', adapter: null,
-              plan: placement.plan, device: placement.device, remoteAvailable: placement.remoteAvailable })
-          } catch { return undefined } // The release and its plan disagree, so this operation states nothing.
-        })
-        : []
+      const decisions = manifest.operations.map(item => decisionFor(item.operationId))
       return executionCapabilitiesSchema.parse({ plans: execution
         ? await Promise.all(manifest.operations.map(item => browserPlan(manifest, item.operationId))) : [],
       operations: manifest.operations.map((item, index) => {
         const decision = decisions[index]
-        return { operationId: item.operationId, instanceId, limits: browserLimits(manifest, item), available: runnable,
-          reason: runnable ? null : '当前视图不可发起执行。', ...(decision ? { decision } : {}) }
+        const blocked = !!decision && decision.location !== 'browser'
+        return { operationId: item.operationId, instanceId, limits: browserLimits(manifest, item),
+          available: runnable && !blocked,
+          reason: !runnable ? '当前视图不可发起执行。' : blocked ? decision!.detail : null,
+          ...(decision ? { decision } : {}) }
       }),
       running: counts.running, queued: counts.queued })
     }

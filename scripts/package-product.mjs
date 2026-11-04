@@ -85,6 +85,8 @@ export async function selectNodeRuntime(destination, executable) {
       await mkdir(dirname(join(selected, name)), { recursive: true });
       await cp(source, join(selected, name));
     }
+    // Linux's systemd session runs under a dynamic UID and must traverse the shipped runtime.
+    await chmod(selected, 0o755);
     await rm(destination, { recursive: true, force: true });
     await rename(selected, destination);
   } finally { await rm(selected, { recursive: true, force: true }); }
@@ -368,6 +370,7 @@ export async function packageProduct(options) {
         nativeProcessProbes: 'not-run', backupUpgradeProbes: 'not-run', cleanMachineAcceptance: 'cancelled-by-owner',
         productSigning: 'deferred-by-user', notarization: 'deferred-by-user', gatekeeper: 'not-run' },
     });
+    await chmod(staging, 0o755);
     await rename(staging, out);
     console.log(`Unsigned product candidate: ${out}`);
     return out;

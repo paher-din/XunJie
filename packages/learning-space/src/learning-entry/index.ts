@@ -1,12 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
 import { componentBundleSchema } from '@xunjie/contracts/components';
+import type { ExecutionDevice, ExecutionPlatform } from '@xunjie/contracts/execution';
 import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
+import type { createNativeChannel } from '../learning-data/native-channel.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -15,6 +17,8 @@ export { SupervisedSession, productNativeAdapters, fourStateAccumulatorSource } 
 export type { NativeAdapter, NativeObservation, NativeSessionExit, NativeSessionLimits } from '../learning-data/native-process.js';
 export { planSeatbelt, seatbeltLauncherPath, seatbeltProfileVersion, supervisorWatchdogSource } from '../learning-data/native-sandbox.js';
 export type { NativeSessionIsolation, SeatbeltPlan } from '../learning-data/native-sandbox.js';
+export { linuxSessionEntry, linuxSessionUnit, probeLinuxIsolation } from '../learning-data/linux-isolation.js';
+export type { LinuxSessionEntry } from '../learning-data/linux-isolation.js';
 
 export async function readLearningBody(request: IncomingMessage, limit = 65536): Promise<Record<string, unknown>> {
   if (!request.headers['content-type']?.startsWith('application/json')) throw new StorageError('invalid');
@@ -45,7 +49,11 @@ export function createLearningEntry(options: {
   spaces?: ReturnType<typeof createSpaces>;
   learning?: ReturnType<typeof createLearningData>;
   courses?: ReturnType<typeof createCourses>;
+  nativeChannel?: ReturnType<typeof createNativeChannel>;
   administratorToken: string;
+  executionEnvironment?: (identity: SpaceIdentity) => Promise<{ nodeClass: 'device' | 'school-execution-node';
+    secureTransport: boolean; remoteAvailable: boolean; device: ExecutionDevice;
+    adapters: { adapterId: string; adapterVersion: number; platforms: readonly ExecutionPlatform[] }[] }>;
   client?: {
     list(): Promise<{ key: string; identity: SpaceIdentity }[]>;
     start(input: { requestId: string; schoolEndpoint: string }): Promise<unknown>;
@@ -118,6 +126,24 @@ export function createLearningEntry(options: {
       } else if (route === 'manage/local-binding' && method === 'POST' && options.client?.configureLocal) {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
         result = await options.client.configureLocal(await readLearningBody(request));
+      } else if (route === 'native-channel/cleanup' && method === 'POST') {
+        if (!options.nativeChannel) throw new StorageError('forbidden');
+        result = await options.nativeChannel.cleanup(await readLearningBody(request, 16000000));
+      } else if (/^native-channel\/(register|claim|report|heartbeat)$/.test(route) && method === 'POST') {
+        if (!options.nativeChannel || !request.headers.authorization?.startsWith('Bearer ')) throw new StorageError('forbidden');
+        const token = request.headers.authorization.slice(7);
+        const body = await readLearningBody(request, 16000000);
+        result = route.endsWith('/register') ? await options.nativeChannel.register(token, body)
+          : route.endsWith('/claim') ? await options.nativeChannel.claim(token, body)
+          : route.endsWith('/heartbeat') ? await options.nativeChannel.heartbeat(token, body)
+          : await options.nativeChannel.report(token, body);
+      } else if (route === 'native-channel/nodes' && method === 'GET') {
+        if (!options.nativeChannel) throw new StorageError('unavailable');
+        result = await options.nativeChannel.nodes(await current(request));
+      } else if (route === 'execution-environment' && method === 'GET') {
+        const identity = await current(request);
+        if (!options.executionEnvironment) throw new StorageError('unavailable');
+        result = await options.executionEnvironment(identity);
       } else if (route === 'context' && method === 'GET') {
         const identities: { key: string; identity: SpaceIdentity }[] = [];
         if (environment.profile === 'local') {
@@ -179,6 +205,10 @@ export function createLearningEntry(options: {
           } else if (route === 'manage/connection') {
             const input = z.object({ connectionId: z.uuid() }).strict().parse(body);
             await spaces.adminRevokeConnection(input.connectionId); result = { revoked: true };
+          } else if (route === 'manage/native-reclaim') {
+            if (!options.learning) throw new StorageError('forbidden');
+            const input = z.object({ sessionRef: z.uuid() }).strict().parse(body);
+            result = await options.learning.executions.reclaim(input.sessionRef);
           } else throw new StorageError('missing');
         }
       } else if (route === 'connections/start' && method === 'POST') {

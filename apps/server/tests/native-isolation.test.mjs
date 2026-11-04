@@ -1,10 +1,86 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import fs from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { planSeatbelt, seatbeltLauncherPath, seatbeltProfileVersion, SupervisedSession } from '@xunjie/learning-space';
+import { linuxSessionEntry, planSeatbelt, seatbeltLauncherPath, seatbeltProfileVersion, SupervisedSession } from '@xunjie/learning-space';
+
+function mockLinuxConfig(t, text, metadata = {}) {
+  t.mock.method(fs, 'openSync', (path, flags) => {
+    assert.equal(path, '/etc/xunjie/native-session.conf');
+    assert.equal(flags, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    return 123;
+  });
+  t.mock.method(fs, 'fstatSync', descriptor => {
+    assert.equal(descriptor, 123);
+    return { uid: 0, mode: 0o100644, isFile: () => true, ...metadata };
+  });
+  t.mock.method(fs, 'readFileSync', (descriptor, encoding) => {
+    assert.equal(descriptor, 123);
+    assert.equal(encoding, 'utf8');
+    return text;
+  });
+  return t.mock.method(fs, 'closeSync', descriptor => assert.equal(descriptor, 123));
+}
+
+const linuxDefaults = {
+  entry: '/usr/local/lib/xunjie/native-session-entry', sudo: '/usr/bin/sudo',
+  workRoot: '/var/lib/xunjie-native', runUser: 'xunjie', nodeRoot: '/opt/xunjie',
+};
+
+test('linuxSessionEntry reads installer configuration without changing the privileged command', t => {
+  const close = mockLinuxConfig(t, '# 安装配置\nXJ_RUN_USER=school-worker\nXJ_WORK_ROOT=/srv/sessions\n'
+    + 'XJ_NODE_ROOT=/srv/runtime\nXJ_STATE_ROOT=/srv/school-state\n');
+  assert.deepEqual(linuxSessionEntry(), { ...linuxDefaults, runUser: 'school-worker',
+    workRoot: '/srv/sessions', nodeRoot: '/srv/runtime' });
+  assert.equal(close.mock.callCount(), 1);
+});
+
+test('linuxSessionEntry uses defaults only when the configuration is missing', t => {
+  t.mock.method(fs, 'openSync', () => { throw Object.assign(new Error('缺少配置'), { code: 'ENOENT' }); });
+  assert.deepEqual(linuxSessionEntry(), linuxDefaults);
+});
+
+test('linuxSessionEntry rejects invalid data instead of evaluating it', async t => {
+  for (const text of [
+    'XJ_RUN_USER=root', 'XJ_RUN_USER=123', 'XJ_WORK_ROOT=relative/path',
+    'XJ_WORK_ROOT=/', 'XJ_NODE_ROOT=/srv/../etc', 'XJ_WORK_ROOT=/srv//sessions',
+    'XJ_STATE_ROOT=$(touch /tmp/xj-config-executed)', 'XJ_NODE_ROOT=/srv/runtime;id',
+    'XJ_WORK_ROOT="/srv/sessions"', 'entry=/tmp/arbitrary-entry', 'sudo=/tmp/sudo',
+    'XJ_RO_SENTINEL=/tmp/sentinel', 'XJ_RUN_USER=xunjie\nXJ_RUN_USER=other',
+    'XJ_STATE_ROOT=',
+  ]) {
+    await t.test(text, child => {
+      const close = mockLinuxConfig(child, text);
+      assert.throws(linuxSessionEntry, { code: 'resource-unavailable' });
+      assert.equal(close.mock.callCount(), 1);
+    });
+  }
+});
+
+test('linuxSessionEntry rejects untrusted files and read failures', async t => {
+  for (const metadata of [{ uid: 1000 }, { mode: 0o100664 }, { mode: 0o100646 }, { isFile: () => false }]) {
+    await t.test(JSON.stringify(metadata), child => {
+      const close = mockLinuxConfig(child, '', metadata);
+      assert.throws(linuxSessionEntry, { code: 'resource-unavailable' });
+      assert.equal(close.mock.callCount(), 1);
+    });
+  }
+  for (const code of ['EACCES', 'ELOOP']) {
+    await t.test(code, child => {
+      child.mock.method(fs, 'openSync', () => { throw Object.assign(new Error('拒绝读取'), { code }); });
+      assert.throws(linuxSessionEntry, { code: 'resource-unavailable' });
+    });
+  }
+  await t.test('read failure', child => {
+    const close = mockLinuxConfig(child, '');
+    child.mock.method(fs, 'readFileSync', () => { throw Object.assign(new Error('读取失败'), { code: 'EIO' }); });
+    assert.throws(linuxSessionEntry, { code: 'resource-unavailable' });
+    assert.equal(close.mock.callCount(), 1);
+  });
+});
 
 const limits = { operationTimeoutMs: 5000, idleMs: 60_000, maxMs: 120_000, memoryMiB: 48, outputBytes: 65_536 };
 const darwinOnly = process.platform === 'darwin' ? undefined : { skip: 'seatbelt is macOS only' };

@@ -20,7 +20,8 @@ export const courseExecutionPlanSchema = z.object({
   /** SHA-256 over `courseExecutionPlanBasis(plan)`, computed by the owner that publishes the plan. */
   planDigest: digest,
   components: z.array(z.object({ key: identifier, definitionDigest: digest, configurationDigest: digest,
-    operations: z.array(identifier).min(1).max(4) }).strict()).min(1).max(8),
+    /** Empty only when the bound component declares no execution operations. */
+    operations: z.array(identifier).max(4) }).strict()).min(1).max(8),
   capabilities: z.array(z.enum(['workspace.read', 'workspace.change', 'material.highlight', 'execution.submit',
     'native-session'])).max(5),
   resources: z.object({
@@ -59,12 +60,16 @@ export interface CourseExecutionPlanBasis {
   remote: { nodeClass: string; secureTransport: boolean; adapter: { adapterId: string; adapterVersion: number };
     clientPlatforms: string[] } | null;
 }
-/** Sorted keys at every level, so `JSON.stringify(basis)` is the same bytes on both sides. */
-function canonicalBasis(value: unknown): unknown {
-  return Array.isArray(value) ? value.map(canonicalBasis)
+/**
+ * The one canonical form every digest uses: sorted keys at every level, so `JSON.stringify`
+ * produces the same bytes on both sides of an owner boundary. Publishing an execution plan and
+ * accepting an execution command must not be able to disagree about this rule.
+ */
+export function canonicalValue(value: unknown): unknown {
+  return Array.isArray(value) ? value.map(canonicalValue)
     : value && typeof value === 'object'
       ? Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right, 'en'))
-        .map(([key, child]) => [key, canonicalBasis(child)]))
+        .map(([key, child]) => [key, canonicalValue(child)]))
       : value;
 }
 /**
@@ -74,7 +79,7 @@ function canonicalBasis(value: unknown): unknown {
  */
 export function courseExecutionPlanBasis(plan: CourseExecutionPlan): CourseExecutionPlanBasis {
   const byKey = (left: string, right: string) => left.localeCompare(right, 'en');
-  return canonicalBasis({ planId: plan.planId, planVersion: plan.planVersion,
+  return canonicalValue({ planId: plan.planId, planVersion: plan.planVersion,
     components: plan.components.map(item => ({ key: item.key, definitionDigest: item.definitionDigest,
       configurationDigest: item.configurationDigest, operations: [...item.operations] }))
       .sort((left, right) => byKey(left.key, right.key)),

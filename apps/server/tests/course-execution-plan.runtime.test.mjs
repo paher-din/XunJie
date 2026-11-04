@@ -9,6 +9,7 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { courseExecutionPlanBasis } from '@xunjie/contracts/execution';
 import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
+import { legacyAnnotationPackage, preparedAnnotationPackage } from '../../../components/material-annotation/package.mjs';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Set XUNJIE_PRODUCT_POSTGRES_BIN to native PostgreSQL 18.6.');
@@ -112,6 +113,98 @@ test('a course execution plan is published with the release, bound to the activi
   } finally { await runtime.stop().catch(() => {}); await rm(root, { recursive: true, force: true }).catch(() => {}); }
 });
 
+test('a mixed course pins execution and no-execution components without inventing or hiding operations', { timeout: 300000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-plan-mixed175-'));
+  const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
+    postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
+    windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } });
+  try {
+    await runtime.install({ profile: 'local' });
+    const { endpoint } = await runtime.start();
+    const admin = { authorization: `Bearer ${await resolveCredential(root, 'control')}` };
+    const api = async (route, body, headers = {}) => {
+      const response = await fetch(new URL('/api/learning/' + route, endpoint), { method: body === undefined ? 'GET' : 'POST',
+        headers: { 'content-type': 'application/json', ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+      return { status: response.status, value: await response.json() };
+    };
+    const definitions = [];
+    for (const component of [await aggregationPackage(), await legacyAnnotationPackage(), await preparedAnnotationPackage()]) {
+      const imported = await api('manage/component-import', { requestId: randomUUID(), ...component }, admin);
+      assert.equal(imported.status, 200, JSON.stringify(imported.value));
+      definitions.push(imported.value);
+    }
+    const table = { key: 'table', definition: definitions[0], configuration: { title: '统计' }, materialIds: [] };
+    const notes = { key: 'notes', definition: definitions[1], configuration: { title: '标注' }, materialIds: [] };
+    const planOf = (bindings, planVersion = 1) => {
+      const plan = { planId: 'mixed-course', planVersion, planDigest: '0'.repeat(64),
+        components: bindings.map(binding => ({ key: binding.key, definitionDigest: binding.definition.digest,
+          configurationDigest: sha256Json(binding.configuration), operations: binding.key === 'table' ? ['aggregate'] : [] })),
+        capabilities: ['execution.submit', 'workspace.read', 'workspace.change'],
+        resources: { browser: { features: ['worker', 'webassembly'] }, native: null }, locations: ['browser'], remote: null };
+      plan.planDigest = sha256Json(courseExecutionPlanBasis(plan));
+      return plan;
+    };
+    const courseId = randomUUID(), taskId = randomUUID();
+    const courseOf = (bindings, plan) => ({ formatVersion: 1, requestId: randomUUID(),
+      course: { courseId, name: '统计与标注' }, task: { taskId, title: '统计并标注观察', summary: '' },
+      release: { releaseId: randomUUID(), objectives: ['计算并记录观察'], requirements: '统计数据，标注观察。',
+        starterWorks: [], capabilities: [], components: bindings, materials: [], executionPlan: plan }, resources: [] });
+    const bindings = [table, notes], plan = planOf(bindings), first = courseOf(bindings, plan);
+    const published = await api('manage/course-import', first, admin);
+    assert.equal(published.status, 200, 'execution and no-execution components must coexist: ' + JSON.stringify(published.value));
+
+    const password = randomUUID();
+    const member = await api('manage/members', { requestId: randomUUID(), loginName: 'plan-mixed', password }, admin);
+    assert.equal(member.status, 200);
+    const login = await fetch(new URL('/api/learning/login', endpoint), { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ loginName: 'plan-mixed', password }) });
+    assert.equal(login.status, 200);
+    const headers = { cookie: login.headers.get('set-cookie').split(';')[0] };
+    assert.equal((await api('manage/course-access', { requestId: randomUUID(), courseId,
+      principalId: member.value.principalId, active: true }, admin)).status, 200);
+    const opened = await api('course-activities', { requestId: randomUUID(), releaseId: first.release.releaseId }, headers);
+    assert.equal(opened.status, 200, JSON.stringify(opened.value));
+    assert.deepEqual(opened.value.course.components, bindings);
+    assert.deepEqual(opened.value.course.executionPlan, plan);
+
+    // A preparation-only component remains non-executable; its new version cannot drift an old activity.
+    const nextBindings = [table, { ...notes, definition: definitions[2], configuration: { title: '标注新版' } }];
+    const nextPlan = planOf(nextBindings, 2), next = courseOf(nextBindings, nextPlan);
+    const updated = await api('manage/course-import', next, admin);
+    assert.equal(updated.status, 200, JSON.stringify(updated.value));
+    const nextOpened = await api('course-activities', { requestId: randomUUID(), releaseId: next.release.releaseId }, headers);
+    assert.equal(nextOpened.status, 200, JSON.stringify(nextOpened.value));
+    assert.deepEqual(nextOpened.value.course.components, nextBindings);
+    assert.deepEqual(nextOpened.value.course.executionPlan, nextPlan);
+    const reopened = await api(`activities/${opened.value.activityId}`, undefined, headers);
+    assert.equal(reopened.status, 200);
+    assert.equal(reopened.value.course.releaseId, first.release.releaseId);
+    assert.equal(reopened.value.course.contentDigest, opened.value.course.contentDigest);
+    assert.deepEqual(reopened.value.course.components, bindings);
+    assert.deepEqual(reopened.value.course.executionPlan, plan);
+    const original = await api(`releases/${first.release.releaseId}`, undefined, headers);
+    assert.equal(original.status, 200);
+    assert.deepEqual(original.value.components, bindings);
+    assert.deepEqual(original.value.executionPlan, plan);
+
+    // Empty operations are permitted only for genuinely non-executable components, with fixed identities.
+    for (const [label, mutate] of [
+      ['missing executable binding', value => { value.components.shift(); }],
+      ['hidden real operation', value => { value.components[0].operations = []; }],
+      ['invented executable operation', value => { value.components[0].operations = ['unknown-operation']; }],
+      ['invented annotation operation', value => { value.components[1].operations = ['annotate']; }],
+      ['changed annotation definition', value => { value.components[1].definitionDigest = 'a'.repeat(64); }],
+      ['changed annotation configuration', value => { value.components[1].configurationDigest = 'b'.repeat(64); }],
+    ]) {
+      const invalid = structuredClone(plan);
+      mutate(invalid);
+      invalid.planDigest = sha256Json(courseExecutionPlanBasis(invalid));
+      const refused = await api('manage/course-import', courseOf(bindings, invalid), admin);
+      assert.equal(refused.status, 400, label);
+    }
+  } finally { await runtime.stop().catch(() => {}); await rm(root, { recursive: true, force: true }).catch(() => {}); }
+});
+
 /**
  * The same import boundary names a native session: the plan is what allows the session, and a plan
  * that only allows a browser job cannot smuggle the session in.
@@ -173,6 +266,11 @@ test('a plan declares the native session it allows and the owner refuses an unpl
         instance: { instanceId: `${activity.activityId}:accumulator`, key: 'accumulator', componentId: manifest.componentId,
           componentVersion: manifest.version, definitionDigest: definition.digest, hostApiVersion: 1, stateVersion: 1 },
         operation: { operationId: session.operation.operationId, effect: 'input' }, parameters: {},
+        device: { platform: process.platform === 'darwin' && process.arch === 'arm64' ? 'macos-arm64'
+          : process.platform === 'win32' && process.arch === 'x64' ? 'windows-x64'
+            : process.platform === 'linux' && process.arch === 'x64' ? 'linux-x64' : null,
+          browser: { worker: typeof Worker === 'function', webassembly: typeof WebAssembly === 'object', sandboxedFrame: false },
+          native: { supported: true, installed: true, authorized: true, prepared: 'ready' } },
         basis: { works: [], state: null, expected: { stateContentId: null }, resources: [] },
         limits: { timeMs: session.budgets.operationTimeoutMs, memoryPages: 1, inputBytes: session.budgets.inputBytes,
           outputBytes: session.budgets.outputBytes, concurrentJobs: session.budgets.concurrentSessions,

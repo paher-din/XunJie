@@ -13,7 +13,7 @@ export const seatbeltProfileVersion = 'xunjie-native-session-v1';
 
 /** What the platform actually enforces for one session; recorded so evidence never implies more. */
 export interface NativeSessionIsolation {
-  kind: 'seatbelt' | 'app-container' | 'process-group';
+  kind: 'seatbelt' | 'app-container' | 'systemd-unit' | 'process-group';
   launcher: string | null;
   profileVersion: string | null;
   profileDigest: string | null;
@@ -21,12 +21,12 @@ export interface NativeSessionIsolation {
   reads: 'system-runtime-and-session' | 'unrestricted';
   writes: 'session-directory' | 'unrestricted';
   exec: 'fixed-node-only' | 'unrestricted';
-  signals: 'same-sandbox-only' | 'unrestricted';
+  signals: 'same-sandbox-only' | 'control-group' | 'unrestricted';
   /** V8 stops the JS heap; the supervisor stops a working set that grows past the baseline. */
-  memory: 'heap-cap-and-rss-watchdog' | 'job-object' | 'heap-cap-only';
+  memory: 'heap-cap-and-rss-watchdog' | 'job-object' | 'cgroup-v2' | 'heap-cap-only';
   /** A confirmed stop means the whole managed process group is empty, not just the direct child. */
-  processes: 'supervisor-group-confirmed' | 'job-object' | 'direct-child-only';
-  supervisorDeath: 'session-watchdog' | 'job-close' | 'none';
+  processes: 'supervisor-group-confirmed' | 'job-object' | 'control-group-confirmed' | 'direct-child-only';
+  supervisorDeath: 'session-watchdog' | 'job-close' | 'runtime-bound' | 'none';
 }
 
 export interface SeatbeltPlan {
@@ -106,6 +106,17 @@ export const supervisorWatchdogSource = [
   "process.stdin.once('end', __xjEnd);",
   "try { const __xjDeath = __xjRead(null, { fd: 3 }); __xjDeath.on('end', __xjEnd); __xjDeath.on('error', __xjEnd); } catch { /* The poll below still bounds the exit. */ }",
   "setInterval(() => { if (process.ppid !== __xjSupervisor) __xjEnd() }, 250).unref();",
+].join('\n');
+
+/**
+ * The Linux unit runs its adapter as a systemd service, so the supervisor cannot signal a process
+ * group it does not own. Losing the client pipe still ends the session through stdin EOF, and the
+ * unit's `RuntimeMaxSec` bounds the case where even that signal is lost.
+ */
+export const linuxWatchdogSource = [
+  "const __xjEnd = () => { try { process.exit(137) } catch { /* The unit still ends it. */ } };",
+  "process.stdin.once('end', __xjEnd);",
+  "process.stdin.once('error', __xjEnd);",
 ].join('\n');
 
 export const unboundedIsolation: NativeSessionIsolation = {
