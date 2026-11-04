@@ -71,12 +71,12 @@ async function until(probe, accepts, label, ms = 30_000) {
   let value;
   do {
     value = await probe();
-    if (accepts(value)) return value;
+    if (value !== null && value !== undefined && accepts(value)) return value;
     await delay(250);
   } while (Date.now() < deadline);
   throw new Error(`${label} 超时: ${JSON.stringify(value)}`);
 }
-const fact = query => ({ executionRef: query.executionRef, requestId: query.requestId, state: query.state,
+const fact = query => query === null ? null : ({ executionRef: query.executionRef, requestId: query.requestId, state: query.state,
   statusKnowledge: query.statusKnowledge, nodeId: query.session?.nodeId, installGeneration: query.session?.installGeneration,
   supervisorEpoch: query.session?.supervisorEpoch, executorInstanceId: query.session?.executorInstanceId,
   appliedSeq: query.session?.appliedSeq, observation: query.session?.observation });
@@ -135,6 +135,12 @@ try {
     `--ignore-certificate-errors-spki-list=${args.spki}`, '--no-proxy-server', '--disable-quic', '--no-first-run'] });
   report.browser = { product: 'Google Chrome', version: browser.version(), headless: false, ignoreHTTPSErrors: false };
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ignoreHTTPSErrors: false });
+  report.httpFailures = [];
+  context.on('response', response => {
+    const url = new URL(response.url());
+    if (url.pathname.startsWith('/api/learning/') && response.status() >= 400)
+      report.httpFailures.push({ origin: url.origin, path: url.pathname, status: response.status() });
+  });
   page = await context.newPage();
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
@@ -380,6 +386,33 @@ try {
 } catch (error) {
   report.status = 'failed';
   report.error = error instanceof Error ? error.message : String(error);
+  report.errorStack = error instanceof Error ? error.stack : String(error);
+  if (mixedPage && report.mixedFallback) {
+    report.mixedFallback.failureReads = {
+      activities: await api('activities', undefined, mixedPage).catch(error => ({ error: String(error) })),
+      activity: await api(`activities/${report.mixedFallback.activityId}`, undefined, mixedPage).catch(error => ({ error: String(error) })),
+      url: mixedPage.url(),
+    };
+  }
+  if (page && Object.hasOwn(args, 'checkpoint-combination')) {
+    report.pendingRequests = await page.evaluate(async () => {
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open('xunjie-reliable-works-v1');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction('nativeSessionRequests', 'readonly');
+          const rows = tx.objectStore('nativeSessionRequests').getAll();
+          tx.oncomplete = () => resolve(rows.result.map(row => row.request));
+          tx.onabort = () => reject(tx.error);
+        });
+      } finally { db.close(); }
+    }).catch(() => []);
+    report.pendingReceipts = await Promise.all(report.pendingRequests.filter(request => request.kind === 'control').map(async request =>
+      ({ controlId: request.id, response: await api(`executions/${activityId}/${request.requestId}/controls/${request.id}`).catch(error => ({ error: String(error) })) })));
+  }
   if (error?.cause?.code) report.cause = error.cause.code;
   if (report.mixedFallback?.status === 'running') {
     report.mixedFallback.status = 'failed';

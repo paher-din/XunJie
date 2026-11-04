@@ -533,6 +533,59 @@ describe('the session controller keeps the owner reference and the next expected
     expect(transport.controlReceipt).toHaveBeenLastCalledWith(first.requestId, control.controlId)
     expect(base.control).toHaveBeenCalledTimes(1)
   })
+  it.each(['list', 'receipt'] as const)('settling during an older poll at %s keeps the control absent after a confirmed stop', async boundary => {
+    const key = JSON.stringify([crypto.randomUUID(), environmentId, spaceId, principalId, activityId])
+    const { first, transport: base } = open(), queue = new SessionRequests()
+    const updated = { ...first, confirmedSeq: 3, session: { ...first.session!, appliedSeq: 1,
+      observation: { value: 1, total: 1, applied: 1 } } }
+    const stopped: ExecutionQuery = { ...updated, confirmedSeq: 4, state: 'cancelled', stopRequested: true }
+    let status: ExecutionControlReceipt['status'] = 'dispatching'
+    const receipt = async (id: string, status: ExecutionControlReceipt['status']): Promise<ExecutionControlReceipt> => {
+      const control = base.control.mock.calls[0]![1]
+      return { controlId: id, requestId: first.requestId, executionRef: first.executionRef, effect: control.effect,
+        inputDigest: await digestOf(control), seq: control.expectedSeq + 1, status,
+        query: status === 'applied' ? updated : first }
+    }
+    base.control.mockResolvedValue(first)
+    base.stop.mockResolvedValue(stopped)
+    const transport = { ...base, controlReceipt: vi.fn(async (_requestId: string, id: string) => receipt(id, status)) }
+    const controller = managed(new NativeSessionController(key, transport, () => true, queue))
+    await controller.open()
+    await controller.input(first, 'advance', { value: 1 })
+    const control = base.control.mock.calls[0]![1]
+    expect(controller.pending(instanceId)).toBe('control')
+
+    let reached!: () => void, release!: () => void
+    const paused = new Promise<void>(resolve => { reached = resolve })
+    const resume = new Promise<void>(resolve => { release = resolve })
+    // Only delay a real network reply. The IndexedDB queue and its transactions are unmodified.
+    if (boundary === 'list') transport.list.mockImplementationOnce(async () => {
+      reached(); await resume; return [first]
+    })
+    else transport.controlReceipt.mockImplementationOnce(async (_requestId: string, id: string) => {
+      reached(); await resume; return receipt(id, 'dispatching')
+    })
+    const polling = controller.open()
+    try {
+      await paused
+      status = 'applied'
+      await controller.retryPending(control.controlId)
+      expect(controller.pending(instanceId)).toBeNull()
+      expect(controller.snapshot().pending).toEqual([])
+      expect(await queue.list(key)).toEqual([])
+      await controller.stop(first.requestId)
+      expect(controller.find(instanceId)).toMatchObject({ state: 'cancelled', statusKnowledge: 'confirmed' })
+      expect(await queue.list(key)).toEqual([])
+    } finally { release(); await polling }
+    await controller.open()
+    expect(controller.snapshot().error).toBe('')
+    expect(controller.pending(instanceId)).toBeNull()
+    expect(controller.snapshot().pending).toEqual([])
+    expect(await queue.list(key)).toEqual([])
+    expect(controller.find(instanceId)).toMatchObject({ state: 'cancelled', statusKnowledge: 'confirmed' })
+    expect(base.control).toHaveBeenCalledTimes(1)
+    expect(base.stop).toHaveBeenCalledTimes(1)
+  })
   it('an unacknowledged control is only retried explicitly with its original identity and position', async () => {
     const key = JSON.stringify([crypto.randomUUID(), environmentId, spaceId, principalId, activityId])
     const { first, transport: base } = open(), queue = new SessionRequests()

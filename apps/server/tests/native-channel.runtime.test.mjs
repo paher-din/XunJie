@@ -8,7 +8,7 @@ import { createFileBackend, openStorage, provisionStorage, StorageError } from '
 import { createNativeChannel, createSpaces, learningMigrations, spaceMigrations, validateNativeChannel, SupervisedSession } from '@xunjie/learning-space';
 import { createNativeChannelWorker, nativeChannelNode } from '@xunjie/product-runtime';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
-import { canonicalValue } from '@xunjie/contracts/execution';
+import { canonicalValue, executionQuerySchema } from '@xunjie/contracts/execution';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 import { createExecutions } from '../../../packages/learning-space/dist/learning-data/executions.js';
 import { createWorks } from '../../../packages/learning-space/dist/learning-data/works.js';
@@ -351,10 +351,13 @@ test('checkpoint wrappers cannot reconfirm a session after lease expiry or super
       const fact = await channel.query(identity, checkpointReply.commandId);
       assert.equal(fact.statusKnowledge, 'unknown', label);
       assert.equal(fact.result.query.statusKnowledge, 'unknown', label);
+      assert.equal(executionQuerySchema.safeParse(fact.result.query).success, true, 'fenced reports must remain valid public queries');
       assert.deepEqual(fact.result.checkpoint, checkpointReply.result.checkpoint, 'fencing preserves the original snapshot');
       const query = await executions.read(identity, activityId, action.requestId);
       assert.equal(query.statusKnowledge, 'unknown', label);
       assert.equal(query.executionRef, accepted.executionRef);
+      assert.equal((await executions.controlReceipt(identity, activityId, action.requestId, checkpointReply.commandId)).status,
+        'applied', 'loss of live knowledge must not erase the original immutable application receipt');
       const controlId = randomUUID();
       await assert.rejects(executions.control(identity, activityId, action.requestId, {
         controlId, operationId: 'step', effect: 'step', expectedSeq: current.session.appliedSeq, parameters: { value: 1 },

@@ -346,9 +346,12 @@ export function createNativeChannel(storage: OwnedStorage, options: {
     const targetChanged = hash(row.target_node) !== hash(row.snapshot) || row.target_generation !== storage.generation;
     const unavailable = row.state === 'pending' && targetChanged || active && (row.cleaned || !row.lease_valid || row.claim_generation !== storage.generation
       || hash(row.claim_node) !== hash(row.snapshot));
-    if (unavailable && result) projected = checkpoint.success
-      ? { ...checkpoint.data, query: { ...checkpoint.data.query, statusKnowledge: 'unknown' } }
-      : { ...result, statusKnowledge: 'unknown' };
+    if (unavailable && result) {
+      const fenced = { ...result, statusKnowledge: 'unknown', reason: result.reason ?? {
+        code: 'resource-unavailable', detail: '原执行节点的租约、代际或退出状态已变化，保留原执行身份等待核实。',
+      } };
+      projected = checkpoint.success ? { ...checkpoint.data, query: fenced } : fenced;
+    }
     return { commandId, state: row.state,
       result: projected,
       statusKnowledge: row.state === 'claimed' && !observation.success || unavailable ? 'unknown' : 'confirmed' };
