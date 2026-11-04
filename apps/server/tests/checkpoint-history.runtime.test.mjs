@@ -135,7 +135,7 @@ test('historical checkpoints remain discoverable beyond recent sessions and boun
     assert.equal((await api(`${path}/checkpoints`,undefined,foreignHeaders)).status,404);
     await stop(restored.requestId);
     const report={date:'2026-11-04',status:'passed',recentSessions:16,oldestListed:false,oldCheckpointVisibleInFreshChrome:true,restoredThroughUI:true,
-      publishedCheckpoints:66,pages:requests,perSessionProjection:64,oldestBeyondProjectionRetained:true,fontSize:'17px',codeLineHeight:'19.5px',platform:process.platform,mac:'deferred by user'};
+      publishedCheckpoints:66,pages:requests,perSessionProjection:64,oldestBeyondProjectionRetained:true,fontSize:'17px',codeLineHeight:'19.5px',platform:process.platform,mac:process.platform==='darwin'?'accepted on Apple Silicon arm64':'deferred by user'};
     await writeFile(join(evidenceRoot,'history-regression.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
   }finally{await runtime.stop().catch(()=>{});await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}).catch(()=>{});}
 });

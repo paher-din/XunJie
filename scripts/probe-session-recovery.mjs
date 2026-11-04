@@ -20,8 +20,10 @@ const runtime = openProductRuntime({ root, resources });
 const measurementStart = performance.now(); let lastCase = measurementStart;
 const report = { date: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date()), platform: process.platform, arch: process.arch, osRelease: release(),
   node: process.version, browser: 'installed Chrome', headless: false, status: 'running', cases: [], timings: [],
-  isolation: helper ? 'configured Windows session helper' : 'development native resources; no AppContainer package claim',
-  mac: 'deferred by user', teaching: 'not evaluated', receiver: 'no model calls' };
+  isolation: helper ? 'configured Windows session helper'
+    : process.platform === 'darwin' ? 'development native resources; macOS seatbelt enforced for adapter v2; no distribution package claim'
+      : 'development native resources; no AppContainer package claim',
+  mac: process.platform === 'darwin' ? 'accepted on Apple Silicon arm64' : 'deferred by user', teaching: 'not evaluated', receiver: 'no model calls' };
 const passed = name => { const now = performance.now(); report.cases.push(name); report.timings.push({ name, elapsedMs: Math.round(now - lastCase) }); lastCase = now; console.log('PASS ' + name); };
 // Test-only fault injection: retain exactly the children this owner creates, so a forced exit
 // targets a verified test executor, never an unrelated Node process or an added product route.
