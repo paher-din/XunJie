@@ -6,6 +6,10 @@ import { createSessionCheckpoints } from '../../../packages/learning-space/dist/
 import { createNativeSessions } from '../../../packages/learning-space/dist/learning-data/native-sessions.js';
 
 // A fault-injection seam for blob/transaction ordering; real PG is tested in session-recovery.runtime.test.mjs.
+const canonical = value => Array.isArray(value) ? value.map(canonical)
+  : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]))
+    : value;
 function fixture() {
  const digest='a'.repeat(64),scope={environmentId:id(),spaceId:id(),principalId:id(),activityId:id()};
  const limits={operationTimeoutMs:5000,idleMs:60000,maxMs:120000,memoryMiB:64,concurrentSessions:2,queuedSessions:0};
@@ -43,7 +47,14 @@ function fixture() {
  const restoreAction=()=>({...structuredClone(action),requestId:id(),execution:{...structuredClone(action.execution),
   resumeFromCheckpoint:{checkpointId:controlId,sessionRef:row.session_ref,sha256:checkpoint.sha256}}});
  return {owner,capture,observation,configuration,restoreAction,published:()=>published,
-  failUpload:()=>{failUpload=true},corruptRead:()=>{corruptRead=true},missing:()=>{missing=true},removePin:()=>{pin=null},controlId};
+  failUpload:()=>{failUpload=true},corruptRead:()=>{corruptRead=true},missing:()=>{missing=true},removePin:()=>{pin=null},
+  environmentMismatch:()=>{const envelope=JSON.parse(Buffer.from(bytes).toString('utf8'));
+   envelope.environment={platform:'plan9',arch:'mips',node:'v0.0.0'};
+   const rewritten=Buffer.from(JSON.stringify(canonical(envelope)));
+   bytes=rewritten;checkpoint.envelope=envelope;
+   checkpoint.sha256=createHash('sha256').update(rewritten).digest('hex');checkpoint.byte_length=rewritten.length;
+   return checkpoint.sha256;},
+  controlId};
 }
 test('an interrupted checkpoint upload reuses the cached executor snapshot and operation identity',async()=>{
  const f=fixture();f.failUpload();await assert.rejects(f.capture(),error=>error.code==='upload-unknown');assert.deepEqual(f.published(),[]);
@@ -54,7 +65,7 @@ test('an interrupted checkpoint upload reuses the cached executor snapshot and o
 test('a checkpoint is not published before its bytes are successfully re-read',async()=>{
  const f=fixture();f.corruptRead();await assert.rejects(f.capture(),error=>error.code==='corrupt');assert.deepEqual(f.published(),[]);
 });
-for(const fault of ['corrupt','missing','retention','configuration','adapter','format','principal','digest'])test('checkpoint restore refuses '+fault,async()=>{
+for(const fault of ['corrupt','missing','retention','configuration','adapter','format','principal','digest','environment'])test('checkpoint restore refuses '+fault,async()=>{
  const f=fixture();await f.capture();const action=f.restoreAction();let configuration=f.configuration,version=1,expected;
  if(fault==='corrupt'){f.corruptRead();expected='corrupt';}
  if(fault==='missing'){f.missing();expected='missing';}
@@ -64,6 +75,7 @@ for(const fault of ['corrupt','missing','retention','configuration','adapter','f
  if(fault==='format'){version=2;expected='invalid';}
  if(fault==='principal'){action.scope.principalId=id();expected='forbidden';}
  if(fault==='digest'){action.execution.resumeFromCheckpoint.sha256='0'.repeat(64);expected='identity-conflict';}
+ if(fault==='environment'){action.execution.resumeFromCheckpoint.sha256=f.environmentMismatch();expected='invalid';}
  await assert.rejects(f.owner.restore(action,configuration,version),error=>error.code===expected);
 });
 

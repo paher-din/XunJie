@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { planSeatbelt, seatbeltLauncherPath, seatbeltProfileVersion, SupervisedSession } from '@xunjie/learning-space';
+import { planSeatbelt, productNativeAdapters, seatbeltLauncherPath, seatbeltProfileVersion, SupervisedSession } from '@xunjie/learning-space';
 
 const limits = { operationTimeoutMs: 5000, idleMs: 60_000, maxMs: 120_000, memoryMiB: 48, outputBytes: 65_536 };
 const darwinOnly = process.platform === 'darwin' ? undefined : { skip: 'seatbelt is macOS only' };
@@ -100,6 +100,56 @@ test('the process-group baseline stays available for hosts that opt out of the s
     assert.equal(session.isolation.kind, 'process-group');
     assert.equal(session.isolation.network, 'unrestricted');
     assert.equal(await session.stop(4000), true);
+  } finally {
+    await session.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the real v2 adapter stays confined through controls, checkpoints and group reaping', darwinOnly, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-native-v2-isolation-'));
+  const adapter = productNativeAdapters.find(item => item.adapterVersion === 2);
+  assert.ok(adapter);
+  const session = await SupervisedSession.create({ adapter, limits: { ...limits, memoryMiB: 64 },
+    sessionRoot: root, nodePath: process.execPath });
+  try {
+    assert.equal(session.isolation.kind, 'seatbelt');
+    assert.equal(session.isolation.network, 'denied');
+    assert.equal(session.isolation.writes, 'session-directory');
+    assert.equal(session.isolation.exec, 'fixed-node-only');
+    assert.equal(session.isolation.memory, 'heap-cap-and-rss-watchdog');
+    assert.equal(session.isolation.processes, 'supervisor-group-confirmed');
+    assert.equal(session.isolation.supervisorDeath, 'session-watchdog');
+    const paused = await session.control('pause', randomUUID(), 1, {});
+    assert.equal(paused.sessionState, 'paused');
+    const step = await session.control('step', randomUUID(), 2, { value: 2 });
+    assert.deepEqual(step.state, { value: 2, total: 2, applied: 1 });
+    const checkpoint = await session.control('checkpoint', randomUUID(), 3, {});
+    assert.deepEqual(checkpoint.checkpoint, { formatVersion: 1, value: 2, total: 2, applied: 1, mode: 'paused' });
+    assert.equal(await session.stop(4000), true);
+    assert.equal((await session.settled(4000))?.confirmed, true);
+    assert.equal(session.exitFact?.requested, true);
+  } finally {
+    await session.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the real v2 adapter still ends on a real idle budget under seatbelt', darwinOnly, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-native-v2-idle-'));
+  const adapter = productNativeAdapters.find(item => item.adapterVersion === 2);
+  assert.ok(adapter);
+  const session = await SupervisedSession.create({ adapter, limits: { ...limits, memoryMiB: 64, idleMs: 1_000 },
+    sessionRoot: root, nodePath: process.execPath });
+  try {
+    assert.equal(session.isolation.kind, 'seatbelt');
+    const deadline = Date.now() + 12_000;
+    while (!session.exitFact && Date.now() < deadline) {
+      await session.snapshot().catch(() => {});
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(session.exitFact?.expired, 'idle');
+    assert.equal(session.exitFact?.confirmed, true);
   } finally {
     await session.dispose();
     await rm(root, { recursive: true, force: true });

@@ -58,6 +58,9 @@ export function NativeSessionPanel({ activity, binding, authorized }: {
   const reason = record?.reason?.detail
   const canControl = authorized && !busy && !!record && ['running', 'paused'].includes(record.state)
     && record.statusKnowledge === 'confirmed' && !record.stopRequested && !unresolved
+  const canEditAmount = authorized && !busy && works.ready && !works.conflict && !!record && !terminal
+    && ['running', 'paused'].includes(record.state) && record.statusKnowledge === 'confirmed'
+    && !record.stopRequested && !unresolved
   const supported = (effect: Exclude<SessionControlEffect, 'input'>) => declared.controls?.includes(effect)
   const checkpoints = [...new Map([...state.checkpoints.filter(item => item.instanceId === instanceId),
     ...state.queries.filter(query => query.session?.instanceId === instanceId).flatMap(query => query.session?.checkpoints ?? [])]
@@ -84,6 +87,7 @@ export function NativeSessionPanel({ activity, binding, authorized }: {
   const start = async () => {
     setBusy(true); setNote('')
     try {
+      await workspace.flush()
       const action = await sessionAction({ workspace, binding, instanceId,
         receiver: { receiverId: 'native-execution', location: 'local', kind: 'execution' },
         parameters: {}, requestId: crypto.randomUUID() })
@@ -141,7 +145,7 @@ export function NativeSessionPanel({ activity, binding, authorized }: {
   const restore = async (checkpoint: ExecutionCheckpoint) => {
     setBusy(true); setNote('')
     try {
-      await workspace.leave()
+      await workspace.flush()
       const action = await sessionAction({ workspace, binding, instanceId,
         receiver: { receiverId: 'native-execution', location: 'local', kind: 'execution' }, parameters: {}, requestId: crypto.randomUUID(),
         resumeFromCheckpoint: { checkpointId: checkpoint.checkpointId, sessionRef: checkpoint.sessionRef, sha256: checkpoint.sha256 } })
@@ -181,7 +185,7 @@ export function NativeSessionPanel({ activity, binding, authorized }: {
       <form className="native-session-input" onSubmit={event => { event.preventDefault(); void input(record) }}>
         <label>输入整数（0–99）
           <input type="number" min={0} max={99} step={1} value={amount}
-            disabled={!authorized || busy || !works.ready || !!works.conflict}
+            disabled={!canEditAmount}
             onChange={event => void persistAmount(event.target.value)} />
         </label>
         <button type="submit" className="ws-btn solid" disabled={!canInput || amount === ''}>输入</button>
