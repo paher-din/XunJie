@@ -9,6 +9,7 @@ import { advanceExecution, defaultExecutionLimits, executionAcceptanceSchema, ex
   executionQuerySchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
+import { verifyPlannedExecution } from './plan.js';
 import { createNativeSessions } from './native-sessions.js';
 import type { NativeSessionOptions } from './native-sessions.js';
 
@@ -84,6 +85,9 @@ export function createExecutions(storage: OwnedStorage, options: {
     if (manifest.formatVersion !== 1) fail('missing');
     const operation = manifest.operations?.find(item => item.operationId === action.execution.operation.operationId);
     if (!operation || operation.effect !== action.execution.operation.effect) fail('missing');
+    // The course plan the activity was opened with fixes which operation may run and where.
+    verifyPlannedExecution(activity, { key: instance.key, definitionDigest: instance.definitionDigest,
+      operationId: operation.operationId, location: 'browser' });
     const limits = action.execution.limits;
     // A command may tighten a declared budget; it may never exceed the manifest or the adapter ceiling.
     if (limits.timeMs > operation.budgets.timeMs || limits.outputBytes > operation.budgets.outputBytes

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { LearningTarget, SpaceIdentity } from './spaces.js';
 import { componentBindingsSchema } from './components.js';
+import { courseExecutionPlanSchema } from './execution-plan.js';
 
 /** Course owner wire. Student projections never contain teacher-private material or storage locators. */
 export const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -33,6 +34,8 @@ export const courseReleaseSchema = z.object({
   materials: z.array(courseMaterialSchema).max(100), starterWorks: starterWorksSchema,
   capabilities: capabilitiesSchema, publishedAt: z.string(), courseName: z.string().min(1).max(200),
   components: componentBindingsSchema.optional(),
+  /** Absent for a release published before execution plans existed; such a release keeps its own bytes. */
+  executionPlan: courseExecutionPlanSchema.optional(),
   taskTitle: z.string().min(1).max(300),
 }).strict();
 export type CourseRelease = z.infer<typeof courseReleaseSchema>;
@@ -86,6 +89,8 @@ export const courseImportSchema = z.object({
     materials: z.array(courseImportMaterialSchema).max(100), starterWorks: starterWorksSchema,
     capabilities: capabilitiesSchema,
     components: componentBindingsSchema.optional(),
+    /** The supported import boundary: a new release states its plan, an old one simply has none. */
+    executionPlan: courseExecutionPlanSchema.optional(),
   }).strict(),
   resources: z.array(courseImportResourceSchema).max(100),
 }).strict();
@@ -113,6 +118,8 @@ export const courseActivityBindingSchema = z.object({
   objectives: objectivesSchema, requirements: requirementsSchema, materials: z.array(courseMaterialSchema).max(100),
   starterWorks: starterWorksSchema, capabilities: capabilitiesSchema,
   components: componentBindingsSchema.optional(),
+  /** Snapshot of the release plan at the moment the activity was opened; a later release never rewrites it. */
+  executionPlan: courseExecutionPlanSchema.optional(),
 }).strict();
 export type CourseActivityBinding = z.infer<typeof courseActivityBindingSchema>;
 

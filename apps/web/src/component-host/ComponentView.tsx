@@ -9,6 +9,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { useActivitySession } from '../product/ActivitySession'
 import { learningRequest } from '../product/learningTransport'
 import { componentPreparation, componentViewUrl, requiresPreparation, type PreparationSnapshot } from '../component-preparation/preparation'
+import { observeExecutionDevice } from '../tool-execution/device'
 import { componentError, createComponentBridge } from './bridge'
 import './components.css'
 
@@ -60,6 +61,9 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
   const allowed = useRef(authorized)
   allowed.current = authorized
   const prepared = requiresPreparation(binding)
+  // The plan the activity was opened with, not the current release: an opening activity keeps the
+  // arrangement the teacher reviewed even after a newer release exists.
+  const plan = activity.course?.executionPlan
   useEffect(() => {
     let live = true
     const target = { activity, binding, spaceKey, namespace }
@@ -116,7 +120,10 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
             const current = workspace.snapshot().files.find(file => file.name === componentStateName(binding.key))
             return { located: !!current && JSON.stringify(reference.source) === JSON.stringify(componentSource(activity, binding, current.objectId, current.contentId)) }
           },
-        })
+        }, plan ? { plan, device: observeExecutionDevice(),
+          // This page has observed no eligible school node. Unobserved is reported as "not available",
+          // which never turns a run that could start here into a run somewhere else.
+          remoteAvailable: false } : undefined)
       const channel = new MessageChannel()
       bridge = mount; port = channel.port1
       locateReference.current = reference => new Promise(resolve => {

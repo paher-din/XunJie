@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { workFilesSchema } from './learning-data.js';
 import { actionInputSchema, actionReceiptSchema, actionScopeSchema, actionReceiverSchema } from './action-intents.js';
+import { executionDecisionSchema } from './execution-plan.js';
+
+// A course execution plan lives in its own module so courses and learning data can share it without a cycle.
+export * from './execution-plan.js';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const identifier = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
@@ -149,7 +153,9 @@ export type ExecutionQuery = z.infer<typeof executionQuerySchema>;
 
 export const executionCapabilitiesSchema = z.object({ plans: z.array(executionPlanSchema).max(4),
   operations: z.array(z.object({ operationId: identifier, instanceId: z.string().min(1).max(300),
-    limits: executionLimitsSchema, available: z.boolean(), reason: z.string().max(200).nullable() }).strict()).max(8),
+    limits: executionLimitsSchema, available: z.boolean(), reason: z.string().max(200).nullable(),
+    /** The placement answer for this operation; absent for a component the course published without a plan. */
+    decision: executionDecisionSchema.optional() }).strict()).max(8),
   running: z.number().int().nonnegative(), queued: z.number().int().nonnegative() }).strict();
 export type ExecutionCapabilities = z.infer<typeof executionCapabilitiesSchema>;
 

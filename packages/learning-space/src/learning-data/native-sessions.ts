@@ -10,6 +10,7 @@ import { executionActionSchema, executionControlSchema, executionQuerySchema } f
 import type { ExecutionAction, ExecutionControl, ExecutionObservation, ExecutionQuery } from '@xunjie/contracts/execution';
 import { productNativeAdapters, SupervisedSession } from './native-process.js';
 import type { NativeAdapter, NativeSessionExit } from './native-process.js';
+import { verifyPlannedExecution } from './plan.js';
 import type { createWorks } from './works.js';
 
 /**
@@ -135,6 +136,10 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const { manifest } = bindingFor(activity, action);
     if (manifest.formatVersion !== 1) fail('missing');
     if (!manifest.session) fail('missing');
+    // A course plan may allow only a browser job, or only this one session operation.
+    verifyPlannedExecution(activity, { key: action.execution.instance.key,
+      definitionDigest: action.execution.instance.definitionDigest,
+      operationId: execution.operation.operationId, location: 'native' });
     const declared = manifest.session;
     if (declared.adapterId !== session.adapterId || declared.adapterVersion !== session.adapterVersion
       || declared.operation.operationId !== execution.operation.operationId) fail('identity-conflict');

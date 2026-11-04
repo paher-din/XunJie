@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { acceptsState, componentMessageSchema, componentChangeSchema, componentStateSchema,
   componentStateName, componentInstanceId, componentReferenceSelectionSchema, componentReferenceLocateSchema, componentExecutionSubmitSchema, componentExecutionQuerySchema,
   componentExecutionStopSchema, componentEventSchema, type ComponentEvent, type ComponentBinding } from '@xunjie/contracts/components'
-import { executionCapabilitiesSchema } from '@xunjie/contracts/execution'
+import { executionCapabilitiesSchema, decideExecutionPlacement, type CourseExecutionPlan, type ExecutionDevice } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import type { ExecutionController } from '../tool-execution/controller'
 import { canonical, componentStateMediaType, browserLimits, browserPlan, executionAction, readComponentState } from '../tool-execution/action'
@@ -23,7 +23,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
   consume: (event: ComponentEvent) => void = () => {}, references?: {
     select(input: ReturnType<typeof componentReferenceSelectionSchema.parse>, assertCurrent: () => void): Promise<{ selected: true }>;
     locate(input: ReturnType<typeof componentReferenceLocateSchema.parse>, assertCurrent: () => void): Promise<{ located: boolean }>;
-  }) {
+  }, placement?: { plan: CourseExecutionPlan; device: ExecutionDevice; remoteAvailable: boolean }) {
   const connectionId = crypto.randomUUID(), instanceId = componentInstanceId(activityId, binding.key)
   const manifest = binding.definition.manifest
   const submitted = new Set<string>()
@@ -111,11 +111,22 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
       const runnable = !!execution && execution.canRun()
       // Exactly the plan and limits the accepted command will carry, plus the executor's real counts.
       const counts = execution ? execution.controller.counts() : { running: 0, queued: 0 }
+      // A published course plan answers per operation; an operation the plan does not pin gets no answer.
+      const decisions = placement
+        ? manifest.operations.map(item => {
+          try {
+            return decideExecutionPlacement({ operationId: item.operationId, kind: 'job', adapter: null,
+              plan: placement.plan, device: placement.device, remoteAvailable: placement.remoteAvailable })
+          } catch { return undefined } // The release and its plan disagree, so this operation states nothing.
+        })
+        : []
       return executionCapabilitiesSchema.parse({ plans: execution
         ? await Promise.all(manifest.operations.map(item => browserPlan(manifest, item.operationId))) : [],
-      operations: manifest.operations.map(item => ({ operationId: item.operationId, instanceId,
-        limits: browserLimits(manifest, item), available: runnable,
-        reason: runnable ? null : '当前视图不可发起执行。' })),
+      operations: manifest.operations.map((item, index) => {
+        const decision = decisions[index]
+        return { operationId: item.operationId, instanceId, limits: browserLimits(manifest, item), available: runnable,
+          reason: runnable ? null : '当前视图不可发起执行。', ...(decision ? { decision } : {}) }
+      }),
       running: counts.running, queued: counts.queued })
     }
     if (capability === 'execution.submit') {

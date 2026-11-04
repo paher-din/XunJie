@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto'
 import { expect, it } from 'vitest'
+import type { CourseExecutionPlan, ExecutionDevice } from '@xunjie/contracts/execution'
 import { aggregationPackage } from '../../../../components/table-aggregation/package.mjs'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { digestOf, executionAction } from '../tool-execution/action'
@@ -39,4 +40,41 @@ it('a component can query its own run but cannot query or stop another instance 
     expect((await receiver.store.read(key, foreign.requestId))?.query.stopRequested).toBe(false)
     await expect(bridge.handle(message('execution.stop', crypto.randomUUID()))).rejects.toThrow('outcome-unknown')
   } finally { bridge.close(); controller.dispose() }
+})
+
+it('answers a planned operation from real browser facts and never turns a missing feature into a relocation', async () => {
+  const scope = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), activityId: crypto.randomUUID() }
+  const key = JSON.stringify(['school', scope.environmentId, scope.spaceId, scope.principalId, scope.activityId])
+  const { manifest } = await aggregationPackage()
+  const binding = { key: 'table', definition: { manifest, digest: await digestOf(manifest) }, configuration: { title: '表格' }, materialIds: [] }
+  const workspace = { key, snapshot: () => ({ ready: true, files: [] }) } as unknown as ReliableWorkspace
+  const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local' as const, kind: 'execution' as const }, key, 1)
+  const unused = async (): Promise<never> => { throw new Error('not dispatched') }
+  const transport = { accept: unused, read: async () => null, report: unused, stop: unused, result: unused }
+  const controller = new ExecutionController(key, receiver, { createExecution: async () => {}, cancel: async () => {} }, transport,
+    { load: async () => { throw new Error('not dispatched') } })
+  const plan: CourseExecutionPlan = { planId: 'table-run', planVersion: 1, planDigest: 'c'.repeat(64),
+    components: [{ key: 'table', definitionDigest: binding.definition.digest,
+      configurationDigest: await digestOf(binding.configuration), operations: ['aggregate'] }],
+    capabilities: ['execution.submit'], resources: { browser: { features: ['worker'] }, native: null },
+    locations: ['browser'], remote: null }
+  const capabilities = async (worker: boolean, planned: boolean) => {
+    const device: ExecutionDevice = { platform: null, browser: { worker, webassembly: true, sandboxedFrame: true }, native: null }
+    const bridge = createComponentBridge(workspace, scope.activityId, binding, () => true, { controller, canRun: () => true }, () => {},
+      undefined, planned ? { plan, device, remoteAvailable: false } : undefined)
+    const reply = await bridge.handle({ hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
+      messageId: crypto.randomUUID(), method: 'execution.capabilities', payload: {} })
+    bridge.close()
+    return reply as { operations: { operationId: string; decision?: { state: string; location: string | null; owner: string | null;
+      remote: { declared: boolean; available: boolean } } }[] }
+  }
+  try {
+    // An unplanned release keeps stating only what the adapter enforces.
+    expect((await capabilities(true, false)).operations[0]).not.toHaveProperty('decision')
+    expect((await capabilities(true, true)).operations[0]).toMatchObject({ operationId: 'aggregate',
+      decision: { state: 'browser-satisfied', location: 'browser', owner: 'device', remote: { declared: false, available: false } } })
+    // A restricted job has no other declared form, so a missing feature leaves it unplaced here.
+    expect((await capabilities(false, true)).operations[0]).toMatchObject({ operationId: 'aggregate',
+      decision: { state: 'device-unsupported', location: null, owner: null } })
+  } finally { controller.dispose() }
 })

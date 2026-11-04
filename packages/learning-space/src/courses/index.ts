@@ -14,9 +14,11 @@ import type {
 } from '@xunjie/contracts/courses';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
 import { spaceMigrations } from '../spaces/index.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
+import type { ComponentBinding } from '@xunjie/contracts/components';
 import { createComponents, componentMigration, componentStatusMigration, componentReportMigration } from './components.js';
 
 export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'course-catalog-and-releases', sql: `
@@ -70,6 +72,7 @@ const storedContentSchema = z.object({
   }).strict()).max(50), capabilities: z.array(z.object({
     kind: z.enum(['component', 'executor']), objectId: uuid, version: z.number().int().positive(),
   }).strict()).max(50), components: componentBindingsSchema.optional(),
+  executionPlan: courseExecutionPlanSchema.optional(),
 }).strict();
 type StoredContent = z.infer<typeof storedContentSchema>;
 
@@ -84,12 +87,79 @@ function studentMaterials(content: StoredContent) {
     .map(({ materialId, title, mediaType, byteLength, sha256 }) => ({ materialId, title, mediaType, byteLength, sha256 }));
 }
 
+/** Canonical form the plan digest is computed over; identical to `courseExecutionPlanBasis` normalisation. */
+const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
+  : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]))
+    : value;
+const configurationDigest = (configuration: unknown) => digest(canonical(configuration));
+/** `courseExecutionPlanBasis` already returns canonical keys, so this is the one plan digest in the product. */
+const planDigest = (plan: Parameters<typeof courseExecutionPlanBasis>[0]) => digest(courseExecutionPlanBasis(plan));
+
+/** The operations a bound component really declares, so a plan cannot hide or invent one. */
+function declaredOperations(manifest: ComponentBinding['definition']['manifest']): string[] {
+  if (manifest.formatVersion !== 1) return [];
+  return manifest.operations?.map(item => item.operationId) ?? (manifest.session ? [manifest.session.operation.operationId] : []);
+}
+
+/**
+ * A published plan keeps its meaning only while it still describes the components it was reviewed
+ * with. The plan is part of the immutable release content, so this check runs before anything is stored.
+ */
+function verifyExecutionPlan(content: StoredContent) {
+  const plan = content.executionPlan;
+  if (!plan) return;
+  const bindings = content.components ?? [];
+  if (!bindings.length) fail('invalid');
+  if (planDigest(plan) !== plan.planDigest) fail('invalid');
+  // A plan covers every bound component or none at all; a partial plan would leave one run unruled.
+  if (new Set(bindings.map(item => item.key)).size !== plan.components.length
+    || bindings.some(item => !plan.components.some(planned => planned.key === item.key))) fail('invalid');
+  for (const planned of plan.components) {
+    const binding = bindings.find(item => item.key === planned.key)!;
+    const manifest = binding.definition.manifest;
+    // A prepared (format 2) component only prepares; it never declares a run a plan could pin.
+    if (manifest.formatVersion !== 1) fail('invalid');
+    if (planned.definitionDigest !== binding.definition.digest) fail('invalid');
+    if (planned.configurationDigest !== configurationDigest(binding.configuration)) fail('invalid');
+    const declared = declaredOperations(manifest);
+    if (!declared.length || declared.length !== planned.operations.length
+      || declared.some(id => !planned.operations.includes(id))) fail('invalid');
+  }
+  // A plan may narrow what the components declare; it may never grant itself a capability they lack.
+  const declaredCapabilities = new Set(bindings.flatMap(item => [...item.definition.manifest.requiredCapabilities] as string[]));
+  if (plan.capabilities.some(capability => capability !== 'native-session' && !declaredCapabilities.has(capability))) fail('invalid');
+  const sessions = bindings.filter(item => {
+    const manifest = item.definition.manifest;
+    return manifest.formatVersion === 1 && manifest.session !== undefined;
+  });
+  const browser = bindings.filter(item => declaredOperations(item.definition.manifest).length > 0 && !sessions.includes(item));
+  if (plan.locations.includes('browser') ? browser.length === 0 : browser.length > 0) fail('invalid');
+  if (plan.locations.includes('native') ? sessions.length === 0 : sessions.length > 0) fail('invalid');
+  const native = plan.resources.native;
+  // A plan may ask for less than the adapter enforces, never for more than it can hold.
+  for (const item of sessions) {
+    const manifest = item.definition.manifest;
+    if (manifest.formatVersion !== 1 || !manifest.session || !native) continue;
+    const budget = manifest.session.budgets;
+    if (native.memoryMiB > budget.memoryMiB || native.operationTimeoutMs > budget.operationTimeoutMs
+      || native.maxMs > budget.maxMs) fail('invalid');
+  }
+  if (plan.remote && !sessions.some(item => {
+    const manifest = item.definition.manifest;
+    if (manifest.formatVersion !== 1 || !manifest.session) return false;
+    return manifest.session.adapterId === plan.remote!.adapter.adapterId
+      && manifest.session.adapterVersion === plan.remote!.adapter.adapterVersion;
+  })) fail('invalid');
+}
+
 function bindingOf(associationId: string, courseName: string, taskTitle: string, content: StoredContent) {
   return courseActivityBindingSchema.parse({ associationId, courseId: content.courseId, courseName,
     taskId: content.taskId, taskTitle, releaseId: content.releaseId, contentDigest: contentDigest(content),
     objectives: content.objectives, requirements: content.requirements, materials: studentMaterials(content),
     starterWorks: content.starterWorks, capabilities: content.capabilities,
-    ...(content.components ? { components: content.components } : {}) });
+    ...(content.components ? { components: content.components } : {}),
+    ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}) });
 }
 
 const bindingRowSchema = z.object({
@@ -132,8 +202,10 @@ function planImport(value: unknown) {
   const content: StoredContent = { formatVersion: 1, courseId: input.course.courseId, taskId: input.task.taskId,
     releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
     materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[],
-    ...(input.release.components ? { components: input.release.components } : {}) };
+    ...(input.release.components ? { components: input.release.components } : {}),
+    ...(input.release.executionPlan ? { executionPlan: input.release.executionPlan } : {}) };
   storedContentSchema.parse(content);
+  verifyExecutionPlan(content);
   return { input, content, materials, contentHash: contentDigest(content) };
 }
 function registrationFingerprint(plan: ReturnType<typeof planImport>) {
@@ -318,6 +390,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       releaseId: content.releaseId, contentDigest: row.content_digest, objectives: content.objectives,
       requirements: content.requirements, materials: studentMaterials(content), starterWorks: content.starterWorks,
       capabilities: content.capabilities, ...(content.components ? { components: content.components } : {}),
+      ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}),
       publishedAt: row.published_at.toISOString(), courseName: row.course_name,
       taskTitle: row.task_title });
   }
@@ -505,6 +578,9 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       for (const binding of content.components ?? []) await components.verify(binding.definition);
       if (content.releaseId !== release.release_id || content.taskId !== release.task_id
         || contentDigest(content) !== release.content_digest) fail('corrupt');
+      if (content.executionPlan) {
+        try { verifyExecutionPlan(content); } catch { fail('corrupt'); }
+      }
       const rows = await materialRows(release.release_id as string);
       if (rows.length !== content.materials.length) fail('corrupt');
       for (const material of content.materials) {
