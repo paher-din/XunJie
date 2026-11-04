@@ -32,7 +32,7 @@
     { "name": "runtime build", "status": "passed", "detail": "9 build tasks RUN, exit 0" },
     { "name": "full typecheck", "status": "passed", "detail": "typecheck tasks passed (contracts, storage, learning-space, server, product-runtime, local-runtime, web:src, web:node)" },
     { "name": "public contract browser exports", "status": "passed", "passedCount": 12, "failedCount": 0 },
-    { "name": "web unit suite", "status": "passed", "files": 70, "tests": 825, "failed": 0 },
+    { "name": "web unit suite", "status": "passed", "files": 70, "tests": 826, "failed": 0, "detail": "includes lost start/control/stop reply identity across a new controller without automatic dispatch" },
     { "name": "unit verification group", "status": "passed", "tasks": 25, "exitCode": 0 },
     { "name": "server verification group", "status": "passed", "tasks": 83, "serverTestTasks": 82, "exitCode": 0, "durationMs": 165900 },
     { "name": "school client forwarding boundary", "status": "passed", "tests": 2, "failed": 0 },

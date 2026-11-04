@@ -42,8 +42,8 @@
 | 4 | 检查点由真实执行器产生并绑定会话/位置/组件/配置/主体/环境；经 PostgreSQL 与资源保存、重读、保留后才可恢复；丢回包按原身份查询，不重新采样或重复推进 | 通过 | `session-checkpoints.test.mjs` 12 项（上传中断复用缓存、重读失败不发布、corrupt/missing/retention/config/adapter/format/principal/digest/environment）；`session-recovery.runtime.test.mjs` 真实 PG 资源损坏/缺失；探针第 4 项丢回包跨 IndexedDB 刷新只查询一次 |
 | 5 | 从检查点恢复建立新请求/执行引用/执行器，保留原会话与检查点关系；下一步与同输入基准一致；不重放未知操作 | 通过 | `session-recovery.runtime.test.mjs` 新 `executionRef`/`executorInstanceId`、`restoredFrom` 保持、真实下一步等于 baseline；探针第 5 项强制结束原进程后恢复，恢复实例下一步与基准相同 |
 | 6 | 强制结束执行器、丢失监督器或重启节点后保留最后可信观察与中断原因；原实例不复活；无检查点、资源损坏/缺失、失权、配置/适配/Node/平台不兼容分别有负例 | 通过 | 探针第 5 项真实 `SIGKILL` 执行器；第 9 项 owner 重启后保留检查点；`session-checkpoints.test.mjs` 环境负例写入 `plan9/mips/v0.0.0` 得到 `invalid`，另有 corrupt/missing/retention/config/adapter/format/principal/digest；`native-isolation` 的 v2 元数据含 `supervisorDeath: session-watchdog` |
-| 7 | 切换工具、关闭/重开视图、关页和刷新先保护显式整数输入、问题与引用；返回只查原请求；IndexedDB v6 追加升级保留旧分区和原数据；丢回包后的启动/控制/停止身份跨刷新保留，不自动派发 | 通过 | 探针第 3 项切工具并整页 reload 后输入仍为 `2`、执行器不变、无新增 POST；第 4 项检查点丢回包只查询原控制；`nativeSession.spec.ts` 停止/新会话；`questionDrafts.spec.ts` 旧库升级到 v6 且 12 个 store（含 `nativeSessionRequests`）全在，旧作品仍可读；`session.test.ts` 新控制器查询原请求不自动重发 |
-| 8 | 心跳失联/暂时查不到标注待核实，不误报停止/未执行；心跳不延长空闲时限；旧结果不倒退终态、不替换当前选中恢复实例；原会话历史可查看/停止 | 通过 | `session.test.ts` 15 项：连接丢失保留观察并标 unknown、缺席记录不解释为 running/stopped、晚 running 不倒退终态、晚旧查询不替换恢复实例、历史分页；`native-session.test.mjs` 空闲期间快照心跳仍按 1 秒真实退出；探针原会话历史/停止 |
+| 7 | 切换工具、关闭/重开视图、关页和刷新先保护显式整数输入、问题与引用；返回只查原请求；IndexedDB v6 追加升级保留旧分区和原数据；丢回包后的启动/控制/停止身份跨刷新保留，不自动派发 | 通过 | 探针第 3 项切工具并整页 reload 后输入仍为 `2`、执行器不变、无新增 POST；第 4 项检查点丢回包只查询原控制；`nativeSession.spec.ts` 停止/新会话；`questionDrafts.spec.ts` 旧库升级到 v6 且 12 个 store（含 `nativeSessionRequests`）全在，旧作品仍可读；`session.test.ts` 丢失启动/控制/停止回包跨新控制器保留，不自动重发，显式按原请求身份重试 |
+| 8 | 心跳失联/暂时查不到标注待核实，不误报停止/未执行；心跳不延长空闲时限；旧结果不倒退终态、不替换当前选中恢复实例；原会话历史可查看/停止 | 通过 | `session.test.ts` 16 项：连接丢失保留观察并标 unknown、缺席记录不解释为 running/stopped、晚 running 不倒退终态、晚旧查询不替换恢复实例、历史分页；`native-session.test.mjs` 空闲期间快照心跳仍按 1 秒真实退出；探针原会话历史/停止 |
 | 9 | 维护先停止新接受/控制，等待实际进程退出并保存事实，再关闭写入；无法确认终止/检查点边界时不宣告 `safeToStop`；恢复写入后显式建立新恢复实例，安装代际正确，原实例不继续 | 通过 | 探针第 8 项 `maintenance.enter('backup')` 返回 `safeToStop: true` 前真实退出已确认；`maintenance.resume()` 后从检查点建立新实例，`installGeneration` 不同；`session-checkpoints.test.mjs` 未确认排空负例 |
 | 10 | 检查点/控制事件/恢复关系/资源保留经 owner 验证和正常重启；停用组件不删除历史、不能新推进；关闭活动请求停止；关页不误当停止 | 通过 | `session-recovery.runtime.test.mjs` 停用组件后 reset 拒绝且检查点仍在、owner 重启后恢复、关闭活动后会话 `cancelled` 且新控制/动作拒绝；探针第 9 项正常重启；整页 reload 后会话仍运行、不把刷新当停止 |
 | 11 | Seatbelt、进程组回收、工作集/时间预算和资源边界对新增适配真实生效，不复用旧适配结果；明确未执行的跨机/分发包组合 | 通过 | `native-isolation.test.mjs` 新增 v2 真实适配：seatbelt、network denied、session-directory 写、fixed-node-only、heap-cap+RSS watchdog、supervisor-group-confirmed；v2 暂停/单步/检查点/停止后空组确认；v2 `idleMs=1000` 真实退出；见[隔离证据](evidence/wp03-187-isolation.json) |
@@ -57,7 +57,7 @@
 - `node scripts/build.mjs all`：9 个构建任务通过，退出码 0。
 - `node scripts/build.mjs typecheck`：全部类型检查任务通过。
 - `npm run check:contracts:browser`：12/12 公共导出浏览器安全。
-- `node scripts/verify.mjs --group unit --jobs 3`：25/25 任务通过；Web 70 个文件、825 项通过。
+- `node scripts/verify.mjs --group unit --jobs 3`：25/25 任务通过；Web 70 个文件、826 项通过。
 - `node scripts/verify.mjs --group server --jobs 2`：83 个任务（含 82 个本地测试任务）通过，165.9 秒。
 - `node --test packages/product-runtime/test/school-client.test.mjs`：2/2 学校转发边界。
 - `node --test apps/server/tests/native-isolation.test.mjs apps/server/tests/native-session.test.mjs apps/server/tests/session-checkpoints.test.mjs`：21/21。
