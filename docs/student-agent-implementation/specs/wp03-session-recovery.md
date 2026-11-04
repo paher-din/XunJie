@@ -1,10 +1,10 @@
 # #174 会话控制、检查点与返回恢复：实施方案
 
-日期：2026-11-03。依据 [#174](https://github.com/paher-din/XunJie/issues/174) 和 [WP03 母规范](wp03-course-components-and-execution.md) §10、§14。负责人已授权明确方案后实施；Mac 验收暂缓，不将 Windows 结果记为双平台通过。开发分支 `codex/issue-174-session-recovery`，基线 `upstream/wp03@e5b3743`。
+日期：2026-11-03。依据 [#174](https://github.com/paher-din/XunJie/issues/174) 和 [WP03 母规范](wp03-course-components-and-execution.md) §10、§14。负责人已授权明确方案后实施；Apple Silicon 验收由 [#187](https://github.com/paher-din/XunJie/issues/187) 于 2026-11-04 在 `wp03@05bb6a9` 完成，Windows 与 Mac 结果分别记录。开发分支 `codex/issue-174-session-recovery`，基线 `upstream/wp03@e5b3743`。
 
 实现与阶段验证见[交付记录](../wp03-session-recovery.md)。本票追加 owner 迁移 8 和原 IndexedDB 的 v6 待确认请求分区；执行事实仍只由原执行 owner 裁定，不自动重放恢复前的未知操作。
 
-Mac 专项验收独立跟踪于 [#187](https://github.com/paher-din/XunJie/issues/187)，暂不指派任何人。审查后恢复选择改用独立分页检查点目录，不受最近会话窗口或观察投影长度影响。
+Mac 专项验收独立跟踪于 [#187](https://github.com/paher-din/XunJie/issues/187)，已由该票完成并记录于 [Mac 验收记录](../wp03-187-mac-session-recovery.md)。审查后恢复选择改用独立分页检查点目录，不受最近会话窗口或观察投影长度影响。
 
 ## 目标与边界
 
@@ -27,4 +27,4 @@ Mac 专项验收独立跟踪于 [#187](https://github.com/paher-din/XunJie/issue
 - 真实进程：同实例暂停/继续、单步只推进一次、重放不重复、错序和控制竞争、复位、检查点后下一步与恢复实例下一步一致。
 - PostgreSQL/资源：检查点保存确认丢失、资源损坏/缺失、权限/版本不兼容、重启与恢复验证、维护边界。
 - Windows 桌面 Chrome：原工作区控制、返回/刷新先查询、保留输入与问题草稿、原引用/编辑/停止回归、深浅色及窄桌面，实际 UI 前后证据。
-- Mac 暂缓；新远端能力及真实跨机组合由相应接入票补验。本票不冒充任意内存恢复，不自动重放未知操作，不调用模型；教学效果另列未评估。
+- Mac 已由 [#187](../wp03-187-mac-session-recovery.md) 在真实 Apple Silicon、原生 Node/PostgreSQL 和桌面 Chrome 上验收；新远端能力及真实跨机组合仍由相应接入票补验。本票不冒充任意内存恢复，不自动重放未知操作，不调用模型；教学效果另列未评估。

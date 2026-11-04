@@ -1,8 +1,8 @@
 # #174 会话控制、检查点与返回恢复
 
-实施日期：2026-11-03 至 2026-11-04（Asia/Shanghai）。分支 `codex/issue-174-session-recovery`，基线 `upstream/wp03@e5b3743`。依据 [#174](https://github.com/paher-din/XunJie/issues/174)、[实施方案](specs/wp03-session-recovery.md)和 [WP03 母规范](specs/wp03-course-components-and-execution.md)。负责人已授权先提交当前实现与审查修复，再完成验证并推送上游 `wp03`；不创建 PR、不合 main。Mac 独立交接至 [#187](https://github.com/paher-din/XunJie/issues/187)，保持无人指派，不据此关闭双平台验收。
+实施日期：2026-11-03 至 2026-11-04（Asia/Shanghai）。分支 `codex/issue-174-session-recovery`，基线 `upstream/wp03@e5b3743`。依据 [#174](https://github.com/paher-din/XunJie/issues/174)、[实施方案](specs/wp03-session-recovery.md)和 [WP03 母规范](specs/wp03-course-components-and-execution.md)。负责人已授权先提交当前实现与审查修复，再完成验证并推送上游 `wp03`；不创建 PR、不合 main。Apple Silicon 验收已由 [#187](https://github.com/paher-din/XunJie/issues/187) 在本机补做，记录见 [wp03-187-mac-session-recovery.md](wp03-187-mac-session-recovery.md)。
 
-审查修复：新版组件字号/行高改为规范内的 17px/1.5；检查点改经 `executions/<activity>/checkpoints[/<cursor>]` 独立分页读取，每页至多 64 项，不依赖最近 16 次会话或单个会话的 64 项投影。读取不完整与确实不存在分别显示。实现与修复已提交为 `38b55f1` 并推送上游 `wp03`，Mac 验收仍独立暂缓。
+审查修复：新版组件字号/行高改为规范内的 17px/1.5；检查点改经 `executions/<activity>/checkpoints[/<cursor>]` 独立分页读取，每页至多 64 项，不依赖最近 16 次会话或单个会话的 64 项投影。读取不完整与确实不存在分别显示。实现与修复已提交为 `38b55f1` 并推送上游 `wp03`。Mac 验收在 `05bb6a9` 补做，并修复终态输入禁用与启动前可靠工作区同步两个问题；详见 [#187 记录](wp03-187-mac-session-recovery.md)。
 
 ## 实际行为
 
@@ -46,7 +46,7 @@ v2 声明跨视图继续、关页继续、关闭活动停止、重连先查询�
 - 正式 Chrome 验收覆盖旧组件、真实控制、可靠输入/问题保护、切换/刷新只查询、检查点丢回包跨刷新、强制结束本测试实际子进程、新恢复实例下一步等价、复位、键盘、主题和窄桌面；没有模型调用。
 - 原问题草稿、代码/材料固定引用、旧数据库追加升级和可靠动作的正式 Chrome 回归 21/21 通过。
 
-未执行：Apple Silicon Mac、真实跨机执行组合、重新制作与验收分发包、原生系统中文候选操作和教学效果。Windows 本轮 Chrome 使用真实开发资源组合，没有配置 AppContainer helper，不冒充分发包隔离验收。已有 #173/#184 的隔离证据不替代本票新增能力的 Mac 验收。
+未执行：真实跨机执行组合、重新制作与验收分发包、教学效果。Windows 本轮 Chrome 使用真实开发资源组合，没有配置 AppContainer helper，不冒充分发包隔离验收。Apple Silicon Mac 与原生系统中文输入法已由 [#187](wp03-187-mac-session-recovery.md) 在 `Mac17,3`/`arm64`、macOS 27.2、候选 Node 24.21.0、PostgreSQL 18.6 与 Chrome 156 上补验；Windows 与 Mac 结果分别记录，未执行的跨机、分发包和教学效果仍不记通过。
 
 保留失败事实：新版适配最初遗漏监督器 ready 握手，真实进程测试检出后修正；首轮截图检查发现新版 iframe 未消费宿主主题，补上主题 token 并增加实际深色断言；新增 mock 的静态类型不完整导致一次构建失败后修正。43 项 owner 回归首次 42 通过、1 项旧执行测试在临时目录清理时遇到 EBUSY，单独重跑及最终整批 44 项均通过。新集成 fixture 也曾在清理时遇到 EBUSY，改为保留原错误并重试该自建临时目录清理。维护探针曾在恢复实例仍排队时提前读取空观察，改为等待实际恢复到暂停状态后重跑 9/9。失败不计通过。
 

@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-04",
+  "ticket": "#187",
+  "parent": "#174",
+  "candidate": "05bb6a98c17f8e75f58ecc96a3206264f86638a3",
+  "codeFixCommit": "4ada66054450ca7c8c2ed84321109215503f617f",
+  "baseCandidate": "375c9670b7707c1c5d7f2154a3c39435fdbddfc4",
+  "platform": {
+    "model": "Mac17,3",
+    "chip": "Apple M5",
+    "memoryBytes": 17179869184,
+    "os": "macOS 27.2 (26B123)",
+    "kernel": "27.2.0",
+    "arch": "arm64"
+  },
+  "runtime": {
+    "node": "v24.21.0",
+    "nodePath": "dist/product-darwin-arm64/resources/node/bin/node",
+    "postgres": "18.6",
+    "postgresBin": "dist/product-darwin-arm64/resources/postgres/bin",
+    "browser": "Google Chrome 156.0.8078.80",
+    "headless": false
+  },
+  "resourceCombination": {
+    "kind": "development resource combination",
+    "productPackage": "dist/product-darwin-arm64 (createdAt 2026-11-03T06:32:11.974Z, unsigned-candidate)",
+    "usedFor": "Node 24.21.0 and native PostgreSQL 18.6 executables only",
+    "source": "all workspaces built from the candidate commit",
+    "newDistributionPackage": "not produced; signing, notarization, Gatekeeper and clean-machine acceptance not executed"
+  },
+  "checks": [
+    { "name": "runtime build", "status": "passed", "detail": "9 build tasks RUN, exit 0" },
+    { "name": "full typecheck", "status": "passed", "detail": "typecheck tasks passed (contracts, storage, learning-space, server, product-runtime, local-runtime, web:src, web:node)" },
+    { "name": "public contract browser exports", "status": "passed", "passedCount": 12, "failedCount": 0 },
+    { "name": "web unit suite", "status": "passed", "files": 70, "tests": 825, "failed": 0 },
+    { "name": "unit verification group", "status": "passed", "tasks": 25, "exitCode": 0 },
+    { "name": "server verification group", "status": "passed", "tasks": 83, "serverTestTasks": 82, "exitCode": 0, "durationMs": 165900 },
+    { "name": "school client forwarding boundary", "status": "passed", "tests": 2, "failed": 0 },
+    { "name": "native session + checkpoint + isolation tests", "status": "passed", "tests": 21, "failed": 0, "detail": "4 native-session, 5 native-isolation, 12 session-checkpoints" },
+    { "name": "real PostgreSQL session recovery", "status": "passed", "tests": 1, "failed": 0, "durationMs": 2799 },
+    { "name": "real PostgreSQL/Chrome checkpoint history", "status": "passed", "tests": 1, "failed": 0, "durationMs": 6527, "publishedCheckpoints": 66, "pages": 2, "perSessionProjection": 64, "fontSize": "17px", "codeLineHeight": "19.5px" },
+    { "name": "Chrome session controls/recovery/maintenance", "status": "passed", "tests": 9, "failed": 0, "durationMs": 11684, "spawnedExecutors": 4, "hostRssBytes": 341065728 },
+    { "name": "Chrome original drafts/actions/IDB upgrade/native stop", "status": "passed", "tests": 22, "failed": 0 },
+    { "name": "Chrome references and editor regressions", "status": "passed", "tests": 27, "failed": 0 },
+    { "name": "macOS system Chinese pinyin IME", "status": "passed", "tests": 12, "failed": 0, "compositionStarts": 6, "compositionEnds": 6, "executionPostsDuringIme": 0 }
+  ],
+  "evidence": {
+    "browserReport": "wp03-187-browser-report.json",
+    "history": "wp03-187-history.json",
+    "imeReport": "wp03-187-ime.json",
+    "isolation": "wp03-187-isolation.json"
+  },
+  "notExecuted": [
+    "new signed/notarized distribution package, Gatekeeper and clean-machine acceptance",
+    "real cross-machine school execution and school-side TLS",
+    "Windows re-verification (this ticket covers Apple Silicon only; Windows results remain in #174 records)",
+    "teaching effectiveness"
+  ],
+  "limitations": [
+    "The IME pass uses HID-level OS key injection through WindowServer and the TIS-selected system pinyin input method, not Playwright fill or synthetic composition events. It is not a human hand-typing session.",
+    "Host RSS excludes PostgreSQL, Chrome and executor peaks; it is not a course-capacity claim.",
+    "No model was called; the question receiver returns fixed receipts only."
+  ]
+}
