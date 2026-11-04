@@ -129,6 +129,49 @@ Windows 本机领取验收使用已登录用户的非提升桌面进程。相同
 
 组合探针为 `scripts/probe-session-checkpoint-combination.mjs`，由领取链路探针的 `--checkpoint-combination` 调用：输入 1、2 得到 3，暂停后保存真实检查点，在资源发布后丢弃保存回包并刷新，只核对原控制；原实例单步输入 2 得到基准 1，同 controlId 重放不再推进；停止原实例后，从正式面板选择检查点恢复新实例，再输入 2，核对 value、total、applied 与基准一致，最后验证同实例复位、恢复推进、暂停与停止。
 
+### 最终组合验收
+
+最终源码为 `49fbd21c`。2026-11-04 20:51（Asia/Shanghai）完成 macOS 与 Windows 最终候选复验，两端桌面 Chrome 各 9 项全部通过，无清理错误。[可分享汇总](evidence/wp03-175-174-verification.json)保存应用摘要、四组检查点的原引用与恢复引用、下一步观察、工程检查和清理事实；不包含批准凭据或私有运行目录。
+
+| 客户端与链路 | 最终结果与原始检查点报告 |
+| --- | --- |
+| Mac 本机产品入口 → 独立学校 Linux | [通过](evidence/wp03-175-174-macos-arm64-school-linux.json)；真实 `/proc` PID、检查点落盘后丢回包、刷新核对、停止与新 PID 恢复 |
+| Mac 学校网页 → 获准本机 | [通过](evidence/wp03-175-174-macos-arm64-approved-local.json)；持久领取、原控制幂等、恢复新执行器及下一步一致 |
+| Windows 本机产品入口 → 独立学校 Linux | [通过](evidence/wp03-175-174-windows-x64-school-linux.json)；与 Mac 相同的实际控制与恢复链路 |
+| Windows 学校网页 → 获准本机 | [通过](evidence/wp03-175-174-windows-x64-approved-local.json)；非提升交互桌面、AppContainer 原生进程及恢复新执行器 |
+
+四组均确认检查点保存 POST 只有 1 次；丢回包后沿原控制读取，不重发采样。恢复后执行引用与执行器实例都不同，输入 2 后均为 `value=1, total=5, applied=3`，与原实例基准一致；Linux 同时核对新 PID。随后完成复位、恢复推进、暂停及确认停止。完整链路还覆盖启动、输入、停止实际生效后的回包丢失、刷新保留原身份、停止后再次启动，以及连接撤销后的拒绝与回收。撤销后 Mac 689 ms、Windows 926 ms 确认真实子进程退出；两端全程未创建本机数据库或 PostgreSQL 进程。
+
+最终候选为 `dist/product-darwin-arm64-wp03-175-174-accepted`（remote）与 `dist/product-linux-x64-wp03-175-174-accepted`（full）。Windows `checkpoint-combination/app`、本机两包及学校 `/opt/xunjie/candidates/175-174/app` 的应用摘要完全一致：
+
+| 文件 | 最终 SHA-256 |
+| --- | --- |
+| `product-runtime.js` | `f9baef83fdb7d9bbf6ff02d6754706b524b724509b3bd22fe56556595dcb452a` |
+| `daemon.js` | `c4f1868212d590b37150cb3ef91cc1cbca753a8a9126162faa5c081a6e4eb081` |
+| Windows `windows-session.exe` | `7aa60b8a7931c498e9b2d055e20e87e3f91763d6e6991bafc6887a9435034d2f` |
+
+两端 Chrome 为 `156.0.8078.80`，使用真实可见桌面和严格 HTTPS（仅指定学校 SPKI 例外），系统与学校版本同上。最终完整报告保存在 `.verification/wp03-175/checkpoint-combination/{macos-release,windows-release}/`。
+
+最终 `rtk bypass npm run verify` 于 20:51 通过，Node `24.21.0`；覆盖类型检查、构建、浏览器契约与文档链接检查，以及 154 个测试任务（unit 27、server 82、tools 45）。日志为 `.verification/2026-11-04T12-47-58-868Z-jXyVhq/`，无缓存。最终回执修复另有真实 PostgreSQL/原生进程回归 11/11、无跳过；前端会话回归 42/42。带真实旧资源的 #174 迁移升级、66 个检查点跨两页历史恢复、清理生命周期和 Linux `@2` 原生适配器均已通过定向验证。
+
+保留早期失败的实际结论：`final-native-regression.log` 的 22 项中 20 项通过，2 项因并发 PostgreSQL 初始化耗尽共享内存失败；随后串行的历史资源恢复 1/1 与清理生命周期 3/3 通过，不将原命令记为全绿。Linux 直接协议测试的默认 node:test 文件重执行曾遇到 `EACCES`；同一原测试以 `--test-isolation=none` 运行后 1/1 通过，真实 systemd 隔离另由两端 Chrome 到学校链路核实。对应日志为 `checkpoint-history-retest.log`、`cleanup-retest.log`、`linux-proc-v2-test-no-isolation.log`。
+
+Standards 与 Spec 两轴审查发现已处理；最后的未知投影修复经过先红后绿及上述两端真实复验。教学效果未评估，工程与浏览器通过不作为学习成效结论。
+
+### 实际界面对照
+
+沿用 #174 的正式会话面板，将暂停、单步、复位、检查点目录与显式恢复接到两条跨机链路。学生在原工作区操作，无需选择节点；恢复实例明确标示为新会话，原会话不会被复活。下图分别为汇合前 `@1` 正在运行与最终 `@2` 从检查点恢复后完成下一步的实际 Chrome 界面。
+
+| 汇合前 | 最终组合 |
+| --- | --- |
+| ![汇合前正式工作区中的原生输入与停止](evidence/wp03-175-174-before.png) | ![最终正式面板中的暂停、单步、检查点与恢复新会话](evidence/wp03-175-174-after.png) |
+
+### 环境收尾
+
+最终学校验收实例 `/var/lib/xunjie-175-174` 已正常停止，数据与 `/opt/xunjie/candidates/175-174` 最终候选保留；Linux 入口配置已按原备份恢复，无运行中的 `xj-session-*` 单元。删除本轮三个中间候选、临时上传包、seed 和入口副本；保留历史数据。
+
+Windows 已删除本轮 5 个临时计划任务，剩余 0；清除批准凭据副本、启动脚本、上传包和临时客户端根，保留最终应用及报告。Mac 的 9 个临时客户端根均先确认已停止再删除；删除本轮中间包与临时凭据副本，保留两个 accepted 候选、最终与失败日志。清理记录为 `school-release-stop.log`、`school-release-cleanup.log`、`windows-release-cleanup.log` 与 `local-release-cleanup.json`。
+
 ## 复现入口
 
 ```sh

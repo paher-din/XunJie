@@ -1,0 +1,451 @@
+{
+  "ticket": 175,
+  "combinedWith": [
+    174,
+    187
+  ],
+  "date": "2026-11-04",
+  "timezone": "Asia/Shanghai",
+  "sourceCommit": "49fbd21c",
+  "integratedRemoteCommit": "80c8ed49db6c3483ef8a48734f8cea250994acce",
+  "status": "passed",
+  "school": {
+    "os": "Ubuntu 24.04.5 x64",
+    "kernel": "6.8.0-139",
+    "systemd": "255.4",
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "transport": "Authenticated HTTPS to independent school host; desktop worker polls outbound over approved connection",
+    "candidate": "product-linux-x64-wp03-175-174-accepted"
+  },
+  "clients": [
+    {
+      "platform": "macos-arm64",
+      "os": "macOS 27.2 (26B123) arm64",
+      "status": "passed",
+      "startedAt": "2026-11-04T12:48:36.203Z",
+      "finishedAt": "2026-11-04T12:51:25.305Z",
+      "browser": {
+        "product": "Google Chrome",
+        "version": "156.0.8078.80",
+        "headless": false,
+        "ignoreHTTPSErrors": false
+      },
+      "candidate": {
+        "product-runtime.js": "f9baef83fdb7d9bbf6ff02d6754706b524b724509b3bd22fe56556595dcb452a",
+        "daemon.js": "c4f1868212d590b37150cb3ef91cc1cbca753a8a9126162faa5c081a6e4eb081"
+      },
+      "cases": [
+        "复用学校已批准连接，真实桌面 worker 登记本机安装身份和适配器",
+        "学校网页经持久领取通道启动真实本机进程，连续输入 1、2、2 得到 1、3、1",
+        "本机入口到学校Linux的实际控制、检查点丢回包、重开与恢复实例下一步一致",
+        "无数据库本机产品入口经认证HTTPS调用学校Linux，真实启动/输入/停止丢回包后保留原身份与1/3/1观察",
+        "刷新学校网页恢复同一节点、安装代次、监督周期、执行器与确认序号",
+        "学校面板停止同一桌面执行器且 OS 确认原生进程退出",
+        "学校网页到获准本机通道的实际控制、检查点丢回包、重开与恢复实例下一步一致",
+        "学校撤销当前连接后拒绝继续控制，本机 worker 在 15 秒内清理真实子进程",
+        "remote profile 全流程未创建本地学习数据库或 PostgreSQL 进程"
+      ],
+      "noLocalDatabase": {
+        "databaseJson": false,
+        "pgdata": false,
+        "postgresProcesses": 0
+      },
+      "revocation": {
+        "cleanupMs": 689,
+        "processPidsGone": true,
+        "queryStatus": 403,
+        "controlStatus": 403
+      },
+      "checkpoints": [
+        {
+          "label": "school-linux",
+          "status": "passed",
+          "lostCheckpointReply": true,
+          "checkpointPosts": 1,
+          "original": {
+            "executionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+            "executorInstanceId": "c90007c2-132f-441b-b3c1-dc5e31d7d0d8",
+            "observation": {
+              "pid": 294560,
+              "total": 0,
+              "value": 0,
+              "applied": 0,
+              "threads": 7
+            }
+          },
+          "checkpoint": {
+            "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+            "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+            "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501",
+            "contentId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+            "appliedSeq": 4,
+            "byteLength": 961,
+            "createdAt": "2026-11-04T12:49:38.888Z"
+          },
+          "baseline": {
+            "executionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+            "executorInstanceId": "c90007c2-132f-441b-b3c1-dc5e31d7d0d8",
+            "observation": {
+              "pid": 294560,
+              "total": 5,
+              "value": 1,
+              "applied": 3,
+              "threads": 7
+            }
+          },
+          "restored": {
+            "executionRef": "4be5861f-2a3b-45f9-bcdb-67a6256d81f6",
+            "executorInstanceId": "db837a70-116c-4155-8469-de68057f6ee4",
+            "observation": {
+              "pid": 294675,
+              "total": 3,
+              "value": 3,
+              "applied": 2,
+              "threads": 7
+            }
+          },
+          "next": {
+            "executionRef": "4be5861f-2a3b-45f9-bcdb-67a6256d81f6",
+            "executorInstanceId": "db837a70-116c-4155-8469-de68057f6ee4",
+            "observation": {
+              "pid": 294675,
+              "total": 5,
+              "value": 1,
+              "applied": 3,
+              "threads": 7
+            }
+          },
+          "finalState": "cancelled",
+          "originalFinalState": "cancelled",
+          "evidence": "wp03-175-174-macos-arm64-school-linux.json"
+        },
+        {
+          "label": "approved-local",
+          "status": "passed",
+          "lostCheckpointReply": true,
+          "checkpointPosts": 1,
+          "original": {
+            "executionRef": "f3c01932-0a64-43ff-b22b-59afde8d5943",
+            "executorInstanceId": "98fdeaaa-13cc-4fe8-bf8e-9424f936e0c7",
+            "observation": {
+              "total": 0,
+              "value": 0,
+              "applied": 0
+            }
+          },
+          "checkpoint": {
+            "checkpointId": "e015ce6e-651f-481a-a548-02fc5e86ae98",
+            "sessionRef": "f3c01932-0a64-43ff-b22b-59afde8d5943",
+            "sha256": "a46cfbe0f3504992179df38c7e7a30b4b8c3cdb1f17b97e83fca3d4ac7460226",
+            "contentId": "e015ce6e-651f-481a-a548-02fc5e86ae98",
+            "appliedSeq": 4,
+            "byteLength": 964,
+            "createdAt": "2026-11-04T12:50:32.129Z"
+          },
+          "baseline": {
+            "executionRef": "f3c01932-0a64-43ff-b22b-59afde8d5943",
+            "executorInstanceId": "98fdeaaa-13cc-4fe8-bf8e-9424f936e0c7",
+            "observation": {
+              "total": 5,
+              "value": 1,
+              "applied": 3
+            }
+          },
+          "restored": {
+            "executionRef": "d58a6864-6e0a-4e22-88dc-bc8f51746c53",
+            "executorInstanceId": "19d9d257-66f3-4de5-853f-13a6ca96d079",
+            "observation": {
+              "total": 3,
+              "value": 3,
+              "applied": 2
+            }
+          },
+          "next": {
+            "executionRef": "d58a6864-6e0a-4e22-88dc-bc8f51746c53",
+            "executorInstanceId": "19d9d257-66f3-4de5-853f-13a6ca96d079",
+            "observation": {
+              "total": 5,
+              "value": 1,
+              "applied": 3
+            }
+          },
+          "finalState": "cancelled",
+          "originalFinalState": "cancelled",
+          "evidence": "wp03-175-174-macos-arm64-approved-local.json"
+        }
+      ]
+    },
+    {
+      "platform": "windows-x64",
+      "os": "Windows 11 x64 10.0.26200",
+      "status": "passed",
+      "startedAt": "2026-11-04T12:48:39.250Z",
+      "finishedAt": "2026-11-04T12:51:46.271Z",
+      "browser": {
+        "product": "Google Chrome",
+        "version": "156.0.8078.80",
+        "headless": false,
+        "ignoreHTTPSErrors": false
+      },
+      "candidate": {
+        "product-runtime.js": "f9baef83fdb7d9bbf6ff02d6754706b524b724509b3bd22fe56556595dcb452a",
+        "daemon.js": "c4f1868212d590b37150cb3ef91cc1cbca753a8a9126162faa5c081a6e4eb081"
+      },
+      "cases": [
+        "复用学校已批准连接，真实桌面 worker 登记本机安装身份和适配器",
+        "学校网页经持久领取通道启动真实本机进程，连续输入 1、2、2 得到 1、3、1",
+        "本机入口到学校Linux的实际控制、检查点丢回包、重开与恢复实例下一步一致",
+        "无数据库本机产品入口经认证HTTPS调用学校Linux，真实启动/输入/停止丢回包后保留原身份与1/3/1观察",
+        "刷新学校网页恢复同一节点、安装代次、监督周期、执行器与确认序号",
+        "学校面板停止同一桌面执行器且 OS 确认原生进程退出",
+        "学校网页到获准本机通道的实际控制、检查点丢回包、重开与恢复实例下一步一致",
+        "学校撤销当前连接后拒绝继续控制，本机 worker 在 15 秒内清理真实子进程",
+        "remote profile 全流程未创建本地学习数据库或 PostgreSQL 进程"
+      ],
+      "noLocalDatabase": {
+        "databaseJson": false,
+        "pgdata": false,
+        "postgresProcesses": 0
+      },
+      "revocation": {
+        "cleanupMs": 926,
+        "processPidsGone": true,
+        "queryStatus": 403,
+        "controlStatus": 403
+      },
+      "checkpoints": [
+        {
+          "label": "school-linux",
+          "status": "passed",
+          "lostCheckpointReply": true,
+          "checkpointPosts": 1,
+          "original": {
+            "executionRef": "5e8074e9-c54d-407f-9f81-936cd4c66842",
+            "executorInstanceId": "463e2e3d-4780-413f-a45f-75c2c6f417d7",
+            "observation": {
+              "pid": 294607,
+              "total": 0,
+              "value": 0,
+              "applied": 0,
+              "threads": 7
+            }
+          },
+          "checkpoint": {
+            "checkpointId": "da33d0e0-c8a5-46a4-bfd8-abd88fb25d97",
+            "sessionRef": "5e8074e9-c54d-407f-9f81-936cd4c66842",
+            "sha256": "01f4a81d6de900e61e0853153b5f86ad7b9b9c14516d758cf0399fd912c8487d",
+            "contentId": "da33d0e0-c8a5-46a4-bfd8-abd88fb25d97",
+            "appliedSeq": 4,
+            "byteLength": 961,
+            "createdAt": "2026-11-04T12:49:42.036Z"
+          },
+          "baseline": {
+            "executionRef": "5e8074e9-c54d-407f-9f81-936cd4c66842",
+            "executorInstanceId": "463e2e3d-4780-413f-a45f-75c2c6f417d7",
+            "observation": {
+              "pid": 294607,
+              "total": 5,
+              "value": 1,
+              "applied": 3,
+              "threads": 7
+            }
+          },
+          "restored": {
+            "executionRef": "4f65115e-07e5-4a14-8cc0-da835816d834",
+            "executorInstanceId": "472c1dfd-a6fa-4d3b-a36c-f87412afe904",
+            "observation": {
+              "pid": 294742,
+              "total": 3,
+              "value": 3,
+              "applied": 2,
+              "threads": 7
+            }
+          },
+          "next": {
+            "executionRef": "4f65115e-07e5-4a14-8cc0-da835816d834",
+            "executorInstanceId": "472c1dfd-a6fa-4d3b-a36c-f87412afe904",
+            "observation": {
+              "pid": 294742,
+              "total": 5,
+              "value": 1,
+              "applied": 3,
+              "threads": 7
+            }
+          },
+          "finalState": "cancelled",
+          "originalFinalState": "cancelled",
+          "evidence": "wp03-175-174-windows-x64-school-linux.json"
+        },
+        {
+          "label": "approved-local",
+          "status": "passed",
+          "lostCheckpointReply": true,
+          "checkpointPosts": 1,
+          "original": {
+            "executionRef": "55e95463-117a-4ea6-9206-0075533a2137",
+            "executorInstanceId": "780f68ed-66e8-4272-9893-6e3606e61aa3",
+            "observation": {
+              "total": 0,
+              "value": 0,
+              "applied": 0
+            }
+          },
+          "checkpoint": {
+            "checkpointId": "27df3546-6e21-4f14-997c-a292f6f73bd8",
+            "sessionRef": "55e95463-117a-4ea6-9206-0075533a2137",
+            "sha256": "5d818f42ef6e574d52391858374d8ab764684611485e762d44b71bd90b359451",
+            "contentId": "27df3546-6e21-4f14-997c-a292f6f73bd8",
+            "appliedSeq": 4,
+            "byteLength": 961,
+            "createdAt": "2026-11-04T12:50:35.132Z"
+          },
+          "baseline": {
+            "executionRef": "55e95463-117a-4ea6-9206-0075533a2137",
+            "executorInstanceId": "780f68ed-66e8-4272-9893-6e3606e61aa3",
+            "observation": {
+              "total": 5,
+              "value": 1,
+              "applied": 3
+            }
+          },
+          "restored": {
+            "executionRef": "3b1b4560-537c-46bb-ac16-9e3c4523281a",
+            "executorInstanceId": "e1cfaf97-ee9f-46ee-aab9-03853c177815",
+            "observation": {
+              "total": 3,
+              "value": 3,
+              "applied": 2
+            }
+          },
+          "next": {
+            "executionRef": "3b1b4560-537c-46bb-ac16-9e3c4523281a",
+            "executorInstanceId": "e1cfaf97-ee9f-46ee-aab9-03853c177815",
+            "observation": {
+              "total": 5,
+              "value": 1,
+              "applied": 3
+            }
+          },
+          "finalState": "cancelled",
+          "originalFinalState": "cancelled",
+          "evidence": "wp03-175-174-windows-x64-approved-local.json"
+        }
+      ]
+    }
+  ],
+  "engineering": {
+    "fullVerify": {
+      "status": "passed",
+      "exitCode": 0,
+      "finishedAt": "2026-11-04T12:51:21.613Z",
+      "nodeVersion": "v24.21.0",
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "passed",
+          "tasks": 4
+        },
+        {
+          "name": "build:test",
+          "status": "passed",
+          "tasks": 1
+        },
+        {
+          "name": "unit",
+          "status": "passed",
+          "tasks": 27
+        },
+        {
+          "name": "server",
+          "status": "passed",
+          "tasks": 82
+        },
+        {
+          "name": "tools",
+          "status": "passed",
+          "tasks": 45
+        }
+      ],
+      "testTasks": 154,
+      "localLog": ".verification/2026-11-04T12-47-58-868Z-jXyVhq/"
+    },
+    "targeted": [
+      {
+        "scope": "Session controller and panel",
+        "passed": 42,
+        "failed": 0
+      },
+      {
+        "scope": "Real PostgreSQL/native receipts and fencing",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "log": "fenced-receipt-green.log"
+      },
+      {
+        "scope": "Upgrade from released #174 checksums and real checkpoint resources",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "scope": "Historical resource restoration beyond 16 sessions / 64 projection items; 66 checkpoints over two pages",
+        "passed": 1,
+        "failed": 0,
+        "log": "checkpoint-history-retest.log"
+      },
+      {
+        "scope": "Cleanup lifecycle serial retest",
+        "passed": 3,
+        "failed": 0,
+        "log": "cleanup-retest.log"
+      },
+      {
+        "scope": "Linux @2 /proc, checkpoint bytes, new PID, equivalent next state",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "log": "linux-proc-v2-test-no-isolation.log"
+      }
+    ],
+    "earlierFailures": [
+      {
+        "log": "final-native-regression.log",
+        "result": "20 passed, 2 failed while concurrent PostgreSQL initdb exhausted shared memory; checkpoint-history and cleanup passed in subsequent serial targeted runs"
+      },
+      {
+        "log": "linux-proc-v2-test.log",
+        "result": "node:test child re-execution EACCES; original test passed with --test-isolation=none. This direct protocol test is separate from the real systemd Chrome acceptance."
+      }
+    ]
+  },
+  "cleanup": {
+    "school": {
+      "state": "stopped",
+      "entryConfigRestored": true,
+      "runningSessionUnits": 0,
+      "finalCandidateRetained": true,
+      "acceptanceDataRetained": true
+    },
+    "windows": {
+      "remainingTasks": 0,
+      "removedTasks": 5,
+      "retainedCandidate": true
+    },
+    "macos": {
+      "status": "passed",
+      "activeProductProcesses": 0,
+      "removedRuntimeRoots": 9,
+      "removedTemporaryEntries": 33,
+      "retainedCandidates": [
+        "product-darwin-arm64-wp03-175-174-accepted",
+        "product-linux-x64-wp03-175-174-accepted"
+      ]
+    }
+  },
+  "teachingEffect": {
+    "status": "not-evaluated",
+    "note": "Engineering and browser acceptance do not establish learning outcomes."
+  }
+}
