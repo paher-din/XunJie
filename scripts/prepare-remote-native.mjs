@@ -12,7 +12,8 @@ const args = parseArgs();
 const published = await accumulatorPackage();
 if (Object.hasOwn(args, 'linux-proc')) {
   published.manifest.componentId = '7b678a40-d654-4ead-81be-27a717e86d73';
-  published.manifest.entry.resourceId = '0496a3c9-4d4a-40d6-a4c7-9b6b38d2b65d';
+  published.manifest.entry.resourceId = published.manifest.version === 2
+    ? 'bf2020b5-d806-486d-9bda-54ab0bfe7117' : '0496a3c9-4d4a-40d6-a4c7-9b6b38d2b65d';
   published.manifest.title = 'Linux 进程累加观察';
   published.manifest.session.adapterId = 'linux-proc-accumulator';
   published.manifest.session.operation.result.properties.pid = { type: 'number' };

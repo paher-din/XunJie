@@ -8,7 +8,8 @@ import { appContainerIsolation, linuxWatchdogSource, planSeatbelt, supervisorWat
 import type { NativeSessionIsolation, SeatbeltPlan } from './native-sandbox.js';
 import { linuxSessionUnit, stopUnit, unitStopped } from './linux-isolation.js';
 import type { LinuxSessionEntry } from './linux-isolation.js';
-import type { ExecutionPlatform } from '@xunjie/contracts/execution';
+import { recoverableAccumulatorSource } from './accumulator-recovery.js';
+import type { ExecutionPlatform, SessionControlEffect } from '@xunjie/contracts/execution';
 
 const exec = promisify(execFile);
 /** Fixed product-level cap on tasks per session; the adapter's declared budgets do not cover forks. */
@@ -28,6 +29,8 @@ export interface NativeAdapter {
   platforms?: readonly ExecutionPlatform[];
   /** A self-contained ES module, executed with the product's own Node runtime. */
   source: string;
+  controls?: readonly SessionControlEffect[];
+  checkpointVersion?: number;
 }
 export interface NativeSessionLimits {
   operationTimeoutMs: number;
@@ -41,6 +44,8 @@ export interface NativeObservation {
   controlId: string;
   state: unknown;
   at: string;
+  sessionState?: 'running' | 'paused';
+  checkpoint?: unknown;
 }
 export interface NativeSessionExit {
   /** The supervisor asked the process to end, so a non-zero exit is not the student's outcome. */
@@ -464,7 +469,11 @@ export class SupervisedSession {
   }
 
   async input(controlId: string, seq: number, parameters: unknown): Promise<NativeObservation> {
-    const reply = await this.send<Reply>({ type: 'input', controlId, seq, parameters },
+    return this.control('input', controlId, seq, parameters);
+  }
+
+  async control(effect: SessionControlEffect, controlId: string, seq: number, parameters: unknown): Promise<NativeObservation> {
+    const reply = await this.send<Reply>({ type: effect === 'input' ? 'input' : 'control', effect, controlId, seq, parameters },
       candidate => candidate.type === 'observation' && candidate.controlId === controlId
         || candidate.type === 'error',
       this.start.limits.operationTimeoutMs, 'resource-unavailable', '本机会话未在时限内确认这次输入。');
@@ -473,7 +482,22 @@ export class SupervisedSession {
       const code = reply.code === 'identity-conflict' ? 'algorithm-error' : 'algorithm-error';
       throw new NativeSessionError(code, typeof reply.detail === 'string' ? reply.detail : '本机会话拒绝了这次输入。');
     }
-    return { seq: Number(reply.seq), controlId: String(reply.controlId), state: reply.state, at: String(reply.at) };
+    return this.observation(reply);
+  }
+
+  private observation(reply: Reply): NativeObservation {
+    return { seq: Number(reply.seq), controlId: String(reply.controlId), state: reply.state, at: String(reply.at),
+      ...(reply.sessionState === 'running' || reply.sessionState === 'paused' ? { sessionState: reply.sessionState } : {}),
+      ...(reply.checkpoint !== undefined ? { checkpoint: reply.checkpoint } : {}) };
+  }
+
+  async restore(snapshot: unknown): Promise<{ state: unknown; sessionState: 'running' | 'paused' }> {
+    const reply = await this.send<Reply>({ type: 'restore', snapshot }, candidate => candidate.type === 'restored' || candidate.type === 'error',
+      this.start.limits.operationTimeoutMs, 'resource-unavailable', '检查点恢复未得到执行器确认。');
+    if (reply.type === 'error' || !['running', 'paused'].includes(String(reply.sessionState)))
+      throw new NativeSessionError('algorithm-error', '检查点与执行器版本不兼容。');
+    this.resetIdle();
+    return { state: reply.observation, sessionState: reply.sessionState as 'running' | 'paused' };
   }
 
   async reconcile(controlId: string): Promise<NativeObservation | null> {
@@ -483,13 +507,12 @@ export class SupervisedSession {
     if (reply.type === 'error' || reply.applied !== true || !reply.observation)
       return null;
     const value = reply.observation as Reply;
-    return { seq: Number(value.seq), controlId: String(value.controlId), state: value.state, at: String(value.at) };
+    return this.observation(value);
   }
 
   async snapshot(): Promise<unknown> {
     const reply = await this.send<Reply>({ type: 'status' }, candidate => candidate.type === 'status',
       this.start.limits.operationTimeoutMs, 'resource-unavailable', '本机会话未在时限内返回状态。');
-    this.resetIdle();
     return reply.observation ?? null;
   }
 
@@ -588,18 +611,32 @@ export const fourStateAccumulatorSource = [
 ].join('\n');
 
 /** A Linux process experiment observes real procfs data on every confirmed transition. */
-const linuxProcAccumulatorSource = [
+const linuxProcPrelude = [
   "import { readFileSync as readProc } from 'node:fs';",
   "if (process.platform !== 'linux') throw new Error('This experiment requires Linux procfs.');",
   "const procState = () => { const text = readProc('/proc/self/status', 'utf8');",
   "  return { pid: Number(text.match(/^Pid:\\s+(\\d+)/m)?.[1]), threads: Number(text.match(/^Threads:\\s+(\\d+)/m)?.[1]) }; };",
+].join('\n');
+const linuxProcAccumulatorSource = [
+  linuxProcPrelude,
   fourStateAccumulatorSource.replaceAll("adapterId: 'four-state-accumulator'", "adapterId: 'linux-proc-accumulator'")
     .replaceAll('{ value, total, applied }', '{ value, total, applied, ...procState() }'),
 ].join('\n');
+
+/** Only observations include live procfs identity. Checkpoints restore simulation state into a new process. */
+const recoverableLinuxProcAccumulatorSource = linuxProcPrelude + '\n' + recoverableAccumulatorSource
+  .replace('const state = () => ({ value, total, applied });',
+    'const state = () => ({ value, total, applied, ...procState() });');
 
 export const productNativeAdapters: readonly NativeAdapter[] = Object.freeze([
   Object.freeze({ adapterId: 'four-state-accumulator', adapterVersion: 1, source: fourStateAccumulatorSource,
     platforms: Object.freeze(['linux-x64', 'macos-arm64', 'windows-x64'] as const) }),
   Object.freeze({ adapterId: 'linux-proc-accumulator', adapterVersion: 1, source: linuxProcAccumulatorSource,
     platforms: Object.freeze(['linux-x64'] as const) }),
+  Object.freeze({ adapterId: 'four-state-accumulator', adapterVersion: 2, source: recoverableAccumulatorSource,
+    platforms: Object.freeze(['linux-x64', 'macos-arm64', 'windows-x64'] as const),
+    controls: ['pause', 'resume', 'step', 'reset', 'checkpoint'] as const, checkpointVersion: 1 }),
+  Object.freeze({ adapterId: 'linux-proc-accumulator', adapterVersion: 2, source: recoverableLinuxProcAccumulatorSource,
+    platforms: Object.freeze(['linux-x64'] as const),
+    controls: ['pause', 'resume', 'step', 'reset', 'checkpoint'] as const, checkpointVersion: 1 }),
 ]);

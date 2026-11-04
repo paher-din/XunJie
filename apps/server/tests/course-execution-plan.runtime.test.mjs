@@ -223,7 +223,7 @@ test('a plan declares the native session it allows and the owner refuses an unpl
         headers: { 'content-type': 'application/json', ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
       return { status: response.status, value: await response.json() };
     };
-    const published = await accumulatorPackage();
+    const published = await accumulatorPackage({ version: 1 });
     const imported = await api('manage/component-import', { requestId: randomUUID(), ...published }, admin);
     assert.equal(imported.status, 200, JSON.stringify(imported.value));
     const { manifest } = published, definition = imported.value, session = manifest.session;

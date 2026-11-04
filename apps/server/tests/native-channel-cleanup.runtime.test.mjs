@@ -156,7 +156,7 @@ test('offline cleanup survives a new worker epoch and retries the original claim
       children.push(child);
       return child;
     });
-    const { manifest } = await accumulatorPackage(), declared = manifest.session, definitionDigest = 'a'.repeat(64);
+    const { manifest } = await accumulatorPackage({ version: 1 }), declared = manifest.session, definitionDigest = 'a'.repeat(64);
     const activity = activitySchema.parse({ activityId, identity, target: { ...data.owner, version: 1 },
       goal: '确认原实例已退出', question: '', references: [], status: 'open', createdAt: new Date().toISOString(),
       course: { associationId: randomUUID(), courseId: randomUUID(), courseName: '清理恢复', taskId: randomUUID(), taskTitle: '原生会话',

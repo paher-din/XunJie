@@ -50,6 +50,20 @@ export const executionSessionRequestSchema = z.object({
 }).strict();
 export type ExecutionSessionRequest = z.infer<typeof executionSessionRequestSchema>;
 
+export const sessionControlEffectSchema = z.enum(['input', 'pause', 'resume', 'step', 'reset', 'checkpoint']);
+export type SessionControlEffect = z.infer<typeof sessionControlEffectSchema>;
+export const checkpointResumeSchema = z.object({ checkpointId: z.uuid(), sessionRef: z.uuid(), sha256: digest }).strict();
+export type CheckpointResume = z.infer<typeof checkpointResumeSchema>;
+export const executionCheckpointSchema = checkpointResumeSchema.extend({ contentId: z.uuid(),
+  appliedSeq: z.number().int().nonnegative(), byteLength: z.number().int().positive().max(1048576),
+  createdAt: z.string().min(1).max(40) }).strict();
+export type ExecutionCheckpoint = z.infer<typeof executionCheckpointSchema>;
+export const activityCheckpointSchema = executionCheckpointSchema.extend({ requestId: z.uuid(),
+  instanceId: z.string().min(1).max(300), scope: actionScopeSchema }).strict();
+export type ActivityCheckpoint = z.infer<typeof activityCheckpointSchema>;
+export const checkpointPageSchema = z.object({ items: z.array(activityCheckpointSchema).max(64), nextCursor: z.uuid().nullable() }).strict();
+export type CheckpointPage = z.infer<typeof checkpointPageSchema>;
+
 export const executionInstanceSchema = z.object({ instanceId: z.string().min(1).max(300), key: identifier,
   componentId: z.uuid(), componentVersion: z.number().int().positive(),
   definitionDigest: digest, hostApiVersion: z.literal(1), stateVersion: z.number().int().positive() }).strict();
@@ -80,6 +94,7 @@ export const executionActionSchema = z.object({ protocolVersion: z.literal(2), k
     session: executionSessionRequestSchema.optional(),
     /** Client-observed scheduling facts; course eligibility remains an owner-side authorization. */
     device: executionDeviceSchema.optional(),
+    resumeFromCheckpoint: checkpointResumeSchema.optional(),
     initiator: z.object({ kind: z.enum(['student', 'agent', 'self-check', 'teacher-preview']),
       principalId: z.uuid() }).strict() }).strict() }).strict()
   .refine(value => value.receiver.kind === 'execution', { message: 'An execution action needs an execution receiver' })
@@ -88,6 +103,8 @@ export const executionActionSchema = z.object({ protocolVersion: z.literal(2), k
     ? value.execution.session !== undefined && value.execution.operation.effect === 'input'
     : value.execution.session === undefined && value.execution.operation.effect === 'execute',
     { message: 'Only a native session plan carries an input operation and a session adapter' })
+  .refine(value => !value.execution.resumeFromCheckpoint || value.execution.plan.kind === 'session',
+    { message: 'Only a session can restore a checkpoint' })
   .refine(value => JSON.stringify(value).length <= 4000000, { message: 'fixed execution input exceeds its supported recovery envelope' });
 export type ExecutionAction = z.infer<typeof executionActionSchema>;
 export function isNativeSessionAction(action: ExecutionAction): boolean {
@@ -96,7 +113,7 @@ export function isNativeSessionAction(action: ExecutionAction): boolean {
 
 /** One session input with its own stable identity and the sequence the caller last observed. */
 export const executionControlSchema = z.object({ controlId: z.uuid(), operationId: identifier,
-  effect: z.literal('input'), expectedSeq: z.number().int().nonnegative(), parameters: z.unknown() }).strict();
+  effect: sessionControlEffectSchema, expectedSeq: z.number().int().nonnegative(), parameters: z.unknown() }).strict();
 export type ExecutionControl = z.infer<typeof executionControlSchema>;
 
 /** A stop keeps its original identity; an omitted explanation is represented by an empty string. */
@@ -145,6 +162,8 @@ export const executionSessionViewSchema = z.object({
   supervisorEpoch: z.uuid(), executorInstanceId: z.uuid(),
   appliedSeq: z.number().int().nonnegative(), lastControlId: z.uuid().nullable(),
   observation: z.unknown().nullable(), observations: z.array(executionObservationSchema).max(64),
+  checkpoints: z.array(executionCheckpointSchema).max(64).optional(),
+  restoredFrom: checkpointResumeSchema.optional(),
 }).strict();
 export type ExecutionSessionView = z.infer<typeof executionSessionViewSchema>;
 
@@ -156,6 +175,11 @@ export const executionQuerySchema = z.object({ requestId: z.uuid(), inputDigest:
   .refine(value => value.statusKnowledge === 'confirmed' || value.reason !== null,
     { message: 'An unconfirmed status must say why it is unknown' });
 export type ExecutionQuery = z.infer<typeof executionQuerySchema>;
+export const executionControlReceiptSchema = z.object({ controlId: z.uuid(), requestId: z.uuid(), executionRef: z.uuid(),
+  inputDigest: digest,
+  effect: sessionControlEffectSchema, status: z.enum(['dispatching', 'applied', 'unknown', 'rejected']),
+  seq: z.number().int().positive(), query: executionQuerySchema }).strict();
+export type ExecutionControlReceipt = z.infer<typeof executionControlReceiptSchema>;
 
 export const executionCapabilitiesSchema = z.object({ plans: z.array(executionPlanSchema).max(4),
   operations: z.array(z.object({ operationId: identifier, instanceId: z.string().min(1).max(300),
@@ -180,7 +204,13 @@ export function advanceExecution(current: ExecutionQuery | null, next: Execution
   const session = next.session ?? current.session;
   const merged: ExecutionQuery = { ...next, stopRequested: current.stopRequested || next.stopRequested,
     ...(session ? { session } : {}) };
-  if (current.statusKnowledge === 'confirmed' && isTerminalExecutionState(current.state)) return current;
+  if (current.statusKnowledge === 'confirmed' && isTerminalExecutionState(current.state)) {
+    // A late archived session observation may enrich history without changing its final outcome.
+    if (current.session && next.session && next.statusKnowledge === 'confirmed' && next.state === current.state
+      && next.confirmedSeq > current.confirmedSeq) return { ...current, confirmedSeq: next.confirmedSeq,
+      stopRequested: merged.stopRequested, session: next.session };
+    return current;
+  }
   if (next.statusKnowledge === 'unknown' && current.statusKnowledge === 'confirmed') {
     // The state stays the last one the executor confirmed; only reachability became unknown.
     return { ...current, statusKnowledge: 'unknown', stopRequested: merged.stopRequested, reason: next.reason ?? current.reason };

@@ -143,7 +143,8 @@ export function createNativeChannelWorker(options: {
     try {
       const current = registrationSchema.parse(await options.call('register', node));
       if (digest({ connectionId: current.connectionId, nodeId: current.nodeId, installationId: current.installationId,
-        platform: current.platform, supervisorEpoch: current.supervisorEpoch, adapters: current.adapters }) !== digest(node)
+        platform: current.platform, supervisorEpoch: current.supervisorEpoch, adapters: current.adapters,
+        ...(current.runtime ? { runtime: current.runtime } : {}) }) !== digest(node)
         || registration && digest(current.owner) !== digest(registration.owner)) {
         throw new StorageError('forbidden');
       }

@@ -80,7 +80,7 @@ async function schoolFixture({ publishPlan = false } = {}) {
     };
     worker = createNativeChannelWorker({ root: join(root, 'device'), node, native, call });
     await worker.tick();
-    const published = await accumulatorPackage(), { manifest } = published, declared = manifest.session;
+    const published = await accumulatorPackage({ version: 1 }), { manifest } = published, declared = manifest.session;
     const definition = await ok('manage/component-import', { requestId: randomUUID(), ...published }, admin);
     const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
     const configuration = { title: '四态累加' };

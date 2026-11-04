@@ -84,11 +84,16 @@ test('installed client forwards the course surface and rejects malformed or fore
       requirements: '要求', materials: [material], starterWorks: [], capabilities: [] } };
   const actionId = randomUUID(), malformedIntentActivity = randomUUID(), foreignIntentActivity = randomUUID();
   const executionId = randomUUID(), malformedExecutionActivity = randomUUID(), foreignExecutionActivity = randomUUID();
+  const controlId = randomUUID(), mismatchedControlId = randomUUID();
+  const checkpointId = randomUUID();
   const foreignPrincipalExecution = randomUUID();
   const executionQuery = { requestId: executionId, inputDigest: digest, executionRef: randomUUID(),
     scope: { environmentId: grant.identity.environmentId, spaceId: grant.identity.spaceId,
       principalId: grant.identity.principalId, activityId: activity.activityId },
     state: 'queued', statusKnowledge: 'confirmed', stopRequested: false, confirmedSeq: 1, reason: null, output: null };
+  const checkpointPage = { items: [{ checkpointId, sessionRef: executionQuery.executionRef, sha256: digest,
+    contentId: checkpointId, appliedSeq: 1, byteLength: 200, createdAt: publishedAt, requestId: executionId,
+    instanceId: activity.activityId + ':accumulator', scope: executionQuery.scope }], nextCursor: null };
   // The algorithm is served through the authorised release, never from the component view.
   const published = await aggregationPackage();
   const algorithmBundle = { definition: { manifest: published.manifest,
@@ -124,12 +129,18 @@ test('installed client forwards the course surface and rejects malformed or fore
     else if (url.endsWith('/components/annotation/preparation-reports')) response.end(JSON.stringify([report]));
     else if (url.endsWith('/components/annotation/preparation-report')) response.end(JSON.stringify(reportReceipt));
     else if (url.includes('/api/learning/executions/')) {
-      if (url.includes('/executions/' + malformedExecutionActivity)) response.end(JSON.stringify({ state: 'queued' }));
+      if (url.includes('/checkpoints') && url.includes('/executions/' + foreignPrincipalExecution)) response.end(JSON.stringify({ ...checkpointPage,
+        items: [{ ...checkpointPage.items[0], scope: { ...executionQuery.scope, principalId: randomUUID() } }] }));
+      else if (url.includes('/executions/' + malformedExecutionActivity)) response.end(JSON.stringify({ state: 'queued' }));
+      else if (url.includes('/checkpoints')) response.end(JSON.stringify(checkpointPage));
       // The run that comes back belongs to another activity than the one the caller asked under.
       else if (url.includes('/executions/' + foreignExecutionActivity)) response.end(JSON.stringify({ ...executionQuery,
         scope: { ...executionQuery.scope, activityId: activity.activityId } }));
       else if (url.includes('/executions/' + foreignPrincipalExecution)) response.end(JSON.stringify({ ...executionQuery,
         scope: { ...executionQuery.scope, principalId: randomUUID() } }));
+      else if (url.includes('/controls/')) response.end(JSON.stringify({ controlId, requestId: executionId,
+        executionRef: executionQuery.executionRef, inputDigest: digest, effect: 'step', status: 'applied', seq: 1, query: executionQuery }));
+      else if (url.endsWith('/sessions')) response.end(JSON.stringify([executionQuery]));
       else response.end(JSON.stringify(executionQuery));
     }
     else if (url.endsWith('/api/learning/releases/' + releaseId + '/materials/' + materialId)) {
@@ -201,6 +212,17 @@ test('installed client forwards the course surface and rejects malformed or fore
     assert.equal((await api(`executions/${activity.activityId}/${executionId}/report`, {}, remote)).value.state, 'queued');
     assert.equal((await api(`executions/${activity.activityId}/${executionId}/stop`, {}, remote)).value.state, 'queued');
     assert.equal((await api(`executions/${activity.activityId}/${executionId}/result`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/control`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/sessions`, undefined, remote)).value[0].requestId, executionId);
+    assert.equal((await api(`executions/${activity.activityId}/checkpoints`, undefined, remote)).value.items[0].checkpointId, checkpointId);
+    assert.equal((await api(`executions/${activity.activityId}/checkpoints/${checkpointId}`, undefined, remote)).value.items[0].checkpointId, checkpointId);
+    assert.equal((await api(`executions/${malformedExecutionActivity}/checkpoints`, undefined, remote)).status, 503);
+    assert.equal((await api(`executions/${foreignPrincipalExecution}/checkpoints`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${activity.activityId}/checkpoints/not-a-cursor`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/controls/${controlId}`, undefined, remote)).value.controlId, controlId);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/controls/${mismatchedControlId}`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${malformedExecutionActivity}/${executionId}/controls/${controlId}`, undefined, remote)).status, 503);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/controls/${controlId}/extra`, undefined, remote)).status, 403);
     assert.equal((await api(`executions/${malformedExecutionActivity}/${executionId}`, undefined, remote)).status, 503);
     assert.equal((await api(`executions/${foreignExecutionActivity}/${executionId}`, undefined, remote)).status, 403);
     assert.equal((await api(`executions/${foreignPrincipalExecution}/${executionId}`, undefined, remote)).status, 403);

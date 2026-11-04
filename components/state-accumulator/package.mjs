@@ -9,18 +9,22 @@ const cell = { type: 'number' };
 const observation = { type: 'object', properties: { value: cell, total: cell, applied: cell } };
 
 /** One importable component: an opaque view plus a product-shipped native adapter declaration. */
-export async function accumulatorPackage() {
-  const source = await readFile(new URL('./view.html', import.meta.url));
+export async function accumulatorPackage({ version = 2 } = {}) {
+  if (![1, 2].includes(version)) throw new Error('Unsupported accumulator version');
+  const modern = version === 2;
+  const source = await readFile(new URL(modern ? './view-v2.html' : './view.html', import.meta.url));
   const view = Buffer.from(source.toString('utf8').replaceAll('\r\n', '\n'));
   const manifest = componentManifestSchema.parse({ formatVersion: 1,
-    componentId: '4d0e1c8a-7b52-4a1e-9f3c-2d6b8a0c5e71', version: 1, hostApiVersion: 1, title: '四态累加模拟',
-    entry: { resourceId: 'a3c7f2e9-58b4-4d16-8c2a-6f9e1d0b7a43', mediaType: 'text/html',
+    componentId: '4d0e1c8a-7b52-4a1e-9f3c-2d6b8a0c5e71', version, hostApiVersion: 1, title: '四态累加模拟',
+    entry: { resourceId: modern ? '61478492-74fc-4839-9556-e882ed94096a' : 'a3c7f2e9-58b4-4d16-8c2a-6f9e1d0b7a43', mediaType: 'text/html',
       sha256: hash(view), byteLength: view.length },
-    stateVersion: 1, requiredCapabilities: ['execution.submit'],
-    stateShape: { type: 'object', properties: {} },
-    initialState: {},
+    stateVersion: 1, requiredCapabilities: modern ? ['execution.submit', 'workspace.change'] : ['execution.submit'],
+    stateShape: { type: 'object', properties: modern ? { pendingInput: { type: 'string', maxLength: 16 } } : {} },
+    initialState: modern ? { pendingInput: '' } : {},
     session: {
-      adapterId: 'four-state-accumulator', adapterVersion: 1,
+      adapterId: 'four-state-accumulator', adapterVersion: modern ? 2 : 1,
+      ...(modern ? { controls: ['pause', 'resume', 'step', 'reset', 'checkpoint'], checkpointVersion: 1,
+        lifecycle: { acrossViews: true, pageClose: 'continue', activityClose: 'stop', reconnect: 'query' } } : {}),
       parameters: { type: 'object', properties: {} },
       operation: {
         operationId: 'advance',
@@ -37,7 +41,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const input = await accumulatorPackage();
   await mkdir(out, { recursive: true });
   await writeFile(resolve(out, 'view.html'), Buffer.from(input.contentBase64, 'base64'));
-  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: '0f5a1e8c-3d74-4b92-8a61-5c2f9e7d0b34',
+  await writeFile(resolve(out, 'component.json'), JSON.stringify({ requestId: '7e6b3bac-630b-4ecf-8533-16cac83e90de',
     manifest: input.manifest, path: 'view.html' }, null, 2));
   console.log(`Component import: ${resolve(out, 'component.json')}`);
 }

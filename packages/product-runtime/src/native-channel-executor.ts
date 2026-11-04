@@ -8,6 +8,7 @@ import { canonicalValue, executionActionSchema, executionControlSchema, executio
 import type { ExecutionQuery } from '@xunjie/contracts/execution';
 import { SupervisedSession, productNativeAdapters, nativeChannelNodeSchema } from '@xunjie/learning-space';
 import type { NativeChannelCommand, NativeChannelNode, NativeSessionHostOptions } from '@xunjie/learning-space';
+import type { NativeObservation } from '@xunjie/learning-space';
 
 /** 只登记本机已具备强制隔离的产品适配器；外部登记数据不决定可执行代码。 */
 export async function nativeChannelNode(options: NativeSessionHostOptions & {
@@ -35,7 +36,8 @@ export async function nativeChannelNode(options: NativeSessionHostOptions & {
     finally { await probe?.dispose(); }
   }
   return nativeChannelNodeSchema.parse({ connectionId: options.connectionId, installationId: options.installationId,
-    nodeId: options.nodeId ?? `local-${options.installationId}`, platform, supervisorEpoch: options.supervisorEpoch ?? randomUUID(), adapters });
+    nodeId: options.nodeId ?? `local-${options.installationId}`, platform, supervisorEpoch: options.supervisorEpoch ?? randomUUID(), adapters,
+    runtime: { platform: process.platform, arch: process.arch, node: process.version } });
 }
 
 /** 学校保管唯一持久账本。本机只对已领取的固定快照执行产品登记适配器，不需要活动或作品数据库。 */
@@ -44,7 +46,8 @@ export function createNativeChannelExecutor(options: NativeSessionHostOptions & 
   const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
   let cleanupGeneration = 0;
   const sessions = new Map<string, { process: SupervisedSession; query: ExecutionQuery;
-    operationId: string; parameters: Parameters<typeof acceptsState>[0]; result: Parameters<typeof acceptsState>[0] }>();
+    operationId: string; controls: readonly string[]; checkpointVersion?: number;
+    parameters: Parameters<typeof acceptsState>[0]; result: Parameters<typeof acceptsState>[0] }>();
   const fail = (code: 'invalid' | 'identity-conflict' | 'forbidden' | 'missing'): never => { throw new StorageError(code); };
   function fixed(query: ExecutionQuery, command: NativeChannelCommand) {
     const session = query.session;
@@ -53,10 +56,13 @@ export function createNativeChannelExecutor(options: NativeSessionHostOptions & 
       || session.supervisorEpoch !== node.supervisorEpoch) return fail('forbidden');
     return session;
   }
-  async function execute(command: NativeChannelCommand): Promise<ExecutionQuery> {
+  async function execute(command: NativeChannelCommand): Promise<ExecutionQuery | { query: ExecutionQuery;
+    checkpoint: { observation: NativeObservation; environment: { platform: string; arch: string; node: string } } }> {
     for (const sessionId of sessions.keys()) query(sessionId);
     if (command.operation === 'submit') {
-      const input = z.object({ action: executionActionSchema, activity: activitySchema, execution: executionQuerySchema }).strict().parse(command.payload);
+      const input = z.object({ action: executionActionSchema, activity: activitySchema, execution: executionQuerySchema,
+        restore: z.object({ snapshot: z.json(), environment: z.object({ platform: z.string(), arch: z.string(), node: z.string() }).strict() }).strict().optional(),
+      }).strict().parse(command.payload);
       const { action, activity } = input, execution = input.execution, session = fixed(execution, command);
       if (sessions.has(command.sessionId)) return fail('identity-conflict');
       const run = action.execution, spec = run.session, instance = run.instance;
@@ -101,6 +107,11 @@ export function createNativeChannelExecutor(options: NativeSessionHostOptions & 
       const adapter = productNativeAdapters.find(item => item.adapterId === declared.adapterId && item.adapterVersion === declared.adapterVersion);
       if (!adapter?.platforms?.includes(node.platform) || !node.adapters.some(item => item.adapterId === adapter.adapterId
         && item.adapterVersion === adapter.adapterVersion)) return fail('forbidden');
+      if (declared.controls?.some(effect => !adapter.controls?.includes(effect))
+        || declared.checkpointVersion && declared.checkpointVersion !== adapter.checkpointVersion
+        || !!run.resumeFromCheckpoint !== !!input.restore
+        || input.restore && hash(input.restore.environment) !== hash({ platform: globalThis.process.platform,
+          arch: globalThis.process.arch, node: globalThis.process.version })) return fail('invalid');
       const sameAdapter = [...sessions.values()].filter(item => !isTerminalExecutionState(item.query.state)
         && item.query.session?.adapterId === adapter.adapterId).length;
       if (sameAdapter >= limits.concurrentSessions) return fail('forbidden');
@@ -113,10 +124,17 @@ export function createNativeChannelExecutor(options: NativeSessionHostOptions & 
           memoryMiB: limits.memoryMiB, outputBytes: run.limits.outputBytes },
       });
       if (generation !== cleanupGeneration) { await process.dispose(); return fail('forbidden'); }
-      if (!acceptsState(declared.operation.result, process.initialObservation)) { await process.dispose(); return fail('invalid'); }
-      const query = executionQuerySchema.parse({ ...execution, state: 'running', confirmedSeq: execution.confirmedSeq + 1,
-        statusKnowledge: 'confirmed', session: { ...session, observation: process.initialObservation } });
+      let initial = process.initialObservation, initialState = 'running';
+      if (input.restore) {
+        try { const recovered = await process.restore(input.restore.snapshot); initial = recovered.state; initialState = recovered.sessionState; }
+        catch (error) { await process.dispose(); throw error; }
+      }
+      if (generation !== cleanupGeneration) { await process.dispose(); return fail('forbidden'); }
+      if (!acceptsState(declared.operation.result, initial)) { await process.dispose(); return fail('invalid'); }
+      const query = executionQuerySchema.parse({ ...execution, state: initialState, confirmedSeq: execution.confirmedSeq + 1,
+        statusKnowledge: 'confirmed', session: { ...session, observation: initial } });
       sessions.set(command.sessionId, { process, query, operationId: declared.operation.operationId,
+        controls: declared.controls ?? [], ...(declared.checkpointVersion ? { checkpointVersion: declared.checkpointVersion } : {}),
         parameters: declared.operation.parameters, result: declared.operation.result });
       return query;
     }
@@ -126,13 +144,27 @@ export function createNativeChannelExecutor(options: NativeSessionHostOptions & 
     if (command.operation === 'control') {
       const input = z.object({ requestId: z.uuid(), executionRef: z.uuid(), control: executionControlSchema }).strict().parse(command.payload);
       if (input.requestId !== entry.query.requestId || input.executionRef !== entry.query.executionRef || input.control.controlId !== command.commandId
-        || input.control.expectedSeq !== session.appliedSeq || input.control.operationId !== entry.operationId
-        || !acceptsState(entry.parameters, input.control.parameters) || isTerminalExecutionState(entry.query.state)) return fail('identity-conflict');
-      const observation = await entry.process.input(input.control.controlId, session.appliedSeq + 1, input.control.parameters);
+        || input.control.expectedSeq !== session.appliedSeq || isTerminalExecutionState(entry.query.state)
+        || entry.query.stopRequested || entry.query.statusKnowledge !== 'confirmed') return fail('identity-conflict');
+      const control = input.control;
+      if (control.effect === 'input' ? control.operationId !== entry.operationId
+        : control.operationId !== control.effect || !entry.controls.includes(control.effect)) return fail('invalid');
+      if (control.effect === 'input' || control.effect === 'step') {
+        if (!acceptsState(entry.parameters, control.parameters)) return fail('invalid');
+      } else if (!control.parameters || typeof control.parameters !== 'object' || Array.isArray(control.parameters)
+        || Object.keys(control.parameters).length) return fail('invalid');
+      const observation = await entry.process.control(control.effect, control.controlId, session.appliedSeq + 1, control.parameters);
       if (!acceptsState(entry.result, observation.state)) { await entry.process.dispose(); return fail('invalid'); }
-      entry.query = executionQuerySchema.parse({ ...entry.query, confirmedSeq: entry.query.confirmedSeq + 1,
+      entry.query = executionQuerySchema.parse({ ...entry.query, state: observation.sessionState ?? entry.query.state,
+        confirmedSeq: entry.query.confirmedSeq + 1,
         session: { ...session, appliedSeq: observation.seq, lastControlId: observation.controlId, observation: observation.state,
-          observations: [...session.observations, observation].slice(-64) } });
+          observations: [...session.observations, { seq: observation.seq, controlId: observation.controlId,
+            state: observation.state, at: observation.at }].slice(-64) } });
+      if (control.effect === 'checkpoint') {
+        if (observation.checkpoint === undefined || !entry.checkpointVersion) return fail('invalid');
+        return { query: entry.query, checkpoint: { observation,
+          environment: { platform: process.platform, arch: process.arch, node: process.version } } };
+      }
       return entry.query;
     }
     const input = z.object({ requestId: z.uuid(), executionRef: z.uuid(), stop: executionStopSchema }).strict().parse(command.payload);

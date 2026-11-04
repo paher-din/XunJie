@@ -26,8 +26,8 @@ test('authenticated pull channel binds owner, approved connection and installati
     }
     const school = await owner(spaceMigrations), data = await owner(learningMigrations);
     const spaces = createSpaces(school);
-    const identity = await spaces.createMember({ requestId: randomUUID(), loginName: 'channel-student', password: 'channel-password-123456' });
-    const login = await spaces.login('channel-student', 'channel-password-123456');
+    const identity = await spaces.createMember({ requestId: randomUUID(), loginName: 'channel-student', password: 'synthetic-channel-password' });
+    const login = await spaces.login('channel-student', 'synthetic-channel-password');
     async function connection() {
       const connectionId = randomUUID(), verifier = randomBytes(48).toString('base64url');
       await spaces.beginConnection({ requestId: connectionId, clientId: randomUUID(), challenge: createHash('sha256').update(verifier).digest('base64url') });
@@ -139,7 +139,7 @@ test('database-free default worker executes real native accumulator and reports 
     });
     let idleActivityId;
     const activityId = randomUUID(), requestId = randomUUID(), executionRef = randomUUID();
-    const { manifest } = await accumulatorPackage(), declared = manifest.session;
+    const { manifest } = await accumulatorPackage({ version: 1 }), declared = manifest.session;
     const hash = value => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
     const definition = { manifest, digest: hash(manifest) };
     const activity = { activityId, identity, target: { ...owner, version: 1 }, goal: '真实会话', question: '', references: [],
@@ -276,4 +276,108 @@ test('successful registration cannot extend execution lease when claim eligibili
     await assert.rejects(worker.tick(), { code: 'unavailable' });
     assert.equal(cleaned, 1);
   } finally { await worker.stop(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('checkpoint wrappers cannot reconfirm a session after lease expiry or supervisor replacement', { timeout: 120000 }, async () => {
+  const fixture = await nativeFixture();
+  let storage;
+  try {
+    const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
+    const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: learningMigrations });
+    storage = await openStorage({ binding, migrations: learningMigrations,
+      backend: createFileBackend({ id: 'checkpoint-fencing', root: join(fixture.root, 'resources') }) });
+    const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: '学校' };
+    const node = { connectionId: randomUUID(), nodeId: 'checkpoint-node', installationId: randomUUID(),
+      platform: 'macos-arm64', supervisorEpoch: randomUUID(), adapters: [{ adapterId: 'four-state-accumulator', adapterVersion: 2 }],
+      runtime: { platform: 'darwin', arch: 'arm64', node: process.version } };
+    const { manifest } = await accumulatorPackage({ version: 2 });
+    const hash = value => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
+    const activityId = randomUUID(), definition = { manifest, digest: hash(manifest) };
+    const activity = { activityId, identity, target: { ...owner, version: 1 }, goal: '检查点 fencing', question: '', references: [],
+      status: 'open', createdAt: new Date().toISOString(), course: { associationId: randomUUID(), courseId: randomUUID(), courseName: '原生',
+        taskId: randomUUID(), taskTitle: '四态', releaseId: randomUUID(), contentDigest: hash('course'), objectives: ['观察'], requirements: '输入',
+        materials: [], starterWorks: [], capabilities: [], components: [{ key: 'accumulator', definition, configuration: { title: '四态' }, materialIds: [] }] } };
+    const authorize = async (who, id) => { assert.deepEqual(who, identity); assert.equal(id, activityId); };
+    const channel = createNativeChannel(storage, { async authenticate(token, id) {
+      assert.equal(token, 'approved'); assert.equal(id, node.connectionId); return identity;
+    }, async authorizeConnection() {}, authorize });
+    const executions = createExecutions(storage, { channel, works: createWorks(storage, authorize),
+      activity: async (who, id) => { await authorize(who, id); return activity; } });
+    const budgets = manifest.session.budgets;
+    const action = { protocolVersion: 2, kind: 'execution', requestId: randomUUID(),
+      scope: { environmentId: identity.environmentId, spaceId: identity.spaceId, principalId: identity.principalId, activityId },
+      receiver: { receiverId: 'native-execution', location: 'local', kind: 'execution' }, execution: {
+        instance: { instanceId: `${activityId}:accumulator`, key: 'accumulator', componentId: manifest.componentId,
+          componentVersion: manifest.version, definitionDigest: definition.digest, hostApiVersion: 1, stateVersion: 1 },
+        operation: { operationId: 'advance', effect: 'input' }, parameters: {},
+        basis: { works: [], state: null, expected: { stateContentId: null }, resources: [] },
+        limits: { timeMs: budgets.operationTimeoutMs, memoryPages: 1, inputBytes: budgets.inputBytes,
+          outputBytes: budgets.outputBytes, concurrentJobs: budgets.concurrentSessions, queuedJobs: budgets.queuedSessions },
+        plan: { planId: 'native-session', planVersion: 1, location: 'native', kind: 'session',
+          planDigest: hash({ planId: 'native-session', planVersion: 1, componentId: manifest.componentId,
+            componentVersion: manifest.version, operationId: 'advance' }) },
+        session: { adapterId: manifest.session.adapterId, adapterVersion: 2, limits: {
+          operationTimeoutMs: budgets.operationTimeoutMs, idleMs: budgets.idleMs, maxMs: budgets.maxMs,
+          memoryMiB: budgets.memoryMiB, concurrentSessions: budgets.concurrentSessions, queuedSessions: budgets.queuedSessions } },
+        initiator: { kind: 'student', principalId: identity.principalId } } };
+    await channel.register('approved', node);
+    await channel.heartbeat('approved', node);
+    const accepted = await executions.accept(identity, activityId, { action });
+    const start = (await channel.claim('approved', node)).command;
+    const state = { value: 0, total: 0, applied: 0 };
+    let current = { ...accepted, state: 'running', confirmedSeq: 2, session: { ...accepted.session, observation: state } };
+    await channel.report('approved', { node, commandId: start.commandId, claimId: start.claimId, result: current });
+    await executions.read(identity, activityId, action.requestId);
+    let checkpointReply;
+    for (const effect of ['pause', 'checkpoint']) {
+      const control = { controlId: randomUUID(), operationId: effect, effect, expectedSeq: current.session.appliedSeq, parameters: {} };
+      await executions.control(identity, activityId, action.requestId, control);
+      const claimed = (await channel.claim('approved', node)).command;
+      const observation = { seq: control.expectedSeq + 1, controlId: control.controlId, state,
+        at: new Date().toISOString(), sessionState: 'paused',
+        ...(effect === 'checkpoint' ? { checkpoint: { formatVersion: 1, ...state, mode: 'paused' } } : {}) };
+      current = { ...current, state: 'paused', confirmedSeq: current.confirmedSeq + 1,
+        session: { ...current.session, appliedSeq: observation.seq, lastControlId: control.controlId, observation: state,
+          observations: [...current.session.observations, { seq: observation.seq, controlId: control.controlId, state, at: observation.at }] } };
+      const result = effect === 'checkpoint' ? { query: current, checkpoint: { observation, environment: node.runtime } } : current;
+      const reply = { node, commandId: claimed.commandId, claimId: claimed.claimId, result };
+      await channel.report('approved', reply);
+      if (effect === 'checkpoint') checkpointReply = reply;
+      await executions.read(identity, activityId, action.requestId);
+    }
+    await channel.heartbeat('approved', { node, queries: [current] });
+    assert.deepEqual((await channel.query(identity, checkpointReply.commandId)).result, checkpointReply.result);
+    const assertFenced = async label => {
+      const fact = await channel.query(identity, checkpointReply.commandId);
+      assert.equal(fact.statusKnowledge, 'unknown', label);
+      assert.equal(fact.result.query.statusKnowledge, 'unknown', label);
+      assert.deepEqual(fact.result.checkpoint, checkpointReply.result.checkpoint, 'fencing preserves the original snapshot');
+      const query = await executions.read(identity, activityId, action.requestId);
+      assert.equal(query.statusKnowledge, 'unknown', label);
+      assert.equal(query.executionRef, accepted.executionRef);
+      const controlId = randomUUID();
+      await assert.rejects(executions.control(identity, activityId, action.requestId, {
+        controlId, operationId: 'step', effect: 'step', expectedSeq: current.session.appliedSeq, parameters: { value: 1 },
+      }), { code: 'invalid' });
+      assert.equal((await storage.read('SELECT command_id FROM channel_execution_intents WHERE command_id=$1', [controlId])).rows.length, 0);
+      assert.deepEqual((await storage.read('SELECT result FROM native_channel_commands WHERE command_id=$1', [checkpointReply.commandId])).rows[0].result,
+        checkpointReply.result, 'fencing must not rewrite the durable receipt');
+    };
+    await storage.request({ requestId: randomUUID(), fingerprint: 'expire-checkpoint-lease' }, async tx => {
+      await tx.query("UPDATE native_channel_nodes SET lease_until='-infinity' WHERE connection_id=$1", [node.connectionId]);
+      return null;
+    });
+    await assertFenced('lease expiry cannot be undone by the historical checkpoint wrapper');
+    await channel.heartbeat('approved', { node, queries: [current] });
+    assert.equal((await executions.read(identity, activityId, action.requestId)).statusKnowledge, 'confirmed');
+    const replacement = { ...node, supervisorEpoch: randomUUID() };
+    await channel.register('approved', replacement);
+    await assertFenced('a replacement supervisor cannot reconfirm the old checkpoint instance');
+    const changedReply = structuredClone(checkpointReply);
+    changedReply.result.query.confirmedSeq++;
+    await assert.rejects(channel.report('approved', changedReply), { code: 'forbidden' });
+    await assertFenced('a late wrapper from the replaced supervisor is archive-only');
+    assert.equal((await storage.read('SELECT command_id FROM native_channel_late_reports WHERE command_id=$1', [checkpointReply.commandId])).rows.length, 1);
+    await validateNativeChannel(storage);
+  } finally { if (storage) await storage.close(); await fixture.close(); }
 });

@@ -12,6 +12,7 @@ import type { createWorks } from './works.js';
 import { verifyPlannedExecution } from './plan.js';
 import { createNativeSessions } from './native-sessions.js';
 import type { NativeSessionOptions } from './native-sessions.js';
+import { readSessionCheckpointPage } from './session-checkpoints.js';
 import { createChannelExecutions } from './channel-executions.js';
 import type { createNativeChannel } from './native-channel.js';
 
@@ -37,7 +38,7 @@ export const executionMigration: Migration = { version: 6, name: 'durable-browse
     execution_ref uuid NOT NULL,content_id uuid NOT NULL,sha256 text NOT NULL,byte_length integer NOT NULL,
     artifact jsonb NOT NULL,output jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
 ` };
-export const executionActionTextMigration: Migration = { version: 9, name: 'fixed-execution-action-text', sql: `
+export const executionActionTextMigration: Migration = { version: 10, name: 'fixed-execution-action-text', sql: `
   ALTER TABLE execution_commands ADD COLUMN action_text text;
   ALTER TABLE native_sessions ADD COLUMN action_text text;
 ` };
@@ -67,7 +68,8 @@ export function createExecutions(storage: OwnedStorage, options: {
 }) {
   const { activity: authorize, works } = options;
   const native = options.native ? createNativeSessions(storage, options.native) : null;
-  const channel = options.channel ? createChannelExecutions(storage, { activity: authorize, works, channel: options.channel }) : null;
+  const channel = options.channel ? createChannelExecutions(storage, { activity: authorize, works, channel: options.channel,
+    ...(options.native?.authorizeComponent ? { authorizeComponent: options.native.authorizeComponent } : {}) }) : null;
   async function find(activityId: string, requestId: string) {
     const { rows: [row] } = await storage.read('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2',
       [activityId, requestId]);
@@ -288,8 +290,24 @@ export function createExecutions(storage: OwnedStorage, options: {
     linuxEntryIsolation: async () => native ? await native.linuxEntryIsolation() : null,
     /** Maintenance reclaims a session by its executor instance, not by a student's current eligibility. */
     reclaim: async (sessionRef: string) => { if (!native) fail('missing'); return native.reclaim(sessionRef); },
+    checkpoints: async (identity: SpaceIdentity, activityId: string, cursor?: string) => {
+      await authorize(identity, activityId);
+      return readSessionCheckpointPage(storage, identity, activityId, cursor);
+    },
+    controlReceipt: async (identity: SpaceIdentity, activityId: string, requestId: string, controlId: string) => {
+      if (channel && await channel.owns(activityId, requestId)) return channel.controlReceipt(identity, activityId, requestId, controlId);
+      return native ? native.controlReceipt(identity, activityId, requestId, controlId) : null;
+    },
+    closeActivity: async (identity: SpaceIdentity, activityId: string) => {
+      await native?.closeActivity(identity, activityId);
+      if (channel) for (const query of await channel.list(identity, activityId)) {
+        if (!['succeeded', 'failed', 'cancelled'].includes(query.state))
+          await channel.stop(identity, activityId, query.requestId, { stopId: query.executionRef, reason: '活动已关闭，停止原会话。' });
+      }
+    },
     /** Maintenance recovery runs after the storage gate reopens, never against a closed owner. */
-    recoverNative: async () => { await native?.ensureReady(); },
+    recoverNative: async () => { await native?.resume(); },
+    closeNativeDispatch: () => { native?.closeDispatch(); },
     /** Maintenance stops own their live processes before the storage owner drains. */
     shutdown: async () => { await native?.shutdown(); } };
 }

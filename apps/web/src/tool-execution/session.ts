@@ -1,5 +1,5 @@
 import { acceptsState, type ComponentBinding, type StateShape } from '@xunjie/contracts/components'
-import { executionActionSchema, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
+import { executionActionSchema, type CheckpointResume, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
 import { decideExecutionPlacement, plannedExecutionScope, type CourseExecutionPlan, type ExecutionDevice } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
@@ -8,6 +8,9 @@ import { digestOf, readComponentState } from './action'
 export interface DeclaredSession {
   adapterId: string
   adapterVersion: number
+  controls?: ('pause' | 'resume' | 'step' | 'reset' | 'checkpoint')[]
+  checkpointVersion?: number
+  lifecycle?: { acrossViews: true; pageClose: 'continue'; activityClose: 'stop'; reconnect: 'query' }
   parameters: StateShape
   operation: { operationId: string; parameters: StateShape; result: StateShape }
   budgets: { operationTimeoutMs: number; idleMs: number; maxMs: number; memoryMiB: number
@@ -57,9 +60,11 @@ export async function sessionAction(input: {
   workspace: ReliableWorkspace; binding: ComponentBinding; instanceId: string
   receiver: ExecutionAction['receiver']; parameters: unknown; requestId: string
   placement?: SessionPlacement
+  resumeFromCheckpoint?: CheckpointResume
 }): Promise<ExecutionAction> {
   input = { ...input, binding: structuredClone(input.binding), receiver: structuredClone(input.receiver),
-    parameters: structuredClone(input.parameters), placement: input.placement && structuredClone(input.placement) }
+    parameters: structuredClone(input.parameters),
+    resumeFromCheckpoint: input.resumeFromCheckpoint && structuredClone(input.resumeFromCheckpoint), placement: input.placement && structuredClone(input.placement) }
   const session = declaredSession(input.binding)
   const manifest = input.binding.definition.manifest
   if (manifest.formatVersion !== 1 || !session) throw new Error('capability-unavailable')
@@ -90,5 +95,6 @@ export async function sessionAction(input: {
         operationTimeoutMs: session.budgets.operationTimeoutMs, idleMs: session.budgets.idleMs,
         maxMs: session.budgets.maxMs, memoryMiB: session.budgets.memoryMiB,
         concurrentSessions: session.budgets.concurrentSessions, queuedSessions: session.budgets.queuedSessions } },
+      ...(input.resumeFromCheckpoint ? { resumeFromCheckpoint: input.resumeFromCheckpoint } : {}),
       initiator: { kind: 'student', principalId: scope.principalId } } })
 }

@@ -37,6 +37,17 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     while (this.inputs.size) await Promise.all([...this.inputs])
     await super.leave()
   }
+  /** An execution start sends the protected component state as its basis, so the owner must know it. */
+  async flush(): Promise<void> {
+    await this.leave()
+    const deadline = Date.now() + 5_000
+    while (this.state.ready && !this.stopped && !this.denied && !this.state.conflict && Date.now() < deadline) {
+      const current = await this.store.read(this.key)
+      if (!current?.pending || current.pendingRejected) return
+      await this.synchronize()
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
   /** Local confirmations belong to this workspace, atomically committed with the protected files. */
   async applyOperation(operation: WorkOperation, apply: () => void, retainUnknown: () => void): Promise<WorkOperationReceipt> {
     if (!navigator.locks) { retainUnknown(); throw new Error('capability-unavailable') }

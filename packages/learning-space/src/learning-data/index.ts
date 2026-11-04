@@ -15,7 +15,8 @@ import { createExecutions, executionActionTextMigration, executionMigration, val
 import { nativeSessionMigration, validateNativeSessions } from './native-sessions.js';
 import { nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, validateNativeChannel } from './native-channel.js';
 import type { createNativeChannel } from './native-channel.js';
-import { channelExecutionMigration, validateChannelExecutions } from './channel-executions.js';
+import { channelExecutionMigration, channelCheckpointMigration, validateChannelExecutions } from './channel-executions.js';
+import { sessionRecoveryMigration } from './session-checkpoints.js';
 import type { NativeSessionHostOptions } from './native-sessions.js';
 export type { ActionIntentOptions } from './intents.js';
 export type { NativeSessionHostOptions } from './native-sessions.js';
@@ -32,8 +33,9 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
     activity_id uuid NOT NULL,input_digest text NOT NULL,state text NOT NULL CHECK(state IN ('pending','accepted','rejected')),
     binding jsonb,result jsonb,error text,updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX course_activity_requests_scope ON course_activity_requests(space_environment_id,space_id,principal_id);
-` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, nativeChannelMigration,
-executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration];
+` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
+executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
+nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -262,13 +264,19 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     const activity = activitySchema.parse(receipt.result);
     // Cached receipts must not bypass the current course projection either.
     await courseAuthorize(identity, activity);
+    if (activity.status === 'closed') await executions.closeActivity(identity, activity.activityId);
     return activity;
   }
   const works = createWorks(storage, open);
   const drafts = createQuestionDrafts(storage, { activity: open, works, courses });
   const intents = createActionIntents(storage, { activity: open, works, drafts, ...actions });
   const executions = createExecutions(storage, { activity: open, works, ...(channel ? { channel } : {}),
-    ...(native ? { native: { ...native, activity: open, works } } : {}) });
+    ...(native ? { native: { ...native, activity: open, works,
+      authorizeComponent: async (identity, activity, action) => {
+        if (!activity.course || !courses?.verifyComponentReference) throw new StorageError('forbidden');
+        await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
+          key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
+      } } } : {}) });
   return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, intents, executions,
     validate: () => validateLearningData(storage) };
 }

@@ -7,7 +7,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { acceptsState, componentInstanceId, componentStateName } from '@xunjie/contracts/components';
 import type { StateShape } from '@xunjie/contracts/components';
 import { canonicalValue, decideExecutionPlacement, executionActionSchema, executionControlSchema,
-  executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
+  executionQuerySchema, executionStopSchema, executionControlReceiptSchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionControl, ExecutionObservation, ExecutionQuery } from '@xunjie/contracts/execution';
 import { productNativeAdapters, SupervisedSession } from './native-process.js';
 import type { NativeAdapter, NativeSessionExit } from './native-process.js';
@@ -15,6 +15,8 @@ import { linuxSessionUnit, probeLinuxIsolation, stopUnit, unitStopped } from './
 import type { LinuxSessionEntry } from './linux-isolation.js';
 import type { NativeSessionIsolation } from './native-sandbox.js';
 import { verifyPlannedExecution } from './plan.js';
+import type { NativeObservation } from './native-process.js';
+import { createSessionCheckpoints, readSessionCheckpointPage } from './session-checkpoints.js';
 import type { createWorks } from './works.js';
 
 /**
@@ -48,6 +50,7 @@ export const nativeSessionMigration: Migration = { version: 7, name: 'native-sta
 export interface NativeSessionOptions {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   works: ReturnType<typeof createWorks>;
+  authorizeComponent?(identity: SpaceIdentity, activity: LearningActivity, action: ExecutionAction): Promise<void>;
   adapters?: readonly NativeAdapter[];
   nodePath?: string;
   windowsHelper?: string;
@@ -62,7 +65,7 @@ export interface NativeSessionOptions {
   placement?: { nodeClass: 'device' | 'school-execution-node'; secureTransport: boolean };
 }
 /** What a host configures; the activity and work owner stay inside the learning-data module. */
-export type NativeSessionHostOptions = Omit<NativeSessionOptions, 'activity' | 'works'>;
+export type NativeSessionHostOptions = Omit<NativeSessionOptions, 'activity' | 'works' | 'authorizeComponent'>;
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const canonicalDigest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
@@ -89,7 +92,8 @@ function queryOf(row: Record<string, unknown>): ExecutionQuery {
       nodeId: row.node_id, installGeneration: row.install_generation, supervisorEpoch: row.supervisor_epoch,
       executorInstanceId: row.executor_instance_id, appliedSeq: Number(row.applied_seq),
       lastControlId: row.last_control_id ?? null, observation: row.observation ?? null,
-      observations: row.observations ?? [] },
+      observations: row.observations ?? [], checkpoints: row.checkpoints ?? [],
+      ...(action.execution.resumeFromCheckpoint ? { restoredFrom: action.execution.resumeFromCheckpoint } : {}) },
   });
 }
 
@@ -100,9 +104,12 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   const nodeId = options.nodeId ?? `local-${process.platform}`;
   const live = new Map<string, LiveSession>();
   const starting = new Map<string, Promise<ExecutionQuery>>();
+  const controlling = new Set<Promise<ExecutionQuery>>();
+  let closing = false;
   const settling = new Set<Promise<void>>();
   /** The storage generation is live: a maintenance resume changes it without replacing this owner. */
   const currentGeneration = () => String(storage.generation);
+  const checkpoints = createSessionCheckpoints(storage);
   /** An exit fact is written after the OS event; shutdown waits for those writes before storage drains. */
   function noteExit(sessionRef: string, exit: NativeSessionExit) {
     const task = settleExit(sessionRef, exit);
@@ -204,11 +211,20 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   }
 
   async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
+    if (closing) throw new StorageError('maintenance');
     const input = z.object({ action: executionActionSchema, acceptance: z.unknown().optional() }).strict().parse(value);
     const action = input.action;
-    const key = digest({ identity, activityId, action });
+    await options.activity(identity, activityId);
+    if (closing) throw new StorageError('maintenance');
+    if (action.scope.activityId !== activityId || action.scope.environmentId !== identity.environmentId
+      || action.scope.spaceId !== identity.spaceId || action.scope.principalId !== identity.principalId) fail('forbidden');
+    const key = activityId + ':' + action.requestId;
     const running = starting.get(key);
-    if (running) return running;
+    if (running) {
+      const accepted = await running;
+      if (accepted.inputDigest !== digest(action)) fail('identity-conflict');
+      return accepted;
+    }
     const attempt = beginAccept(identity, activityId, action);
     starting.set(key, attempt);
     try { return await attempt; }
@@ -232,8 +248,15 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     }
     const { session: declared } = verifyAction(activity, action);
     await verifyPlacement(identity, activity, action);
+    await options.authorizeComponent?.(identity, activity, action);
     const adapter = adapters.get(`${declared.adapterId}@${declared.adapterVersion}`);
     if (!adapter) fail('invalid');
+    if (declared.controls?.some(effect => !adapter.controls?.includes(effect))
+      || (declared.checkpointVersion && declared.checkpointVersion !== adapter.checkpointVersion)) fail('invalid');
+    if (activity.status !== 'open') fail('invalid');
+    const binding = bindingFor(activity, action).binding;
+    const restored = action.execution.resumeFromCheckpoint
+      ? await checkpoints.restore(action, binding.configuration, declared.checkpointVersion ?? fail('invalid')) : null;
     const sessionLimits = action.execution.session!.limits;
     // This acceptance is already in `starting`; count the other sessions, not itself.
     const busy = live.size + Math.max(0, starting.size - 1);
@@ -251,6 +274,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     });
     const reservation = await storage.request({ requestId: 'native-session:' + action.requestId,
       fingerprint: digest({ identity, activityId, inputDigest }) }, async tx => {
+      const { rows: [currentActivity] } = await tx.query('SELECT body FROM activities WHERE id=$1 FOR SHARE', [activityId]);
+      if ((currentActivity?.body as LearningActivity | undefined)?.status !== 'open') fail('invalid');
       const inserted = await tx.query(`INSERT INTO native_sessions(session_ref,activity_id,request_id,input_digest,action,adapter_id,
         adapter_version,node_id,install_generation,supervisor_epoch,executor_instance_id,state,status_knowledge,
         stop_requested,confirmed_seq,applied_seq,last_control_id,observation,observations,action_text)
@@ -265,6 +290,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         await tx.reference(`native/${action.requestId}/work/${file.contentId}`, file.contentId);
       const state = action.execution.basis.state;
       if (state) await tx.reference(`native/${action.requestId}/state`, state.contentId);
+      if (restored) await tx.reference(`native/${action.requestId}/restore`, restored.contentId);
       return { created: inserted.rowCount === 1, query: queryOf(row) };
     });
     const reserved = reservation.result as { created: boolean; query: ExecutionQuery };
@@ -316,25 +342,45 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       if (spawned.exitFact) await settleExit(sessionRef, spawned.exitFact);
       return queryOf((await findRef(sessionRef))!);
     }
+    let initialObservation = spawned.initialObservation;
+    let initialState: 'running' | 'paused' = 'running';
+    if (restored) {
+      try {
+        const recovered = await spawned.restore(restored.snapshot);
+        initialObservation = recovered.state; initialState = recovered.sessionState;
+      } catch (error) {
+        await spawned.dispose();
+        return refuseStart(activityId, action.requestId, error);
+      }
+    }
     const resultShape = declared.operation.result;
-    if (!acceptsState(resultShape, spawned.initialObservation)) {
+    if (!acceptsState(resultShape, initialObservation)) {
       await spawned.dispose();
       return refuseStart(activityId, action.requestId,
         Object.assign(new Error('本机会话的初始观察与组件声明的结果结构不一致。'), { code: 'algorithm-error' }));
     }
+    if (spawned.exitFact) {
+      await settleExit(sessionRef, spawned.exitFact);
+      return queryOf((await findRef(sessionRef))!);
+    }
     live.set(sessionRef, { process: spawned, result: resultShape });
+    if ((await options.activity(identity, activityId)).status !== 'open' || (await findRef(sessionRef))?.stop_requested) {
+      await spawned.stop();
+      await Promise.allSettled([...settling]);
+      return queryOf((await findRef(sessionRef))!);
+    }
     const confirmed = await storage.request({ requestId: 'native-start:' + action.requestId,
       fingerprint: digest({ sessionRef, executorInstanceId }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
       if (!row || row.state !== 'queued' || row.stop_requested || row.status_knowledge !== 'confirmed'
         || String(row.install_generation) !== currentGeneration()) return queryOf(row ?? fail('corrupt'));
-      await tx.query(`UPDATE native_sessions SET state='running',confirmed_seq=2,observation=$2,updated_at=clock_timestamp()
-        WHERE session_ref=$1`, [sessionRef, JSON.stringify(spawned.initialObservation)]);
+      await tx.query(`UPDATE native_sessions SET state=$3,confirmed_seq=2,observation=$2,updated_at=clock_timestamp()
+        WHERE session_ref=$1`, [sessionRef, JSON.stringify(initialObservation), initialState]);
       const { rows: [updated] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1', [sessionRef]);
       return queryOf(updated!);
     });
     const registered = executionQuerySchema.parse(confirmed.result);
-    if (registered.state !== 'running' || registered.statusKnowledge !== 'confirmed' || registered.stopRequested)
+    if (!['running', 'paused'].includes(registered.state) || registered.statusKnowledge !== 'confirmed' || registered.stopRequested)
       await spawned.dispose();
     // A process can exit between readiness and registration; the exit fact must win over `running`.
     if (spawned.exitFact) await settleExit(sessionRef, spawned.exitFact);
@@ -402,6 +448,9 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   async function read(identity: SpaceIdentity, activityId: string, requestId: string): Promise<ExecutionQuery | null> {
     await ensureReady();
     const activity = await options.activity(identity, activityId);
+    const before = await find(activityId, requestId);
+    if (before) await reconcilePendingCheckpoints(String(before.session_ref));
+    if (before) await reconcileLive(identity, activity, before);
     const row = await find(activityId, requestId);
     if (!row) return null;
     const query = queryOf(row);
@@ -414,11 +463,24 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   async function list(identity: SpaceIdentity, activityId: string): Promise<ExecutionQuery[]> {
     await ensureReady();
     const activity = await options.activity(identity, activityId);
+    const { rows: pending } = await storage.read('SELECT session_ref FROM native_sessions WHERE activity_id=$1', [activityId]);
+    for (const row of pending) {
+      await reconcilePendingCheckpoints(String(row.session_ref));
+      const current = await findRef(String(row.session_ref));
+      if (current) await reconcileLive(identity, activity, current);
+    }
     const { rows } = await storage.read('SELECT * FROM native_sessions WHERE activity_id=$1 ORDER BY created_at DESC LIMIT 16',
       [activityId]);
     return rows.filter(row => row.action).map(queryOf).filter(query =>
       query.scope.environmentId === identity.environmentId && query.scope.spaceId === identity.spaceId
       && query.scope.principalId === identity.principalId && query.scope.activityId === activity.activityId);
+  }
+
+  /** Checkpoint discovery is independent of both recent runs and each run's bounded projection. */
+  async function checkpointPage(identity: SpaceIdentity, activityId: string, cursor?: string) {
+    await ensureReady();
+    await options.activity(identity, activityId);
+    return readSessionCheckpointPage(storage, identity, activityId, cursor);
   }
 
   function verifyOperation(activity: LearningActivity, action: ExecutionAction, control: ExecutionControl) {
@@ -427,9 +489,19 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     if (!manifest.session) fail('missing');
     const declared = manifest.session;
     verifyPlannedExecution(activity, { key: action.execution.instance.key,
-      definitionDigest: action.execution.instance.definitionDigest, operationId: control.operationId, location: 'native' });
-    if (control.operationId !== declared.operation.operationId) fail('identity-conflict');
-    if (!acceptsState(declared.operation.parameters, control.parameters)) fail('invalid');
+      definitionDigest: action.execution.instance.definitionDigest, operationId: action.execution.operation.operationId, location: 'native' });
+    if (control.effect === 'input') {
+      if (control.operationId !== declared.operation.operationId) fail('identity-conflict');
+    } else {
+      const adapter = adapters.get(`${declared.adapterId}@${declared.adapterVersion}`);
+      if (!declared.controls?.includes(control.effect) || !adapter?.controls?.includes(control.effect)
+        || control.operationId !== control.effect) fail('invalid');
+      if (control.effect === 'checkpoint' && (!declared.checkpointVersion || declared.checkpointVersion !== adapter.checkpointVersion)) fail('invalid');
+    }
+    if (control.effect === 'input' || control.effect === 'step') {
+      if (!acceptsState(declared.operation.parameters, control.parameters)) fail('invalid');
+    } else if (!control.parameters || typeof control.parameters !== 'object' || Array.isArray(control.parameters)
+      || Object.keys(control.parameters).length) fail('invalid');
     const encoded = JSON.stringify(control.parameters);
     if (Buffer.byteLength(encoded, 'utf8') > action.execution.limits.inputBytes) fail('invalid');
   }
@@ -451,6 +523,13 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
 
   async function control(identity: SpaceIdentity, activityId: string, requestId: string,
     value: unknown): Promise<ExecutionQuery> {
+    if (closing) throw new StorageError('maintenance');
+    const attempt = applyControl(identity, activityId, requestId, value);
+    controlling.add(attempt);
+    try { return await attempt; } finally { controlling.delete(attempt); }
+  }
+  async function applyControl(identity: SpaceIdentity, activityId: string, requestId: string,
+    value: unknown): Promise<ExecutionQuery> {
     await ensureReady();
     const activity = await options.activity(identity, activityId);
     const input = executionControlSchema.parse(value);
@@ -463,17 +542,25 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       || scope.spaceId !== identity.spaceId || scope.principalId !== identity.principalId) fail('forbidden');
     verifyOperation(activity, action, input);
     await verifyPlacement(identity, activity, action);
-    const inputDigest = digest(input);
+    const inputDigest = canonicalDigest(input);
     const sessionRef = String(row.session_ref);
     const { rows: [previous] } = await storage.read('SELECT * FROM native_session_operations WHERE control_id=$1',
       [input.controlId]);
     if (previous) {
-      if (previous.input_digest !== inputDigest || previous.session_ref !== sessionRef) fail('identity-conflict');
+      if (![inputDigest, digest(input)].includes(String(previous.input_digest)) || previous.session_ref !== sessionRef) fail('identity-conflict');
       if (previous.status === 'applied') return queryOf((await findRef(sessionRef))!);
       if (previous.status === 'rejected') fail('invalid');
+      if (previous.checkpoint_pending) {
+        const observation = await checkpoints.complete(input.controlId);
+        return confirmObservation(sessionRef, input.controlId, observation.seq, observation.state, observation.at, observation.sessionState);
+      }
     }
+    if (activity.status !== 'open') fail('invalid');
+    const allowedState = input.effect === 'input' || input.effect === 'pause' ? 'running'
+      : input.effect === 'reset' ? row.state : 'paused';
     if (['succeeded', 'failed', 'cancelled'].includes(String(row.state)) || row.stop_requested
-      || row.status_knowledge !== 'confirmed' || row.state !== 'running') fail('invalid');
+      || !['running', 'paused'].includes(String(row.state)) || row.status_knowledge !== 'confirmed' || row.state !== allowedState) fail('invalid');
+    await options.authorizeComponent?.(identity, activity, action);
     const entry = live.get(sessionRef);
     if (!entry || entry.process.instanceId !== row.executor_instance_id) {
       await markUnknown(sessionRef, input.controlId, reasonOf('resource-unavailable',
@@ -488,26 +575,29 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
           await markUnknown(sessionRef, input.controlId, reasonOf('algorithm-error', '原输入的观察与声明结构不一致。'));
           throw new StorageError('unavailable');
         }
-        return confirmObservation(sessionRef, input.controlId, reconciled.seq, reconciled.state, reconciled.at);
+        if (input.effect === 'checkpoint') await captureCheckpoint(activity, row, input.controlId, reconciled);
+        return confirmObservation(sessionRef, input.controlId, reconciled.seq, reconciled.state, reconciled.at, reconciled.sessionState);
       }
     }
     if (Number(row.applied_seq) !== input.expectedSeq) fail('identity-conflict');
     const seq = Number(row.applied_seq) + 1;
     const reserved = await storage.request({ requestId: 'native-control:' + input.controlId,
       fingerprint: digest({ sessionRef, inputDigest, seq }) }, async tx => {
+      const { rows: [currentActivity] } = await tx.query('SELECT body FROM activities WHERE id=$1 FOR SHARE', [activityId]);
+      if ((currentActivity?.body as LearningActivity | undefined)?.status !== 'open') fail('invalid');
       const { rows: [current] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
       if (!current) fail('missing');
       if (String(current.install_generation) !== currentGeneration()
         || current.supervisor_epoch !== supervisorEpoch || current.executor_instance_id !== entry.process.instanceId) fail('forbidden');
       if (['succeeded', 'failed', 'cancelled'].includes(String(current.state)) || current.stop_requested
-        || current.status_knowledge !== 'confirmed' || current.state !== 'running') fail('invalid');
+        || !['running', 'paused'].includes(String(current.state)) || current.status_knowledge !== 'confirmed' || current.state !== allowedState) fail('invalid');
       if (Number(current.applied_seq) !== input.expectedSeq) fail('identity-conflict');
       const { rows: [clash] } = await tx.query(`SELECT control_id FROM native_session_operations
         WHERE session_ref=$1 AND seq=$2 AND status='dispatching'`, [sessionRef, seq]);
       if (clash) fail('identity-conflict');
       const inserted = await tx.query(`INSERT INTO native_session_operations(control_id,session_ref,seq,operation_id,
-        input_digest,parameters,status) VALUES($1,$2,$3,$4,$5,$6,'dispatching') ON CONFLICT(control_id) DO NOTHING RETURNING control_id`,
-        [input.controlId, sessionRef, seq, input.operationId, inputDigest, JSON.stringify(input.parameters)]);
+        input_digest,parameters,status,effect) VALUES($1,$2,$3,$4,$5,$6,'dispatching',$7) ON CONFLICT(control_id) DO NOTHING RETURNING control_id`,
+        [input.controlId, sessionRef, seq, input.operationId, inputDigest, JSON.stringify(input.parameters), input.effect]);
       if (!inserted.rowCount) {
         const { rows: [known] } = await tx.query('SELECT * FROM native_session_operations WHERE control_id=$1',
           [input.controlId]);
@@ -522,7 +612,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     await assertGeneration((await findRef(sessionRef))!);
     let observation;
     try {
-      observation = await entry.process.input(input.controlId, booked.seq, input.parameters);
+      observation = await entry.process.control(input.effect, input.controlId, booked.seq, input.parameters);
     } catch (error) {
       const code = (error as { code?: string })?.code;
       if (code === 'algorithm-error') {
@@ -544,11 +634,56 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         '本机会话返回的观察与声明结构或顺序不一致。'));
       throw new StorageError('unavailable');
     }
-    return confirmObservation(sessionRef, input.controlId, observation.seq, observation.state, observation.at);
+    if (input.effect === 'checkpoint') {
+      try { await captureCheckpoint(activity, row, input.controlId, observation); }
+      catch (error) {
+        await markUnknown(sessionRef, input.controlId, reasonOf('resource-unavailable',
+          '执行器已返回检查点，但资源保存尚未确认；保留原操作身份等待核实。'));
+        throw error;
+      }
+    }
+    return confirmObservation(sessionRef, input.controlId, observation.seq, observation.state, observation.at, observation.sessionState);
+  }
+
+  async function captureCheckpoint(activity: LearningActivity, row: Record<string, unknown>, controlId: string, observation: NativeObservation) {
+    const action = executionActionSchema.parse(row.action), { binding, manifest } = bindingFor(activity, action);
+    if (manifest.formatVersion !== 1 || !manifest.session?.checkpointVersion || observation.checkpoint === undefined) fail('invalid');
+    await checkpoints.capture(row, controlId, observation, binding.configuration, manifest.session.checkpointVersion);
+  }
+
+  async function reconcilePendingCheckpoints(sessionRef: string) {
+    const { rows } = await storage.read(`SELECT control_id FROM native_session_operations
+      WHERE session_ref=$1 AND checkpoint_pending IS NOT NULL AND status IN ('dispatching','unknown') ORDER BY seq`, [sessionRef]);
+    for (const row of rows) {
+      try {
+        const observation = await checkpoints.complete(String(row.control_id));
+        await confirmObservation(sessionRef, String(row.control_id), observation.seq, observation.state, observation.at, observation.sessionState);
+      } catch { /* Saved operation and snapshot remain pending; no ready checkpoint is invented. */ }
+    }
+  }
+
+  async function reconcileLive(identity: SpaceIdentity, activity: LearningActivity, row: Record<string, unknown>) {
+    const entry = live.get(String(row.session_ref));
+    if (!entry || entry.process.instanceId !== row.executor_instance_id || ['succeeded', 'failed', 'cancelled'].includes(String(row.state))) return;
+    const { rows } = await storage.read(`SELECT * FROM native_session_operations WHERE session_ref=$1
+      AND status IN ('dispatching','unknown') ORDER BY seq`, [row.session_ref]);
+    try {
+      for (const operation of rows) {
+        const observed = await entry.process.reconcile(String(operation.control_id));
+        if (!observed) continue; // Never re-send an operation whose execution is unknown.
+        if (!acceptsState(entry.result, observed.state) || observed.seq !== Number(operation.seq)) fail('corrupt');
+        if (operation.effect === 'checkpoint') await captureCheckpoint(activity, row, String(operation.control_id), observed);
+        await confirmObservation(String(row.session_ref), String(operation.control_id), observed.seq, observed.state, observed.at, observed.sessionState);
+      }
+      await entry.process.snapshot();
+    } catch {
+      await markUnknown(String(row.session_ref), randomUUID(), reasonOf('resource-unavailable',
+        '原会话心跳未能确认，已保留最后可信观察；不能据此认定已停止或继续推进。'));
+    }
   }
 
   async function confirmObservation(sessionRef: string, controlId: string, seq: number,
-    state: unknown, at: string): Promise<ExecutionQuery> {
+    state: unknown, at: string, sessionState?: 'running' | 'paused'): Promise<ExecutionQuery> {
     const receipt = await storage.request({ requestId: 'native-observe:' + controlId,
       fingerprint: digest({ sessionRef, controlId, seq, state, at }) }, async tx => {
       const { rows: [current] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1 FOR UPDATE', [sessionRef]);
@@ -560,7 +695,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       if (typeof operation.input_digest !== 'string' || operation.input_digest.length !== 64) fail('corrupt');
       const observations = Array.isArray(current.observations) ? current.observations : [];
       const entry: ExecutionObservation = { seq, controlId, state, at };
-      const next = [...observations.filter((item: ExecutionObservation) => item.controlId !== controlId), entry].slice(-64);
+      const next = [...observations.filter((item: ExecutionObservation) => item.controlId !== controlId), entry]
+        .sort((left: ExecutionObservation, right: ExecutionObservation) => left.seq - right.seq).slice(-64);
       await tx.query(`UPDATE native_session_operations SET status='applied',observation=$2,updated_at=clock_timestamp()
         WHERE control_id=$1`, [controlId, JSON.stringify(entry)]);
       if (['succeeded', 'failed', 'cancelled'].includes(String(current.state)) || current.stop_requested) return queryOf(current);
@@ -570,9 +706,16 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
         const { rows: [fenced] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1', [sessionRef]);
         return queryOf(fenced!);
       }
+      const terminal = ['succeeded', 'failed', 'cancelled'].includes(String(current.state));
+      const supervised = live.get(sessionRef)?.process;
+      const alive = !terminal && !current.stop_requested && String(current.install_generation) === currentGeneration() && current.supervisor_epoch === supervisorEpoch
+        && !!supervised && supervised.instanceId === current.executor_instance_id && !supervised.exitFact;
+      const advances = seq > Number(current.applied_seq);
       await tx.query(`UPDATE native_sessions SET applied_seq=$2,last_control_id=$3,observation=$4,observations=$5,
-        status_knowledge='confirmed',confirmed_seq=confirmed_seq+1,updated_at=clock_timestamp() WHERE session_ref=$1`,
-        [sessionRef, seq, controlId, JSON.stringify(state), JSON.stringify(next)]);
+        state=$6,status_knowledge=$7,reason=$8,confirmed_seq=confirmed_seq+1,updated_at=clock_timestamp() WHERE session_ref=$1`,
+        [sessionRef, advances ? seq : Number(current.applied_seq), advances ? controlId : current.last_control_id,
+          JSON.stringify(advances ? state : current.observation), JSON.stringify(next), alive ? sessionState ?? current.state : current.state,
+          alive ? 'confirmed' : current.status_knowledge, alive ? null : current.reason === null ? null : JSON.stringify(current.reason)]);
       const { rows: [updated] } = await tx.query('SELECT * FROM native_sessions WHERE session_ref=$1', [sessionRef]);
       return queryOf(updated!);
     });
@@ -735,15 +878,39 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   }
 
   async function shutdown() {
-    await Promise.allSettled([...live.values()].map(entry => entry.process.dispose()));
+    closing = true;
+    await Promise.allSettled([...starting.values(), ...controlling]);
+    const processes = [...live.values()].map(entry => entry.process);
+    await Promise.allSettled(processes.map(process => process.dispose()));
+    if (processes.some(process => !process.exitFact?.confirmed)) throw new StorageError('unavailable');
     live.clear();
     await Promise.allSettled([...settling]);
+    const { rows: unresolved } = await storage.read(`SELECT session_ref FROM native_sessions
+      WHERE supervisor_epoch=$1 AND state IN ('queued','running','paused') AND status_knowledge='unknown'`, [supervisorEpoch]);
+    if (unresolved.length) throw new StorageError('unavailable');
+  }
+  async function closeActivity(identity: SpaceIdentity, activityId: string) {
+    const { rows } = await storage.read(`SELECT request_id,session_ref FROM native_sessions
+      WHERE activity_id=$1 AND state NOT IN ('succeeded','failed','cancelled')`, [activityId]);
+    for (const row of rows) await stop(identity, activityId, String(row.request_id), {
+      stopId: String(row.session_ref), reason: '活动已关闭，按组件生命周期停止会话。' });
+  }
+  async function controlReceipt(identity: SpaceIdentity, activityId: string, requestId: string, controlId: string) {
+    z.uuid().parse(controlId);
+    const query = await read(identity, activityId, requestId);
+    if (!query) return null;
+    const { rows: [operation] } = await storage.read('SELECT * FROM native_session_operations WHERE control_id=$1 AND session_ref=$2',
+      [controlId, query.executionRef]);
+    return operation ? executionControlReceiptSchema.parse({ controlId, requestId, executionRef: query.executionRef,
+      inputDigest: operation.input_digest, effect: operation.effect, status: operation.status, seq: Number(operation.seq), query }) : null;
   }
   process.once('exit', () => { for (const entry of live.values()) entry.process.terminateNow() });
 
   return {
     ensureReady,
-    accept, read, list, control, stop, owns, shutdown, reclaim,
+    closeDispatch() { closing = true; },
+    async resume() { await ensureReady(); closing = false; },
+    accept, read, list, control, stop, owns, shutdown, reclaim, closeActivity, controlReceipt, checkpointPage,
     async validate() { await validateNativeSessions(storage); },
     /** What the Linux restricted entry can actually enforce; `null` means it was not measured. */
     linuxEntryIsolation: linuxFact,
@@ -753,6 +920,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
 
 /** Recovery validation: a stored session still names its own activity, adapter and applied position. */
 export async function validateNativeSessions(storage: OwnedStorage) {
+  await createSessionCheckpoints(storage).validate();
   const { rows } = await storage.read('SELECT * FROM native_sessions');
   for (const row of rows) {
     const query = queryOf(row), action = executionActionSchema.parse(row.action);
@@ -776,6 +944,9 @@ export async function validateNativeSessions(storage: OwnedStorage) {
   }
   const { rows: operations } = await storage.read('SELECT * FROM native_session_operations');
   for (const row of operations) {
+    const input = executionControlSchema.parse({ controlId: row.control_id, operationId: row.operation_id,
+      effect: row.effect, expectedSeq: Number(row.seq) - 1, parameters: row.parameters });
+    if (![digest(input), canonicalDigest(input)].includes(String(row.input_digest))) throw new StorageError('corrupt');
     const { rows: [session] } = await storage.read('SELECT applied_seq,last_control_id,state,status_knowledge,stop_requested FROM native_sessions WHERE session_ref=$1',
       [row.session_ref]);
     if (!session) throw new StorageError('corrupt');

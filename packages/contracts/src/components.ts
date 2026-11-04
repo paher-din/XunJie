@@ -61,6 +61,10 @@ const componentSessionSchema = z.object({
   /** Fixed parameters the session is created with; the input operation has its own shape. */
   parameters: stateShapeSchema,
   operation: z.object({ operationId: identifier, parameters: stateShapeSchema, result: stateShapeSchema }).strict(),
+  controls: z.array(z.enum(['pause', 'resume', 'step', 'reset', 'checkpoint'])).max(5).optional(),
+  checkpointVersion: z.number().int().positive().optional(),
+  lifecycle: z.object({ acrossViews: z.literal(true), pageClose: z.literal('continue'),
+    activityClose: z.literal('stop'), reconnect: z.literal('query') }).strict().optional(),
   budgets: z.object({
     operationTimeoutMs: z.number().int().min(50).max(30000),
     idleMs: z.number().int().min(1000).max(3600000),
@@ -91,7 +95,11 @@ export const componentManifestSchema = z.object({
     'Algorithm resource media type must be WebAssembly')
   .refine(value => !value.session || (!value.algorithm && !value.operations), 'A native session component carries no browser algorithm')
   .refine(value => !value.session || value.requiredCapabilities.includes('execution.submit'),
-    'A native session component requires the execution capability');
+    'A native session component requires the execution capability')
+  .refine(value => !value.session?.controls || new Set(value.session.controls).size === value.session.controls.length,
+    'Session controls must be unique')
+  .refine(value => !value.session || !!value.session.checkpointVersion === !!value.session.controls?.includes('checkpoint'),
+    'Checkpoint support requires an explicit format version');
 export type ComponentManifest = z.infer<typeof componentManifestSchema>;
 export const componentCapabilities = ['workspace.read', 'workspace.change', 'material.highlight'] as const;
 export type ComponentCapability = typeof componentCapabilities[number];

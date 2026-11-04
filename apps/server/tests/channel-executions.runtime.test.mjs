@@ -32,6 +32,9 @@ test('maintenance pause rejects unconfirmed local cleanup and retains the instan
 test('an unconfirmed ordinary stop reports a valid unknown execution and eventually reclaims its real process', { timeout: 120000 },
   t => approvedLocalProcess(t, 'ordinary-stop'));
 
+test('approved channel checkpoints survive a lost report and restore real state in a distinct executor', { timeout: 120000 },
+  t => approvedLocalProcess(t, 'checkpoint'));
+
 async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
   const fixture = await nativeFixture(), opened = [], children = [];
   let worker, clients;
@@ -44,8 +47,8 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       return storage;
     }
     const school = await owner(spaceMigrations), data = await owner(learningMigrations), spaces = createSpaces(school);
-    const identity = await spaces.createMember({ requestId: randomUUID(), loginName: 'facade-student', password: 'facade-password-123456' });
-    const login = await spaces.login('facade-student', 'facade-password-123456');
+    const identity = await spaces.createMember({ requestId: randomUUID(), loginName: 'facade-student', password: 'synthetic-facade-password' });
+    const login = await spaces.login('facade-student', 'synthetic-facade-password');
     const connectionId = randomUUID(), verifier = randomBytes(48).toString('base64url');
     await spaces.beginConnection({ requestId: connectionId, clientId: randomUUID(), challenge: createHash('sha256').update(verifier).digest('base64url') });
     await spaces.approveConnection(login.token, connectionId);
@@ -69,9 +72,16 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
     const channel = createNativeChannel(data, { authenticate: spaces.authenticateConnection,
       authorizeConnection: spaces.authorizeConnection, authorize });
     await channel.register(grant.token, node);
+    let droppedCheckpoint = false;
     worker = createNativeChannelWorker({ root: join(fixture.root, 'device'), node, native,
-      call: (operation, input) => operation === 'cleanup' ? channel.cleanup(input) : channel[operation](grant.token, input) });
-    const { manifest } = await accumulatorPackage(), declared = manifest.session, definitionDigest = 'a'.repeat(64);
+      call: async (operation, input) => {
+        const reply = await (operation === 'cleanup' ? channel.cleanup(input) : channel[operation](grant.token, input));
+        if (cleanupBoundary === 'checkpoint' && operation === 'report' && input.result?.checkpoint && !droppedCheckpoint) {
+          droppedCheckpoint = true; throw new Error('checkpoint report accepted; reply lost');
+        }
+        return reply;
+      } });
+    const { manifest } = await accumulatorPackage({ version: cleanupBoundary === 'checkpoint' ? 2 : 1 }), declared = manifest.session, definitionDigest = 'a'.repeat(64);
     const configuration = { title: '学校网页获准本机会话' };
     const plan = { planId: 'local-accumulator', planVersion: 1, planDigest: '0'.repeat(64),
       components: [{ key: 'accumulator', definitionDigest, configurationDigest: canonicalDigest(configuration), operations: ['advance'] }],
@@ -129,7 +139,7 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
     const { rows: [submitted] } = await data.read('SELECT command FROM native_channel_commands WHERE command_id=$1', [requestId]);
     assert.deepEqual(submitted.command.payload, { action, activity, execution: accepted });
     let last = running;
-    for (const [index, value] of [1, 2, 2].entries()) {
+    for (const [index, value] of (cleanupBoundary === 'checkpoint' ? [1, 2] : [1, 2, 2]).entries()) {
       const control = { controlId: randomUUID(), operationId: 'advance', effect: 'input', expectedSeq: index, parameters: { value } };
       await executionOwner.control(identity, activityId, requestId, control);
       await worker.tick();
@@ -142,6 +152,80 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       assert.deepEqual(await executionOwner.control(identity, activityId, requestId, control), last);
       await worker.tick();
       assert.deepEqual(await executionOwner.read(identity, activityId, requestId), last);
+    }
+    if (cleanupBoundary === 'checkpoint') {
+      const apply = async (query, effect, parameters = {}) => {
+        const input = { controlId: randomUUID(), operationId: effect === 'input' ? 'advance' : effect,
+          effect, expectedSeq: query.session.appliedSeq, parameters };
+        await executionOwner.control(identity, activityId, query.requestId, input);
+        if (effect === 'checkpoint' && !droppedCheckpoint) await assert.rejects(worker.tick(), /reply lost/);
+        await worker.tick();
+        const updated = await executionOwner.read(identity, activityId, query.requestId);
+        const receipt = await executionOwner.controlReceipt(identity, activityId, query.requestId, input.controlId);
+        assert.equal(receipt.status, 'applied');
+        assert.equal(receipt.inputDigest, canonicalDigest(input));
+        assert.deepEqual(await executionOwner.control(identity, activityId, query.requestId, input), updated);
+        await worker.tick();
+        return updated;
+      };
+      last = await apply(last, 'pause');
+      assert.equal(last.state, 'paused');
+      const saved = await apply(last, 'checkpoint');
+      const checkpoint = saved.session.checkpoints[0];
+      assert.ok(checkpoint?.sha256);
+      assert.equal(checkpoint.sessionRef, accepted.executionRef);
+      assert.equal(checkpoint.appliedSeq, 4);
+      assert.equal(children.length, 1);
+      assert.equal((await executionOwner.checkpoints(identity, activityId)).items[0].checkpointId, checkpoint.checkpointId);
+      const wrongCheckpoint = actionOf();
+      wrongCheckpoint.execution.resumeFromCheckpoint = { checkpointId: checkpoint.checkpointId,
+        sessionRef: checkpoint.sessionRef, sha256: '0'.repeat(64) };
+      await assert.rejects(executionOwner.accept(identity, activityId, { action: wrongCheckpoint }),
+        error => error.code === 'identity-conflict');
+      assert.equal(children.length, 1, 'invalid checkpoint input must not create an executor');
+      const baseline = await apply(saved, 'step', { value: 2 });
+      assert.deepEqual(baseline.session.observation, { value: 1, total: 5, applied: 3 });
+      await executionOwner.stop(identity, activityId, requestId, { stopId: randomUUID(), reason: 'restore boundary' });
+      await worker.tick();
+      const terminal = await executionOwner.read(identity, activityId, requestId);
+      assert.equal(terminal.state, 'cancelled');
+      const restoredAction = actionOf();
+      restoredAction.execution.resumeFromCheckpoint = { checkpointId: checkpoint.checkpointId,
+        sessionRef: checkpoint.sessionRef, sha256: checkpoint.sha256 };
+      const availableNodes = channel.nodes;
+      t.mock.method(channel, 'nodes', async who => [
+        { ...node, connectionId: randomUUID(), runtime: { ...node.runtime, arch: 'incompatible-architecture' } },
+        ...await availableNodes(who),
+      ]);
+      const begun = await executionOwner.accept(identity, activityId, { action: restoredAction });
+      assert.equal(begun.session.nodeId, node.nodeId, 'restore must select a compatible available device');
+      channel.nodes.mock.restore();
+      await worker.tick();
+      const restored = await executionOwner.read(identity, activityId, restoredAction.requestId);
+      assert.equal(restored.state, 'paused');
+      assert.deepEqual(restored.session.observation, { value: 3, total: 3, applied: 2 });
+      assert.notEqual(restored.executionRef, saved.executionRef);
+      assert.notEqual(restored.session.executorInstanceId, saved.session.executorInstanceId);
+      assert.equal(restored.session.restoredFrom.checkpointId, checkpoint.checkpointId);
+      const next = await apply(restored, 'step', { value: 2 });
+      assert.deepEqual(next.session.observation, baseline.session.observation);
+      assert.equal(children.length, 2);
+      assert.notEqual(children[0].pid, children[1].pid);
+      assert.equal((await executionOwner.read(identity, activityId, requestId)).state, terminal.state);
+      await executionOwner.stop(identity, activityId, restoredAction.requestId, { stopId: randomUUID(), reason: '' });
+      await worker.tick();
+      await validateChannelExecutions(data);
+      const resourceRead = t.mock.method(data, 'readResource', async () => { throw new StorageError('corrupt'); });
+      assert.equal((await executionOwner.read(identity, activityId, requestId)).state, 'cancelled',
+        'a damaged historical checkpoint must not block ordinary execution facts');
+      assert.equal((await executionOwner.stop(identity, activityId, requestId,
+        { stopId: randomUUID(), reason: 'historical checkpoint unavailable' })).state, 'cancelled');
+      await assert.rejects(executionOwner.accept(identity, activityId, {
+        action: { ...restoredAction, requestId: randomUUID() },
+      }), { code: 'corrupt' });
+      assert.equal(children.length, 2, 'damaged checkpoint bytes must still refuse a new restored executor');
+      resourceRead.mock.restore();
+      return;
     }
     assert.deepEqual(last.session.observation, { value: 1, total: 5, applied: 3 });
     assert.equal(children.length, 1);
@@ -276,8 +360,8 @@ test('school facade dispatches a local ready device without a remote plan and pr
       return storage;
     }
     const school = await owner(spaceMigrations), data = await owner(learningMigrations), spaces = createSpaces(school);
-    const identity = await spaces.createMember({ requestId: randomUUID(), loginName: 'facade-student', password: 'facade-password-123456' });
-    const login = await spaces.login('facade-student', 'facade-password-123456');
+    const identity = await spaces.createMember({ requestId: randomUUID(), loginName: 'facade-student', password: 'synthetic-facade-password' });
+    const login = await spaces.login('facade-student', 'synthetic-facade-password');
     const connectionId = randomUUID(), verifier = randomBytes(48).toString('base64url');
     await spaces.beginConnection({ requestId: connectionId, clientId: randomUUID(), challenge: createHash('sha256').update(verifier).digest('base64url') });
     await spaces.approveConnection(login.token, connectionId);
@@ -294,7 +378,7 @@ test('school facade dispatches a local ready device without a remote plan and pr
       authorizeConnection: spaces.authorizeConnection, authorize });
     await channel.register(grant.token, node);
     await channel.heartbeat(grant.token, node);
-    const { manifest } = await accumulatorPackage(), declared = manifest.session, definitionDigest = 'a'.repeat(64);
+    const { manifest } = await accumulatorPackage({ version: 1 }), declared = manifest.session, definitionDigest = 'a'.repeat(64);
     const plan = { planId: 'local-accumulator', planVersion: 1, planDigest: '0'.repeat(64),
       components: [{ key: 'accumulator', definitionDigest, configurationDigest: canonicalDigest({}), operations: ['advance'] }],
       capabilities: ['native-session'], resources: { browser: null, native: { memoryMiB: declared.budgets.memoryMiB,

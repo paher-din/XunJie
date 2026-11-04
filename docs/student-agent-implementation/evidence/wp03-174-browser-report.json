@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-04",
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "node": "v24.21.0",
+  "browser": "installed Chrome",
+  "headless": false,
+  "status": "passed",
+  "cases": [
+    "legacy component remains usable without unsupported controls; before view captured",
+    "pause and one real step retain the same executor and paused mode",
+    "tool switch and refresh protect explicit input and only query the original session",
+    "a lost checkpoint response survives IndexedDB reload and is reconciled without another checkpoint control",
+    "forced process exit restores a new related executor; its next step equals the real baseline without replay",
+    "reset and resume operate on the current process rather than replacing it",
+    "existing workspace controls retain keyboard focus and light/dark/narrow desktop presentation",
+    "maintenance records the real exit before closing writes; resumed gates permit an explicit checkpoint recovery in the new generation",
+    "actual stop and ordinary owner restart validate checkpoint and recovery retention"
+  ],
+  "timings": [
+    {
+      "name": "legacy component remains usable without unsupported controls; before view captured",
+      "elapsedMs": 17128
+    },
+    {
+      "name": "pause and one real step retain the same executor and paused mode",
+      "elapsedMs": 1623
+    },
+    {
+      "name": "tool switch and refresh protect explicit input and only query the original session",
+      "elapsedMs": 960
+    },
+    {
+      "name": "a lost checkpoint response survives IndexedDB reload and is reconciled without another checkpoint control",
+      "elapsedMs": 1044
+    },
+    {
+      "name": "forced process exit restores a new related executor; its next step equals the real baseline without replay",
+      "elapsedMs": 4028
+    },
+    {
+      "name": "reset and resume operate on the current process rather than replacing it",
+      "elapsedMs": 709
+    },
+    {
+      "name": "existing workspace controls retain keyboard focus and light/dark/narrow desktop presentation",
+      "elapsedMs": 514
+    },
+    {
+      "name": "maintenance records the real exit before closing writes; resumed gates permit an explicit checkpoint recovery in the new generation",
+      "elapsedMs": 1255
+    },
+    {
+      "name": "actual stop and ordinary owner restart validate checkpoint and recovery retention",
+      "elapsedMs": 5791
+    }
+  ],
+  "isolation": "development native resources; no AppContainer package claim",
+  "mac": "deferred by user",
+  "teaching": "not evaluated",
+  "receiver": "no model calls",
+  "browserVersion": "156.0.8078.80",
+  "totalElapsedMs": 33671,
+  "nodeHostRssBytes": 152334336,
+  "spawnedExecutors": 4,
+  "measurementNote": "Case timings include setup/validation; host RSS excludes PostgreSQL, Chrome and executor peaks."
+}

@@ -22,3 +22,8 @@
 .native-session-history li { display: flex; gap: 8px; border: 1px solid var(--line); border-radius: 6px;
   padding: 4px 8px; font-size: 12px; color: var(--muted); }
 .native-session-history li span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+.native-session-recovery { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.native-session-recovery label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.native-session-recovery select { max-width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line-strong);
+  border-radius: 8px; background: var(--canvas); color: var(--ink); font: inherit; }
+.native-session details { margin-top: 12px; font-size: 12px; }

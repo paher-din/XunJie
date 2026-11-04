@@ -136,6 +136,7 @@ export async function createProductLearningApplication(context: {
       let dispatchClosing: Promise<void> | undefined;
       function closeDispatch() {
         nativeChannel?.closeDispatch();
+        learning.executions.closeNativeDispatch();
         learning.intents.closeDispatch();
         // Both coordinator actions join one storage gate. A second queued close could occupy
         // the bound connection while channel drain opens another connection to a changed endpoint.
@@ -148,6 +149,8 @@ export async function createProductLearningApplication(context: {
           try {
             await closeDispatch();
             await nativeChannel?.drain();
+            learning.executions.closeNativeDispatch();
+            await learning.executions.shutdown();
             await participant.closeWrites();
           } finally { dispatchClosing = undefined; }
         },

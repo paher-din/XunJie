@@ -39,7 +39,7 @@ test('native sessions keep real child state, ordered inputs and a separate owner
         headers: { 'content-type': 'application/json', ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
       return { status: response.status, value: await response.json() };
     };
-    const published = await accumulatorPackage();
+    const published = await accumulatorPackage({ version: 1 });
     const imported = await api('manage/component-import', { requestId: randomUUID(), ...published }, admin);
     assert.equal(imported.status, 200, JSON.stringify(imported.value));
     const { manifest } = published, definition = imported.value;
@@ -171,7 +171,7 @@ test('owner fences changed generations, recovers once per generation and reclaim
       const value = Reflect.get(target, key);
       return typeof value === 'function' ? value.bind(target) : value;
     } });
-    const { manifest: original } = await accumulatorPackage();
+    const { manifest: original } = await accumulatorPackage({ version: 1 });
     const manifest = structuredClone(original), declared = manifest.session;
     const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
     const activityId = randomUUID();

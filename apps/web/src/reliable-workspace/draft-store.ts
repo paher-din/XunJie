@@ -20,7 +20,7 @@ let opening: Promise<IDBDatabase> | undefined
 export function openWorkspaceDatabase(): Promise<IDBDatabase> {
   if (!opening) {
     opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('xunjie-reliable-works-v1', 6)
+      const request = indexedDB.open('xunjie-reliable-works-v1', 7)
       request.onupgradeneeded = () => {
         const db = request.result
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'key' })
@@ -37,6 +37,7 @@ export function openWorkspaceDatabase(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains('executionResults')) db.createObjectStore('executionResults', { keyPath: ['scope', 'executionRef'] })
         if (!db.objectStoreNames.contains('executionSync')) db.createObjectStore('executionSync', { keyPath: ['scope', 'requestId'] })
         if (!db.objectStoreNames.contains('nativeSessionJournal')) db.createObjectStore('nativeSessionJournal', { keyPath: 'scope' })
+        if (!db.objectStoreNames.contains('nativeSessionRequests')) db.createObjectStore('nativeSessionRequests', { keyPath: 'key' }).createIndex('scope', 'scope')
       }
       request.onsuccess = () => {
         const db = request.result

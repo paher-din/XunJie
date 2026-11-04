@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fs from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { linuxSessionEntry, planSeatbelt, seatbeltLauncherPath, seatbeltProfileVersion, SupervisedSession } from '@xunjie/learning-space';
+import { linuxSessionEntry, planSeatbelt, productNativeAdapters, seatbeltLauncherPath, seatbeltProfileVersion, SupervisedSession } from '@xunjie/learning-space';
 
 function mockLinuxConfig(t, text, metadata = {}) {
   t.mock.method(fs, 'openSync', (path, flags) => {
@@ -181,3 +181,108 @@ test('the process-group baseline stays available for hosts that opt out of the s
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('the real v2 adapter stays confined through controls, checkpoints and group reaping', darwinOnly, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-native-v2-isolation-'));
+  const adapter = productNativeAdapters.find(item => item.adapterVersion === 2);
+  assert.ok(adapter);
+  const session = await SupervisedSession.create({ adapter, limits: { ...limits, memoryMiB: 64 },
+    sessionRoot: root, nodePath: process.execPath });
+  try {
+    assert.equal(session.isolation.kind, 'seatbelt');
+    assert.equal(session.isolation.network, 'denied');
+    assert.equal(session.isolation.writes, 'session-directory');
+    assert.equal(session.isolation.exec, 'fixed-node-only');
+    assert.equal(session.isolation.memory, 'heap-cap-and-rss-watchdog');
+    assert.equal(session.isolation.processes, 'supervisor-group-confirmed');
+    assert.equal(session.isolation.supervisorDeath, 'session-watchdog');
+    const paused = await session.control('pause', randomUUID(), 1, {});
+    assert.equal(paused.sessionState, 'paused');
+    const step = await session.control('step', randomUUID(), 2, { value: 2 });
+    assert.deepEqual(step.state, { value: 2, total: 2, applied: 1 });
+    const checkpoint = await session.control('checkpoint', randomUUID(), 3, {});
+    assert.deepEqual(checkpoint.checkpoint, { formatVersion: 1, value: 2, total: 2, applied: 1, mode: 'paused' });
+    assert.equal(await session.stop(4000), true);
+    assert.equal((await session.settled(4000))?.confirmed, true);
+    assert.equal(session.exitFact?.requested, true);
+  } finally {
+    await session.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the real v2 adapter still ends on a real idle budget under seatbelt', darwinOnly, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-native-v2-idle-'));
+  const adapter = productNativeAdapters.find(item => item.adapterVersion === 2);
+  assert.ok(adapter);
+  const session = await SupervisedSession.create({ adapter, limits: { ...limits, memoryMiB: 64, idleMs: 1_000 },
+    sessionRoot: root, nodePath: process.execPath });
+  try {
+    assert.equal(session.isolation.kind, 'seatbelt');
+    const deadline = Date.now() + 12_000;
+    while (!session.exitFact && Date.now() < deadline) {
+      await session.snapshot().catch(() => {});
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(session.exitFact?.expired, 'idle');
+    assert.equal(session.exitFact?.confirmed, true);
+  } finally {
+    await session.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the Linux procfs v2 adapter restores persisted state into a new real process identity',
+  { skip: process.platform !== 'linux' || process.arch !== 'x64' ? 'requires Linux x64 procfs' : false }, async () => {
+    const root = await mkdtemp(join(tmpdir(), 'xj-linux-proc-v2-'));
+    const adapter = productNativeAdapters.find(item => item.adapterId === 'linux-proc-accumulator' && item.adapterVersion === 2);
+    assert.ok(adapter);
+    // Exercise the real adapter protocol here; systemd enforcement is accepted by the school-node probe.
+    let first, restored;
+    try {
+      first = await SupervisedSession.create({ adapter, limits: { ...limits, memoryMiB: 64 }, sessionRoot: root });
+      const oldPid = first.initialObservation.pid;
+      const assertLiveIdentity = async (state, pid) => {
+        const status = await readFile(`/proc/${pid}/status`, 'utf8');
+        assert.equal(state.pid, Number(status.match(/^Pid:\s+(\d+)/m)?.[1]));
+        assert.equal(state.threads, Number(status.match(/^Threads:\s+(\d+)/m)?.[1]));
+        assert.ok(state.threads > 0);
+      };
+      await assertLiveIdentity(first.initialObservation, oldPid);
+      await first.input(randomUUID(), 1, { value: 1 });
+      await first.control('pause', randomUUID(), 2, {});
+      const stepId = randomUUID();
+      const stepped = await first.control('step', stepId, 3, { value: 2 });
+      assert.deepEqual(await first.control('step', stepId, 3, { value: 2 }), stepped);
+      await assert.rejects(first.input(randomUUID(), 4, { value: 1 }), /当前状态/);
+      const captured = await first.control('checkpoint', randomUUID(), 4, {});
+      await assertLiveIdentity(captured.state, oldPid);
+      assert.deepEqual(captured.checkpoint, { formatVersion: 1, value: 3, total: 3, applied: 2, mode: 'paused' });
+      const checkpointPath = join(root, 'checkpoint.json');
+      await writeFile(checkpointPath, JSON.stringify(captured.checkpoint));
+      const persisted = JSON.parse(await readFile(checkpointPath, 'utf8'));
+      const baseline = await first.control('step', randomUUID(), 5, { value: 2 });
+      restored = await SupervisedSession.create({ adapter, limits: { ...limits, memoryMiB: 64 }, sessionRoot: root });
+      const newPid = restored.initialObservation.pid;
+      assert.notEqual(newPid, oldPid); // The original is still alive, so its PID cannot be reused.
+      assert.notEqual(restored.instanceId, first.instanceId);
+      await assert.rejects(restored.restore({ ...persisted, pid: oldPid }), /不兼容/);
+      const recovered = await restored.restore(persisted);
+      assert.equal(recovered.sessionState, 'paused');
+      assert.deepEqual(recovered.state, { value: 3, total: 3, applied: 2, pid: newPid, threads: recovered.state.threads });
+      await assertLiveIdentity(recovered.state, newPid);
+      const next = await restored.control('step', randomUUID(), 1, { value: 2 });
+      for (const key of ['value', 'total', 'applied']) assert.equal(next.state[key], baseline.state[key]);
+      await assertLiveIdentity(next.state, newPid);
+      assert.equal((await restored.control('resume', randomUUID(), 2, {})).sessionState, 'running');
+      const reset = await restored.control('reset', randomUUID(), 3, {});
+      assert.deepEqual(reset.state, { value: 0, total: 0, applied: 0, pid: newPid, threads: reset.state.threads });
+      await assertLiveIdentity(reset.state, newPid);
+      assert.equal(await first.stop(4000), true);
+      assert.equal(await restored.stop(4000), true);
+    } finally {
+      await first?.dispose();
+      await restored?.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
+  });

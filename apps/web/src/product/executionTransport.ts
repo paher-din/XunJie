@@ -1,4 +1,4 @@
-import { executionAcceptanceSchema, executionQuerySchema, type ExecutionAction, type ExecutionAcceptance,
+import { executionAcceptanceSchema, executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, type CheckpointPage, type ExecutionControlReceipt, type ExecutionAction, type ExecutionAcceptance,
   type ExecutionControl, type ExecutionQuery } from '@xunjie/contracts/execution'
 import { z } from 'zod'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
@@ -30,9 +30,11 @@ export function createExecutionTransport(activity: LearningActivity, spaceKey: s
 
 export interface SessionTransport {
   list(): Promise<ExecutionQuery[]>
+  checkpoints?(cursor?: string): Promise<CheckpointPage>
   create(action: ExecutionAction): Promise<ExecutionQuery>
   read(requestId: string): Promise<ExecutionQuery | null>
   control(requestId: string, control: ExecutionControl): Promise<ExecutionQuery>
+  controlReceipt?(requestId: string, controlId: string): Promise<ExecutionControlReceipt | null>
   stop(requestId: string, stopId: string, reason: string): Promise<ExecutionQuery>
 }
 
@@ -42,6 +44,7 @@ export function createSessionTransport(activity: LearningActivity, spaceKey: str
   const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
   return {
     list: async () => z.array(executionQuerySchema).parse(await request('/sessions')),
+    checkpoints: async (cursor?: string) => checkpointPageSchema.parse(await request('/checkpoints' + (cursor ? '/' + cursor : ''))),
     create: async (action: ExecutionAction) => executionQuerySchema.parse(await request('', { action })),
     read: async (requestId: string) => {
       const value = await request('/' + requestId)
@@ -49,6 +52,10 @@ export function createSessionTransport(activity: LearningActivity, spaceKey: str
     },
     control: async (requestId: string, control: ExecutionControl) => executionQuerySchema.parse(
       await request('/' + requestId + '/control', control)),
+    controlReceipt: async (requestId: string, controlId: string) => {
+      const value = await request('/' + requestId + '/controls/' + controlId)
+      return value === null ? null : executionControlReceiptSchema.parse(value)
+    },
     stop: async (requestId: string, stopId: string, reason: string) => executionQuerySchema.parse(
       await request('/' + requestId + '/stop', { stopId, reason })),
   }

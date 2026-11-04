@@ -18,6 +18,7 @@ import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
 import { NativeSessionController } from '../tool-execution/session-controller'
+import { SessionRequests } from '../tool-execution/session-requests'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -78,14 +79,14 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   }, [scope, actions, activity, spaceKey, namespace])
   const sessions = useMemo(() => new NativeSessionController(scope,
     createSessionTransport(activity, spaceKey, namespace),
-    () => access.current && !workspace.accessDenied()), [scope, activity, spaceKey, namespace, workspace])
+    () => access.current && !workspace.accessDenied(), new SessionRequests()), [scope, activity, spaceKey, namespace, workspace])
   useEffect(() => {
     let active = true
     const unregister = actions.registerLocalExecution(execution.receiver)
     void Promise.allSettled([draft.open(), workspace.open()]).then(() => { if (active) return actions.open() })
       .then(() => { if (active) return Promise.all([execution.open(), sessions.open()]) })
       .catch(() => { /* Each partition reports initialization failure and retains its own contents. */ })
-    return () => { active = false; unregister(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
+    return () => { active = false; unregister(); sessions.dispose(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
   }, [draft, workspace, actions, execution, sessions])
   useEffect(() => {
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }

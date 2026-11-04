@@ -6,14 +6,16 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { acceptsState, componentInstanceId, componentStateName } from '@xunjie/contracts/components';
 import { advanceExecution, canonicalValue, decideExecutionPlacement, executionActionSchema,
-  executionControlSchema, executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
+  executionControlSchema, executionControlReceiptSchema, executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
 import { productNativeAdapters } from './native-process.js';
 import { verifyPlannedExecution } from './plan.js';
 import type { createNativeChannel } from './native-channel.js';
 import type { createWorks } from './works.js';
+import { createSessionCheckpoints } from './session-checkpoints.js';
+import type { NativeObservation } from './native-process.js';
 
-export const channelExecutionMigration: Migration = { version: 10, name: 'school-channel-execution-ledger', sql: `
+export const channelExecutionMigration: Migration = { version: 11, name: 'school-channel-execution-ledger', sql: `
   CREATE TABLE channel_executions(request_id uuid PRIMARY KEY,activity_id uuid NOT NULL,input_digest text NOT NULL,
     action jsonb NOT NULL,action_text text NOT NULL,activity jsonb NOT NULL,connection_id uuid NOT NULL,execution jsonb NOT NULL,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
@@ -21,6 +23,24 @@ export const channelExecutionMigration: Migration = { version: 10, name: 'school
   CREATE TABLE channel_execution_intents(command_id uuid PRIMARY KEY,request_id uuid NOT NULL,
     command jsonb NOT NULL,command_text text NOT NULL,dispatched boolean NOT NULL DEFAULT false,position bigserial UNIQUE);
 ` };
+export const channelCheckpointMigration: Migration = { version: 16, name: 'channel-session-checkpoints', sql: `
+  ALTER TABLE channel_executions ADD COLUMN execution_ref uuid
+    GENERATED ALWAYS AS ((execution->>'executionRef')::uuid) STORED UNIQUE;
+  ALTER TABLE channel_execution_intents ADD COLUMN checkpoint_pending jsonb;
+  CREATE VIEW channel_session_sources AS SELECT request_id,activity_id,action,execution_ref AS session_ref,
+    (execution#>>'{session,executorInstanceId}')::uuid AS executor_instance_id,
+    COALESCE(execution#>'{session,checkpoints}','[]'::jsonb) AS checkpoints FROM channel_executions;
+  CREATE TABLE channel_session_checkpoints(checkpoint_id uuid PRIMARY KEY,
+    session_ref uuid NOT NULL REFERENCES channel_executions(execution_ref),
+    control_id uuid NOT NULL UNIQUE REFERENCES channel_execution_intents(command_id),content_id uuid NOT NULL,
+    sha256 text NOT NULL,byte_length integer NOT NULL,applied_seq integer NOT NULL,envelope jsonb NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp());
+` };
+const checkpointReport = z.object({ query: executionQuerySchema, checkpoint: z.object({
+  observation: z.object({ seq: z.number().int().positive(), controlId: z.uuid(), state: z.json(),
+    at: z.string(), sessionState: z.enum(['running', 'paused']), checkpoint: z.json() }).strict(),
+  environment: z.object({ platform: z.string(), arch: z.string(), node: z.string() }).strict(),
+}).strict() }).strict();
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const canonicalHash = (value: unknown) => hash(canonicalValue(value));
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt'): never { throw new StorageError(code); }
@@ -33,7 +53,9 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   works: ReturnType<typeof createWorks>;
   channel: ReturnType<typeof createNativeChannel>;
+  authorizeComponent?(identity: SpaceIdentity, activity: LearningActivity, action: ExecutionAction): Promise<void>;
 }) {
+  const checkpoints = createSessionCheckpoints(storage, true);
   async function find(activityId: string, requestId: string) {
     z.uuid().parse(requestId);
     const { rows: [row] } = await storage.read('SELECT * FROM channel_executions WHERE activity_id=$1 AND request_id=$2', [activityId, requestId]);
@@ -109,10 +131,18 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       await dispatch(identity, activityId, previous);
       return (await read(identity, activityId, action.requestId))!;
     }
-    const { declared, adapter } = verify(activity, action);
+    const { binding, declared, adapter } = verify(activity, action);
+    await options.authorizeComponent?.(identity, activity, action);
+    if (declared.controls?.some(effect => !adapter.controls?.includes(effect))
+      || declared.checkpointVersion && declared.checkpointVersion !== adapter.checkpointVersion) fail('invalid');
+    // Validate the checkpoint before choosing among available devices. Its runtime is
+    // part of compatibility, rather than a reason to reject the first arbitrary node.
+    const restored = action.execution.resumeFromCheckpoint
+      ? await checkpoints.restore(action, binding.configuration, declared.checkpointVersion ?? fail('invalid'), null) : null;
     const nodes = await options.channel.nodes(identity);
     const node = nodes.find(candidate => adapter.platforms!.includes(candidate.platform)
-      && candidate.adapters.some(item => item.adapterId === declared.adapterId && item.adapterVersion === declared.adapterVersion));
+      && candidate.adapters.some(item => item.adapterId === declared.adapterId && item.adapterVersion === declared.adapterVersion)
+      && (!restored || candidate.runtime && canonicalHash(candidate.runtime) === canonicalHash(restored.environment)));
     if (!node) fail('missing');
     const coursePlan = activity.course?.executionPlan;
     if (coursePlan) {
@@ -128,10 +158,11 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       confirmedSeq: 1, reason: null, output: null, session: { adapterId: declared.adapterId, adapterVersion: declared.adapterVersion,
         instanceId: action.execution.instance.instanceId, instanceKey: action.execution.instance.key, nodeId: node.nodeId,
         installGeneration: node.installationId, supervisorEpoch: epoch, executorInstanceId: randomUUID(),
-        appliedSeq: 0, lastControlId: null, observation: null, observations: [] } });
+        appliedSeq: 0, lastControlId: null, observation: null, observations: [],
+        ...(action.execution.resumeFromCheckpoint ? { restoredFrom: action.execution.resumeFromCheckpoint } : {}) } });
     for (const file of action.execution.basis.works) await options.works.registerBasis(identity, activityId, file);
     const command = { commandId: action.requestId, activityId, sessionId: execution.executionRef, operation: 'submit',
-      payload: { action, activity, execution } };
+      payload: { action, activity, execution, ...(restored ? { restore: { snapshot: restored.snapshot, environment: node.runtime! } } : {}) } };
     await storage.request({ requestId: `channel-execution:${action.requestId}`, fingerprint: hash({ identity, activityId, inputDigest }) }, async tx => {
       await tx.query(`INSERT INTO channel_executions(request_id,activity_id,input_digest,action,action_text,activity,connection_id,execution)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(request_id) DO NOTHING`, [action.requestId, activityId, inputDigest,
@@ -142,6 +173,7 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
         [action.requestId, action.requestId, JSON.stringify(command), JSON.stringify(command)]);
       for (const file of action.execution.basis.works) await tx.reference(`channel/${action.requestId}/work/${file.contentId}`, file.contentId);
       if (action.execution.basis.state) await tx.reference(`channel/${action.requestId}/state`, action.execution.basis.state.contentId);
+      if (restored) await tx.reference(`native/${action.requestId}/restore`, restored.contentId);
       return null;
     });
     const saved = (await find(activityId, action.requestId))!;
@@ -155,7 +187,34 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     await dispatch(identity, activityId, row);
     const { rows: intents } = await storage.read('SELECT command_id FROM channel_execution_intents WHERE request_id=$1 ORDER BY position', [requestId]);
     const facts: Awaited<ReturnType<typeof options.channel.query>>[] = [];
-    for (const intent of intents) facts.push(await options.channel.query(identity, String(intent.command_id)));
+    for (const intent of intents) {
+      const fact = await options.channel.query(identity, String(intent.command_id));
+      const report = checkpointReport.safeParse(fact.result);
+      if (report.success) {
+        const { query, checkpoint } = report.data, controlId = String(intent.command_id);
+        const { rows: [original] } = await storage.read('SELECT command FROM channel_execution_intents WHERE command_id=$1', [controlId]);
+        const control = executionControlSchema.parse((original!.command as { payload: { control: unknown } }).payload.control);
+        const fixed = executionQuerySchema.parse(row.execution);
+        if (control.effect !== 'checkpoint' || controlId !== checkpoint.observation.controlId
+          || query.session?.lastControlId !== controlId || query.session?.appliedSeq !== checkpoint.observation.seq
+          || checkpoint.observation.seq !== control.expectedSeq + 1 || query.executionRef !== fixed.executionRef
+          || query.inputDigest !== fixed.inputDigest || query.requestId !== requestId
+          || canonicalHash(query.scope) !== canonicalHash(fixed.scope)
+          || !fixed.session || !query.session || ['adapterId', 'adapterVersion', 'instanceId', 'instanceKey',
+            'nodeId', 'installGeneration', 'supervisorEpoch', 'executorInstanceId']
+            .some(key => fixed.session![key as keyof typeof fixed.session] !== query.session![key as keyof typeof query.session])
+          || canonicalHash(query.session.observation) !== canonicalHash(checkpoint.observation.state)) fail('identity-conflict');
+        const action = executionActionSchema.parse(row.action);
+        const { binding, declared } = verify(row.activity as LearningActivity, action);
+        const { rows: [claimed] } = await storage.read('SELECT claim_node FROM native_channel_commands WHERE command_id=$1', [controlId]);
+        const runtime = (claimed?.claim_node as { runtime?: unknown } | undefined)?.runtime;
+        if (!runtime || canonicalHash(runtime) !== canonicalHash(checkpoint.environment)) fail('forbidden');
+        await checkpoints.capture({ action, session_ref: query.executionRef, executor_instance_id: query.session.executorInstanceId },
+          controlId, checkpoint.observation as NativeObservation, binding.configuration,
+          declared.checkpointVersion ?? fail('invalid'), checkpoint.environment);
+        facts.push({ ...fact, result: query });
+      } else facts.push(fact);
+    }
     const saved = await storage.request({ requestId: `channel-fact:${randomUUID()}`, fingerprint: requestId }, async tx => {
       const { rows: [latest] } = await tx.query('SELECT execution FROM channel_executions WHERE request_id=$1 FOR UPDATE', [requestId]);
       let current = executionQuerySchema.parse(latest!.execution);
@@ -168,7 +227,8 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
             || ['adapterId', 'adapterVersion', 'instanceId', 'instanceKey', 'nodeId', 'installGeneration', 'supervisorEpoch', 'executorInstanceId']
               .some(key => left[key as keyof typeof left] !== right[key as keyof typeof right])) fail('identity-conflict');
           if (next.state !== current.state && next.confirmedSeq <= current.confirmedSeq) continue;
-          if (next.confirmedSeq >= current.confirmedSeq && right.appliedSeq >= left.appliedSeq) current = advanceExecution(current, next);
+          if (next.confirmedSeq >= current.confirmedSeq && right.appliedSeq >= left.appliedSeq) current = advanceExecution(current,
+            executionQuerySchema.parse({ ...next, session: { ...right, checkpoints: left.checkpoints } }));
         } else if (fact.state === 'claimed' || fact.statusKnowledge === 'unknown' || fact.state === 'reported') {
           current = advanceExecution(current, executionQuerySchema.parse({ ...current, statusKnowledge: 'unknown',
             reason: { code: 'resource-unavailable', detail: '原节点尚未确认该动作，保持原执行身份且不重新执行。' } }));
@@ -193,21 +253,38 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       return (await read(identity, activityId, requestId))!;
     }
     if (operation === 'control') {
+      await options.authorizeComponent?.(identity, activity, action);
       const control = executionControlSchema.parse(payload);
       const original = (row.activity as LearningActivity).course?.components?.find(item => item.key === action.execution.instance.key)?.definition.manifest;
       const currentBinding = activity.course?.components?.find(item => item.key === action.execution.instance.key);
       const declared = original?.formatVersion === 1 ? original.session : null;
-      if (!declared || currentBinding?.definition.digest !== action.execution.instance.definitionDigest
-        || control.operationId !== declared.operation.operationId || !acceptsState(declared.operation.parameters, control.parameters)) fail('invalid');
+      if (!declared || currentBinding?.definition.digest !== action.execution.instance.definitionDigest) fail('invalid');
+      verifyPlannedExecution(activity, { key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest,
+        operationId: action.execution.operation.operationId, location: 'native' });
+      if (control.effect === 'input' ? control.operationId !== declared.operation.operationId
+        : control.operationId !== control.effect || !declared.controls?.includes(control.effect)) fail('invalid');
+      if (control.effect === 'input' || control.effect === 'step') {
+        if (!acceptsState(declared.operation.parameters, control.parameters)) fail('invalid');
+      } else if (!control.parameters || typeof control.parameters !== 'object' || Array.isArray(control.parameters)
+        || Object.keys(control.parameters).length) fail('invalid');
       const observed = await read(identity, activityId, requestId);
-      if (!observed || observed.state !== 'running' || observed.statusKnowledge !== 'confirmed'
+      if (!observed || !['running', 'paused'].includes(observed.state) || observed.statusKnowledge !== 'confirmed'
         || observed.stopRequested || control.expectedSeq !== observed.session?.appliedSeq) fail('invalid');
+      const required = control.effect === 'input' || control.effect === 'pause' ? 'running'
+        : control.effect === 'reset' ? observed.state : 'paused';
+      if (observed.state !== required) fail('invalid');
     }
     await storage.request({ requestId: `channel-intent:${commandId}`, fingerprint: hash({ identity, command }) }, async tx => {
       const { rows: [locked] } = await tx.query('SELECT execution FROM channel_executions WHERE request_id=$1 FOR UPDATE', [requestId]);
       const latest = executionQuerySchema.parse(locked!.execution);
-      if (operation === 'control' && (latest.state !== 'running' || latest.statusKnowledge !== 'confirmed'
+      if (operation === 'control' && (!['running', 'paused'].includes(latest.state) || latest.statusKnowledge !== 'confirmed'
         || latest.stopRequested || executionControlSchema.parse(payload).expectedSeq !== latest.session?.appliedSeq)) fail('invalid');
+      if (operation === 'control') {
+        const { rows: pending } = await tx.query(`SELECT command_id FROM channel_execution_intents
+          WHERE request_id=$1 AND command#>>'{operation}'='control'
+          AND (command#>>'{payload,control,expectedSeq}')::integer=$2`, [requestId, latest.session!.appliedSeq]);
+        if (pending.length) fail('identity-conflict');
+      }
       await tx.query('INSERT INTO channel_execution_intents(command_id,request_id,command,command_text) VALUES($1,$2,$3,$4)', [commandId, requestId, JSON.stringify(command), JSON.stringify(command)]);
       if (operation === 'stop') await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1',
         [requestId, JSON.stringify({ ...latest, stopRequested: true })]);
@@ -231,10 +308,28 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     for (const row of rows) { const value = await read(identity, activityId, String(row.request_id)); if (value) results.push(value); }
     return results;
   }
-  return { accept, read, control, stop, list, owns: async (activityId: string, requestId: string) => (await find(activityId, requestId)) !== null };
+  async function controlReceipt(identity: SpaceIdentity, activityId: string, requestId: string, controlId: string) {
+    z.uuid().parse(controlId);
+    const query = await read(identity, activityId, requestId);
+    if (!query) return null;
+    const { rows: [intent] } = await storage.read('SELECT command FROM channel_execution_intents WHERE request_id=$1 AND command_id=$2', [requestId, controlId]);
+    if (!intent) return null;
+    const control = executionControlSchema.parse((intent.command as { payload: { control: unknown } }).payload.control);
+    const fact = await options.channel.query(identity, controlId), seq = control.expectedSeq + 1;
+    const originalReply = executionQuerySchema.safeParse(checkpointReport.safeParse(fact.result).data?.query ?? fact.result);
+    const applied = originalReply.success && originalReply.data.requestId === requestId
+      && originalReply.data.executionRef === query.executionRef && originalReply.data.session?.lastControlId === controlId
+      && originalReply.data.session.appliedSeq === seq;
+    return executionControlReceiptSchema.parse({ controlId, requestId, executionRef: query.executionRef,
+      inputDigest: canonicalHash(control), effect: control.effect, seq,
+      status: applied ? 'applied' : fact.state === 'reported' ? 'unknown' : 'dispatching', query });
+  }
+  return { accept, read, control, stop, list, controlReceipt,
+    owns: async (activityId: string, requestId: string) => (await find(activityId, requestId)) !== null };
 }
 
 export async function validateChannelExecutions(storage: OwnedStorage) {
+  await createSessionCheckpoints(storage, true).validate();
   const { rows } = await storage.read('SELECT * FROM channel_executions');
   for (const row of rows) {
     const action = executionActionSchema.parse(JSON.parse(String(row.action_text))), execution = executionQuerySchema.parse(row.execution);
@@ -252,7 +347,9 @@ export async function validateChannelExecutions(storage: OwnedStorage) {
       if (canonicalHash(command) !== canonicalHash(intent.command)) fail('corrupt');
       if (command.commandId !== intent.command_id || command.activityId !== row.activity_id || command.sessionId !== execution.executionRef) fail('corrupt');
       if (command.operation === 'submit') {
-        const payload = z.object({ action: executionActionSchema, activity: z.unknown(), execution: executionQuerySchema }).strict().parse(command.payload);
+        const payload = z.object({ action: executionActionSchema, activity: z.unknown(), execution: executionQuerySchema,
+          restore: z.object({ snapshot: z.json(), environment: z.object({ platform: z.string(), arch: z.string(), node: z.string() }).strict() }).strict().optional(),
+        }).strict().parse(command.payload);
         if (command.commandId !== row.request_id || hash(payload.action) !== row.input_digest
           || canonicalHash(payload.activity) !== canonicalHash(activity) || payload.execution.executionRef !== execution.executionRef
           || payload.execution.inputDigest !== execution.inputDigest || payload.execution.requestId !== row.request_id

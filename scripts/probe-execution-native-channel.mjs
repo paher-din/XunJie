@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium, expect } from '@playwright/test';
 import { digest } from './remote-probe-helpers.mjs';
+import { probeCheckpointCombination } from './probe-session-checkpoint-combination.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map(value => {
   const [key, ...rest] = value.replace(/^--/, '').split('=');
@@ -251,7 +252,6 @@ try {
     await until(async () => remoteAccept, value => !!value, '浏览器发出Linux回退请求');
     if (mixed.lostResponses) {
       await until(async () => mixed.lostResponses.submit, Boolean, '真实启动已生效且回包已丢弃');
-      await expect(mixedPage.getByRole('button', { name: '核对原启动请求', exact: true })).toBeVisible();
       await mixedPage.reload({ waitUntil: 'domcontentloaded' });
       await mixedPage.getByRole('tab', { name: remoteManifest.title, exact: true }).click();
       await expect(mixedPage.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible({ timeout: 60_000 });
@@ -268,6 +268,9 @@ try {
     if (mixed.lostResponses) {
       fixed(mixed.lostResponses.submit.response, mixed.accepted);
       assert.equal(mixed.accepted.observation.pid, mixed.lostResponses.submit.response.observation.pid);
+      assert.equal(mixed.traffic.filter(request => request.method === 'POST'
+        && request.path === `/api/learning/executions/${remoteActivity.activityId}`).length, 1,
+      '丢回包后刷新只能核对原启动，不得重新提交启动');
     }
     const remoteObservation = mixedPage.locator('.native-session-observation');
     await mixedPage.getByRole('button', { name: /核对(?:状态|原操作)/ }).click();
@@ -309,6 +312,12 @@ try {
     assert.ok((await nativeProcesses()).some(item => item.pid === report.process.pid), '原本机进程必须继续存活');
     mixed.localNodeAfter = ok('mixed-nodes-after', await api('native-channel/nodes')).find(item => item.nodeId === node.nodeId);
     assert.equal(mixed.localNodeAfter?.installationId, node.installationId);
+    if (Object.hasOwn(args, 'checkpoint-combination')) {
+      mixed.checkpointCombination = await probeCheckpointCombination({ page: mixedPage,
+        activityId: remoteActivity.activityId, title: remoteManifest.title, api: (route, body) => api(route, body, mixedPage),
+        until, output, label: 'school-linux' });
+      pass('本机入口到学校Linux的实际控制、检查点丢回包、重开与恢复实例下一步一致');
+    }
     await mixedPage.close(); mixedPage = undefined; mixedPath = undefined; mixedHeaders = {};
     await page.bringToFront();
     await page.screenshot({ path: join(output, 'mixed-local-returned.png'), fullPage: true });
@@ -331,6 +340,11 @@ try {
   await until(nativeProcesses, rows => rows.length === 0, '停止后真实子进程退出');
   await page.screenshot({ path: join(output, 'channel-stopped.png'), fullPage: true });
   pass('学校面板停止同一桌面执行器且 OS 确认原生进程退出');
+  if (Object.hasOwn(args, 'checkpoint-combination')) {
+    report.checkpointCombination = await probeCheckpointCombination({ page, activityId,
+      title: payload.component.manifest.title, api, until, output, label: 'approved-local' });
+    pass('学校网页到获准本机通道的实际控制、检查点丢回包、重开与恢复实例下一步一致');
+  }
   const firstRequestId = acceptBody.action.requestId;
   await page.getByRole('button', { name: '开始新会话' }).click();
   await until(async () => acceptBody, value => value.action.requestId !== firstRequestId, '浏览器发出第二次启动请求');

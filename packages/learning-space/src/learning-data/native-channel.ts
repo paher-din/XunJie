@@ -8,7 +8,7 @@ import type { ExecutionQuery } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { productNativeAdapters } from './native-process.js';
 
-export const nativeChannelMigration: Migration = { version: 8, name: 'authenticated-native-pull-channel', sql: `
+export const nativeChannelMigration: Migration = { version: 9, name: 'authenticated-native-pull-channel', sql: `
   CREATE TABLE native_channel_nodes(connection_id uuid PRIMARY KEY,node_id text NOT NULL,installation_id uuid NOT NULL,
     owner_generation text NOT NULL,identity jsonb NOT NULL,snapshot jsonb NOT NULL,lease_until timestamptz NOT NULL DEFAULT '-infinity',registered_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE TABLE native_channel_commands(command_id uuid PRIMARY KEY,connection_id uuid NOT NULL REFERENCES native_channel_nodes(connection_id),
@@ -18,7 +18,7 @@ export const nativeChannelMigration: Migration = { version: 8, name: 'authentica
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX native_channel_pending ON native_channel_commands(connection_id,position) WHERE state='pending';
 ` };
-export const nativeChannelTargetMigration: Migration = { version: 11, name: 'native-channel-fixed-targets', sql: `
+export const nativeChannelTargetMigration: Migration = { version: 12, name: 'native-channel-fixed-targets', sql: `
   ALTER TABLE native_channel_commands ADD COLUMN target_node jsonb;
   ALTER TABLE native_channel_commands ADD COLUMN target_generation text;
   UPDATE native_channel_commands c SET target_node=COALESCE(
@@ -33,25 +33,27 @@ export const nativeChannelTargetMigration: Migration = { version: 11, name: 'nat
     claim_id uuid NOT NULL,report_digest text NOT NULL,node jsonb NOT NULL,result jsonb NOT NULL,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp(),PRIMARY KEY(command_id,claim_id,report_digest));
 ` };
-export const nativeChannelObservationMigration: Migration = { version: 12, name: 'native-channel-session-observations', sql: `
+export const nativeChannelObservationMigration: Migration = { version: 13, name: 'native-channel-session-observations', sql: `
   ALTER TABLE native_channel_commands ADD COLUMN observed_result jsonb;
   ALTER TABLE native_channel_commands ADD COLUMN observed_seq bigint;
   ALTER TABLE native_channel_commands ADD CONSTRAINT native_channel_observation_pair CHECK(
     (observed_result IS NULL AND observed_seq IS NULL) OR
     (operation='submit' AND observed_result IS NOT NULL AND observed_seq IS NOT NULL AND observed_seq>=0));
 ` };
-export const nativeChannelCancellationMigration: Migration = { version: 13, name: 'native-channel-unclaimed-cancellation', sql: `
+export const nativeChannelCancellationMigration: Migration = { version: 14, name: 'native-channel-unclaimed-cancellation', sql: `
   ALTER TABLE native_channel_commands DROP CONSTRAINT native_channel_commands_state_check;
   ALTER TABLE native_channel_commands ADD CONSTRAINT native_channel_commands_state_check
     CHECK(state IN ('pending','claimed','reported','cancelled'));
 ` };
-export const nativeChannelCleanupMigration: Migration = { version: 14, name: 'native-channel-claimed-instance-cleanup', sql: `
+export const nativeChannelCleanupMigration: Migration = { version: 15, name: 'native-channel-claimed-instance-cleanup', sql: `
   CREATE TABLE native_channel_cleanups(command_id uuid PRIMARY KEY REFERENCES native_channel_commands(command_id),
     claim_id uuid NOT NULL,node jsonb NOT NULL,owner jsonb NOT NULL,generation text NOT NULL,
     execution_identity jsonb NOT NULL,proof_digest text NOT NULL,confirmed_at timestamptz NOT NULL DEFAULT clock_timestamp());
 ` };
 export const nativeChannelNodeSchema = z.object({ connectionId: z.uuid(), nodeId: z.string().min(1).max(80), installationId: z.uuid(),
   platform: z.enum(['macos-arm64', 'windows-x64', 'linux-x64']), supervisorEpoch: z.uuid(),
+  runtime: z.object({ platform: z.enum(['darwin', 'win32', 'linux']), arch: z.enum(['arm64', 'x64']),
+    node: z.string().regex(/^v\d+\.\d+\.\d+$/) }).strict().optional(),
   adapters: z.array(z.object({ adapterId: z.string().min(1).max(100), adapterVersion: z.number().int().positive() }).strict()).max(32),
 }).strict();
 const nodeSchema = nativeChannelNodeSchema;
@@ -165,7 +167,7 @@ export function createNativeChannel(storage: OwnedStorage, options: {
   async function eligibleActivities(identity: SpaceIdentity, connectionId: string) {
     const { rows } = await storage.read(`SELECT DISTINCT activity_id FROM native_channel_commands c JOIN native_channel_nodes n ON n.connection_id=c.connection_id
       WHERE c.connection_id=$1 AND c.target_node=n.snapshot AND c.target_generation=n.owner_generation
-      AND (state<>'reported' OR result->>'state' IN ('queued','running','stopping'))
+      AND (state<>'reported' OR result->>'state' IN ('queued','running','paused','stopping'))
       AND NOT EXISTS(SELECT 1 FROM native_channel_commands p WHERE p.connection_id=c.connection_id AND p.session_id=c.session_id
         AND (p.state IN ('reported','cancelled') OR p.observed_result IS NOT NULL) AND COALESCE(p.observed_result,p.result)->>'state' IN ('succeeded','failed','cancelled','stopped'))`, [connectionId]);
     for (const activity of rows) await options.authorize(identity, String(activity.activity_id));
@@ -336,13 +338,19 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       const accepted = executionQuerySchema.safeParse(row.result);
       projected = advanceExecution(accepted.success ? accepted.data : null, observation.data);
     }
-    const result = projected as Record<string, unknown> | null;
+    // A checkpoint keeps its immutable snapshot beside the execution query. Fence the
+    // nested query just like a plain report, or an old wrapper can reconfirm a lost instance.
+    const checkpoint = z.object({ query: executionQuerySchema, checkpoint: z.json() }).strict().safeParse(projected);
+    const result = (checkpoint.success ? checkpoint.data.query : projected) as Record<string, unknown> | null;
     const active = result && ['queued', 'running', 'paused'].includes(String(result.state));
     const targetChanged = hash(row.target_node) !== hash(row.snapshot) || row.target_generation !== storage.generation;
     const unavailable = row.state === 'pending' && targetChanged || active && (row.cleaned || !row.lease_valid || row.claim_generation !== storage.generation
       || hash(row.claim_node) !== hash(row.snapshot));
+    if (unavailable && result) projected = checkpoint.success
+      ? { ...checkpoint.data, query: { ...checkpoint.data.query, statusKnowledge: 'unknown' } }
+      : { ...result, statusKnowledge: 'unknown' };
     return { commandId, state: row.state,
-      result: unavailable && result ? { ...result, statusKnowledge: 'unknown' } : projected,
+      result: projected,
       statusKnowledge: row.state === 'claimed' && !observation.success || unavailable ? 'unknown' : 'confirmed' };
   }
   async function nodes(identity: SpaceIdentity) {
