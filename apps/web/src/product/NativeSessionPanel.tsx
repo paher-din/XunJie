@@ -204,7 +204,8 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     } catch { setNote('检查点不可恢复：请核对资源、访问资格和环境兼容性。当前输入、问题及原会话历史均保留。') }
     finally { setBusy(false) }
   }
-  return <section className="execution-panel native-session" aria-label={sessionTitle}>
+  return <section className="execution-panel native-session" aria-label={sessionTitle}
+    data-execution-request-id={record?.requestId} tabIndex={-1}>
     <header>
       <h2>{sessionTitle}</h2>
       <span className="execution-hint">原生进程 · 固定适配器 v{declared.adapterVersion}</span>
@@ -248,7 +249,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
         <button type="submit" className="ws-btn solid" disabled={!canInput || amount === ''}>输入</button>
       </form>
       {observations.length > 0 && <ol className="native-session-history" aria-label="已确认观察">
-        {observations.slice(0, 8).map(item => <li key={item.controlId}>
+        {observations.slice(0, 8).map(item => <li key={item.controlId} data-observation-seq={item.seq} tabIndex={-1}>
           <span>第 {item.seq} 次</span>
           <span>状态 {number((item.state as Observation | null)?.value)}</span>
         </li>)}

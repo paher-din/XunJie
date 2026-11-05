@@ -110,7 +110,7 @@ export class ExecutionController {
         await this.receiver.store.record(this.scope, record.requestId, () => decided.query,
           { startedAt: record.startedAt ?? null })
       }
-      if (record.acceptance.execution) void this.flush(record.requestId)
+      if (record.acceptance.execution) void this.syncPending(record.requestId)
     }
     await this.refresh()
     for (const record of records) {
@@ -194,7 +194,7 @@ export class ExecutionController {
       await this.receiver.adopt(requestId).catch(() => false)
       await this.receiver.finish(requestId, { state: 'cancelled', reason: { code: 'worker-terminated', detail: '执行开始前已取消。' }, stopped: true })
       await this.actions.cancel(requestId)
-      await this.refresh(); void this.flush(requestId)
+      await this.refresh(); void this.syncPending(requestId)
       return
     }
     await this.refresh()
@@ -213,7 +213,7 @@ export class ExecutionController {
     if (this.waiting >= limits.concurrentJobs + limits.queuedJobs) {
       await this.finish(requestId, { state: 'failed', reason: { code: 'budget-exceeded',
         detail: `同一浏览器已有 ${limits.concurrentJobs} 项执行、${limits.queuedJobs} 项等待，本次未进入队列。` } })
-      await this.refresh(); void this.flush(requestId); return
+      await this.refresh(); void this.syncPending(requestId); return
     }
     this.waiting++
     let claimedNow = false
@@ -268,17 +268,17 @@ export class ExecutionController {
       }
       if (claimedNow) this.started--
       await this.refresh().catch(() => {})
-      void this.flush(requestId)
+      void this.syncPending(requestId)
     }
   }
-  /** Service delivery of the same facts; a failure keeps the local truth and retries later. */
-  private async flush(requestId: string) {
+  /** Deliver pending acceptance, facts and result for worker completion, recovery or Agent polling. */
+  async syncPending(requestId: string) {
     if (this.readOnly) return
     if (this.syncing.has(requestId)) return
-    const record = await this.receiver.store.read(this.scope, requestId).catch(() => undefined)
-    if (!record?.acceptance.execution) return
     this.syncing.add(requestId)
     try {
+      const record = await this.receiver.store.read(this.scope, requestId).catch(() => undefined)
+      if (!record?.acceptance.execution) return
       // Only what the service has not confirmed yet: a lost reply resumes this run's own resource
       // instead of re-sending a command the service already holds.
       const sent = await this.receiver.store.synced(this.scope, requestId).catch(() => undefined)

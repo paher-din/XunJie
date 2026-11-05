@@ -1,0 +1,27 @@
+.teaching-tool-records { margin: 8px 0 12px; }
+.teaching-tool-record { border: 1px solid var(--line); border-radius: 8px; margin: 6px 0; font-size: 13px; }
+.teaching-tool-record > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; cursor: pointer; }
+.teaching-tool-record > summary::before { content: '›'; color: var(--muted); }
+.teaching-tool-record[open] > summary::before { content: '⌄'; }
+.teaching-tool-title { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--ink-soft); }
+.teaching-tool-status { padding: 2px 6px; border-radius: 6px; font-size: 12px; color: var(--status-pending-fg); background: var(--status-pending-bg); }
+.teaching-tool-record[data-outcome='completed'] > summary .teaching-tool-status { color: var(--status-done-fg); background: var(--status-done-bg); }
+.teaching-tool-record[data-outcome='failed'] > summary .teaching-tool-status { color: var(--status-overdue-fg); background: var(--status-overdue-bg); }
+.teaching-tool-record[data-outcome='not-dispatched'] > summary .teaching-tool-status { color: var(--muted); background: var(--chip-bg); }
+.teaching-tool-body { border-top: 1px solid var(--line); padding: 10px; overflow-wrap: anywhere; }
+.teaching-tool-body p { margin: 0 0 8px; }
+.teaching-tool-name, .teaching-tool-notice { color: var(--muted); font-size: 12px; }
+.teaching-tool-body > details { margin: 8px 0; }
+.teaching-tool-body > details > summary { cursor: pointer; color: var(--ink-soft); }
+.teaching-tool-data { max-height: 320px; overflow: auto; margin-top: 6px; }
+.teaching-tool-fields { margin: 0; }
+.teaching-tool-fields > div { margin: 4px 0; }
+.teaching-tool-fields dt { color: var(--muted); font-size: 12px; }
+.teaching-tool-fields dd { margin: 2px 0 0 12px; }
+.teaching-tool-values { margin: 0; padding-left: 20px; }
+.teaching-tool-values > li { margin: 4px 0; }
+.teaching-tool-source { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.teaching-tool-record summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.teaching-native-summary > summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.teaching-native-summary > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.teaching-native-summary[open] > summary { margin-bottom: 8px; }

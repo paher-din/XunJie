@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { CodeReferenceSource } from '../components/workspace/references'
 import { FileTabs } from '../components/workspace/FileTabs'
@@ -7,7 +7,7 @@ import { workspaceScope } from './learningTransport'
 import { useActivitySession } from './ActivitySession'
 
 export interface ActivityWorkspaceHandle { leave(): Promise<void> }
-export function ActivityWorkspace({ activity, namespace }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }) {
+export function ActivityWorkspace({ activity, namespace, location }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; location?: { objectId: string } }) {
     const scope = workspaceScope(namespace, activity)
     const { workspace } = useActivitySession()
     const readOnly = workspace.isReadOnly()
@@ -15,6 +15,7 @@ export function ActivityWorkspace({ activity, namespace }: { activity: LearningA
     const editorNamespace = useMemo(() => scope + ':' + crypto.randomUUID(), [scope, workspace])
     const [failure, setFailure] = useState('')
     const [selected, setSelected] = useState<string | null>(null)
+    useEffect(() => { if (location) setSelected(location.objectId) }, [location])
     const [name, setName] = useState('')
     const [rename, setRename] = useState('')
     const [merged, setMerged] = useState('')
@@ -28,7 +29,8 @@ export function ActivityWorkspace({ activity, namespace }: { activity: LearningA
       const anchor = document.createElement('a'); anchor.href = url; anchor.download = '循阶作品备份.json'; anchor.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
-    return <section className="learning-workspace" aria-label="当前作品">
+    return <section className="learning-workspace" aria-label="当前作品" tabIndex={-1}
+      data-work-object-id={file?.objectId} data-work-content-id={file?.contentId}>
       {(failure || state.error) && <div role="alert" className="learning-error"><p>{failure || state.error}</p>
         <button type="button" className="ws-btn ghost" onClick={download}>导出当前作品</button>
         <label>可复制的当前原文<textarea readOnly value={file?.value ?? ''} /></label></div>}

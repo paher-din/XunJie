@@ -1,0 +1,13 @@
+{
+  "elevated": false,
+  "sourceArchiveSha256": "723584d027f9e6646961ef77baeb7fabcb14da47c6742d292cd463ae634d771d",
+  "sessionId": 1,
+  "build": "26200",
+  "node": "v24.21.0",
+  "browserVersion": "156.0.8078.80",
+  "os": "Microsoft Windows 11 家庭版 中文版",
+  "arch": "64 位",
+  "measuredAt": "2026-11-05T18:48:55.4446636Z",
+  "browser": "Google Chrome",
+  "headed": true
+}

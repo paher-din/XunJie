@@ -3,7 +3,6 @@ import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AppShell from './components/AppShell'
 import SessionEntry from './components/SessionEntry'
-import AgentPage from './pages/AgentPage'
 import HomePage from './pages/HomePage'
 import SettingsPage from './pages/SettingsPage'
 import TaskRoute from './pages/TaskRoute'
@@ -13,6 +12,7 @@ import './styles/app.css'
 import './icons/icons.css'
 import { PREP_BUILD } from './workspace/mode'
 
+const AgentPage = PREP_BUILD ? lazy(() => import('./pages/AgentPage')) : null
 const IconBoardPage = lazy(() => import('./icons/IconBoard'))
 const BrandBoardPage = lazy(() => import('./brand/BrandBoard'))
 const TeacherApp = lazy(() => import('./teacher/TeacherApp'))
@@ -26,6 +26,8 @@ const queryClient = new QueryClient({
 
 // hash 路由：桌面宿主直接加载静态资源，无需服务端路由回退。
 const router = createHashRouter([
+  // Leave the legacy router before mounting LearningApp's browser router and activity workspace.
+  ...(!PREP_BUILD ? [{ path: 'agent/*', element: <LearningAppEntry /> }] : []),
   ...(WorkspaceReferencesPreview ? [{ path: 'dev/workspace-references', element: <Suspense fallback={<div>加载选区引用验收页…</div>}><WorkspaceReferencesPreview /></Suspense> }] : []),
   ...(GuidancePreview ? [{ path: 'dev/guidance', element: <Suspense fallback={<div>加载引导展示验收页…</div>}><GuidancePreview /></Suspense> }] : []),
   ...(TeacherPreview ? [{ path: 'teacher/preview/*', element: <Suspense fallback={<div>加载教师预览…</div>}><TeacherPreview /></Suspense> }] : []),
@@ -36,9 +38,11 @@ const router = createHashRouter([
     path: '/',
     element: <SessionEntry><AppShell /></SessionEntry>,
     children: [
-      { index: true, element: PREP_BUILD || import.meta.env.DEV ? <HomePage /> : <ProductHomeEntry /> },
-      { path: 'agent', element: <AgentPage /> },
-      { path: 'agent/:conversationId', element: <AgentPage /> },
+      { index: true, element: PREP_BUILD ? <HomePage /> : <LearningAppEntry /> },
+      ...(AgentPage ? [
+        { path: 'agent', element: <Suspense fallback={<p>正在打开…</p>}><AgentPage /></Suspense> },
+        { path: 'agent/:conversationId', element: <Suspense fallback={<p>正在打开…</p>}><AgentPage /></Suspense> },
+      ] : []),
       { path: 'settings', element: <Navigate to="/settings/account" replace /> },
       { path: 'settings/:tab', element: <SettingsPage /> },
       { path: 'task/:taskId', element: <TaskRoute /> },
@@ -46,7 +50,7 @@ const router = createHashRouter([
   },
 ])
 
-function ProductHomeEntry() {
+function LearningAppEntry() {
   useEffect(() => {
     const url = new URL(location.href)
     url.hash = ''

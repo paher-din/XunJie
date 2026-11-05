@@ -1,0 +1,338 @@
+TAP version 13
+# Subtest: school facade runs approved local processes, stops with an empty reason and cleans up after membership revocation
+ok 1 - school facade runs approved local processes, stops with an empty reason and cleans up after membership revocation
+  ---
+  duration_ms: 1935.252625
+  type: 'test'
+  ...
+# Subtest: worker stop rejects an unconfirmed process exit and retries the same live instance
+ok 2 - worker stop rejects an unconfirmed process exit and retries the same live instance
+  ---
+  duration_ms: 1665.611708
+  type: 'test'
+  ...
+# Subtest: maintenance pause rejects unconfirmed local cleanup and retains the instance for a retry
+ok 3 - maintenance pause rejects unconfirmed local cleanup and retains the instance for a retry
+  ---
+  duration_ms: 2178.440125
+  type: 'test'
+  ...
+# Subtest: an unconfirmed ordinary stop reports a valid unknown execution and eventually reclaims its real process
+ok 4 - an unconfirmed ordinary stop reports a valid unknown execution and eventually reclaims its real process
+  ---
+  duration_ms: 1403.304625
+  type: 'test'
+  ...
+# Subtest: approved channel checkpoints survive a lost report and restore real state in a distinct executor
+ok 5 - approved channel checkpoints survive a lost report and restore real state in a distinct executor
+  ---
+  duration_ms: 2455.750042
+  type: 'test'
+  ...
+# Subtest: an Agent uses the authenticated native channel for real continuous state and original stop
+ok 6 - an Agent uses the authenticated native channel for real continuous state and original stop
+  ---
+  duration_ms: 1716.627417
+  type: 'test'
+  ...
+# Subtest: an Agent native outbox resumes the original submit and input after interruption before channel enqueue
+ok 7 - an Agent native outbox resumes the original submit and input after interruption before channel enqueue
+  ---
+  duration_ms: 1758.571166
+  type: 'test'
+  ...
+# Subtest: an Agent stop tool waits for its original native process to exit after the stop request is accepted
+ok 8 - an Agent stop tool waits for its original native process to exit after the stop request is accepted
+  ---
+  duration_ms: 1551.750917
+  type: 'test'
+  ...
+# Subtest: stopping an Agent native outbox before channel enqueue records a durable cancellation without launching a process
+ok 9 - stopping an Agent native outbox before channel enqueue records a durable cancellation without launching a process
+  ---
+  duration_ms: 930.712125
+  type: 'test'
+  ...
+# Subtest: revocation cleanup cancels an Agent native outbox that never reached the original channel
+ok 10 - revocation cleanup cancels an Agent native outbox that never reached the original channel
+  ---
+  duration_ms: 921.713917
+  type: 'test'
+  ...
+# Subtest: school facade dispatches a local ready device without a remote plan and preserves nonempty controls
+ok 11 - school facade dispatches a local ready device without a remote plan and preserves nonempty controls
+  ---
+  duration_ms: 851.754
+  type: 'test'
+  ...
+# Subtest: stopping an unclaimed native submit cancels it durably without dispatching a process
+ok 12 - stopping an unclaimed native submit cancels it durably without dispatching a process
+  ---
+  duration_ms: 675.461834
+  type: 'test'
+  ...
+# Subtest: cancelling an unclaimed Agent input preserves an independent student process on the same node and delivers the original stop
+ok 13 - cancelling an unclaimed Agent input preserves an independent student process on the same node and delivers the original stop
+  ---
+  duration_ms: 1387.995667
+  type: 'test'
+  ...
+# Subtest: authenticated pull channel binds owner, approved connection and installation on every claim
+ok 14 - authenticated pull channel binds owner, approved connection and installation on every claim
+  ---
+  duration_ms: 885.716167
+  type: 'test'
+  ...
+# Subtest: database-free default worker executes real native accumulator and reports idle exit without new input
+ok 15 - database-free default worker executes real native accumulator and reports idle exit without new input
+  ---
+  duration_ms: 2396.422209
+  type: 'test'
+  ...
+# Subtest: long legal native operation renews its authenticated lease independently
+ok 16 - long legal native operation renews its authenticated lease independently
+  ---
+  duration_ms: 1347.578625
+  type: 'test'
+  ...
+# Subtest: successful registration cannot extend execution lease when claim eligibility is unavailable
+ok 17 - successful registration cannot extend execution lease when claim eligibility is unavailable
+  ---
+  duration_ms: 57.984167
+  type: 'test'
+  ...
+# Subtest: checkpoint wrappers cannot reconfirm a session after lease expiry or supervisor replacement
+ok 18 - checkpoint wrappers cannot reconfirm a session after lease expiry or supervisor replacement
+  ---
+  duration_ms: 797.369375
+  type: 'test'
+  ...
+# Subtest: two drivers racing on one run keep one effective dispatch through generation fencing
+ok 19 - two drivers racing on one run keep one effective dispatch through generation fencing
+  ---
+  duration_ms: 1961.274875
+  type: 'test'
+  ...
+# Subtest: a learning conversation persists across runs, restart, stop and transport reconstruction
+ok 20 - a learning conversation persists across runs, restart, stop and transport reconstruction
+  ---
+  duration_ms: 3777.795125
+  type: 'test'
+  ...
+# Subtest: long histories, large inputs and saved 1M windows are used without probe limits
+ok 21 - long histories, large inputs and saved 1M windows are used without probe limits
+  ---
+  duration_ms: 5731.429375
+  type: 'test'
+  ...
+# Subtest: learning text Q&A runs through all three native protocols with reconstructable snapshots
+    # Subtest: chat-completions
+    ok 1 - chat-completions
+      ---
+      duration_ms: 1829.055125
+      type: 'test'
+      ...
+    # Subtest: responses
+    ok 2 - responses
+      ---
+      duration_ms: 1831.781
+      type: 'test'
+      ...
+    # Subtest: messages
+    ok 3 - messages
+      ---
+      duration_ms: 1828.599708
+      type: 'test'
+      ...
+    1..3
+ok 22 - learning text Q&A runs through all three native protocols with reconstructable snapshots
+  ---
+  duration_ms: 5490.5135
+  type: 'test'
+  ...
+# Subtest: a course release fixes its help policy and a disabled policy refuses without a model call
+ok 23 - a course release fixes its help policy and a disabled policy refuses without a model call
+  ---
+  duration_ms: 1970.376917
+  type: 'test'
+  ...
+# Subtest: a teaching conversation, event log and snapshot survive real backup, isolated restore and takeover
+ok 24 - a teaching conversation, event log and snapshot survive real backup, isolated restore and takeover
+  ---
+  duration_ms: 5421.719041
+  type: 'test'
+  ...
+# Subtest: incremental answer text is published after gateway persistence and settles into one message
+ok 25 - incremental answer text is published after gateway persistence and settles into one message
+  ---
+  duration_ms: 3246.647291
+  type: 'test'
+  ...
+# Subtest: a reserved model-step budget survives restart and prevents another paid continuation
+ok 26 - a reserved model-step budget survives restart and prevents another paid continuation
+  ---
+  duration_ms: 1984.236583
+  type: 'test'
+  ...
+# Subtest: exhausting the reserved tool budget pairs not-executed and pauses before another model step
+ok 27 - exhausting the reserved tool budget pairs not-executed and pauses before another model step
+  ---
+  duration_ms: 2246.637625
+  type: 'test'
+  ...
+# Subtest: saved native result survives loss before association, rereads the original attempt and reads the immutable real work
+ok 28 - saved native result survives loss before association, rereads the original attempt and reads the immutable real work
+  ---
+  duration_ms: 3362.769
+  type: 'test'
+  ...
+# Subtest: lost real native-input receipt reconciles the original command exactly once before the next stateful input
+ok 29 - lost real native-input receipt reconciles the original command exactly once before the next stateful input
+  ---
+  duration_ms: 4625.980375
+  type: 'test'
+  ...
+# Subtest: two real driver generations share the saved attempt and only the winner reads and settles its native call
+ok 30 - two real driver generations share the saved attempt and only the winner reads and settles its native call
+  ---
+  duration_ms: 3456.875333
+  type: 'test'
+  ...
+# Subtest: stop after a persisted tool permit prevents the true native host from creating any execution
+ok 31 - stop after a persisted tool permit prevents the true native host from creating any execution
+  ---
+  duration_ms: 2049.883792
+  type: 'test'
+  ...
+# Subtest: stopping a later model step stops the Agent ongoing native session and preserves a student independent session
+ok 32 - stopping a later model step stops the Agent ongoing native session and preserves a student independent session
+  ---
+  duration_ms: 2836.733583
+  type: 'test'
+  ...
+# Subtest: pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run
+ok 33 - pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run
+  ---
+  duration_ms: 4036.035417
+  type: 'test'
+  ...
+# Subtest: expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+    # Subtest: paused
+    ok 1 - paused
+      ---
+      duration_ms: 4221.752791
+      type: 'test'
+      ...
+    # Subtest: stopped
+    ok 2 - stopped
+      ---
+      duration_ms: 3961.196666
+      type: 'test'
+      ...
+    1..2
+ok 34 - expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+  ---
+  duration_ms: 8183.507708
+  type: 'test'
+  ...
+# (node:92534) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run
+ok 35 - a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run
+  ---
+  duration_ms: 3278.08325
+  type: 'test'
+  ...
+# Subtest: Agent reads the granted immutable work through a real tool and continues the native call pair
+ok 36 - Agent reads the granted immutable work through a real tool and continues the native call pair
+  ---
+  duration_ms: 6101.736417
+  type: 'test'
+  ...
+# Subtest: responses continues the same native tool pair with the real fixed source
+ok 37 - responses continues the same native tool pair with the real fixed source
+  ---
+  duration_ms: 2300.203209
+  type: 'test'
+  ...
+# Subtest: messages continues the same native tool pair with the real fixed source
+ok 38 - messages continues the same native tool pair with the real fixed source
+  ---
+  duration_ms: 2280.421959
+  type: 'test'
+  ...
+# Subtest: truncated model output cannot dispatch a tool
+ok 39 - truncated model output cannot dispatch a tool
+  ---
+  duration_ms: 1847.689792
+  type: 'test'
+  ...
+# Subtest: invalid-arguments model output cannot dispatch a tool
+ok 40 - invalid-arguments model output cannot dispatch a tool
+  ---
+  duration_ms: 1888.3535
+  type: 'test'
+  ...
+# Subtest: missing-terminal model output cannot dispatch a tool
+ok 41 - missing-terminal model output cannot dispatch a tool
+  ---
+  duration_ms: 1887.010042
+  type: 'test'
+  ...
+# Subtest: a valid native call cannot read an unapproved work from another activity
+ok 42 - a valid native call cannot read an unapproved work from another activity
+  ---
+  duration_ms: 2180.390375
+  type: 'test'
+  ...
+# Subtest: an unsupported fixed binary source reports unavailable without an unknown-effect Wait
+ok 43 - an unsupported fixed binary source reports unavailable without an unknown-effect Wait
+  ---
+  duration_ms: 2261.975458
+  type: 'test'
+  ...
+# Subtest: trusted execution owner runs an agent session, preserves prior input, fences student and cancelled dispatch
+ok 44 - trusted execution owner runs an agent session, preserves prior input, fences student and cancelled dispatch
+  ---
+  duration_ms: 786.069375
+  type: 'test'
+  ...
+# Subtest: tool host freezes an approved work and runs manifest-declared stateful operations through the actual owner
+ok 45 - tool host freezes an approved work and runs manifest-declared stateful operations through the actual owner
+  ---
+  duration_ms: 1208.826917
+  type: 'test'
+  ...
+# Subtest: browser handoff survives owner reconstruction, requires a live permit and retains a true Wasm result
+ok 46 - browser handoff survives owner reconstruction, requires a live permit and retains a true Wasm result
+  ---
+  duration_ms: 1023.234666
+  type: 'test'
+  ...
+# Subtest: PNG work evidence uses the fixed verified WP06 route and durable image resource without base64 feedback
+ok 47 - PNG work evidence uses the fixed verified WP06 route and durable image resource without base64 feedback
+  ---
+  duration_ms: 957.771375
+  type: 'test'
+  ...
+# Subtest: the original native node rechecks the Agent permit at claim and a durable stop cancels its unclaimed start
+ok 48 - the original native node rechecks the Agent permit at claim and a durable stop cancels its unclaimed start
+  ---
+  duration_ms: 654.910417
+  type: 'test'
+  ...
+# Subtest: revocation cleanup reclaims the original real native process without granting current activity access
+ok 49 - revocation cleanup reclaims the original real native process without granting current activity access
+  ---
+  duration_ms: 888.961541
+  type: 'test'
+  ...
+1..49
+# tests 54
+# suites 0
+# pass 54
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 127558.900333

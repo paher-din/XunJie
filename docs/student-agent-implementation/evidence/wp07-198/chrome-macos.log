@@ -1,0 +1,11 @@
+
+Running 3 tests using 1 worker
+
+(node:87779) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › e2e/teachingTools.spec.ts:122:1 › the formal conversation shows the real fixed work read and retains it after editing and reload (3.5s)
+  -  2 [chromium] › e2e/teachingTools.spec.ts:183:1 › capture the existing formal conversation baseline before UI changes
+  ✓  3 [chromium] › e2e/teachingTools.spec.ts:194:1 › real native and browser operations retain results; a disconnected browser waits and can be stopped (28.0s)
+
+  1 skipped
+  2 passed (34.1s)

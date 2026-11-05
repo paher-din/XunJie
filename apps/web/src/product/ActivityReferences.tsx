@@ -13,7 +13,7 @@ import { z } from 'zod'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
 import { ComponentInteractions } from '../component-host/interactions'
-import { BrowserExecutionReceiver } from '../tool-execution/receiver'
+import { TeachingBrowserExecution } from './TeachingBrowserExecution'
 import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
@@ -72,21 +72,29 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   }, [workspace, draft, scope, spaceKey, namespace])
   const execution = useMemo(() => {
     // One page load is one executor generation; an older page cannot adopt a newer run.
-    const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' },
-      scope, Date.now(), () => access.current && !workspace.accessDenied())
+    const transport = createExecutionTransport(activity, spaceKey, namespace)
+    const receiver = new TeachingBrowserExecution(scope, Date.now(), (route, body) =>
+      learningRequest(activity, spaceKey, namespace, 'executions/' + activity.activityId + '/' + route, body),
+      transport, () => access.current && !workspace.accessDenied() && !readOnly, activity.activityId)
     return new ExecutionController(scope, receiver, actions,
-      createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace), undefined, () => access.current && !workspace.accessDenied(), readOnly)
+      transport, receiver.withProvider(createAlgorithmProvider(activity, spaceKey, namespace)), undefined, () => access.current && !workspace.accessDenied(), readOnly)
   }, [scope, actions, activity, spaceKey, namespace, readOnly])
   const sessions = useMemo(() => new NativeSessionController(scope,
     createSessionTransport(activity, spaceKey, namespace),
     () => access.current && !workspace.accessDenied(), new SessionRequests(), readOnly), [scope, activity, spaceKey, namespace, workspace, readOnly])
   useEffect(() => {
     let active = true
+    let stopAgentTasks = () => {}
     const unregister = readOnly ? () => {} : actions.registerLocalExecution(execution.receiver)
     void Promise.allSettled([draft.open(), workspace.open()]).then(() => { if (active) return actions.open() })
-      .then(() => { if (active) return Promise.all([execution.open(), sessions.open()]) })
+      .then(async () => {
+        if (!active) return
+        await Promise.all([execution.open(), sessions.open()])
+        if (active && !readOnly && execution.receiver instanceof TeachingBrowserExecution)
+          stopAgentTasks = execution.receiver.connect(execution)
+      })
       .catch(() => { /* Each partition reports initialization failure and retains its own contents. */ })
-    return () => { active = false; unregister(); sessions.dispose(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
+    return () => { active = false; stopAgentTasks(); unregister(); sessions.dispose(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
   }, [draft, workspace, actions, execution, sessions, readOnly])
   useEffect(() => {
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
@@ -100,8 +108,8 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
 export function CourseRequirementsReference({ course }: { course: CourseActivityBinding }) {
   const source = useMemo(() => ({ kind: 'course-field' as const, courseId: course.courseId, taskId: course.taskId,
     releaseId: course.releaseId, contentDigest: course.contentDigest, field: 'requirements' as const }), [course])
-  return <TextReferenceSource sourceId={questionReferenceSourceId(source)} sourceName="任务要求"
-    text={course.requirements} source={source} />
+  return <div data-course-requirements tabIndex={-1}><TextReferenceSource sourceId={questionReferenceSourceId(source)} sourceName="任务要求"
+    text={course.requirements} source={source} /></div>
 }
 
 export function CourseMaterialReferences({ activity, course, spaceKey, namespace }: {
@@ -132,7 +140,7 @@ export function CourseMaterialReferences({ activity, course, spaceKey, namespace
         releaseId: course.releaseId, contentDigest: course.contentDigest, materialId: item.materialId,
         materialSha256: item.sha256, mediaType: item.mediaType }
       const content = contents[item.materialId]
-      return <article className="learning-material-text" key={item.materialId}>
+      return <article className="learning-material-text" key={item.materialId} data-material-id={item.materialId} tabIndex={-1}>
         <h4>{item.title}</h4>
         {content?.text !== undefined ? <TextReferenceSource sourceId={questionReferenceSourceId(source)}
           sourceName={item.title} text={content.text} source={source} />

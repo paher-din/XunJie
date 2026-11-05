@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
@@ -12,7 +13,13 @@ import {
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot,
 } from '@xunjie/contracts/teaching-agent';
-import { buildContext, type ContextMessage } from './context.js';
+import type { ContextMessage } from './context.js';
+import { operationId, canonicalDigest } from './identity.js';
+import { teachingToolMigration } from './tool-migrations.js';
+import { createTeachingRunDriver, type TeachingRunLimits } from './driver.js';
+import type { TeachingToolHost } from './tool-types.js';
+import type { ModelTool } from '@xunjie/contracts/model-connections';
+import { modelLearningInputSchema, modelToolResultSchema } from '@xunjie/contracts/model-connections';
 import type { createModelGateway } from '../model-connections/index.js';
 
 const reasonText = (reason: unknown) => {
@@ -53,27 +60,11 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     attempt_id uuid NOT NULL,segment_id uuid NOT NULL,body jsonb NOT NULL,resource_id uuid NOT NULL,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX teaching_snapshots_run ON teaching_snapshots(run_id);
-` }];
+` }, teachingToolMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-/** PostgreSQL jsonb does not preserve object key order; reconstruction hashes use a canonical form. */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  if (value !== null && typeof value === 'object') return '{' + Object.entries(value as Record<string, unknown>)
-    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([key, item]) => JSON.stringify(key) + ':' + canonical(item)).join(',') + '}';
-  return JSON.stringify(value);
-}
-const canonicalDigest = (value: unknown) => createHash('sha256').update(canonical(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-function operationId(value: string) {
-  const bytes = createHash('sha256').update(value).digest().subarray(0, 16);
-  bytes[6] = (bytes[6]! & 15) | 64; bytes[8] = (bytes[8]! & 63) | 128;
-  const hex = bytes.toString('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
 type RunRow = Record<string, unknown>;
 type RequestRow = Record<string, unknown>;
 
@@ -82,6 +73,8 @@ export interface TeachingAgentOptions {
   identityFor(scope: { environmentId: string; spaceId: string; principalId: string }): Promise<SpaceIdentity>;
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   models: Awaited<ReturnType<typeof createModelGateway>>;
+  tools?: TeachingToolHost;
+  limits?: Partial<TeachingRunLimits>;
   leaseMs?: number;
   scanIntervalMs?: number;
   /** Durable authority identity; separate process namespaces must differ even when they share storage in tests. */
@@ -252,8 +245,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     return result.result as { run: TeachingRun; generation: number } | null;
   }
   async function assertAuthority(tx: OwnedTransaction, runId: string, generation: number) {
-    const { rows: [row] } = await tx.query('SELECT generation,lease_owner FROM teaching_runs WHERE run_id=$1 FOR UPDATE', [runId]);
-    if (!row || Number(row.generation) !== generation || row.lease_owner !== ownerId) throw new StorageError('conflict');
+    const { rows: [row] } = await tx.query('SELECT generation,lease_owner,lease_expires_at>=clock_timestamp() AS lease_live FROM teaching_runs WHERE run_id=$1 FOR UPDATE', [runId]);
+    if (!row || Number(row.generation) !== generation || row.lease_owner !== ownerId || !row.lease_live) throw new StorageError('conflict');
     return row;
   }
   async function finish(run: TeachingRun, generation: number, state: TeachingRun['state'], reason: string,
@@ -276,16 +269,6 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   function riskOwnershipLost(row: RunRow, generation: number) {
     return Number(row.generation) !== generation || row.lease_owner !== ownerId;
-  }
-  async function close(run: TeachingRun, generation: number, state: TeachingRun['state'], reason: string,
-    usage: ModelUsage, model: TeachingRun['model'], event: { kind: TeachingEventKind; body: Record<string, unknown> } | null) {
-    const row = await runRow(run.runId);
-    if (riskOwnershipLost(row, generation)) throw new StorageError('conflict');
-    try { await finish(run, generation, state, reason, usage, model, event); }
-    catch (error) {
-      // A complete native result whose final commit failed stays recoverable under the original attempt.
-      if (!(error instanceof StorageError) || error.code !== 'conflict') throw error;
-    }
   }
   async function heartbeat(runId: string, generation: number) {
     await storage.request({ requestId: 'teaching-heartbeat:' + runId + ':' + randomUUID(),
@@ -327,11 +310,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   async function ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
     choice: Awaited<ReturnType<TeachingAgentOptions['models']['selection']['snapshot']>>, selectionVersion: number,
-    system: string, history: ContextMessage[], generation: number) {
+    system: string, history: ContextMessage[], generation: number, tools: ModelTool[]) {
     const session = await sessionRow(activity.activityId);
     let segmentId = session.segment_id as string | null;
     const model = modelFact(choice.choice.connection);
-    const fingerprint = fingerprintOf(model, system);
+    const fingerprint = fingerprintOf(model, system + canonicalDigest(tools));
     let previousSegmentId: string | undefined;
     if (segmentId) {
       const segment = await options.models.segments.read(identity, segmentId);
@@ -347,7 +330,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     }
     const createdId = randomUUID();
     await options.models.segments.create(identity, { requestId: randomUUID(), segmentId: createdId, purpose: 'learning',
-      source: { selected: true, selectionVersion }, prefix: { system, tools: [] },
+      source: { selected: true, selectionVersion }, prefix: { system, tools },
       portable: history.map(message => ({ role: message.role === 'student' ? 'user' as const : 'assistant' as const,
         text: message.text })),
       ...(previousSegmentId ? { previousSegmentId } : {}) });
@@ -405,183 +388,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     }
     return fact;
   }
-  async function settleAttempt(run: TeachingRun, generation: number, fact: ModelAttemptFact, model: TeachingRun['model'],
-    segmentId: string) {
-    const stopped = toRun(await runRow(run.runId)).stopRequested;
-    const resultState = stopped ? 'stopped' : fact.state === 'completed' ? 'completed'
-      : fact.state === 'cancelled' ? 'stopped' : fact.state === 'failed' || fact.state === 'incomplete' ? 'failed' : 'paused';
-    const events: { kind: TeachingEventKind; body: Record<string, unknown> }[] = [];
-    if (fact.text) events.push({ kind: 'assistant', body: { runId: run.runId, attemptId: fact.attemptId,
-      segmentId, text: fact.text, usage: fact.usage, model, state: stopped ? 'stopped' : fact.state === 'completed' ? 'settled' : 'failed' } });
-    if (resultState === 'completed') events.push({ kind: 'run-completed', body: { runId: run.runId, attemptId: fact.attemptId, usage: fact.usage } });
-    else if (resultState === 'stopped') events.push({ kind: 'run-stopped', body: { runId: run.runId, attemptId: fact.attemptId, reason: fact.reason,
-      text: fact.text, usage: fact.usage, stoppedByRequest: stopped } });
-    else events.push({ kind: 'run-failed', body: { runId: run.runId, attemptId: fact.attemptId, reason: fact.reason || fact.state,
-      text: fact.text, usage: fact.usage, state: fact.state } });
-    const first = events.shift()!;
-    await finish(run, generation, resultState, fact.reason || (stopped ? 'stop-requested' : ''), fact.usage, model, first, events);
-  }
-  async function execute(run: TeachingRun, generation: number) {
-    const identity = runIdentity(await runRow(run.runId));
-    await options.authorize(identity);
-    const activity = await options.activity(identity, run.activityId);
-    const request = await requestRow(run.requestId);
-    if (!request) throw new StorageError('corrupt');
-    if (request.state === 'cancelled') {
-      await close(run, generation, 'stopped', 'cancelled-before-start', { state: 'unknown' }, run.model, {
-        kind: 'run-stopped', body: { runId: run.runId, reason: 'cancelled-before-start' } });
-      return;
-    }
-    const reason = refusal(activity);
-    if (reason) {
-      await close(run, generation, 'failed', reason, { state: 'unknown' }, null, {
-        kind: 'run-failed', body: { runId: run.runId, reason } });
-      return;
-    }
-    // An expired lease takes over an existing attempt by querying the original identity, never by
-    // creating a second paid generation with the same question.
-    if (run.attemptId) {
-      if (!run.segmentId || !run.model) {
-        await close(run, generation, 'paused', 'attempt-unavailable', { state: 'unknown' }, run.model, {
-          kind: 'system-notice', body: { runId: run.runId, attemptId: run.attemptId, reason: 'attempt-unavailable' } });
-        return;
-      }
-      let fact: ModelAttemptFact;
-      try { fact = await options.models.checks.read(identity, run.attemptId); }
-      catch (error) {
-        if (!(error instanceof StorageError) || !['missing', 'forbidden'].includes(error.code)) throw error;
-        await close(run, generation, 'paused', 'attempt-unavailable', { state: 'unknown' }, run.model, {
-          kind: 'system-notice', body: { runId: run.runId, attemptId: run.attemptId, reason: 'attempt-unavailable' } });
-        return;
-      }
-      // The prior driver may have stopped between persisting the attempt and dispatching it.
-      if (fact.state === 'accepted') {
-        fact = toRun(await runRow(run.runId)).stopRequested
-          ? await options.models.checks.cancel(identity, run.attemptId)
-          : await options.models.checks.dispatch(identity, run.attemptId);
-      }
-      try { fact = await awaitAttempt(identity, run, generation, run.attemptId, run.segmentId, fact); }
-      catch (error) {
-        if (!(error instanceof StorageError) || !['missing', 'forbidden'].includes(error.code)) throw error;
-        await close(run, generation, 'paused', 'attempt-unavailable', { state: 'unknown' }, run.model, {
-          kind: 'system-notice', body: { runId: run.runId, attemptId: run.attemptId, reason: 'attempt-unavailable' } });
-        return;
-      }
-      if (!fact.physicalRequestEnded) {
-        await close(run, generation, 'paused', 'result-unknown', fact.usage, run.model, {
-          kind: 'system-notice', body: { runId: run.runId, attemptId: run.attemptId, reason: 'result-unknown' } });
-        return;
-      }
-      await settleAttempt(run, generation, fact, run.model, run.segmentId);
-      return;
-    }
-    const selection = await options.models.selection.read(identity);
-    if (!selection.selected) {
-      const unavailable = selection.unavailableReason ?? 'model-not-selected';
-      await close(run, generation, 'paused', unavailable, { state: 'unknown' }, null, {
-        kind: 'model-unavailable', body: { runId: run.runId, reason: unavailable } });
-      return;
-    }
-    const choice = await options.models.selection.snapshot(identity, selection.version);
-    const model = modelFact(choice.choice.connection);
-    const maxOutputTokens = choice.choice.connection.maxOutputTokens;
-    if (maxOutputTokens === undefined) {
-      await close(run, generation, 'paused', 'max-output-missing', { state: 'unknown' }, model, {
-        kind: 'model-unavailable', body: { runId: run.runId, reason: 'max-output-missing' } });
-      return;
-    }
-    const history = await historyBefore(run.activityId, run.runId);
-    const input = actionInputSchema.parse(request.body);
-    const context = buildContext(activity, input, history,
-      { ...(choice.choice.connection.contextWindow !== undefined ? { contextWindow: choice.choice.connection.contextWindow } : {}), maxOutputTokens });
-    // The learning transport accepts 400k prefix and 1M user characters. Exceeding either is a
-    // definite capacity result; the complete input stays in the request, never truncated.
-    if (context.system.length > 400_000 || context.userText.length > 1_000_000) {
-      const capacity = { ...context.capacity, status: 'over-window' as const };
-      await close(run, generation, 'paused', 'capacity-exceeded', { state: 'unknown' }, model, {
-        kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', capacity } });
-      return;
-    }
-    let segment: { segmentId: string; sequence: number; model: typeof model };
-    try {
-      segment = await ensureSegment(identity, activity, run, choice, selection.version, context.system, history, generation);
-    } catch (error) {
-      if (!(error instanceof StorageError) || error.code !== 'resource-busy') throw error;
-      await close(run, generation, 'paused', 'segment-busy', { state: 'unknown' }, model, {
-        kind: 'system-notice', body: { runId: run.runId, reason: 'segment-busy' } });
-      return;
-    }
-    if (dispatchClosed) throw new StorageError('maintenance');
-    if (toRun(await runRow(run.runId)).stopRequested) {
-      await close(run, generation, 'stopped', 'stop-requested', { state: 'unknown' }, model, {
-        kind: 'run-stopped', body: { runId: run.runId, reason: 'stop-requested' } });
-      return;
-    }
-    const attemptId = randomUUID();
-    const attempt = await options.models.checks.receive(identity, { attemptId, purpose: 'learning', segmentId: segment.segmentId,
-      expectedSequence: segment.sequence, input: { text: context.userText }, limits: { maxOutputTokens } });
-    const payload = await options.models.checks.requestPayload(identity, attemptId);
-    // Without a matching tokenizer the character count stays an uncertainty fact. It is recorded
-    // with the payload but never converted into tokens or used to shrink the saved window.
-    const payloadChars = JSON.stringify(payload).length;
-    const capacity = { ...context.capacity, payloadChars, inputChars: Math.max(context.capacity.inputChars, payloadChars),
-      status: 'within-upper-bound' as const };
-    const snapshot: TeachingSnapshot = teachingSnapshotSchema.parse({ snapshotId: randomUUID(), activityId: run.activityId,
-      runId: run.runId, attemptId, segmentId: segment.segmentId, assemblyVersion: 1, model, maxOutputTokens,
-      ...(choice.choice.connection.contextWindow !== undefined ? { contextWindow: choice.choice.connection.contextWindow } : {}),
-      sources: context.sources, payloadSha256: canonicalDigest(payload), payload,
-      createdAt: new Date().toISOString() });
-    const bytes = Buffer.from(JSON.stringify(snapshot));
-    const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'teaching-snapshot:' + snapshot.snapshotId,
-      bytes, mediaType: 'application/json', contentVersion: 1 });
-    try {
-      await storage.request({ requestId: 'teaching-snapshot:' + snapshot.snapshotId, fingerprint: digest(snapshot) }, async tx => {
-        await assertAuthority(tx, run.runId, generation);
-        await tx.query(`INSERT INTO teaching_snapshots(snapshot_id,activity_id,run_id,attempt_id,segment_id,body,resource_id)
-          VALUES($1,$2,$3,$4,$5,$6,$7)`, [snapshot.snapshotId, run.activityId, run.runId, attemptId, segment.segmentId,
-          JSON.stringify(snapshot), resource.resourceId]);
-        await tx.reference('teaching-snapshot:' + snapshot.snapshotId, resource.resourceId);
-        await tx.query(`UPDATE teaching_runs SET attempt_id=$2,segment_id=$3,model=$4,state='dispatching',
-          updated_at=clock_timestamp() WHERE run_id=$1`, [run.runId, attemptId, segment.segmentId, JSON.stringify(model)]);
-        await appendEvent(tx, run.activityId, 'context-assembled', { runId: run.runId, snapshotId: snapshot.snapshotId,
-          attemptId, segmentId: segment.segmentId, payloadSha256: snapshot.payloadSha256, capacity,
-          sources: context.sources.map(source => ({ kind: source.kind, label: source.label })) });
-        return null;
-      });
-    } catch (error) {
-      // The prepared attempt owns the segment slot; release it if this run can no longer dispatch.
-      await options.models.checks.cancel(identity, attemptId).catch(() => {});
-      throw error;
-    }
-    if (dispatchClosed) {
-      await options.models.checks.cancel(identity, attemptId).catch(() => {});
-      throw new StorageError('maintenance');
-    }
-    const current = toRun(await runRow(run.runId));
-    if (riskOwnershipLost(await runRow(run.runId), generation)) {
-      await options.models.checks.cancel(identity, attemptId).catch(() => {});
-      throw new StorageError('conflict');
-    }
-    if (current.stopRequested) {
-      await options.models.checks.cancel(identity, attemptId);
-    } else {
-      await options.models.checks.dispatch(identity, attemptId);
-    }
-    await storage.request({ requestId: 'teaching-dispatch:' + attemptId, fingerprint: 'teaching-dispatch:' + attemptId }, async tx => {
-      await assertAuthority(tx, run.runId, generation);
-      await tx.query('UPDATE teaching_runs SET state=$2,updated_at=clock_timestamp() WHERE run_id=$1', [run.runId, 'dispatching']);
-      await appendEvent(tx, run.activityId, 'attempt-dispatched', { runId: run.runId, attemptId, segmentId: segment.segmentId,
-        expectedSequence: segment.sequence });
-      return null;
-    });
-    const fact = await awaitAttempt(identity, run, generation, attemptId, segment.segmentId);
-    if (!fact.physicalRequestEnded) {
-      await close(run, generation, 'paused', 'result-unknown', fact.usage, model, {
-        kind: 'system-notice', body: { runId: run.runId, attemptId, reason: 'result-unknown' } });
-      return;
-    }
-    await settleAttempt(run, generation, fact, model, segment.segmentId);
-  }
+  const driver = createTeachingRunDriver(storage, {
+    ...options, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
+    assertAuthority, appendEvent, historyBefore, ensureSegment, awaitAttempt, finish,
+  });
 
   const starting = new Set<string>();
   function kick(runId: string) {
@@ -591,15 +401,17 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const claimed = await claim(runId);
       if (!claimed) return;
       const { run, generation } = claimed;
-      try { await execute(run, generation); }
+      try { await driver.execute(run, generation); }
       catch (error) {
-        if (error instanceof StorageError && ['conflict', 'maintenance'].includes(error.code)) return;
-        const row = await runRow(runId).catch(() => null);
-        if (row && !terminal(row.state as TeachingRun['state'])) {
-          if (row.attempt_id) await options.models.checks.cancel(runIdentity(row), row.attempt_id as string).catch(() => {});
-          const reason = error instanceof StorageError ? error.code : 'driver-failed';
-          await finish(run, generation, 'paused', reason, { state: 'unknown' },
-            (row.model as TeachingRun['model'] | null) ?? null, { kind: 'system-notice', body: { runId, reason } }).catch(() => {});
+        // A failed owner commit or lost lease never proves an external operation failed. Keep
+        // the original step/attempt/command and let recovery query those identities.
+        const reason = error instanceof z.ZodError ? 'corrupt' : error instanceof StorageError ? error.code
+          : (error as { code?: string }).code === 'capability-unavailable' ? 'model-capability-unavailable' : '';
+        if (['forbidden', 'invalid', 'missing', 'resource-busy', 'corrupt', 'incompatible', 'resource-gone', 'model-capability-unavailable'].includes(reason)) {
+          const row = await runRow(runId).catch(() => null);
+          if (row && !terminal(row.state as TeachingRun['state'])) await finish(run, generation, 'paused', reason,
+            (row.usage as ModelUsage) ?? { state: 'unknown' }, (row.model as TeachingRun['model']) ?? null,
+            { kind: 'system-notice', body: { runId, reason } }).catch(() => {});
         }
       }
     })().finally(() => { starting.delete(runId); active.delete(runId) });
@@ -608,7 +420,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   async function scan() {
     if (dispatchClosed) return;
-    const { rows } = await storage.read(`SELECT run_id FROM teaching_runs WHERE state IN ('received','running','dispatching')
+    for (const runId of await driver.pollWaits()) kick(runId);
+    const { rows } = await storage.read(`SELECT run_id FROM teaching_runs r WHERE
+      (state IN ('received','running','dispatching') OR (state='waiting' AND (stop_requested OR NOT EXISTS
+        (SELECT 1 FROM teaching_waits w WHERE w.run_id=r.run_id AND w.state='pending'))))
       AND (lease_expires_at IS NULL OR lease_expires_at < clock_timestamp()) ORDER BY created_at LIMIT 20`);
     for (const row of rows) kick(row.run_id as string);
   }
@@ -629,6 +444,13 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     await options.activity(identity, activityId);
     const cursor = Math.max(0, Math.trunc(after));
     const { rows } = await storage.read('SELECT * FROM teaching_events WHERE activity_id=$1 AND seq>$2 ORDER BY seq', [activityId, cursor]);
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index]!;
+      if (Number(row.seq) !== cursor + index + 1) throw new StorageError('corrupt');
+      if (!teachingEventSchema.safeParse({ activityId, seq: Number(row.seq), eventId: row.event_id, kind: row.kind,
+        version: row.event_version, body: row.body, createdAt: new Date(row.created_at as string).toISOString() }).success)
+        throw new StorageError('incompatible');
+    }
     const { rows: runRows } = await storage.read('SELECT * FROM teaching_runs WHERE activity_id=$1 ORDER BY created_at', [activityId]);
     const messages: TeachingMessage[] = [];
     // Progress and the final answer for one attempt share a stable message identity; polling
@@ -641,6 +463,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const attemptId = typeof body.attemptId === 'string' ? body.attemptId : '';
       if (kind === 'input') messages.push({ ...base, role: 'student', text: String(body.question ?? ''),
         runId: (body.runId as string) ?? null });
+      else if (kind === 'native-summary' && body.source === 'model-native' && typeof body.text === 'string' && body.text)
+        messages.push({ ...base, role: 'system', kind: 'native-summary', text: body.text,
+          ...(body.truncated === true ? { summaryTruncated: true } : {}),
+          runId: (body.runId as string) ?? null });
       else if (kind === 'assistant-progress') {
         if (attemptId && settledAttempts.has(attemptId)) continue;
         const delta = typeof body.delta === 'string' ? body.delta : '';
@@ -675,6 +501,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       else if (kind === 'run-failed') messages.push({ ...base, role: 'system',
         text: `本次回答未完成${reasonText(body.reason) ? `：${reasonText(body.reason)}` : ''}。原问题与历史已保留，可明确继续。`,
         runId: (body.runId as string) ?? null });
+      else if (kind === 'system-notice' && body.reason === 'step-record-unavailable') messages.push({ ...base, role: 'system',
+        text: '原任务的恢复依据不完整，已暂停。原请求和结果仍保留，没有重新执行。',
+        runId: (body.runId as string) ?? null });
     }
     // A progress message whose run already settled without a final answer (driver loss, pause)
     // must not stay "streaming" forever.
@@ -683,13 +512,13 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const message = messages[index]!;
       const state = message.runId ? runStates.get(message.runId) : undefined;
       if (message.role !== 'assistant' || message.state !== 'streaming' || !state
-        || ['received', 'running', 'dispatching'].includes(state)) continue;
+        || ['received', 'running', 'dispatching', 'waiting'].includes(state)) continue;
       messages[index] = { ...message, state: state === 'stopped' ? 'stopped' : state === 'failed' ? 'failed' : 'unknown' };
     }
     // The cursor may only cover events actually delivered in this response; a later commit is
     // read on the next poll instead of being skipped by a concurrent max(seq).
     return teachingConversationSchema.parse({ activityId, cursor: rows.length ? Number(rows.at(-1)!.seq) : cursor, messages,
-      runs: runRows.map(toRun) });
+      runs: runRows.map(toRun), tools: await driver.records(activityId), waits: await driver.waits(activityId) });
   }
   async function events(identity: SpaceIdentity, activityId: string, after = 0): Promise<TeachingEvent[]> {
     await options.activity(identity, activityId);
@@ -706,7 +535,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const parsed = teachingSnapshotSchema.parse(row.body);
     const bytes = Buffer.from(await storage.readResource(row.resource_id as string));
     if (canonicalDigest(parsed.payload) !== parsed.payloadSha256) throw new StorageError('corrupt');
-    if (bytes.byteLength === 0) throw new StorageError('corrupt');
+    if (bytes.byteLength === 0 || canonicalDigest(JSON.parse(bytes.toString('utf8'))) !== canonicalDigest(parsed)) throw new StorageError('corrupt');
     return parsed;
   }
   async function request(identity: SpaceIdentity, activityId: string, requestId: string) {
@@ -730,6 +559,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       return null;
     });
     await stopAttempt(runId);
+    await driver.stopTools(toRun(await runRow(runId)));
     kick(runId);
     return toRun(await runRow(runId));
   }
@@ -781,6 +611,19 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       return { receiver: identity, modelAvailable: false, modelUnavailableReason: error.code };
     }
   }
+  /** The original browser may deliver an already permitted command while its Run sleeps. */
+  async function assertCommandDispatch(identity: SpaceIdentity, activityId: string,
+    association: { runId: string; stepId: string; snapshotId: string; commandId: string }) {
+    if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
+    await options.activity(identity, activityId);
+    await storage.pendingIntents();
+    const { rows: [row] } = await storage.read(`SELECT r.state,r.stop_requested,c.state AS command_state,s.snapshot_id
+      FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id JOIN teaching_steps s ON s.step_id=c.step_id
+      WHERE c.command_id=$1 AND c.run_id=$2 AND c.step_id=$3 AND r.activity_id=$4`,
+      [association.commandId, association.runId, association.stepId, activityId]);
+    if (!row || row.snapshot_id !== association.snapshotId || row.stop_requested || terminal(row.state as TeachingRun['state'])
+      || !['dispatching', 'waiting'].includes(String(row.command_state))) throw new StorageError('forbidden');
+  }
   async function validate() {
     await validateTeachingAgent(storage);
   }
@@ -789,7 +632,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   if (options.start !== false) startTicker();
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
-    run, conversation, events, snapshot, request, stop, continueRun, capabilities, validate,
+    run, conversation, events, snapshot, request, stop, continueRun, capabilities, assertCommandDispatch, validate,
     closeWrites() { writesClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     closeDispatch() { dispatchClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     async drain() {
@@ -800,7 +643,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       }
     },
     resume() { writesClosed = false; dispatchClosed = false; startTicker(); void scan().catch(() => {}); },
-    close() { if (ticker) clearInterval(ticker); ticker = undefined; },
+    close() { writesClosed = true; dispatchClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
   };
 }
 
@@ -830,8 +673,10 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
   }
   const { rows: sessions } = await storage.read('SELECT * FROM teaching_sessions');
   for (const session of sessions) {
-    const { rows } = await storage.read('SELECT seq FROM teaching_events WHERE activity_id=$1 ORDER BY seq', [session.activity_id]);
+    const { rows } = await storage.read('SELECT * FROM teaching_events WHERE activity_id=$1 ORDER BY seq', [session.activity_id]);
     if (rows.some((row, index) => Number(row.seq) !== index + 1)) throw new StorageError('corrupt');
+    for (const row of rows) teachingEventSchema.parse({ activityId: row.activity_id, seq: Number(row.seq), eventId: row.event_id,
+      kind: row.kind, version: row.event_version, body: row.body, createdAt: new Date(row.created_at as string).toISOString() });
     const { rows: [last] } = await storage.read('SELECT max(seq)::bigint AS seq FROM teaching_events WHERE activity_id=$1', [session.activity_id]);
     if (Number(last?.seq ?? 0) + 1 !== Number(session.next_seq)) throw new StorageError('corrupt');
   }
@@ -839,7 +684,45 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
   for (const row of snapshots) {
     const body = teachingSnapshotSchema.parse(row.body);
     const bytes = Buffer.from(await storage.readResource(row.resource_id as string));
-    if (bytes.byteLength === 0 || canonicalDigest(body.payload) !== body.payloadSha256)
+    if (bytes.byteLength === 0 || canonicalDigest(body.payload) !== body.payloadSha256
+      || canonicalDigest(JSON.parse(bytes.toString('utf8'))) !== canonicalDigest(body))
       throw new StorageError('corrupt');
+  }
+  const { rows: steps } = await storage.read('SELECT * FROM teaching_steps');
+  for (const step of steps) {
+    const plan = step.plan as { input: unknown };
+    const input = modelLearningInputSchema.parse(plan.input);
+    if (input.attemptId !== step.attempt_id || input.segmentId !== step.segment_id
+      || step.step_id !== operationId(`step:${step.run_id}:${step.step_no}`)
+      || step.snapshot_id !== operationId('model-snapshot:' + step.step_id)
+      || input.limits.maxOutputTokens !== step.output_reserved) throw new StorageError('corrupt');
+    if (step.phase !== 'planned') {
+      const snapshot = snapshots.find(row => row.snapshot_id === step.snapshot_id);
+      if (!snapshot || snapshot.run_id !== step.run_id || snapshot.attempt_id !== step.attempt_id
+        || snapshot.segment_id !== step.segment_id) throw new StorageError('corrupt');
+    }
+  }
+  const { rows: commands } = await storage.read('SELECT * FROM teaching_commands');
+  for (const command of commands) {
+    const saved = command.command as { version: number; commandId: string };
+    const step = steps.find(step => step.step_id === command.step_id);
+    if (!step || step.run_id !== command.run_id || saved.version !== 1 || saved.commandId !== command.command_id
+      || saved.commandId !== operationId('teaching-command:' + command.step_id + ':' + command.call_id)) throw new StorageError('corrupt');
+    for (const outcome of [command.outcome, command.initial_outcome]) {
+      if (outcome) modelToolResultSchema.parse({ callId: command.call_id, ...(outcome as { feedback: object }).feedback });
+    }
+    if (command.resource_id) {
+      const bytes = await storage.readResource(String(command.resource_id));
+      if (canonicalDigest(JSON.parse(Buffer.from(bytes).toString('utf8'))) !== canonicalDigest(command.outcome)) throw new StorageError('corrupt');
+    }
+  }
+  const { rows: waits } = await storage.read('SELECT * FROM teaching_waits');
+  for (const wait of waits) {
+    const command = commands.find(command => command.command_id === wait.command_id);
+    if (!command || command.step_id !== wait.step_id || command.run_id !== wait.run_id
+      || !['result', 'cleanup'].includes(String(wait.purpose))
+      || canonicalDigest(command.command) !== wait.command_digest
+      || wait.wait_id !== operationId((wait.purpose === 'cleanup' ? 'teaching-cleanup-wait:' : 'teaching-wait:') + wait.command_id)
+      || (wait.state === 'consumed' || wait.purpose === 'cleanup') && command.state !== 'settled') throw new StorageError('corrupt');
   }
 }

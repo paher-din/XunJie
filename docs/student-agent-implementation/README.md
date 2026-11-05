@@ -24,6 +24,7 @@
 | #175 已完成：课程运行方案固定、按操作判定执行位置、Linux 受限会话入口、学校节点真实原生会话与撤权/旧安装失权 | [#175 课程运行方案与学校节点执行](wp03-course-execution-plan.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
 | WP07 的持久运行、session log、请求重建及正式学习对话 | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) · [交付与验收](wp07-197-recoverable-learning-conversation.md) · [双轴审查](wp07-197-code-review.md) · [实施子票](specs/README.md#wp07-实施子票) |
+| WP07 固定作品读取、课程工具、持久等待与原执行核对 | [#198 实现与验收](wp07-198-agent-tools.md) · [实施选择](specs/wp07-agent-tools.md) · [双轴审查](wp07-198-code-review.md) · [旧消费者迁接归属](wp07-198-legacy-consumers.md) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |

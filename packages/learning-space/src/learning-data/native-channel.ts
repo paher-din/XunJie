@@ -3,9 +3,10 @@ import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
-import { advanceExecution, canonicalValue, executionQuerySchema, isTerminalExecutionState } from '@xunjie/contracts/execution';
+import { advanceExecution, canonicalValue, executionActionSchema, executionQuerySchema, isTerminalExecutionState, agentExecutionAssociationSchema } from '@xunjie/contracts/execution';
 import type { ExecutionQuery } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import type { AgentExecutionContext } from './agent-executions.js';
 import { productNativeAdapters } from './native-process.js';
 
 export const nativeChannelMigration: Migration = { version: 9, name: 'authenticated-native-pull-channel', sql: `
@@ -91,6 +92,8 @@ export function createNativeChannel(storage: OwnedStorage, options: {
   authorize(identity: SpaceIdentity, activityId: string): Promise<unknown>;
   authorizeConnection(identity: SpaceIdentity, connectionId: string): Promise<void>;
   installationActive?(installationId: string): Promise<boolean>;
+  /** Rechecks the durable teaching permit when the fixed node actually claims an Agent command. */
+  assertAgentDispatch?(identity: SpaceIdentity, activityId: string, association: Omit<AgentExecutionContext, 'assertDispatch'>): Promise<void>;
   leaseMs?: number;
 }) {
   const leaseMs = z.number().int().min(1000).max(60000).parse(options.leaseMs ?? 15000);
@@ -236,7 +239,7 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       AND EXISTS(SELECT 1 FROM native_channel_commands s WHERE s.connection_id=c.connection_id AND s.session_id=c.session_id
         AND s.operation='submit' AND COALESCE(s.command#>>'{payload,execution,session,supervisorEpoch}',$2)=$2)
       AND (c.operation='stop' OR NOT EXISTS(SELECT 1 FROM native_channel_commands p WHERE p.connection_id=c.connection_id
-        AND p.session_id=c.session_id AND p.position<c.position AND p.state<>'reported'))
+        AND p.session_id=c.session_id AND p.position<c.position AND p.state NOT IN ('reported','cancelled')))
       ORDER BY position LIMIT 1`, [input.connectionId, input.supervisorEpoch, JSON.stringify(input), storage.generation]);
     if (!rows[0]) return { command: null, leaseMs };
     const candidate = commandSchema.parse(JSON.parse(String(rows[0].command_text)));
@@ -246,10 +249,52 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       const { rows: [row] } = await tx.query(`SELECT * FROM native_channel_commands c WHERE command_id=$1 AND state='pending'
         AND c.target_node=$2::jsonb AND c.target_generation=$3
         AND (c.operation='stop' OR NOT EXISTS(SELECT 1 FROM native_channel_commands p WHERE p.connection_id=c.connection_id
-          AND p.session_id=c.session_id AND p.position<c.position AND p.state<>'reported')) FOR UPDATE`, [candidate.commandId, JSON.stringify(input), storage.generation]);
+          AND p.session_id=c.session_id AND p.position<c.position AND p.state NOT IN ('reported','cancelled'))) FOR UPDATE`, [candidate.commandId, JSON.stringify(input), storage.generation]);
       if (!row) return null;
       await node(token, input);
       await options.authorize(identity, candidate.activityId);
+      if (candidate.operation !== 'stop') {
+        const { rows: [original] } = await tx.query(`SELECT command_text FROM native_channel_commands
+          WHERE connection_id=$1 AND session_id=$2 AND operation='submit'`, [input.connectionId, candidate.sessionId]);
+        const payload = original ? JSON.parse(String(original.command_text)).payload as { action?: unknown } : undefined;
+        const action = executionActionSchema.safeParse(payload?.action);
+        if (action.success && action.data.execution.initiator.kind === 'agent') {
+          const { rows: [agent] } = await tx.query(`SELECT a.association,a.cancelled,parent.cancelled AS parent_cancelled
+            FROM agent_execution_commands a JOIN agent_execution_commands parent ON parent.command_id=a.request_id
+            WHERE a.command_id=$1 AND a.activity_id=$2 AND parent.kind='submit' FOR SHARE OF a,parent`,
+            [candidate.commandId, candidate.activityId]);
+          const assertAgentDispatch = options.assertAgentDispatch;
+          if (!agent) return fail('forbidden');
+          const cancel = async () => {
+            // Only an unclaimed submit proves that no process started. Refusing a control
+            // proves nothing about its live session, including whether its stop has applied.
+            const submitted = candidate.operation === 'submit'
+              ? z.object({ execution: executionQuerySchema }).parse(payload).execution : null;
+            const cancelled = submitted
+              ? executionQuerySchema.parse({ ...submitted,
+                state: 'cancelled', statusKnowledge: 'confirmed',
+                confirmedSeq: submitted.confirmedSeq + 1 })
+              : { statusKnowledge: 'confirmed', reason: 'agent-command-cancelled-before-dispatch' };
+            await tx.query("UPDATE native_channel_commands SET state='cancelled',result=$2 WHERE command_id=$1",
+              [candidate.commandId, JSON.stringify(cancelled)]);
+            return null;
+          };
+          if (agent.cancelled || agent.parent_cancelled) return cancel();
+          if (!assertAgentDispatch) return fail('forbidden');
+          const association = agentExecutionAssociationSchema.parse(agent.association);
+          try { await assertAgentDispatch(identity, candidate.activityId, association); }
+          catch (error) {
+            if (!(error instanceof StorageError) || error.code !== 'forbidden') throw error;
+            // A teaching permit can expire independently of the connection. Reauthenticate
+            // before treating its denial as local to this command; real revocation must
+            // still reach the worker's connection cleanup path.
+            await node(token, input);
+            await options.authorizeConnection(identity, input.connectionId);
+            await options.authorize(identity, candidate.activityId);
+            return cancel();
+          }
+        }
+      }
       if (!dispatchOpen) fail('unavailable');
       const claimId = randomUUID();
       await tx.query("UPDATE native_channel_commands SET state='claimed',claim_id=$2,claim_generation=$3,claim_node=$4 WHERE command_id=$1", [candidate.commandId, claimId, storage.generation, JSON.stringify(input)]);
@@ -320,6 +365,10 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       await tx.query(`INSERT INTO native_channel_cleanups(command_id,claim_id,node,owner,generation,execution_identity,proof_digest)
         VALUES($1,$2,$3,$4,$5,$6,$7)`, [input.commandId, input.claimId, JSON.stringify(input.node), JSON.stringify(input.owner),
         input.generation, JSON.stringify(identity), proofDigest]);
+      // Retain the actual terminal cleanup observation as well as its proof. It is a late fact,
+      // never permission to register, claim or run another command after revocation.
+      await tx.query(`UPDATE native_channel_commands SET observed_result=$2,observed_seq=$3
+        WHERE command_id=$1 AND (observed_seq IS NULL OR observed_seq<=$3)`, [input.commandId, JSON.stringify(input.query), input.query.confirmedSeq]);
       return acknowledgement;
     });
     return receipt.result;
@@ -404,7 +453,29 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       await new Promise(resolve => setTimeout(resolve, 25));
     }
   }
-  return { register, enqueue, claim, report, query, nodes, heartbeat, cleanup, drain,
+  async function reclaimOriginal(commandId: string, expected: ExecutionQuery) {
+    z.uuid().parse(commandId); executionQuerySchema.parse(expected);
+    const receipt = await storage.request({ requestId: 'native-channel-reclaim:' + randomUUID(), fingerprint: hash({ commandId, expected }) }, async tx => {
+      const { rows: [row] } = await tx.query('SELECT * FROM native_channel_commands WHERE command_id=$1 FOR UPDATE', [commandId]);
+      if (!row || row.operation !== 'submit') return fail('missing');
+      const original = z.object({ execution: executionQuerySchema }).parse(JSON.parse(String(row.command_text)).payload).execution;
+      assertObservationIdentity(original, expected);
+      const observed = executionQuerySchema.safeParse(row.observed_result ?? row.result);
+      if (observed.success && isTerminalExecutionState(observed.data.state) && observed.data.statusKnowledge === 'confirmed') {
+        assertObservationIdentity(original, observed.data); return observed.data;
+      }
+      if (row.state === 'pending') {
+        const cancelled = executionQuerySchema.parse({ ...expected, state: 'cancelled', statusKnowledge: 'confirmed',
+          stopRequested: true, confirmedSeq: expected.confirmedSeq + 1, reason: null });
+        await tx.query("UPDATE native_channel_commands SET state='cancelled',result=$2 WHERE command_id=$1", [commandId, JSON.stringify(cancelled)]);
+        return cancelled;
+      }
+      return executionQuerySchema.parse({ ...expected, statusKnowledge: 'unknown', stopRequested: true,
+        reason: { code: 'resource-unavailable', detail: '原节点已领取；等待原实例通过撤权清理通道确认退出。' } });
+    });
+    return executionQuerySchema.parse(receipt.result);
+  }
+  return { register, enqueue, claim, report, query, nodes, heartbeat, cleanup, drain, reclaimOriginal,
     closeDispatch() { dispatchOpen = false; }, resume() { dispatchOpen = true; } };
 }
 

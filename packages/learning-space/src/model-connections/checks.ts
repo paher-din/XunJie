@@ -97,6 +97,40 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (result.resultRef) await storage.readResource(result.resultRef);
     return result;
   }
+  async function responsesResult(body: ModelAttempt, bytes: Uint8Array) {
+    const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as NativePayload;
+    if (!('input' in request)) throw new StorageError('corrupt');
+    const tools = request.tools?.map(tool => {
+      if (tool.type !== 'function') throw new StorageError('corrupt');
+      return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
+    }) ?? [];
+    const native: unknown = JSON.parse(Buffer.from(bytes).toString('utf8'));
+    validateResponsesNative(native, tools);
+    return native as { output: unknown[] };
+  }
+  /** Only the model's explicit Responses summary is public; reasoning/thinking stays native. */
+  async function summary(identity: SpaceIdentity, attemptId: string): Promise<{ source: 'model-native'; text: string; truncated: boolean } | null> {
+    const body = await read(identity, attemptId);
+    if (body.state !== 'completed' || !body.physicalRequestEnded || body.connection.protocol !== 'responses' || !body.resultRef) return null;
+    const native = await responsesResult(body, await storage.readResource(body.resultRef));
+    const limit = 16_000;
+    let text = '';
+    let truncated = false;
+    for (const item of native.output) {
+      if (!item || typeof item !== 'object' || !('type' in item) || item.type !== 'reasoning'
+        || !('summary' in item) || !Array.isArray(item.summary)) continue;
+      for (const part of item.summary) {
+        if (!part || typeof part !== 'object' || part.type !== 'summary_text' || typeof part.text !== 'string' || !part.text.trim()) continue;
+        const fragment = (text ? '\n\n' : '') + part.text;
+        const remaining = limit - text.length;
+        if (fragment.length > remaining) truncated = true;
+        text += fragment.slice(0, remaining);
+      }
+    }
+    // A bounded prefix must not split a Unicode surrogate pair or invent an ellipsis.
+    if (/[\uD800-\uDBFF]$/.test(text)) { text = text.slice(0, -1); truncated = true; }
+    return text ? { source: 'model-native', text, truncated } : null;
+  }
   const progressBodySchema = z.object({ text: z.string().max(1_000_000), revision: z.number().int().positive() }).strict();
   async function progress(identity: SpaceIdentity, attemptId: string) {
     await owner.authorize(identity);
@@ -300,13 +334,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (body.resultRef) {
         const bytes = await storage.readResource(body.resultRef);
         if (body.state === 'completed' && body.connection.protocol === 'responses') {
-          const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as NativePayload;
-          if (!('input' in request)) throw new StorageError('corrupt');
-          const tools = request.tools?.map(tool => {
-            if (tool.type !== 'function') throw new StorageError('corrupt');
-            return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
-          }) ?? [];
-          validateResponsesNative(JSON.parse(Buffer.from(bytes).toString('utf8')), tools);
+          await responsesResult(body, bytes);
         }
         if (body.state === 'completed' && body.connection.protocol === 'messages') {
           const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as MessagesPayload;
@@ -320,7 +348,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');
     }
   }
-  return { receive, read, list, requestPayload, progress, dispatch, cancel, validate,
+  return { receive, read, list, requestPayload, progress, summary, dispatch, cancel, validate,
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },
     async drain() {

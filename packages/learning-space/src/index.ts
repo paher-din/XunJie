@@ -6,6 +6,7 @@ export * from './courses/index.js';
 export * from './learning-data/index.js';
 export * from './learning-entry/index.js';
 export * from './teaching-agent/index.js';
+export { createTeachingTools } from './teaching-agent/tools.js';
 export { buildContext } from './teaching-agent/context.js';
 export { createLearningAuthority } from './learning-entry/authority.js';
 export { createNativeChannel, nativeChannelNodeSchema, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, validateNativeChannel } from './learning-data/native-channel.js';

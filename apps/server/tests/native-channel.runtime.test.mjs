@@ -159,6 +159,7 @@ test('database-free default worker executes real native accumulator and reports 
     const activity = { activityId, identity, target: { ...owner, version: 1 }, goal: '真实会话', question: '', references: [],
       status: 'open', createdAt: new Date().toISOString(), course: { associationId: randomUUID(), courseId: randomUUID(), courseName: '原生',
         taskId: randomUUID(), taskTitle: '四态', releaseId: randomUUID(), contentDigest: hash('course'), objectives: ['观察'], requirements: '输入',
+        helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
         materials: [], starterWorks: [], capabilities: [], components: [{ key: 'accumulator', definition, configuration: { title: '四态' }, materialIds: [] }] } };
     const action = { protocolVersion: 2, kind: 'execution', requestId, scope: { environmentId: identity.environmentId, spaceId: identity.spaceId,
       principalId: identity.principalId, activityId }, receiver: { receiverId: 'native-execution', location: 'remote', kind: 'execution' },

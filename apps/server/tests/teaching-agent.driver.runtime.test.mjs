@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
-import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
+import { createFileBackend, openStorage, provisionStorage, StorageError } from '@xunjie/storage';
 import { createTeachingAgent, teachingAgentMigrations } from '@xunjie/learning-space';
 import { teachingAgentReceiverId } from '@xunjie/contracts/teaching-agent';
 
@@ -20,6 +20,8 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 test('two drivers racing on one run keep one effective dispatch through generation fencing', { timeout: 180000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'xj-teaching-drivers-'));
   const runtime = openProductRuntime({ root, resources });
+  const agents = [];
+  let releaseReceive;
   let storage;
   try {
     await runtime.install({ profile: 'local' }); await runtime.start();
@@ -33,12 +35,9 @@ test('two drivers racing on one run keep one effective dispatch through generati
     const identity = { environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '两推进者测试' };
     const connectionFact = { connectionId: randomUUID(), version: 1, name: '驱动测试模型', protocol: 'chat-completions',
       modelId: 'fixture-driver', contextWindow: 262144, maxOutputTokens: 1024 };
-    const dispatched = [], cancelled = [];
-    let receives = 0, releaseReceive;
+    const dispatched = [], cancelled = [], receivedIds = [], attempts = new Map();
+    let receives = 0;
     const gate = new Promise(resolve => { releaseReceive = resolve; });
-    let firstReceived, bothReceived;
-    const receivedOnce = new Promise(resolve => { firstReceived = resolve; });
-    const receivedTwice = new Promise(resolve => { bothReceived = resolve; });
     const models = {
       selection: {
         read: async () => ({ version: 1, selected: connectionFact }),
@@ -52,16 +51,28 @@ test('two drivers racing on one run keep one effective dispatch through generati
       checks: {
         receive: async (_identity, input) => {
           receives++;
-          if (receives === 1) firstReceived();
-          if (receives === 2) bothReceived();
+          receivedIds.push(input.attemptId);
+          if (!attempts.has(input.attemptId)) attempts.set(input.attemptId,
+            { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false,
+              text: '', usage: { state: 'unknown' }, reason: '' });
           await gate;
-          return { attemptId: input.attemptId };
+          return attempts.get(input.attemptId);
         },
         requestPayload: async () => ({ model: 'fixture-driver', messages: [] }),
-        dispatch: async (_identity, attemptId) => { dispatched.push(attemptId); },
+        dispatch: async (_identity, attemptId) => {
+          const accepted = attempts.get(attemptId);
+          assert.equal(accepted?.state, 'accepted', 'only a received, undispatched attempt can be sent');
+          dispatched.push(attemptId);
+          const completed = { ...accepted, physicalRequestEnded: true, state: 'completed', resultRef: randomUUID(), text: '单一回答',
+            usage: { state: 'final', inputTokens: 1, outputTokens: 1, totalTokens: 2 } };
+          attempts.set(attemptId, completed);
+          return completed;
+        },
         cancel: async (_identity, attemptId) => { cancelled.push(attemptId); },
-        read: async () => ({ physicalRequestEnded: true, state: 'completed', text: '单一回答',
-          usage: { state: 'final', inputTokens: 1, outputTokens: 1, totalTokens: 2 }, reason: '' }),
+        read: async (_identity, attemptId) => {
+          if (!attempts.has(attemptId)) throw new StorageError('missing');
+          return attempts.get(attemptId);
+        },
       },
     };
     const activity = { activityId, goal: '单一推进权', question: '', references: [], status: 'open',
@@ -70,6 +81,7 @@ test('two drivers racing on one run keep one effective dispatch through generati
       models, leaseMs: 250, scanIntervalMs: 60_000, start: false };
     const first = createTeachingAgent(storage, { ...options, driverId: 'driver-a' });
     const second = createTeachingAgent(storage, { ...options, driverId: 'driver-b' });
+    agents.push(first, second);
     const input = { requestId: randomUUID(), scope: { environmentId, spaceId: identity.spaceId,
       principalId: identity.principalId, activityId }, receiver: { receiverId: teachingAgentReceiverId(owner.serviceId),
       location: 'remote', kind: 'question' }, draft: { token: randomUUID(), question: '哪一个推进者会真正外发？',
@@ -78,7 +90,9 @@ test('two drivers racing on one run keep one effective dispatch through generati
     assert.equal(receipt.state, 'accepted');
     const runId = JSON.parse(receipt.detail).runId;
     first.resume();
-    await receivedOnce;
+    const receiveDeadline = Date.now() + 3000;
+    while (!receives && Date.now() < receiveDeadline) await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(receives, 1, 'the first driver durably receives the original attempt');
     // The first driver holds the lease while blocked before dispatch; an expired lease is what
     // lets another recovery namespace attempt to take over the same run.
     await new Promise(resolve => setTimeout(resolve, 400));
@@ -86,6 +100,7 @@ test('two drivers racing on one run keep one effective dispatch through generati
     const deadline = Date.now() + 3000;
     while (receives < 2 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));
     assert.equal(receives, 2, 'the second driver takes over after the lease expires');
+    assert.equal(new Set(receivedIds).size, 1, 'both generations receive the same durable planned attempt');
     releaseReceive();
     let run;
     for (let count = 0; count < 200; count++) {
@@ -95,11 +110,18 @@ test('two drivers racing on one run keep one effective dispatch through generati
     }
     assert.equal(run.state, 'completed');
     assert.equal(dispatched.length, 1,'only one driver dispatches the prepared attempt');
-    assert.equal(cancelled.length, 1,'the losing driver releases its own prepared attempt');
+    assert.deepEqual(dispatched, [receivedIds[0]]);
+    assert.equal(cancelled.length, 0,'losing authority cannot cancel the shared original attempt');
     const events = await first.events(identity, activityId);
     assert.equal(events.filter(event => event.kind === 'attempt-dispatched').length, 1);
     assert.equal(events.filter(event => event.kind === 'assistant').length, 1);
     assert.equal(events.filter(event => event.kind === 'run-completed').length, 1);
     first.close(); second.close();
-  } finally { await storage?.close(); await runtime.stop(); }
+  } finally {
+    releaseReceive?.();
+    for (const agent of agents) { agent.closeDispatch(); agent.close(); }
+    await Promise.allSettled(agents.map(agent => agent.drain()));
+    await storage?.close(); await runtime.stop();
+    await rm(root, { recursive: true, force: true });
+  }
 });

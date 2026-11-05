@@ -118,7 +118,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
           const rows = inputRows(record.action)
           const changed = basis !== null && !sameContent(record.action, currentFile?.value)
           const terminal = isTerminalExecutionState(record.query.state)
-          return <li key={record.requestId}>
+          return <li key={record.requestId} data-execution-request-id={record.requestId} tabIndex={-1}>
             <p className="execution-title">{binding.configuration.title} · {record.action.execution.operation.operationId} · {stateLabel(record.query)}</p>
             <p className="execution-hint">{`参数：按「${parameters.groupColumn || '未选'}」分组，数值列「${parameters.valueColumn || '未选'}」，方式 ${aggregates[parameters.aggregate] ?? parameters.aggregate}${rows === null ? '' : `；该次输入共 ${rows} 行`}。`}</p>
             {changed && <p className="execution-warn">当前表格已改动：这份结果对应提交时的表格，不是现在的内容。</p>}

@@ -2,7 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { componentBundleSchema } from '@xunjie/contracts/components';
-import type { ExecutionDevice, ExecutionPlatform } from '@xunjie/contracts/execution';
+import { agentBrowserClaimInputSchema, agentBrowserAcceptanceInputSchema,
+  type AgentExecutionAssociation, type ExecutionDevice, type ExecutionPlatform } from '@xunjie/contracts/execution';
 import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -348,7 +349,21 @@ export function createLearningEntry(options: {
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         const parts = route.split('/');
-        if (parts.length === 2 && method === 'POST')
+        const assertAgent = (association: AgentExecutionAssociation) => {
+          if (!options.teaching) throw new StorageError('unavailable');
+          return options.teaching.assertCommandDispatch(identity, parts[1]!, association);
+        };
+        if (parts.length === 3 && parts[2] === 'agent-pending' && method === 'GET')
+          result = await learning.executions.agent.pendingBrowser(identity, parts[1]!);
+        else if (parts.length === 4 && parts[2] === 'agent-stops' && method === 'GET')
+          result = await learning.executions.agent.browserStops(identity, parts[1]!, parts[3]!);
+        else if (parts.length === 5 && parts[2] === 'agent' && parts[4] === 'claim' && method === 'POST') {
+          const input = agentBrowserClaimInputSchema.parse(await readLearningBody(request));
+          result = await learning.executions.agent.claimBrowser(identity, parts[1]!, parts[3]!, input.browserId, assertAgent);
+        } else if (parts.length === 5 && parts[2] === 'agent' && parts[4] === 'accept' && method === 'POST') {
+          const input = agentBrowserAcceptanceInputSchema.parse(await readLearningBody(request));
+          result = await learning.executions.agent.acceptBrowser(identity, parts[1]!, parts[3]!, input.browserId, input.acceptance, assertAgent);
+        } else if (parts.length === 2 && method === 'POST')
           result = await learning.executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
         else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'history' && method === 'GET')
           result = await learning.executions.history(identity, parts[1]!, parts[3]);

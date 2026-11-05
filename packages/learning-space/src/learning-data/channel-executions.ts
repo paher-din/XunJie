@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
-import type { Migration, OwnedStorage } from '@xunjie/storage';
+import type { Migration, OwnedStorage, OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { acceptsState, componentInstanceId, componentStateName } from '@xunjie/contracts/components';
 import { advanceExecution, canonicalValue, decideExecutionPlacement, executionActionSchema,
-  executionControlSchema, executionControlReceiptSchema, executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
+  executionControlSchema, executionControlReceiptSchema, executionQuerySchema, executionStopSchema, isTerminalExecutionState } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
 import { productNativeAdapters } from './native-process.js';
 import { verifyPlannedExecution } from './plan.js';
@@ -61,6 +61,19 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     const { rows: [row] } = await storage.read('SELECT * FROM channel_executions WHERE activity_id=$1 AND request_id=$2', [activityId, requestId]);
     return row ?? null;
   }
+  async function cancelledBeforeEnqueue(tx: OwnedTransaction, action: ExecutionAction, current: ExecutionQuery) {
+    if (action.execution.initiator.kind !== 'agent' || current.state !== 'queued' || current.statusKnowledge !== 'confirmed') return null;
+    const { rows: [agent] } = await tx.query(`SELECT cancelled FROM agent_execution_commands
+      WHERE command_id=$1 AND activity_id=$2 AND kind='submit' FOR SHARE`, [action.requestId, action.scope.activityId]);
+    if (!agent?.cancelled) return null;
+    const { rows: queued } = await tx.query('SELECT command_id FROM native_channel_commands WHERE command_id=$1', [action.requestId]);
+    if (queued.length) return null;
+    // Closing the original Agent capability fences claims, including a sender that lost
+    // its reply and enqueues late. No native command has been accepted or claimed here.
+    return executionQuerySchema.parse({ ...current, state: 'cancelled', statusKnowledge: 'confirmed', stopRequested: true,
+      confirmedSeq: current.confirmedSeq + 1,
+      reason: { code: 'worker-terminated', detail: '原命令在进入执行节点前已取消，未启动会话。' } });
+  }
   async function authorize(identity: SpaceIdentity, activityId: string, row?: Record<string, unknown>) {
     const activity = await options.activity(identity, activityId);
     if (row && !scopeMatches(executionActionSchema.parse(row.action).scope, identity, activityId)) fail('forbidden');
@@ -109,11 +122,19 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     }
     return { binding, declared, adapter };
   }
-  async function dispatch(identity: SpaceIdentity, activityId: string, row: Record<string, unknown>) {
+  async function dispatch(identity: SpaceIdentity, activityId: string, row: Record<string, unknown>, guard?: () => Promise<void>) {
     await authorize(identity, activityId, row);
     const { rows } = await storage.read('SELECT command_id,command_text FROM channel_execution_intents WHERE request_id=$1 AND dispatched=false ORDER BY position', [row.request_id]);
     for (const intent of rows) {
       await authorize(identity, activityId, row);
+      const latest = await find(activityId, String(row.request_id));
+      const query = executionQuerySchema.parse(latest?.execution);
+      if (query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)) return;
+      const command = JSON.parse(String(intent.command_text)) as { operation: string };
+      if (command.operation !== 'stop') {
+        if (executionActionSchema.parse(row.action).execution.initiator.kind === 'agent' && !guard) continue;
+        await guard?.();
+      }
       await options.channel.enqueue(identity, String(row.connection_id), JSON.parse(String(intent.command_text)));
       await storage.request({ requestId: `channel-dispatched:${intent.command_id}`, fingerprint: String(intent.command_id) }, async tx => {
         await tx.query('UPDATE channel_execution_intents SET dispatched=true WHERE command_id=$1', [intent.command_id]);
@@ -121,14 +142,14 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       });
     }
   }
-  async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
+  async function accept(identity: SpaceIdentity, activityId: string, value: unknown, guard?: () => Promise<void>): Promise<ExecutionQuery> {
     const { action } = z.object({ action: executionActionSchema, acceptance: z.unknown().optional() }).strict().parse(value);
     const activity = await authorize(identity, activityId);
     if (!scopeMatches(action.scope, identity, activityId)) fail('forbidden');
     const inputDigest = hash(action), previous = await find(activityId, action.requestId);
     if (previous) {
       if (previous.input_digest !== inputDigest) fail('identity-conflict');
-      await dispatch(identity, activityId, previous);
+      await dispatch(identity, activityId, previous, guard);
       return (await read(identity, activityId, action.requestId))!;
     }
     const { binding, declared, adapter } = verify(activity, action);
@@ -177,15 +198,17 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       return null;
     });
     const saved = (await find(activityId, action.requestId))!;
-    await dispatch(identity, activityId, saved);
+    await dispatch(identity, activityId, saved, guard);
     return executionQuerySchema.parse(saved.execution);
   }
-  async function read(identity: SpaceIdentity, activityId: string, requestId: string): Promise<ExecutionQuery | null> {
+  async function read(identity: SpaceIdentity, activityId: string, requestId: string, guard?: () => Promise<void>): Promise<ExecutionQuery | null> {
     const row = await find(activityId, requestId);
     await authorize(identity, activityId, row ?? undefined);
     if (!row) return null;
-    await dispatch(identity, activityId, row);
-    const { rows: intents } = await storage.read('SELECT command_id FROM channel_execution_intents WHERE request_id=$1 ORDER BY position', [requestId]);
+    await dispatch(identity, activityId, row, guard);
+    // An unqueued intent has no channel fact yet. Ordinary reads preserve its queued
+    // execution; only a trusted caller with the original permit can deliver that intent.
+    const { rows: intents } = await storage.read('SELECT command_id FROM channel_execution_intents WHERE request_id=$1 AND dispatched=true ORDER BY position', [requestId]);
     const facts: Awaited<ReturnType<typeof options.channel.query>>[] = [];
     for (const intent of intents) {
       const fact = await options.channel.query(identity, String(intent.command_id));
@@ -239,7 +262,7 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     });
     return executionQuerySchema.parse(saved.result);
   }
-  async function intent(identity: SpaceIdentity, activityId: string, requestId: string, commandId: string, operation: 'control' | 'stop', payload: unknown) {
+  async function intent(identity: SpaceIdentity, activityId: string, requestId: string, commandId: string, operation: 'control' | 'stop', payload: unknown, guard?: () => Promise<void>) {
     const row = await find(activityId, requestId);
     const activity = await authorize(identity, activityId, row ?? undefined);
     if (!row) fail('missing');
@@ -249,7 +272,7 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     const { rows: [existing] } = await storage.read('SELECT request_id,command FROM channel_execution_intents WHERE command_id=$1', [commandId]);
     if (existing) {
       if (existing.request_id !== requestId || canonicalHash(existing.command) !== canonicalHash(command)) fail('identity-conflict');
-      await dispatch(identity, activityId, row);
+      await dispatch(identity, activityId, row, guard);
       return (await read(identity, activityId, requestId))!;
     }
     if (operation === 'control') {
@@ -286,16 +309,19 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
         if (pending.length) fail('identity-conflict');
       }
       await tx.query('INSERT INTO channel_execution_intents(command_id,request_id,command,command_text) VALUES($1,$2,$3,$4)', [commandId, requestId, JSON.stringify(command), JSON.stringify(command)]);
-      if (operation === 'stop') await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1',
-        [requestId, JSON.stringify({ ...latest, stopRequested: true })]);
+      if (operation === 'stop') {
+        const cancelled = await cancelledBeforeEnqueue(tx, action, latest);
+        await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1',
+          [requestId, JSON.stringify(cancelled ?? { ...latest, stopRequested: true })]);
+      }
       return null;
     });
-    await dispatch(identity, activityId, row);
+    await dispatch(identity, activityId, row, guard);
     return (await read(identity, activityId, requestId))!;
   }
-  async function control(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
+  async function control(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown, guard?: () => Promise<void>) {
     const parsed = executionControlSchema.parse(value);
-    return intent(identity, activityId, requestId, parsed.controlId, 'control', parsed);
+    return intent(identity, activityId, requestId, parsed.controlId, 'control', parsed, guard);
   }
   async function stop(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
     const parsed = executionStopSchema.parse(value);
@@ -322,9 +348,42 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       && originalReply.data.session.appliedSeq === seq;
     return executionControlReceiptSchema.parse({ controlId, requestId, executionRef: query.executionRef,
       inputDigest: canonicalHash(control), effect: control.effect, seq,
-      status: applied ? 'applied' : fact.state === 'reported' ? 'unknown' : 'dispatching', query });
+      status: applied ? 'applied' : fact.state === 'cancelled' ? 'rejected' : fact.state === 'reported' ? 'unknown' : 'dispatching', query });
   }
-  return { accept, read, control, stop, list, controlReceipt,
+  async function reclaimOriginal(action: ExecutionAction, value: unknown) {
+    const stop = executionStopSchema.parse(value);
+    const row = await find(action.scope.activityId, action.requestId);
+    if (!row || canonicalHash(row.action) !== canonicalHash(action)) fail('identity-conflict');
+    const current = executionQuerySchema.parse(row.execution);
+    if (['succeeded', 'failed', 'cancelled'].includes(current.state) && current.statusKnowledge === 'confirmed') return current;
+    const unqueued = await storage.request({ requestId: 'channel-unqueued-stop:' + stop.stopId,
+      fingerprint: canonicalHash({ action, stop }) }, async tx => {
+      const { rows: [locked] } = await tx.query('SELECT execution FROM channel_executions WHERE request_id=$1 FOR UPDATE', [action.requestId]);
+      if (!locked) fail('missing');
+      const cancelled = await cancelledBeforeEnqueue(tx, action, executionQuerySchema.parse(locked.execution));
+      if (!cancelled) return null;
+      const command = { commandId: stop.stopId, activityId: action.scope.activityId, sessionId: cancelled.executionRef,
+        operation: 'stop', payload: { requestId: action.requestId, executionRef: cancelled.executionRef, stop } };
+      await tx.query(`INSERT INTO channel_execution_intents(command_id,request_id,command,command_text)
+        VALUES($1,$2,$3,$4) ON CONFLICT(command_id) DO NOTHING`,
+        [stop.stopId, action.requestId, JSON.stringify(command), JSON.stringify(command)]);
+      const { rows: [saved] } = await tx.query('SELECT request_id,command FROM channel_execution_intents WHERE command_id=$1', [stop.stopId]);
+      if (!saved || saved.request_id !== action.requestId || canonicalHash(saved.command) !== canonicalHash(command)) fail('identity-conflict');
+      await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1', [action.requestId, JSON.stringify(cancelled)]);
+      return cancelled;
+    });
+    if (unqueued.result) return executionQuerySchema.parse(unqueued.result);
+    const observed = await options.channel.reclaimOriginal(action.requestId, current);
+    const saved = await storage.request({ requestId: 'channel-reclaim:' + randomUUID(), fingerprint: hash({ requestId: action.requestId, observed }) }, async tx => {
+      const { rows: [latest] } = await tx.query('SELECT execution FROM channel_executions WHERE request_id=$1 FOR UPDATE', [action.requestId]);
+      if (!latest) fail('missing');
+      const next = advanceExecution(executionQuerySchema.parse(latest.execution), observed);
+      await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1', [action.requestId, JSON.stringify(next)]);
+      return next;
+    });
+    return executionQuerySchema.parse(saved.result);
+  }
+  return { accept, read, control, stop, list, controlReceipt, reclaimOriginal,
     owns: async (activityId: string, requestId: string) => (await find(activityId, requestId)) !== null };
 }
 

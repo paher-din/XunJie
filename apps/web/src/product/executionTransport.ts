@@ -5,6 +5,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { learningRequest } from './learningTransport'
 import type { ExecutionTransport } from '../tool-execution/retention'
 import { executionHistoryPageSchema, executionArtifactSchema, type ExecutionHistoryEntry } from '@xunjie/contracts/execution'
+import { teachingBrowserId } from './TeachingBrowserExecution'
 
 /** Same execution facts over the owner's HTTP boundary; no second verb set for another location. */
 export function createExecutionTransport(activity: LearningActivity, spaceKey: string, namespace: string): ExecutionTransport {
@@ -42,7 +43,10 @@ export function createExecutionTransport(activity: LearningActivity, spaceKey: s
       return artifact
     },
     accept: async (action: ExecutionAction, acceptance: ExecutionAcceptance) => executionQuerySchema.parse(
-      await request('', { action, acceptance: executionAcceptanceSchema.parse(acceptance) })),
+      action.execution.initiator.kind === 'agent'
+        ? await request('/agent/' + action.requestId + '/accept', { browserId: await teachingBrowserId(),
+          acceptance: executionAcceptanceSchema.parse(acceptance) })
+        : await request('', { action, acceptance: executionAcceptanceSchema.parse(acceptance) })),
     read: async (requestId: string) => {
       const value = await request('/' + requestId)
       return value === null ? null : executionQuerySchema.parse(value)

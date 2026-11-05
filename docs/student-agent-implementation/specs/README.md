@@ -49,8 +49,8 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 
 | 实施票 | 完整交付边界 |
 | --- | --- |
-| [可恢复的基础学习对话](https://github.com/paher-din/XunJie/issues/197) | 可靠首问与无课程活动、持久 RunDriver、session log、可重建请求快照、三协议真实文本问答、基本预算与单一推进权，接入正式对话及日常恢复。 |
-| [Agent 读取作品、调用课程工具并解释结果](https://github.com/paher-din/XunJie/issues/198) | 固定作品与资料、受控工具往返、业务命令与持久 Wait、真实有限作业/有状态会话、停止及未知效果核对，接入工具记录与课程求助。 |
+| [可恢复的基础学习对话](https://github.com/paher-din/XunJie/issues/197) | 可靠首问与无课程活动、持久 RunDriver、session log、可重建请求快照、三协议真实文本问答、实际用量与单一推进权，接入正式对话及日常恢复；额度范围以修订票与交付记录为准。 |
+| [Agent 读取作品、调用课程工具并解释结果](https://github.com/paher-din/XunJie/issues/198) | 固定作品与资料、受控工具往返、业务命令与持久 Wait、真实有限作业/有状态会话、停止及未知效果核对，接入工具记录与课程求助。[实现选择](wp07-agent-tools.md)。 |
 | [Agent 提问与学生明确回应](https://github.com/paher-din/XunJie/issues/199) | 固定学生提问、明确回应入口、一次消费、超时与晚回应处理、重启恢复，同步接入对话和 IP。 |
 | [运行中引导、排队与暂停后继续](https://github.com/paher-din/XunJie/issues/200) | 默认 steering 与可选 queue、派发竞争裁决、FIFO 与输入修订、学生 Wait 取代、暂停项与关联后继，接入设置和实际对话。 |
 | [切换模型并延续学习](https://github.com/paher-din/XunJie/issues/201) | 获准边界的模型/协议切换、原生段封存与跨 owner 来源、原结果保留、预算连续及失败恢复。 |

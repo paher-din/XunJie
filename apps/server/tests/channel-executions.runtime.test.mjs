@@ -35,7 +35,23 @@ test('an unconfirmed ordinary stop reports a valid unknown execution and eventua
 test('approved channel checkpoints survive a lost report and restore real state in a distinct executor', { timeout: 120000 },
   t => approvedLocalProcess(t, 'checkpoint'));
 
+test('an Agent uses the authenticated native channel for real continuous state and original stop', { timeout: 120000 },
+  t => approvedLocalProcess(t, 'agent'));
+
+test('an Agent native outbox resumes the original submit and input after interruption before channel enqueue', { timeout: 120000 },
+  t => approvedLocalProcess(t, 'agent-recovery'));
+
+test('an Agent stop tool waits for its original native process to exit after the stop request is accepted', { timeout: 120000 },
+  t => approvedLocalProcess(t, 'agent-stop-tool'));
+
+test('stopping an Agent native outbox before channel enqueue records a durable cancellation without launching a process', { timeout: 120000 },
+  t => approvedLocalProcess(t, 'agent-outbox-stop'));
+
+test('revocation cleanup cancels an Agent native outbox that never reached the original channel', { timeout: 120000 },
+  t => approvedLocalProcess(t, 'agent-outbox-revoked-stop'));
+
 async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
+  const isAgent = cleanupBoundary === 'agent' || cleanupBoundary.startsWith('agent-');
   const fixture = await nativeFixture(), opened = [], children = [];
   let worker, clients;
   try {
@@ -69,8 +85,22 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       await spaces.authorize(who);
       if (id !== activityId || who.principalId !== identity.principalId) throw new StorageError('forbidden');
     };
+    const agentRunId = randomUUID(), agentContexts = new Map();
+    const contextFor = commandId => {
+      if (!agentContexts.has(commandId)) agentContexts.set(commandId, { runId: agentRunId, stepId: randomUUID(),
+        snapshotId: randomUUID(), commandId, assertDispatch: async () => { await spaces.authorize(identity); } });
+      return agentContexts.get(commandId);
+    };
+    let agentClaims = 0;
     const channel = createNativeChannel(data, { authenticate: spaces.authenticateConnection,
-      authorizeConnection: spaces.authorizeConnection, authorize });
+      authorizeConnection: spaces.authorizeConnection, authorize,
+      assertAgentDispatch: async (who, id, association) => {
+        await authorize(who, id);
+        const original = agentContexts.get(association.commandId);
+        if (!original || original.runId !== association.runId || original.stepId !== association.stepId
+          || original.snapshotId !== association.snapshotId) throw new StorageError('forbidden');
+        agentClaims++;
+      } });
     await channel.register(grant.token, node);
     let droppedCheckpoint = false;
     worker = createNativeChannelWorker({ root: join(fixture.root, 'device'), node, native,
@@ -92,6 +122,7 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       target: { ...data.owner, version: 1 }, goal: '连续输入并观察真实子进程状态', question: '', references: [], status: 'open', createdAt: new Date().toISOString(),
       course: { associationId: randomUUID(), courseId: randomUUID(), courseName: '本机执行课程', taskId: randomUUID(), taskTitle: '四态累加',
         releaseId: randomUUID(), contentDigest: 'b'.repeat(64), objectives: ['真实本机会话'], requirements: '依次输入 1、2、2，观察 1、3、1。',
+        helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
         materials: [], starterWorks: [], capabilities: [], executionPlan: plan, components: [{ key: 'accumulator',
           definition: { digest: definitionDigest, manifest }, configuration, materialIds: [] }] } });
     await data.request({ requestId: 'facade-activity', fingerprint: activityId }, async tx => {
@@ -99,9 +130,15 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
         [activityId, identity.environmentId, identity.spaceId, identity.principalId, JSON.stringify(activity)]);
       return null;
     });
-    const executionOwner = createExecutions(data, { channel, works: createWorks(data, authorize), activity: async (who, id) => {
+    const originalOwner = createExecutions(data, { channel, works: createWorks(data, authorize), activity: async (who, id) => {
       await authorize(who, id); return activity;
     } });
+    const executionOwner = !isAgent ? originalOwner : { ...originalOwner,
+      accept: (who, id, value) => originalOwner.agent.dispatch(who, id, contextFor(value.action.requestId), value.action),
+      read: (who, id, requestId) => originalOwner.agent.read(who, id, contextFor(requestId), requestId),
+      control: (who, id, requestId, value) => originalOwner.agent.control(who, id, contextFor(value.controlId), requestId, value),
+      stop: (who, id, requestId, value) => originalOwner.agent.stop(who, id, contextFor(requestId), requestId, value),
+    };
     const actionOf = () => executionActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: randomUUID(),
       scope: { environmentId: identity.environmentId, spaceId: identity.spaceId, principalId: identity.principalId, activityId },
       receiver: { receiverId: 'approved-local', location: 'local', kind: 'execution' },
@@ -116,10 +153,55 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
         session: { adapterId: declared.adapterId, adapterVersion: declared.adapterVersion,
           limits: Object.fromEntries(['operationTimeoutMs', 'idleMs', 'maxMs', 'memoryMiB', 'concurrentSessions', 'queuedSessions']
             .map(key => [key, declared.budgets[key]])) },
-        initiator: { kind: 'student', principalId: identity.principalId } } });
+        initiator: { kind: isAgent ? 'agent' : 'student', principalId: identity.principalId } } });
     await worker.tick();
     const action = actionOf(), requestId = action.requestId;
-    const accepted = await executionOwner.accept(identity, activityId, { action });
+    const interruptEnqueue = () => {
+      t.mock.method(channel, 'enqueue', async (...args) => {
+        channel.enqueue.mock.restore();
+        assert.equal(args[2].activityId, activityId);
+        throw new Error('interrupted after original command committed, before channel enqueue');
+      });
+    };
+    let accepted;
+    if (['agent-recovery', 'agent-outbox-stop', 'agent-outbox-revoked-stop'].includes(cleanupBoundary)) {
+      interruptEnqueue();
+      await assert.rejects(executionOwner.accept(identity, activityId, { action }), /before channel enqueue/);
+      const reopened = createExecutions(data, { channel, works: createWorks(data, authorize), activity: async (who, id) => {
+        await authorize(who, id); return activity;
+      } });
+      assert.equal((await reopened.read(identity, activityId, requestId)).state, 'queued');
+      await worker.tick();
+      assert.equal(children.length, 0, 'an ordinary query cannot dispatch an Agent pending command');
+      await assert.rejects(reopened.agent.read(identity, activityId, { ...contextFor(requestId),
+        assertDispatch: async () => { throw new StorageError('forbidden'); } }, requestId), { code: 'forbidden' });
+      await worker.tick();
+      assert.equal(children.length, 0, 'a reconstructed handler still needs the original current permit');
+      if (cleanupBoundary.startsWith('agent-outbox-')) {
+        const original = await reopened.read(identity, activityId, requestId);
+        const stop = { stopId: randomUUID(), reason: '' };
+        const revoked = cleanupBoundary === 'agent-outbox-revoked-stop';
+        if (revoked) await spaces.setMembership({ requestId: randomUUID(), principalId: identity.principalId, active: false });
+        const cancel = () => (revoked ? reopened.agent.cleanup : reopened.agent.stop)(identity, activityId, contextFor(requestId), requestId, stop);
+        const cancelled = await cancel();
+        assert.equal(cancelled.state, 'cancelled');
+        assert.equal(cancelled.statusKnowledge, 'confirmed');
+        assert.equal(cancelled.stopRequested, true);
+        assert.equal(cancelled.executionRef, original.executionRef);
+        assert.equal(cancelled.session.executorInstanceId, original.session.executorInstanceId);
+        if (revoked) await assert.rejects(worker.tick(), { code: 'forbidden' });
+        else await worker.tick();
+        assert.equal(children.length, 0, 'the original start was never dispatched');
+        if (revoked) await assert.rejects(reopened.agent.read(identity, activityId, contextFor(requestId), requestId), { code: 'forbidden' });
+        else assert.deepEqual(await reopened.agent.read(identity, activityId, contextFor(requestId), requestId), cancelled);
+        assert.deepEqual(await cancel(), cancelled);
+        await validateChannelExecutions(data);
+        await reopened.agent.validate();
+        return;
+      }
+      accepted = await reopened.agent.read(identity, activityId, contextFor(requestId), requestId);
+      assert.equal(children.length, 0, 'reconciliation queues the original command; it does not execute on the school');
+    } else accepted = await executionOwner.accept(identity, activityId, { action });
     assert.equal(accepted.state, 'queued');
     assert.equal(accepted.inputDigest, digest(action));
     assert.equal(accepted.session.nodeId, node.nodeId);
@@ -141,7 +223,11 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
     let last = running;
     for (const [index, value] of (cleanupBoundary === 'checkpoint' ? [1, 2] : [1, 2, 2]).entries()) {
       const control = { controlId: randomUUID(), operationId: 'advance', effect: 'input', expectedSeq: index, parameters: { value } };
-      await executionOwner.control(identity, activityId, requestId, control);
+      if (cleanupBoundary === 'agent-recovery' && index === 0) {
+        interruptEnqueue();
+        await assert.rejects(executionOwner.control(identity, activityId, requestId, control), /before channel enqueue/);
+        await originalOwner.agent.read(identity, activityId, contextFor(control.controlId), requestId);
+      } else await executionOwner.control(identity, activityId, requestId, control);
       await worker.tick();
       last = await executionOwner.read(identity, activityId, requestId);
       assert.equal(last.session.observation.value, [1, 3, 1][index]);
@@ -228,7 +314,37 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       return;
     }
     assert.deepEqual(last.session.observation, { value: 1, total: 5, applied: 3 });
+    if (cleanupBoundary === 'agent') assert.equal(agentClaims, 4, 'the fixed node rechecks every start/input permit');
     assert.equal(children.length, 1);
+    if (cleanupBoundary === 'agent-stop-tool') {
+      const { createTeachingTools } = await import('../../../packages/learning-space/dist/teaching-agent/tools.js');
+      const scope = { identity, activity, runId: agentRunId, stepId: randomUUID(), snapshotId: randomUUID(),
+        assertDispatch: contextFor(requestId).assertDispatch,
+        input: { requestId: randomUUID(), scope: action.scope,
+          receiver: { receiverId: 'teaching-agent', kind: 'question', location: 'local' },
+          draft: { token: 'stop-original-native', question: '停止原会话', references: [], bases: [] }, works: [], evidence: [] } };
+      const tools = createTeachingTools({ learning: () => ({ open: async (who, id) => {
+        await authorize(who, id); return activity;
+      }, executions: originalOwner }), courses: {} });
+      const command = await tools.prepare(scope, { callId: 'stop-original', name: 'execution_stop', arguments: { requestId } }, randomUUID());
+      const requested = await tools.dispatch(scope, command);
+      assert.equal(requested.state, 'accepted', 'the node has not claimed the stop or ended the process');
+      assert.equal(requested.result.operationCompleted, false);
+      assert.equal(requested.result.query.stopRequested, true);
+      assert.equal(requested.result.query.state, 'running');
+      assert.equal(children[0].exitFact, null);
+      await worker.tick();
+      const completed = await tools.reconcile(scope, command);
+      assert.equal(completed.state, 'completed');
+      assert.equal(completed.result.operationCompleted, true);
+      assert.equal(completed.result.query.state, 'cancelled');
+      assert.equal(completed.result.query.executionRef, accepted.executionRef);
+      assert.equal(completed.result.sessionOngoing, false);
+      assert.equal(children[0].exitFact.confirmed, true);
+      assert.deepEqual(await tools.reconcile(scope, command), completed);
+      assert.equal(children.length, 1, 'reconciliation never creates another process');
+      return;
+    }
     const stop = { stopId: randomUUID(), reason: '' };
     if (cleanupBoundary === 'ordinary-stop') {
       const child = children[0], originalStop = child.stop;

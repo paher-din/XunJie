@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { teachingConversationSchema } from '@xunjie/contracts/teaching-agent'
-import type { TeachingConversation, TeachingMessage, TeachingRun } from '@xunjie/contracts/teaching-agent'
+import type { TeachingConversation, TeachingMessage, TeachingRun, TeachingWait } from '@xunjie/contracts/teaching-agent'
 import { learningRequest } from './learningTransport'
 import { useActivitySession } from './ActivitySession'
 import { Markdown } from '../components/chat/Markdown'
+import { TeachingToolRecords, type TeachingToolLocator } from './TeachingToolRecords'
 
-const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching']
+const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
 
-function runLabel(run: TeachingRun) {
-  if (run.stopRequested && activeStates.includes(run.state)) return '已请求停止，等待上游收尾…'
+function runLabel(run: TeachingRun, waits: TeachingWait[]) {
+  if (run.stopRequested && activeStates.includes(run.state)) return '已请求停止，正在核对原任务…'
   if (run.state === 'received' || run.state === 'running') return 'Agent 正在准备回答…'
   if (run.state === 'dispatching') return 'Agent 正在生成回答…'
+  if (run.state === 'waiting') {
+    const reasons = new Set(waits.filter(wait => wait.runId === run.runId && wait.state === 'pending').map(wait => wait.reason))
+    return [reasons.has('browser') && '等待浏览器连接或操作结果…', reasons.has('execution') && '等待实验结果…',
+      (reasons.has('unknown') || !reasons.size) && '任务状态未知，等待核对原记录…'].filter(Boolean).join(' ')
+  }
   if (run.state === 'paused' && run.reason === 'model-not-selected') return '尚未选择模型，问题与草稿已保留。'
   if (run.state === 'paused' && run.reason === 'max-output-missing') return '尚未填写最大输出 token，问题与草稿已保留。'
   if (run.state === 'paused' && run.reason === 'model-unavailable') return '当前模型暂不可用，问题与草稿已保留。'
@@ -22,9 +28,10 @@ function runLabel(run: TeachingRun) {
   return ''
 }
 
-export function ActivityConversation({ activity, spaceKey, namespace, onModels, onActiveChange }: {
+export function ActivityConversation({ activity, spaceKey, namespace, onModels, onActiveChange, onLocateTool }: {
   activity: LearningActivity; spaceKey: string; namespace: string; onModels?: () => void
   onActiveChange?: (active: boolean) => void
+  onLocateTool?: TeachingToolLocator
 }) {
   const { workspace } = useActivitySession()
   const [conversation, setConversation] = useState<TeachingConversation | null>(null)
@@ -73,24 +80,36 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
     </section>
   }
   const messages: TeachingMessage[] = conversation.messages
+  const timeline = [
+    ...messages.map(message => ({ kind: 'message' as const, at: message.createdAt, order: message.role === 'student' ? 0 : 2, message })),
+    ...conversation.tools.map(tool => ({ kind: 'tool' as const, at: tool.createdAt, order: 1, tool })),
+  ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.order - b.order)
   return <section aria-label="与 Agent 的对话" className="teaching-conversation">
     <h3>学习对话</h3>
     {messages.length === 0 && <p className="detail">还没有对话。输入问题并发送后，回答会在这里持续保留。</p>}
-    {messages.map(message => <article key={message.eventId} className={`teaching-message ${message.role}`} data-state={message.state ?? ''}>
+    {timeline.map(entry => {
+      if (entry.kind === 'tool') return <TeachingToolRecords key={entry.tool.commandId} records={[entry.tool]} onLocate={onLocateTool} />
+      const message = entry.message
+      if (message.kind === 'native-summary') return message.text.trim() ? <details key={message.eventId}
+        className="teaching-message teaching-native-summary" data-run-id={message.runId ?? undefined}>
+        <summary>{message.summaryTruncated ? '模型摘要（节选）' : '模型摘要'}</summary>
+        <Markdown text={message.text} />
+      </details> : null
+      return <article key={message.eventId} className={`teaching-message ${message.role}`} data-state={message.state ?? ''} data-run-id={message.runId ?? undefined}>
       <span className="teaching-role">{message.role === 'student' ? '你' : message.role === 'assistant' ? 'Agent' : '说明'}</span>
       {message.role === 'assistant'
         ? <Markdown text={message.text} live={message.state === 'streaming'}
           truncated={message.state === 'stopped' || message.state === 'failed'} />
         : <div className="preserve-lines">{message.text}</div>}
       {message.role === 'assistant' && message.state === 'stopped' && <span className="detail">（已停止，以上是已发生的内容）</span>}
-    </article>)}
+    </article>})}
     {active && <div className="teaching-run-status" role="status">
-      <span>{runLabel(latest)}</span>
+      <span>{runLabel(latest, conversation.waits)}</span>
       {!readOnly && <button type="button" className="outline" disabled={busy || latest.stopRequested}
         onClick={() => void act(() => request(`agent/${activity.activityId}/runs/${latest.runId}/stop`, { requestId: crypto.randomUUID() }))}>停止</button>}
     </div>}
     {!active && latest && latest.state !== 'completed' && <div className="teaching-run-status">
-      <span>{runLabel(latest)}</span>
+      <span>{runLabel(latest, conversation.waits)}</span>
       <div className="teaching-run-actions">
         {!readOnly && <button type="button" className="outline" disabled={busy}
           onClick={() => void act(() => request(`agent/${activity.activityId}/runs/${latest.runId}/continue`, { requestId: crypto.randomUUID() }))}>继续这次学习</button>}

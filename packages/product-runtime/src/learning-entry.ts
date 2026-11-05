@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
   createCourses, spaceCourseMigrations, createLearningAuthority, linuxSessionEntry, productNativeAdapters, createNativeChannel,
-  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, teachingAgentMigrations, validateTeachingAgent } from '@xunjie/learning-space';
+  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, createTeachingTools, teachingAgentMigrations, validateTeachingAgent } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { ExecutionDevice } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -171,6 +171,10 @@ export async function createProductLearningApplication(context: {
       authenticate: (token, connectionId) => spaces.authenticateConnection(token, connectionId),
       authorizeConnection: (identity, connectionId) => spaces.authorizeConnection(identity, connectionId),
       authorize: (identity, activityId) => learning!.open(identity, activityId),
+      assertAgentDispatch: (identity, activityId, association) => {
+        if (!teaching) throw new StorageError('unavailable');
+        return teaching.assertCommandDispatch(identity, activityId, association);
+      },
     }) : undefined;
     const agent = data && models ? await owner('teaching-agent', teachingAgentMigrations) : undefined;
     teaching = agent && models ? createTeachingAgent(agent.storage, {
@@ -181,12 +185,17 @@ export async function createProductLearningApplication(context: {
         return identity;
       },
       activity: (identity, activityId) => learning!.open(identity, activityId),
-      models, start: false,
+      models, tools: createTeachingTools({ learning: () => learning!, courses, models,
+        authorizeDispatch: (scope, command) => {
+          if (!teaching) throw new StorageError('unavailable');
+          return teaching.assertCommandDispatch(scope.identity, scope.activity.activityId, { runId: scope.runId,
+            stepId: scope.stepId, snapshotId: scope.snapshotId, commandId: command.commandId });
+        },
+        environment: scope => executionEnvironment(scope.identity) }), start: false,
     }) : undefined;
     const receivers = [...(actions.receivers ?? []), ...(teaching ? [teaching.receiver] : [])];
     learning = data ? createLearningData(data.storage, spaces, courses,
       { ...actions, ...(receivers.length ? { receivers } : {}) }, native, nativeChannel) : undefined;
-    if (teaching && learning) teaching.resume();
     const modules = [[space, async () => { await spaces.validate(); await courses.validate(); }],
       ...(data && learning ? [[data, learning.validate] as const] : []),
       ...(model && models ? [[model, models.validate] as const] : []),
@@ -299,6 +308,7 @@ export async function createProductLearningApplication(context: {
         adapters: productNativeAdapters.map(adapter => ({ adapterId: adapter.adapterId,
           adapterVersion: adapter.adapterVersion, platforms: adapter.platforms ?? [] })) };
     };
+    if (teaching && learning) teaching.resume();
     return { owners, isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}),
       capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks) },
       ...(models ? { async modelTask(value: unknown) {

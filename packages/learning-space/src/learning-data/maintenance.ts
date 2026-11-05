@@ -1,4 +1,5 @@
 import { StorageError } from '@xunjie/storage';
+import { agentBrowserBoundary } from './agent-executions.js';
 import type { OwnedStorage } from '@xunjie/storage';
 import { canonicalValue, type ExecutionQuery } from '@xunjie/contracts/execution';
 
@@ -39,6 +40,7 @@ export interface ExecutionBoundaryMaterial {
   stops: number;
   unresolved: UnresolvedCommand[];
   blocking: { code: string; detail: string }[];
+  agentPendingBrowser?: Awaited<ReturnType<typeof agentBrowserBoundary>>;
 }
 
 const terminal = (state: string) => ['succeeded', 'failed', 'cancelled'].includes(state);
@@ -117,7 +119,11 @@ export async function collectExecutionBoundary(storage: OwnedStorage): Promise<E
   await browserCommands();
   await nativeCommands();
   await channelCommands();
-  const blocking: ExecutionBoundaryMaterial['blocking'] = [];
+  const pendingBrowser = await agentBrowserBoundary(storage);
+  const blocking: ExecutionBoundaryMaterial['blocking'] = pendingBrowser.filter(item => item.claimed).map(item => ({
+    code: 'unconfirmed-agent-browser-acceptance',
+    detail: `Agent command ${item.requestId} was claimed by browser ${item.browserId}; its original receipt is not confirmed.`,
+  }));
   for (const command of unresolved) if (command.disposition !== 'accepted-not-started' || command.location === 'browser') blocking.push({
     // A service-side queued projection cannot prove that a browser Worker did not claim it
     // while disconnected. Without the browser owner's freeze/exit fact, fail closed.
@@ -129,7 +135,7 @@ export async function collectExecutionBoundary(storage: OwnedStorage): Promise<E
     commands: { total: settled + unresolved.length, settled, unresolved: unresolved.length },
     checkpoints: await total('native_session_checkpoints') + await total('channel_session_checkpoints'),
     results: await total('execution_results'), stops: await total('execution_stops') + await total('native_session_stops'),
-    unresolved, blocking };
+    unresolved, blocking, ...(pendingBrowser.length ? { agentPendingBrowser: pendingBrowser } : {}) };
 }
 
 /**

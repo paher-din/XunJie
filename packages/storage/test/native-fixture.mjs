@@ -6,6 +6,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { isSupportedPostgresVersion } from '@xunjie/storage';
 
 const exec = promisify(execFile);
 export async function nativeFixture() {
@@ -32,7 +33,8 @@ export async function nativeFixture() {
     } finally { clearTimeout(timer); child.stdout.destroy(); child.stderr.destroy(); }
   };
   const { stdout } = await run('postgres', ['--version']);
-  if (!/PostgreSQL\) (?:17\.10|17\.11|18\.6)\s*$/.test(stdout)) throw new Error('Storage acceptance requires PostgreSQL 17.10, 17.11 or 18.6.');
+  const version = /PostgreSQL\) (\d+(?:\.\d+)+)(?:\s+\([^)]+\))?\s*$/.exec(stdout)?.[1];
+  if (!version || !isSupportedPostgresVersion(version)) throw new Error('Storage acceptance requires PostgreSQL 17.10, 17.11 or 18.6.');
   const password = randomBytes(32).toString('base64url');
   const passwordFile = join(root, 'password');
   await writeFile(passwordFile, password, { mode: 0o600 });

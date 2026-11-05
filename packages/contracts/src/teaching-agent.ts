@@ -5,7 +5,7 @@ import { teachingHelpPolicySchema } from './course-help.js';
 export { teachingHelpPolicySchema } from './course-help.js';
 
 export const teachingRunStateSchema = z.enum([
-  'received', 'running', 'dispatching', 'completed', 'failed', 'stopped', 'paused',
+  'received', 'running', 'dispatching', 'waiting', 'completed', 'failed', 'stopped', 'paused',
 ]);
 
 export const teachingModelFactSchema = z.object({
@@ -31,6 +31,9 @@ export const teachingEventKindSchema = z.enum([
   'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'assistant',
   'run-completed', 'run-failed', 'run-stopped', 'stop-requested', 'run-continued',
   'model-unavailable', 'capacity-paused', 'system-notice',
+  'step-completed', 'tool-intent', 'tool-permitted', 'tool-result', 'tools-paired',
+  'wait-created', 'wait-consumed', 'wait-expired', 'budget-reserved', 'budget-settled',
+  'native-summary',
 ]);
 
 export type TeachingEventKind = z.infer<typeof teachingEventKindSchema>;
@@ -47,13 +50,39 @@ export const teachingMessageSchema = z.object({
   role: z.enum(['student', 'assistant', 'system']),
   text: z.string(), runId: z.uuid().nullable(),
   state: z.enum(['streaming', 'settled', 'stopped', 'failed', 'unknown']).optional(),
+  kind: z.literal('native-summary').optional(),
+  summaryTruncated: z.boolean().optional(),
   createdAt: z.iso.datetime(),
 }).strict();
 export type TeachingMessage = z.infer<typeof teachingMessageSchema>;
 
+export const teachingToolRecordSchema = z.object({
+  commandId: z.uuid(), runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(),
+  callId: z.string(), name: z.string(), version: z.literal(1),
+  state: z.enum(['prepared', 'dispatching', 'waiting', 'settled']),
+  effect: z.enum(['read', 'execute', 'input', 'stop']),
+  location: z.enum(['owner', 'browser', 'native', 'remote']),
+  arguments: z.record(z.string(), z.unknown()), basis: z.record(z.string(), z.unknown()),
+  outcome: z.enum(['not-dispatched', 'accepted', 'completed', 'failed', 'unknown']).nullable(),
+  feedback: z.string(), result: z.record(z.string(), z.unknown()).nullable(),
+  source: z.object({ label: z.string(), componentKey: z.string().optional(),
+    requestId: z.uuid().optional(), contentId: z.uuid().optional() }).strict().nullable(),
+  createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),
+}).strict();
+export type TeachingToolRecord = z.infer<typeof teachingToolRecordSchema>;
+
+export const teachingWaitSchema = z.object({
+  waitId: z.uuid(), runId: z.uuid(), stepId: z.uuid(), commandId: z.uuid(),
+  state: z.enum(['pending', 'consumed', 'expired']),
+  reason: z.enum(['execution', 'browser', 'unknown', 'cleanup']),
+  deadline: z.iso.datetime(), nextCheckAt: z.iso.datetime(), consumedAt: z.iso.datetime().nullable(),
+}).strict();
+export type TeachingWait = z.infer<typeof teachingWaitSchema>;
+
 export const teachingConversationSchema = z.object({
   activityId: z.uuid(), cursor: z.number().int().nonnegative(),
   messages: z.array(teachingMessageSchema), runs: z.array(teachingRunSchema),
+  tools: z.array(teachingToolRecordSchema).default([]), waits: z.array(teachingWaitSchema).default([]),
 }).strict();
 export type TeachingConversation = z.infer<typeof teachingConversationSchema>;
 
