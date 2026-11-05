@@ -1,0 +1,100 @@
+{
+  "issue": 205,
+  "scope": "Runtime package rebuild identity only; no product integration, school deployment or teaching acceptance",
+  "candidate": {
+    "baselineGit": "075c2f9f0b1d7da71c45c3f9aadf0e5d1237e633",
+    "runtimeIdentity": "d27007d2f8725b22fc5ff3b7f79b4179c12c103d7789c5bd318cb9be5aa86026",
+    "package": "components/alu-icarus-runtime"
+  },
+  "sourceArchive": {
+    "path": "components/alu-icarus-runtime/source/iverilog.tar.gz",
+    "bytes": 3176904,
+    "sha256": "d5e0d83f7028e2c11c127e16aaa5ab35627b1f4f62abfa982defcf77e8959bc2",
+    "icarusCommit": "c7530dbcc186de2f21eacde14fd28061b885924c",
+    "archiveMatchesPinnedCommit": true,
+    "method": "git archive of the pinned commit, gzip -n; extracted tree compared byte-for-byte with the pinned worktree",
+    "originalDefect": "Original archive had CRLF line endings in 6095 of 6163 files; autoconf.sh was not executable by Unix sh. Replaced with the LF git archive and updated manifest.json."
+  },
+  "macCrossHostRebuild": {
+    "host": "MacBook Air Mac17,3, Apple M5, macOS 27.2 (26B123), arm64",
+    "toolchain": "emsdk 0b3bcbc3b005cbb811d48e497eabcc6846d43001, Emscripten 3.1.64 (macOS arm64 host binaries)",
+    "cleanBuildDirectories": 2,
+    "a": {
+      "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+      "ivl.wasm": "60832fea212cbda5bd549ebd4ec01ba7b4eede69bb6fccc9f8dd37a0891ee47a",
+      "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+      "ivlpp.wasm": "e28712c37ee995649c9a0d4943d9633bfc0bd096aeb7bd4b6d7ee918d3829e4e",
+      "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+      "vvp.wasm": "1f2088056460065ebfe94240b667841275235ee42af2fc51f11a79667f2a18d4"
+    },
+    "b": {
+      "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+      "ivl.wasm": "60832fea212cbda5bd549ebd4ec01ba7b4eede69bb6fccc9f8dd37a0891ee47a",
+      "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+      "ivlpp.wasm": "e28712c37ee995649c9a0d4943d9633bfc0bd096aeb7bd4b6d7ee918d3829e4e",
+      "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+      "vvp.wasm": "1f2088056460065ebfe94240b667841275235ee42af2fc51f11a79667f2a18d4"
+    },
+    "aEqualsB": true,
+    "jsMatchesDeliveredPackage": true,
+    "wasmMatchesDeliveredPackage": false,
+    "interpretation": "The fixed source and flags reproduce deterministically on macOS, but the macOS SDK host binaries produce different wasm bytes than the locked Linux x64 SDK. These wasm files were not used as release resources."
+  },
+  "linuxX64Rebuild": {
+    "host": "Ubuntu 24.04.5 LTS x86_64 build host (address redacted), 2 cores, 1.7 GiB RAM, 4 GiB swap",
+    "toolchain": "emsdk 0b3bcbc3b005cbb811d48e497eabcc6846d43001, Emscripten 3.1.64, release fd61bacaf40131f74987e649a135f1dd559aff60",
+    "sdkToolDigests": {
+      "upstream/bin/clang": "99353aacf4767f69bad46d6043c30700ad71e86bf08d728bda85ad8e47351ebc",
+      "upstream/bin/wasm-opt": "c3407581ffe01ba18350dcb3c56c0aa025b59ab4e635684deaa790c90a954a28",
+      "node/18.20.3_64bit/bin/node": "563a678816281a08dc7da9fd3ece4e1fc5fcc01f68ffe404f6cdd1f715821b8f"
+    },
+    "sdkDigestGate": "passed: verify-sdk.py matched all three locked Linux x64 tool digests",
+    "buildCommand": "build-port.sh with the fixed source, pinned SDK, fixes and flags; parallel make jobs reduced from -j4 to -j2 for the 2-core host (does not affect output bytes)",
+    "cleanBuildDirectories": 2,
+    "a": {
+      "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+      "ivl.wasm": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de",
+      "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+      "ivlpp.wasm": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3",
+      "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+      "vvp.wasm": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+    },
+    "b": {
+      "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+      "ivl.wasm": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de",
+      "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+      "ivlpp.wasm": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3",
+      "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+      "vvp.wasm": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+    },
+    "aEqualsB": true,
+    "aEqualsDeliveredPackageChecksums": true,
+    "logHighlights": [
+      "SDK compiler, optimizer and build Node digests match the fixed Linux x64 toolchain",
+      "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.64 (a1fe3902bf73a3802eae0357d273d0e37ea79898)",
+      "A_EQUALS_B",
+      "A_EQUALS_PACKAGE",
+      "REMOTE_REBUILD_MATCHES_PACKAGE"
+    ],
+    "environmentNote": "The build host is Ubuntu 24.04.5 with updated package versions, so its full dpkg package list is not byte-identical to ubuntu-packages.lock. The pinned SDK digest gate and the six output digests are the release-relevant evidence; no unverified resource was substituted."
+  },
+  "systemVpi": {
+    "compilerConfiguration": "module:system.vpi retained; target vvp.tgt",
+    "behaviors": [
+      "4096 ROW observations written through $fopen/$fdisplay/$fclose",
+      "VCD generated by $dumpfile/$dumpvars with $enddefinitions and final timestamp #4096000",
+      "$finish ends the simulation without diagnostics",
+      "static resources contain system.vpi and $dumpfile strings"
+    ],
+    "diagnostics": "empty for the fixed harness; compile failures retained their actual diagnostics in the adapter acceptance"
+  },
+  "candidateChecksums": {
+    "path": "components/alu-icarus-runtime/checksums.txt",
+    "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+    "ivl.wasm": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de",
+    "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+    "ivlpp.wasm": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3",
+    "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+    "vvp.wasm": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+  }
+}

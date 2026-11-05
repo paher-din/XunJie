@@ -4,7 +4,7 @@
 <script type="module">
 const view = document.querySelector('#status');
 const fixture = await (await fetch('/fixture.json')).json();
-const report = {scope:'Loopback-hosted browser experiment only; no installer, Windows, production UI or teaching acceptance',
+const report = {scope:'Loopback-hosted browser experiment only; no installer, production UI or teaching acceptance',
   userAgent:navigator.userAgent, startedAt:new Date().toISOString(), results:[]};
 const workerSource = `
 let base, fixture;

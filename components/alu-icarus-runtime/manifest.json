@@ -141,25 +141,25 @@
       "sha256": "0c560877a9d532861c198ed28419e437b6525a86b5b046a9f90224c9af7d1744"
     },
     "source/toolchain.lock.json": {
-      "bytes": 885,
-      "sha256": "dc484afe43025f2962c33a12c8c7a570764efb5a50af8e19723a691783e7a064"
+      "bytes": 890,
+      "sha256": "e02bd0124e24f8e51f7a219b62e0d1875bdce1b8f99a9c3bc2fda61e0bcb41dd"
     },
     "source/ubuntu-packages.lock": {
       "bytes": 19381,
       "sha256": "3fb404a05b522de07d18abfdcf6314475f01f1ee8857872fc2a0e4937871ee88"
     },
     "source/README.md": {
-      "bytes": 1217,
-      "sha256": "15bc1db0c576ac9d8145c61f04eeed2caa5df6dbc2f3bfb249c8642f5383eab9"
+      "bytes": 1409,
+      "sha256": "54c15f8cae0ee762e304eba6b6b9e7d597c6445fbdac55a3274ca90ab5c9f09f"
     },
     "source/iverilog.tar.gz": {
-      "bytes": 3170673,
-      "sha256": "4e238f47797b09c96226996f344ea5dffa6c841ec6e3ff5ce05869a79434a69e"
+      "bytes": 3176904,
+      "sha256": "d5e0d83f7028e2c11c127e16aaa5ab35627b1f4f62abfa982defcf77e8959bc2"
     }
   },
   "toolchain": {
     "formatVersion": 1,
-    "status": "windows-candidate-mac-deferred",
+    "status": "windows-and-apple-silicon-validated",
     "icarus": {
       "repository": "https://github.com/steveicarus/iverilog.git",
       "commit": "c7530dbcc186de2f21eacde14fd28061b885924c"
@@ -210,5 +210,5 @@
     "cacheEntries": 8,
     "cacheBytes": 33554432
   },
-  "scope": "Runtime package only; Windows desktop Chrome validated, Apple Silicon Mac deferred; no product integration or teaching claim"
+  "scope": "Runtime package only; Windows desktop Chrome and Apple Silicon Mac desktop Chrome validated; no product integration or teaching claim"
 }

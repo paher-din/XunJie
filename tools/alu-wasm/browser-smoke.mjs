@@ -46,7 +46,7 @@ try {
     timer = setTimeout(() => reject(new Error('browser smoke timeout')), 180_000);
   })]);
   report.probeDeclaredScope = report.scope;
-  report.scope = 'Freshly source-built runtime; actual desktop Chrome Worker smoke only; no product integration or teaching acceptance';
+  report.scope = 'Delivered fixed runtime; actual desktop Chrome Worker smoke only; no product integration or teaching acceptance';
   report.host = { platform: process.platform, architecture: process.arch, release: release(), chrome: browser.version(), headless: false };
   report.resources = await readFile(resolve(runtimeDir, 'checksums.txt'), 'utf8');
   await writeFile(resolve(outputDir, 'browser-smoke.json'), JSON.stringify(report, null, 2));

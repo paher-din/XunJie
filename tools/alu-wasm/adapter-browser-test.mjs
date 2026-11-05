@@ -3,11 +3,13 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import { release, cpus, loadavg, totalmem } from 'node:os';
 import { chromium } from '@playwright/test';
 import { resourceNames, adapterNames, bundleIdentity } from './runtime/identity.mjs';
 
 const [runtimeDir, fixtureFile, outputDir] = process.argv.slice(2);
 if (!runtimeDir || !fixtureFile || !outputDir) throw new Error('usage: node adapter-browser-test.mjs <runtime-dir> <fixture.json> <output-dir>');
+const startedAt = new Date().toISOString();
 await mkdir(outputDir, { recursive: true });
 const assets = {};
 for (const name of resourceNames) assets[name] = {
@@ -61,7 +63,7 @@ try {
     const first = await runtime.simulate({ artifact: compiled.artifact, expectedIndices: indices });
     timings.push({ stage: 'artifact-simulation', ms: performance.now() - runStart });
     check(first.status === 'completed' && first.observationState === 'complete', 'complete 4096 observations distinguished');
-    check(first.diagnostics.length === 0 && first.vcd.includes('#4096000'), 'system tasks and VCD succeed without diagnostics');
+    check(first.diagnostics.length === 0 && first.vcd.includes('$enddefinitions') && first.vcd.includes('#4096000'), 'system tasks and VCD succeed without diagnostics');
     let mismatches = 0;
     for (const row of first.observations) {
       const i = row.index, a = (i >> 5) & 15, b = (i >> 1) & 15, cin = i & 1, control = i >> 9;
@@ -95,6 +97,18 @@ try {
     check(changedCompile.status === 'completed' && !changedCompile.cacheHit && changedCompile.artifact.dependencyId !== withInclude.artifact.dependencyId, 'include content invalidates compilation');
     const changedRun = await runtime.simulate({ artifact: changedCompile.artifact, expectedIndices: indices });
     check(changedRun.observations[2529].f !== first.observations[2529].f, 'include change affects real simulation');
+    const changedSource = structuredClone(request);
+    changedSource.sources[0].content = fixture.dut.replace("3'b000: F = ~A;", "3'b000: F = A;");
+    const sourceCompile = await runtime.compile(changedSource);
+    check(sourceCompile.status === 'completed' && !sourceCompile.cacheHit && sourceCompile.artifact.dependencyId !== compiled.artifact.dependencyId, 'source content invalidates compilation');
+    const sourceRun = await runtime.simulate({ artifact: sourceCompile.artifact, expectedIndices: indices });
+    check(sourceRun.observations[0].f !== first.observations[0].f && sourceRun.observationState === 'complete', 'source change affects real simulation');
+    const changedHarness = structuredClone(request);
+    changedHarness.sources[1].content = harness.replace('$dumpvars(0, tb);', '$dumpvars(0, tb); $display("HARNESS-MARKER");');
+    const harnessCompile = await runtime.compile(changedHarness);
+    check(harnessCompile.status === 'completed' && !harnessCompile.cacheHit && harnessCompile.artifact.dependencyId !== compiled.artifact.dependencyId, 'harness content invalidates compilation');
+    const harnessRun = await runtime.simulate({ artifact: harnessCompile.artifact, expectedIndices: indices });
+    check(harnessRun.output.includes('HARNESS-MARKER') && harnessRun.observationState === 'complete', 'harness change affects real execution logs');
     const badTop = await runtime.compile({ ...request, top: 'missing_top' });
     check(badTop.status === 'failed' && !badTop.cacheHit, 'top change fails rather than reusing old program');
     const badSource = await runtime.compile({ top: 'tb', sources: [{ path: 'bad.sv', content: 'not systemverilog' }] });
@@ -113,9 +127,11 @@ try {
     const spin = await runtime.compile({ top: 'tb', sources: [{ path: 'spin.sv', content: 'module tb; reg b; initial begin b=0; forever b=~b; end endmodule' }] });
     check(spin.status === 'completed', 'zero-time loop actually compiles');
     const controller = new AbortController();
+    let stopStarted;
     const stopped = await runtime.simulate({ artifact: spin.artifact }, { signal: controller.signal, onStage: stage => {
-      if (stage === 'simulate') setTimeout(() => controller.abort(), 100);
+      if (stage === 'simulate') setTimeout(() => { stopStarted = performance.now(); controller.abort(); }, 100);
     } });
+    timings.push({ stage: 'stop-latency', ms: performance.now() - stopStarted });
     check(stopped.status === 'stopped' && stopped.stage === 'simulate', 'explicit stop terminates zero-time synchronous Worker');
     const timedOut = await runtime.simulate({ artifact: spin.artifact }, { timeoutMs: 1000 });
     check(timedOut.status === 'budget-exceeded', 'wall budget terminates synchronous Worker');
@@ -125,10 +141,16 @@ try {
     const fileFlood = await runtime.compile({ top: 'tb', sources: [{ path: 'file.sv', content: 'module tb; integer fd; initial begin fd=$fopen("trace.vcd","w"); forever $fdisplay(fd,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); end endmodule' }] });
     const fileResult = await runtime.simulate({ artifact: fileFlood.artifact });
     check(fileResult.code === 'output-budget', 'actual file growth is bounded during native writes: ' + JSON.stringify(fileResult));
+    const afterStarted = performance.now();
     const after = await runtime.simulate({ artifact: compiled.artifact, expectedIndices: indices });
     check(after.status === 'completed' && after.observationState === 'complete', 'normal simulation works after termination and output failures');
+    timings.push({ stage: 'artifact-reuse-simulation', ms: performance.now() - afterStarted });
     const tooBig = await runtime.compile({ top: 'tb', sources: [{ path: 'large.sv', content: ' '.repeat(1024 * 1024 + 1) }] });
     check(tooBig.code === 'input-budget', 'input budget refuses oversized source');
+    const tooManyFiles = await runtime.simulate({ artifact: compiled.artifact, files: Array.from({ length: 65 }, (_, index) => ({ path: `in-${index}.txt`, content: '' })) });
+    check(tooManyFiles.code === 'input-budget', 'simulation input budget refuses excess files');
+    const tooBigRunFile = await runtime.simulate({ artifact: compiled.artifact, files: [{ path: 'input.txt', content: ' '.repeat(1024 * 1024 + 1) }] });
+    check(tooBigRunFile.code === 'input-budget', 'simulation input budget refuses oversized file');
     const busyController = new AbortController();
     let markSimulating;
     const simulating = new Promise(resolve => { markSimulating = resolve; });
@@ -171,12 +193,31 @@ try {
     return { passed, timings, raceStatuses, memoryOutcome: memoryResult, userAgent: navigator.userAgent };
   }, { assets, adapters, identity, fixture });
   report.chrome = browser.version(); report.bundleIdentity = identity; report.assets = assets;
-  report.scope = 'Actual Windows desktop Chrome Worker and public adapter; runtime package only, Mac deferred, no product integration or teaching acceptance';
+  report.startedAt = startedAt; report.finishedAt = new Date().toISOString();
+  report.host = {
+    platform: process.platform, architecture: process.arch, release: release(),
+    cpu: cpus()[0]?.model, cores: cpus().length, totalMemoryBytes: totalmem(),
+    loadAverage: loadavg(), chrome: browser.version(), headless: false,
+  };
+  report.runtimeDir = resolve(runtimeDir);
+  report.adapterRoot = resolve(process.env.XUNJIE_ALU_ADAPTER_ROOT ?? 'tools/alu-wasm/runtime');
+  report.deployment = 'Loopback static HTTP: runtime assets under /assets/, adapter modules under /adapter/; delivered Git component consumed directly';
+  report.scope = `Actual desktop Chrome Worker and public adapter on ${process.platform}/${process.arch}; runtime package only; no product integration or teaching acceptance`;
   report.adapterFiles = {};
   for (const name of ['index.mjs', 'worker.mjs', 'identity.mjs', 'index.d.mts']) {
     const bytes = await readFile(resolve(process.env.XUNJIE_ALU_ADAPTER_ROOT ?? 'tools/alu-wasm/runtime', name));
     report.adapterFiles[name] = { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
   }
+  await page.evaluate(summary => {
+    document.body.textContent = '';
+    document.body.style.font = '13px ui-monospace, monospace';
+    const title = document.createElement('h1'); title.textContent = 'ALU Icarus/WASM public adapter acceptance';
+    const meta = document.createElement('p');
+    meta.textContent = `${summary.passed} checks passed; Chrome ${summary.chrome}; package ${summary.identity}; ${summary.host}`;
+    const pre = document.createElement('pre'); pre.textContent = summary.checks.join('\n');
+    document.body.append(title, meta, pre);
+  }, { passed: report.passed.length, chrome: report.chrome, identity, host: `${report.host.platform}/${report.host.architecture} ${report.host.release}`, checks: report.passed });
+  await page.screenshot({ path: resolve(outputDir, 'adapter-acceptance.png'), fullPage: true });
   await writeFile(resolve(outputDir, 'adapter.json'), JSON.stringify(report, null, 2));
   assert.ok(report.passed.length >= 15);
   console.log(JSON.stringify(report));

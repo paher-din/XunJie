@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "status": "windows-candidate-mac-deferred",
+  "status": "windows-and-apple-silicon-validated",
   "icarus": {
     "repository": "https://github.com/steveicarus/iverilog.git",
     "commit": "c7530dbcc186de2f21eacde14fd28061b885924c"

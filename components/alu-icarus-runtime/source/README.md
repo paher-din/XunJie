@@ -20,4 +20,7 @@ installation prefix and optimization flags are set by build-port.sh.
 rebuild.sh is the equivalent two-directory gate when the original pinned Git
 repository is available. The archive above is sufficient to build without Git.
 The XunJie adapter's source modules are supplied alongside the runtime assets.
-Mac validation and product integration are not claimed by this candidate.
+The archive is generated with `git archive` from the pinned commit and preserves
+upstream line endings. Apple Silicon Mac acceptance is recorded in
+`docs/student-agent-implementation/wp04-205-mac-acceptance.md`; product
+integration is not claimed by this candidate.

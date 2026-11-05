@@ -2,7 +2,7 @@
 
 在浏览器 Worker 内实际预处理、编译和运行 SystemVerilog，无 React、业务 API、旧 HDL 会话或学生端原生运行依赖。只提供编译/仿真适配；业务接收、权限、持久结果和恢复继续归 WP03 所有者。正式课程与工作区接线属于后续票。
 
-Windows 桌面 Chrome 已验证；Apple Silicon Mac 暂缓，不能据此关闭双平台验收。工程仿真不证明教学效果。
+Windows 与 Apple Silicon Mac 桌面 Chrome 均已验证，Mac 结果见 [Apple Silicon 验收记录](../../docs/student-agent-implementation/wp04-205-mac-acceptance.md)。工程仿真不证明教学效果。
 
 ## 固定构建
 
@@ -92,4 +92,4 @@ XUNJIE_ALU_ADAPTER_ROOT=components/alu-icarus-runtime node tools/alu-wasm/adapte
 
 PowerShell 使用 `$env:XUNJIE_ALU_ADAPTER_ROOT='components/alu-icarus-runtime'`。浏览器脚本启动已安装的桌面 Chrome；回环 HTTP 仅证明运行包，不是正式产品或学校部署验收。Node 烟测有 Worker 全局工程垫片，真实 Chrome 验证无该垫片。
 
-固定正确实现覆盖 4096 组（含 1536 保留组合），进位负例 256 错误、X 负例 1536 未知，与固定源码原生 Icarus 比较规范化摘要。公开适配另验 include 真实影响、缓存失效、编译失败、Z、不完整输出、资源摘要、输入/输出/内存/并行/时间预算、停止竞争及失败后正常任务。原始失败与最终边界见 [交付记录](../../docs/student-agent-implementation/wp04-191-runtime-plan.md)。
+固定正确实现覆盖 4096 组（含 1536 保留组合），进位负例 256 错误、X 负例 1536 未知，与固定源码原生 Icarus 比较规范化摘要。公开适配另验 include 真实影响、缓存失效、编译失败、Z、不完整输出、资源摘要、输入/输出/内存/并行/时间预算、停止竞争及失败后正常任务。Apple Silicon Mac 的真实 Chrome/Worker 复跑结果与命令见 [Mac 验收记录](../../docs/student-agent-implementation/wp04-205-mac-acceptance.md)。原始失败与最终边界见 [交付记录](../../docs/student-agent-implementation/wp04-191-runtime-plan.md)。
