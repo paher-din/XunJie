@@ -130,9 +130,13 @@ export function createExecutions(storage: OwnedStorage, options: {
   }
   /** Acceptance is a real answer under this exact identity; the receipt is the browser's original one. */
   async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
-    const location = (value as { action?: { execution?: { plan?: { location?: unknown } } } })?.action?.execution?.plan?.location;
+    const submittedAction = executionActionSchema.parse((value as { action?: unknown })?.action);
+    // This owner entry is authenticated for students, including the installed school's local forward.
+    // Agent, preview and self-test roles need their own trusted caller context before they can be accepted.
+    if (submittedAction.execution.initiator.kind !== 'student') fail('forbidden');
+    const location = submittedAction.execution.plan.location;
     if (location === 'native') {
-      const receiver = (value as { action?: { receiver?: { location?: unknown } } })?.action?.receiver?.location;
+      const receiver = submittedAction.receiver.location;
       if (channel && receiver === 'local') return channel.accept(identity, activityId, value);
       if (!native) fail('missing');
       return native.accept(identity, activityId, value);
@@ -404,7 +408,7 @@ export async function validateExecutions(storage: OwnedStorage) {
   const { rows: stops } = await storage.read('SELECT * FROM execution_stops');
   for (const row of stops) {
     const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
-    if (!activity || !row.reason) corrupt('stop activity or reason');
+    if (!activity || typeof row.reason !== 'string' || row.reason.length > 200) corrupt('stop activity or reason');
     const { rows: [command] } = await storage.read('SELECT input_digest,stop_requested,state FROM execution_commands WHERE request_id=$1',
       [row.request_id]);
     if (!command || command.input_digest !== row.input_digest) throw new StorageError('corrupt');

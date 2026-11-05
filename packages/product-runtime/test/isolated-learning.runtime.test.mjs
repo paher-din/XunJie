@@ -32,6 +32,16 @@ test('the normal product opens restored learning data read-only without enabling
     const running = await source.start();
     const original = await request(running.endpoint, 'context');
     assert.equal(original.status, 200);
+    const connection = await request(running.endpoint, 'models/connections', {
+      requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '隔离恢复保留的模型',
+      protocol: 'chat-completions', baseUrl: 'http://127.0.0.1:9/v1', path: '/chat/completions',
+      modelId: 'synthetic-no-dispatch', dialect: 'standard', parameterMode: 'plain', enabled: true,
+      credential: { action: 'replace', value: 'synthetic-isolated-key' },
+    });
+    assert.equal(connection.status, 200, JSON.stringify(connection.value));
+    const connections = await request(running.endpoint, 'models/connections');
+    const selection = await request(running.endpoint, 'models/selection');
+    assert.equal(selection.status, 200);
     const created = await request(running.endpoint, 'activities', {
       requestId: randomUUID(), goal: '恢复后从原学习入口阅读作品', question: '', references: [],
     });
@@ -64,11 +74,17 @@ test('the normal product opens restored learning data read-only without enabling
     const works = await request(isolated.endpoint, `workspaces/${activity.activityId}`);
     assert.equal(works.status, 200);
     assert.deepEqual(works.value.files, files);
+    for (const [route, expected] of [['models/connections', connections.value], ['models/selection', selection.value]]) {
+      const models = await request(isolated.endpoint, route);
+      assert.equal(models.status, 200, JSON.stringify(models.value));
+      assert.deepEqual(models.value, expected);
+    }
     for (const [route, body] of [
       ['activities', { requestId: randomUUID(), goal: 'must not create', question: '', references: [] }],
       [`workspaces/${activity.activityId}`, { requestId: randomUUID(), baseRevision: 1, files: [] }],
       [`executions/${activity.activityId}`, {}], ['native-channel/claim', {}],
       ['client/start', {}], ['execution-environment', undefined],
+      ['models/connections', {}], ['models/checks', {}],
     ]) assert.equal((await request(isolated.endpoint, route, body)).status, 503, route);
     assert.deepEqual((await request(isolated.endpoint, `workspaces/${activity.activityId}`)).value, works.value);
     await assert.rejects(target.recovery.resume(), { code: 'target-isolated' });

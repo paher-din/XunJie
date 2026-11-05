@@ -18,7 +18,7 @@ const canonical = value => Array.isArray(value) ? value.map(canonical)
 const sha256Json = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 
 /** A real browser command against real PostgreSQL: accept, query, report, stop and result. */
-test('the execution owner keeps the original acceptance, the durable stop and one result per run', { timeout: 300000 }, async () => {
+test('the execution owner keeps original acceptance, empty-reason stops and one result through restart', { timeout: 300000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'xj-execution170-'));
   const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
     postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
@@ -99,6 +99,13 @@ test('the execution owner keeps the original acceptance, the durable stop and on
       execution: { executionRef: ref, acceptedSeq: seq } });
     const acceptance = acceptFor(action);
     const path = `executions/${activity.activityId}`;
+    // A student's authenticated entry cannot claim to be an Agent, preview or trusted self-test.
+    for (const kind of ['agent', 'self-check', 'teacher-preview']) {
+      const forged = actionOf(randomUUID(), action.execution.parameters);
+      forged.execution.initiator.kind = kind;
+      assert.equal((await api(path, { action: forged, acceptance: acceptFor(forged, randomUUID()) }, headers)).status, 403, kind);
+      assert.equal((await api(`${path}/${forged.requestId}`, undefined, headers)).value, null);
+    }
     const accepted = await api(path, { action, acceptance }, headers);
     assert.equal(accepted.status, 200, JSON.stringify(accepted.value));
     assert.deepEqual([accepted.value.state, accepted.value.executionRef, accepted.value.confirmedSeq], ['queued', executionRef, 1]);
@@ -145,9 +152,10 @@ test('the execution owner keeps the original acceptance, the durable stop and on
     assert.equal((await api(`${path}/${randomUUID()}/artifact`, undefined, headers)).value, null);
 
     const stopId = randomUUID();
-    const stopped = await api(`${path}/${requestId}/stop`, { stopId, reason: '用户请求停止。' }, headers);
+    // The public contract permits no explanation; that is still a valid durable stop.
+    const stopped = await api(`${path}/${requestId}/stop`, { stopId, reason: '' }, headers);
     assert.equal(stopped.value.stopRequested, true);
-    assert.equal((await api(`${path}/${requestId}/stop`, { stopId, reason: '用户请求停止。' }, headers)).value.stopRequested, true);
+    assert.equal((await api(`${path}/${requestId}/stop`, { stopId, reason: '' }, headers)).value.stopRequested, true);
     const cancelled = { ...stopped.value, state: 'cancelled', confirmedSeq: 4,
       reason: { code: 'worker-terminated', detail: '用户请求停止。' } };
     assert.deepEqual((await api(`${path}/${requestId}/report`, cancelled, headers)).value, cancelled);
@@ -159,7 +167,7 @@ test('the execution owner keeps the original acceptance, the durable stop and on
     const completed = (await api(path, { action: completedAction, acceptance: acceptFor(completedAction, randomUUID()) }, headers)).value;
     const succeeded = { ...completed, state: 'succeeded', confirmedSeq: 2 };
     assert.equal((await api(`${path}/${completedAction.requestId}/report`, succeeded, headers)).value.state, 'succeeded');
-    const terminalStop = await api(`${path}/${completedAction.requestId}/stop`, { stopId: randomUUID(), reason: '完成后核对停止。' }, headers);
+    const terminalStop = await api(`${path}/${completedAction.requestId}/stop`, { stopId: randomUUID(), reason: '' }, headers);
     assert.equal(terminalStop.value.state, 'succeeded');
     assert.equal(terminalStop.value.stopRequested, false);
     await runtime.stop();
@@ -177,5 +185,9 @@ test('the execution owner keeps the original acceptance, the durable stop and on
     const elsewhereAction = actionOf(elsewhere, action.execution.parameters);
     assert.equal((await api(`executions/${elsewhere}`, { action: elsewhereAction, acceptance: acceptFor(elsewhereAction) }, headers)).status, 404);
     assert.equal((await api(path, { action, acceptance: { ...acceptance, receipt: { ...acceptance.receipt, state: 'rejected' } } })).status, 403);
-  } finally { await runtime.stop().catch(() => {}); if (!preserveRoot) await rm(root, { recursive: true, force: true }); }
+  } finally {
+    // A rejected drain must preserve the live fixture and the original assertion failure.
+    await runtime.stop().catch(() => { preserveRoot = true; });
+    if (!preserveRoot) await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
 });

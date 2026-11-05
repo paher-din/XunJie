@@ -1,14 +1,10 @@
 import { acceptsState, matchesComponentState, componentStateSchema, componentStateName, type ComponentBinding, type ComponentManifest } from '@xunjie/contracts/components'
-import { executionActionSchema, defaultExecutionLimits, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
+import { canonicalValue as canonical, executionActionSchema, defaultExecutionLimits, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 
 export const componentStateMediaType = 'application/vnd.xunjie.component-state+json'
-export function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical)
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]))
-  return value
-}
+export { canonical }
 export async function digestOf(value: unknown) {
   const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)))
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')

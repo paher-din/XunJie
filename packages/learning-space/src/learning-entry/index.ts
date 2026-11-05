@@ -307,7 +307,7 @@ export function createLearningEntry(options: {
         if (method !== 'GET' && method !== 'POST') throw new StorageError('missing');
         result = await routeModels(options.models, identity, route, method === 'POST'
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
-          personalProfile ? await spaces.personal() : undefined);
+          personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
       else if (route === 'course-activities' && method === 'POST') {
         result = await learning.createCourse(await current(request), await readLearningBody(request));

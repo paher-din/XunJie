@@ -1,12 +1,52 @@
 import 'fake-indexeddb/auto'
-import { expect, it } from 'vitest'
-import type { CourseExecutionPlan, ExecutionDevice } from '@xunjie/contracts/execution'
+import { expect, it, vi } from 'vitest'
+import type { CourseExecutionPlan, ExecutionDevice, ExecutionAction } from '@xunjie/contracts/execution'
 import { aggregationPackage } from '../../../../components/table-aggregation/package.mjs'
-import type { ReliableWorkspace } from '../reliable-workspace'
+import { ReliableWorkspace } from '../reliable-workspace'
 import { digestOf, executionAction } from '../tool-execution/action'
 import { BrowserExecutionReceiver } from '../tool-execution/receiver'
 import { ExecutionController } from '../tool-execution/controller'
 import { createComponentBridge } from './bridge'
+
+it.each(['closed', 'forbidden', 'capability', 'current'] as const)(
+  'a component awaiting a fixed input digest rechecks its %s mount before acceptance', async retired => {
+    const scope = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), activityId: crypto.randomUUID() }
+    const key = JSON.stringify(['school', scope.environmentId, scope.spaceId, scope.principalId, scope.activityId])
+    const { manifest } = await aggregationPackage()
+    const binding = { key: 'table', definition: { manifest, digest: await digestOf(manifest) }, configuration: { title: '表格' }, materialIds: [] }
+    const unused = async (): Promise<never> => { throw new Error('not dispatched') }
+    const workspace = new ReliableWorkspace(key, { read: unused, receipt: unused, sync: unused })
+    const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' }, key, 1)
+    const actions = { async createExecution(input: Pick<ExecutionAction, 'requestId' | 'receiver' | 'execution'>) {
+      const action = { protocolVersion: 2 as const, kind: 'execution' as const, scope, ...input }
+      await receiver.accept(action, await digestOf(action))
+    }, cancel: async () => {} }
+    const transport = { accept: unused, read: async () => null, report: unused, stop: unused, result: unused }
+    const controller = new ExecutionController(key, receiver, actions, transport, { load: unused })
+    let allowed = true, runnable = true
+    const bridge = createComponentBridge(workspace, scope.activityId, binding, () => allowed, { controller, canRun: () => runnable })
+    let enter!: () => void, release!: () => void
+    const entered = new Promise<void>(resolve => { enter = resolve }), gate = new Promise<void>(resolve => { release = resolve })
+    const digest = crypto.subtle.digest.bind(crypto.subtle)
+    const delayed = vi.spyOn(crypto.subtle, 'digest').mockImplementation(async (algorithm, bytes) => {
+      enter(); await gate; return digest(algorithm, bytes)
+    })
+    const requestId = crypto.randomUUID()
+    try {
+      const pending = bridge.handle({ hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
+        messageId: crypto.randomUUID(), method: 'execution.submit', payload: { requestId, operationId: 'aggregate',
+          parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'sum' }, expectedContentId: null } })
+        .then(() => 'accepted', error => error.message)
+      await entered
+      if (retired === 'closed') bridge.close()
+      if (retired === 'forbidden') allowed = false
+      if (retired === 'capability') runnable = false
+      release()
+      expect(await pending).toBe(retired === 'closed' ? 'stale-connection' : retired === 'forbidden' ? 'forbidden'
+        : retired === 'capability' ? 'capability-unavailable' : 'accepted')
+      expect((await receiver.store.list(key)).map(record => record.requestId)).toEqual(retired === 'current' ? [requestId] : [])
+    } finally { release(); delayed.mockRestore(); bridge.close(); controller.dispose() }
+  })
 
 it('a component can query its own run but cannot query or stop another instance in the same activity', async () => {
   const scope = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), activityId: crypto.randomUUID() }

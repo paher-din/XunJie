@@ -70,6 +70,8 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
           receiverId: execution.controller.receiver.identity.receiverId, location: 'local', kind: 'execution' },
           operationId: input.operationId, parameters: input.parameters, expectedContentId: input.expectedContentId,
           requestId: input.requestId })
+        assertWritable()
+        if (!execution.canRun()) throw new Error('capability-unavailable')
         await execution.controller.submit(action)
         submitted.add(action.requestId)
         return action
