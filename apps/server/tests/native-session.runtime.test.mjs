@@ -9,6 +9,7 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { createNativeSessions, nativeSessionMigration } from '../../../packages/learning-space/dist/learning-data/native-sessions.js';
+import { sessionRecoveryMigration } from '../../../packages/learning-space/dist/learning-data/session-checkpoints.js';
 import { productNativeAdapters } from '../../../packages/learning-space/dist/learning-data/native-process.js';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 import { courseExecutionPlanBasis } from '@xunjie/contracts/execution';
@@ -155,7 +156,8 @@ test('owner fences changed generations, recovers once per generation and reclaim
   try {
     const migrations = [{ version: 1, name: 'activity-fixture', sql: 'CREATE TABLE activities(id uuid PRIMARY KEY, body jsonb NOT NULL);' },
       { ...nativeSessionMigration, version: 2 },
-      { version: 3, name: 'fixed-native-action-text-fixture', sql: 'ALTER TABLE native_sessions ADD COLUMN action_text text;' }];
+      { version: 3, name: 'fixed-native-action-text-fixture', sql: 'ALTER TABLE native_sessions ADD COLUMN action_text text;' },
+      { ...sessionRecoveryMigration, version: 4 }];
     const binding = await provisionStorage({ admin: fixture.admin,
       owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID(), migrations });
     storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: 'files', root: fixture.root + '/objects' }) });
@@ -175,7 +177,7 @@ test('owner fences changed generations, recovers once per generation and reclaim
     const manifest = structuredClone(original), declared = manifest.session;
     const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
     const activityId = randomUUID();
-    const activity = { activityId, identity, course: { components: [{ key: 'accumulator',
+    const activity = { activityId, identity, status: 'open', course: { components: [{ key: 'accumulator',
       definition: { digest: 'a'.repeat(64), manifest }, configuration: {}, materialIds: [] }] } };
     await storage.request({ requestId: 'activity', fingerprint: activityId }, async tx => {
       await tx.query('INSERT INTO activities VALUES($1,$2)', [activityId, JSON.stringify(activity)]); return true;
@@ -183,7 +185,8 @@ test('owner fences changed generations, recovers once per generation and reclaim
     owner = createNativeSessions(facade, { activity: async () => {
       if (!authorized) throw new StorageError('forbidden');
       return activity;
-    }, works: {}, nodePath: process.execPath, sessionRoot: fixture.root + '/sessions' });
+    }, works: {}, nodePath: process.execPath, sessionRoot: fixture.root + '/sessions',
+      ...(process.env.XUNJIE_NATIVE_SESSION_HELPER ? { windowsHelper: process.env.XUNJIE_NATIVE_SESSION_HELPER } : {}) });
     const actionOf = () => ({ protocolVersion: 2, kind: 'execution', requestId: randomUUID(),
       scope: { ...identity, activityId }, receiver: { receiverId: 'native-execution', location: 'local', kind: 'execution' },
       execution: { instance: { instanceId: `${activityId}:accumulator`, key: 'accumulator', componentId: manifest.componentId,
@@ -241,7 +244,8 @@ test('owner fences changed generations, recovers once per generation and reclaim
     const linuxOnly = { ...fourState, adapterId: 'fixture-linux', platforms: ['linux-x64'] };
     const placement = { nodeClass: 'school-execution-node', secureTransport: true };
     school = createNativeSessions(facade, { activity: async () => activity, works: {}, adapters: [fourState, linuxOnly],
-      nodeId: 'school-' + randomUUID(), placement, nodePath: process.execPath, sessionRoot: fixture.root + '/school-sessions' });
+      nodeId: 'school-' + randomUUID(), placement, nodePath: process.execPath, sessionRoot: fixture.root + '/school-sessions',
+      ...(process.env.XUNJIE_NATIVE_SESSION_HELPER ? { windowsHelper: process.env.XUNJIE_NATIVE_SESSION_HELPER } : {}) });
     const deviceOf = (platform = 'macos-arm64', native = { supported: false, installed: false, authorized: false, prepared: 'none' }) => ({
       platform, browser: { worker: true, webassembly: true, sandboxedFrame: true }, native,
     });

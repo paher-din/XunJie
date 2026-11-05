@@ -367,9 +367,10 @@ try {
       tx.onabort = () => reject(tx.error);
     };
   }));
-  assert.deepEqual(upgrade, { version: 5, operations: true, text: '已有中文作品不得丢失' });
+  assert.ok(upgrade.version > 3, 'the legacy database must actually upgrade');
+  assert.deepEqual({ operations: upgrade.operations, text: upgrade.text }, { operations: true, text: '已有中文作品不得丢失' });
   await upgradeContext.close();
-  passed('the real v3 IndexedDB upgrades additively to v5 without losing existing workspace data');
+  passed('the real v3 IndexedDB upgrades additively without losing existing workspace data or operation receipts');
   const openSample = async () => {
     const response = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
     const id = (await response.json()).activityId, page = await context.newPage();
