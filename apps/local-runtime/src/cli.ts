@@ -45,6 +45,9 @@ const commands: Record<string, readonly string[]> = {
   'model-task': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
+  'component-import': ['file', 'resources'],
+  'component-read': ['file', 'resources'],
+  'component-status': ['file', 'resources'],
   'course-access': ['file', 'resources'],
   'course-result': ['file', 'resources'],
 };
@@ -92,8 +95,11 @@ function defaultRoot(): string {
 async function resourcesFile(path: string): Promise<RuntimeResources> {
   const absolute = resolve(path);
   const value = await jsonFile(absolute, 'resources（安装需要应用包中的 resources.json，可用 --resources 指定）');
-  for (const key of ['nodePath', 'webRoot', 'postgresBin', 'windowsPrerequisitePath'] as const) {
-    if ((key === 'postgresBin' || key === 'windowsPrerequisitePath') && value[key] === undefined) continue;
+  // Platform-specific resources are absent from candidates for other platforms: a
+  // darwin/linux candidate ships neither the Windows prerequisite nor the Windows
+  // session helper, so an absent value is valid while an empty one is not.
+  for (const key of ['nodePath', 'webRoot', 'postgresBin', 'windowsPrerequisitePath', 'windowsSessionHelper'] as const) {
+    if (key !== 'nodePath' && key !== 'webRoot' && value[key] === undefined) continue;
     if (typeof value[key] !== 'string' || !value[key].trim()) {
       throw new Error(`resources 缺少有效的 ${key}`);
     }
@@ -218,7 +224,7 @@ async function main(): Promise<void> {
     return { database: input.database as RestoreInput['database'], databaseCredential,
       installation: input.installation as RestoreInput['installation'] };
   };
-  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result', body: unknown, timeout = 15000) => {
+  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result' | 'component-import' | 'component-read' | 'component-status', body: unknown, timeout = 15000) => {
     const status = await run(() => runtime.status());
     if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
     const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
@@ -240,12 +246,15 @@ async function main(): Promise<void> {
         && (typeof input.sourceInstallationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId))) throw new Error('接收方核验输入无效');
       const current = (await runtime.status()).environment;
       if (!current.services.some(service => `${current.environmentId}/${service.serviceId}` === input.expectedReceiver)) throw new Error('receiver-identity-conflict');
-      for (const serviceId of input.sourceServiceIds as string[]) await runtime.recovery.fenceSource({
+      let execution;
+      for (const serviceId of input.sourceServiceIds as string[]) execution = (await runtime.recovery.fenceSource({
         sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: serviceId,
-        ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }) });
+        ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }) })).execution;
       output({ fenced: true, receiverId: input.expectedReceiver, sourceEnvironmentId: input.sourceEnvironmentId,
+        ...(input.backupId === undefined ? {} : { backupId: input.backupId }),
+        ...(input.targetInstallationId === undefined ? {} : { targetInstallationId: input.targetInstallationId }),
         ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId }),
-        sourceServiceIds: input.sourceServiceIds });
+        sourceServiceIds: input.sourceServiceIds, execution });
       break;
     }
     case 'recovery-key': {
@@ -377,6 +386,45 @@ async function main(): Promise<void> {
       });
       if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
       output(await response.json()); break;
+    }
+    case 'component-import': {
+      const manifestPath = resolve(required('file'));
+      const input = await jsonFile(manifestPath, '组件导入清单');
+      const importRoot = await realpath(dirname(manifestPath));
+      const confined = async (label: string, target: string) => {
+        const absolute = await realpath(resolve(importRoot, target));
+        const inside = relative(importRoot, absolute);
+        if (!inside || inside.startsWith('..') || isAbsolute(inside)) throw new Error(`${label}越出导入目录`);
+        return readFile(absolute);
+      };
+      if (typeof input.path !== 'string' || input.contentBase64 !== undefined) throw new Error('组件入口通过 path 从导入目录读取');
+      const bytes = await confined('组件入口', input.path);
+      const algorithm = input.algorithm as { path?: unknown } | undefined;
+      if (algorithm && typeof algorithm.path !== 'string') throw new Error('组件算法通过 path 从导入目录读取');
+      const algorithmBase64 = algorithm ? (await confined('组件算法', algorithm.path as string)).toString('base64') : undefined;
+      const { path: _path, algorithm: _algorithm, dependencies: declared, ...body } = input;
+      // Dependency bytes come from the import directory by declared path, keyed to the manifest's fixed resourceId.
+      const manifest = object(body.manifest, '组件清单');
+      const declaredDependencies = manifest.dependencies;
+      const resources = declared === undefined ? undefined : (Array.isArray(declared) ? declared : []).map(item => {
+        const dependency = object(item, '组件依赖');
+        const entry = (Array.isArray(declaredDependencies) ? declaredDependencies : [])
+          .map(candidate => object(candidate, '清单依赖')).find(candidate => candidate.dependencyId === dependency.dependencyId);
+        if (typeof dependency.path !== 'string' || !entry || typeof entry.resourceId !== 'string')
+          throw new Error('组件依赖需要 dependencyId 与 path，且清单必须声明同一依赖');
+        return { path: dependency.path, resourceId: entry.resourceId };
+      });
+      if (declared !== undefined && !Array.isArray(declared)) throw new Error('组件依赖必须是数组');
+      output(await manageCourse('component-import', { ...body, contentBase64: bytes.toString('base64'),
+        ...(algorithmBase64 === undefined ? {} : { algorithmBase64 }),
+        ...(resources ? { dependencies: await Promise.all(resources.map(async item =>
+          ({ resourceId: item.resourceId, contentBase64: (await confined('组件依赖', item.path)).toString('base64') }))) } : {}) })); break;
+    }
+    case 'component-read': {
+      output(await manageCourse('component-read', await jsonFile(required('file'), '组件查询'))); break;
+    }
+    case 'component-status': {
+      output(await manageCourse('component-status', await jsonFile(required('file'), '组件装载状态'))); break;
     }
     case 'model-task': {
       const input = await jsonFile(required('file'), '配对模型任务');

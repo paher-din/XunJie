@@ -63,6 +63,14 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     });
     return receipt.result as SpaceIdentity;
   }
+  /** Recovery reads an existing identity without creating receipts or bindings behind closed gates. */
+  async function readPersonal(): Promise<SpaceIdentity> {
+    const { rows: [row] } = await storage.read(`SELECT p.id AS principal_id,p.space_id,s.kind,s.name
+      FROM principals p JOIN spaces s ON s.id=p.space_id JOIN memberships m
+      ON m.space_id=p.space_id AND m.principal_id=p.id WHERE s.kind='personal' AND m.active`);
+    if (!row) return fail('missing');
+    return identity(row);
+  }
   async function schoolSpace(): Promise<string> {
     const receipt = await storage.request({ requestId: `school-space:${storage.owner.serviceId}`, fingerprint: 'school-space-v1' }, async tx => {
       const proposed = randomUUID();
@@ -112,16 +120,38 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     if (!row) return fail('forbidden');
     return identity(row);
   }
-  async function login(loginName: string, password: string) {
+  async function authenticateConnection(token: string, connectionId: string): Promise<SpaceIdentity> {
+    id.parse(connectionId);
+    const member = await authenticate(token, 'connection');
+    const { rows } = await storage.read(`SELECT connection_id FROM sessions WHERE token_hash=$1 AND connection_id=$2
+      AND kind='connection' AND NOT revoked AND expires_at>clock_timestamp()`, [sessionDigest(token), connectionId]);
+    if (!rows.length) fail('forbidden');
+    return member;
+  }
+  async function authorizeConnection(member: SpaceIdentity, connectionId: string) {
+    await authorize(member); id.parse(connectionId);
+    const { rows } = await storage.read(`SELECT connection_id FROM sessions WHERE connection_id=$1 AND principal_id=$2
+      AND kind='connection' AND NOT revoked AND expires_at>clock_timestamp()`, [connectionId, member.principalId]);
+    if (!rows.length) fail('forbidden');
+  }
+  async function verifyPassword(loginName: string, password: string): Promise<SpaceIdentity> {
     z.string().min(1).max(100).parse(loginName); z.string().min(1).max(256).parse(password);
     const { rows: [account] } = await storage.read('SELECT salt,verifier,principal_id FROM accounts WHERE login_name=$1', [loginName]);
     // Do comparable password work for an unknown account as for a wrong password.
     const key = await passwordKey(password, account?.salt as string ?? 'unknown-account');
     if (!account || !timingSafeEqual(key, Buffer.from(account.verifier as string, 'hex'))) return fail('forbidden');
+    const { rows: [row] } = await storage.read(`SELECT p.id AS principal_id,p.space_id,s.kind,s.name
+      FROM principals p JOIN spaces s ON s.id=p.space_id JOIN memberships m
+      ON m.space_id=p.space_id AND m.principal_id=p.id WHERE p.id=$1 AND m.active`, [account.principal_id]);
+    if (!row) return fail('forbidden');
+    return identity(row);
+  }
+  async function login(loginName: string, password: string) {
+    const member = await verifyPassword(loginName, password);
     const token = randomBytes(32).toString('base64url');
     await storage.request({ requestId: randomUUID(), fingerprint: digest(token) }, async tx => {
       await tx.query("INSERT INTO sessions(token_hash,principal_id,expires_at) VALUES ($1,$2,clock_timestamp()+$3*interval '1 millisecond')",
-        [sessionDigest(token), account.principal_id, sessionLifetimeMs]);
+        [sessionDigest(token), member.principalId, sessionLifetimeMs]);
       return null;
     });
     return { token, identity: await authenticate(token) };
@@ -207,6 +237,6 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
-  return { personal, schoolSpace, createMember, setMembership, login, authenticate, authorize, bindMember, resolveBinding,
-    logout, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
+  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, login, authenticate, authorize, bindMember, resolveBinding,
+    logout, authenticateConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

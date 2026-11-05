@@ -42,7 +42,8 @@ test.beforeAll(async ({ browser }) => {
   await call(schoolEndpoint, 'manage/members', { requestId: randomUUID(), loginName: 'model-choice-ui', password }, admin)
   schoolCookie = (await call(schoolEndpoint, 'login', { loginName: 'model-choice-ui', password })).cookie!
   const config = (name: string) => ({ requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name,
-    protocol: 'chat-completions', baseUrl: 'https://synthetic.invalid/v1', path: '/chat/completions', modelId: 'synthetic',
+    // Configuration only: a public literal satisfies server target policy without DNS or provider dispatch.
+    protocol: 'chat-completions', baseUrl: 'https://1.1.1.1/v1', path: '/chat/completions', modelId: 'synthetic',
     dialect: 'standard', parameterMode: 'plain', enabled: true, credential: { action: 'replace', value: 'synthetic-ui-only' } })
   await call(schoolEndpoint, 'manage/model-default', { ...config('学校默认服务'), policy: { checksAllowed: true, maxChecksPerHour: 4, maxOutputTokens: 64, timeoutMs: 10000 } }, admin)
   await call(schoolEndpoint, 'models/connections', config('本人的学校网页连接'), { cookie: schoolCookie })

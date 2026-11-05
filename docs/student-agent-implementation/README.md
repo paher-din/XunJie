@@ -13,6 +13,15 @@
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
+| WP03 合入 main 的双轴审查、冲突裁决与 Windows 集成复验 | [PR #189 审查与复验](wp03-pr189-review.md) |
+| WP03 组件与未结执行的一致备份、隔离只读还原及权威接管 | [#176 设计与验收计划](specs/wp03-execution-recovery.md) · [实现与本机验收](wp03-176-recovery-implementation.md) · [#188 Mac/学校跨机验收](wp03-188-cross-platform.md) |
+| WP03 的浏览器有限作业：固定执行请求、持久接收、真实 Worker/WASM 计算、查询/停止与结果重读 | [浏览器计算与持久执行](wp03-execution.md) · [固定表格聚合样例](../../components/table-aggregation/README.md) |
+| WP03 标注对象与真实聚合结果的固定选区、来源核验和定位 | [#172 交付](wp03-semantic-references.md) · [实施方案](specs/wp03-nontext-references.md) · [#185 Apple Silicon 验收](wp03-185-mac-references.md) |
+| WP03 第三项：真实依赖准备、独立自检、版本缓存及失败继续的方案与验收 | [#171 实施与验收](specs/wp03-component-preparation.md) · [Mac 交接](wp03-171-mac-handoff.md) |
+| WP03 第四项：本机原生有状态会话、连续输入、持久会话事实与真实停止 | [设计与边界](specs/wp03-native-sessions.md) · [实施与验收](wp03-native-sessions.md) · [四态累加样例](../../components/state-accumulator/README.md) |
+| WP03 第五项：会话控制、可靠检查点与关联恢复实例 | [实施方案](specs/wp03-session-recovery.md) · [实现与验证](wp03-session-recovery.md) · [#187 Apple Silicon 验收](wp03-187-mac-session-recovery.md) |
+| WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |
+| #175 已完成：课程运行方案固定、按操作判定执行位置、Linux 受限会话入口、学校节点真实原生会话与撤权/旧安装失权 | [#175 课程运行方案与学校节点执行](wp03-course-execution-plan.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |

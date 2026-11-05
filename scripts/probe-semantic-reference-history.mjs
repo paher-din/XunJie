@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict';
+import { randomUUID, createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve, join } from 'node:path';
+import { release } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { chromium, expect } from '@playwright/test';
+import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential } from '@xunjie/product-runtime';
+import { controlledActionReceiver } from '../apps/server/tests/support/action-receiver.mjs';
+import { annotationPackage } from '../components/material-annotation/package.mjs';
+import { aggregationPackage } from '../components/table-aggregation/package.mjs';
+import { semanticAdapters } from '@xunjie/contracts/question-drafts';
+const profile=process.env.XUNJIE_SEMANTIC_PROFILE==='school'?'school':'local';
+const output=resolve('.verification/wp03-172-history-'+profile);await mkdir(output,{recursive:true});
+const root=await mkdtemp(join(tmpdir(),'xj172-'));
+if(!process.env.XUNJIE_PRODUCT_POSTGRES_BIN)throw Error('Native PostgreSQL required');
+const postgresVersion=/(\d+\.\d+)/.exec(execFileSync(join(process.env.XUNJIE_PRODUCT_POSTGRES_BIN,'postgres'),['--version'],{encoding:'utf8'}))[1];
+const resources={nodePath:process.execPath,nodeVersion:process.version.slice(1),postgresBin:process.env.XUNJIE_PRODUCT_POSTGRES_BIN,postgresVersion,webRoot:resolve('apps/web/dist-runtime'),windowsPrerequisitePath:resolve('scripts/windows-prereq-prepare.ps1')};
+const runtime=openProductRuntime({root,resources}), receiver=controlledActionReceiver('semantic-reference-test-receiver');
+const report={date:new Date().toISOString().slice(0,10),codeSha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),status:'running',cases:[],browser:'installed Chrome',headless:false,platform:process.platform,arch:process.arch,os:release(),node:process.version,postgres:postgresVersion,teaching:'not evaluated',receiver:'controlled receiver; no model invocation',profile};
+let host,browser,page;const passed=name=>{report.cases.push(name);console.log('PASS '+name)};
+try{
+ await runtime.install({profile});
+ host=await createProductRuntimeHost({root,createApplication:context=>createProductLearningApplication(context,{receivers:[receiver]})});
+ const endpoint=host.endpoint, admin={authorization:`Bearer ${await resolveCredential(root,'control')}`};
+ const api=async(route,body,headers=admin)=>{const r=await fetch(endpoint+'/api/learning/'+route,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json',...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});assert.equal(r.status,200,route+' '+await(r.status===200?Promise.resolve(''):r.text()));return r.json()};
+ const annotation=await api('manage/component-import',{requestId:randomUUID(),...await annotationPackage()}), aggregation=await api('manage/component-import',{requestId:randomUUID(),...await aggregationPackage()});
+ const materialId=randomUUID(),text='观察与解释：先记录事实，再核对证据。',bytes=Buffer.from(text),courseId=randomUUID(),releaseId=randomUUID();
+ await api('manage/course-import',{formatVersion:1,requestId:randomUUID(),course:{courseId,name:'语义引用验收'},task:{taskId:randomUUID(),title:'标注和聚合结果引用',summary:''},release:{releaseId,objectives:['固定真实选中内容'],requirements:'分别选择标注与聚合结果进行讨论。',starterWorks:[],capabilities:[],components:[{key:'annotation',definition:annotation,configuration:{title:'材料标注'},materialIds:[materialId]},{key:'table',definition:aggregation,configuration:{title:'表格聚合'},materialIds:[]}],materials:[{materialId,title:'阅读材料',path:'material.txt',mediaType:'text/plain',access:'student',byteLength:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}]},resources:[{path:'material.txt',contentBase64:bytes.toString('base64')}]});
+ const password=randomUUID(),loginName='semantic-reference-student',member=await api('manage/members',{requestId:randomUUID(),loginName,password});
+ await api('manage/course-access',{requestId:randomUUID(),courseId,principalId:member.principalId,active:true});
+ browser=await chromium.launch({channel:'chrome',headless:false});report.browserVersion=browser.version();
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ assert.equal((await context.request.post(endpoint+'/api/learning/login',{data:{loginName,password}})).status(),200);
+ const activity=await(await context.request.post(endpoint+'/api/learning/course-activities',{data:{requestId:randomUUID(),releaseId}})).json();
+ const draft=async()=> (await context.request.get(endpoint+'/api/learning/drafts/'+activity.activityId)).json();
+ page=await context.newPage();page.on('pageerror',error=>console.log('PAGE ERROR '+error.message));
+ await page.goto(endpoint+'?space=school&activity='+activity.activityId);await page.getByRole('tab',{name:'材料标注',exact:true}).click();
+ const frame=page.frameLocator('iframe[title="材料标注"]');await expect(frame.getByRole('button',{name:'标注选中文字',exact:true})).toBeEnabled();
+ await frame.locator('#materials p').evaluate(element=>{const range=document.createRange();range.selectNodeContents(element);getSelection().removeAllRanges();getSelection().addRange(range)});
+ await frame.getByRole('button',{name:'标注选中文字',exact:true}).click();await frame.getByRole('textbox',{name:'标注内容',exact:true}).fill('这是选中时的疑问');
+ await frame.getByRole('button',{name:'选择此标注',exact:true}).click();await page.getByRole('button',{name:'询问 Agent',exact:true}).last().click();
+ const refs=page.getByRole('region',{name:'上下文引用'});await expect(refs.locator('li')).toHaveCount(1);
+ await page.getByRole('textbox',{name:'你的问题',exact:true}).fill('为什么这段证据与我的解释不同？');
+ await expect.poll(async()=> (await draft()).references.length).toBe(1);let saved=await draft();const original=saved.references[0];
+ assert.equal(original.source.kind,'component');assert.equal(original.range.typeId,'annotation-objects');assert.match(original.copy,/选中时的疑问/);
+
+ await page.close();page=null;
+ const fixed=structuredClone(original);delete fixed.copyDigest;
+ let revision=saved.revision;
+ const post=async references=>{
+  const response=await context.request.post(endpoint+'/api/learning/drafts/'+activity.activityId,{data:{requestId:randomUUID(),draftId:saved.draftId,baseRevision:revision,question:'恢复旧引用',references,bases:[]}});
+  if(response.status()===200)revision=(await response.json()).revision;
+  return response.status();
+ };
+ assert.equal(await post([]),200);assert.equal(await post([fixed]),200);
+ passed('removed reference restores with its original adapter');
+ const actionReference={...structuredClone(fixed),referenceId:randomUUID()},actionId=randomUUID();
+ const {environmentId,spaceId,principalId}=activity.identity;
+ const prepared=await context.request.post(endpoint+'/api/learning/intents/'+activity.activityId,{data:{requestId:actionId,scope:{environmentId,spaceId,principalId,activityId:activity.activityId},receiver:receiver.identity,draft:{token:'history-regression',question:'可恢复问题',references:[actionReference],bases:[]},works:[],evidence:[]}});
+ assert.equal(prepared.status(),200,await prepared.text());
+ const cancelled=await context.request.post(endpoint+'/api/learning/intents/'+activity.activityId+'/'+actionId+'/cancel',{data:{}});
+ assert.equal(cancelled.status(),200);assert.equal((await cancelled.json()).state,'cancelled');
+ await post([]);semanticAdapters['annotation-objects'].version=99;
+ assert.equal((await context.request.get(endpoint+'/api/learning/drafts/'+activity.activityId+'/revisions/'+saved.revisionId)).status(),200);
+ assert.equal(await post([fixed]),200);await post([]);
+ passed('retired adapter permits a reference absent from head to restore from an old revision');
+ assert.equal(await post([actionReference]),200);await post([]);
+ passed('retired adapter permits a cancelled action-only reference to restore without a draft revision containing it');
+ for(const fault of ['copy','range','reference-id']){
+  const forged=structuredClone(fixed);
+  if(fault==='copy')forged.copy='假'.repeat(forged.copy.length);
+  if(fault==='range')forged.range.target.objectIds=[randomUUID()];
+  if(fault==='reference-id')forged.referenceId=randomUUID();
+  assert.notEqual(await post([forged]),200,fault);
+ }
+ passed('retired adapter refuses forged copy, range and new reference identity');
+ semanticAdapters['annotation-objects'].version=1;
+ await api('manage/component-status',{requestId:randomUUID(),componentId:annotation.manifest.componentId,version:annotation.manifest.version,enabled:false});
+ assert.equal(await post([fixed]),200);await post([]);assert.equal(await post([actionReference]),200);await post([]);
+ assert.notEqual(await post([{...fixed,referenceId:randomUUID()}]),200);
+ passed('disabled component permits revision/action history but refuses a new reference');
+ await host.stop();host=undefined;const restarted=await runtime.start();assert.ok(['ready','degraded'].includes(restarted.state));await runtime.stop();
+ passed('retained revisions and cancelled action validate on owner restart');
+ report.status='passed';
+}catch(error){report.status='failed';report.error=error.message;throw error;}
+finally{semanticAdapters['annotation-objects'].version=1;await browser?.close();await host?.stop().catch(()=>{});await runtime.stop().catch(()=>{});await writeFile(join(output,'history-report.json'),JSON.stringify(report,null,2));}

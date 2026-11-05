@@ -1,0 +1,337 @@
+{
+  "kind": "remote-school-browser-acceptance",
+  "ticket": "#175",
+  "label": "wp03-188-win32-x64",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "startedAt": "2026-11-05T05:10:20.326Z",
+  "endpoint": "https://101.201.141.133:8443",
+  "cases": [
+    "the school entry loads over strict HTTPS with a pinned certificate",
+    "a school-shared member signs in without any local product or database",
+    "the component view renders in the remote school workspace",
+    "a real Worker/WASM run completes on the browser client",
+    "the original school node answers the query under its own learning-data owner",
+    "a stop on the original node keeps the confirmed terminal state and the same execution reference",
+    "a broken TCP link neither moves the run nor rewrites its confirmed state",
+    "reconnect re-queries the original node and the original execution reference",
+    "withdrawing course eligibility makes the original node refuse the result read",
+    "restoring eligibility returns the original run, not a new execution"
+  ],
+  "traffic": [
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "history"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "history"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "POST",
+      "kind": "accept",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "POST",
+      "kind": "accept",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "POST",
+      "kind": "report",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "POST",
+      "kind": "report",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "POST",
+      "kind": "result",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "run",
+      "method": "POST",
+      "kind": "result",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "query",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "query",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "stop",
+      "method": "POST",
+      "kind": "stop",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "stop",
+      "method": "POST",
+      "kind": "stop",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "history"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "history"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "sessions"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "reconnect",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "checkpoints"
+    },
+    {
+      "phase": "revocation",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "revocation",
+      "method": "GET",
+      "kind": "query",
+      "event": "error",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "revocation",
+      "method": "GET",
+      "kind": "query",
+      "event": "attempt",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    },
+    {
+      "phase": "revocation",
+      "method": "GET",
+      "kind": "query",
+      "event": "ok",
+      "requestId": "f3afef89-8617-453f-a42f-9027ba526082"
+    }
+  ],
+  "status": "passed",
+  "relay": {
+    "mode": "tcp-forward",
+    "upstream": "101.201.141.133:8443",
+    "local": "127.0.0.1:8443",
+    "severedTunnels": 6
+  },
+  "browser": {
+    "product": "Google Chrome",
+    "version": "156.0.8078.80"
+  },
+  "entry": {
+    "protocol": "https:",
+    "host": "101.201.141.133:8443"
+  },
+  "loginStatus": 200,
+  "activityId": "ea89f228-de9b-48c4-a302-899032572ad6",
+  "phase": "revocation",
+  "stored": {
+    "requestId": "f3afef89-8617-453f-a42f-9027ba526082",
+    "status": 200,
+    "state": "succeeded",
+    "executionRef": "16cd2baf-3e9f-4d8d-b9ca-667fc2f110c6",
+    "output": "244a4330-3dcc-48fa-8545-a2a5699ec6ca"
+  },
+  "stop": {
+    "status": 200,
+    "state": "succeeded",
+    "executionRef": "16cd2baf-3e9f-4d8d-b9ca-667fc2f110c6"
+  },
+  "offline": {
+    "reachable": false,
+    "mechanism": "tcp-tunnels-destroyed",
+    "severedTunnels": 6
+  },
+  "readBack": {
+    "status": 200,
+    "state": "succeeded",
+    "executionRef": "16cd2baf-3e9f-4d8d-b9ca-667fc2f110c6"
+  },
+  "revocation": {
+    "withdrawStatus": 200,
+    "readStatusAfter": 403,
+    "readError": "forbidden",
+    "readStatusRestored": 200
+  },
+  "finishedAt": "2026-11-05T05:10:42.240Z"
+}

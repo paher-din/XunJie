@@ -2,7 +2,7 @@
 
 正式产品的 [ActivityWorkspace](../product/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。课程与自主活动共用这条路径；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 [#151 交接](../../../../docs/student-agent-implementation/wp02-reliable-works.md)。
 
-问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，沿用同库 v2 新增的 `drafts`/`draftCandidates` 分区，当前数据库非破坏升级为 v3；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
+问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，沿用同库 v2 新增的 `drafts`/`draftCandidates` 分区，当前数据库非破坏升级为 v4；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
 
 ## 对外接口
 
@@ -10,15 +10,21 @@
 
 - `open()`、`subscribe/snapshot()`：读取本机已保护记录及分歧，订阅可见作品与异常。
 - `create/edit/rename/remove/change`：即时改变当前作品；重命名保留对象身份，同名重建产生新 UUID。`change` 支持 typed state/resource，不经过代码编辑器转换。
+- 组件绑定状态的内部路径、身份、类型不可通过普通文件编辑/改名/删除改变；保留路径也不能被普通文本占用。原始内容仍可读取和导出。仅在完整固定绑定匹配且无路径冲突时，恢复旧版错误显示路径。
 - `protect/leave`：等待本机事务完成；失败抛出，页面保留内存内容。导航前和异步导航响应后都保护一次；停止同步由成功卸载后的 `dispose` 负责。
 - `resolve(files)`：比较后明确选择或合并。选择仍须通过本机 CAS；远端已删除对象恢复为新对象。
 - `suspend/dispose`：停止原身份派发/卸载订阅。授权失效不删除原范围记录；重新认证后重新打开并查询原请求。
+
+活动级聚合 leave 由持续挂载的 ActivityPage 提供，等待作品、问题草稿和动作，不依赖当前中心工具是否显示编辑器。所有导航与身份切换共用该入口；活动存在却无保护句柄时拒绝离开，不能按空 ref 判断安全。
+- `trackInput/applyOperation`：组件输入在异步回执查询期间也参与离开保护；以空间/主体/活动/实例和 operationId 定位本机操作回执。同一操作以 Chrome Web Locks 跨页互斥，回执和内容在同一 IndexedDB 事务提交；同身份换输入拒绝，重载或超过 256 次操作不淘汰原回执。没有 Web Locks 时明确拒绝并保留输入候选。
 
 ## 确认与竞争
 
 作品与问题草稿复用 [ReliableStateCoordinator](coordinator.ts) 的初始化重试、保护互斥、250ms/1000ms 调度、离开保护及暂停/恢复生命周期；内容、远端 CAS 与来源依赖策略由各分区实现。草稿候选和主记录都保存尚未登记的引用完整依据，明确选择及恢复不丢来源原文；保护事务的旧结果不能清除等待期间新增的依据。
 
 新库 `xunjie-reliable-works-v1` 不打开、迁移或消费旧演示 IndexedDB/outbox、SQLite 或执行账本。主记录的正文、版本与待同步请求在同一个 IndexedDB readwrite 事务提交，只有 complete 才确认本机保护。过期本机基线不覆盖主记录，候选正文进入同库独立候选记录。
+
+v4 新增 `workOperations` 本机确认元数据分区，不是第二份作品或保存队列。回执只存输入摘要和实际确认身份，不复制正文；保留至原浏览器数据被显式清除，空间配额失败按存储故障处理，不静默淘汰。服务端备份不包含本机确认；它不冒充服务端接收回执。读取原操作失败时保留输入候选并报告 outcome-unknown，不猜作未执行；离开等待在途输入，读取完成也不把旧回执覆盖回当前正文。
 
 活跃页面的本机合并等待窗口为 **250ms**，空闲网络发送器的检查窗口为 **1000ms**；按固定周期发放，不因持续输入重置。浏览器调度、事务完成及网络往返另计，外部故障不承诺绝对实时。恢复不依赖 unload 的最后一次异步写入；未保护内容离开页面时使用浏览器离开确认保护。
 
@@ -29,6 +35,10 @@
 选择事务与周期保护使用同一个互斥范围，直到本页基线和分歧状态更新完成才开放下一次保护；等待期间的新输入随后写入已选基线，不重建已解决的候选。明确拒绝的旧请求返回前，若修正内容已受本机保护，自动改用新请求同步该修正，无需再编辑一次。
 
 owner 明确判定无效的待发请求（例如问题超过长度限制，服务端没有写入任何回执）与“未知接收结果”不同：原文完整保留、该请求不再重发，界面明确提示未通过校验；内容被修改后即建立新请求并自动同步，不会因为一次校验失败停止该身份的草稿同步。
+
+作品同步同样使用可选 pendingRejected：仅直接同步的明确 invalid 拒绝可持久标记；修正正文已保护时用新请求接续。未知接收、丢回包或查询失败仍保留原身份。历史 invalid pending 不要求清库；状态位置修正后继续查证原请求，再安全接续，详见 [#169 修复](../../../../docs/student-agent-implementation/wp03-component-remediation.md)。
+
+组件状态的普通编辑与显式冲突裁决分开：普通编辑禁止删除或替换现有状态对象身份；裁决校验目标候选的完整绑定、路径与结构，允许选择合法的对方对象或空状态。裁决沿用原保护事务和 pending 身份处理，不把普通文件编辑当作状态重置。
 
 ## 边界
 

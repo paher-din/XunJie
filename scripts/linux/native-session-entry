@@ -1,0 +1,237 @@
+#!/bin/sh
+# XunJie Linux restricted native-session entry.
+#
+# This file is the only command the school host may run as root. It does not accept a shell
+# string, an arbitrary user, an arbitrary executable or an arbitrary unit name: every argument is
+# checked against a fixed shape, and the unit properties below are not caller-controlled. The
+# supervisor writes `adapter.mjs` into the session directory and the unit runs exactly that file.
+#
+# The unit is a system service, not `systemd-run --user --scope`: on Ubuntu 24.04 an unprivileged
+# user scope cannot create a network namespace (`PrivateNetwork=yes` is skipped with a warning) and
+# rejects namespace properties outright. A system unit is the only non-root-adjacent path that
+# actually enforces network denial and a read-only root on that platform.
+set -eu
+
+CONFIG=/etc/xunjie/native-session.conf
+if [ -r "$CONFIG" ]; then
+  # shellcheck disable=SC1090
+  . "$CONFIG"
+fi
+: "${XJ_RUN_USER:=xunjie}"
+: "${XJ_WORK_ROOT:=/var/lib/xunjie-native}"
+: "${XJ_NODE_ROOT:=/opt/xunjie}"
+# The product root that holds credentials, the control token and the database password. It is
+# deployment-specific, so it is configuration rather than an assumption: a unit that hides the
+# wrong directory would still be able to read the school's own secrets.
+: "${XJ_STATE_ROOT:=/var/lib/xunjie}"
+# A root-owned, world-writable sentinel: only a read-only system mount can make writing it fail.
+# The selftest creates it for the duration of the measurement; the unit never writes permanent state.
+: "${XJ_RO_SENTINEL:=/usr/local/lib/xunjie/.probe-sentinel}"
+
+die() { printf 'native-session-entry: %s\n' "$1" >&2; exit "${2:-64}"; }
+
+valid_instance() {
+  printf '%s' "$1" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+}
+
+valid_unit() {
+  printf '%s' "$1" | grep -Eq '^xj-session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+}
+
+valid_int() {
+  printf '%s' "$1" | grep -Eq '^[0-9]{1,8}$'
+}
+
+# A work directory must be a real directory directly under the fixed root, with no symlink in the
+# path. `realpath` is read after the shape check so a crafted name cannot widen the check.
+valid_workdir() {
+  case "$1" in
+    "$XJ_WORK_ROOT"/session-*) ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "$1" | grep -Eq '^[A-Za-z0-9/_.-]+$' || return 1
+  case "$1" in
+    *..*) return 1 ;;
+  esac
+  [ -d "$1" ] || return 1
+  [ "$(readlink -f "$1")" = "$1" ] || return 1
+}
+
+valid_node() {
+  case "$1" in
+    "$XJ_NODE_ROOT"/*/bin/node|"$XJ_NODE_ROOT"/*/*/bin/node) ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "$1" | grep -Eq '^[A-Za-z0-9/_.-]+$' || return 1
+  case "$1" in
+    *..*) return 1 ;;
+  esac
+  [ -x "$1" ] || return 1
+  [ "$(readlink -f "$1")" = "$1" ] || return 1
+}
+
+# The hidden root and the probe target are passed to the unit, so both are configuration values
+# with the same shape rules as every other path.
+valid_root() {
+  case "$1" in
+    /?*) ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "$1" | grep -Eq '^[A-Za-z0-9/_.-]+$' || return 1
+  case "$1" in
+    *..*) return 1 ;;
+  esac
+  [ -d "$1" ] || return 1
+  [ "$(readlink -f "$1")" = "$1" ] || return 1
+}
+
+unit_properties() {
+  memory=$1; tasks=$2; runtime=$3; workdir=$4; unit=$5; instance=$6
+  printf '%s\n' \
+    -p "Type=exec" \
+    -p "Environment=XJ_SESSION_UNIT=$unit" \
+    -p "Environment=XJ_SESSION_INSTANCE=$instance" \
+    -p "DynamicUser=yes" \
+    -p "User=xj-$(printf '%s' "${unit#xj-session-}" | tr -d '-' | cut -c1-24)" \
+    -p "ProtectProc=invisible" \
+    -p "ProcSubset=pid" \
+    -p "WorkingDirectory=$workdir" \
+    -p "PrivateNetwork=yes" \
+    -p "RestrictAddressFamilies=AF_UNIX" \
+    -p "ProtectSystem=strict" \
+    -p "ProtectHome=yes" \
+    -p "PrivateTmp=yes" \
+    -p "ProtectKernelTunables=yes" \
+    -p "ProtectKernelModules=yes" \
+    -p "ProtectControlGroups=yes" \
+    -p "RestrictSUIDSGID=yes" \
+    -p "NoNewPrivileges=yes" \
+    -p "Environment=XJ_STATE_ROOT=$XJ_STATE_ROOT" \
+    -p "Environment=XJ_WORK_ROOT=$XJ_WORK_ROOT" \
+    -p "Environment=XJ_RO_SENTINEL=$XJ_RO_SENTINEL" \
+    -p "InaccessiblePaths=-$XJ_STATE_ROOT" \
+    -p "TemporaryFileSystem=$XJ_WORK_ROOT" \
+    -p "BindPaths=$workdir" \
+    -p "ReadWritePaths=$workdir" \
+    -p "ReadOnlyPaths=/tmp" \
+    -p "ReadOnlyPaths=/var/tmp" \
+    -p "ReadOnlyPaths=/dev/shm" \
+    -p "MemoryMax=${memory}M" \
+    -p "MemorySwapMax=0" \
+    -p "TasksMax=$tasks" \
+    -p "RuntimeMaxSec=$(( (runtime + 999) / 1000 ))" \
+    -p "KillMode=control-group" \
+    -p "SendSIGKILL=yes" \
+    -p "CollectMode=inactive-or-failed"
+}
+
+printf '%s' "$XJ_RUN_USER" | grep -Eq '^[a-z_][a-z0-9_-]*[$]?$' || die "invalid session user"
+[ "$(id -u "$XJ_RUN_USER")" -ne 0 ] || die "session user must not be root" 77
+valid_root "$XJ_WORK_ROOT" || die "invalid session work root"
+valid_root "$XJ_NODE_ROOT" || die "invalid node root"
+
+command=${1:-}
+if [ "$#" -ge 1 ]; then shift; fi
+
+case "$command" in
+  start)
+    [ "$#" -eq 7 ] || die "start requires unit, workdir, memoryMiB, tasksMax, runtimeMs, node and instanceId"
+    unit=$1; workdir=$2; memory=$3; tasks=$4; runtime=$5; node=$6; instance=$7
+    printf '%s' "$instance" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' || die "invalid instance identity"
+    valid_unit "$unit" || die "invalid unit name"
+    valid_workdir "$workdir" || die "invalid session directory"
+    valid_int "$memory" || die "invalid memory budget"
+    valid_int "$tasks" || die "invalid task budget"
+    valid_int "$runtime" || die "invalid runtime budget"
+    [ "$memory" -ge 16 ] && [ "$memory" -le 4096 ] || die "memory budget out of range"
+    [ "$tasks" -ge 2 ] && [ "$tasks" -le 4096 ] || die "task budget out of range"
+    [ "$runtime" -ge 1000 ] && [ "$runtime" -le 86405000 ] || die "runtime budget out of range"
+    valid_node "$node" || die "invalid node executable"
+    valid_root "$XJ_STATE_ROOT" || die "invalid school state root"
+    case "$XJ_STATE_ROOT" in "$XJ_WORK_ROOT"*) die "state root must not live under the session work root" ;; esac
+    [ -f "$workdir/adapter.mjs" ] || die "session adapter is missing"
+    [ ! -L "$workdir/adapter.mjs" ] || die "session adapter must not be a symlink"
+    runuser -u "$XJ_RUN_USER" -- chmod 0777 "$workdir"
+    runuser -u "$XJ_RUN_USER" -- chmod 0644 "$workdir/adapter.mjs"
+    # `--pipe` keeps the line protocol on inherited descriptors; `--wait` returns the unit result.
+    exec systemd-run --system --unit="$unit" --collect --quiet --pipe --wait \
+      $(unit_properties "$memory" "$tasks" "$runtime" "$workdir" "$unit" "$instance") \
+      "$node" "$workdir/adapter.mjs"
+    ;;
+  stop)
+    [ "$#" -eq 2 ] || die "stop requires one unit and its executor instance"
+    valid_unit "$1" || die "invalid unit name"
+    valid_instance "$2" || die "invalid executor instance"
+    active=$(systemctl show "$1.service" --property=ActiveState --value) || die "unit state is unavailable" 69
+    case "$active" in
+      inactive|failed|'') ;;
+      *) case "$(systemctl show "$1.service" --property=Environment --value 2>/dev/null || true)" in
+           *"XJ_SESSION_INSTANCE=$2"*) ;;
+           *) die "unit belongs to another executor instance" 77 ;;
+         esac ;;
+    esac
+    systemctl stop "$1.service" 2>/dev/null || true
+    # A stop is only reported after the cgroup is gone; the caller treats a live unit as unconfirmed.
+    exec systemctl show "$1.service" --property=ActiveState --property=SubState --no-pager
+    ;;
+  state)
+    [ "$#" -eq 2 ] || die "state requires one unit and its executor instance"
+    valid_unit "$1" || die "invalid unit name"
+    valid_instance "$2" || die "invalid executor instance"
+    active=$(systemctl show "$1.service" --property=ActiveState --value) || die "unit state is unavailable" 69
+    case "$active" in
+      inactive|failed|'') printf 'ActiveState=%s\n' "${active:-inactive}"; exit 0 ;;
+    esac
+    case "$(systemctl show "$1.service" --property=Environment --value 2>/dev/null || true)" in
+      *"XJ_SESSION_INSTANCE=$2"*) ;;
+      *) die "unit belongs to another executor instance" 77 ;;
+    esac
+    exec systemctl show "$1.service" --property=ActiveState --property=SubState --property=MainPID --no-pager
+    ;;
+  selftest)
+    [ "$#" -eq 3 ] || die "selftest requires unit, workdir and node"
+    unit=$1; workdir=$2; node=$3
+    valid_unit "$unit" || die "invalid unit name"
+    valid_workdir "$workdir" || die "invalid session directory"
+    valid_node "$node" || die "invalid node executable"
+    valid_root "$XJ_STATE_ROOT" || die "invalid school state root"
+    case "$XJ_STATE_ROOT" in "$XJ_WORK_ROOT"*) die "state root must not live under the session work root" ;; esac
+    probe=/usr/local/lib/xunjie/native-session-probe.mjs
+    listener=/usr/local/lib/xunjie/native-session-listener.mjs
+    [ -f "$probe" ] && [ ! -L "$probe" ] || die "isolation probe is not installed"
+    [ -f "$listener" ] && [ ! -L "$listener" ] || die "host loopback fixture is not installed"
+    # Root creates fixtures under its own parent before granting the unit access. The caller's
+    # directory cannot supply symlinks for root writes, and the listener runs as the session user.
+    install -d -m 0755 -o root -g root /run/xunjie-native-probes
+    workdir=$(mktemp -d /run/xunjie-native-probes/session-XXXXXXXX)
+    sibling=$(runuser -u "$XJ_RUN_USER" -- mktemp -d "$XJ_WORK_ROOT/session-probe-XXXXXXXX")
+    sentinel=$(mktemp /usr/local/lib/xunjie/.probe-sentinel-XXXXXXXX)
+    XJ_RO_SENTINEL=$sentinel
+    cleanup() {
+      [ -z "${listener_pid:-}" ] || kill "$listener_pid" 2>/dev/null || true
+      rm -f "$workdir/.probe-port" "$workdir/.probe-host-confirmed" "$workdir/.probe-sibling" "$sentinel" || true
+      rm -rf "$sibling" "$workdir" || true
+    }
+    trap cleanup EXIT INT TERM
+    : > "$sentinel"; chmod 0666 "$sentinel"
+    runuser -u "$XJ_RUN_USER" -- touch "$sibling/marker"
+    runuser -u "$XJ_RUN_USER" -- chmod 0644 "$sibling/marker"
+    runuser -u "$XJ_RUN_USER" -- chmod 0755 "$sibling"
+    printf '%s\n' "$sibling/marker" > "$workdir/.probe-sibling"
+    chown "$XJ_RUN_USER:$XJ_RUN_USER" "$workdir"
+    runuser -u "$XJ_RUN_USER" -- "$node" "$listener" "$workdir" &
+    listener_pid=$!
+    tries=0
+    while [ ! -s "$workdir/.probe-port" ] && [ "$tries" -lt 10 ]; do sleep 1; tries=$((tries + 1)); done
+    [ -s "$workdir/.probe-port" ] || die "host loopback listener did not start"
+    runuser -u "$XJ_RUN_USER" -- "$node" "$listener" --confirm "$workdir/.probe-port" || die "host loopback listener is unreachable"
+    runuser -u "$XJ_RUN_USER" -- chmod 0644 "$workdir/.probe-port" "$workdir/.probe-host-confirmed"
+    runuser -u "$XJ_RUN_USER" -- chmod 0777 "$workdir"
+    systemd-run --system --unit="$unit" --collect --quiet --pipe --wait \
+      $(unit_properties 256 64 60000 "$workdir" "$unit" 00000000-0000-4000-8000-000000000000) \
+      "$node" "$probe" "$workdir"
+    ;;
+  *)
+    die "usage: native-session-entry {start|stop|state|selftest} ..." 64
+    ;;
+esac

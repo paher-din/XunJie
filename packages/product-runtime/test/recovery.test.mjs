@@ -12,7 +12,8 @@ import { createMaintenanceCoordinator, createRecoveryManager, restoreRecoverySet
 import { createConnectionAuthority, createOutboundConnection } from '@xunjie/product-runtime/connections';
 
 // A separately hosted owner exercises the product boundary without exporting its internals.
-function owner(serviceId, initial = 'confirmed request / unknown external effect') {
+function owner(serviceId, initial = 'confirmed request / unknown external effect',
+  identity = { environmentId: randomUUID(), installationId: randomUUID() }) {
   let value = initial, open = true;
   return {
     read: () => value,
@@ -21,6 +22,12 @@ function owner(serviceId, initial = 'confirmed request / unknown external effect
       descriptor: { serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: [] },
       async closeWrites() { open = false; }, async closeDispatch() { open = false; },
       async drain() {}, async validate() {}, async resume() { open = true; },
+    },
+    async material({ boundaryAt }) {
+      return { formatVersion: 1, kind: 'test.owner.boundary', serviceId, boundaryAt,
+        source: { environmentId: identity.environmentId, installationId: identity.installationId },
+        schemaVersion: '1', coverage: 'service-received', unresolved: [], settled: 0,
+        retained: { resources: 0, checkpoints: 0 }, blocking: [] };
     },
     async export({ directory }) {
       await writeFile(join(directory, 'state'), value);
@@ -38,7 +45,7 @@ async function fixture(t) {
   const environment = { formatVersion: 1, environmentId, installationId: randomUUID(),
     clientNamespace: 'test', profile: 'local', services: [{ environmentId, serviceId,
       unit: 'learning-data', endpoint: 'http://127.0.0.1:1', protocolVersion: 1, capabilities: [] }] };
-  const a = owner(serviceId);
+  const a = owner(serviceId, undefined, { environmentId, installationId: environment.installationId });
   const maintenance = createMaintenanceCoordinator({ requiredServiceIds: [serviceId], record: async () => {} });
   maintenance.register(a.participant);
   const manager = createRecoveryManager({ root, environment, maintenance, owners: [a], requiredServiceIds: [serviceId] });
@@ -47,7 +54,8 @@ async function fixture(t) {
 
 async function pinnedFixture(t, { count = 2, timeoutMs = 1_000 } = {}) {
   const f = await fixture(t);
-  const owners = Array.from({ length: count }, () => owner(randomUUID()));
+  const owners = Array.from({ length: count }, () => owner(randomUUID(), undefined,
+    { environmentId: f.environment.environmentId, installationId: f.environment.installationId }));
   const pins = owners.map(() => new Set());
   const releases = owners.map(() => []);
   const directory = join(f.directory, 'backups');
@@ -175,7 +183,14 @@ test('a killed backup producer leaves durable cleanup that a fresh public manage
     const maintenance = createMaintenanceCoordinator({ requiredServiceIds: [serviceId], record: async () => {} });
     maintenance.register(participant);
     const manager = createRecoveryManager({ root, environment, maintenance, requiredServiceIds: [serviceId], owners: [{
-      participant, async release() {}, async export({ backupId, directory }) {
+      participant, async release() {},
+      async material({ boundaryAt }) {
+        return { formatVersion: 1, kind: 'test.owner.boundary', serviceId, boundaryAt,
+          source: { environmentId: environment.environmentId, installationId: environment.installationId },
+          schemaVersion: '1', coverage: 'service-received', unresolved: [], settled: 0,
+          retained: { resources: 0, checkpoints: 0 }, blocking: [] };
+      },
+      async export({ backupId, directory }) {
         await writeFile(pinFile, backupId);
         await writeFile(join(directory, 'partial'), 'unfinished copy');
         process.send({ backupId });
@@ -294,12 +309,19 @@ async function takeoverFixture(t, { receiverCount = 1, handler = value => value 
       requiredCapabilities: ['echo'], optionalCapabilities: [], credentialRef: `test:${randomUUID()}` };
     const client = () => createOutboundConnection({ connection, credential: async () => grant.token,
       allowInsecureLoopback: true, timeoutMs: 3_000 });
-    receivers.push({ id: `${service.environmentId}/${service.serviceId}`, client,
+    const id = `${service.environmentId}/${service.serviceId}`;
+    receivers.push({ id, client,
       reopen() { authority = createConnectionAuthority(authorityOptions); },
-      async fence(environment) {
+      async fence(environment, _serviceIds, binding) {
         assert.equal(environment.environmentId, f.environment.environmentId);
         assert.deepEqual(environment.services.map(item => item.serviceId), [f.serviceId]);
-        return authority.fenceSource(source);
+        // The receiving authority really advanced its grant generation; the proof names the
+        // installation it fenced, which is what takeover verifies.
+        await authority.fenceSource(source);
+        return { fenced: true, ...binding, receiverId: id, sourceEnvironmentId: f.environment.environmentId,
+          sourceInstallationId: f.environment.installationId, sourceServiceIds: [f.serviceId],
+          execution: { formatVersion: 1, boundaryAt: new Date().toISOString(), unresolved: 0, blocking: 0,
+            services: [{ serviceId: service.serviceId, unresolved: 0, settled: 0, blocking: 0 }] } };
       },
     });
   }
@@ -357,8 +379,8 @@ test('takeover drains real receiver handlers before opening a new installation a
   const fencing = Promise.withResolvers();
   let activated = false;
   const takeover = target.manager.takeover({ source: f.manager,
-    receivers: [{ id: receiver.id, async fence(environment) {
-      fencing.resolve(); return receiver.fence(environment);
+    receivers: [{ id: receiver.id, async fence(...args) {
+      fencing.resolve(); return receiver.fence(...args);
     } }] }).then(result => { activated = true; return result; });
   await fencing.promise;
   // The source process is still alive; its manager must reject reopening it.
@@ -435,12 +457,12 @@ test('missing receivers, unreachable or rejecting sources, and receiver failure 
         if (scenario === 'source-rejects') throw Object.assign(new Error('retirement rejected'), { code: 'retirement-conflict' });
         return f.manager.retire(input);
       } };
-      const receivers = f.receivers.map((receiver, index) => ({ id: receiver.id, async fence(environment) {
+      const receivers = f.receivers.map((receiver, index) => ({ id: receiver.id, async fence(...args) {
         fenceCalls[index]++;
         if (scenario === 'receiver-rejects' && index === 1) {
           throw Object.assign(new Error('receiver unavailable'), { code: 'receiver-unavailable' });
         }
-        return receiver.fence(environment);
+        return receiver.fence(...args);
       } }));
       if (scenario === 'missing-receiver') receivers.pop();
       const code = { 'missing-receiver': 'missing-receiver', 'source-unreachable': 'timeout',
@@ -623,4 +645,113 @@ test('backup path and space preflight failures are the latest recorded result wh
     assert.equal(f.maintenance.status().gatesClosed, false);
     f.a.write('source remains usable after preflight failure');
   }
+});
+
+test('the public manifest carries aggregate boundary evidence without owner details', async t => {
+  const f = await fixture(t);
+  const manifest = await f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key });
+  assert.equal(manifest.boundary.formatVersion, 1);
+  assert.deepEqual(manifest.boundary.services, [{ serviceId: f.serviceId, kind: 'test.owner.boundary',
+    unresolved: 0, settled: 0, blocking: 0 }]);
+  const text = await readFile(join(f.directory, 'backups', manifest.backupId, 'manifest.json'), 'utf8');
+  assert.ok(!text.includes('requestId'), 'per-command material stays inside the encrypted owner data');
+});
+
+test('a boundary that cannot be confirmed fails the backup and publishes nothing', async t => {
+  const f = await fixture(t);
+  const directory = join(f.directory, 'backups');
+  f.a.material = async ({ boundaryAt }) => ({ formatVersion: 1, kind: 'test.owner.boundary', serviceId: f.serviceId,
+    boundaryAt, source: { environmentId: f.environment.environmentId, installationId: f.environment.installationId },
+    schemaVersion: '1', coverage: 'service-received',
+    unresolved: [{ requestId: randomUUID(), inputDigest: 'a'.repeat(64), executionRef: randomUUID(), activityId: randomUUID(),
+      location: 'native', state: 'running', statusKnowledge: 'unknown', stopRequested: false, disposition: 'unknown', nodeId: 'node-a' }],
+    settled: 0, retained: { resources: 0, checkpoints: 0 },
+    blocking: [{ code: 'unresolved-unknown', detail: 'native session has no confirmed exit' }] });
+  await assert.rejects(f.manager.backup({ directory, key: f.key }), { code: 'unconfirmed-execution-boundary' });
+  assert.deepEqual((await f.manager.catalog(directory, f.key)).backups, []);
+  assert.throws(() => f.a.write('after a refused boundary'), /closed/);
+});
+
+test('an owner that cannot describe its boundary cannot complete a backup', async t => {
+  const f = await fixture(t);
+  delete f.a.material;
+  await assert.rejects(f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key }), { code: 'missing-boundary-material' });
+});
+
+test('restore re-derives the owner boundary instead of trusting the material', async t => {
+  const f = await fixture(t);
+  const manifest = await f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key });
+  const targetRoot = join(f.directory, 'material-target');
+  await assert.rejects(restoreRecoverySet({ backupDirectory: join(f.directory, 'backups', manifest.backupId), targetRoot,
+    key: f.key, targets: [{ serviceId: f.serviceId, async restore() { return owner(f.serviceId); }, async validate() {},
+      async validateMaterial(_restored, material) {
+        assert.equal(material.kind, 'test.owner.boundary');
+        throw Object.assign(new Error('evidence mismatch'), { code: 'corrupt' });
+      } }] }), { code: 'corrupt' });
+  assert.equal(JSON.parse(await readFile(join(targetRoot, 'recovery-state.json'), 'utf8')).phase, 'failed');
+});
+
+test('takeover refuses a backup that carries no boundary evidence and keeps the target isolated', async t => {
+  const f = await takeoverFixture(t);
+  const manifest = await f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key, leaveClosed: true });
+  const target = await restoredTarget(f, manifest);
+  const { boundary: _boundary, ...legacy } = manifest;
+  await writeFile(join(target.root, 'recovery-state.json'), JSON.stringify({ phase: 'isolated', manifest: legacy }));
+  await assert.rejects(target.manager.takeover({ source: f.manager, receivers: f.receivers }), { code: 'boundary-material-required' });
+  await assertIsolatedB(target);
+  assert.equal(f.a.read(), 'B: confirmed state at the held boundary');
+});
+
+test('a receiver acknowledgement for a different installation never opens the target', async t => {
+  const f = await takeoverFixture(t);
+  const manifest = await f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key, leaveClosed: true });
+  const target = await restoredTarget(f, manifest);
+  const receivers = [{ id: f.receivers[0].id, async fence() {
+    return { fenced: true, receiverId: f.receivers[0].id, sourceEnvironmentId: f.environment.environmentId,
+      sourceInstallationId: randomUUID(), sourceServiceIds: [f.serviceId] };
+  } }];
+  await assert.rejects(target.manager.takeover({ source: f.manager, receivers }), { code: 'invalid-receiver-proof' });
+  await assertIsolatedB(target);
+  const state = JSON.parse(await readFile(join(target.root, 'recovery-state.json'), 'utf8'));
+  assert.equal(state.phase, 'isolated');
+  assert.equal(state.takeover.stage, 'fencing-receivers', 'the failed stage stays durable for a retry');
+  assert.equal(f.a.read(), 'B: confirmed state at the held boundary');
+});
+
+test('receiver proofs require complete source coverage and actual settled execution evidence', async t => {
+  const mutations = {
+    'another backup': proof => { proof.backupId = randomUUID(); },
+    'another target installation': proof => { proof.targetInstallationId = randomUUID(); },
+    'missing execution evidence': proof => { delete proof.execution; },
+    'unresolved asynchronous execution': proof => { proof.execution.unresolved = 1; },
+    'blocking owner': proof => { proof.execution.services[0].blocking = 1; },
+    'partial source service set': proof => { proof.sourceServiceIds = []; },
+    'duplicate source services': proof => { proof.sourceServiceIds.push(proof.sourceServiceIds[0]); },
+    'another receiver owner': proof => { proof.execution.services[0].serviceId = randomUUID(); },
+  };
+  for (const [name, mutate] of Object.entries(mutations)) await t.test(name, async t => {
+    const f = await takeoverFixture(t);
+    const manifest = await f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key, leaveClosed: true });
+    const target = await restoredTarget(f, manifest);
+    const receivers = f.receivers.map(receiver => ({ ...receiver, async fence(...args) {
+      const proof = await receiver.fence(...args);
+      mutate(proof);
+      return proof;
+    } }));
+    await assert.rejects(target.manager.takeover({ source: f.manager, receivers }), { code: 'invalid-receiver-proof' });
+    await assertIsolatedB(target);
+  });
+});
+
+test('a lost successful takeover reply retries from durable proof without refencing or closing new writes', async t => {
+  const f = await takeoverFixture(t);
+  const manifest = await f.manager.backup({ directory: join(f.directory, 'backups'), key: f.key, leaveClosed: true });
+  const target = await restoredTarget(f, manifest);
+  const first = await target.manager.takeover({ source: f.manager, receivers: f.receivers });
+  target.a.write('new target edit after the original takeover');
+  const repeated = await target.manager.takeover({ source: { async retire() { throw new Error('Do not contact the retired source again.'); } },
+    receivers: f.receivers.map(receiver => ({ id: receiver.id, async fence() { throw new Error('Do not refence accepted target work.'); } })) });
+  assert.deepEqual(repeated, first);
+  assert.equal(target.a.read(), 'new target edit after the original takeover');
+  assert.equal(target.maintenance.status().phase, 'open');
 });

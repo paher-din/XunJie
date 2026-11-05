@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-04",
+  "codeCommit": "38b55f18aec788ab413f94fa9b5d33b30ee7243a",
+  "status": "passed-with-deferred-mac",
+  "reviewFixes": [
+    "Design scale: 17px and 1.5 line height, verified in actual Chrome.",
+    "Independent scoped checkpoint pagination, 64 items/page, no dependency on recent 16 runs or bounded session projections.",
+    "Incomplete checkpoint reads are distinguished from absent checkpoints."
+  ],
+  "checks": [
+    {
+      "status": "passed",
+      "name": "runtime build"
+    },
+    {
+      "status": "passed",
+      "name": "full typecheck"
+    },
+    {
+      "passed": 12,
+      "name": "public contract browser exports",
+      "failed": 0
+    },
+    {
+      "passed": 69,
+      "name": "frontend regressions",
+      "failed": 0
+    },
+    {
+      "passed": 2,
+      "name": "school forwarding boundary",
+      "failed": 0
+    },
+    {
+      "passed": 1,
+      "name": "real PostgreSQL controls/recovery regression",
+      "failed": 0
+    },
+    {
+      "passed": 1,
+      "name": "real Chrome/PG historical checkpoints, pagination, permissions and design scales",
+      "failed": 0
+    },
+    {
+      "passed": 9,
+      "name": "real Chrome controls/recovery/maintenance",
+      "failed": 0
+    }
+  ],
+  "historical": {
+    "note": "Original verification file retains its pre-review worktree hashes; this record identifies the committed remediation candidate.",
+    "retainedFromInitialImplementation": {
+      "owner": 44,
+      "legacyDraftActionChrome": 21
+    }
+  },
+  "macIssue": "https://github.com/paher-din/XunJie/issues/187",
+  "macAssignees": [],
+  "notExecuted": [
+    "Apple Silicon Mac",
+    "real cross-machine execution",
+    "new distribution package/AppContainer acceptance",
+    "native system IME candidate operation",
+    "teaching effectiveness"
+  ]
+}

@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
@@ -106,3 +107,28 @@ export function createPrerequisitePreparer(host: PrerequisiteHost = nativeHost) 
   };
 }
 export const prepareProductPrerequisites = createPrerequisitePreparer();
+
+export async function verifyWindowsSessionHelper(resources: RuntimeResources): Promise<string | undefined> {
+  if (process.platform !== 'win32') return undefined;
+  const { windowsSessionHelper, windowsSessionHelperSha256 } = resources;
+  if (!windowsSessionHelper && !windowsSessionHelperSha256) return undefined;
+  if (!windowsSessionHelper || !/^[0-9a-f]{64}$/.test(windowsSessionHelperSha256 ?? '')
+    || await readFile(windowsSessionHelper).then(bytes => createHash('sha256').update(bytes).digest('hex'), () => '')
+      !== windowsSessionHelperSha256) {
+    throw new Error('Windows 会话隔离资源缺失或校验失败，请修复产品安装。');
+  }
+  return windowsSessionHelper;
+}
+
+export async function checkWindowsSessionPrerequisite(resources: RuntimeResources): Promise<void> {
+  const helper = await verifyWindowsSessionHelper(resources);
+  if (!helper) return;
+  const profile = 'XunJie.NativeSession.Check.' + randomUUID();
+  const options = { windowsHide: true, timeout: 10000 };
+  try {
+    await exec(helper, ['--prepare', profile], options);
+    await exec(helper, ['--release', profile], options);
+  } catch {
+    throw new Error('Windows 无法准备或回收会话隔离身份，请检查当前用户的 AppContainer 权限后重试。');
+  }
+}

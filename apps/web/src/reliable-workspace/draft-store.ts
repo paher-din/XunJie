@@ -1,3 +1,4 @@
+import { questionReferenceKey } from '@xunjie/contracts/question-drafts'
 import type { QuestionReferenceInput, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
 
 export interface DraftContent { question: string; references: QuestionReferenceInput[]; bases?: QuestionWorkBasis[] }
@@ -19,7 +20,7 @@ let opening: Promise<IDBDatabase> | undefined
 export function openWorkspaceDatabase(): Promise<IDBDatabase> {
   if (!opening) {
     opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('xunjie-reliable-works-v1', 3)
+      const request = indexedDB.open('xunjie-reliable-works-v1', 7)
       request.onupgradeneeded = () => {
         const db = request.result
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'key' })
@@ -27,6 +28,16 @@ export function openWorkspaceDatabase(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', { keyPath: 'key' })
         if (!db.objectStoreNames.contains('draftCandidates')) db.createObjectStore('draftCandidates', { keyPath: 'id' }).createIndex('scope', 'scope')
         if (!db.objectStoreNames.contains('actions')) db.createObjectStore('actions', { keyPath: 'key' }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('workOperations')) db.createObjectStore('workOperations', { keyPath: ['workspace', 'scope', 'operationId'] })
+        // v5: the browser execution ledger. Commands and their pending facts commit together;
+        // stop requests, result bytes and service synchronisation are separate durable partitions.
+        if (!db.objectStoreNames.contains('executionCommands')) db.createObjectStore('executionCommands', { keyPath: 'key' }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('executionPending')) db.createObjectStore('executionPending', { keyPath: ['scope', 'requestId', 'seq'] })
+        if (!db.objectStoreNames.contains('executionStops')) db.createObjectStore('executionStops', { keyPath: ['scope', 'stopId'] }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('executionResults')) db.createObjectStore('executionResults', { keyPath: ['scope', 'executionRef'] })
+        if (!db.objectStoreNames.contains('executionSync')) db.createObjectStore('executionSync', { keyPath: ['scope', 'requestId'] })
+        if (!db.objectStoreNames.contains('nativeSessionJournal')) db.createObjectStore('nativeSessionJournal', { keyPath: 'scope' })
+        if (!db.objectStoreNames.contains('nativeSessionRequests')) db.createObjectStore('nativeSessionRequests', { keyPath: 'key' }).createIndex('scope', 'scope')
       }
       request.onsuccess = () => {
         const db = request.result
@@ -101,8 +112,7 @@ export class DraftStore {
   }
 }
 const normalizedContent = (value: DraftContent) => JSON.stringify({ question: value.question,
-  references: value.references.map(reference => ({ referenceId: reference.referenceId, source: reference.source,
-    range: { kind: reference.range.kind, start: reference.range.start, end: reference.range.end },
+  references: value.references.map(reference => ({ referenceId: reference.referenceId, identity: questionReferenceKey(reference), rangeKind: reference.range.kind,
     copy: reference.copy, sourceName: reference.sourceName })) })
 export const sameDraftContent = (a: DraftContent, b: DraftContent) =>
   normalizedContent(a) === normalizedContent(b)

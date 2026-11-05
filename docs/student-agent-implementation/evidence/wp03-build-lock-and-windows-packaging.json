@@ -1,0 +1,100 @@
+{
+  "measuredAtUtc": "2026-11-02T18:08:48Z",
+  "scope": "两个仓库级缺陷（Windows 打包 --outDir 引号、构建锁 pid 复用）在 wp03 分支内修复。以下为修复前后的真实对照，两个缺陷都在真实机器上先复现失败、再复现成功；不是复述或推断。",
+  "hosts": {
+    "windows": {
+      "os": "Microsoft Windows 11 家庭版 中文版",
+      "version": "10.0.26200",
+      "cpu": "Intel(R) Core(TM) Ultra 9 285H",
+      "memoryGiB": 31.5,
+      "node": "v24.21.0",
+      "npm": "11.19.0",
+      "chrome": "156.0.8078.79",
+      "role": "打包缺陷的真实宿主；依赖经 npm ci + npm install-scripts approve esbuild better-sqlite3 + npm rebuild esbuild 装好"
+    },
+    "macos": {
+      "os": "macOS 27.2 (26B123)",
+      "cpu": "Apple M5",
+      "memoryGiB": 16,
+      "node": "v24.21.0",
+      "role": "构建锁缺陷的真实宿主；npm run verify 五组全绿"
+    }
+  },
+  "windowsOutDirQuoting": {
+    "reproduced": true,
+    "command": "powershell -File package.ps1 → Remove-Item Env:npm_execpath; node scripts\\package-product.mjs --profile remote --out C:\\Users\\h\\XunJie-quote\\dist\\product-win32-x64",
+    "before": {
+      "source": "scripts/build.mjs @ 299e6f5..881b90b（无 normalizePassthroughArgs）",
+      "npmEchoedCommand": "C:\\Windows\\system32\\cmd.exe /d /s /c node ../../scripts/build.mjs web:runtime -- --outDir ^\"\\^\"C:\\Users\\h\\XunJie-quote\\dist\\.product-Mt5eDM\\web\\^\"^\"",
+      "viteReceived": "--outDir \"C:\\Users\\h\\XunJie-quote\\dist\\.product-Mt5eDM\\web\"（引号成为路径的一部分）",
+      "result": "failed",
+      "error": "package-product: cmd.exe failed (1). —— npm error command failed / Lifecycle script `build:runtime` failed"
+    },
+    "after": {
+      "source": "scripts/build.mjs + normalizePassthroughArgs；scripts/package-product.mjs + npmCommand（优先 node + npm-cli.js）",
+      "result": "passed",
+      "output": "Unsigned product candidate: C:\\Users\\h\\XunJie-quote\\dist\\product-win32-x64",
+      "distribution": {
+        "platform": "win32-x64",
+        "profile": "remote",
+        "status": "unsigned-candidate",
+        "createdAt": "2026-11-02T18:07:35.850Z",
+        "os": "win32",
+        "architecture": "x64",
+        "webIndexHtmlSha256": "9980c7ae79580fd387cdcbf94e2ff74083cac1d981f8ede53e20c6e6a65da29e",
+        "webFileCount": 187,
+        "appFiles": ["cli.js", "daemon.js", "licenses.json", "metafile.json", "product-runtime.js"],
+        "launchers": ["xunjie.cmd"],
+        "nodeRuntime": ["resources\\node\\LICENSE", "resources\\node\\node.exe"],
+        "verification": {
+          "archiveChecksums": "passed",
+          "productionDependencyGraph": "passed",
+          "workspacePathsInBundles": "absent"
+        }
+      }
+    }
+  },
+  "buildLockPidReuse": {
+    "reproduced": true,
+    "fixture": "向 .cache/xunjie-build/locks/<host>-<pid>-reused.json 写入一张票据：pid 指向一个仍然存活的系统进程（pid 复用），choosing=true，updatedAt 为 60 秒前",
+    "before": {
+      "source": "scripts/build-cache.mjs @ 881b90b（只做 process.kill(pid, 0)，等待无超时）",
+      "observation": "node scripts/build.mjs storage 20 秒后仍在等待，无任何构建输出；kill 后报 The operation was aborted。此前真实会话中同样的残留票据让 typecheck 空转 9 分钟。",
+      "result": "blocked forever"
+    },
+    "after": {
+      "source": "票据心跳（排队起就刷新）+ 启动标记识别 pid 复用 + 等待超时；只有确认持有者不在的票据才被忽略，票据变旧本身不放行；持锁者清理确定死亡票据",
+      "observation": "node scripts/build.mjs storage 1.234 秒完成（[build] RUN contracts / RUN storage，其中大部分是真实编译），该票据随后被清理，locks 目录为空",
+      "result": "passed",
+      "wallClockMs": 1234
+    },
+    "semantics": "waiting contenders hold and refresh their own ticket from before they take a number until they release; an old ticket is never overtaken, only a provably dead one is ignored",
+    "defaults": {
+      "heartbeatMs": 15000,
+      "staleMs": 120000,
+      "pollMs": 50,
+      "waitMs": 600000,
+      "startVerifyMs": 500,
+      "guarantees": ["staleMs >= 4 * heartbeatMs", "waitMs >= 2 * staleMs"],
+      "overrides": ["XUNJIE_BUILD_LOCK_HEARTBEAT_MS", "XUNJIE_BUILD_LOCK_STALE_MS", "XUNJIE_BUILD_LOCK_POLL_MS", "XUNJIE_BUILD_LOCK_WAIT_MS", "XUNJIE_BUILD_LOCK_START_VERIFY_MS"]
+    },
+    "windowsStartMarker": {
+      "purpose": "Windows 分支的启动标记来自 PowerShell StartTime；在真实 Windows 上验证它能识别 pid 复用（读不到就会退化为旧行为并触发等待超时）",
+      "probe": "node probe.mjs <root>（票据 pid = 本进程 pid、start 为不可能匹配的值，XUNJIE_BUILD_LOCK_WAIT_MS=4000）",
+      "result": "{\"platform\":\"win32\",\"elapsedMs\":367,\"outcome\":\"passed\",\"locks\":[]}",
+      "interpretation": "367 毫秒通过并清掉票据，说明 PowerShell 读到了启动标记并判定该 pid 已复用；若读不到，同一场景会等满 4 秒后报等待超时"
+    },
+    "regressionProof": "三进程竞态测试在“等待者不刷新 + 陈旧即忽略”的写法下真的失败（EEXIST exclusive，两个构建同时进入临界区）；修复后三者严格串行（约 2.85 秒完成三轮各 0.9 秒的临界区）"
+  },
+  "tests": {
+    "scripts/build.test.mjs": "21/21（新增：Windows 重引号剥离、pid 复用票据过期、活跃持有者不被误判（两进程严格串行）、三进程下陈旧票据不被抢先、等待超时带诊断、时限默认值关系）",
+    "scripts/package-product.test.mjs": "1/1（新增：npm 调用形式在 win32/linux 下的选择）",
+    "npmRunVerify": {
+      "status": "passed",
+      "exitCode": 0,
+      "stages": { "prepare": "4/4", "build:test": "1/1", "unit": "24/24", "server": "78/78", "tools": "45/45" },
+      "summary": ".verification/2026-11-02T18-45-12-687Z-iCMXYp/summary.json",
+      "note": "沙箱对同一工具调用内的批量删除有阈值保护；完整 verify 需要把该阈值调高后运行，这是执行环境保护策略与构建脚本的交互，不是本改动引入的问题"
+    }
+  }
+}

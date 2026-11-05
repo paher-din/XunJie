@@ -3,6 +3,7 @@ import { questionReferenceKey, questionReferenceSourceId } from '@xunjie/contrac
 import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts'
 import type { ReliableQuestionDraft } from '../../../reliable-workspace/draft'
 import type { ReliableActions } from '../../../reliable-workspace/actions'
+import { isExecutionAction } from '@xunjie/contracts/execution'
 import { snapshotReference, type ReferenceSelection, type ReferenceSource, type WorkspaceReference } from './model'
 import { ReferencesContext, type ReferencesController } from './WorkspaceReferences'
 
@@ -12,7 +13,7 @@ function displayReferences(references: readonly QuestionReferenceInput[], worksp
   return references.map(reference => Object.freeze({ id: reference.referenceId, workspaceKey,
     sourceId: sourceIdOf(reference), sourceName: reference.sourceName, kind: reference.range.kind,
     text: reference.copy, source: reference.source,
-    range: Object.freeze({ start: reference.range.start, end: reference.range.end }) }))
+    range: Object.freeze({ ...reference.range }) }))
 }
 export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode }
 /** Production host consumes the common workspace; availability comes only from registered receivers. */
@@ -36,12 +37,13 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   const inputs = () => draft.snapshot().references.map(reference => ({ ...reference,
     range: { ...reference.range } }))
   const add = useCallback((selection: ReferenceSelection) => {
+    if (draft.isReadOnly()) return false
     if (!draft.snapshot().ready) { setNotice('正在读取原问题草稿，请稍后重试。'); return false }
     const snapshot = snapshotReference(selection.snapshot)
     if (!snapshot || snapshot.workspaceKey !== workspaceKey || !sources.current.has(snapshot.sourceId)) return false
     if (!snapshot.source) { setNotice('来源未登记，不能加入引用。'); return false }
     const candidate: QuestionReferenceInput = { referenceId: crypto.randomUUID(), source: snapshot.source,
-      range: { kind: snapshot.kind, start: snapshot.range.start, end: snapshot.range.end },
+      range: { ...snapshot.range, kind: snapshot.kind } as QuestionReferenceInput['range'],
       copy: snapshot.text, sourceName: snapshot.sourceName }
     const current = inputs()
     if (current.some(reference => questionReferenceKey(reference) === questionReferenceKey(candidate))) return true
@@ -49,6 +51,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     return true
   }, [draft, workspaceKey])
   const select = useCallback((selection: ReferenceSelection | null, gesture?: object) => {
+    if (draft.isReadOnly()) return
     if (selection && (selection.snapshot.workspaceKey !== workspaceKey || !sources.current.has(selection.snapshot.sourceId))) return
     if (selection) {
       const snapshot = snapshotReference(selection.snapshot)
@@ -95,10 +98,10 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     draft.change(draft.snapshot().question, inputs().filter(reference => reference.referenceId !== id))
   }
   const setQuestion = (text: string) => { draft.change(text, inputs()) }
-  const locate = (reference: WorkspaceReference) => {
+  const locate = async (reference: WorkspaceReference) => {
     if (reference.workspaceKey !== workspaceKey || !reference.source) { setNotice('引用属于其他工作区，当前无法定位。'); return }
     try {
-      const result = sources.current.get(reference.sourceId)?.locate(reference)
+      const result = await sources.current.get(reference.sourceId)?.locate(reference)
       setNotice(result?.ok ? '已定位引用来源。' : result?.reason ?? '来源当前不可用；引用副本仍然保留。')
     } catch { setNotice('来源当前不可用；引用副本仍然保留。') }
   }
@@ -109,7 +112,9 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     try {
       const token = draft.capture().token + ':' + JSON.stringify(receiver)
       const items = actions.snapshot().items
-      const pending = items.find(item => item.input.draft.token + ':' + JSON.stringify(item.input.receiver) === token
+      // Only question actions are ever resumed from a draft token; an execution record has no draft.
+      const pending = items.find(item => !isExecutionAction(item.input)
+        && item.input.draft.token + ':' + JSON.stringify(item.input.receiver) === token
         && !['accepted', 'cancelled', 'failed'].includes(item.phase))
       if (pending) { setNotice('仍在沿原请求核实这次问题，请查看待发与接收记录。'); return }
       const remembered = actionIds.current.get(token)
@@ -136,7 +141,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   } : undefined
   const value: ReferencesController = { workspaceKey, open, setOpen, question: state.question, setQuestion, references: refs,
     pending, select, clearSelection, ask, remove, locate, register, submit, busy,
-    notice, sendAvailable: !!receiver && actionState.ready && actionState.active, draftReady: state.ready,
+    notice, sendAvailable: !!receiver && actionState.ready && actionState.active, draftReady: state.ready, readOnly: draft.isReadOnly(),
     draftError: state.error, ...(conflict ? { draftConflict: conflict } : {}), draftConflictReady: state.conflictReady,
     resolveDraftConflict: resolveConflict }
   return <ReferencesContext.Provider value={value}>{children}</ReferencesContext.Provider>

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-03",
+  "codeSha": "6620596dd10f014fb773ce81970448dae21b24e7",
+  "status": "passed",
+  "cases": [
+    "annotation object selection reaches the existing reliable question draft and PostgreSQL",
+    "repeated semantic selection is deduplicated",
+    "the registered annotation locator focuses the exact original object",
+    "source content changes preserve the original copy and refuse guessed relocation",
+    "fixed copies restore without mounting the executable component view",
+    "real Worker/WASM group output is retained and selected by its fixed command/result identity",
+    "aggregation locator identifies the fixed group in the original result",
+    "real owner rejects forged subject/object/range/copy and unregistered new adapters",
+    "retiring an adapter does not discard a verified stored reference when the question changes",
+    "a disabled component preserves verified copies while the owner refuses new references",
+    "an explicit question action fixes both semantic references while later draft changes remain independent",
+    "removal/order/later Chinese input restore after refresh; dark and narrow desktop views captured",
+    "normal owner restart validates retained semantic references and fixed actions"
+  ],
+  "browser": "installed Chrome",
+  "headless": false,
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "teaching": "not evaluated",
+  "receiver": "controlled receiver; no model invocation",
+  "profile": "local",
+  "browserVersion": "156.0.8078.80",
+  "cleanup": "owned runtime stopped"
+}

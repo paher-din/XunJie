@@ -1,0 +1,403 @@
+{
+  "measuredAt": "2026-11-05T10:47:34.982Z",
+  "issue": "WP03",
+  "pr": 189,
+  "originalPrHead": "d7bccd6e03c8814e2353253767945515808938fc",
+  "originalMergeBase": "f0979d5794c977f077a30d6abc8716af7f3a925d",
+  "integratedMain": "e778ef250cf7b9213dcc28e6bdc21f931a6d1e3d",
+  "integrationCommit": "646f8293",
+  "productionSnapshot": "aab4c8f9",
+  "finalTestSnapshot": "940ade3f6eb3cfe89b1a414b341d37e7d4db85ac",
+  "branch": "wp03",
+  "platform": "Windows 11 x64",
+  "os": "10.0.26200",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "chrome": "157.0.8103.38",
+  "conflictFilesResolved": [
+    "apps/local-runtime/src/cli.ts",
+    "apps/web/package.json",
+    "apps/web/src/product/LearningApp.tsx",
+    "docs/student-agent-implementation/specs/README.md",
+    "package-lock.json",
+    "packages/contracts/package.json",
+    "packages/learning-space/src/index.ts",
+    "packages/learning-space/src/learning-entry/authority.ts",
+    "packages/learning-space/src/learning-entry/index.ts",
+    "packages/product-runtime/src/host.ts",
+    "packages/product-runtime/src/learning-entry.ts",
+    "packages/product-runtime/src/school-client.ts"
+  ],
+  "fullBuild": "passed",
+  "fullTypecheck": "passed",
+  "browserContracts": {
+    "passedExports": 13,
+    "failed": 0
+  },
+  "review": {
+    "standardsInitialDocumentedOrRecord": 2,
+    "standardsInitialJudgmentSmells": 1,
+    "standardsRemaining": 0,
+    "specInitial": [
+      {
+        "priority": "P1",
+        "topic": "empty stop reason rejected during recovery"
+      },
+      {
+        "priority": "P2",
+        "topic": "client-declared initiator purpose trusted"
+      },
+      {
+        "priority": "P2",
+        "topic": "retired mount dispatch after digest await"
+      }
+    ],
+    "specRemaining": 0,
+    "isolatedModelsReadPersonal": "consistency hardening; real four-owner isolated GET already passed before the change, so no reproduced defect",
+    "testHarnessCorrections": [
+      "annotation keyboard order",
+      "v3 IndexedDB upgrade independent of current version number",
+      "native fixture open status, production checkpoint migration and Windows AppContainer resource",
+      "public literal configuration-only model fixture without DNS or provider dispatch",
+      "Windows directory junction and external ESM URL handling"
+    ]
+  },
+  "focusedRedGreen": {
+    "stopReasonRed": {
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "10b10fabaad750b8b2740a30dc2aed5b6ea5a84c17df7b6da11eec474eecb5fa"
+    },
+    "stopReasonGreen": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "3224b857d6487b2ae3424407d439d5465b32e9f418b4bd480e61b467b81bdcce"
+    },
+    "initiatorRed": {
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "a13a8d75f53ea82d6207ee566c8d1c2eb9b5efac229bf5534c471817c065efe0"
+    },
+    "initiatorGreen": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "3dfdf5a8ec33080b7b48bde4760d98209b792886be23e6aed8739ff362ce4170"
+    },
+    "bridgeGreen": {
+      "files": 3,
+      "tests": 31,
+      "failed": 0,
+      "logSha256": "306912c168aad283aa4389fa5b9ffa0cfdce46648ceed2fe125d99248593ed24"
+    },
+    "isolatedModelsBeforeHardening": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "b2b35acd372e87240ec8f0c6f52ccd0265778b2d4275688ba212226a709eecba"
+    }
+  },
+  "nativeIntegration": {
+    "initialEightFiles": {
+      "tests": 16,
+      "passed": 15,
+      "failed": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "848c1de5192177751093bbedf98286a46415c252649763d8ee83144b724751c2"
+    },
+    "initialFailure": "Original native fixture omitted open status, checkpoint migration and Windows helper",
+    "correctedFixture": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "75c2d4edbb5efd3c1d1e348825aff91ceec86f923c159754df3f8272f14a7387"
+    },
+    "note": "Initial 15/16 and the corrected fixture 1/1 are separate executions; no skips. Production runtime snapshot is unchanged."
+  },
+  "modelBoundaryWindows": {
+    "tests": 124,
+    "passed": 124,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "logSha256": "5c3a177956f1865b70f1f62f88e17aa8c15d90128fac69d203ee5b36982f7870",
+    "files": 3,
+    "controlledUpstreamsOnly": true
+  },
+  "browser": {
+    "ordinaryComponentHost": {
+      "status": "passed",
+      "platform": "win32",
+      "architecture": "x64",
+      "os": "10.0.26200",
+      "node": "v24.21.0",
+      "browserVersion": "157.0.8103.38",
+      "headless": false,
+      "cases": [
+        "dynamic imported HTML is mounted by the formal product workspace",
+        "shared isolated controls follow DESIGN and load the verified title font without network access",
+        "annotation controls support keyboard focus and Chinese multiline text (system IME not exercised)",
+        "real iframe input persists through IndexedDB and production API to PostgreSQL/resources",
+        "opaque frame and CSP reject host storage, parent access and direct business fetch",
+        "light/dark theme and narrow desktop rendering captured",
+        "reload recovers confirmed component state without any execution",
+        "257 real IndexedDB operations replay their original receipt and reject altered input",
+        "iframe reload rotates its private port/connection, rejects old identity and replays durable receipts",
+        "a full page restart recovers operation receipts from the existing workspace database",
+        "a second valid mount reads the same owner and persists its conditional update",
+        "a stale component edit is protected as a conflict candidate before unmounting",
+        "independent first component states can adopt the other client through the real conflict UI and recover after reload",
+        "real IndexedDB write failure blocks unmount and retains input with a copyable export",
+        "receipt read failure reports outcome-unknown and protects input as an exportable workspace candidate",
+        "tool navigation waits for an in-flight operation before unmounting the component",
+        "the real v3 IndexedDB upgrades additively without losing existing workspace data or operation receipts",
+        "component-only workspace can navigate back/forward without a mounted editor ref",
+        "failed return/history preserves the same component, exportable input and draft, then recovery permits leaving",
+        "protected state paths and legacy invalid pending recovery preserve data and resume ordinary synchronization",
+        "activity return waits for asynchronous component admission before disposing its session",
+        "a real iframe replacement followed by late receipt failure cannot mutate the successor workspace",
+        "compatible component sends four typed events with stable receipts and no model/question dispatch",
+        "known course revocation is reported as forbidden by the real mounted host",
+        "component import and use leave the main frontend artifact unchanged",
+        "strict public v1 validator accepts all observed initialization, success and error messages"
+      ],
+      "reportSha256": "db249e6c858a82bdb45beaf808e095855dcff19be191749b2d326f8247539086"
+    },
+    "ordinaryWorkerExecution": {
+      "status": "passed",
+      "platform": "win32",
+      "architecture": "x64",
+      "os": "10.0.26200",
+      "node": "v24.21.0",
+      "browserVersion": "157.0.8103.38",
+      "headless": false,
+      "cases": [
+        "the imported view renders the pinned sample table inside the formal workspace",
+        "a non-numeric cell stops the real algorithm before computing and names the row",
+        "the restricted WebAssembly algorithm returns the real group statistics (A: 4 项, 332, 83)",
+        "the workspace record shows the parameters and the input the result corresponds to",
+        "the retained artifact downloads as real CSV bytes from the run that produced it",
+        "a queued run is stopped through the real worker path and the service keeps its original acceptance",
+        "a new or cancelled run cannot present the preceding run result as its own",
+        "a full page reload re-queries the persisted run record instead of recomputing",
+        "the record warns that the current table changed after the run it describes",
+        "light, dark and narrow desktop rendering captured from the real run",
+        "switching tools keeps the run record and its download available",
+        "holding the save acknowledgement and continuing to type preserves the table captured by the run click",
+        "a second Chrome page stops the original running WASM Worker and the original owner confirms cancellation",
+        "the declared execution time limit really terminates a busy WASM Worker and leaves a queryable failure"
+      ],
+      "reportSha256": "88ffeb68d608a9c300d5ef880ba339241ea27b7c20489f5b2b82f4e05cc22419"
+    },
+    "completePackageRecovery": {
+      "status": "passed",
+      "platform": "win32",
+      "architecture": "x64",
+      "os": "10.0.26200",
+      "node": "v24.21.0",
+      "browserVersion": "157.0.8103.38",
+      "headless": false,
+      "cases": [
+        "formal product creates annotation, semantic reference, question draft, real Worker result and native checkpoint",
+        "fresh Chrome reads original components, fixed result bytes, references, question and checkpoint without a write",
+        "takeover permits new edits and a distinct checkpoint instance whose real next result is 1; old namespace is rejected"
+      ],
+      "reportSha256": "3e37c320c89d695d2780b589c37ff0dc39a7d3b6204986143d98fb50222c2535"
+    },
+    "modelsOrdinaryInitial": {
+      "passed": 12,
+      "failedSetup": 1,
+      "notRun": 3,
+      "logSha256": "29f9819ec0b0f5d2d6b95109e6c46dacdbc77a1255d3eff882e21f6beba5024a"
+    },
+    "modelsOrdinarySelectionAfterFixtureCorrection": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "6117cfdc591f598aedec4775c041d41b630b40cb243f05db70c6cfb34c56c362"
+    },
+    "modelsCompletePackage": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "01995906f7e67ae0aa0d9ee776646c609a184ac81d43f35f0b9da882ebc24098"
+    },
+    "physicalIme": "not rerun in this Windows integration review"
+  },
+  "fullWindowsVerifier": {
+    "passedFileTasks": 137,
+    "totalFileTasks": 159,
+    "failedFileTasks": 22,
+    "failures": [
+      "packages/product-runtime/test/recovery-files.test.mjs",
+      "packages/storage/test/blobs.test.mjs",
+      "apps/server/tests/account-control.test.ts",
+      "apps/server/tests/application-database.test.ts",
+      "apps/server/tests/model-capability-images.test.mjs",
+      "apps/server/tests/model-protocol-review.test.mjs",
+      "apps/server/tests/model-sensitive-boundary.test.mjs",
+      "tools/i0-cloud/backup-retained.test.mjs",
+      "tools/i0-cloud/build-runtime-artifact.test.mjs",
+      "tools/i0-cloud/capacity-run-failure.test.mjs",
+      "tools/i0-cloud/deploy-artifact.test.py",
+      "tools/xj-dev-access/package-service.test.mjs",
+      "tools/xj-dev-access/server.test.mjs",
+      "tools/xj-dev/tests/baseline-team.test.mjs",
+      "tools/xj-dev/tests/enrollment-client.test.mjs",
+      "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+      "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+      "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+      "tools/xj-dev/tests/package-transfer.test.mjs",
+      "tools/xj-dev/tests/repro-restore.test.mjs",
+      "tools/xj-dev/tests/repro.test.mjs",
+      "tools/xj-dev/tests/unit.test.mjs"
+    ],
+    "preparation": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1
+      }
+    ],
+    "stages": [
+      {
+        "name": "unit",
+        "total": 27,
+        "passed": 25
+      },
+      {
+        "name": "server",
+        "total": 87,
+        "passed": 82
+      },
+      {
+        "name": "tools",
+        "total": 45,
+        "passed": 30
+      }
+    ],
+    "originalDefaultDocDiscovery": {
+      "badLinks": 252,
+      "status": "failed before tests",
+      "scope": "included pre-existing unrelated untracked documents"
+    },
+    "verificationScope": "Process-local core.excludesFile excludes only the seven original unrelated untracked paths; tracked files remain included; no repository ignore rules or user files changed",
+    "followupFiles": [
+      "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+      "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+      "tools/xj-dev/tests/repro-restore.test.mjs",
+      "tools/xj-dev/tests/unit.test.mjs",
+      "apps/server/tests/model-capability-images.test.mjs",
+      "apps/server/tests/model-protocol-review.test.mjs",
+      "apps/server/tests/model-sensitive-boundary.test.mjs"
+    ],
+    "userTemporaryDirectoryToolChecks": {
+      "tests": 28,
+      "passed": 28,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "950479293e74080907b8ec09e0cc07ddacfe7b2b5094d91d77082383b2e74b93"
+    },
+    "userTemporaryDirectorySshChecks": {
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "c1da404594fc031b33ac95edf431d21f2abd91c98288843de04502adcf048b5a"
+    },
+    "windowsModelFileFollowup": {
+      "tests": 124,
+      "passed": 124,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "5c3a177956f1865b70f1f62f88e17aa8c15d90128fac69d203ee5b36982f7870"
+    },
+    "remainingFailedFiles": [
+      "packages/product-runtime/test/recovery-files.test.mjs",
+      "packages/storage/test/blobs.test.mjs",
+      "apps/server/tests/account-control.test.ts",
+      "apps/server/tests/application-database.test.ts",
+      "tools/i0-cloud/backup-retained.test.mjs",
+      "tools/i0-cloud/build-runtime-artifact.test.mjs",
+      "tools/i0-cloud/capacity-run-failure.test.mjs",
+      "tools/i0-cloud/deploy-artifact.test.py",
+      "tools/xj-dev-access/package-service.test.mjs",
+      "tools/xj-dev-access/server.test.mjs",
+      "tools/xj-dev/tests/baseline-team.test.mjs",
+      "tools/xj-dev/tests/enrollment-client.test.mjs",
+      "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+      "tools/xj-dev/tests/package-transfer.test.mjs",
+      "tools/xj-dev/tests/repro.test.mjs"
+    ],
+    "remainingFailedFileSetMatches165": true,
+    "terminatedOwnedFileTasks": [
+      {
+        "name": "enrollment-client",
+        "created": "2026-11-05T10:17:21.125273Z",
+        "terminatedAt": "2026-11-05T10:34:41.6793279Z",
+        "result": "failed, not passed"
+      },
+      {
+        "name": "package-transfer",
+        "created": "2026-11-05T10:23:31.853249Z",
+        "terminatedAt": "2026-11-05T10:34:41.7430892Z",
+        "result": "failed, not passed"
+      }
+    ],
+    "summarySha256": "c52bcbe49cb15cfaf4b8dfae973643108011785afa05306a6b16659229ed8214",
+    "note": "The original 137/159 run is not rewritten as a passing full run. Seven failed files gained separate followup passing evidence. Groups overlap; do not sum test cases."
+  },
+  "package": {
+    "platform": "win32-x64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-11-05T10:11:39.431Z",
+    "cliSha256": "04dac7338800559560e2379919f67a2139468be38d9a79c899abf8403c6bee4b",
+    "distributionSha256": "f017f8fc582bbe562899e345b8ba01588f8dfdac15508e5a88ea51c8e48489d2",
+    "productionSnapshot": "aab4c8f9"
+  },
+  "redFixtureCleanup": {
+    "stoppedOwnedProcesses": 39,
+    "dataAndLogsRetained": true,
+    "scope": "four exact failed fixtures from this review only"
+  },
+  "priorPlatformEvidence": {
+    "document": "../wp03-188-cross-platform.md",
+    "snapshot": "b997fc86 / d7bccd6e",
+    "macAndIndependentUbuntuCrossMachine": "prior PR evidence reviewed; not rerun after integration on this Windows host"
+  },
+  "ci": {
+    "finalHeadAndMergeStatus": "PR #189 checks and final review comment are authoritative; no live CI state duplicated in this artifact"
+  },
+  "teachingOutcome": "not-evaluated",
+  "documentLinks": {
+    "files": 207,
+    "localTargets": 1865,
+    "failed": 0,
+    "scope": "tracked maintained Markdown plus this new review; excludes archive and unrelated untracked material"
+  }
+}

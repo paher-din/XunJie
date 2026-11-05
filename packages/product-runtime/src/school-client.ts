@@ -1,12 +1,16 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { mkdir, readdir, rm } from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
+import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema, componentPreparationReportsSchema,
+  componentPreparationReportReceiptSchema } from '@xunjie/contracts/components';
+import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, executionHistoryPageSchema,
+  executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
@@ -31,6 +35,10 @@ const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url()
   clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
   localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional() });
 type Connection = z.infer<typeof connectionSchema>;
+const cleanupDestinationSchema = z.object({ connectionId: z.uuid(), schoolEndpoint: z.url().refine(value => {
+  const url = new URL(value);
+  return value === url.origin && (url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname));
+}) }).strict();
 const modelTaskAuthorization = new AsyncLocalStorage<() => Promise<void>>();
 
 /** Installed client retains only its own verifier and scoped grant, never the school's account database. */
@@ -42,6 +50,19 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
 }) {
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
+  const cleanupPath = (id: string) => join(root, 'native-channel', z.uuid().parse(id), 'endpoint.json');
+  async function rememberCleanupDestination(connection: Connection) {
+    const destination = cleanupDestinationSchema.parse({ connectionId: connection.requestId, schoolEndpoint: connection.schoolEndpoint });
+    const path = cleanupPath(connection.requestId);
+    if (await exists(path)) {
+      const original = cleanupDestinationSchema.parse(await readJson(path));
+      if (original.connectionId !== destination.connectionId || original.schoolEndpoint !== destination.schoolEndpoint)
+        throw new StorageError('identity-conflict');
+      return;
+    }
+    await mkdir(join(root, 'native-channel', connection.requestId), { recursive: true, mode: 0o700 });
+    await atomicJson(path, destination);
+  }
   async function update<T>(id: string, operation: () => Promise<T>): Promise<T> {
     const release = await acquireLock(root, ref(id));
     try { return await operation(); } finally { await release(); }
@@ -54,7 +75,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (connection.clientNamespace !== environment.clientNamespace) throw new StorageError('forbidden');
     return connection;
   }
-  async function call(connection: Connection, route: string, body?: unknown, authorized = false) {
+  async function call(connection: Pick<Connection, 'schoolEndpoint' | 'grant'>, route: string, body?: unknown, authorized = false) {
     let response: Response;
     try {
       response = await fetch(new URL('/api/learning/' + route, connection.schoolEndpoint), {
@@ -221,7 +242,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const result = [];
     for (const file of files.filter(name => /^school-client-[0-9a-f-]{36}$/.test(name))) {
       const connection = await read(file.slice('school-client-'.length));
-      if (connection.grant) result.push({ key: `school:${connection.requestId}`, identity: connection.grant.identity });
+      if (connection.grant) {
+        await rememberCleanupDestination(connection);
+        result.push({ key: `school:${connection.requestId}`, identity: connection.grant.identity, cleanupEndpoint: connection.schoolEndpoint });
+      }
     }
     return result;
   }
@@ -255,6 +279,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       // Network exchange is outside the lock. Revocation or a new proof may have won while it was in flight.
       const current = await read(requestId);
       if (current.verifier !== connection.verifier) throw new StorageError('forbidden');
+      await rememberCleanupDestination(current);
       current.grant = grant;
       await atomicJson(path(requestId), current);
       return view(current);
@@ -351,6 +376,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       async confirm(input) { return courseBindingStateSchema.parse(await authorityCall(connection, binding.runtimeConnectionId, 'confirm', input)); },
       async authorize(identity, pointer) { sameIdentity(identity); await authorityCall(connection, binding.runtimeConnectionId, 'authorize', {
         associationId: pointer.associationId, releaseId: pointer.releaseId, contentDigest: pointer.contentDigest }); },
+      async verifyComponentReference(identity, reference) { sameIdentity(identity);
+        z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyComponentReference', reference)); },
       async verifyReference(identity, reference) { sameIdentity(identity);
         z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyReference', reference)); },
     });
@@ -375,6 +402,24 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (parts[2] === 'receipts') return learning.drafts.receipt(identity, parts[1]!, parts[3]!);
       return learning.drafts.revision(identity, parts[1]!, parts[3]!);
     }
+    if (parts[0] === 'executions') {
+      // A run is owned by the same activity the grant names; the fixed basis never travels elsewhere.
+      if (parts.length === 2 && body !== undefined) return learning.executions.accept(identity, parts[1]!, body);
+      if ((parts.length === 3 || parts.length === 4) && parts[2] === 'history' && body === undefined)
+        return learning.executions.history(identity, parts[1]!, parts[3]);
+      if (parts.length === 4 && parts[3] === 'artifact' && body === undefined)
+        return learning.executions.artifact(identity, parts[1]!, parts[2]!);
+      if (parts.length === 3 && parts[2] === 'sessions' && body === undefined) return learning.executions.sessions(identity, parts[1]!);
+      if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && body === undefined)
+        return learning.executions.checkpoints(identity, parts[1]!, parts[3]);
+      if (parts.length === 3 && body === undefined) return learning.executions.read(identity, parts[1]!, parts[2]!);
+      if (parts.length === 5 && parts[3] === 'controls' && body === undefined) return learning.executions.controlReceipt(identity, parts[1]!, parts[2]!, parts[4]!);
+      if (parts.length === 4 && parts[3] === 'control' && body !== undefined) return learning.executions.control(identity, parts[1]!, parts[2]!, body);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'report') return learning.executions.report(identity, parts[1]!, parts[2]!, body);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'stop') return learning.executions.stop(identity, parts[1]!, parts[2]!, body);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'result') return learning.executions.result(identity, parts[1]!, parts[2]!, body);
+      throw new StorageError('forbidden');
+    }
     if (parts[0] !== 'workspaces') throw new StorageError('forbidden');
     if (parts.length === 2) return body === undefined ? learning.works.read(identity, parts[1]!) : learning.works.sync(identity, parts[1]!, body as never);
     if (parts[2] === 'receipts') return learning.works.receipt(identity, parts[1]!, parts[3]!);
@@ -382,9 +427,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   }
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string) {
     const id = '[0-9a-f-]{36}';
-    if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
-      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?` +
+    const key = '[a-z][a-z0-9-]{0,47}';
+    if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+      `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
+      `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
       `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
@@ -393,7 +440,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -402,13 +449,12 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     let value: unknown;
     try { value = await call(connection, route, body, true); }
     catch (error) {
-      // The school may already have revoked this grant (or the membership): drop the local copy too.
+      // The school may already have revoked this grant (or the membership).
       if (route !== 'connections/revoke' || !(error instanceof StorageError) || error.code !== 'forbidden') throw error;
       await update(connectionId, () => rm(path(connectionId), { force: true }));
       return { revoked: true };
     }
     if (route === 'connections/revoke') {
-      // A revoked grant must stop appearing as an available space; keep no local copy that could be replayed.
       await update(connectionId, () => rm(path(connectionId), { force: true }));
       return value;
     }
@@ -441,8 +487,54 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     if (route.startsWith('drafts/')) return value === null ? null : parsed(questionDraftViewSchema, value);
     if (route === 'courses') return parsed(courseCatalogSchema, value);
+    if (route.startsWith('executions/')) {
+      if (value === null) return null;
+      const identity = connection.grant!.identity;
+      const checkScope = (scope: ExecutionQuery['scope']) => {
+        if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId
+          || scope.principalId !== identity.principalId || scope.activityId !== route.split('/')[1]) throw new StorageError('forbidden');
+      };
+      const checkQuery = (candidate: unknown) => {
+        const query = parsed(executionQuerySchema, candidate);
+        checkScope(query.scope);
+        return query;
+      };
+      if (route.split('/')[2] === 'checkpoints') {
+        const page = parsed(checkpointPageSchema, value);
+        page.items.forEach(item => checkScope(item.scope));
+        return page;
+      }
+      if (route.split('/')[2] === 'history') {
+        const page = parsed(executionHistoryPageSchema, value);
+        page.entries.forEach(item => { checkScope(item.action.scope); checkScope(item.query.scope); });
+        return page;
+      }
+      if (route.endsWith('/artifact')) {
+        const artifact = parsed(executionArtifactSchema, value);
+        checkScope(artifact.scope);
+        if (artifact.requestId !== route.split('/')[2]) throw new StorageError('forbidden');
+        return artifact;
+      }
+      if (route.endsWith('/sessions')) return Array.isArray(value) ? value.map(checkQuery) : checkQuery(value);
+      if (route.split('/')[3] === 'controls') {
+        const receipt = parsed(executionControlReceiptSchema, value), parts = route.split('/');
+        checkQuery(receipt.query);
+        if (receipt.requestId !== parts[2] || receipt.controlId !== parts[4] || receipt.executionRef !== receipt.query.executionRef)
+          throw new StorageError('forbidden');
+        return receipt;
+      }
+      return checkQuery(value);
+    }
     if (route.startsWith('releases/')) {
-      return route.split('/').length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
+      const parts = route.split('/');
+      if (parts[2] === 'components') {
+        if (parts[4] === 'algorithm') return parsed(componentAlgorithmBundleSchema, value);
+        if (parts[4] === 'dependencies') return parsed(componentDependencyContentSchema, value);
+        if (parts[4] === 'preparation-reports') return parsed(componentPreparationReportsSchema, value);
+        if (parts[4] === 'preparation-report') return parsed(componentPreparationReportReceiptSchema, value);
+        return parsed(componentBundleSchema, value);
+      }
+      return parts.length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
     }
     if (route.startsWith('course-activity-results/')) {
       if (value === null) return null;
@@ -455,5 +547,17 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('receipts/')) return value === null ? null : check(value);
     return value;
   }
-  return { list, start, complete, configureLocal, forward, authorizeModel, schoolModel, pollModelTasks };
+  async function nativeChannelCall(connectionId: string, operation: 'register' | 'claim' | 'report' | 'heartbeat' | 'cleanup', input: unknown) {
+    z.enum(['register', 'claim', 'report', 'heartbeat', 'cleanup']).parse(operation);
+    if (operation === 'cleanup') {
+      const destination = cleanupDestinationSchema.parse(await readJson(cleanupPath(connectionId)));
+      if (destination.connectionId !== connectionId) throw new StorageError('forbidden');
+      return call(destination, 'native-channel/cleanup', input);
+    }
+    const connection = await read(connectionId);
+    if (!connection.grant) throw new StorageError('forbidden');
+    await rememberCleanupDestination(connection);
+    return call(connection, `native-channel/${operation}`, input, true);
+  }
+  return { list, start, complete, configureLocal, forward, nativeChannelCall, authorizeModel, schoolModel, pollModelTasks };
 }

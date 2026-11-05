@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, readFile, rm, cp, utimes, stat, readdir } from 'node:fs/promises';
 import { tmpdir, hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import { contentManifest, digest, runBuildGraph } from './build-cache.mjs';
-import { ensureBuild, expandTargets, parseBuildArgs, resolveTool } from './build.mjs';
+import { contentManifest, digest, lockTiming, runBuildGraph } from './build-cache.mjs';
+import { ensureBuild, expandTargets, normalizePassthroughArgs, parseBuildArgs, resolveTool } from './build.mjs';
 import { scanServerOutput } from './build-server.mjs';
 
 const paths = { contracts: 'packages/contracts', storage: 'packages/storage', 'learning-space': 'packages/learning-space',
@@ -305,6 +305,123 @@ await runBuildGraph({root,force:process.argv.includes('--force'),log:()=>{},task
   assert.equal(await readFile(join(root,'runs'),'utf8'),'run\n');
   await Promise.all(Array.from({length:6},()=>processRun(true)));
   assert.equal(await readFile(join(root,'runs'),'utf8'),'run\n'.repeat(7));
+});
+
+test('Windows npm/cmd re-quoting is stripped so --outDir reaches Vite as a real path',async t=>{
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','"C:\\build\\web"'],'win32'),['--outDir','C:\\build\\web']);
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','"C:\\Program Files\\web"'],'win32'),['--outDir','C:\\Program Files\\web']);
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','C:\\build\\web'],'win32'),['--outDir','C:\\build\\web']);
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','"kept"'],'linux'),['--outDir','"kept"']);
+  assert.deepEqual(parseBuildArgs(['web:runtime','--','--outDir','"C:\\build\\web"'],'win32'),
+    {target:'web:runtime',force:false,args:['--outDir','C:\\build\\web']});
+  // The stripped value is what the bundler actually receives: a quoted value
+  // would land as `apps/web/"candidate"` instead of the requested directory.
+  const root=await fixture(t);
+  await ensureBuild('web:runtime',{root,args:parseBuildArgs(['--','--outDir','candidate'],'win32').args,...quiet});
+  assert.equal(await readFile(join(root,'apps/web/candidate/index.html'),'utf8'),'<html>built</html>');
+  assert.equal((await calls(root)).at(-1).args.at(-1),'candidate');
+});
+
+const cacheModule = pathToFileURL(fileURLToPath(new URL('./build-cache.mjs', import.meta.url))).href;
+const startMarkers = spawnSync('ps', ['-o', 'lstart=', '-p', String(process.pid)], { encoding: 'utf8' }).stdout?.trim();
+
+async function lockWorker(root) {
+  await put(root,'lock-worker.mjs',`import {runBuildGraph} from ${JSON.stringify(cacheModule)};
+import { appendFile, open, mkdir, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+const root=process.argv[2], sleepMs=Number(process.argv[3]??0), delayMs=Number(process.argv[4]??0);
+if(delayMs) await new Promise(r=>setTimeout(r,delayMs));
+await runBuildGraph({root,log:()=>{},tasks:{one:{outputs:['output'],cache:false,fingerprint:async()=>({v:1}),async run(){
+ const exclusive=await open(join(root,'exclusive'),'wx');
+ try {await appendFile(join(root,'runs'),'run\\n'); await new Promise(r=>setTimeout(r,sleepMs));
+  await mkdir(join(root,'output'),{recursive:true}); await writeFile(join(root,'output/index.js'),'ok');}
+ finally {await exclusive.close(); await rm(join(root,'exclusive'));}
+}}},targets:['one']});`);
+}
+async function lockRun(root, env, sleepMs = 0, delayMs = 0) {
+  const started=Date.now();
+  await new Promise((accept,reject)=>{
+    const child=spawn(process.execPath,[join(root,'lock-worker.mjs'),root,String(sleepMs),String(delayMs)],
+      {env,stdio:['ignore','pipe','pipe']});
+    let output='';child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);
+    child.once('error',reject);
+    child.once('close',code=>code===0?accept():reject(new Error(output.trim()||`exit ${code}`)));
+  });
+  return Date.now()-started;
+}
+
+test('lock timing defaults keep a live owner trusted and bound every wait',()=>{
+  assert.deepEqual(lockTiming({}),{heartbeatMs:15_000,staleMs:120_000,waitMs:600_000,pollMs:50,startVerifyMs:500});
+  // A ticket must always survive several missed refreshes, and the deadline
+  // must always outlive the age at which a ticket may be doubted.
+  for(const env of [{},{XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'1000'},
+    {XUNJIE_BUILD_LOCK_STALE_MS:'600000'},
+    {XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'60000',XUNJIE_BUILD_LOCK_STALE_MS:'1000',XUNJIE_BUILD_LOCK_WAIT_MS:'500'}]) {
+    const timing=lockTiming(env);
+    assert.ok(timing.staleMs>=timing.heartbeatMs*4,JSON.stringify(timing));
+    assert.ok(timing.waitMs>=timing.staleMs*2,JSON.stringify(timing));
+  }
+});
+
+test('a lock ticket whose pid was reused stops blocking once the pid is verified',async t=>{
+  if(!startMarkers) return t.skip('this host cannot report process start markers');
+  const root=await fixture(t);
+  await lockWorker(root);
+  const host=digest(hostname()).slice(0,16);
+  // The recorded pid is alive but belongs to a different process now: start
+  // markers disagree, which is exactly the pid reuse that hung real builds.
+  await put(root,`.cache/xunjie-build/locks/${host}-${process.pid}-reused.json`,JSON.stringify({
+    pid:process.pid,host,choosing:true,number:1,start:'start-of-a-process-that-no-longer-exists',
+    createdAt:Date.now()-60_000,updatedAt:Date.now()-60_000}));
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'150',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',
+    XUNJIE_BUILD_LOCK_WAIT_MS:'20000',XUNJIE_BUILD_LOCK_START_VERIFY_MS:'50'};
+  const elapsed=await lockRun(root,env);
+  assert.equal(await readFile(join(root,'runs'),'utf8'),'run\n');
+  assert.ok(elapsed<15_000,`waited ${elapsed}ms`);
+  await assert.rejects(readFile(join(root,`.cache/xunjie-build/locks/${host}-${process.pid}-reused.json`)),{code:'ENOENT'});
+});
+
+test('a live owner keeps refreshing so waiters queue instead of running concurrently',async t=>{
+  const root=await fixture(t);
+  await lockWorker(root);
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'150',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',XUNJIE_BUILD_LOCK_WAIT_MS:'20000'};
+  await Promise.all([lockRun(root,env,400),lockRun(root,env,400)]);
+  assert.equal(await readFile(join(root,'runs'),'utf8'),'run\nrun\n');
+});
+
+// A waiter holds a ticket too, and its ticket also grows old while it waits.
+// Ageing must not by itself let anyone pass, or two builds run at once.
+test('an old waiter ticket is never overtaken: three contenders stay strictly serial',async t=>{
+  const root=await fixture(t);
+  await lockWorker(root);
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'150',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',
+    XUNJIE_BUILD_LOCK_WAIT_MS:'20000',XUNJIE_BUILD_LOCK_START_VERIFY_MS:'50'};
+  const started=Date.now();
+  // Each contender holds for far longer than the age at which tickets are
+  // doubted; the third takes its number while the second is already waiting.
+  // Serialised they need about three holds; concurrent they would need one.
+  await Promise.all([lockRun(root,env,900),lockRun(root,env,900),lockRun(root,env,900,300)]);
+  const elapsed=Date.now()-started;
+  assert.equal((await readFile(join(root,'runs'),'utf8')).trim().split('\n').length,3);
+  assert.ok(elapsed>2_000,`three contenders finished in ${elapsed}ms; they must serialise`);
+});
+
+test('waiting for the lock fails with a deadline and a diagnosis instead of hanging',async t=>{
+  const root=await fixture(t);
+  await lockWorker(root,0);
+  const host=digest(hostname()).slice(0,16);
+  await put(root,`.cache/xunjie-build/locks/${host}-${process.pid}-fresh.json`,JSON.stringify({
+    pid:process.pid,host,choosing:true,number:1,start:undefined,createdAt:Date.now(),updatedAt:Date.now()}));
+  // A ticket whose owner is provably alive is never taken over, so the wait
+  // ends only at the deadline: staleMs stays below it (timing guarantees it).
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'100',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',XUNJIE_BUILD_LOCK_WAIT_MS:'300'};
+  const started=Date.now();
+  let error;
+  try { await lockRun(root,env); } catch (cause) { error=cause; }
+  const elapsed=Date.now()-started;
+  assert.match(error?.message??'',/Timed out after 300ms waiting for the build lock/);
+  assert.ok(error.message.includes(String(process.pid)),error.message);
+  assert.ok(elapsed<15_000,`waited ${elapsed}ms`);
 });
 
 test('abort terminates a real command and prevents caching its partial output',async t=>{

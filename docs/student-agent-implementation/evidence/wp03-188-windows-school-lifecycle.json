@@ -1,0 +1,150 @@
+{
+  "label": "win32-x64",
+  "platform": "win32",
+  "arch": "x64",
+  "os": "10.0.26200",
+  "node": "v24.21.0",
+  "product": "C:\\Users\\h\\XunJie-acceptance\\wp03-188\\product-win32-x64",
+  "packageSha256": "13c8f3d00538468ee1539a79d6d0c9f555cb8632217070673b9f503011293fd4",
+  "schoolEndpoint": "https://101.201.141.133:8443",
+  "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+  "spki": "TqaZHW4oYaaqfyX85BXffS+8kvcsXOqTvEQDFmDo5EE=",
+  "strictTLS": true,
+  "ignoreHTTPSErrors": false,
+  "sshOnlyMaintenance": true,
+  "nodeLifecycle": {
+    "skipped": true,
+    "reason": "shared node termination covered by the Mac client run"
+  },
+  "cases": [
+    {
+      "name": "the installed client reaches the independent school node with a scoped strict HTTPS runtime grant",
+      "handshake": "ready",
+      "connectionId": "2a5af88d-22e6-45ca-b774-bdcc2696db0d",
+      "grantId": "f6ab0470-1e19-4652-bab7-f03cd5bf67ae"
+    },
+    {
+      "name": "a slow capability body accepted before the fence cannot regain dispatch authority after it",
+      "requestId": "82745c40-4d8c-4720-8316-3a4fef5ee701",
+      "inputDigest": "7059406f7b179805c6ebcd1208048df23dc5ddead786a1a18b212a110db94e54",
+      "fencedHandshake": "unavailable",
+      "reason": "http_401",
+      "refusedAfterFence": "http_401",
+      "dispatchRegained": false
+    },
+    {
+      "name": "restoring old grant and connection files after the fence does not regain authority",
+      "restoredFiles": 7,
+      "handshake": "unavailable",
+      "reason": "http_401",
+      "refused": "http_401"
+    },
+    {
+      "name": "a newly authorized successor installation is ready while the retired installation stays refused",
+      "successorInstallationId": "f8edda4a-4cfe-454c-94ea-a8ec8143595c",
+      "successorHandshake": "ready",
+      "retiredHandshake": "unavailable",
+      "retiredReason": "http_401"
+    },
+    {
+      "name": "the independent school node still serves strict HTTPS traffic after restart and fencing",
+      "status": 200,
+      "environmentId": "72fa2198-a743-420f-8fb9-e0027e28a37b",
+      "listeners": 1,
+      "strictTLS": true
+    }
+  ],
+  "status": "passed",
+  "startedAt": "2026-11-05T09:10:59.324Z",
+  "schoolEnvironmentId": "72fa2198-a743-420f-8fb9-e0027e28a37b",
+  "connection": {
+    "grantId": "f6ab0470-1e19-4652-bab7-f03cd5bf67ae",
+    "connectionId": "2a5af88d-22e6-45ca-b774-bdcc2696db0d",
+    "sourceEnvironmentId": "b8292495-df41-4b18-887e-6dad925c69e7",
+    "sourceServiceId": "e86d688e-c02b-4f69-bdfd-2297fc154c23",
+    "sourceInstallationId": "db66e816-2dcc-45fd-8b8b-aa1138b0d37e",
+    "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+    "capability": "learning.authority",
+    "strictHTTPS": true
+  },
+  "oldConnectionFiles": [
+    "control",
+    "owner-a46d10a5-655d-447a-b9a8-c9640ef12d95",
+    "owner-e86d688e-c02b-4f69-bdfd-2297fc154c23",
+    "postgres-683e507e-7933-4c0c-808b-151e8633ae9b",
+    "storage-a46d10a5-655d-447a-b9a8-c9640ef12d95",
+    "storage-e86d688e-c02b-4f69-bdfd-2297fc154c23",
+    "wp03-188-lifecycle-runtime"
+  ],
+  "fence": {
+    "proof": {
+      "fenced": true,
+      "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+      "sourceInstallationId": "db66e816-2dcc-45fd-8b8b-aa1138b0d37e",
+      "execution": {
+        "formatVersion": 1,
+        "boundaryAt": "2026-11-05T09:11:12.166Z",
+        "services": [
+          {
+            "serviceId": "bb0065d1-1607-4735-bfa2-a89fee871c78",
+            "unresolved": 0,
+            "settled": 0,
+            "blocking": 0
+          },
+          {
+            "serviceId": "e07e7ba3-f6a2-4851-9b4c-1833a3f3ecb0",
+            "unresolved": 0,
+            "settled": 3,
+            "blocking": 0
+          },
+          {
+            "serviceId": "c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+            "unresolved": 0,
+            "settled": 0,
+            "blocking": 0
+          }
+        ],
+        "unresolved": 0,
+        "blocking": 0
+      }
+    },
+    "fencedHandshake": {
+      "state": "unavailable",
+      "reason": "http_401"
+    }
+  },
+  "lateReply": {
+    "requestId": "82745c40-4d8c-4720-8316-3a4fef5ee701",
+    "inputDigest": "7059406f7b179805c6ebcd1208048df23dc5ddead786a1a18b212a110db94e54",
+    "grantId": "f6ab0470-1e19-4652-bab7-f03cd5bf67ae",
+    "sourceInstallationId": "db66e816-2dcc-45fd-8b8b-aa1138b0d37e",
+    "httpStatus": 401,
+    "response": "{\"error\":\"unauthorized\"}",
+    "archivedUnderOriginalIdentity": true,
+    "dispatchRegained": false,
+    "refusedAfterFence": "http_401"
+  },
+  "oldConnectionRestored": {
+    "files": 7,
+    "handshake": "unavailable",
+    "reason": "http_401",
+    "refused": "http_401",
+    "dispatchRegained": false
+  },
+  "successor": {
+    "installationId": "f8edda4a-4cfe-454c-94ea-a8ec8143595c",
+    "grantId": "c7ccca1e-233c-431e-951b-fc465be935ba",
+    "handshake": "ready",
+    "retiredInstallationHandshake": "unavailable",
+    "retiredReason": "http_401"
+  },
+  "schoolRestored": {
+    "status": 200,
+    "environmentId": "72fa2198-a743-420f-8fb9-e0027e28a37b",
+    "listeners": 1,
+    "strictTLS": true
+  },
+  "schoolUpAtFinish": true,
+  "temporaryRootRemoved": true,
+  "finishedAt": "2026-11-05T09:11:29.774Z"
+}

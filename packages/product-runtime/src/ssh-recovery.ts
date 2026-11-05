@@ -15,7 +15,9 @@ const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
 /** Deployment SSH performs maintenance only; student traffic still uses direct authenticated HTTPS. */
 export function createSshRecoveryReceiver(value: SshRecoveryReceiver): RecoveryReceiver {
   const receiver = sshReceiverSchema.parse(value);
-  return { id: receiver.id, async fence(source, serviceIds) {
+  return { id: receiver.id, async fence(source, serviceIds, binding) {
+    const backupId = z.uuid().parse(binding.backupId);
+    const targetInstallationId = z.uuid().parse(binding.targetInstallationId);
     const ids = z.array(z.uuid()).min(1).max(100).parse([...serviceIds]);
     const environmentId = z.uuid().parse(source.environmentId);
     // The retired installation is fenced by identity, so a successor installation of the same
@@ -38,13 +40,18 @@ export function createSshRecoveryReceiver(value: SshRecoveryReceiver): RecoveryR
         if (code !== 0) { fail(); return; }
         try {
           const proof = z.object({ fenced: z.literal(true), receiverId: z.literal(receiver.id), sourceEnvironmentId: z.literal(environmentId),
-            sourceInstallationId: z.literal(installationId), sourceServiceIds: z.array(z.uuid()) }).strict().parse(JSON.parse(output));
+            backupId: z.literal(backupId), targetInstallationId: z.literal(targetInstallationId),
+            sourceInstallationId: z.literal(installationId), sourceServiceIds: z.array(z.uuid()),
+            execution: z.object({ formatVersion: z.literal(1), boundaryAt: z.iso.datetime(),
+              unresolved: z.literal(0), blocking: z.literal(0), services: z.array(z.object({ serviceId: z.uuid(),
+                unresolved: z.literal(0), settled: z.number().int().nonnegative(), blocking: z.literal(0) }).strict()).min(1) }).strict(),
+          }).strict().parse(JSON.parse(output));
           if (JSON.stringify(proof.sourceServiceIds) !== JSON.stringify(ids)) throw new Error();
           resolve(proof);
         } catch { reject(new RecoveryError('invalid-receiver-proof')); }
       });
       child.stdin.end(JSON.stringify({ expectedReceiver: receiver.id, sourceEnvironmentId: environmentId,
-        sourceInstallationId: installationId, sourceServiceIds: ids }));
+        sourceInstallationId: installationId, sourceServiceIds: ids, backupId, targetInstallationId }));
     });
   } };
 }

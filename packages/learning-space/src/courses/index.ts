@@ -1,3 +1,4 @@
+import { courseComponentReferenceVerificationSchema } from '@xunjie/contracts/courses';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -13,8 +14,12 @@ import type {
 } from '@xunjie/contracts/courses';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
 import { spaceMigrations } from '../spaces/index.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
+import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
+import type { ComponentBinding } from '@xunjie/contracts/components';
+import { createComponents, componentMigration, componentStatusMigration, componentReportMigration } from './components.js';
 
 export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'course-catalog-and-releases', sql: `
   CREATE TABLE courses (course_id uuid PRIMARY KEY,space_id uuid NOT NULL REFERENCES spaces(id),
@@ -45,7 +50,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
@@ -66,7 +71,8 @@ const storedContentSchema = z.object({
     workId: uuid, title: z.string().min(1).max(300), description: z.string().max(4000), materialId: uuid.nullable(),
   }).strict()).max(50), capabilities: z.array(z.object({
     kind: z.enum(['component', 'executor']), objectId: uuid, version: z.number().int().positive(),
-  }).strict()).max(50),
+  }).strict()).max(50), components: componentBindingsSchema.optional(),
+  executionPlan: courseExecutionPlanSchema.optional(),
 }).strict();
 type StoredContent = z.infer<typeof storedContentSchema>;
 
@@ -81,11 +87,74 @@ function studentMaterials(content: StoredContent) {
     .map(({ materialId, title, mediaType, byteLength, sha256 }) => ({ materialId, title, mediaType, byteLength, sha256 }));
 }
 
+/** The plan and configuration digests share the contract's canonicalisation rule. */
+const configurationDigest = (configuration: unknown) => digest(canonicalValue(configuration));
+/** `courseExecutionPlanBasis` already returns canonical keys, so this is the one plan digest in the product. */
+const planDigest = (plan: Parameters<typeof courseExecutionPlanBasis>[0]) => digest(courseExecutionPlanBasis(plan));
+
+/** The operations a bound component really declares, so a plan cannot hide or invent one. */
+function declaredOperations(manifest: ComponentBinding['definition']['manifest']): string[] {
+  if (manifest.formatVersion !== 1) return [];
+  return manifest.operations?.map(item => item.operationId) ?? (manifest.session ? [manifest.session.operation.operationId] : []);
+}
+
+/**
+ * A published plan keeps its meaning only while it still describes the components it was reviewed
+ * with. The plan is part of the immutable release content, so this check runs before anything is stored.
+ */
+function verifyExecutionPlan(content: StoredContent) {
+  const plan = content.executionPlan;
+  if (!plan) return;
+  const bindings = content.components ?? [];
+  if (!bindings.length) fail('invalid');
+  if (planDigest(plan) !== plan.planDigest) fail('invalid');
+  // A plan covers every bound component or none at all; a partial plan would leave one run unruled.
+  if (new Set(bindings.map(item => item.key)).size !== plan.components.length
+    || bindings.some(item => !plan.components.some(planned => planned.key === item.key))) fail('invalid');
+  for (const planned of plan.components) {
+    const binding = bindings.find(item => item.key === planned.key)!;
+    const manifest = binding.definition.manifest;
+    if (planned.definitionDigest !== binding.definition.digest) fail('invalid');
+    if (planned.configurationDigest !== configurationDigest(binding.configuration)) fail('invalid');
+    const declared = declaredOperations(manifest);
+    // Non-executable components still pin their identity and configuration, with no invented run.
+    if (declared.length !== planned.operations.length
+      || declared.some(id => !planned.operations.includes(id))) fail('invalid');
+  }
+  // A plan may narrow what the components declare; it may never grant itself a capability they lack.
+  const declaredCapabilities = new Set(bindings.flatMap(item => [...item.definition.manifest.requiredCapabilities] as string[]));
+  if (plan.capabilities.some(capability => capability !== 'native-session' && !declaredCapabilities.has(capability))) fail('invalid');
+  const sessions = bindings.filter(item => {
+    const manifest = item.definition.manifest;
+    return manifest.formatVersion === 1 && manifest.session !== undefined;
+  });
+  const browser = bindings.filter(item => declaredOperations(item.definition.manifest).length > 0 && !sessions.includes(item));
+  if (plan.locations.includes('browser') ? browser.length === 0 : browser.length > 0) fail('invalid');
+  if (plan.locations.includes('native') ? sessions.length === 0 : sessions.length > 0) fail('invalid');
+  const native = plan.resources.native;
+  // A plan may ask for less than the adapter enforces, never for more than it can hold.
+  for (const item of sessions) {
+    const manifest = item.definition.manifest;
+    if (manifest.formatVersion !== 1 || !manifest.session || !native) continue;
+    const budget = manifest.session.budgets;
+    if (native.memoryMiB > budget.memoryMiB || native.operationTimeoutMs > budget.operationTimeoutMs
+      || native.maxMs > budget.maxMs) fail('invalid');
+  }
+  if (plan.remote && !sessions.some(item => {
+    const manifest = item.definition.manifest;
+    if (manifest.formatVersion !== 1 || !manifest.session) return false;
+    return manifest.session.adapterId === plan.remote!.adapter.adapterId
+      && manifest.session.adapterVersion === plan.remote!.adapter.adapterVersion;
+  })) fail('invalid');
+}
+
 function bindingOf(associationId: string, courseName: string, taskTitle: string, content: StoredContent) {
   return courseActivityBindingSchema.parse({ associationId, courseId: content.courseId, courseName,
     taskId: content.taskId, taskTitle, releaseId: content.releaseId, contentDigest: contentDigest(content),
     objectives: content.objectives, requirements: content.requirements, materials: studentMaterials(content),
-    starterWorks: content.starterWorks, capabilities: content.capabilities });
+    starterWorks: content.starterWorks, capabilities: content.capabilities,
+    ...(content.components ? { components: content.components } : {}),
+    ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}) });
 }
 
 const bindingRowSchema = z.object({
@@ -127,8 +196,11 @@ function planImport(value: unknown) {
     sha256: material.sha256, byteLength: material.byteLength }));
   const content: StoredContent = { formatVersion: 1, courseId: input.course.courseId, taskId: input.task.taskId,
     releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
-    materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[] };
+    materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[],
+    ...(input.release.components ? { components: input.release.components } : {}),
+    ...(input.release.executionPlan ? { executionPlan: input.release.executionPlan } : {}) };
   storedContentSchema.parse(content);
+  verifyExecutionPlan(content);
   return { input, content, materials, contentHash: contentDigest(content) };
 }
 function registrationFingerprint(plan: ReturnType<typeof planImport>) {
@@ -155,6 +227,7 @@ function readImportResources(input: CourseImport): Map<string, Buffer> {
 /** Only this module writes course facts; learning data reaches it through the narrow authority interface. */
 export function createCourses(storage: OwnedStorage, spaces: { authorize(identity: SpaceIdentity): Promise<void>;
   schoolSpace(): Promise<string> }) {
+  const components = createComponents(storage);
   async function accessActive(identity: SpaceIdentity, courseId: string): Promise<boolean> {
     const { rows } = await storage.read('SELECT 1 FROM course_access WHERE course_id=$1 AND space_id=$2 AND principal_id=$3 AND active',
       [courseId, identity.spaceId, identity.principalId]);
@@ -208,6 +281,11 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       return result.success ? result.data : fail('identity-conflict');
     }
     const resources = readImportResources(input);
+    for (const binding of content.components ?? []) {
+      await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+      await components.verify(binding.definition);
+      if (binding.materialIds.some(id => !studentMaterials(content).some(material => material.materialId === id))) fail('invalid');
+    }
     const paths = new Map(input.release.materials.map(item => [item.materialId, item.path]));
     const spaceId = await spaces.schoolSpace();
     for (const material of materials) {
@@ -306,7 +384,9 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     return courseReleaseSchema.parse({ formatVersion: 1, courseId: content.courseId, taskId: content.taskId,
       releaseId: content.releaseId, contentDigest: row.content_digest, objectives: content.objectives,
       requirements: content.requirements, materials: studentMaterials(content), starterWorks: content.starterWorks,
-      capabilities: content.capabilities, publishedAt: row.published_at.toISOString(), courseName: row.course_name,
+      capabilities: content.capabilities, ...(content.components ? { components: content.components } : {}),
+      ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}),
+      publishedAt: row.published_at.toISOString(), courseName: row.course_name,
       taskTitle: row.task_title });
   }
 
@@ -477,6 +557,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   async function validate() {
+    await components.validate();
     const { rows: courses } = await storage.read('SELECT course_id,space_id,name FROM courses');
     for (const course of courses) {
       const { rows: [space] } = await storage.read('SELECT 1 FROM spaces WHERE id=$1', [course.space_id]);
@@ -489,8 +570,12 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     const { rows: releases } = await storage.read('SELECT release_id,task_id,content_digest,content FROM course_releases');
     for (const release of releases) {
       const content = parseContent(release.content);
+      for (const binding of content.components ?? []) await components.verify(binding.definition);
       if (content.releaseId !== release.release_id || content.taskId !== release.task_id
         || contentDigest(content) !== release.content_digest) fail('corrupt');
+      if (content.executionPlan) {
+        try { verifyExecutionPlan(content); } catch { fail('corrupt'); }
+      }
       const rows = await materialRows(release.release_id as string);
       if (rows.length !== content.materials.length) fail('corrupt');
       for (const material of content.materials) {
@@ -530,6 +615,57 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     }
   }
 
-  return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
+  async function readComponent(identity: SpaceIdentity, releaseId: string, key: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    const definition = await components.verify(binding.definition);
+    return { definition, contentBase64: (await components.bytes(definition)).toString('base64') };
+  }
+  /** The restricted algorithm reaches the host through the same authorised release, never the view. */
+  async function readComponentAlgorithm(identity: SpaceIdentity, releaseId: string, key: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    const definition = await components.verify(binding.definition);
+    const algorithm = definition.manifest.formatVersion === 1 ? definition.manifest.algorithm : undefined;
+    if (!algorithm) return fail('missing');
+    return { definition, mediaType: algorithm.mediaType, entry: algorithm.entry, memoryPages: algorithm.memoryPages,
+      sha256: algorithm.resource.sha256, byteLength: algorithm.resource.byteLength,
+      contentBase64: (await components.resource(algorithm.resource)).toString('base64') };
+  }
+  /** Fixed dependency bytes for an already-eligible caller; the id must be declared by the bound version. */
+  async function readComponentDependency(identity: SpaceIdentity, releaseId: string, key: string, dependencyId: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    return components.dependencyContent(await components.verify(binding.definition), dependencyId);
+  }
+  /** A report is one device's diagnostic: submitting or reading it changes no eligibility and activates no environment. */
+  async function submitComponentReport(identity: SpaceIdentity, releaseId: string, key: string, value: unknown) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    const input = componentPreparationReportSubmissionSchema.parse(value);
+    if (input.report.componentId !== binding.definition.manifest.componentId
+      || input.report.version !== binding.definition.manifest.version) return fail('invalid');
+    return components.submitReport(input);
+  }
+  async function readComponentReports(identity: SpaceIdentity, releaseId: string, key: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    return components.readReports(binding.definition.manifest.componentId, binding.definition.manifest.version);
+  }
+  async function verifyComponentReference(identity: SpaceIdentity, value: unknown) {
+    const input = courseComponentReferenceVerificationSchema.parse(value);
+    const bundle = await readComponent(identity, input.releaseId, input.key);
+    if (bundle.definition.digest !== input.definitionDigest) return fail('identity-conflict');
+  }
+  return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency, submitComponentReport, readComponentReports,
+    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

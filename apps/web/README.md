@@ -1,5 +1,7 @@
 # 循阶 · 师生共用 Web（XunJie `apps/web`）
 
+正式工作区新增按固定课程发布装入组件的宿主，材料标注样例复用可靠工作区状态；不经过旧课程演示路由。隔离边界、保留消费者、实际 UI 前后截图及 Mac 待验项见 [WP03 #169 交付记录](../../docs/student-agent-implementation/wp03-component-host.md)。
+
 旧 PAHER 连接与维护入口已退役。当前服务地址、身份、证书及连接步骤由负责人私下发放；仓库仅保留[通用基础设施模板](../../tools/i0-cloud/README.md)。下方旧现场记录保留原验证来源，不作为当前连接说明。
 
 XunJie 主仓库的师生共用 Web 工程。首次内容由设计仓库 `XunJie_Design` 的固定提交导入，

@@ -13,7 +13,7 @@ import { acquireLock, assertRoot, atomicJson, exists, initializeRoot, ownsProces
 import type { ProcessOwner } from './io.js';
 import { databaseBinding, freePort, inspectDatabase, prepareDatabase, resolveCredential, stopDatabase, storeCredential } from './postgres.js';
 import type { DatabaseConfiguration, RuntimeResources } from './postgres.js';
-import { prepareProductPrerequisites, ProductInstallationRequiredError } from './prerequisites.js';
+import { checkWindowsSessionPrerequisite, prepareProductPrerequisites, ProductInstallationRequiredError } from './prerequisites.js';
 import type { ProductPrerequisiteResult } from './prerequisites.js';
 import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
 import { RecoveryError } from './recovery.js';
@@ -113,6 +113,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     // A new product may supply its helper for old metadata. Saved Node/PG/data
     // resources are never replaced, including during a reinstall.
     const helper = resources.windowsPrerequisitePath ?? options.windowsPrerequisitePath ?? options.resources?.windowsPrerequisitePath;
+    if ((input?.profile ?? (await environment()).profile) === 'local') await checkWindowsSessionPrerequisite(resources);
     return prepareProductPrerequisites(helper ? { ...resources, windowsPrerequisitePath: helper } : resources, database);
   }
   async function requirePrepared(input?: InstallOptions, reinstall = false): Promise<void> {
@@ -291,7 +292,9 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         }
         return recoveryControl<RetirementProof>('retire', input);
       },
-      fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; timeoutMs?: number }) => recoveryControl('fence-source', input),
+      fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; timeoutMs?: number;
+        backupId?: string; targetInstallationId?: string }) =>
+        recoveryControl<import('./connections.js').SourceFenceProof & { execution: import('./recovery-types.js').ReceiverExecutionBoundary }>('fence-source', input),
       takeover: (input: { sourceRoot: string; receivers: ({ id: string; root: string } | import('./ssh-recovery.js').SshRecoveryReceiver)[] }) => recoveryControl('takeover', input),
     },
     async stop() { await assertRoot(root); return withLock(root, stopUnlocked); },

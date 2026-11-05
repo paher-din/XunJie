@@ -286,6 +286,26 @@ test('source fencing invalidates every old token across reconnect, authority reb
   assert.equal((await clients[0]!.check()).reason, 'http_401');
 });
 
+test('retired installations cannot obtain new grants after successor authorization or receiver restart', async t => {
+  const receiver = await host(t);
+  const identity = source(), retired = installation(), successor = installation();
+  const request = { ...identity, ...retired, capabilities: ['echo'] };
+  const original = await receiver.authority.authorize(request);
+  const client = outbound(descriptor(receiver.target, identity), original.token);
+  assert.equal((await client.check()).state, 'ready');
+  await receiver.authority.fenceSource({ ...identity, ...retired });
+  assert.equal((await client.check()).reason, 'http_401');
+  await assert.rejects(receiver.authority.authorize(request), hasCode('source_installation_retired'));
+  const next = await receiver.authority.authorize({ ...identity, ...successor, capabilities: ['echo'] });
+  const current = outbound(descriptor(receiver.target, identity), next.token);
+  assert.equal((await current.check()).state, 'ready');
+  await assert.rejects(receiver.authority.authorize(request), hasCode('source_installation_retired'));
+  await receiver.restart();
+  assert.equal((await current.check()).state, 'ready');
+  assert.equal((await client.check()).reason, 'http_401');
+  await assert.rejects(receiver.authority.authorize(request), hasCode('source_installation_retired'));
+});
+
 test('source fencing waits for all parallel handlers, including those admitted by a previous authority', async (t) => {
   const starts = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
   const finishes = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];

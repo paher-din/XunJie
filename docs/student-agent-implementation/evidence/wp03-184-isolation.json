@@ -1,0 +1,321 @@
+{
+  "ticket": 184,
+  "startedAt": "2026-11-03T14:10:02.104Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "nodeUsedForSessions": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp03-r3/resources/node/bin/node",
+  "isolation": {
+    "kind": "seatbelt",
+    "launcher": "/usr/bin/sandbox-exec",
+    "profileVersion": "xunjie-native-session-v1",
+    "profileDigest": "2355c8fb146ef1168720aa78871f6655a5fa849dd1bd5e7e81425d03474c2a15",
+    "network": "denied",
+    "reads": "system-runtime-and-session",
+    "writes": "session-directory",
+    "exec": "fixed-node-only",
+    "signals": "same-sandbox-only",
+    "memory": "heap-cap-and-rss-watchdog",
+    "processes": "supervisor-group-confirmed",
+    "supervisorDeath": "session-watchdog"
+  },
+  "cases": [
+    {
+      "name": "app-sandbox-entitlement-probe",
+      "signed": true,
+      "run": {
+        "exitCode": null,
+        "signal": "SIGTRAP",
+        "stderr": ""
+      },
+      "homeRead": "run-failed:"
+    },
+    {
+      "name": "baseline-without-sandbox",
+      "kind": "process-group",
+      "writeInside": {
+        "ok": true
+      },
+      "readInside": {
+        "ok": true,
+        "bytes": 6
+      },
+      "readHome": {
+        "ok": true,
+        "bytes": 11
+      },
+      "readProduct": {
+        "ok": true,
+        "bytes": 164
+      },
+      "readOutside": {
+        "ok": true,
+        "bytes": 14
+      },
+      "writeHome": {
+        "ok": true
+      },
+      "writeOutside": {
+        "ok": true
+      },
+      "loopbackReceiver": {
+        "ok": true
+      },
+      "externalConnect": {
+        "ok": true
+      },
+      "execForeign": {
+        "ok": true
+      },
+      "signalForeign": {
+        "ok": true
+      },
+      "stopConfirmed": true,
+      "receiverAccepted": 1
+    },
+    {
+      "name": "seatbelt-confined-session",
+      "kind": "seatbelt",
+      "writeInside": {
+        "ok": true
+      },
+      "readInside": {
+        "ok": true,
+        "bytes": 6
+      },
+      "readHome": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "EPERM: operation not permitted, open '/Users/robertwu/.xj-isolation-fac5f82f-824f-4cf5-9c19-f6cf9288f0ef.txt'"
+      },
+      "readProduct": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "EPERM: operation not permitted, open '/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp03-r3/resources.json'"
+      },
+      "readOutside": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "EPERM: operation not permitted, open '/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-outside-iHczBw/secret.txt'"
+      },
+      "writeHome": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "EPERM: operation not permitted, open '/Users/robertwu/.xj-isolation-fac5f82f-824f-4cf5-9c19-f6cf9288f0ef.txt'"
+      },
+      "writeOutside": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "EPERM: operation not permitted, open '/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-outside-iHczBw/written.txt'"
+      },
+      "loopbackReceiver": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "connect EPERM 127.0.0.1:61839 - Local (0.0.0.0:0)"
+      },
+      "externalConnect": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "connect EPERM 1.1.1.1:443 - Local (0.0.0.0:0)"
+      },
+      "execForeign": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "spawnSync /bin/cp EPERM"
+      },
+      "signalForeign": {
+        "ok": false,
+        "code": "EPERM",
+        "message": "kill EPERM"
+      },
+      "stopConfirmed": true
+    },
+    {
+      "name": "direct-child-exits-first",
+      "confirmed": true,
+      "descendantPid": 33387,
+      "descendantGone": true,
+      "exitFact": {
+        "requested": false,
+        "expired": null,
+        "code": 0,
+        "confirmed": true
+      }
+    },
+    {
+      "name": "supervisor-killed",
+      "sessionPid": 33390,
+      "descendantPid": 33417,
+      "isolation": {
+        "kind": "seatbelt",
+        "launcher": "/usr/bin/sandbox-exec",
+        "profileVersion": "xunjie-native-session-v1",
+        "profileDigest": "8829066513c19204ddd2f72d5a584be04a26ae970b0901be3ff1041e45bd43ab",
+        "network": "denied",
+        "reads": "system-runtime-and-session",
+        "writes": "session-directory",
+        "exec": "fixed-node-only",
+        "signals": "same-sandbox-only",
+        "memory": "heap-cap-and-rss-watchdog",
+        "processes": "supervisor-group-confirmed",
+        "supervisorDeath": "session-watchdog"
+      },
+      "pgid": 33390,
+      "supervisorPid": 33388,
+      "before": {
+        "sessionAlive": true,
+        "descendantAlive": true
+      },
+      "sessionGone": true,
+      "descendantGone": true,
+      "elapsedMs": 52
+    },
+    {
+      "name": "stop-race",
+      "confirmed": true,
+      "elapsedMs": 809,
+      "descendantPid": 33448,
+      "descendantGone": true,
+      "exitFact": {
+        "requested": true,
+        "expired": null,
+        "code": null,
+        "confirmed": true
+      }
+    },
+    {
+      "name": "memory-budget",
+      "exitFact": {
+        "requested": true,
+        "expired": "memory",
+        "code": null,
+        "confirmed": true
+      }
+    },
+    {
+      "name": "output-budget",
+      "exitFact": {
+        "requested": true,
+        "expired": "output",
+        "code": null,
+        "confirmed": true
+      }
+    },
+    {
+      "name": "idle-budget",
+      "exitFact": {
+        "requested": true,
+        "expired": "idle",
+        "code": null,
+        "confirmed": true
+      }
+    },
+    {
+      "name": "max-duration-budget",
+      "exitFact": {
+        "requested": true,
+        "expired": "max",
+        "code": null,
+        "confirmed": true
+      }
+    }
+  ],
+  "checks": {
+    "filesystem": {
+      "insideWrite": true,
+      "homeRead": true,
+      "productRead": true,
+      "outsideRead": true,
+      "homeWrite": true,
+      "outsideWrite": true,
+      "baselineAllAllowed": true
+    },
+    "network": {
+      "loopback": true,
+      "external": true,
+      "receiverAccepted": 0,
+      "baselineLoopback": true,
+      "baselineExternal": true
+    },
+    "execution": {
+      "foreignBinaryDenied": true,
+      "foreignSignalDenied": true,
+      "baselineExecAllowed": true,
+      "baselineSignalAllowed": true,
+      "foreignProcessSurvived": true
+    },
+    "reaping": {
+      "directChildFirst": true,
+      "supervisorKilled": true,
+      "stopRace": true,
+      "foreignUnaffected": true
+    },
+    "budgets": {
+      "memory": true,
+      "output": true,
+      "idle": true,
+      "maxDuration": true
+    },
+    "isolationApplied": true
+  },
+  "environment": {
+    "swVers": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2\nBuildVersion:\t\t26B123",
+    "hardwareModel": "Mac17,3",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "sandboxExec": {
+      "path": "/usr/bin/sandbox-exec",
+      "sha256": "10cf4a46a575e4747d2419cf343800db0d11ae6e6e9b8415998d3d8f336b2a92"
+    },
+    "node": {
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp03-r3/resources/node/bin/node",
+      "version": "v24.21.0"
+    },
+    "devToolchain": {
+      "nodeEnvInSession": false
+    },
+    "package": {
+      "root": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp03-r3",
+      "distributionSha256": "ed619ba6003a62b807ef0ff818c70f95ac642c95f9f81189a6deb81671139fd5",
+      "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+      "status": "unsigned-candidate",
+      "signing": {
+        "status": "unsigned",
+        "signingAndNotarization": "deferred-by-user",
+        "buildBlocking": false
+      },
+      "platform": "darwin-arm64",
+      "verification": {
+        "archiveChecksums": "passed",
+        "productionDependencyGraph": "passed",
+        "workspacePathsInBundles": "absent",
+        "nativeProcessProbes": "not-run",
+        "backupUpgradeProbes": "not-run",
+        "cleanMachineAcceptance": "cancelled-by-owner",
+        "productSigning": "deferred-by-user",
+        "notarization": "deferred-by-user",
+        "gatekeeper": "not-run"
+      },
+      "bundle": "unknown",
+      "launcher": {
+        "signed": false,
+        "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp03-r3/xunjie: code object is not signed at all"
+      }
+    }
+  },
+  "sources": {
+    "appSandbox": {
+      "signing": "ad-hoc-signed",
+      "run": {
+        "exitCode": null,
+        "signal": "SIGTRAP",
+        "stderr": ""
+      },
+      "homeRead": "run-failed:",
+      "conclusion": "App Sandbox needs a signed .app bundle with a container; the shipped candidate is an unsigned directory launcher, so the seatbelt profile applied by the fixed system launcher is the shippable candidate."
+    }
+  },
+  "finishedAt": "2026-11-03T14:10:08.869Z",
+  "status": "passed"
+}

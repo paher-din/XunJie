@@ -188,10 +188,26 @@ export async function ensureBuild(targets = 'all', options = {}) {
   return runBuildGraph({ root, tasks, targets: expanded, force, signal, env, log });
 }
 
-export function parseBuildArgs(argv) {
+/**
+ * npm rebuilds a Windows command line for `run <script> -- <args>` and quotes
+ * every passthrough argument; cmd keeps the inner quotes, so Vite later
+ * receives `"C:\out\web"` as part of a relative path. Strip that one quoting
+ * layer. Values are never re-quoted by us: the caller already received them
+ * as separate argv entries.
+ */
+export function normalizePassthroughArgs(args, platform = process.platform) {
+  if (platform !== 'win32') return [...args];
+  return args.map(arg => {
+    let value = arg;
+    while (/^"([^"]*)"$/.test(value)) value = value.slice(1, -1);
+    return value;
+  });
+}
+
+export function parseBuildArgs(argv, platform = process.platform) {
   const split = argv.indexOf('--');
   const flags = split < 0 ? argv : argv.slice(0, split);
-  const args = split < 0 ? [] : argv.slice(split + 1);
+  const args = normalizePassthroughArgs(split < 0 ? [] : argv.slice(split + 1), platform);
   if (flags.length === 1 && ['--help', '-h'].includes(flags[0])) return { help: true };
   if (flags.filter(arg => arg === '--force').length > 1 || flags.some(arg => arg.startsWith('-') && arg !== '--force')
     || flags.filter(arg => arg !== '--force').length > 1) throw new Error('Usage: node scripts/build.mjs [all|<workspace>|typecheck|test] [--force] [-- <compiler/Vite arguments>]');

@@ -1,14 +1,18 @@
+import type { FixedAction } from '@xunjie/contracts/execution'
+import type { ExecutionAcceptance } from '@xunjie/contracts/execution'
 import type { ActionInput, ActionView, ActionReceipt } from '@xunjie/contracts/action-intents'
 import { openWorkspaceDatabase } from './draft-store'
 
 export type ActionPhase = 'unprotected' | 'waiting-dependencies' | 'ready' | 'dispatched' | 'accepted' | 'cancelled' | 'failed'
 export interface LocalAction {
-  key: string; scope: string; input: ActionInput; phase: ActionPhase; cancelRequested: boolean
+  key: string; scope: string; input: FixedAction; phase: ActionPhase; cancelRequested: boolean
   remote?: ActionView; error: string; history?: boolean; draftSettled?: boolean
   /** Persisted before prepare; absent on legacy records means the send history is unknown. */
   preparationAttempted?: boolean
+  /** Legacy question actions keep their restorable draft; an execution action never has one. */
   recovered?: Omit<ActionInput['draft'], 'token'> & { draftId: string }
   localReceipt?: ActionReceipt
+  localAcceptance?: ExecutionAcceptance
 }
 export class ActionStore {
   async list(scope?: string): Promise<LocalAction[]> {

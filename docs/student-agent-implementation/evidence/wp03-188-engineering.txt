@@ -1,0 +1,33 @@
+=== contracts browser ===
+Browser-safe: @xunjie/contracts/learning-data
+Browser-safe: @xunjie/contracts/question-drafts
+Browser-safe: @xunjie/contracts
+Browser-safe: @xunjie/contracts/http
+Browser-safe: @xunjie/contracts/editor-diagnostics
+Browser-safe: @xunjie/contracts/product-runtime
+Browser-safe: @xunjie/contracts/storage
+Browser safety checked 12 public exports.
+=== docs ===
+
+> @xunjie/workspace@0.0.0 check:docs
+> node scripts/check-doc-links.mjs
+
+doc-links: 192 Markdown files, 1593 local targets, 0 failures.
+=== build all ===
+dist-runtime/assets/runtime-DG5p9iRm.js                        875.06 kB │ gzip: 262.40 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.06s
+[build] HIT local-runtime
+=== product-runtime tests ===
+product-runtime: 16 local test files discovered recursively.
+[verify] Raw log: /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-05T04-43-25-045Z-TVAqVK/verify.log; tests are never cached; jobs=4
+[verify] START build:test
+[verify] PASSED build:test (0.5s, exit 0)
+[verify] START unit
+[verify] unit: 14/16 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-05T04-43-25-045Z-TVAqVK/02-unit.log
+[verify] PASSED unit (23.4s, exit 0)
+[verify] PASSED; summary: /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-05T04-43-25-045Z-TVAqVK/summary.json

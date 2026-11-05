@@ -1,0 +1,336 @@
+{
+  "ticket": 184,
+  "startedAt": "2026-11-03T14:10:19.500Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.2.0",
+  "productRoot": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp03-r3",
+  "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-native-product-7zaFIt",
+  "node": {
+    "path": "dist/product-darwin-arm64-wp03-r3/resources/node/bin/node",
+    "version": "v24.21.0"
+  },
+  "cases": [
+    {
+      "name": "install-and-self-check",
+      "installed": {
+        "state": "installed",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "installationId": "cd8aade3-014b-46e1-9185-bf6c8a761708",
+          "clientNamespace": "xunjie.v1.9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+              "serviceId": "96b4a0ef-81e2-4d7e-99c3-58bed7e33e4f",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:61858",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "dependencies": []
+      },
+      "status": {
+        "state": "stopped",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "installationId": "cd8aade3-014b-46e1-9185-bf6c8a761708",
+          "clientNamespace": "xunjie.v1.9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+              "serviceId": "96b4a0ef-81e2-4d7e-99c3-58bed7e33e4f",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:61858",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "dependencies": []
+      },
+      "selfCheck": {
+        "state": "ready",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "installationId": "cd8aade3-014b-46e1-9185-bf6c8a761708",
+          "clientNamespace": "xunjie.v1.9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+              "serviceId": "96b4a0ef-81e2-4d7e-99c3-58bed7e33e4f",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:61858",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status",
+                "learning.authority"
+              ]
+            },
+            {
+              "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+              "serviceId": "e73c5895-3c10-4030-bd87-4ec2bfc501b5",
+              "unit": "space-course",
+              "endpoint": "http://127.0.0.1:61858",
+              "protocolVersion": 1,
+              "capabilities": [
+                "spaces.access"
+              ]
+            },
+            {
+              "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+              "serviceId": "3c126d83-73b1-448d-be72-eb529092448c",
+              "unit": "learning-data",
+              "endpoint": "http://127.0.0.1:61858",
+              "protocolVersion": 1,
+              "capabilities": [
+                "activity:read",
+                "activity:write"
+              ]
+            }
+          ]
+        },
+        "endpoint": "http://127.0.0.1:61858",
+        "dependencies": [
+          {
+            "name": "PostgreSQL",
+            "required": true,
+            "state": "ready",
+            "detail": "18.6"
+          }
+        ]
+      },
+      "unauthenticatedContext": 200,
+      "pathEntries": [
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin"
+      ],
+      "nodeFromPackage": "v24.21.0",
+      "postgresVersion": "18.6",
+      "webRoot": "web"
+    },
+    {
+      "name": "space-identity",
+      "key": "school",
+      "kind": "school",
+      "clientNamespace": "xunjie.v1.9cb81fcf-ee30-42e5-8db8-a583a0356198",
+      "identityCount": 2
+    },
+    {
+      "name": "chrome-student-path",
+      "browser": "installed desktop Chrome",
+      "browserVersion": "156.0.8078.80",
+      "startValue": "0",
+      "sequence": [
+        "1",
+        "3",
+        "1"
+      ],
+      "history": 3,
+      "reopened": "1",
+      "reopenedHistory": 3,
+      "pageErrors": [],
+      "acceptCaptured": true
+    },
+    {
+      "name": "owner-reference",
+      "sessions": 1,
+      "requestId": "53730b9c-1e5b-4ec5-af2b-ccafa3beede2",
+      "state": "running",
+      "appliedSeq": 3,
+      "adapter": "four-state-accumulator",
+      "instance": "bd00c2a4-d7d7-4547-b730-3d27c4e58045:accumulator",
+      "observation": {
+        "total": 5,
+        "value": 1,
+        "applied": 3
+      },
+      "isolation": {
+        "nodePid": 33878,
+        "parentPid": 33820,
+        "pgid": 33878,
+        "ownProcessGroup": true,
+        "sessionDirectory": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-native-product-7zaFIt/native-sessions/session-YHN6Kd",
+        "measuredFromCwd": true,
+        "profile": {
+          "path": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-native-product-7zaFIt/native-sessions/session-YHN6Kd/session.sb",
+          "sha256": "1ab7c091a5a114afa983e724404c03b6b3290cde0a4f9afa5e6ac47fc5ec95fe",
+          "bytes": 1002,
+          "deniesByDefault": true,
+          "deniesNetwork": true,
+          "allowsThisSessionWrites": true
+        },
+        "openNetworkSockets": []
+      }
+    },
+    {
+      "name": "out-of-order-control",
+      "status": 409,
+      "value": {
+        "error": "identity-conflict"
+      },
+      "appliedAfter": 3
+    },
+    {
+      "name": "lost-reply-and-replay",
+      "lost": {
+        "dropped": true,
+        "replyBytes": 1708
+      },
+      "appliedAfterLoss": 4,
+      "replayStatus": 200,
+      "replaySeq": 4,
+      "replayObservation": {
+        "total": 7,
+        "value": 3,
+        "applied": 4
+      },
+      "appliedAfterReplay": 4
+    },
+    {
+      "name": "student-stop",
+      "title": "四态累加模拟 · 已取消",
+      "inputDisabled": true,
+      "state": "cancelled",
+      "reason": {
+        "code": "worker-terminated",
+        "detail": "本机会话已按请求停止。"
+      },
+      "remainingSessionProcesses": 0
+    },
+    {
+      "name": "session-process-killed",
+      "pid": 33966,
+      "state": "failed",
+      "statusKnowledge": "confirmed",
+      "reason": {
+        "code": "resource-unavailable",
+        "detail": "本机会话进程意外结束，原内部状态不可继续。"
+      },
+      "observation": {
+        "total": 0,
+        "value": 0,
+        "applied": 0
+      },
+      "controlAfterCrash": 400,
+      "remainingSessionProcesses": 0
+    },
+    {
+      "name": "concurrency-limit",
+      "declaredConcurrentSessions": 2,
+      "acceptBodyKeys": [
+        "action"
+      ],
+      "second": 200,
+      "third": 200,
+      "fourth": 400,
+      "fourthValue": {
+        "error": "invalid"
+      },
+      "secondValue": {
+        "requestId": "0d06de07-aed2-4aaf-83b3-a18dc74991ca",
+        "inputDigest": "a11c693d3576c6d568ad18295780787ba8c1fa0be0f7be93a129242241886be2",
+        "scope": {
+          "environmentId": "9cb81fcf-ee30-42e5-8db8-a583a0356198",
+          "spaceId": "642dddc6-ce1d-4a61-a2fb-00313530f271",
+          "principalId": "f24d404c-63d4-4142-b27d-c6ca334f7f37",
+          "activityId": "bd00c2a4-d7d7-4547-b730-3d27c4e58045"
+        },
+        "executionRef": "f72eaf12-4164-4733-a97f-c160ea3c72ca",
+        "state": "running",
+        "statusKnowledge": "confirmed",
+        "stopRequested": false,
+        "confirmedSeq": 2,
+        "reason": null,
+        "output": null,
+        "session": {
+          "adapterId": "four-state-accumulator",
+          "adapterVersion": 1,
+          "instanceId": "bd00c2a4-d7d7-4547-b730-3d27c4e58045:accumulator",
+          "instanceKey": "accumulator",
+          "nodeId": "local-native",
+          "installGeneration": "1",
+          "supervisorEpoch": "1158af42-d9a1-4421-aef1-9daebadfb1ee",
+          "executorInstanceId": "e7da48d2-be61-41d7-8c4a-1e7825d248dc",
+          "appliedSeq": 0,
+          "lastControlId": null,
+          "observation": {
+            "total": 0,
+            "value": 0,
+            "applied": 0
+          },
+          "observations": []
+        }
+      },
+      "states": [
+        "running",
+        "running",
+        "failed",
+        "cancelled"
+      ]
+    },
+    {
+      "name": "cleanup",
+      "leftoverSessionProcesses": 0,
+      "pids": []
+    },
+    {
+      "name": "page-errors",
+      "errors": []
+    }
+  ],
+  "checks": {
+    "install": true,
+    "sequence": true,
+    "reopen": true,
+    "isolation": true,
+    "outOfOrder": true,
+    "lostReply": true,
+    "stop": true,
+    "crash": true,
+    "crashStopsInput": true,
+    "concurrency": true,
+    "cleanup": true,
+    "noPageErrors": true
+  },
+  "status": "passed",
+  "candidate": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "signing": {
+      "status": "unsigned",
+      "signingAndNotarization": "deferred-by-user",
+      "buildBlocking": false
+    },
+    "createdAt": "2026-11-03T14:09:57.620Z",
+    "distributionSha256": "ed619ba6003a62b807ef0ff818c70f95ac642c95f9f81189a6deb81671139fd5",
+    "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "entries": null,
+    "resources": {
+      "nodePath": "resources/node/bin/node",
+      "nodeVersion": "24.21.0",
+      "postgresBin": "resources/postgres/bin",
+      "postgresVersion": "18.6",
+      "webRoot": "web"
+    }
+  },
+  "endpoint": "http://127.0.0.1:61858",
+  "browserVersion": "156.0.8078.80",
+  "finishedAt": "2026-11-03T14:10:35.084Z",
+  "failed": []
+}

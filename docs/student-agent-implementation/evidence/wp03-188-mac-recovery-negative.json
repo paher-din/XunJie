@@ -1,0 +1,79 @@
+{
+  "label": "macos-arm64",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-188/product-darwin-arm64",
+  "packageSha256": "10a6d4fd627ca671625d0761d8ce361a2fddadcadb666a2eb16d11bdf6e637a8",
+  "postgresVersion": "18.6",
+  "cases": [
+    {
+      "name": "a backup missing one resource artifact is refused without publishing an active target",
+      "code": "invalid-recovery",
+      "message": "invalid-recovery",
+      "targetPhase": null,
+      "mutation": "removed-artifact",
+      "removed": "artifacts/0febcb05-f713-491e-bd61-3c7c9103fc36/recovery.json"
+    },
+    {
+      "name": "a backup with one corrupted resource byte is refused without publishing an active target",
+      "code": "invalid-recovery",
+      "message": "invalid-recovery",
+      "targetPhase": null,
+      "mutation": "flipped-ciphertext-byte",
+      "artifact": "artifacts/0febcb05-f713-491e-bd61-3c7c9103fc36/recovery.json",
+      "byteOffset": 7274
+    },
+    {
+      "name": "an altered backup manifest is refused even though the JSON still parses",
+      "code": "invalid-recovery",
+      "message": "invalid-recovery",
+      "targetPhase": null,
+      "mutation": "manifest-identity-rewritten"
+    },
+    {
+      "name": "the original backup is refused under a different recovery key",
+      "code": "invalid-recovery",
+      "message": "invalid-recovery",
+      "targetPhase": null,
+      "mutation": "wrong-key",
+      "originalBackupUsed": true
+    },
+    {
+      "name": "a legacy restore state without complete boundary material refuses takeover and stays isolated",
+      "code": "boundary-material-required",
+      "message": "Recovery: boundary-material-required",
+      "targetPhase": "isolated",
+      "mutation": "legacy-state-without-boundary"
+    },
+    {
+      "name": "a boundary with a blocking owner refuses takeover and keeps the target isolated",
+      "code": "boundary-material-required",
+      "message": "Recovery: boundary-material-required",
+      "targetPhase": "isolated",
+      "mutation": "blocking-owner-boundary"
+    },
+    {
+      "name": "the source installation and the original held backup are retained byte-for-byte",
+      "originalBackupFiles": 7,
+      "originalBackupSha256": "77f5bc67fe0a70839a6be3a918e7443c160545d7d2b2c45950df63f655b7e365",
+      "sourceRetired": false
+    }
+  ],
+  "status": "passed",
+  "startedAt": "2026-11-05T07:50:41.816Z",
+  "backupId": "11240bda-8e1b-4f4f-b834-3532075bdcab",
+  "boundaryServices": 3,
+  "backupFingerprint": {
+    "files": 7,
+    "sha256": "77f5bc67fe0a70839a6be3a918e7443c160545d7d2b2c45950df63f655b7e365"
+  },
+  "backupFingerprintAfter": {
+    "files": 7,
+    "sha256": "77f5bc67fe0a70839a6be3a918e7443c160545d7d2b2c45950df63f655b7e365"
+  },
+  "sourceRetired": false,
+  "temporaryRootRemoved": true,
+  "finishedAt": "2026-11-05T07:50:45.984Z"
+}

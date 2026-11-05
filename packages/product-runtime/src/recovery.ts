@@ -6,7 +6,8 @@ import { acquireLock, atomicJson, exists, initializeRoot, ownsProcess, processId
 import type { ProcessOwner } from './io.js';
 import type { createMaintenanceCoordinator } from './maintenance.js';
 import { checkIndependentDirectory, ensureRecoverySpace, sealRecovery, unsealRecovery, verifyRecovery } from './recovery-files.js';
-import type { BackupPolicy, OwnerRecoveryData, RecoveryManifest, RecoveryOperation, RecoveryOwner, RecoveryTarget } from './recovery-types.js';
+import type { BackupPolicy, OwnerBoundaryMaterial, OwnerRecoveryData, ReceiverFenceProof, RecoveryManifest,
+  RecoveryOperation, RecoveryOwner, RecoveryTarget } from './recovery-types.js';
 
 type Coordinator = ReturnType<typeof createMaintenanceCoordinator>;
 export class RecoveryError extends Error {
@@ -58,7 +59,7 @@ async function bounded<T>(action: (signal: AbortSignal) => Promise<T>, timeoutMs
 export interface RecoveryReceiver {
   id: string;
   /** The receiving service durably rejects old credentials and drains their accepted requests. */
-  fence(source: RuntimeEnvironment, serviceIds: readonly string[]): Promise<unknown>;
+  fence(source: RuntimeEnvironment, serviceIds: readonly string[], binding: { backupId: string; targetInstallationId: string }): Promise<unknown>;
 }
 export interface RetirementProof {
   sourceEnvironmentId: string;
@@ -71,6 +72,63 @@ function verifyRetirementProof(proof: RetirementProof | undefined, manifest: Rec
   if (!proof || proof.sourceEnvironmentId !== manifest.source.environmentId || proof.sourceInstallationId !== manifest.source.installationId
     || proof.targetInstallationId !== environment.installationId || proof.backupId !== manifest.backupId
     || typeof proof.retiredAt !== 'string' || !Number.isFinite(Date.parse(proof.retiredAt))) throw new RecoveryError('invalid-retirement-proof');
+}
+
+/**
+ * Boundary material must describe this exact service at this exact boundary. The evidence itself
+ * stays inside the encrypted owner data; only these identity fields are checked here.
+ */
+function verifyBoundaryMaterial(material: OwnerBoundaryMaterial | undefined, input: {
+  serviceId: string; schemaVersion: string; boundaryAt: string; environment: RuntimeEnvironment; installationId: string;
+}): asserts material is OwnerBoundaryMaterial {
+  if (!material || material.formatVersion !== 1 || typeof material.kind !== 'string' || !/^[a-z0-9][a-z0-9._/-]*$/i.test(material.kind)
+    || material.serviceId !== input.serviceId || material.schemaVersion !== input.schemaVersion
+    || material.boundaryAt !== input.boundaryAt || material.coverage !== 'service-received'
+    || material.source?.environmentId !== input.environment.environmentId
+    || material.source?.installationId !== input.installationId
+    || !Array.isArray(material.unresolved) || !Array.isArray(material.blocking)
+    || typeof material.settled !== 'number' || !material.retained
+    || typeof material.retained.resources !== 'number' || typeof material.retained.checkpoints !== 'number') {
+    throw new RecoveryError('invalid-boundary-material');
+  }
+  for (const command of material.unresolved) {
+    if (typeof command.requestId !== 'string' || typeof command.inputDigest !== 'string'
+      || typeof command.executionRef !== 'string' || typeof command.activityId !== 'string'
+      || typeof command.location !== 'string'
+      || !['accepted-not-started', 'running', 'paused', 'stop-pending', 'unknown'].includes(command.disposition)) {
+      throw new RecoveryError('invalid-boundary-material');
+    }
+  }
+  for (const item of material.blocking) {
+    if (!item || typeof item.code !== 'string' || typeof item.detail !== 'string') throw new RecoveryError('invalid-boundary-material');
+  }
+}
+
+/** A receiver proves it fenced this exact installation, never merely that a request returned. */
+function verifyReceiverProof(value: unknown, receiverId: string, manifest: RecoveryManifest, targetInstallationId: string): asserts value is ReceiverFenceProof {
+  const proof = value as ReceiverFenceProof | undefined;
+  const expected = [...new Set([...manifest.services.map(item => item.serviceId),
+    ...manifest.source.services.map(item => item.serviceId)])].sort();
+  if (!proof || proof.fenced !== true || proof.receiverId !== receiverId
+    || proof.backupId !== manifest.backupId || proof.targetInstallationId !== targetInstallationId
+    || proof.sourceEnvironmentId !== manifest.source.environmentId
+    || proof.sourceInstallationId !== manifest.source.installationId
+    || !Array.isArray(proof.sourceServiceIds) || proof.sourceServiceIds.length === 0
+    // The host fences the union of the backup's owner services and the source environment's
+    // services, so either set may name a member; anything else is not this source.
+    || proof.sourceServiceIds.some(id => !manifest.source.services.some(service => service.serviceId === id)
+      && !manifest.services.some(service => service.serviceId === id))
+    || JSON.stringify([...proof.sourceServiceIds].sort()) !== JSON.stringify(expected)
+    || !proof.execution || proof.execution.formatVersion !== 1
+    || !Number.isFinite(Date.parse(proof.execution.boundaryAt))
+    || proof.execution.unresolved !== 0 || proof.execution.blocking !== 0
+    || !Array.isArray(proof.execution.services) || !proof.execution.services.length
+    || !proof.execution.services.some(item => item.serviceId === receiverId.split('/')[1])
+    || new Set(proof.execution.services.map(item => item.serviceId)).size !== proof.execution.services.length
+    || proof.execution.services.some(item => !item.serviceId || item.unresolved !== 0 || item.blocking !== 0
+      || !Number.isSafeInteger(item.settled) || item.settled < 0)) {
+    throw new RecoveryError('invalid-receiver-proof');
+  }
 }
 
 /** The sole maintenance workflow. Hosts supply owners; no business table list lives here. */
@@ -214,6 +272,27 @@ export function createRecoveryManager(options: {
         requireOwners();
         if (!options.maintenance.status().safeToStop) throw new RecoveryError('unconfirmed-boundary');
         const boundaryAt = new Date().toISOString();
+        // Boundary evidence is read at the same closed boundary as the exports. A blocking owner
+        // means this maintenance success cannot be published at all.
+        const materials = new Map<string, OwnerBoundaryMaterial>();
+        const boundaryServices: NonNullable<RecoveryManifest['boundary']>['services'] = [];
+        for (const owner of owners) {
+          const descriptor = owner.participant.descriptor;
+          // An owner that cannot describe its boundary cannot take part in #176 maintenance.
+          if (typeof owner.material !== 'function') throw new RecoveryError('missing-boundary-material');
+          let material: OwnerBoundaryMaterial;
+          try {
+            material = await owner.material({ backupId, boundaryAt, signal: new AbortController().signal });
+          } catch (error) {
+            throw new RecoveryError(`owner-boundary-${safeCode(error)}`);
+          }
+          verifyBoundaryMaterial(material, { serviceId: descriptor.serviceId, schemaVersion: descriptor.schemaVersion,
+            boundaryAt, environment, installationId: environment.installationId });
+          if (material.blocking.length) throw new RecoveryError('unconfirmed-execution-boundary');
+          materials.set(descriptor.serviceId, material);
+          boundaryServices.push({ serviceId: descriptor.serviceId, kind: material.kind,
+            unresolved: material.unresolved.length, settled: material.settled, blocking: 0 });
+        }
         state.phase = 'exporting'; state.cleanup.serviceIds = [...ownerIds]; await record(root, state);
         const versions: RecoveryManifest['services'] = [];
         await bounded(signal => exporting = (async () => {
@@ -231,7 +310,11 @@ export function createRecoveryManager(options: {
             if (recovery.formatVersion !== 1 || recovery.schemaVersion !== owner.participant.descriptor.schemaVersion) {
               throw new RecoveryError('incompatible-owner-format');
             }
-            await writeFile(join(ownerDirectory, 'recovery.json'), JSON.stringify(recovery), { mode: 0o600, flag: 'wx' });
+            const material = materials.get(serviceId);
+            verifyBoundaryMaterial(material, { serviceId, schemaVersion: owner.participant.descriptor.schemaVersion,
+              boundaryAt, environment, installationId: environment.installationId });
+            await writeFile(join(ownerDirectory, 'recovery.json'), JSON.stringify({ ...recovery, material }),
+              { mode: 0o600, flag: 'wx' });
             versions.push({ serviceId, schemaVersion: recovery.schemaVersion,
               ...(recovery.engineVersion ? { engineVersion: recovery.engineVersion } : {}) });
           }
@@ -242,6 +325,7 @@ export function createRecoveryManager(options: {
           formatVersion: 1, backupId, source: environment, boundaryAt, completedAt: new Date().toISOString(),
           durationMs: Date.now() - Date.parse(state.startedAt), services: versions,
           receiverIds: [...new Set(await receiverIds())].sort(),
+          boundary: { formatVersion: 1, services: boundaryServices },
         });
         await verifyRecovery(directory, input.key);
         state.cleanup.disposition = 'verified'; delete state.cleanup.producer;
@@ -317,47 +401,89 @@ export function createRecoveryManager(options: {
   }
   async function takeover(input: { source: { retire: typeof retire }; receivers: readonly RecoveryReceiver[] }) {
     return exclusive(async () => {
-      const recovered = await readJson<{ phase: string; manifest: RecoveryManifest; proof?: RetirementProof; versions?: ServiceVersion[] }>(join(root, 'recovery-state.json'));
-      if (!['isolated','activating'].includes(recovered.phase)) throw new RecoveryError('validated-isolated-target-required');
+      const recovered = await readJson<{ phase: string; manifest: RecoveryManifest; proof?: RetirementProof; versions?: ServiceVersion[];
+        legacy?: boolean; takeover?: { stage: string; updatedAt: string; receivers: string[];
+          receiverProofs?: Record<string, ReceiverFenceProof> } }>(join(root, 'recovery-state.json'));
+      if (!['isolated','activating','active'].includes(recovered.phase)) throw new RecoveryError('validated-isolated-target-required');
       const manifest = recovered.manifest;
       if (environment.environmentId !== manifest.source.environmentId || environment.installationId === manifest.source.installationId) {
         throw new RecoveryError('target-identity-conflict');
       }
+      // Authority transfer needs a complete boundary: every owner supplied material at this exact
+      // boundary and none of them reported unresolved execution. Aggregate generation counters
+      // alone never prove that, so a legacy or partial backup stays isolated.
+      const boundary = manifest.boundary;
+      const expectedServices = manifest.services.map(item => item.serviceId).sort();
+      if (recovered.legacy === true || !boundary || boundary.formatVersion !== 1
+        || JSON.stringify(boundary.services.map(item => item.serviceId).sort()) !== JSON.stringify(expectedServices)
+        || boundary.services.some(item => item.blocking !== 0)) throw new RecoveryError('boundary-material-required');
       const expected = [...manifest.receiverIds].sort();
       const actual = input.receivers.map(item => item.id).sort();
       if (new Set(actual).size !== actual.length || JSON.stringify(expected) !== JSON.stringify(actual)) throw new RecoveryError('missing-receiver');
-      const state = operation('takeover', 'retiring'); state.backupId = manifest.backupId;
+      // A successful transition may lose its reply. Confirm the original durable evidence and
+      // return the same outcome; never retire/fence again or interrupt new target-side edits.
+      if (recovered.phase === 'active') {
+        verifyRetirementProof(recovered.proof, manifest, environment);
+        for (const receiver of input.receivers)
+          verifyReceiverProof(recovered.takeover?.receiverProofs?.[receiver.id], receiver.id, manifest, environment.installationId);
+        return { phase: 'active' as const, backupId: manifest.backupId, installationId: environment.installationId };
+      }
+      const state = operation('takeover', 'verifying'); state.backupId = manifest.backupId;
       await record(root, state);
       let proof = recovered.proof;
+      const takeover = recovered.takeover ?? { stage: 'verifying', updatedAt: new Date().toISOString(), receivers: [] };
+      takeover.receiverProofs ??= {};
+      // Durable stage marker: a crash between stages restarts from the recorded place, and the
+      // isolation marker is never removed by a stage that did not complete.
+      const saveStage = async (stage: string, phase: 'isolated' | 'activating' = 'isolated') => {
+        takeover.stage = stage; takeover.updatedAt = new Date().toISOString();
+        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase, ...(proof ? { proof } : {}), takeover });
+      };
       try {
         if (proof || recovered.phase === 'activating') verifyRetirementProof(proof, manifest, environment);
-        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'isolated' });
+        await saveStage('verifying');
         requireOwners();
         const expectedVersions = (recovered.versions ?? manifest.services).map(({ serviceId, schemaVersion }) => ({ serviceId, schemaVersion }))
           .sort((a,b) => a.serviceId.localeCompare(b.serviceId));
         if (JSON.stringify(versionsOf(owners)) !== JSON.stringify(expectedVersions)) throw new RecoveryError('incompatible-owner-format');
         if (options.maintenance.status().phase === 'open') await options.maintenance.enter('takeover');
-        await options.maintenance.validate();
+        await saveStage('retiring-source');
+        state.phase = 'retiring-source'; await record(root, state);
         if (!proof) {
           const confirmed = await bounded(() => input.source.retire({ backupId: manifest.backupId,
             targetInstallationId: environment.installationId }), timeoutMs);
           verifyRetirementProof(confirmed, manifest, environment);
           proof = confirmed;
         }
-        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'isolated', proof });
+        await saveStage('fencing-receivers');
+        state.phase = 'fencing-receivers'; await record(root, state);
         const sourceServiceIds = [...new Set([...manifest.services.map(item => item.serviceId), ...manifest.source.services.map(item => item.serviceId)])];
-        for (const receiver of input.receivers) await bounded(() => receiver.fence(manifest.source, sourceServiceIds), timeoutMs);
+        for (const receiver of input.receivers) {
+          // A returned promise is not evidence: the proof must name this source installation and
+          // only source services, so a receiver cannot acknowledge a different fence.
+          const value = await bounded(() => receiver.fence(manifest.source, sourceServiceIds,
+            { backupId: manifest.backupId, targetInstallationId: environment.installationId }), timeoutMs);
+          verifyReceiverProof(value, receiver.id, manifest, environment.installationId);
+          takeover.receiverProofs[receiver.id] = value;
+          if (!takeover.receivers.includes(receiver.id)) takeover.receivers.push(receiver.id);
+          await saveStage('fencing-receivers');
+        }
+        await saveStage('validating-target');
+        state.phase = 'validating-target'; await record(root, state);
+        await options.maintenance.validate();
         // The durable isolation marker is removed only after proof and receiver confirmation.
-        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'activating', proof });
+        await saveStage('validating-target', 'activating');
         await options.maintenance.resume();
-        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'active', proof });
+        await saveStage('active', 'activating');
+        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'active', ...(proof ? { proof } : {}), takeover });
         state.phase = 'active'; await record(root, state);
         return { phase: 'active' as const, backupId: manifest.backupId, installationId: environment.installationId };
       } catch (error) {
         // Failed/partial activation must be restart-safe and resealed, including runtime dispatch.
         const phase = options.maintenance.status().phase;
         if (phase === 'open' || phase === 'failed') await options.maintenance.enter('takeover-failed').catch(() => {});
-        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'isolated', ...(proof ? { proof } : {}) });
+        takeover.updatedAt = new Date().toISOString();
+        await atomicJson(join(root, 'recovery-state.json'), { ...recovered, phase: 'isolated', ...(proof ? { proof } : {}), takeover });
         state.phase = 'failed'; state.error = safeCode(error); await record(root, state);
         throw error instanceof RecoveryError ? error : new RecoveryError(safeCode(error));
       }
@@ -411,6 +537,10 @@ export async function restoreRecoverySet(options: {
   const unlock = await acquireLock(root, 'recovery', 0);
   const temporary = join(root, `.restore-${state.operationId}`);
   const owners: RecoveryOwner[] = [];
+  const materials = new Map<string, OwnerBoundaryMaterial>();
+  // A backup sealed before boundary material existed can still be read in isolation, but it can
+  // never take over: the marker keeps that difference visible to the operator and to takeover.
+  let legacy = false;
   try {
     if ((await readdir(root)).some(name => !['.xunjie-root', '.locks', 'recovery-state.json'].includes(name))) throw new RecoveryError('target-conflict');
     await record(root, state);
@@ -424,6 +554,12 @@ export async function restoreRecoverySet(options: {
         const recovery = await readJson<OwnerRecoveryData>(join(directory, 'recovery.json'));
         const advertised = manifest.services.find(item => item.serviceId === target.serviceId)!;
         if (recovery.formatVersion !== 1 || recovery.schemaVersion !== advertised.schemaVersion || recovery.engineVersion !== advertised.engineVersion) throw new RecoveryError('incompatible-owner-format');
+        if (recovery.material === undefined) legacy = true;
+        else {
+          verifyBoundaryMaterial(recovery.material, { serviceId: target.serviceId, schemaVersion: advertised.schemaVersion,
+            boundaryAt: manifest.boundaryAt, environment: manifest.source, installationId: manifest.source.installationId });
+          materials.set(target.serviceId, recovery.material);
+        }
         const owner = await target.restore({ backupId: manifest.backupId, targetRoot: root, directory, recovery, signal });
         if (signal.aborted) {
           await Promise.allSettled([owner.participant.closeWrites(), owner.participant.closeDispatch()]);
@@ -443,12 +579,16 @@ export async function restoreRecoverySet(options: {
         signal.throwIfAborted();
         await owner.participant.validate();
         signal.throwIfAborted();
-        await options.targets.find(item => item.serviceId === owner.participant.descriptor.serviceId)!.validate(owner);
+        const target = options.targets.find(item => item.serviceId === owner.participant.descriptor.serviceId)!;
+        await target.validate(owner);
+        const material = materials.get(owner.participant.descriptor.serviceId);
+        // The owner re-derives its own evidence from the restored data, never from the material alone.
+        if (material && target.validateMaterial) await target.validateMaterial(owner, material);
         signal.throwIfAborted();
       }
     }, Math.max(1, deadline - Date.now()));
     if (JSON.stringify(versionsOf(owners)) !== JSON.stringify(versions)) throw new RecoveryError('incompatible-owner-format');
-    await atomicJson(join(root, 'recovery-state.json'), { phase: 'isolated', manifest, versions });
+    await atomicJson(join(root, 'recovery-state.json'), { phase: 'isolated', manifest, versions, ...(legacy ? { legacy: true } : {}) });
     state.phase = 'isolated'; await record(root, state);
     return { manifest, owners, versions };
   } catch (error) {

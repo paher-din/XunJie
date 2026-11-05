@@ -1,0 +1,120 @@
+{
+  "kind": "macos-system-ime-session-acceptance",
+  "ticket": "#187",
+  "parent": "#174",
+  "date": "2026-11-04",
+  "codeSha": "05bb6a98c17f8e75f58ecc96a3206264f86638a3",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "injection": {
+    "tool": "xjkeys",
+    "mechanism": "CGEventPost(.hidSystemState)",
+    "source": "OS WindowServer",
+    "accessibilityTrusted": true
+  },
+  "inputMethod": {
+    "requested": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "currentBefore": "com.apple.keylayout.ABC",
+    "selected": "TISSelectInputSource status=0 requested=com.bytedance.inputmethod.doubaoime.pinyin now=com.bytedance.inputmethod.doubaoime.pinyin",
+    "currentAfter": "com.bytedance.inputmethod.doubaoime.pinyin"
+  },
+  "steps": [
+    {
+      "step": "enter-during-candidates",
+      "before": "为什么ni'hao",
+      "after": "为什么nihao",
+      "keydowns": [
+        {
+          "trusted": true,
+          "keyCode": 229,
+          "isComposing": true
+        }
+      ]
+    },
+    {
+      "step": "digit-candidate",
+      "before": "为什么shi'jie",
+      "after": "为什么世界"
+    },
+    {
+      "step": "arrow-candidate",
+      "after": "为什么世界中果"
+    }
+  ],
+  "cases": [
+    {
+      "name": "composer holds one annotation reference before any typing",
+      "detail": "reference area ready, no intent"
+    },
+    {
+      "name": "a real session is running while the composer stays available",
+      "detail": "1 execution POST(s) for start"
+    },
+    {
+      "name": "the system Chinese pinyin input method is selected through TIS",
+      "detail": "com.bytedance.inputmethod.doubaoime.pinyin"
+    },
+    {
+      "name": "a first Chinese question makes the send path live",
+      "detail": "\"为什么\""
+    },
+    {
+      "name": "Enter during the candidate window neither sends nor controls the session",
+      "detail": "isComposing=true keyCode=229"
+    },
+    {
+      "name": "the raw pinyin committed by Enter is separate from the question",
+      "detail": "deleted 5 characters"
+    },
+    {
+      "name": "Escape during the candidate window cancels the composition only",
+      "detail": "composer, question, reference and session stay intact"
+    },
+    {
+      "name": "a digit key picks a system candidate and commits Chinese",
+      "detail": "\"为什么世界\""
+    },
+    {
+      "name": "arrow keys and Space pick a candidate without triggering anything else",
+      "detail": "\"为什么世界中果\""
+    },
+    {
+      "name": "continued editing commits through the system IME and focus switching is safe",
+      "detail": "\"为什么世界中果不同\""
+    },
+    {
+      "name": "the running session still accepts explicit pause and resume after the IME pass",
+      "detail": "3 execution POST(s) total"
+    },
+    {
+      "name": "reload restores the Chinese question and the reference",
+      "detail": "\"为什么世界中果不同\""
+    }
+  ],
+  "signals": {
+    "compositionStarts": 6,
+    "compositionEnds": 6,
+    "commits": [
+      "为什么",
+      "nihao",
+      "世界",
+      "中果",
+      "不同"
+    ],
+    "enterWhileComposing": 1,
+    "executionPostsDuringIme": 0
+  },
+  "screenshots": {
+    "candidate-enter": ".verification/wp03-187-ime/shots/candidate-enter.png",
+    "candidate-digit": ".verification/wp03-187-ime/shots/candidate-digit.png",
+    "candidate-arrow": ".verification/wp03-187-ime/shots/candidate-arrow.png",
+    "ime-light": ".verification/wp03-187-ime/ime-light.png",
+    "ime-dark": ".verification/wp03-187-ime/ime-dark.png"
+  },
+  "teaching": "not evaluated",
+  "status": "passed",
+  "browserVersion": "156.0.8078.80"
+}

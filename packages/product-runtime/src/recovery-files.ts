@@ -91,7 +91,7 @@ function parseManifest(bytes: Uint8Array): unknown {
   } catch { throw failure(); }
 }
 function validateManifest(value: unknown): asserts value is RecoveryManifest {
-  record(value, ['formatVersion', 'backupId', 'source', 'boundaryAt', 'completedAt', 'durationMs', 'services', 'receiverIds', 'artifacts', 'authentication']);
+  record(value, ['formatVersion', 'backupId', 'source', 'boundaryAt', 'completedAt', 'durationMs', 'services', 'receiverIds', 'artifacts', 'authentication'], ['boundary']);
   requireValue(value.formatVersion === 1);
   identifier(value.backupId);
   for (const field of ['boundaryAt', 'completedAt']) {
@@ -133,6 +133,26 @@ function validateManifest(value: unknown): asserts value is RecoveryManifest {
     serviceIds.push(item.serviceId);
   }
   unique(serviceIds);
+  if (Object.hasOwn(value, 'boundary')) {
+    // Aggregate boundary evidence only. Owning services keep the per-command material encrypted.
+    const boundary = value.boundary;
+    record(boundary, ['formatVersion', 'services']);
+    requireValue(boundary.formatVersion === 1);
+    requireValue(Array.isArray(boundary.services) && boundary.services.length <= 1000);
+    const boundaryIds: string[] = [];
+    for (const item of boundary.services) {
+      record(item, ['serviceId', 'kind', 'unresolved', 'settled', 'blocking']);
+      identifier(item.serviceId);
+      text(item.kind);
+      requireValue(/^[a-z0-9][a-z0-9._/-]*$/i.test(item.kind as string));
+      for (const field of ['unresolved', 'settled', 'blocking']) {
+        requireValue(typeof item[field] === 'number' && Number.isSafeInteger(item[field]) && (item[field] as number) >= 0);
+      }
+      boundaryIds.push(item.serviceId as string);
+    }
+    unique(boundaryIds);
+    requireValue(boundaryIds.length === serviceIds.length && boundaryIds.every(id => serviceIds.includes(id)));
+  }
   requireValue(Array.isArray(value.receiverIds) && value.receiverIds.length <= 1000);
   for (const id of value.receiverIds) {
     text(id);

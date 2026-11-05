@@ -1,0 +1,141 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-execution-sync-qTJAQY",
+  "browser": "Google Chrome",
+  "cases": [
+    "the restricted algorithm computes to a real result while the execution owner is unreachable",
+    "the local ledger keeps the command, the terminal fact and the result bytes with no sync entry",
+    "the interrupted queue resumes on the next open and delivers command, facts and result exactly once",
+    "a second open consults the same sync ledger and writes nothing again",
+    "a fully disconnected run records its failure locally and syncs nothing",
+    "the reconnect delivers the failure fact once and then stays quiet"
+  ],
+  "traffic": [
+    {
+      "phase": "offline-run",
+      "kind": "accept",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "attempt"
+    },
+    {
+      "phase": "offline-run",
+      "kind": "accept",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "failed"
+    },
+    {
+      "phase": "resumed-1",
+      "kind": "accept",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "attempt"
+    },
+    {
+      "phase": "resumed-1",
+      "kind": "accept",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "ok"
+    },
+    {
+      "phase": "resumed-1",
+      "kind": "report",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "attempt"
+    },
+    {
+      "phase": "resumed-1",
+      "kind": "report",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "ok"
+    },
+    {
+      "phase": "resumed-1",
+      "kind": "result",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "attempt"
+    },
+    {
+      "phase": "resumed-1",
+      "kind": "result",
+      "requestId": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+      "event": "ok"
+    },
+    {
+      "phase": "offline-failed",
+      "kind": "accept",
+      "requestId": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+      "event": "attempt"
+    },
+    {
+      "phase": "offline-failed",
+      "kind": "accept",
+      "requestId": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+      "event": "failed"
+    },
+    {
+      "phase": "failed-resumed-1",
+      "kind": "accept",
+      "requestId": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+      "event": "attempt"
+    },
+    {
+      "phase": "failed-resumed-1",
+      "kind": "accept",
+      "requestId": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+      "event": "ok"
+    },
+    {
+      "phase": "failed-resumed-1",
+      "kind": "report",
+      "requestId": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+      "event": "attempt"
+    },
+    {
+      "phase": "failed-resumed-1",
+      "kind": "report",
+      "requestId": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+      "event": "ok"
+    }
+  ],
+  "status": "passed",
+  "headless": false,
+  "browserVersion": "156.0.8078.80",
+  "summary": {
+    "requestIdA": "0f6e1ae0-5788-4e0a-aad3-5fed172ecca8",
+    "requestIdB": "19054658-ff67-4e66-8f6a-89bbce6f4b3c",
+    "deliveries": {
+      "offline-run": {
+        "attempts": 1,
+        "ok": 0,
+        "failed": 1
+      },
+      "resumed-1": {
+        "attempts": 3,
+        "ok": 3,
+        "failed": 0
+      },
+      "resumed-2": {
+        "attempts": 0,
+        "ok": 0,
+        "failed": 0
+      },
+      "offline-failed": {
+        "attempts": 1,
+        "ok": 0,
+        "failed": 1
+      },
+      "failed-resumed-1": {
+        "attempts": 2,
+        "ok": 2,
+        "failed": 0
+      },
+      "failed-resumed-2": {
+        "attempts": 0,
+        "ok": 0,
+        "failed": 0
+      }
+    }
+  }
+}

@@ -5,6 +5,8 @@ import type { OwnedStorage, Migration } from '@xunjie/storage';
 import { workFileSchema, workSyncSchema, workViewSchema } from '@xunjie/contracts/learning-data';
 import type { WorkFile, WorkView, WorkSync } from '@xunjie/contracts/learning-data';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { activitySchema } from '@xunjie/contracts/learning-data';
+import { validateComponentFiles } from './component-state.js';
 
 export const workMigration: Migration = { version: 2, name: 'reliable-activity-works', sql: `
   CREATE TABLE work_heads(activity_id uuid PRIMARY KEY REFERENCES activities(id),revision integer NOT NULL,files jsonb NOT NULL);
@@ -32,6 +34,8 @@ export async function validateWorks(storage: OwnedStorage) {
   const { rows } = await storage.read('SELECT activity_id,revision,files FROM work_versions');
   for (const row of rows) {
     const view = await materialize(storage, Number(row.revision), row.files as ManifestFile[]);
+    const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
+    validateComponentFiles(activitySchema.parse(activity?.body), view.files);
     for (const f of view.files) {
       const { rows: [content] } = await storage.read('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [f.contentId]);
       if (!content || content.activity_id !== row.activity_id || content.object_id !== f.objectId
@@ -71,8 +75,9 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
     return materialize(storage, result.revision, result.files);
   }
   async function sync(identity: SpaceIdentity, activityId: string, value: WorkSync): Promise<WorkView> {
-    await authorize(identity, activityId);
+    const activity = await authorize(identity, activityId);
     const input = workSyncSchema.parse(value);
+    validateComponentFiles(activitySchema.parse(activity), input.files);
     const fingerprint = digest({ identity, activityId, input });
     const previous = await storage.receipt(input.requestId, fingerprint);
     if (previous) {

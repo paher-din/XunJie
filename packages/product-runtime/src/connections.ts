@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { RuntimeConnection, RuntimeService } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, ownsProcess, processIdentity } from './io.js';
 import type { ProcessOwner } from './io.js';
+import { isInstallationRetired, retireInstallation } from './retired-installations.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 1024 * 1024;
@@ -243,6 +244,7 @@ export function createConnectionAuthority(options: {
     const path = scoped === undefined ? generationPath(source) : installationGenerationPath(source, scoped);
     try {
       await prepareStorage(source);
+      if (scoped !== undefined) await retireInstallation(options.root, scoped);
       const release = await acquireLock(options.root, sourceScope(source), remaining());
       let next: number;
       try {
@@ -306,6 +308,11 @@ export function createConnectionAuthority(options: {
     try {
       grant.generation = await generation(input);
       grant.installationGeneration = await installationGeneration(input, grant.sourceInstallationId);
+      // Installation-scoped fencing retires the instance permanently. Minting a token at its
+      // latest generation would otherwise let the retired source regain dispatch authority.
+      // A successor uses a new installation ID; scope-wide credential rotation is separate.
+      if (grant.installationGeneration > 0 || await isInstallationRetired(options.root, grant.sourceInstallationId))
+        throw new RuntimeConnectionError('source_installation_retired');
       await atomicJson(grantPath(grantId), grant);
     } finally { await release(); }
     return {
@@ -364,6 +371,7 @@ export function createConnectionAuthority(options: {
     // generation is checked in addition to the shared scope generation.
     if (value.sourceInstallationId !== undefined
       && (value.installationGeneration ?? 0) !== await installationGeneration(value as unknown as ConnectionSource, value.sourceInstallationId)) return undefined;
+    if (value.sourceInstallationId !== undefined && await isInstallationRetired(options.root, value.sourceInstallationId)) return undefined;
     return value as unknown as StoredGrant;
   }
 

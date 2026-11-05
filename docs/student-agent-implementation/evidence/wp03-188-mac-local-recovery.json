@@ -1,0 +1,73 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-188/product-darwin-arm64",
+  "packageSha256": "10a6d4fd627ca671625d0761d8ce361a2fddadcadb666a2eb16d11bdf6e637a8",
+  "cases": [
+    "formal product creates annotation, semantic reference, question draft, real Worker result and native checkpoint",
+    "fresh Chrome reads original components, fixed result bytes, references, question and checkpoint without a write",
+    "takeover permits new edits and a distinct checkpoint instance whose real next result is 1; old namespace is rejected"
+  ],
+  "status": "passed",
+  "headless": false,
+  "components": [
+    {
+      "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+      "version": 4,
+      "digest": "0764a7637105a259ded5e857f04262a022afa26f2ad53e262d3ccf4b8ba8d3db"
+    },
+    {
+      "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+      "version": 2,
+      "digest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9"
+    },
+    {
+      "componentId": "4d0e1c8a-7b52-4a1e-9f3c-2d6b8a0c5e71",
+      "version": 2,
+      "digest": "2c8cd8c1503446352cfb5d609309fca63d29894533744e486f62d7892f9dfc42"
+    }
+  ],
+  "postgresVersion": "18.6",
+  "browserVersion": "156.0.8078.80",
+  "lostCheckpointReply": true,
+  "originalSession": {
+    "requestId": "714acb83-5ec4-4660-bffe-4539324d413c",
+    "inputDigest": "239b1853e8f28d94af40bdee7841b93759e2fa7743a8a21ae770fd4fe276c29b",
+    "executionRef": "14e4ddf1-4515-48d7-b9ff-83c50c9eceb3",
+    "nodeId": "local-darwin",
+    "executorInstanceId": "30e39455-33a0-41ca-8e89-70c627c2d362"
+  },
+  "browserJob": {
+    "requestId": "25b14660-f24f-442c-b117-453e3e904cb6",
+    "inputDigest": "36c45ffcfc7d09f8b765919b86a9f29fd2f113bbb14b6fc5ea966f69e5907d0a",
+    "executionRef": "64a490bc-c848-43a7-b035-6fcdc817fbbf",
+    "artifactSha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+    "artifactByteLength": 97
+  },
+  "backupId": "440a9cd4-bdfc-4daa-92d8-6d747128ec6d",
+  "lostTakeoverReply": true,
+  "recoveredSession": {
+    "requestId": "a574bf02-d225-4d4a-b0a1-b08c3062976e",
+    "inputDigest": "9ce93780028bfbf4e5af90a3413a692c2416d878b663111a2293bac0568de1d7",
+    "executionRef": "157a76c2-297a-4d5a-bdfe-1b2d801b57f7",
+    "nodeId": "local-darwin",
+    "executorInstanceId": "4b7dadb2-983e-4ed1-956f-9c1d9e58cfb4",
+    "restoredFrom": {
+      "checkpointId": "acacb38f-07cf-4a35-9c7c-aef42ebd66aa",
+      "sessionRef": "14e4ddf1-4515-48d7-b9ff-83c50c9eceb3",
+      "sha256": "130a4df87ead1c414d1446d1c6f2fe241df1abc76b9084fc0340726e98f0e986"
+    },
+    "nextObservation": {
+      "total": 5,
+      "value": 1,
+      "applied": 3
+    }
+  },
+  "cleanup": [
+    "fulfilled",
+    "fulfilled"
+  ],
+  "temporaryRootRemoved": true
+}

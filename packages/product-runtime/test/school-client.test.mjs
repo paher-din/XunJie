@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
+import { preparedAnnotationPackage } from '../../../components/material-annotation/package.mjs';
+import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
 
 test('revoking a school connection wins over an already exchanged but delayed confirmation', { timeout: 30000 }, async () => {
   const requestId = randomUUID();
@@ -81,6 +83,32 @@ test('installed client forwards the course surface and rejects malformed or fore
       courseName: '课程', taskId, taskTitle: '任务', releaseId, contentDigest: digest, objectives: ['目标'],
       requirements: '要求', materials: [material], starterWorks: [], capabilities: [] } };
   const actionId = randomUUID(), malformedIntentActivity = randomUUID(), foreignIntentActivity = randomUUID();
+  const executionId = randomUUID(), malformedExecutionActivity = randomUUID(), foreignExecutionActivity = randomUUID();
+  const controlId = randomUUID(), mismatchedControlId = randomUUID();
+  const checkpointId = randomUUID();
+  const foreignPrincipalExecution = randomUUID();
+  const executionQuery = { requestId: executionId, inputDigest: digest, executionRef: randomUUID(),
+    scope: { environmentId: grant.identity.environmentId, spaceId: grant.identity.spaceId,
+      principalId: grant.identity.principalId, activityId: activity.activityId },
+    state: 'queued', statusKnowledge: 'confirmed', stopRequested: false, confirmedSeq: 1, reason: null, output: null };
+  const checkpointPage = { items: [{ checkpointId, sessionRef: executionQuery.executionRef, sha256: digest,
+    contentId: checkpointId, appliedSeq: 1, byteLength: 200, createdAt: publishedAt, requestId: executionId,
+    instanceId: activity.activityId + ':accumulator', scope: executionQuery.scope }], nextCursor: null };
+  // The algorithm is served through the authorised release, never from the component view.
+  const published = await aggregationPackage();
+  const algorithmBundle = { definition: { manifest: published.manifest,
+    digest: createHash('sha256').update(JSON.stringify(published.manifest)).digest('hex') }, mediaType: 'application/wasm',
+    entry: 'aggregate', memoryPages: 256, sha256: published.manifest.algorithm.resource.sha256,
+    byteLength: published.manifest.algorithm.resource.byteLength, contentBase64: published.algorithmBase64 };
+  const prepared = await preparedAnnotationPackage();
+  const dependency = { ...prepared.manifest.dependencies[0], contentBase64: prepared.dependencies[0].contentBase64 };
+  // The wire dependency response has only public content fields, not its declaration metadata.
+  const dependencyContent = Object.fromEntries(['dependencyId', 'resourceId', 'sha256', 'byteLength', 'mediaType', 'contentBase64'].map(key => [key, dependency[key]]));
+  const report = { formatVersion: 1, componentId: prepared.manifest.componentId, version: prepared.manifest.version,
+    definitionDigest: digest, preparationProtocolVersion: 1, selfTestVersion: 1, hostVersion: 'test-host',
+    device: { platform: 'test-platform', browser: 'Chrome', browserVersion: '156', features: [], preparationImplementationVersion: 1 },
+    status: 'ready', reason: 'none', stage: 'activate', capabilities: [], durationMs: 1, resourceBytes: 100, cacheHit: false, preview: false };
+  const reportReceipt = { reportId: randomUUID(), report };
   const receiver = { receiverId: 'school-question-receiver', location: 'remote', kind: 'question' };
   const actionInput = { requestId: actionId, scope: { environmentId: grant.identity.environmentId,
     spaceId: grant.identity.spaceId, principalId: grant.identity.principalId, activityId: activity.activityId }, receiver,
@@ -94,6 +122,27 @@ test('installed client forwards the course surface and rejects malformed or fore
     else if (url.endsWith('/connections/exchange')) response.end(JSON.stringify(grant));
     else if (url.endsWith('/api/learning/courses')) response.end(JSON.stringify(catalog));
     else if (url.endsWith('/api/learning/releases/' + releaseId)) response.end(JSON.stringify(release));
+    else if (url.endsWith('/api/learning/releases/' + releaseId + '/components/table/algorithm')) {
+      response.end(JSON.stringify(algorithmBundle));
+    } else if (url.endsWith('/components/annotation/dependencies/mark-js')) response.end(JSON.stringify(dependencyContent));
+    else if (url.endsWith('/components/annotation/dependencies/broken')) response.end(JSON.stringify({ dependencyId: 'broken' }));
+    else if (url.endsWith('/components/annotation/preparation-reports')) response.end(JSON.stringify([report]));
+    else if (url.endsWith('/components/annotation/preparation-report')) response.end(JSON.stringify(reportReceipt));
+    else if (url.includes('/api/learning/executions/')) {
+      if (url.includes('/checkpoints') && url.includes('/executions/' + foreignPrincipalExecution)) response.end(JSON.stringify({ ...checkpointPage,
+        items: [{ ...checkpointPage.items[0], scope: { ...executionQuery.scope, principalId: randomUUID() } }] }));
+      else if (url.includes('/executions/' + malformedExecutionActivity)) response.end(JSON.stringify({ state: 'queued' }));
+      else if (url.includes('/checkpoints')) response.end(JSON.stringify(checkpointPage));
+      // The run that comes back belongs to another activity than the one the caller asked under.
+      else if (url.includes('/executions/' + foreignExecutionActivity)) response.end(JSON.stringify({ ...executionQuery,
+        scope: { ...executionQuery.scope, activityId: activity.activityId } }));
+      else if (url.includes('/executions/' + foreignPrincipalExecution)) response.end(JSON.stringify({ ...executionQuery,
+        scope: { ...executionQuery.scope, principalId: randomUUID() } }));
+      else if (url.includes('/controls/')) response.end(JSON.stringify({ controlId, requestId: executionId,
+        executionRef: executionQuery.executionRef, inputDigest: digest, effect: 'step', status: 'applied', seq: 1, query: executionQuery }));
+      else if (url.endsWith('/sessions')) response.end(JSON.stringify([executionQuery]));
+      else response.end(JSON.stringify(executionQuery));
+    }
     else if (url.endsWith('/api/learning/releases/' + releaseId + '/materials/' + materialId)) {
       response.end(JSON.stringify({ ...material, contentBase64: 'eA==' }));
     } else if (url.endsWith('/api/learning/course-activity-results/' + activity.activityId)) response.end('null');
@@ -156,6 +205,36 @@ test('installed client forwards the course surface and rejects malformed or fore
     assert.equal((await api(`intents/${malformedIntentActivity}/${actionId}`, undefined, remote)).status, 503);
     assert.equal((await api(`intents/${foreignIntentActivity}/${actionId}`, undefined, remote)).status, 403);
     assert.equal((await api('intents/not-a-uuid', undefined, remote)).status, 403);
+    // A browser run is forwarded under the same grant and the same activity it was accepted for.
+    assert.equal((await api('executions/' + activity.activityId, { action: {}, acceptance: {} }, remote)).value.executionRef,
+      executionQuery.executionRef);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}`, undefined, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/report`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/stop`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/result`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/control`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/sessions`, undefined, remote)).value[0].requestId, executionId);
+    assert.equal((await api(`executions/${activity.activityId}/checkpoints`, undefined, remote)).value.items[0].checkpointId, checkpointId);
+    assert.equal((await api(`executions/${activity.activityId}/checkpoints/${checkpointId}`, undefined, remote)).value.items[0].checkpointId, checkpointId);
+    assert.equal((await api(`executions/${malformedExecutionActivity}/checkpoints`, undefined, remote)).status, 503);
+    assert.equal((await api(`executions/${foreignPrincipalExecution}/checkpoints`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${activity.activityId}/checkpoints/not-a-cursor`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/controls/${controlId}`, undefined, remote)).value.controlId, controlId);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/controls/${mismatchedControlId}`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${malformedExecutionActivity}/${executionId}/controls/${controlId}`, undefined, remote)).status, 503);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/controls/${controlId}/extra`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${malformedExecutionActivity}/${executionId}`, undefined, remote)).status, 503);
+    assert.equal((await api(`executions/${foreignExecutionActivity}/${executionId}`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${foreignPrincipalExecution}/${executionId}`, undefined, remote)).status, 403);
+    assert.equal((await api('executions/not-a-uuid/' + executionId, undefined, remote)).status, 403);
+    assert.equal((await api('executions/' + activity.activityId + '/' + executionId + '/dispatch', {}, remote)).status, 403);
+    assert.equal((await api(`releases/${releaseId}/components/table/algorithm`, undefined, remote)).value.contentBase64,
+      published.algorithmBase64);
+    assert.equal((await api(`releases/${releaseId}/components/table/algorithm/extra`, undefined, remote)).status, 403);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/dependencies/mark-js`, undefined, remote)).value, dependencyContent);
+    assert.equal((await api(`releases/${releaseId}/components/annotation/dependencies/broken`, undefined, remote)).status, 503);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-reports`, undefined, remote)).value, [report]);
+    assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-report`, { reportId: reportReceipt.reportId, report }, remote)).value, reportReceipt);
     assert.equal((await api('manage/course-import', { requestId: randomUUID() }, remote)).status, 403);
   } finally {
     await host?.stop();

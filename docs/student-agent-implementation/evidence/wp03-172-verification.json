@@ -1,0 +1,113 @@
+{
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "sourceBase": "6e7d13efcf2ab30af38522e55e7ba2a7dccbef95",
+  "branch": "codex/issue-172-nontext-references",
+  "engineering": {
+    "typecheck": "passed",
+    "fullBuild": "passed",
+    "finalRuntimeTestBuild": "passed",
+    "webUnitTests": 54,
+    "sourceOwnerTests": 11,
+    "browserPublicExports": 12,
+    "originalReferenceAndDraftRegression": {
+      "uniqueCases": 28,
+      "initialPassed": 26,
+      "initialFailed": 2,
+      "failedFileRerunPassed": 8,
+      "cause": "two stale upstream expectations: course heading count and IndexedDB v5 stores"
+    },
+    "nativeActionRegression": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    "docs": {
+      "changedFiles": 5,
+      "changedLocalTargets": 93,
+      "changedFailures": 0,
+      "fullFiles": 187,
+      "fullLocalTargets": 1447,
+      "fullFailures": 9,
+      "cause": "pre-existing untracked .trae/documents links outside this change"
+    }
+  },
+  "browser": {
+    "local": {
+      "date": "2026-11-03",
+      "status": "passed",
+      "cases": [
+        "annotation object selection reaches the existing reliable question draft and PostgreSQL",
+        "repeated semantic selection is deduplicated",
+        "the registered annotation locator focuses the exact original object",
+        "source content changes preserve the original copy and refuse guessed relocation",
+        "fixed copies restore without mounting the executable component view",
+        "real Worker/WASM group output is retained and selected by its fixed command/result identity",
+        "aggregation locator identifies the fixed group in the original result",
+        "real owner rejects forged subject/object/range/copy and unregistered new adapters",
+        "retiring an adapter does not discard a verified stored reference when the question changes",
+        "a disabled component preserves verified copies while the owner refuses new references",
+        "an explicit question action fixes both semantic references while later draft changes remain independent",
+        "removal/order/later Chinese input restore after refresh; dark and narrow desktop views captured",
+        "normal owner restart validates retained semantic references and fixed actions"
+      ],
+      "browser": "installed Chrome",
+      "headless": false,
+      "mac": "deferred by user",
+      "teaching": "not evaluated",
+      "receiver": "controlled receiver; no model invocation",
+      "profile": "local",
+      "browserVersion": "156.0.8078.80",
+      "cleanup": "owned runtime stopped"
+    },
+    "school": {
+      "date": "2026-11-03",
+      "status": "passed",
+      "cases": [
+        "annotation object selection reaches the existing reliable question draft and PostgreSQL",
+        "repeated semantic selection is deduplicated",
+        "the registered annotation locator focuses the exact original object",
+        "source content changes preserve the original copy and refuse guessed relocation",
+        "fixed copies restore without mounting the executable component view",
+        "real Worker/WASM group output is retained and selected by its fixed command/result identity",
+        "aggregation locator identifies the fixed group in the original result",
+        "real owner rejects forged subject/object/range/copy and unregistered new adapters",
+        "retiring an adapter does not discard a verified stored reference when the question changes",
+        "a disabled component preserves verified copies while the owner refuses new references",
+        "an explicit question action fixes both semantic references while later draft changes remain independent",
+        "removal/order/later Chinese input restore after refresh; dark and narrow desktop views captured",
+        "normal owner restart validates retained semantic references and fixed actions"
+      ],
+      "browser": "installed Chrome",
+      "headless": false,
+      "mac": "deferred by user",
+      "teaching": "not evaluated",
+      "receiver": "controlled receiver; no model invocation",
+      "profile": "school",
+      "browserVersion": "156.0.8078.80",
+      "cleanup": "owned runtime stopped"
+    }
+  },
+  "sourceSha256": {
+    "packages/contracts/src/question-drafts.ts": "ac30bfc12291a7b7e067154b5a51ddb6e324d36832546c06776cd117ac51b7ca",
+    "packages/learning-space/src/learning-data/semantic-references.ts": "bc4adbbe365261425f978551a8c41591404efebb84fedcab98b4d9c78556b425",
+    "packages/learning-space/src/learning-data/drafts.ts": "57677fb4769b0fefed07fe9d6efaeed10d5b891a8cbb079280696470c06b9106",
+    "packages/learning-space/src/learning-data/intents.ts": "a36f8fa093e2aabe6f69d92bb3e3eeb1e92ce84ca0e101770f364bf940d93d0c",
+    "apps/web/src/component-host/bridge.ts": "b5645a46baf517498c5f1bdc15f8a2faad47feb20238e3d58da10d3ccd004089",
+    "apps/web/src/component-host/ComponentView.tsx": "affa7ac117884c0d942572bde2b0bac84e5b8bda5c14dffc32a31ed23f364c2f",
+    "apps/web/src/reliable-workspace/draft.ts": "0a4807a58e0a6a6150b8fcf57f32e50d31b89ff1cc7904fd201b75adfb718eb1",
+    "apps/web/src/product/ExecutionPanel.tsx": "efeacede58822467a57bf40f39ba92920cd020e9fc2c4e0a08b6e483d5801421"
+  },
+  "attempts": [
+    "initial initdb disk sync timed out; retried with a fresh owned environment",
+    "jsonb target key ordering broke initial draft receipt matching and fixed action digest checks; canonicalization and regression tests added",
+    "initial action test attempted to remove an already-cleared submitted draft; corrected to hold the controlled receiver while later input is made"
+  ],
+  "limits": [
+    "Mac deferred explicitly by user",
+    "school deployment tested on this Windows host, not a physical second machine",
+    "Chinese text and existing composition guards tested; no new system IME candidate acceptance is claimed",
+    "controlled question receiver; no model invocation or teaching-effect evaluation",
+    "no distribution package generated; no push/PR/main merge for this issue"
+  ]
+}

@@ -1,0 +1,9 @@
+PASS real product creates annotation, reference, question, Worker result and a native checkpoint with a lost control reply
+PASS a real school approval plus an installation-bound strict HTTPS runtime grant declares the independent school receiver
+PASS a real TCP link break isolates the school node and reconnect re-queries the same school identity
+PASS isolated Chrome reopens the original components, fixed artifact bytes, references, draft and checkpoint with zero writes
+PASS a lost takeover reply stays isolated and the retry is idempotent
+PASS takeover retires the source and holds a real SSH execution-boundary proof from the independent school node
+PASS the old school grant of the retired installation is refused after the new installation is active
+PASS the independent school node refuses the retired installation runtime connection after its real fence
+PASS after takeover the formal workspace edits in a new namespace and creates a distinct checkpoint instance whose real next result is 1

@@ -180,6 +180,12 @@ test('delete preserves pending and retiring cleanup until a late export pin is r
     const descriptor = host.maintenance.status().participants[0];
     const owner = {
       participant: { descriptor, async closeWrites() {}, async closeDispatch() {}, async drain() {}, async validate() {}, async resume() {} },
+      async material({ boundaryAt }) {
+        return { formatVersion: 1, kind: 'test.owner.boundary', serviceId: descriptor.serviceId, boundaryAt,
+          source: { environmentId: environment.environmentId, installationId: environment.installationId },
+          schemaVersion: descriptor.schemaVersion, coverage: 'service-received', unresolved: [], settled: 0,
+          retained: { resources: 0, checkpoints: 0 }, blocking: [] };
+      },
       export(input) {
         return exporting = (async () => {
           backupId = input.backupId; entered.resolve(); await finish.promise;

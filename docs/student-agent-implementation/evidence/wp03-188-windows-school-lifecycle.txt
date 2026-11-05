@@ -1,0 +1,6 @@
+PASS the installed client reaches the independent school node with a scoped strict HTTPS runtime grant {"handshake":"ready","connectionId":"2a5af88d-22e6-45ca-b774-bdcc2696db0d","grantId":"f6ab0470-1e19-4652-bab7-f03cd5bf67ae"}
+PASS a slow capability body accepted before the fence cannot regain dispatch authority after it {"requestId":"82745c40-4d8c-4720-8316-3a4fef5ee701","inputDigest":"7059406f7b179805c6ebcd1208048df23dc5ddead786a1a18b212a110db94e54","fencedHandshake":"unavailable","reason":"http_401","refusedAfterFence":"http_401","dispatchRegained":false}
+PASS restoring old grant and connection files after the fence does not regain authority {"restoredFiles":7,"handshake":"unavailable","reason":"http_401","refused":"http_401"}
+PASS a newly authorized successor installation is ready while the retired installation stays refused {"successorInstallationId":"f8edda4a-4cfe-454c-94ea-a8ec8143595c","successorHandshake":"ready","retiredHandshake":"unavailable","retiredReason":"http_401"}
+PASS the independent school node still serves strict HTTPS traffic after restart and fencing {"status":200,"environmentId":"72fa2198-a743-420f-8fb9-e0027e28a37b","listeners":1,"strictTLS":true}
+STATUS passed cases=5 schoolUp=true output=C:\Users\h\XunJie-acceptance\wp03-188\school-lifecycle-win\school-lifecycle-negative.json

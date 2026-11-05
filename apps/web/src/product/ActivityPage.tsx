@@ -1,15 +1,19 @@
-import { useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
-import { CenterToolArea, CODE_TOOLS } from '../components/workspace/CenterToolArea'
+import { CenterToolArea, type ToolSpec } from '../components/workspace/CenterToolArea'
+import { ComponentView } from '../component-host/ComponentView'
+import { useActivitySession } from './ActivitySession'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
+import { ExecutionPanel } from './ExecutionPanel'
+import { NativeSessionPanel } from './NativeSessionPanel'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
-  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
+  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
   details: ReactNode; account: ReactNode; error: ReactNode
@@ -18,6 +22,29 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
+  const { workspace, draft, actions } = useActivitySession()
+  const readOnly = workspace.isReadOnly()
+  useImperativeHandle(workspaceRef, () => ({ leave: async () => {
+    await workspace.leave(); await draft.leave(); await actions.leave()
+  } }), [workspace, draft, actions])
+  const [toolError, setToolError] = useState('')
+  const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
+    ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
+  // A component may declare a restricted run or a native stateful session; both keep their
+  // record, query and stop in this area instead of inside the opaque view.
+  const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
+    (binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
+      ? <div key={binding.key} className="component-tool">
+        <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
+        {nativeAvailable || activity.course?.executionPlan ? <NativeSessionPanel activity={activity} binding={binding} authorized={authorized} spaceKey={spaceKey} namespace={namespace} />
+          : <p className="execution-hint">当前运行方式不提供原生会话；已有作品与记录仍保留。</p>}
+      </div>
+      : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.operations?.length
+        ? <div key={binding.key} className="component-tool">
+          <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
+          <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />
+        </div>
+        : <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />)]))
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
   return <div className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
@@ -33,20 +60,23 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
           aria-expanded={references.open} onClick={() => references.setOpen(!references.open)}><IconText name="chat-round-dots">询问 Agent</IconText></button>
         <WorkspacePopover label="活动" icon="menu-dots">
           <p>{activity.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
-          <button type="button" className="ws-btn ghost" disabled={busy} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
+          <button type="button" className="ws-btn ghost" disabled={busy || readOnly} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
           <button type="button" className="ws-btn ghost" disabled={busy} onClick={onRefresh}>刷新列表</button>
           {account}
         </WorkspacePopover>
       </div>
     </header>
+    {readOnly && <div role="status" className="product-workspace-notice">这是还原校验环境，作品与历史只读，实验尚未启用。</div>}
     {error && <div className="product-workspace-notice">{error}</div>}
+    {toolError && <div role="alert" className="product-workspace-notice">{toolError}</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">{details}</aside>}
-      <CenterToolArea taskId={namespace + ':' + activity.activityId} variant="textscope-c" tools={CODE_TOOLS}
-        tool="design" onToolChange={() => {}} onToast={() => {}} tabsSlot={tabsSlot}
-        designBody={<ActivityWorkspace ref={workspaceRef} activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
+      <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
+        beforeToolChange={() => workspace.leave()}
+        tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
+        designBody={<ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
         <WorkspaceReferenceComposer closeFocusRef={ask} /><ActivityActions />
       </aside>}

@@ -1,0 +1,3161 @@
+{
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "codeCommit": "6171351171025bae457b9afbc1d33fc18ab5e481",
+  "status": "passed",
+  "remaining": [],
+  "hardware": {
+    "model": "MacBook Air",
+    "modelIdentifier": "Mac17,3",
+    "chip": "Apple M5",
+    "memory": "16 GB",
+    "macOS": "27.2",
+    "build": "26B123",
+    "architecture": "arm64"
+  },
+  "product": {
+    "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+    "sourceDirty": false,
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-03T08:09:35.644Z",
+    "distributionSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+    "resourcesJsonSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "resources": [
+      {
+        "id": "node",
+        "version": "24.21.0",
+        "distribution": {
+          "mode": "controlled-subset",
+          "retainedFiles": [
+            "bin/node",
+            "LICENSE"
+          ],
+          "upstreamArchiveVerifiedInFull": true,
+          "retainedFileContentsModified": false
+        },
+        "source": "https://nodejs.org/dist/v24.21.0/",
+        "license": {
+          "spdx": "MIT",
+          "bundledThirdParty": "See the complete LICENSE file for bundled third-party terms",
+          "url": "https://github.com/nodejs/node/blob/v24.21.0/LICENSE",
+          "preserve": [
+            "LICENSE"
+          ]
+        },
+        "archive": {
+          "filename": "node-v24.21.0-darwin-arm64.tar.gz",
+          "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+          "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+          "bytes": 52909993,
+          "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+          "archiveRoot": "node-v24.21.0-darwin-arm64"
+        },
+        "entryHashes": {
+          "bin/node": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+        }
+      },
+      {
+        "id": "postgres",
+        "version": "18.6",
+        "distributionVersion": "18.6.1",
+        "distribution": {
+          "mode": "complete-upstream-archive"
+        },
+        "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/18.6.1",
+        "license": {
+          "spdx": "PostgreSQL",
+          "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+          "url": "https://www.postgresql.org/about/licence/",
+          "preserve": [
+            "LICENSE",
+            "dependency-notices",
+            "source-input.json",
+            "build-manifest.json",
+            "runtime-dependencies.json",
+            "target-validation.json"
+          ],
+          "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+        },
+        "archive": {
+          "filename": "postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+          "sha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6",
+          "bytes": 88814625,
+          "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.sha256",
+          "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.manifest.json",
+          "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.spdx.json",
+          "archiveRoot": "postgresql-18.6.1-aarch64-apple-darwin"
+        },
+        "target": "aarch64-apple-darwin",
+        "entryHashes": {
+          "bin/initdb": "4e043f105a92dc499ecb09dccda47cc9fa51136164deb27b736b902c16f8b11e",
+          "bin/postgres": "d6688852af4db60285432f3bec9486e17b838c2f3f772b7484029abb0e4ff770",
+          "bin/pg_ctl": "5853c3fdc3ef70c1dd57fe618d5960587d16665b61cd026cdd593033fa5307dd",
+          "bin/pg_controldata": "845e8f80435e9bc04fbcc2b63c58e53fb34f38a817acfaa9d058056afbc37eb6",
+          "bin/psql": "8977c163014533f59369a5606a221a2c39b635e9076057866bc5a782f75c6ec9",
+          "bin/pg_dump": "9737872967beb2b73445a9ae2cbbc6dcf17eecdcdea2137dcaa263e5780e5b9d",
+          "bin/pg_dumpall": "919a521284653ffee8f623e72ab40873ff9d7b780dd67c5f7bdcee72298667d5",
+          "bin/pg_restore": "469bbe82fce0696bfa4faf170f858db3e51cb3a0e56c7c106adcb654e0023942",
+          "bin/pg_upgrade": "5238511bd9278587b30ff7698de225a7355b98669214d0af8964e6fca0d737e3"
+        }
+      }
+    ],
+    "resourceCatalogSha256": "9d64fbd2179c045176c2b470ab59de320be1e5e4b05f7b557d7fbe96fc130608"
+  },
+  "engineering": {
+    "prepare": {
+      "status": "passed",
+      "exitCode": 0,
+      "tasks": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "command": "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "typecheck"
+          ],
+          "cwd": "<repository>",
+          "exclusive": true,
+          "startedAt": "2026-11-03T08:10:47.651Z",
+          "finishedAt": "2026-11-03T08:10:49.339Z",
+          "durationMs": 1688,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "build",
+          "status": "passed",
+          "command": "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "all"
+          ],
+          "cwd": "<repository>",
+          "exclusive": true,
+          "startedAt": "2026-11-03T08:10:49.340Z",
+          "finishedAt": "2026-11-03T08:10:52.784Z",
+          "durationMs": 3444,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "check:contracts:browser",
+          "status": "passed",
+          "command": "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "args": [
+            "scripts/check-contracts-browser.mjs"
+          ],
+          "cwd": "<repository>",
+          "exclusive": true,
+          "startedAt": "2026-11-03T08:10:52.785Z",
+          "finishedAt": "2026-11-03T08:10:52.944Z",
+          "durationMs": 159,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "check:docs",
+          "status": "passed",
+          "command": "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "args": [
+            "scripts/check-doc-links.mjs"
+          ],
+          "cwd": "<repository>",
+          "exclusive": true,
+          "startedAt": "2026-11-03T08:10:52.944Z",
+          "finishedAt": "2026-11-03T08:10:53.151Z",
+          "durationMs": 207,
+          "exitCode": 0,
+          "signal": null
+        }
+      ]
+    },
+    "nativeFinalComponentAndCourse": {
+      "codeCommit": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "componentAndCourse": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nativeFinalSubjectFix": {
+      "formatVersion": 1,
+      "codeCommit": "728b8481f57a2efce8c837a3270e7f484724718c",
+      "priorCommit": "692fa066b2990d7d1c18524dabba4d758b607460",
+      "red": {
+        "command": [
+          "node",
+          "--test",
+          "--test-name-pattern=prepared component import",
+          "apps/server/tests/component-host.runtime.test.mjs"
+        ],
+        "status": "failed",
+        "actual": 200,
+        "expected": 403,
+        "firstFailure": "dependency read with mismatched expected environment"
+      },
+      "green": {
+        "command": "node --test apps/server/tests/component-host.runtime.test.mjs",
+        "exitCode": 0,
+        "tests": 2,
+        "failed": 0,
+        "skipped": 0,
+        "negativeCases": [
+          "wrong environment",
+          "wrong space",
+          "wrong principal"
+        ],
+        "routes": [
+          "dependency GET",
+          "reports GET",
+          "fresh report POST"
+        ],
+        "negativeRequests": 9,
+        "matchingIdentity": "passed"
+      }
+    },
+    "webUnit": {
+      "codeCommit": "692fa066b2990d7d1c18524dabba4d758b607460",
+      "bridgePreparation": 28,
+      "remediation": 18,
+      "failed": 0
+    },
+    "formalProductAndEditorChrome": {
+      "codeCommit": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "stats": {
+        "startTime": "2026-11-03T08:13:25.342Z",
+        "duration": 75891.09700000001,
+        "expected": 25,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "headless": false,
+      "channel": "chrome",
+      "workers": 1,
+      "retries": 0
+    }
+  },
+  "packageCli": {
+    "formatVersion": 1,
+    "status": "passed",
+    "startedAt": "2026-11-03T08:11:59.016Z",
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "harnessNode": "v24.21.0",
+    "commands": [
+      {
+        "purpose": "bundled Node version",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "--version"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:11:59.126Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:11:59.139Z"
+      },
+      {
+        "purpose": "bundled PostgreSQL version",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/postgres/bin/postgres",
+          "--version"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:11:59.139Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:11:59.146Z"
+      },
+      {
+        "purpose": "macOS version",
+        "argv": [
+          "/usr/bin/sw_vers"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:11:59.146Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:11:59.152Z"
+      },
+      {
+        "purpose": "export public component files",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/components/material-annotation/package.mjs",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:11:59.172Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:11:59.278Z"
+      },
+      {
+        "purpose": "CLI install",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "install",
+          "--profile",
+          "local",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:11:59.279Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:11:59.850Z"
+      },
+      {
+        "purpose": "CLI first start",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "start",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:11:59.850Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:00.267Z"
+      },
+      {
+        "purpose": "CLI component-import v3",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "component-import",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:00.267Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:00.408Z"
+      },
+      {
+        "purpose": "CLI component-import v2",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "component-import",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:00.408Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:00.567Z"
+      },
+      {
+        "purpose": "CLI course-import from real material path and SHA",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "course-import",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:00.570Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:00.705Z"
+      },
+      {
+        "purpose": "CLI component-read v3",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "component-read",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:00.705Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:00.799Z"
+      },
+      {
+        "purpose": "CLI component-read v2",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "component-read",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:00.799Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:00.892Z"
+      },
+      {
+        "purpose": "CLI course-access for synthetic member",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "course-access",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:00.958Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:01.067Z"
+      },
+      {
+        "purpose": "CLI first stop",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "stop",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:01.191Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:01.491Z"
+      },
+      {
+        "purpose": "CLI restart",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "start",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:01.491Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:02.074Z"
+      },
+      {
+        "purpose": "CLI component-read after restart v3",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "component-read",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:02.174Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:02.292Z"
+      },
+      {
+        "purpose": "CLI component-read after restart v2",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "component-read",
+          "--file",
+          "<temporary-path>",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:02.292Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:02.399Z"
+      },
+      {
+        "purpose": "CLI final stop",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "stop",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:02.399Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:02.688Z"
+      },
+      {
+        "purpose": "CLI final status",
+        "argv": [
+          "<repository>/dist/wp03-179-181-6171351/resources/node/bin/node",
+          "<repository>/dist/wp03-179-181-6171351/app/cli.js",
+          "status",
+          "--root",
+          "<temporary-path>"
+        ],
+        "cwd": "<repository>",
+        "startedAt": "2026-11-03T08:12:02.688Z",
+        "exitCode": 0,
+        "finishedAt": "2026-11-03T08:12:02.757Z"
+      }
+    ],
+    "api": [
+      {
+        "method": "POST",
+        "route": "manage/members",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "login",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "course-activities",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "workspaces/a00311c4-2ee1-4c39-888f-c1f361e18756",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "activities/a00311c4-2ee1-4c39-888f-c1f361e18756",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "workspaces/a00311c4-2ee1-4c39-888f-c1f361e18756",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "releases/e550d36b-7264-453c-aee7-072ce4eef574/materials/94e6c0ca-e898-4008-8379-10f6568de6fa",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "releases/e550d36b-7264-453c-aee7-072ce4eef574/components/prepared/dependencies/mark-js",
+        "status": 200
+      }
+    ],
+    "cases": [
+      "formal bundled CLI installs and starts an independent native product environment",
+      "formal CLI imports canonical v3 and prepared v2 using path and dependencyId files",
+      "formal CLI course-import reads the real material file and checks SHA256 and length",
+      "formal CLI component-read returns both exact immutable definitions",
+      "synthetic member and fixed activity persist both component state objects through the real API",
+      "CLI restart and fresh login recover the same activity, exact state, original material bytes and prepared dependency"
+    ],
+    "browser": "not-run",
+    "systemIme": "not-run",
+    "teachingOutcome": "not-evaluated",
+    "distributionSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+    "packageEntriesVerified": true,
+    "node": "v24.21.0",
+    "postgres": "postgres (PostgreSQL) 18.6",
+    "macOS": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2\nBuildVersion:\t\t26B123",
+    "webBefore": {
+      "sha256": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+      "files": 160
+    },
+    "publicResourceGenerator": {
+      "sha256": "0026accfc75e15340000f580af0124618d2978bbd613cd5343d6028c3d2c091f",
+      "components": [
+        {
+          "version": 3,
+          "formatVersion": 1,
+          "entry": {
+            "resourceId": "d0c86f21-5856-49ce-b9b3-f8fcc7697127",
+            "sha256": "efaf3ddef0171f7ddf12601c8ddfd8dc1908a2aebc51eda124d7d3d447a1c53f",
+            "byteLength": 479855,
+            "mediaType": "text/html"
+          },
+          "dependencies": []
+        },
+        {
+          "version": 2,
+          "formatVersion": 2,
+          "entry": {
+            "resourceId": "702493fc-1bb0-4483-a695-e66694509656",
+            "sha256": "6c5045dbe0758dc4bd0412fe3f17bd420cab3405ae8162ec2388fdc244fd6081",
+            "byteLength": 16690,
+            "mediaType": "text/html"
+          },
+          "dependencies": [
+            {
+              "dependencyId": "mark-js",
+              "package": "mark.js",
+              "version": "8.11.1",
+              "role": "script",
+              "resourceId": "0445d39b-51ce-4481-9a60-798b92d3a2e6",
+              "sha256": "21d62e1053f7589fe6365cccd7c636d1781abf7879a605d8ce5f1f5b81a7b8fa",
+              "byteLength": 16917,
+              "mediaType": "text/javascript",
+              "loadOrder": 0,
+              "preparationTypes": [
+                "browser"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "environmentId": "31d200d4-df7b-4d00-a815-3066f6a14831",
+    "material": {
+      "path": "materials/open.txt",
+      "sha256": "c657e01d23d2a01dec21b3d1c2dc0c40ed0a3fe4e61205b29847af41258eb63e",
+      "byteLength": 61
+    },
+    "stateSha256": [
+      {
+        "name": "components/annotation.json",
+        "sha256": "5db2b9e39fca2247a485f58b5c4ecdab94d164fe6c975543a009d6d71c7d0b6c"
+      },
+      {
+        "name": "components/prepared.json",
+        "sha256": "e0ac952175868181c6af1dc17ec168b46dfbd9726f4a5a084d022572c4987f35"
+      }
+    ],
+    "cleanup": {
+      "cliState": "stopped",
+      "pgCtlStatusExitCode": 3,
+      "privateRoot": "removed",
+      "syntheticAccount": "removed with independent database",
+      "importDirectory": "removed"
+    },
+    "webAfter": {
+      "sha256": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+      "files": 160
+    },
+    "finishedAt": "2026-11-03T08:12:02.849Z"
+  },
+  "localCleanup": {
+    "status": "passed",
+    "environments": [
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 4,
+        "privateRoot": "removed",
+        "postgres": "not applicable: remote profile has no database"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 4,
+        "privateRoot": "removed",
+        "postgres": "not applicable: remote profile has no database"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      },
+      {
+        "ownership": "installation Node path names this task fixed package",
+        "stopExit": 0,
+        "postgresStatusExit": 3,
+        "privateRoot": "removed"
+      }
+    ]
+  },
+  "beforeRemediationVisual": {
+    "sourceRevision": "60f58c5917aeaef4d00e29f857a3cfad0c385bd5",
+    "platform": "darwin",
+    "arch": "arm64",
+    "headless": false,
+    "status": "passed",
+    "systemIme": "not-run",
+    "purpose": "actual Mac before-remediation visual capture only",
+    "distributionSha256": "28df661281265c148d8473518114ae81f9472db914a4cfee59e7b23a5718cc48",
+    "viewSha256": "a774b0663ea8199d7ffa0e0d1e940f986d020463fe7ed1c219f8013c27c5ca05",
+    "browserVersion": "156.0.8078.80",
+    "styles": {
+      "buttonHeight": "39.5px",
+      "buttonFontSize": "15px",
+      "titleFont": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", sans-serif"
+    },
+    "cleanup": "owned old product stopped",
+    "privateRoot": "removed"
+  },
+  "legacyUuid": {
+    "status": "passed",
+    "cases": [
+      "unchanged legacy product accepts uppercase UUID and fails lowercase read",
+      "after explicit migration and fresh login both UUID spellings preserve the original manifest/digest, activity and state bytes",
+      "stop/start cycle 1 preserves original definition, fixed activity and state after fresh login",
+      "stop/start cycle 2 preserves original definition, fixed activity and state after fresh login"
+    ],
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0",
+    "teachingOutcome": "not-evaluated",
+    "productRestoreTakeover": "not-run",
+    "legacyDistributionSha256": "28df661281265c148d8473518114ae81f9472db914a4cfee59e7b23a5718cc48",
+    "currentDistributionSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+    "postgres": "postgres (PostgreSQL) 18.6",
+    "oldBackup": {
+      "status": "failed",
+      "category": "corrupt"
+    },
+    "migration": {
+      "path": "explicit owner storage.provisionStorage on closed schemas; not product automatic upgrade",
+      "status": "passed",
+      "histories": [
+        {
+          "unit": "space-course",
+          "before": 8,
+          "after": 9
+        },
+        {
+          "unit": "learning-data",
+          "before": 5,
+          "after": 6
+        }
+      ]
+    },
+    "original": {
+      "componentId": "6237A554-67EE-4E74-AE33-36FAF1223F12",
+      "version": 3,
+      "definitionDigest": "5b727d545831bb76609cbb87a61b1112082656ac98638ec01ae8d1cff43df6eb",
+      "stateSha256": "4907c58fa742fc52335b2a925828d513636f255c08c8d6e21ca66695de25c6ab"
+    },
+    "cleanup": [
+      "fixed stopped",
+      "legacy stopped"
+    ],
+    "privateScratch": "removed"
+  },
+  "componentHost": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0",
+    "cases": [
+      "dynamic imported HTML is mounted by the formal product workspace",
+      "shared isolated controls follow DESIGN and load the verified title font without network access",
+      "annotation controls support keyboard focus and Chinese multiline text (system IME not exercised)",
+      "real iframe input persists through IndexedDB and production API to PostgreSQL/resources",
+      "opaque frame and CSP reject host storage, parent access and direct business fetch",
+      "light/dark theme and narrow desktop rendering captured",
+      "reload recovers confirmed component state without any execution",
+      "257 real IndexedDB operations replay their original receipt and reject altered input",
+      "iframe reload rotates its private port/connection, rejects old identity and replays durable receipts",
+      "a full page restart recovers operation receipts from the existing workspace database",
+      "a second valid mount reads the same owner and persists its conditional update",
+      "a stale component edit is protected as a conflict candidate before unmounting",
+      "independent first component states can adopt the other client through the real conflict UI and recover after reload",
+      "real IndexedDB write failure blocks unmount and retains input with a copyable export",
+      "receipt read failure reports outcome-unknown and protects input as an exportable workspace candidate",
+      "tool navigation waits for an in-flight operation before unmounting the component",
+      "the real v3 IndexedDB upgrades additively to v5 without losing existing workspace data",
+      "component-only workspace can navigate back/forward without a mounted editor ref",
+      "failed return/history preserves the same component, exportable input and draft, then recovery permits leaving",
+      "protected state paths and legacy invalid pending recovery preserve data and resume ordinary synchronization",
+      "activity return waits for asynchronous component admission before disposing its session",
+      "a real iframe replacement followed by late receipt failure cannot mutate the successor workspace",
+      "compatible component sends four typed events with stable receipts and no model/question dispatch",
+      "known course revocation is reported as forbidden by the real mounted host",
+      "component import and use leave the main frontend artifact unchanged",
+      "strict public v1 validator accepts all observed initialization, success and error messages"
+    ],
+    "status": "passed",
+    "browser": "Google Chrome",
+    "node": "v24.21.0",
+    "mac": "passed",
+    "teachingOutcome": "not-evaluated",
+    "browserVersion": "156.0.8078.80",
+    "headless": false,
+    "frontendSha256": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+    "cleanup": "owned product stopped"
+  },
+  "preparation": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0",
+    "cases": [
+      "importing a prepared component version and its locked dependency leaves the main frontend artifact unchanged",
+      "cold preparation fetched, digest-verified, self-tested in an isolated instance and activated one environment",
+      "the isolated self-test instance produced no student work, session or learning evidence",
+      "the production frame executes the delivered dependency bytes as a script and defines the declared global",
+      "real mark.js highlights a repeated Chinese phrase, reports both matches and restores the body text",
+      "hot reopen reused the persistent record and cached bytes, and skipped the repeated self-test",
+      "the preparation report reached PostgreSQL over the production route and names the real device, not a claim for others",
+      "missing and corrupt warm-cache bytes were reacquired under the original identity and kept confirmed annotations",
+      "simultaneous cold tabs shared one durable preparation identity and one environment",
+      "stalled self-test iframe load timed out, retired the frame and resumed with its original preparation identity",
+      "production dependency delivery error disabled the affected capability visibly while leaving base annotation available",
+      "aborted activation atomically preserved both preparation and environment facts and allowed retry without mounting prematurely",
+      "an interrupted fetch continued under the original preparationId instead of starting a second preparation",
+      "an unfetchable dependency closed only highlighting; annotation and persistence kept working with a nearby reason",
+      "preparation storage failure refused to mount or claim readiness, named the blocker and left confirmed work intact",
+      "the format 1 release still opens through its original path with no preparation step and no new environment",
+      "highlight rendering captured in dark theme and at a narrow desktop width",
+      "course revocation stops the fixed dependency route with the existing eligibility check"
+    ],
+    "status": "passed",
+    "browser": "Google Chrome",
+    "node": "v24.21.0",
+    "mac": "passed",
+    "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+    "sourceDirty": false,
+    "preparationSourceSha256": "9ab01c44e3d8c686b098fa68b1d45cae78e1c99cf348396d50fcffe1ac1484ac",
+    "hostSourceSha256": "6609651dd7377ab90d39cd6c576fa947352483c29726be253aa983706e1c9168",
+    "teachingOutcome": "not-evaluated",
+    "endpointProfile": "local",
+    "frontendSha256": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+    "browserVersion": "156.0.8078.80",
+    "headless": false,
+    "cold": {
+      "dependencyFetches": 1,
+      "viewLoads": 2,
+      "resourceBytes": 16917,
+      "durationMs": 39,
+      "environmentId": "fe689714-e06c-49b6-973f-092b94198961"
+    },
+    "selfTestMaterial": "自检样例材料",
+    "hot": {
+      "dependencyFetches": 0,
+      "viewLoads": 1
+    },
+    "report": {
+      "browserVersion": "156.0.0.0",
+      "platform": "MacIntel",
+      "durationMs": 39,
+      "resourceBytes": 16917
+    },
+    "cleanup": "owned product stopped"
+  },
+  "school": {
+    "mac-web": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "actor": "mac-web",
+      "startedAt": "2026-11-03T08:14:46.769Z",
+      "platform": "darwin",
+      "arch": "arm64",
+      "osRelease": "27.2.0",
+      "osVersion": "Darwin Kernel Version 27.2.0: Wed Oct 14 23:48:06 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T8142",
+      "node": "v24.21.0",
+      "cases": [
+        {
+          "name": "strict HTTPS school authentication without bypass"
+        },
+        {
+          "name": "cold preparation downloads exact school dependency and submits production report",
+          "detail": {
+            "resourceBytes": 16917
+          }
+        },
+        {
+          "name": "school dependency bytes match the immutable manifest SHA256 and byte length"
+        },
+        {
+          "name": "resource report is durably read back from Linux school for the bound release and principal"
+        },
+        {
+          "name": "a different authenticated principal cannot read the original activity"
+        },
+        {
+          "name": "wrong environment, space and principal are refused for dependency, reports GET and fresh reports POST"
+        },
+        {
+          "name": "a fresh report for v2 cannot be submitted against the v4 release"
+        },
+        {
+          "name": "reload retains exact preparation and environment identity"
+        },
+        {
+          "name": "dependency transport interruption recovers under original preparation identity"
+        },
+        {
+          "name": "new component version uses a separate preparation without migrating the pinned release"
+        },
+        {
+          "name": "canonical annotationPackage v3 actual view writes to school and rereads the same annotation after reload"
+        },
+        {
+          "name": "actual Chrome offline mode preserves original annotation and preparation scope and reloads after reconnect"
+        },
+        {
+          "name": "course qualification revocation denies dependency and report reads"
+        }
+      ],
+      "status": "passed",
+      "traffic": [
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/dependencies/mark-js",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/preparation-report",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a535bb5c-d6a3-4be4-b26e-a9badead8ab4/components/annotation/preparation-report",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/dependencies/mark-js",
+          "failure": "net::ERR_INTERNET_DISCONNECTED"
+        }
+      ],
+      "failures": [],
+      "strictTLS": {
+        "ignoreHTTPSErrors": false,
+        "NODE_TLS_REJECT_UNAUTHORIZED": "default",
+        "caSha256": "e43a48dd3ecc26aad17d7bbf224bd9303ca1c532bad4d1eff4687692419217eb"
+      },
+      "launchOptions": {
+        "channel": "chrome",
+        "headless": false
+      },
+      "package": {
+        "manifestSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+        "provenance": {
+          "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+          "suppliedBy": "fixed acceptance revision; original package manifest retained"
+        },
+        "applicationSha256": {
+          "cli.js": "581ebc1aed2993251a2f6ba5b99951cbc987a806f8e203b37d66c11f5b8c7ec3",
+          "daemon.js": "4cfc702d073d3d8cd959a26bc439f2b93c6e14c3bb6b50cea7c97caedf10f175",
+          "product-runtime.js": "62cda972dac4f18b967c8e8bc2a8d19d82dbdf295bea3f9cb4e4ebc5a48eceb5"
+        }
+      },
+      "browser": "156.0.8078.80",
+      "headless": false,
+      "contextRouteStatus": 200,
+      "boundActivity": {
+        "activityId": "14b87572-9eea-4ae7-8432-aa3cae0e87a7",
+        "identity": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "spaceId": "10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a",
+          "principalId": "b305d4b7-e476-4acd-8855-8f305ab76b52",
+          "kind": "school",
+          "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
+        },
+        "status": "open",
+        "createdAt": "2026-11-03T08:14:47.567Z",
+        "course": {
+          "associationId": "73d80be2-4d92-44c1-a02e-b34307a79e45",
+          "courseId": "5b048c85-becc-4ae8-879f-355e3c5fb564",
+          "taskId": "3733b38a-84f2-4499-95b4-95ae2b2d4d0a",
+          "releaseId": "a5682af9-7324-439f-b98a-df8814b3ff0e",
+          "contentDigest": "f95bcea610349c3b2258613c4b3532d340478bd73bd82a670ce35b4e2bb1f09c",
+          "components": [
+            {
+              "key": "annotation",
+              "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+              "version": 2,
+              "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a"
+            }
+          ]
+        }
+      },
+      "scopeKey": "[\"xunjie.v1.64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"b305d4b7-e476-4acd-8855-8f305ab76b52\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]",
+      "preparationId": "1ebe9bd8-34f9-4125-a410-cd246f67755b",
+      "crossPrincipalStatus": 404,
+      "expectedSubjectChecks": [
+        {
+          "field": "environmentId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "spaceId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "principalId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        }
+      ],
+      "versionScopes": [
+        {
+          "preparationId": "1ebe9bd8-34f9-4125-a410-cd246f67755b",
+          "scopeKey": "[\"xunjie.v1.64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"b305d4b7-e476-4acd-8855-8f305ab76b52\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]"
+        },
+        {
+          "preparationId": "e7941048-cc62-48b8-9676-3b74f1c8bacd",
+          "scopeKey": "[\"xunjie.v1.64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"b305d4b7-e476-4acd-8855-8f305ab76b52\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",4,\"431e2e825e332f07e57e7394d5ebcbb85fc4a32520e045867ebfdc2ea35b8e81\",{\"title\":\"材料标注\"}]"
+        }
+      ],
+      "canonicalActivityId": "3eaba77f-7822-4cbb-bf0e-2f9ce8c64a8a",
+      "canonicalSchoolConfirmationMs": 1254,
+      "chromeOffline": {
+        "method": "BrowserContext.setOffline(true)",
+        "networkError": true,
+        "originalScopePreserved": true
+      },
+      "finishedAt": "2026-11-03T08:16:07.880Z",
+      "preparationReportsObservation": {
+        "returnedCount": 28,
+        "returnedArraySha256JsonUtf8": "b4d921e56118a0c1aea4e5baa34ab79ce3940e41aaa5dcb3274a5e351b360914",
+        "sample": {
+          "formatVersion": 1,
+          "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+          "version": 2,
+          "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a",
+          "preparationProtocolVersion": 1,
+          "selfTestVersion": 1,
+          "hostVersion": "1",
+          "device": {
+            "platform": "MacIntel",
+            "browser": "chrome",
+            "browserVersion": "156.0.0.0",
+            "features": [
+              "message-port",
+              "crypto-subtle",
+              "indexeddb",
+              "sandboxed-iframe"
+            ],
+            "preparationImplementationVersion": 2
+          },
+          "status": "ready",
+          "reason": "none",
+          "stage": "activate",
+          "capabilities": [
+            {
+              "capability": "workspace.read",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "workspace.change",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "material.highlight",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            }
+          ],
+          "durationMs": 346,
+          "resourceBytes": 16917,
+          "cacheHit": false,
+          "preview": false,
+          "memoryNote": "仅统计准备实际取得的依赖字节数；未测量浏览器进程内存。"
+        },
+        "sampleScope": "one returned device diagnostic; not a claim that it belongs to every actor"
+      }
+    },
+    "mac-client": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "actor": "mac-client",
+      "startedAt": "2026-11-03T08:21:54.394Z",
+      "platform": "darwin",
+      "arch": "arm64",
+      "osRelease": "27.2.0",
+      "osVersion": "Darwin Kernel Version 27.2.0: Wed Oct 14 23:48:06 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T8142",
+      "node": "v24.21.0",
+      "cases": [
+        {
+          "name": "strict HTTPS school authentication without bypass"
+        },
+        {
+          "name": "installed client approved on real school page and completed its scoped connection"
+        },
+        {
+          "name": "cold preparation downloads exact school dependency and submits production report",
+          "detail": {
+            "resourceBytes": 16917
+          }
+        },
+        {
+          "name": "school dependency bytes match the immutable manifest SHA256 and byte length"
+        },
+        {
+          "name": "resource report is durably read back from Linux school for the bound release and principal"
+        },
+        {
+          "name": "a different authenticated principal cannot read the original activity"
+        },
+        {
+          "name": "wrong environment, space and principal are refused for dependency, reports GET and fresh reports POST"
+        },
+        {
+          "name": "a fresh report for v2 cannot be submitted against the v4 release"
+        },
+        {
+          "name": "reload retains exact preparation and environment identity"
+        },
+        {
+          "name": "dependency transport interruption recovers under original preparation identity"
+        },
+        {
+          "name": "new component version uses a separate preparation without migrating the pinned release"
+        },
+        {
+          "name": "canonical annotationPackage v3 actual view writes to school and rereads the same annotation after reload"
+        },
+        {
+          "name": "stopping and restarting the real Linux school refuses access then recovers the same activity and annotation"
+        },
+        {
+          "name": "course qualification revocation denies dependency and report reads"
+        },
+        {
+          "name": "school connection revocation closes installed client dependency forwarding"
+        }
+      ],
+      "status": "passed",
+      "traffic": [
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/dependencies/mark-js",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/preparation-report",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a535bb5c-d6a3-4be4-b26e-a9badead8ab4/components/annotation/preparation-report",
+          "status": 200
+        }
+      ],
+      "failures": [],
+      "strictTLS": {
+        "ignoreHTTPSErrors": false,
+        "NODE_TLS_REJECT_UNAUTHORIZED": "default",
+        "caSha256": "e43a48dd3ecc26aad17d7bbf224bd9303ca1c532bad4d1eff4687692419217eb"
+      },
+      "launchOptions": {
+        "channel": "chrome",
+        "headless": false
+      },
+      "package": {
+        "manifestSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+        "provenance": {
+          "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+          "suppliedBy": "fixed acceptance revision; original package manifest retained"
+        },
+        "applicationSha256": {
+          "cli.js": "581ebc1aed2993251a2f6ba5b99951cbc987a806f8e203b37d66c11f5b8c7ec3",
+          "daemon.js": "4cfc702d073d3d8cd959a26bc439f2b93c6e14c3bb6b50cea7c97caedf10f175",
+          "product-runtime.js": "62cda972dac4f18b967c8e8bc2a8d19d82dbdf295bea3f9cb4e4ebc5a48eceb5"
+        }
+      },
+      "browser": "156.0.8078.80",
+      "headless": false,
+      "client": {
+        "profile": "local",
+        "environmentId": "900102cf-fdfc-47f8-9e57-b6f7159ff48f"
+      },
+      "contextRouteStatus": 403,
+      "boundActivity": {
+        "activityId": "12723be6-ee3a-4759-ae8c-3ff9ac12b977",
+        "identity": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "spaceId": "10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a",
+          "principalId": "8dc5f594-ec78-4aff-acf0-6f2045eb3f10",
+          "kind": "school",
+          "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
+        },
+        "status": "open",
+        "createdAt": "2026-11-03T08:21:58.530Z",
+        "course": {
+          "associationId": "99436c5a-282c-4d46-bed1-5b937e9fe390",
+          "courseId": "5b048c85-becc-4ae8-879f-355e3c5fb564",
+          "taskId": "3733b38a-84f2-4499-95b4-95ae2b2d4d0a",
+          "releaseId": "a5682af9-7324-439f-b98a-df8814b3ff0e",
+          "contentDigest": "f95bcea610349c3b2258613c4b3532d340478bd73bd82a670ce35b4e2bb1f09c",
+          "components": [
+            {
+              "key": "annotation",
+              "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+              "version": 2,
+              "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a"
+            }
+          ]
+        }
+      },
+      "scopeKey": "[\"xunjie.v1.900102cf-fdfc-47f8-9e57-b6f7159ff48f\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"8dc5f594-ec78-4aff-acf0-6f2045eb3f10\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]",
+      "preparationId": "78fb5810-1d24-4714-89c8-608136f0053c",
+      "crossPrincipalStatus": 404,
+      "expectedSubjectChecks": [
+        {
+          "field": "environmentId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "spaceId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "principalId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        }
+      ],
+      "versionScopes": [
+        {
+          "preparationId": "31e1e94e-3664-41db-b4a4-0d12a94a6851",
+          "scopeKey": "[\"xunjie.v1.900102cf-fdfc-47f8-9e57-b6f7159ff48f\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"8dc5f594-ec78-4aff-acf0-6f2045eb3f10\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",4,\"431e2e825e332f07e57e7394d5ebcbb85fc4a32520e045867ebfdc2ea35b8e81\",{\"title\":\"材料标注\"}]"
+        },
+        {
+          "preparationId": "78fb5810-1d24-4714-89c8-608136f0053c",
+          "scopeKey": "[\"xunjie.v1.900102cf-fdfc-47f8-9e57-b6f7159ff48f\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"8dc5f594-ec78-4aff-acf0-6f2045eb3f10\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]"
+        }
+      ],
+      "canonicalActivityId": "471d7cc4-1f1e-464a-9c9c-d3fcf7838cf9",
+      "canonicalSchoolConfirmationMs": 2250,
+      "networkHooks": [
+        {
+          "action": "stop",
+          "status": "passed",
+          "durationMs": 2056,
+          "observation": {
+            "action": "stop",
+            "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+            "attempts": [
+              {
+                "elapsedMs": 733,
+                "state": "stopped"
+              }
+            ],
+            "status": "passed",
+            "instancePresent": false,
+            "launchPresent": false,
+            "state": "stopped",
+            "durationMs": 736
+          }
+        },
+        {
+          "action": "start",
+          "status": "passed",
+          "durationMs": 5057,
+          "observation": {
+            "action": "start",
+            "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+            "attempts": [
+              {
+                "elapsedMs": 4292,
+                "state": "ready"
+              }
+            ],
+            "status": "passed",
+            "controlProtocol": "http:",
+            "state": "ready",
+            "durationMs": 4293
+          }
+        }
+      ],
+      "realDisconnect": {
+        "method": "private stop/start execFile hooks for the independently hosted school instance",
+        "blockedStatus": 503,
+        "scopePreserved": true
+      },
+      "finishedAt": "2026-11-03T08:22:40.524Z",
+      "preparationReportsObservation": {
+        "returnedCount": 34,
+        "returnedArraySha256JsonUtf8": "836a2525288a267deb03ddeead4443b398432e36154bcfec80c3dc7cc086102c",
+        "sample": {
+          "formatVersion": 1,
+          "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+          "version": 2,
+          "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a",
+          "preparationProtocolVersion": 1,
+          "selfTestVersion": 1,
+          "hostVersion": "1",
+          "device": {
+            "platform": "MacIntel",
+            "browser": "chrome",
+            "browserVersion": "156.0.0.0",
+            "features": [
+              "message-port",
+              "crypto-subtle",
+              "indexeddb",
+              "sandboxed-iframe"
+            ],
+            "preparationImplementationVersion": 2
+          },
+          "status": "ready",
+          "reason": "none",
+          "stage": "activate",
+          "capabilities": [
+            {
+              "capability": "workspace.read",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "workspace.change",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "material.highlight",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            }
+          ],
+          "durationMs": 455,
+          "resourceBytes": 16917,
+          "cacheHit": false,
+          "preview": false,
+          "memoryNote": "仅统计准备实际取得的依赖字节数；未测量浏览器进程内存。"
+        },
+        "sampleScope": "one returned device diagnostic; not a claim that it belongs to every actor"
+      }
+    },
+    "windows-web": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "actor": "windows-web",
+      "startedAt": "2026-11-03T08:16:58.409Z",
+      "platform": "win32",
+      "arch": "x64",
+      "osRelease": "10.0.26200",
+      "osVersion": "Windows 11 Home China",
+      "node": "v24.21.0",
+      "cases": [
+        {
+          "name": "strict HTTPS school authentication without bypass"
+        },
+        {
+          "name": "cold preparation downloads exact school dependency and submits production report",
+          "detail": {
+            "resourceBytes": 16917
+          }
+        },
+        {
+          "name": "school dependency bytes match the immutable manifest SHA256 and byte length"
+        },
+        {
+          "name": "resource report is durably read back from Linux school for the bound release and principal"
+        },
+        {
+          "name": "a different authenticated principal cannot read the original activity"
+        },
+        {
+          "name": "wrong environment, space and principal are refused for dependency, reports GET and fresh reports POST"
+        },
+        {
+          "name": "a fresh report for v2 cannot be submitted against the v4 release"
+        },
+        {
+          "name": "reload retains exact preparation and environment identity"
+        },
+        {
+          "name": "dependency transport interruption recovers under original preparation identity"
+        },
+        {
+          "name": "new component version uses a separate preparation without migrating the pinned release"
+        },
+        {
+          "name": "canonical annotationPackage v3 actual view writes to school and rereads the same annotation after reload"
+        },
+        {
+          "name": "actual Chrome offline mode preserves original annotation and preparation scope and reloads after reconnect"
+        },
+        {
+          "name": "course qualification revocation denies dependency and report reads"
+        }
+      ],
+      "status": "passed",
+      "traffic": [
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/dependencies/mark-js",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/preparation-report",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a535bb5c-d6a3-4be4-b26e-a9badead8ab4/components/annotation/preparation-report",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/dependencies/mark-js",
+          "failure": "net::ERR_INTERNET_DISCONNECTED"
+        }
+      ],
+      "failures": [],
+      "strictTLS": {
+        "ignoreHTTPSErrors": false,
+        "NODE_TLS_REJECT_UNAUTHORIZED": "default",
+        "caSha256": "e43a48dd3ecc26aad17d7bbf224bd9303ca1c532bad4d1eff4687692419217eb"
+      },
+      "launchOptions": {
+        "channel": "chrome",
+        "headless": false
+      },
+      "package": {
+        "manifestSha256": "8b22fb233afd3720dc1dc0cbe81d558b4b1f4469adc2b8582e18b9de48484a56",
+        "provenance": {
+          "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+          "runtimeAndWebSource": {
+            "app": "production build at 6171351171025bae457b9afbc1d33fc18ab5e481",
+            "web": "dist/wp03-179-181-692fa06; source unchanged through 6171351"
+          },
+          "platformResourcesFrom": "dist/product-win32-x64-r5",
+          "priorResourceManifestSha256": "dcebe01a0d56fc746d756578474a38b958937fb2f5b3030769c8890f5ea04e80",
+          "updatedManifestSha256": "8b22fb233afd3720dc1dc0cbe81d558b4b1f4469adc2b8582e18b9de48484a56",
+          "composition": "fixed production app/web plus unchanged platform Node/PostgreSQL resources; manifest app/web records regenerated"
+        },
+        "applicationSha256": {
+          "cli.js": "581ebc1aed2993251a2f6ba5b99951cbc987a806f8e203b37d66c11f5b8c7ec3",
+          "daemon.js": "4cfc702d073d3d8cd959a26bc439f2b93c6e14c3bb6b50cea7c97caedf10f175",
+          "product-runtime.js": "62cda972dac4f18b967c8e8bc2a8d19d82dbdf295bea3f9cb4e4ebc5a48eceb5"
+        }
+      },
+      "browser": "156.0.8078.79",
+      "headless": false,
+      "contextRouteStatus": 200,
+      "boundActivity": {
+        "activityId": "f89cbd86-c8e4-41c6-9259-5cee93d12a55",
+        "identity": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "spaceId": "10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a",
+          "principalId": "ea488fab-a662-4795-8c3e-d82c731d62ae",
+          "kind": "school",
+          "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
+        },
+        "status": "open",
+        "createdAt": "2026-11-03T08:16:58.379Z",
+        "course": {
+          "associationId": "1a9f76ca-82f9-4a6d-9f0d-43ec140299c1",
+          "courseId": "5b048c85-becc-4ae8-879f-355e3c5fb564",
+          "taskId": "3733b38a-84f2-4499-95b4-95ae2b2d4d0a",
+          "releaseId": "a5682af9-7324-439f-b98a-df8814b3ff0e",
+          "contentDigest": "f95bcea610349c3b2258613c4b3532d340478bd73bd82a670ce35b4e2bb1f09c",
+          "components": [
+            {
+              "key": "annotation",
+              "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+              "version": 2,
+              "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a"
+            }
+          ]
+        }
+      },
+      "scopeKey": "[\"xunjie.v1.64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"ea488fab-a662-4795-8c3e-d82c731d62ae\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]",
+      "preparationId": "6f20d73f-eefa-4eea-9f5d-a626dd269178",
+      "crossPrincipalStatus": 404,
+      "expectedSubjectChecks": [
+        {
+          "field": "environmentId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "spaceId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "principalId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        }
+      ],
+      "versionScopes": [
+        {
+          "preparationId": "6f20d73f-eefa-4eea-9f5d-a626dd269178",
+          "scopeKey": "[\"xunjie.v1.64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"ea488fab-a662-4795-8c3e-d82c731d62ae\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]"
+        },
+        {
+          "preparationId": "fe33c349-59a4-49b6-9f26-7efd5e4b2f4c",
+          "scopeKey": "[\"xunjie.v1.64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"ea488fab-a662-4795-8c3e-d82c731d62ae\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",4,\"431e2e825e332f07e57e7394d5ebcbb85fc4a32520e045867ebfdc2ea35b8e81\",{\"title\":\"材料标注\"}]"
+        }
+      ],
+      "canonicalActivityId": "b6acddf4-28ce-463d-a594-b62b23937e37",
+      "canonicalSchoolConfirmationMs": 2213,
+      "chromeOffline": {
+        "method": "BrowserContext.setOffline(true)",
+        "networkError": true,
+        "originalScopePreserved": true
+      },
+      "finishedAt": "2026-11-03T08:18:19.727Z",
+      "preparationReportsObservation": {
+        "returnedCount": 31,
+        "returnedArraySha256JsonUtf8": "c9219e00a49974b52fd17ef5e7af5bebb686ca1255c5c04aac5ac3e436146717",
+        "sample": {
+          "formatVersion": 1,
+          "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+          "version": 2,
+          "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a",
+          "preparationProtocolVersion": 1,
+          "selfTestVersion": 1,
+          "hostVersion": "1",
+          "device": {
+            "platform": "Win32",
+            "browser": "chrome",
+            "browserVersion": "156.0.0.0",
+            "features": [
+              "message-port",
+              "crypto-subtle",
+              "indexeddb",
+              "sandboxed-iframe"
+            ],
+            "preparationImplementationVersion": 2
+          },
+          "status": "ready",
+          "reason": "none",
+          "stage": "activate",
+          "capabilities": [
+            {
+              "capability": "workspace.read",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "workspace.change",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "material.highlight",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            }
+          ],
+          "durationMs": 604,
+          "resourceBytes": 16917,
+          "cacheHit": false,
+          "preview": false,
+          "memoryNote": "仅统计准备实际取得的依赖字节数；未测量浏览器进程内存。"
+        },
+        "sampleScope": "one returned device diagnostic; not a claim that it belongs to every actor"
+      }
+    },
+    "windows-client": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "actor": "windows-client",
+      "startedAt": "2026-11-03T08:28:41.759Z",
+      "platform": "win32",
+      "arch": "x64",
+      "osRelease": "10.0.26200",
+      "osVersion": "Windows 11 Home China",
+      "node": "v24.21.0",
+      "cases": [
+        {
+          "name": "strict HTTPS school authentication without bypass"
+        },
+        {
+          "name": "installed client approved on real school page and completed its scoped connection"
+        },
+        {
+          "name": "cold preparation downloads exact school dependency and submits production report",
+          "detail": {
+            "resourceBytes": 16917
+          }
+        },
+        {
+          "name": "school dependency bytes match the immutable manifest SHA256 and byte length"
+        },
+        {
+          "name": "resource report is durably read back from Linux school for the bound release and principal"
+        },
+        {
+          "name": "a different authenticated principal cannot read the original activity"
+        },
+        {
+          "name": "wrong environment, space and principal are refused for dependency, reports GET and fresh reports POST"
+        },
+        {
+          "name": "a fresh report for v2 cannot be submitted against the v4 release"
+        },
+        {
+          "name": "reload retains exact preparation and environment identity"
+        },
+        {
+          "name": "dependency transport interruption recovers under original preparation identity"
+        },
+        {
+          "name": "new component version uses a separate preparation without migrating the pinned release"
+        },
+        {
+          "name": "canonical annotationPackage v3 actual view writes to school and rereads the same annotation after reload"
+        },
+        {
+          "name": "actual Windows OS network block refuses school access, preserves personal access and resumes original activity without identity migration"
+        },
+        {
+          "name": "course qualification revocation denies dependency and report reads"
+        },
+        {
+          "name": "school connection revocation closes installed client dependency forwarding"
+        }
+      ],
+      "status": "passed",
+      "traffic": [
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/dependencies/mark-js",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a5682af9-7324-439f-b98a-df8814b3ff0e/components/annotation/preparation-report",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/releases/a535bb5c-d6a3-4be4-b26e-a9badead8ab4/components/annotation/preparation-report",
+          "status": 200
+        }
+      ],
+      "failures": [],
+      "strictTLS": {
+        "ignoreHTTPSErrors": false,
+        "NODE_TLS_REJECT_UNAUTHORIZED": "default",
+        "caSha256": "e43a48dd3ecc26aad17d7bbf224bd9303ca1c532bad4d1eff4687692419217eb"
+      },
+      "launchOptions": {
+        "channel": "chrome",
+        "headless": false
+      },
+      "package": {
+        "manifestSha256": "8b22fb233afd3720dc1dc0cbe81d558b4b1f4469adc2b8582e18b9de48484a56",
+        "provenance": {
+          "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+          "runtimeAndWebSource": {
+            "app": "production build at 6171351171025bae457b9afbc1d33fc18ab5e481",
+            "web": "dist/wp03-179-181-692fa06; source unchanged through 6171351"
+          },
+          "platformResourcesFrom": "dist/product-win32-x64-r5",
+          "priorResourceManifestSha256": "dcebe01a0d56fc746d756578474a38b958937fb2f5b3030769c8890f5ea04e80",
+          "updatedManifestSha256": "8b22fb233afd3720dc1dc0cbe81d558b4b1f4469adc2b8582e18b9de48484a56",
+          "composition": "fixed production app/web plus unchanged platform Node/PostgreSQL resources; manifest app/web records regenerated"
+        },
+        "applicationSha256": {
+          "cli.js": "581ebc1aed2993251a2f6ba5b99951cbc987a806f8e203b37d66c11f5b8c7ec3",
+          "daemon.js": "4cfc702d073d3d8cd959a26bc439f2b93c6e14c3bb6b50cea7c97caedf10f175",
+          "product-runtime.js": "62cda972dac4f18b967c8e8bc2a8d19d82dbdf295bea3f9cb4e4ebc5a48eceb5"
+        }
+      },
+      "browser": "156.0.8078.79",
+      "headless": false,
+      "client": {
+        "profile": "local",
+        "environmentId": "4231c946-0c2d-49be-ae3a-764bbcf72ce8"
+      },
+      "contextRouteStatus": 403,
+      "boundActivity": {
+        "activityId": "a6b7c04a-e685-44af-a29a-f6979cceaa35",
+        "identity": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "spaceId": "10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a",
+          "principalId": "c3b62238-9ff1-44f2-811b-134a6dced80a",
+          "kind": "school",
+          "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "serviceId": "507fb14b-92c4-4036-b0d8-edce0d1d3ce7",
+          "version": 1
+        },
+        "status": "open",
+        "createdAt": "2026-11-03T08:28:56.121Z",
+        "course": {
+          "associationId": "9799f631-2063-42f7-ae57-efdbe9e23af7",
+          "courseId": "5b048c85-becc-4ae8-879f-355e3c5fb564",
+          "taskId": "3733b38a-84f2-4499-95b4-95ae2b2d4d0a",
+          "releaseId": "a5682af9-7324-439f-b98a-df8814b3ff0e",
+          "contentDigest": "f95bcea610349c3b2258613c4b3532d340478bd73bd82a670ce35b4e2bb1f09c",
+          "components": [
+            {
+              "key": "annotation",
+              "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+              "version": 2,
+              "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a"
+            }
+          ]
+        }
+      },
+      "scopeKey": "[\"xunjie.v1.4231c946-0c2d-49be-ae3a-764bbcf72ce8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"c3b62238-9ff1-44f2-811b-134a6dced80a\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]",
+      "preparationId": "d338b125-d3ec-4c75-9e34-3594193a39a5",
+      "crossPrincipalStatus": 404,
+      "expectedSubjectChecks": [
+        {
+          "field": "environmentId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "environmentId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "spaceId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "spaceId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        },
+        {
+          "field": "principalId",
+          "route": "dependencies/mark-js",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-reports",
+          "status": 403,
+          "freshReportIdentity": false
+        },
+        {
+          "field": "principalId",
+          "route": "preparation-report",
+          "status": 403,
+          "freshReportIdentity": true
+        }
+      ],
+      "versionScopes": [
+        {
+          "preparationId": "2aaee482-fb70-4fa1-a05c-4458852dc2a2",
+          "scopeKey": "[\"xunjie.v1.4231c946-0c2d-49be-ae3a-764bbcf72ce8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"c3b62238-9ff1-44f2-811b-134a6dced80a\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",4,\"431e2e825e332f07e57e7394d5ebcbb85fc4a32520e045867ebfdc2ea35b8e81\",{\"title\":\"材料标注\"}]"
+        },
+        {
+          "preparationId": "d338b125-d3ec-4c75-9e34-3594193a39a5",
+          "scopeKey": "[\"xunjie.v1.4231c946-0c2d-49be-ae3a-764bbcf72ce8\",\"64364e78-a75e-4b38-90a0-b1718f4e1dc8\",\"10544ed3-8bdb-4b9d-80ef-74ee92b0cc2a\",\"c3b62238-9ff1-44f2-811b-134a6dced80a\",\"6237a554-67ee-4e74-ae33-36faf1223f12\",2,\"600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a\",{\"title\":\"材料标注\"}]"
+        }
+      ],
+      "canonicalActivityId": "c338ad2a-82cf-43a6-9168-ee4277d801b5",
+      "canonicalSchoolConfirmationMs": 2226,
+      "realDisconnect": {
+        "method": "Windows outbound firewall rule scoped to the isolated package node.exe and school IP:443",
+        "blockedStatus": 503,
+        "personalStatus": 200,
+        "scopePreserved": true
+      },
+      "finishedAt": "2026-11-03T08:29:28.253Z",
+      "preparationReportsObservation": {
+        "returnedCount": 37,
+        "returnedArraySha256JsonUtf8": "29f804ee1f3d77e4d403e73702cfafad1bb64d8d0639289f10c84017f58b3c1f",
+        "sample": {
+          "formatVersion": 1,
+          "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+          "version": 2,
+          "definitionDigest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a",
+          "preparationProtocolVersion": 1,
+          "selfTestVersion": 1,
+          "hostVersion": "1",
+          "device": {
+            "platform": "Win32",
+            "browser": "chrome",
+            "browserVersion": "156.0.0.0",
+            "features": [
+              "message-port",
+              "crypto-subtle",
+              "indexeddb",
+              "sandboxed-iframe"
+            ],
+            "preparationImplementationVersion": 2
+          },
+          "status": "ready",
+          "reason": "none",
+          "stage": "activate",
+          "capabilities": [
+            {
+              "capability": "workspace.read",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "workspace.change",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            },
+            {
+              "capability": "material.highlight",
+              "availability": "available",
+              "reason": "none",
+              "verification": "verified"
+            }
+          ],
+          "durationMs": 397,
+          "resourceBytes": 16917,
+          "cacheHit": false,
+          "preview": false,
+          "memoryNote": "仅统计准备实际取得的依赖字节数；未测量浏览器进程内存。"
+        },
+        "sampleScope": "one returned device diagnostic; not a claim that it belongs to every actor"
+      }
+    },
+    "windows-shutdown-bundle-tests": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "platform": "win32-x64",
+      "node": "24.21.0",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "durationMs": 1032.7208,
+      "execution": "production bundle API alias; --import file:/// URL; web fixture redirected to package/web",
+      "cases": [
+        {
+          "name": "quiesced shutdown closes a public preconnection that has sent no HTTP request",
+          "durationMs": 617.9948
+        },
+        {
+          "name": "shutdown finishes an admitted learning response before retiring public connections",
+          "durationMs": 247.8471
+        }
+      ]
+    },
+    "linux/shutdown-bundle-tests": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "source": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+      "execution": "packaged Node24.21 plus production product-runtime.js import alias; only web fixture path redirected to package/web",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "durationMs": 946.450122,
+      "cases": [
+        {
+          "name": "quiesced shutdown closes a public preconnection that has sent no HTTP request",
+          "durationMs": 292.355859
+        },
+        {
+          "name": "shutdown finishes an admitted learning response before retiring public connections",
+          "durationMs": 173.940873
+        }
+      ]
+    },
+    "linux/tls-preconnection-shutdown": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "status": "passed",
+      "probe": "public TLS connected with approved CA, no HTTP bytes sent",
+      "stop": {
+        "durationMs": 655,
+        "attempts": 1,
+        "instancePresent": false,
+        "launchPresent": false
+      },
+      "clientSocket": "closed by server, probe process exit0",
+      "restore": {
+        "durationMs": 3604,
+        "attempts": 1,
+        "state": "ready",
+        "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+        "strictHTTPS": 200
+      },
+      "retry": false
+    },
+    "linux-cleanup": {
+      "status": "completed",
+      "removedSchoolRoots": [
+        {
+          "name": "school",
+          "environmentId": "f51c6c4b-4424-4204-bb78-e8e4525d6082",
+          "installationId": "01f28acc-16d8-4b81-9a01-d91251bc78a1",
+          "stopped": true
+        },
+        {
+          "name": "school443",
+          "environmentId": "909d7fd6-2831-42c6-a6f7-08f0d539ddb5",
+          "installationId": "51064502-cbb7-46d5-bf28-f273b9910a4a",
+          "stopped": true
+        },
+        {
+          "name": "school-final",
+          "environmentId": "64364e78-a75e-4b38-90a0-b1718f4e1dc8",
+          "installationId": "783bf35c-dab5-4bb5-8a64-a96aba6c3667",
+          "stopped": true
+        }
+      ],
+      "removedTemporaryEntries": [
+        "private",
+        "app-baseline-692fa066",
+        "app-baseline-728b8481",
+        "linux-app-6171351.tgz"
+      ],
+      "taskNativeProcessesRemaining": 0,
+      "formalPackageRetained": true
+    },
+    "windows-cleanup": {
+      "status": "completed",
+      "removedRoots": [
+        {
+          "environmentId": "1d6858a2-6902-4550-a090-dcf98acb1c20",
+          "stopped": true,
+          "name": "client-root"
+        },
+        {
+          "environmentId": "da0263bd-ece8-4f27-9356-8c9acabd35be",
+          "stopped": true,
+          "name": "client-final-root"
+        },
+        {
+          "environmentId": "12365484-fe8f-429b-97f3-6ae8a3ab5419",
+          "stopped": true,
+          "name": "client-baseline-complete-root"
+        },
+        {
+          "environmentId": "8adaef72-fbea-4a88-811d-ff47cd2441dc",
+          "stopped": true,
+          "name": "client-candidate728-final-root"
+        },
+        {
+          "environmentId": "4231c946-0c2d-49be-ae3a-764bbcf72ce8",
+          "stopped": true,
+          "name": "client-candidate617-final-root"
+        }
+      ],
+      "removedTemporaryEntries": [
+        "private",
+        "vendor",
+        "app-baseline-692fa066",
+        "app-baseline-728b8481",
+        "windows-app-6171351.tgz"
+      ],
+      "taskNativeProcessesRemaining": 0,
+      "taskFirewallRulesRemaining": 0,
+      "taskCaRemaining": 0,
+      "originalCloudCaStillPresent": true,
+      "formalPackageRetained": true
+    },
+    "cleanup-status": {
+      "status": "completed",
+      "operations": [
+        "owned school-final instance stopped",
+        "removed 2 task-owned 443 /32 security-group rules",
+        "task-added Windows LocalMachine CA removed by exact fingerprint"
+      ],
+      "pending": []
+    },
+    "product-linux-x64-provenance": {
+      "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "runtimeAndWebSource": {
+        "app": "production build at 6171351171025bae457b9afbc1d33fc18ab5e481",
+        "web": "dist/wp03-179-181-692fa06; source unchanged through 6171351"
+      },
+      "platformResourcesFrom": "dist/product-linux-x64",
+      "priorResourceManifestSha256": "cf9eaf093733e5df829d30075864a9175ef4c925fa0652eac914ed2efad8034e",
+      "updatedManifestSha256": "0f19ab0c9353cd391ce1771467b10605e782ed909727ff3d30fe4e35e42a346c",
+      "composition": "fixed production app/web plus unchanged platform Node/PostgreSQL resources; manifest app/web records regenerated"
+    },
+    "product-win32-x64-provenance": {
+      "sourceRevision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "runtimeAndWebSource": {
+        "app": "production build at 6171351171025bae457b9afbc1d33fc18ab5e481",
+        "web": "dist/wp03-179-181-692fa06; source unchanged through 6171351"
+      },
+      "platformResourcesFrom": "dist/product-win32-x64-r5",
+      "priorResourceManifestSha256": "dcebe01a0d56fc746d756578474a38b958937fb2f5b3030769c8890f5ea04e80",
+      "updatedManifestSha256": "8b22fb233afd3720dc1dc0cbe81d558b4b1f4469adc2b8582e18b9de48484a56",
+      "composition": "fixed production app/web plus unchanged platform Node/PostgreSQL resources; manifest app/web records regenerated"
+    },
+    "manifest-audit": {
+      "revision": "6171351171025bae457b9afbc1d33fc18ab5e481",
+      "packages": {
+        "product-linux-x64": {
+          "manifestSha256": "0f19ab0c9353cd391ce1771467b10605e782ed909727ff3d30fe4e35e42a346c",
+          "checkedFileHashes": 196,
+          "mismatches": [],
+          "appSha256": {
+            "cli.js": "581ebc1aed2993251a2f6ba5b99951cbc987a806f8e203b37d66c11f5b8c7ec3",
+            "daemon.js": "4cfc702d073d3d8cd959a26bc439f2b93c6e14c3bb6b50cea7c97caedf10f175",
+            "product-runtime.js": "62cda972dac4f18b967c8e8bc2a8d19d82dbdf295bea3f9cb4e4ebc5a48eceb5"
+          }
+        },
+        "product-win32-x64": {
+          "manifestSha256": "8b22fb233afd3720dc1dc0cbe81d558b4b1f4469adc2b8582e18b9de48484a56",
+          "checkedFileHashes": 197,
+          "mismatches": [],
+          "appSha256": {
+            "cli.js": "581ebc1aed2993251a2f6ba5b99951cbc987a806f8e203b37d66c11f5b8c7ec3",
+            "daemon.js": "4cfc702d073d3d8cd959a26bc439f2b93c6e14c3bb6b50cea7c97caedf10f175",
+            "product-runtime.js": "62cda972dac4f18b967c8e8bc2a8d19d82dbdf295bea3f9cb4e4ebc5a48eceb5"
+          }
+        }
+      }
+    }
+  },
+  "teachingEffect": "not-evaluated",
+  "failuresAndAdjustments": [
+    "Native expected-subject counterexample returned 200 before 728b848 and now refuses all nine mismatch requests with 403.",
+    "Original legacy product cannot back up its uppercase record (corrupt). UUID-specific validation uses explicit registered owner migrations; no automatic startup upgrade or successful restore/takeover claim.",
+    "Two final host probe attempts timed out at different annotation-selection/save steps. Focusing the material with a real click before setting the range preserved every assertion; final 26 cases passed.",
+    "First Mac school canonical reload assertion used the default five-second deadline while the product still showed loading. Waiting for the actual component followed by original-text verification passed.",
+    "Initial IME attempts failed while locked or without OS focus. Selecting the input source first and then automatically raising the actual test Chrome PID resolved focus; later acceptance used only the automatic probe.",
+    "The real IME exposes untrusted compositionend events in this Chrome pair. Native proof requires trusted keydown/compositionstart/update plus trusted beforeinput and input containing each confirmed Chinese word; the end flags remain recorded.",
+    "An IME probe reached 15 passing cases before its synthetic v4 import reused the v2 dependency resource identity and correctly returned 409. The fixture now assigns new resource identities to the later version; product code did not change.",
+    "Two Mac client stop/start attempts exposed a real shutdown hang caused by public preconnections. 6171351 closes owned public sockets after business drain; the minimal regression was red before the fix, and shutdown/drain/lifecycle tests passed 13/13 after it."
+  ],
+  "systemIme": {
+    "ticket": [
+      "#179",
+      "#181"
+    ],
+    "startedAt": "2026-11-03T09:20:50.045Z",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0",
+    "osBuild": "26B123",
+    "sourceRevision": "907d0516ee3727ddc9db1db8f2aea907a0f69a44",
+    "sourceDirty": false,
+    "probeSha256": "fd3e962c7bf1b228a561942498a55519d3758b2edda64895c4011d9def446746",
+    "productDistributionSha256": "c1f3cce0d6fea8bc445dec24b13f35d11aef9a3bffea7e40f6c716cfe281ce6e",
+    "frontendBefore": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+    "node": "v24.21.0",
+    "postgres": "postgres (PostgreSQL) 18.6",
+    "browser": "Google Chrome",
+    "inputMethod": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "injection": "CGEventPost HID and System Events physical key codes",
+    "syntheticText": false,
+    "cases": [
+      "host-v3: system candidate Space and digit selection commit Chinese once",
+      "host-v3: Escape cancels the live composition and preserves committed text",
+      "host-v3: language switch, newline, Tab and Meta editing retain exact text",
+      "host-v3: switching tools during composition retains the previously protected note",
+      "host-v3: moving focus during composition preserves all previously confirmed bytes",
+      "host-v3: trusted composition events prove the system IME path independently of final strings",
+      "host-v3: tool switch, refresh and PostgreSQL reread preserve UTF-8 bytes and newlines",
+      "prepared-v2: system candidate Space and digit selection commit Chinese once",
+      "prepared-v2: Escape cancels the live composition and preserves committed text",
+      "prepared-v2: language switch, newline, Tab and Meta editing retain exact text",
+      "prepared-v2: switching tools during composition retains the previously protected note",
+      "prepared-v2: moving focus during composition preserves all previously confirmed bytes",
+      "prepared-v2: trusted composition events prove the system IME path independently of final strings",
+      "prepared-v2: highlighting and actual dependency-cache recovery retain IME-authored notes",
+      "prepared-v2: tool switch, refresh and PostgreSQL reread preserve UTF-8 bytes and newlines",
+      "importing a later prepared version preserves both pinned activities and their original IME annotations",
+      "full product CLI install/start/import/use leaves the entire packaged Web tree unchanged",
+      "the complete packaged CLI stops and restarts its owned environment normally"
+    ],
+    "variants": [
+      {
+        "variant": "host-v3",
+        "component": {
+          "manifest": {
+            "formatVersion": 1,
+            "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+            "version": 3,
+            "hostApiVersion": 1,
+            "title": "材料标注",
+            "entry": {
+              "resourceId": "d0c86f21-5856-49ce-b9b3-f8fcc7697127",
+              "sha256": "efaf3ddef0171f7ddf12601c8ddfd8dc1908a2aebc51eda124d7d3d447a1c53f",
+              "byteLength": 479855,
+              "mediaType": "text/html"
+            },
+            "stateVersion": 1,
+            "stateShape": {
+              "type": "object",
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "maxLength": 36
+                      },
+                      "note": {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      "quote": {
+                        "type": "string",
+                        "maxLength": 4000
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "initialState": {
+              "annotations": []
+            },
+            "requiredCapabilities": [
+              "workspace.read",
+              "workspace.change"
+            ]
+          },
+          "digest": "3623d7656d0a295496f63b0348fda7013effcea0ae974c64b67cc706569b8352"
+        },
+        "finalText": "你好世界\nabc上海bei'jing'hang'zhou",
+        "utf8Sha256": "c7ba250dff8d4f618748f81c3e2fa0200092aab073eaa2eb536f9a0cd04cdc3c",
+        "byteLength": 40,
+        "newlineCount": 1
+      },
+      {
+        "variant": "prepared-v2",
+        "component": {
+          "manifest": {
+            "formatVersion": 2,
+            "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+            "version": 2,
+            "hostApiVersion": 1,
+            "preparationProtocolVersion": 1,
+            "title": "材料标注",
+            "entry": {
+              "resourceId": "702493fc-1bb0-4483-a695-e66694509656",
+              "sha256": "6c5045dbe0758dc4bd0412fe3f17bd420cab3405ae8162ec2388fdc244fd6081",
+              "byteLength": 16690,
+              "mediaType": "text/html"
+            },
+            "dependencies": [
+              {
+                "dependencyId": "mark-js",
+                "package": "mark.js",
+                "version": "8.11.1",
+                "role": "script",
+                "resourceId": "0445d39b-51ce-4481-9a60-798b92d3a2e6",
+                "sha256": "21d62e1053f7589fe6365cccd7c636d1781abf7879a605d8ce5f1f5b81a7b8fa",
+                "byteLength": 16917,
+                "mediaType": "text/javascript",
+                "loadOrder": 0,
+                "preparationTypes": [
+                  "browser"
+                ]
+              }
+            ],
+            "environment": {
+              "preparationType": "browser",
+              "preparationProtocolVersion": 1,
+              "requiredFeatures": [
+                "message-port",
+                "crypto-subtle",
+                "indexeddb",
+                "sandboxed-iframe"
+              ],
+              "selfTestVersion": 1,
+              "capabilityDependencies": [
+                {
+                  "capability": "workspace.read",
+                  "dependencyIds": []
+                },
+                {
+                  "capability": "workspace.change",
+                  "dependencyIds": []
+                },
+                {
+                  "capability": "material.highlight",
+                  "dependencyIds": [
+                    "mark-js"
+                  ]
+                }
+              ]
+            },
+            "budget": {
+              "resourceCount": 2,
+              "totalResourceBytes": 65536,
+              "messageBytes": 131072,
+              "preparationTimeoutMs": 60000,
+              "selfTestTimeoutMs": 30000,
+              "parallelism": 1,
+              "cacheScope": "device-local"
+            },
+            "selfTest": {
+              "selfTestVersion": 1,
+              "material": {
+                "title": "自检样例材料",
+                "text": "观察与解释\n\n阅读材料时，先区分观察到的事实与自己的解释。\n记录问题，再寻找可以核对的依据。\n\n再次核对时，先区分观察到的事实与新的解释。"
+              },
+              "steps": [
+                {
+                  "kind": "dependency-loads",
+                  "checkId": "loads-highlight-library",
+                  "dependencyIds": [
+                    "mark-js"
+                  ],
+                  "expect": {
+                    "globalName": "Mark"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-chinese-sentence",
+                  "quote": "阅读材料时，先区分观察到的事实与自己的解释。",
+                  "expect": {
+                    "marks": 1,
+                    "markedText": "阅读材料时，先区分观察到的事实与自己的解释。"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-repeated-phrase",
+                  "quote": "先区分观察到的事实",
+                  "expect": {
+                    "marks": 2,
+                    "markedText": "先区分观察到的事实"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-across-newline",
+                  "quote": "自己的解释。\n记录问题",
+                  "expect": {
+                    "marks": 1,
+                    "markedText": "自己的解释。\n记录问题"
+                  }
+                },
+                {
+                  "kind": "highlight-matches",
+                  "checkId": "highlight-absent-quote",
+                  "quote": "这段文字不在样例材料中",
+                  "expect": {
+                    "marks": 0,
+                    "markedText": ""
+                  }
+                },
+                {
+                  "kind": "highlight-releases",
+                  "checkId": "release-restores-body",
+                  "quote": "记录问题，再寻找可以核对的依据。",
+                  "expect": {
+                    "marks": 0,
+                    "bodyText": "观察与解释\n\n阅读材料时，先区分观察到的事实与自己的解释。\n记录问题，再寻找可以核对的依据。\n\n再次核对时，先区分观察到的事实与新的解释。"
+                  }
+                },
+                {
+                  "kind": "annotation-roundtrip",
+                  "checkId": "annotation-temp-roundtrip",
+                  "quote": "观察到的事实",
+                  "note": "自检写入的临时笔记",
+                  "expect": {
+                    "annotations": 1,
+                    "note": "自检写入的临时笔记"
+                  }
+                },
+                {
+                  "kind": "invalid-input-rejected",
+                  "checkId": "reject-overlong-quote",
+                  "quote": "字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字",
+                  "expect": {
+                    "annotations": 1,
+                    "rejected": true
+                  }
+                },
+                {
+                  "kind": "invalid-input-rejected",
+                  "checkId": "reject-blank-quote",
+                  "quote": "   ",
+                  "expect": {
+                    "annotations": 1,
+                    "rejected": true
+                  }
+                }
+              ]
+            },
+            "stateVersion": 1,
+            "stateShape": {
+              "type": "object",
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "maxLength": 36
+                      },
+                      "note": {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      "quote": {
+                        "type": "string",
+                        "maxLength": 4000
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "initialState": {
+              "annotations": []
+            },
+            "requiredCapabilities": [
+              "workspace.read",
+              "workspace.change",
+              "material.highlight"
+            ]
+          },
+          "digest": "600ada61cc6a22163b8d8cae60a2dcecfbef547b1a98084a8195aa0a653ad03a"
+        },
+        "finalText": "你好世界\nabc上海bei'jing'hang'zhou",
+        "utf8Sha256": "c7ba250dff8d4f618748f81c3e2fa0200092aab073eaa2eb536f9a0cd04cdc3c",
+        "byteLength": 40,
+        "newlineCount": 1
+      }
+    ],
+    "status": "passed",
+    "teachingOutcome": "not-evaluated",
+    "browserVersion": "156.0.8078.80",
+    "browserArguments": [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "--disable-field-trial-config",
+      "--disable-background-networking",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-back-forward-cache",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-extensions-with-background-pages",
+      "--disable-component-update",
+      "--no-default-browser-check",
+      "--disable-default-apps",
+      "--disable-dev-shm-usage",
+      "--disable-edgeupdater",
+      "--disable-extensions",
+      "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+      "--enable-features=CDPScreenshotNewSurface",
+      "--allow-pre-commit-input",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-popup-blocking",
+      "--disable-prompt-on-repost",
+      "--disable-renderer-backgrounding",
+      "--disable-updater-scheduler",
+      "--force-color-profile=srgb",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--password-store=basic",
+      "--use-mock-keychain",
+      "--no-service-autorun",
+      "--export-tagged-pdf",
+      "--disable-search-engine-choice-screen",
+      "--unsafely-disable-devtools-self-xss-warnings",
+      "--edge-skip-compat-layer-relaunch",
+      "--disable-infobars",
+      "--disable-search-engine-choice-screen",
+      "--disable-sync",
+      "--enable-unsafe-swiftshader",
+      "--no-sandbox",
+      "--enable-automation",
+      "--window-size=1360,980",
+      "--user-data-dir=<temporary-path>",
+      "--remote-debugging-pipe",
+      "--no-startup-window",
+      "--flag-switches-begin",
+      "--flag-switches-end",
+      "--enable-unsafe-swiftshader"
+    ],
+    "headless": false,
+    "focusDiagnostics": [
+      {
+        "browserPid": 9061,
+        "systemPid": 9061,
+        "frame": {
+          "focused": true,
+          "active": true,
+          "tag": "TEXTAREA"
+        },
+        "page": true
+      },
+      {
+        "browserPid": 9061,
+        "systemPid": 9061,
+        "frame": {
+          "focused": true,
+          "active": true,
+          "tag": "TEXTAREA"
+        },
+        "page": true
+      }
+    ],
+    "compositionTransitions": [
+      {
+        "variant": "host-v3",
+        "confirmedPrefix": "你好世界\nabc上海",
+        "beforeBlur": "你好世界\nabc上海bei'jing",
+        "afterBlur": "你好世界\nabc上海bei'jing",
+        "beforeToolChange": "你好世界\nabc上海bei'jing'hang'zhou",
+        "afterToolChange": "你好世界\nabc上海bei'jing'hang'zhou"
+      },
+      {
+        "variant": "prepared-v2",
+        "confirmedPrefix": "你好世界\nabc上海",
+        "beforeBlur": "你好世界\nabc上海bei'jing",
+        "afterBlur": "你好世界\nabc上海bei'jing",
+        "beforeToolChange": "你好世界\nabc上海bei'jing'hang'zhou",
+        "afterToolChange": "你好世界\nabc上海bei'jing'hang'zhou"
+      }
+    ],
+    "eventObservations": [
+      {
+        "variant": "host-v3",
+        "starts": 5,
+        "ends": 4,
+        "nativeEventTypes": [
+          "keydown",
+          "compositionstart",
+          "compositionupdate",
+          "beforeinput",
+          "input"
+        ],
+        "nativeEventsTrusted": true,
+        "compositionEndTrust": [
+          {
+            "data": "你好",
+            "trusted": false
+          },
+          {
+            "data": "世界",
+            "trusted": false
+          },
+          {
+            "data": "",
+            "trusted": false
+          },
+          {
+            "data": "上海",
+            "trusted": false
+          }
+        ],
+        "counts": [
+          {
+            "type": "keydown",
+            "trusted": true,
+            "count": 46
+          },
+          {
+            "type": "compositionstart",
+            "trusted": true,
+            "count": 5
+          },
+          {
+            "type": "compositionupdate",
+            "trusted": true,
+            "count": 38
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "compositionend",
+            "trusted": false,
+            "count": 4
+          }
+        ],
+        "chineseCommitEvents": [
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "ni'hao"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好shi'jie"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabcshang'hai"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabc上海"
+          }
+        ]
+      },
+      {
+        "variant": "prepared-v2",
+        "starts": 5,
+        "ends": 4,
+        "nativeEventTypes": [
+          "keydown",
+          "compositionstart",
+          "compositionupdate",
+          "beforeinput",
+          "input"
+        ],
+        "nativeEventsTrusted": true,
+        "compositionEndTrust": [
+          {
+            "data": "你好",
+            "trusted": false
+          },
+          {
+            "data": "世界",
+            "trusted": false
+          },
+          {
+            "data": "",
+            "trusted": false
+          },
+          {
+            "data": "上海",
+            "trusted": false
+          }
+        ],
+        "counts": [
+          {
+            "type": "keydown",
+            "trusted": true,
+            "count": 46
+          },
+          {
+            "type": "compositionstart",
+            "trusted": true,
+            "count": 5
+          },
+          {
+            "type": "compositionupdate",
+            "trusted": true,
+            "count": 38
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "count": 42
+          },
+          {
+            "type": "compositionend",
+            "trusted": false,
+            "count": 4
+          }
+        ],
+        "chineseCommitEvents": [
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "ni'hao"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "你好",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好shi'jie"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "世界",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界"
+          },
+          {
+            "type": "beforeinput",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabcshang'hai"
+          },
+          {
+            "type": "input",
+            "trusted": true,
+            "key": null,
+            "code": null,
+            "data": "上海",
+            "inputType": "insertCompositionText",
+            "composing": true,
+            "value": "你好世界\nabc上海"
+          }
+        ]
+      }
+    ],
+    "frontendAfter": "22ec66d715863ae7f0370a7a11a1f9ba0b3edbb0d737183b4af4e0eb0bdc6ae7",
+    "mac": "passed",
+    "cleanup": "owned product stopped",
+    "privateRoot": "removed",
+    "finishedAt": "2026-11-03T09:21:49.012Z"
+  },
+  "systemImeCleanup": {
+    "status": "passed",
+    "ownership": "exact task IME prefix, product installation node path, stopped CLI and PostgreSQL",
+    "environments": [
+      {
+        "rootName": "xj-component-system-ime-2341gp",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-EPtTOc",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-FGwF90",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-K22qTg",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-Ob5seI",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-bp4T1e",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-gVfO91",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-iTMgap",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-jX4yo2",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      },
+      {
+        "rootName": "xj-component-system-ime-jt8dMD",
+        "cliExit": 0,
+        "postgresStatusExit": 3,
+        "removed": true
+      }
+    ],
+    "removedCount": 10,
+    "remainingOwnedRoots": 0,
+    "finishedAt": "2026-11-03T09:22:19.476337+00:00"
+  },
+  "runtimeShutdown": {
+    "codeCommit": "6171351171025bae457b9afbc1d33fc18ab5e481",
+    "red": {
+      "tests": 1,
+      "failed": 1,
+      "symptom": "an unrequested public connection kept host.stop pending"
+    },
+    "green": {
+      "tests": 13,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        "shutdown-sockets.test.mjs",
+        "learning-drain.test.mjs",
+        "lifecycle.test.mjs"
+      ]
+    }
+  },
+  "probeSha256": {
+    "scripts/probe-component-preparation.mjs": "f2031ce470124d13a90115150f15b9073be5dd3645bf8f76253362bdacbe2560",
+    "scripts/probe-component-school.mjs": "f965fc6e3c48a5dbe0028e09ffa7b54a1a2d92792e3ad9cff8c7f1d51a9ea2ba",
+    "scripts/probe-component-package.mjs": "c1c9fb1fbf1b220321d5da6c500867fb713024d19a92a009e1a23132490489f7",
+    "scripts/probe-component-legacy.mjs": "9ca816d6299292b7d8836245e6c78903a0b90dbf2423f80cb598c4a0483e777c",
+    "scripts/probe-component-ime.mjs": "fd3e962c7bf1b228a561942498a55519d3758b2edda64895c4011d9def446746",
+    "scripts/probe-component-school-lifecycle.mjs": "9ba91b4055af40fe91a55dd4971a8a20d0f016536c195fe0ed51ee939b0fd364",
+    "scripts/probe-component-host.mjs": "dc78f6031953bb2360faca74b799ebb9f2c774ccff7ee6b9b352b1ea561f9c9e"
+  },
+  "rawReportSha256": {
+    ".verification/wp03-179-181/candidate617/final-product-identity.json": "3f634978b12b7625d963cb6de2a519f73b92eb93db60b35e02393870cab79850",
+    ".verification/wp03-179-181/candidate617/package-cli/package-cli-report.json": "0ff723d692fb7d3b260b0abef4665ca2bcc4e9beaf71576b08167ec748c99f8d",
+    ".verification/wp03-179-181/candidate617/legacy/legacy-remediation.json": "defcf64028db23461649ee862b2ee5d3ffaaeee19976c88568eca4ecdbac0eb1",
+    ".verification/wp03-179-181/candidate617/preparation/preparation-report.json": "c7ab62bd7b6d1d0f6e83a80dcae7c7ff5d6eef5b1418c4932a5cbb5d77974052",
+    ".verification/wp03-179-181/candidate617/host/browser-report.json": "4b1008314bd41341d8cbf2a1f06c043f7abfee5b0cffb6e2d4fcf42938d9dd6f",
+    ".verification/wp03-179-181/candidate617/product-editor.json": "1a6b30f46c891731edf7f31edafd46db14d43903503600bf356f409d3783d927",
+    ".verification/2026-11-03T08-10-47-649Z-B89xNx/summary.json": "858b06765a8f2124a01917ef85311e4852a1f1d77c0045c8c57485e5a8d8f071",
+    ".verification/wp03-179-181/subject-fix.json": "5a04de2b653b92d36a3b02d9d01eddf8b4d304bc36ad74406bfe16532cf9db4a",
+    ".verification/wp03-179-181/local-cleanup.json": "b75696ed65460280631b3b7e37ce881bf99a21481885b3b566648bfd3d4b0ac4",
+    ".verification/wp03-179-181/old-ui/before-ui-report.json": "25500deb6d251f69d01706b0cd6c0da2313af5053816992af14124b6e3967c0e",
+    ".verification/wp03-179-181-school/candidate6171351/mac-web/mac-web-report.json": "dc1634094ab330c9fc927e4d168fa51d460d00806aa206d5638ac0f8dba4aaad",
+    ".verification/wp03-179-181-school/candidate6171351/mac-client/mac-client-report.json": "153c65024e4ed8e547bb6cc7e8ce2b8b334b61bfb3e28f3527d84da7b27b2a65",
+    ".verification/wp03-179-181-school/candidate6171351/windows-web/windows-web-report.json": "846268eaf6903fe9b1a0a7091d1f1d5fe13d6edb9e113dca23d577134eda4201",
+    ".verification/wp03-179-181-school/candidate6171351/windows-client/windows-client-report.json": "796abcb76e410d266d797350fbe3de8e17ae89274ccc9af55fc7be112069fb21",
+    ".verification/wp03-179-181-school/candidate6171351/windows-shutdown-bundle-tests.json": "e9c8ec0779743da9c89618c38108251c5b715782ce71006070c1028e1c18f187",
+    ".verification/wp03-179-181-school/candidate6171351/linux/shutdown-bundle-tests.json": "0f5a96d89df1b8a503abd304e1a1cc66edbaaf853ad199ac42eecbe100164919",
+    ".verification/wp03-179-181-school/candidate6171351/linux/tls-preconnection-shutdown.json": "4aa0be299cbae085fb73c821c3e7038c44bae0f296522f82acf4d068699f9595",
+    ".verification/wp03-179-181-school/candidate6171351/linux-cleanup.json": "c1359ce78336dbcaaa3fe1c310192653dee617fb1b0cc2a4ac098b1584651495",
+    ".verification/wp03-179-181-school/candidate6171351/windows-cleanup.json": "004b1ab47d47f85ea2673abab8fb1a4df34b392e2142028e1f81e471a2b3cae6",
+    ".verification/wp03-179-181-school/candidate6171351/cleanup-status.json": "f51c385a69a92dc232b9c6ae79f8dae6d1087024892b9a6b487a2065215cb07a",
+    ".verification/wp03-179-181-school/candidate6171351/product-linux-x64-provenance.json": "a8dd9415cc56af9d61290c2b34c0e0c9c595ec1583dd5cef7b3207fff70aa914",
+    ".verification/wp03-179-181-school/candidate6171351/product-win32-x64-provenance.json": "05660ca58712976cb5a78a20f409512d57613219df8b71d503a4d8dfca64a088",
+    ".verification/wp03-179-181-school/candidate6171351/manifest-audit.json": "50db881d8d269d4671f24ed1b06e12cd40a495d20588641e3b7f7527fc112bbd",
+    ".verification/wp03-179-181/ime/component-ime-report.json": "e6300210222336e90e4b94d12911cc67934e3deaea22fa2e4e5bf05d842d9e2b",
+    ".verification/wp03-179-181/ime/cleanup.json": "c86f16bff58428f2158e0acfda567aaa7fa0173ebb44be607292972942095dba"
+  }
+}

@@ -1,3 +1,4 @@
+import { verifySemanticReference } from './semantic-references.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -73,7 +74,7 @@ export function createActionIntents(storage: OwnedStorage, options: {
       await tx.query('INSERT INTO action_intents(request_id,activity_id,input_digest,body,state) VALUES($1,$2,$3,$4,$5)',
         [input.requestId, activityId, inputDigest, JSON.stringify(input), 'prepared']);
       for (const file of input.works) await tx.reference(`action/${input.requestId}/work/${file.contentId}`, file.contentId);
-      for (const reference of input.draft.references) if (reference.source.kind === 'work')
+      for (const reference of input.draft.references) if (reference.source.kind === 'work' || reference.source.kind === 'component')
         await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}`, reference.source.contentId);
       return { requestId: input.requestId, inputDigest };
     });
@@ -202,7 +203,12 @@ export async function validateActionIntents(storage: OwnedStorage) {
     }
     for (const reference of intent.input.draft.references) {
       const source = reference.source;
-      if (source.kind === 'work') {
+      if (source.kind === 'component') {
+        await verifySemanticReference(storage, body, reference, true);
+        const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+          [`action/${intent.input.requestId}/reference/${reference.referenceId}`]);
+        if (links.length !== 1 || links[0]!.resource_id !== source.contentId) throw new StorageError('corrupt');
+      } else if (source.kind === 'work') {
         const { rows: [content] } = await storage.read(`SELECT c.activity_id,c.object_id,c.encoding,o.kind FROM work_contents c
           JOIN work_objects o ON o.object_id=c.object_id WHERE content_id=$1`, [source.contentId]);
         if (!content || content.activity_id !== row.activity_id || content.object_id !== source.objectId || content.encoding !== 'utf8'

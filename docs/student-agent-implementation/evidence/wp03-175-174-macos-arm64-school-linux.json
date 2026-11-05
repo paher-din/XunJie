@@ -1,0 +1,626 @@
+{
+  "status": "passed",
+  "label": "school-linux",
+  "controls": [
+    {
+      "controlId": "ed615af0-f019-4d91-a6be-c9e9406f9526",
+      "operationId": "advance",
+      "effect": "input",
+      "expectedSeq": 0,
+      "parameters": {
+        "value": 1
+      }
+    },
+    {
+      "controlId": "f410edd9-aa52-4599-8007-a3b4e0322d73",
+      "operationId": "advance",
+      "effect": "input",
+      "expectedSeq": 1,
+      "parameters": {
+        "value": 2
+      }
+    },
+    {
+      "controlId": "03582cd1-d1fb-45e6-85d4-ff51b155c4f5",
+      "operationId": "pause",
+      "effect": "pause",
+      "expectedSeq": 2,
+      "parameters": {}
+    },
+    {
+      "controlId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+      "operationId": "checkpoint",
+      "effect": "checkpoint",
+      "expectedSeq": 3,
+      "parameters": {}
+    },
+    {
+      "controlId": "46348469-8232-4049-8f23-48c588ce2501",
+      "operationId": "step",
+      "effect": "step",
+      "expectedSeq": 4,
+      "parameters": {
+        "value": 2
+      }
+    },
+    {
+      "controlId": "46348469-8232-4049-8f23-48c588ce2501",
+      "operationId": "step",
+      "effect": "step",
+      "expectedSeq": 4,
+      "parameters": {
+        "value": 2
+      }
+    },
+    {
+      "controlId": "6b4df6a7-f0fe-41ff-be6c-1d2732a2f291",
+      "operationId": "step",
+      "effect": "step",
+      "expectedSeq": 0,
+      "parameters": {
+        "value": 2
+      }
+    },
+    {
+      "controlId": "7830bb7a-80ed-42d3-8489-4b92fbbac7ab",
+      "operationId": "reset",
+      "effect": "reset",
+      "expectedSeq": 1,
+      "parameters": {}
+    },
+    {
+      "controlId": "c0d2775c-be6d-4c67-b130-0a9ccbebb724",
+      "operationId": "resume",
+      "effect": "resume",
+      "expectedSeq": 2,
+      "parameters": {}
+    },
+    {
+      "controlId": "52c41478-c30f-4f5b-8c16-506b59def233",
+      "operationId": "pause",
+      "effect": "pause",
+      "expectedSeq": 3,
+      "parameters": {}
+    }
+  ],
+  "startedAt": "2026-11-04T12:49:29.256Z",
+  "original": {
+    "requestId": "97eb693a-7317-461f-a095-ff7302e1e85a",
+    "inputDigest": "871c7c653a690ad23ea227d7e0f663972fd639474e4a46438bbf42d2992ac132",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+    "state": "running",
+    "statusKnowledge": "confirmed",
+    "stopRequested": false,
+    "confirmedSeq": 2,
+    "reason": null,
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "c90007c2-132f-441b-b3c1-dc5e31d7d0d8",
+      "appliedSeq": 0,
+      "lastControlId": null,
+      "observation": {
+        "pid": 294560,
+        "total": 0,
+        "value": 0,
+        "applied": 0,
+        "threads": 7
+      },
+      "observations": [],
+      "checkpoints": []
+    }
+  },
+  "beforeCheckpoint": {
+    "requestId": "97eb693a-7317-461f-a095-ff7302e1e85a",
+    "inputDigest": "871c7c653a690ad23ea227d7e0f663972fd639474e4a46438bbf42d2992ac132",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+    "state": "paused",
+    "statusKnowledge": "confirmed",
+    "stopRequested": false,
+    "confirmedSeq": 5,
+    "reason": null,
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "c90007c2-132f-441b-b3c1-dc5e31d7d0d8",
+      "appliedSeq": 3,
+      "lastControlId": "03582cd1-d1fb-45e6-85d4-ff51b155c4f5",
+      "observation": {
+        "pid": 294560,
+        "total": 3,
+        "value": 3,
+        "applied": 2,
+        "threads": 7
+      },
+      "observations": [
+        {
+          "seq": 1,
+          "controlId": "ed615af0-f019-4d91-a6be-c9e9406f9526",
+          "state": {
+            "pid": 294560,
+            "total": 1,
+            "value": 1,
+            "applied": 1,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:34.867Z"
+        },
+        {
+          "seq": 2,
+          "controlId": "f410edd9-aa52-4599-8007-a3b4e0322d73",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:36.109Z"
+        },
+        {
+          "seq": 3,
+          "controlId": "03582cd1-d1fb-45e6-85d4-ff51b155c4f5",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:37.671Z"
+        }
+      ],
+      "checkpoints": []
+    }
+  },
+  "checkpoint": {
+    "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+    "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+    "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501",
+    "contentId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+    "appliedSeq": 4,
+    "byteLength": 961,
+    "createdAt": "2026-11-04T12:49:38.888Z"
+  },
+  "lostCheckpointReply": true,
+  "checkpointPosts": 1,
+  "baseline": {
+    "requestId": "97eb693a-7317-461f-a095-ff7302e1e85a",
+    "inputDigest": "871c7c653a690ad23ea227d7e0f663972fd639474e4a46438bbf42d2992ac132",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+    "state": "paused",
+    "statusKnowledge": "confirmed",
+    "stopRequested": false,
+    "confirmedSeq": 7,
+    "reason": null,
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "c90007c2-132f-441b-b3c1-dc5e31d7d0d8",
+      "appliedSeq": 5,
+      "lastControlId": "46348469-8232-4049-8f23-48c588ce2501",
+      "observation": {
+        "pid": 294560,
+        "total": 5,
+        "value": 1,
+        "applied": 3,
+        "threads": 7
+      },
+      "observations": [
+        {
+          "seq": 1,
+          "controlId": "ed615af0-f019-4d91-a6be-c9e9406f9526",
+          "state": {
+            "pid": 294560,
+            "total": 1,
+            "value": 1,
+            "applied": 1,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:34.867Z"
+        },
+        {
+          "seq": 2,
+          "controlId": "f410edd9-aa52-4599-8007-a3b4e0322d73",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:36.109Z"
+        },
+        {
+          "seq": 3,
+          "controlId": "03582cd1-d1fb-45e6-85d4-ff51b155c4f5",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:37.671Z"
+        },
+        {
+          "seq": 4,
+          "controlId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:38.888Z"
+        },
+        {
+          "seq": 5,
+          "controlId": "46348469-8232-4049-8f23-48c588ce2501",
+          "state": {
+            "pid": 294560,
+            "total": 5,
+            "value": 1,
+            "applied": 3,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:44.413Z"
+        }
+      ],
+      "checkpoints": [
+        {
+          "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+          "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+          "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501",
+          "contentId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+          "appliedSeq": 4,
+          "byteLength": 961,
+          "createdAt": "2026-11-04T12:49:38.888Z"
+        }
+      ]
+    }
+  },
+  "restored": {
+    "requestId": "66ba1ad6-bacf-4b62-ad32-010500ed0496",
+    "inputDigest": "a0724f82e26d26f78a0f03c11a31530461cc63bdb7c6c1430a10133dc0f7f1ea",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "4be5861f-2a3b-45f9-bcdb-67a6256d81f6",
+    "state": "paused",
+    "statusKnowledge": "confirmed",
+    "stopRequested": false,
+    "confirmedSeq": 2,
+    "reason": null,
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "db837a70-116c-4155-8469-de68057f6ee4",
+      "appliedSeq": 0,
+      "lastControlId": null,
+      "observation": {
+        "pid": 294675,
+        "total": 3,
+        "value": 3,
+        "applied": 2,
+        "threads": 7
+      },
+      "observations": [],
+      "checkpoints": [],
+      "restoredFrom": {
+        "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+        "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+        "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501"
+      }
+    }
+  },
+  "next": {
+    "requestId": "66ba1ad6-bacf-4b62-ad32-010500ed0496",
+    "inputDigest": "a0724f82e26d26f78a0f03c11a31530461cc63bdb7c6c1430a10133dc0f7f1ea",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "4be5861f-2a3b-45f9-bcdb-67a6256d81f6",
+    "state": "paused",
+    "statusKnowledge": "confirmed",
+    "stopRequested": false,
+    "confirmedSeq": 3,
+    "reason": null,
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "db837a70-116c-4155-8469-de68057f6ee4",
+      "appliedSeq": 1,
+      "lastControlId": "6b4df6a7-f0fe-41ff-be6c-1d2732a2f291",
+      "observation": {
+        "pid": 294675,
+        "total": 5,
+        "value": 1,
+        "applied": 3,
+        "threads": 7
+      },
+      "observations": [
+        {
+          "seq": 1,
+          "controlId": "6b4df6a7-f0fe-41ff-be6c-1d2732a2f291",
+          "state": {
+            "pid": 294675,
+            "total": 5,
+            "value": 1,
+            "applied": 3,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:49.383Z"
+        }
+      ],
+      "checkpoints": [],
+      "restoredFrom": {
+        "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+        "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+        "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501"
+      }
+    }
+  },
+  "final": {
+    "requestId": "66ba1ad6-bacf-4b62-ad32-010500ed0496",
+    "inputDigest": "a0724f82e26d26f78a0f03c11a31530461cc63bdb7c6c1430a10133dc0f7f1ea",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "4be5861f-2a3b-45f9-bcdb-67a6256d81f6",
+    "state": "cancelled",
+    "statusKnowledge": "confirmed",
+    "stopRequested": true,
+    "confirmedSeq": 7,
+    "reason": {
+      "code": "worker-terminated",
+      "detail": "用户请求停止本机会话。"
+    },
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "db837a70-116c-4155-8469-de68057f6ee4",
+      "appliedSeq": 4,
+      "lastControlId": "52c41478-c30f-4f5b-8c16-506b59def233",
+      "observation": {
+        "pid": 294675,
+        "total": 0,
+        "value": 0,
+        "applied": 0,
+        "threads": 7
+      },
+      "observations": [
+        {
+          "seq": 1,
+          "controlId": "6b4df6a7-f0fe-41ff-be6c-1d2732a2f291",
+          "state": {
+            "pid": 294675,
+            "total": 5,
+            "value": 1,
+            "applied": 3,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:49.383Z"
+        },
+        {
+          "seq": 2,
+          "controlId": "7830bb7a-80ed-42d3-8489-4b92fbbac7ab",
+          "state": {
+            "pid": 294675,
+            "total": 0,
+            "value": 0,
+            "applied": 0,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:51.514Z"
+        },
+        {
+          "seq": 3,
+          "controlId": "c0d2775c-be6d-4c67-b130-0a9ccbebb724",
+          "state": {
+            "pid": 294675,
+            "total": 0,
+            "value": 0,
+            "applied": 0,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:52.780Z"
+        },
+        {
+          "seq": 4,
+          "controlId": "52c41478-c30f-4f5b-8c16-506b59def233",
+          "state": {
+            "pid": 294675,
+            "total": 0,
+            "value": 0,
+            "applied": 0,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:53.836Z"
+        }
+      ],
+      "checkpoints": [],
+      "restoredFrom": {
+        "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+        "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+        "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501"
+      }
+    }
+  },
+  "originalAfterRestore": {
+    "requestId": "97eb693a-7317-461f-a095-ff7302e1e85a",
+    "inputDigest": "871c7c653a690ad23ea227d7e0f663972fd639474e4a46438bbf42d2992ac132",
+    "scope": {
+      "environmentId": "895a1355-044e-4eee-a94d-e4050ca5dea6",
+      "spaceId": "d847d725-4bf9-4670-ae1c-c8b2205f36dc",
+      "principalId": "c5d48021-08e2-4540-9d70-62c9f6a6fe2d",
+      "activityId": "848174f5-53dc-47f0-b44d-cda679c7d127"
+    },
+    "executionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+    "state": "cancelled",
+    "statusKnowledge": "confirmed",
+    "stopRequested": true,
+    "confirmedSeq": 8,
+    "reason": {
+      "code": "worker-terminated",
+      "detail": "用户请求停止本机会话。"
+    },
+    "output": null,
+    "session": {
+      "adapterId": "linux-proc-accumulator",
+      "adapterVersion": 2,
+      "instanceId": "848174f5-53dc-47f0-b44d-cda679c7d127:accumulator",
+      "instanceKey": "accumulator",
+      "nodeId": "school-0aa38499-5de2-42a6-b010-6169528c2ebc",
+      "installGeneration": "9",
+      "supervisorEpoch": "f395c497-b013-42aa-86cc-25cfeeec5ace",
+      "executorInstanceId": "c90007c2-132f-441b-b3c1-dc5e31d7d0d8",
+      "appliedSeq": 5,
+      "lastControlId": "46348469-8232-4049-8f23-48c588ce2501",
+      "observation": {
+        "pid": 294560,
+        "total": 5,
+        "value": 1,
+        "applied": 3,
+        "threads": 7
+      },
+      "observations": [
+        {
+          "seq": 1,
+          "controlId": "ed615af0-f019-4d91-a6be-c9e9406f9526",
+          "state": {
+            "pid": 294560,
+            "total": 1,
+            "value": 1,
+            "applied": 1,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:34.867Z"
+        },
+        {
+          "seq": 2,
+          "controlId": "f410edd9-aa52-4599-8007-a3b4e0322d73",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:36.109Z"
+        },
+        {
+          "seq": 3,
+          "controlId": "03582cd1-d1fb-45e6-85d4-ff51b155c4f5",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:37.671Z"
+        },
+        {
+          "seq": 4,
+          "controlId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+          "state": {
+            "pid": 294560,
+            "total": 3,
+            "value": 3,
+            "applied": 2,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:38.888Z"
+        },
+        {
+          "seq": 5,
+          "controlId": "46348469-8232-4049-8f23-48c588ce2501",
+          "state": {
+            "pid": 294560,
+            "total": 5,
+            "value": 1,
+            "applied": 3,
+            "threads": 7
+          },
+          "at": "2026-11-04T12:49:44.413Z"
+        }
+      ],
+      "checkpoints": [
+        {
+          "checkpointId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+          "sessionRef": "8b4df9a8-4172-40b7-83a9-c1f19fd3672a",
+          "sha256": "812528eeaefb353f2ee2eb6ac384489194cdafe2c41c156776a276a159cde501",
+          "contentId": "0873aba5-e082-4ea8-b178-f34855c6500c",
+          "appliedSeq": 4,
+          "byteLength": 961,
+          "createdAt": "2026-11-04T12:49:38.888Z"
+        }
+      ]
+    }
+  }
+}

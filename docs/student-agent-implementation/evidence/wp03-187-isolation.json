@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-04",
+  "ticket": "#187",
+  "candidate": "05bb6a98c17f8e75f58ecc96a3206264f86638a3",
+  "command": "node --test --test-concurrency=1 apps/server/tests/native-isolation.test.mjs apps/server/tests/native-session.test.mjs apps/server/tests/session-checkpoints.test.mjs",
+  "tests": 21,
+  "passed": 21,
+  "failed": 0,
+  "v2Adapter": {
+    "isolationKind": "seatbelt",
+    "launcher": "/usr/bin/sandbox-exec",
+    "profileVersion": "xunjie-native-session-v1",
+    "network": "denied",
+    "writes": "session-directory",
+    "exec": "fixed-node-only",
+    "signals": "same-sandbox-only",
+    "memory": "heap-cap-and-rss-watchdog",
+    "processes": "supervisor-group-confirmed",
+    "supervisorDeath": "session-watchdog"
+  },
+  "cases": [
+    "the seatbelt profile names the fixed runtime, the session directory and a closed network",
+    "a real macOS session is confined, reports the enforcement and confirms its empty group",
+    "the process-group baseline stays available for hosts that opt out of the sandbox",
+    "the real v2 adapter stays confined through controls, checkpoints and group reaping",
+    "the real v2 adapter still ends on a real idle budget under seatbelt",
+    "the native adapter keeps state across inputs and never applies one control twice",
+    "the supervisor ends an idle session by really terminating the child process",
+    "real pause, step, reset and checkpoint restore retain process state and stable operation identity",
+    "a real fresh adapter refuses a malformed checkpoint rather than guessing an internal state",
+    "an interrupted checkpoint upload reuses the cached executor snapshot and operation identity",
+    "a checkpoint is not published before its bytes are successfully re-read",
+    "checkpoint restore refuses corrupt",
+    "checkpoint restore refuses missing",
+    "checkpoint restore refuses retention",
+    "checkpoint restore refuses configuration",
+    "checkpoint restore refuses adapter",
+    "checkpoint restore refuses format",
+    "checkpoint restore refuses principal",
+    "checkpoint restore refuses digest",
+    "checkpoint restore refuses environment",
+    "maintenance cannot declare an unconfirmed current executor drained after its live handle was lost"
+  ],
+  "notes": [
+    "The v2 control/checkpoint test asserts seatbelt enforcement, a real pause/step/checkpoint, requested stop and a confirmed empty process group.",
+    "The v2 idle test creates a real child process with idleMs=1000; it exits with exitFact.expired='idle' and confirmed=true under seatbelt.",
+    "The environment negative rewrites the checkpoint envelope to platform=plan9, arch=mips, node=v0.0.0 and expects 'invalid'.",
+    "No new distribution package was used; the test ran with the development Node/PostgreSQL resources on the same Mac."
+  ]
+}

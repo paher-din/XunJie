@@ -9,7 +9,7 @@ import type { RuntimeResources } from './postgres.js';
 import { resolveCredential, storeCredential } from './postgres.js';
 import { recoveryPg } from './recovery-postgres.js';
 import { RecoveryError } from './recovery.js';
-import type { RecoveryOwner, RecoveryTarget } from './recovery-types.js';
+import type { BoundaryUnresolved, OwnerBoundaryMaterial, RecoveryOwner, RecoveryTarget } from './recovery-types.js';
 import { checkIndependentDirectory, ensureRecoverySpace } from './recovery-files.js';
 import { readJson } from './io.js';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
@@ -22,9 +22,26 @@ interface StorageRecoveryData {
   databaseIdentity: { systemIdentifier: string; databaseOid: string };
   resourceRoots: string[];
 }
+/**
+ * Owner-specific boundary evidence. The storage owner supplies resource facts; an execution
+ * owner adds its accepted commands and their dispositions through the same hook.
+ */
+export interface StorageBoundaryEvidence {
+  kind: string;
+  unresolved: BoundaryUnresolved[];
+  settled: number;
+  blocking: { code: string; detail: string }[];
+  retained?: { resources: number; checkpoints: number };
+  /** Versioned owner payload, validated by the owning service after restore. */
+  evidence?: unknown;
+}
 export function createStorageRecoveryOwner(options: {
   storage: OwnedStorage; binding: StorageBinding; migrations: readonly Migration[]; resources: RuntimeResources;
   resourceRoots?: string[];
+  /** The installation this owner belongs to; boundary evidence names it explicitly. */
+  installationId: string;
+  /** Boundary evidence read through the owner's own tables while its gates are closed. */
+  boundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
   /** The owner, not backup orchestration, knows how to re-read its domain through its API. */
   validateService: (storage: OwnedStorage) => Promise<void>;
 }): RecoveryOwner {
@@ -34,6 +51,20 @@ export function createStorageRecoveryOwner(options: {
   participant.validate = async () => { await validateStorage(); await options.validateService(options.storage); };
   return {
     participant,
+    async material({ boundaryAt }) {
+      const evidence = options.boundary ? await options.boundary(options.storage, { boundaryAt })
+        : { kind: 'xunjie.storage.boundary', unresolved: [], settled: 0, blocking: [] } satisfies StorageBoundaryEvidence;
+      const material: OwnerBoundaryMaterial = {
+        formatVersion: 1, kind: evidence.kind, serviceId: participant.descriptor.serviceId, boundaryAt,
+        source: { environmentId: options.storage.owner.environmentId, installationId: options.installationId },
+        schemaVersion: participant.descriptor.schemaVersion, coverage: 'service-received',
+        unresolved: evidence.unresolved.map(item => ({ ...item })), settled: evidence.settled,
+        retained: evidence.retained ?? { resources: 0, checkpoints: 0 },
+        blocking: evidence.blocking.map(item => ({ ...item })),
+        ...(evidence.evidence === undefined ? {} : { evidence: evidence.evidence }),
+      };
+      return material;
+    },
     async export({ backupId, directory, signal }) {
       let exportFailure: unknown;
       return options.storage.snapshot(backupId, async ({ databaseSnapshot, manifest }) => {
@@ -78,8 +109,12 @@ export function createStorageRecoveryTarget(options: {
   backend: BlobBackend;
   migrations: readonly Migration[];
   resourceRoots?: string[];
+  /** Installation identity written into this target's own boundary material. */
+  installationId: string;
   onRestored?: (storage: OwnedStorage, binding: StorageBinding) => void | Promise<void>;
   validateService: (storage: OwnedStorage) => Promise<void>;
+  /** The owner re-derives its evidence from the restored data and compares it with the material. */
+  validateMaterial?: (storage: OwnedStorage, material: OwnerBoundaryMaterial) => Promise<void>;
 }): RecoveryTarget {
   let restored: OwnedStorage | undefined;
   return {
@@ -130,12 +165,17 @@ export function createStorageRecoveryTarget(options: {
         await storeCredential(targetRoot, `storage-${options.owner.serviceId}`, JSON.stringify(binding));
         await options.onRestored?.(restored, binding);
         return createStorageRecoveryOwner({ storage: restored, binding, migrations: options.migrations, resources: options.resources,
-          resourceRoots: options.resourceRoots, validateService: options.validateService });
+          resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService });
       } catch (error) { await restored?.close(); restored = undefined; throw error; }
     },
     async validate() {
       if (!restored) throw new RecoveryError('restore-incomplete');
       await options.validateService(restored);
+    },
+    async validateMaterial(_owner, material) {
+      if (!restored) throw new RecoveryError('restore-incomplete');
+      if (material.serviceId !== options.owner.serviceId) throw new RecoveryError('incompatible-boundary-material');
+      await options.validateMaterial?.(restored, material);
     },
   };
 }

@@ -3,13 +3,24 @@ import { workFilesSchema } from '@xunjie/contracts/learning-data'
 import { openWorkspaceDatabase } from './draft-store'
 
 export interface WorkConflict { source: 'local' | 'remote'; local: WorkFile[]; other: WorkFile[]; at: number; remoteRevision: number; candidateId?: string }
-export interface WorkRecord { key: string; localRevision: number; remoteRevision: number; confirmedFiles?: WorkFile[]; files: WorkFile[]; pending: WorkSync | null; conflict?: WorkConflict }
+export interface WorkRecord { key: string; localRevision: number; remoteRevision: number; confirmedFiles?: WorkFile[]; files: WorkFile[]; pending: WorkSync | null; pendingRejected?: boolean; conflict?: WorkConflict }
+export interface WorkOperation { scope: string; operationId: string; inputDigest: string; name: string; contentId: string }
+export interface WorkOperationReceipt { inputDigest: string; confirmation: 'local-protected'; contentId: string | null; requestedContentId: string; superseded: boolean }
 export class LocalCompetition extends Error {
   constructor(public current: WorkRecord, public candidateId: string) { super('另一标签页修改了作品，请比较并选择。') }
 }
 
 /** A new product namespace: never opens or consumes legacy workspace databases. */
 export class WorkStore {
+  async operation(workspace: string, scope: string, operationId: string): Promise<WorkOperationReceipt | undefined> {
+    const db = await openWorkspaceDatabase()
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('workOperations', 'readonly')
+      const request = tx.objectStore('workOperations').get([workspace, scope, operationId])
+      tx.oncomplete = () => resolve(request.result?.receipt)
+      tx.onabort = () => reject(tx.error)
+    })
+  }
   async read(key: string): Promise<WorkRecord | undefined> {
     const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
@@ -39,10 +50,10 @@ export class WorkStore {
     })
   }
   async change(key: string, update: (current: WorkRecord | undefined) => WorkRecord,
-    candidate?: { expected: number; files: WorkFile[] }, removeCandidate?: string): Promise<WorkRecord> {
+    candidate?: { expected: number; files: WorkFile[] }, removeCandidate?: string, operations: WorkOperation[] = []): Promise<WorkRecord> {
     const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(['workspaces', 'candidates'], 'readwrite')
+      const tx = db.transaction(['workspaces', 'candidates', 'workOperations'], 'readwrite')
       const store = tx.objectStore('workspaces')
       const request = store.get(key)
       let result: WorkRecord
@@ -58,6 +69,12 @@ export class WorkStore {
           }
           result = update(current)
           store.put(result)
+          for (const operation of operations) {
+            const contentId = result.files.find(file => file.name === operation.name)?.contentId ?? null
+            const receipt: WorkOperationReceipt = { inputDigest: operation.inputDigest, confirmation: 'local-protected', contentId,
+              requestedContentId: operation.contentId, superseded: contentId !== operation.contentId }
+            tx.objectStore('workOperations').add({ workspace: key, scope: operation.scope, operationId: operation.operationId, receipt })
+          }
           if (removeCandidate) tx.objectStore('candidates').delete(removeCandidate)
         } catch (error) { failure = error; tx.abort() }
       }

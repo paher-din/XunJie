@@ -1,0 +1,8 @@
+PASS a clean settled boundary publishes a complete boundary-aware held backup {"backupId":"131715db-fb79-45b1-88a0-bbea6ee543ed","boundaryServices":3,"files":7,"sha256":"9fc56126124c4db444598b624c57387ba7c95688e5a2e5ad82df34178c2a186f"}
+PASS the packaged owner classifies accepted-not-started, stop-pending and unknown commands itself {"kind":"xunjie.learning-data.boundary","dispositions":{"stop-pending":"8ec1d02d-f072-4f0e-a283-666567798852","unknown":"a4cf8d65-d8f4-4df1-9d6b-1314618c96f2","accepted-not-started":"ae7d301a-822d-480c-a772-33a6d6e0abb7"},"blocking":["unresolved-stop-pending","unresolved-unknown","unconfirmed-browser-boundary"]}
+PASS settling one unknown command leaves stop-pending and accepted-not-started blocking {"settled":1,"unresolved":2,"blocking":["unresolved-stop-pending","unconfirmed-browser-boundary"]}
+PASS the packaged owner re-derives an unblocked boundary only after every command is settled {"settled":3,"unresolved":0,"blocking":0}
+BACKUP_ATTEMPT {"published":false,"code":"unavailable","message":"Recovery: unavailable"}
+PASS accepted-not-started and stop-pending commands make the product refuse maintenance and publish nothing new {"code":"unavailable","operationPhase":"failed","maintenancePhase":"failed","safeToStop":false,"publishedBackups":1,"heldBackupSha256":"9fc56126124c4db444598b624c57387ba7c95688e5a2e5ad82df34178c2a186f"}
+PASS the source installation survives the refused maintenance run {"sourceState":"failed","retiredMarker":false}
+STATUS passed cases=6 output=/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-188/execution-disposition-mac/disposition-negative.json

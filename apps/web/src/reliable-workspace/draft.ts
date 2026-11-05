@@ -19,7 +19,7 @@ export interface QuestionDraftState { ready: boolean; error: string; question: s
 
 const inputReference = (reference: QuestionReferenceInput): QuestionReferenceInput => ({
   referenceId: reference.referenceId, source: reference.source,
-  range: { kind: reference.range.kind, start: reference.range.start, end: reference.range.end },
+  range: { ...reference.range },
   copy: reference.copy, sourceName: reference.sourceName,
 })
 const inputReferences = (references: QuestionReferenceInput[]) => references.map(inputReference)
@@ -34,12 +34,12 @@ function mergeBases(existing: QuestionWorkBasis[], added: QuestionWorkBasis[], r
   const merged = new Map<string, QuestionWorkBasis>()
   for (const basis of [...existing, ...added]) merged.set(basis.contentId, basis)
   const workContent = new Set(references.flatMap(reference =>
-    reference.source.kind === 'work' ? [reference.source.contentId] : []))
+    (reference.source.kind === 'work' || reference.source.kind === 'component') ? [reference.source.contentId] : []))
   return [...merged.values()].filter(basis => workContent.has(basis.contentId))
 }
 function matchesPending(view: QuestionDraftView, pending: NonNullable<DraftRecord['pending']>) {
   return view.revision === pending.baseRevision + 1 && view.question === pending.question
-    && JSON.stringify(inputReferences(view.references)) === JSON.stringify(inputReferences(pending.references))
+    && sameDraftContent(view, pending)
 }
 
 /** The page's only question-draft authority; it never calls a model or business receiver. */
@@ -52,8 +52,8 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   private listeners = new Set<() => void>()
   state: QuestionDraftState = { ready: false, error: '', question: '', references: [],
     revision: 0, revisionId: null, conflictReady: true }
-  constructor(readonly key: string, private transport: QuestionDraftTransport) {
-    super()
+  constructor(readonly key: string, private transport: QuestionDraftTransport, readOnly = false) {
+    super(readOnly)
     this.record = initialDraftRecord(key, '')
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -73,6 +73,13 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   protected clearListeners() { this.listeners.clear() }
   protected async load() {
     try {
+      if (this.readOnly) {
+        const remote = questionDraftViewSchema.parse(await this.transport.read())
+        this.record = { ...initialDraftRecord(this.key, remote.draftId), remoteRevision: remote.revision,
+          revisionId: remote.revisionId, question: remote.question, references: inputReferences(remote.references) }
+        this.apply(this.record, { ready: true, error: '' })
+        return
+      }
       let local = await this.store.read(this.key)
       if (!local) {
         if (this.stopped) throw new Error('原问题草稿未缓存在本机。')
@@ -106,6 +113,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     }
   }
   change(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
+    if (this.readOnly) throw new Error('还原校验环境中的问题草稿只读。')
     // Preserve a basis added after the last IndexedDB protection; typing must not drop it.
     const bases = mergeBases([...this.record.bases, ...this.pendingBases], addedBases, references)
     this.editEpoch++; this.dirty = true; this.contentToken = crypto.randomUUID()
