@@ -1,0 +1,43 @@
+{
+  "measuredAt": "2026-11-05T15:45:00.000Z",
+  "platform": "Windows 11 10.0.26200 (desktop, non-interactive acceptance session)",
+  "browser": { "channel": "chrome", "version": "156.0.8078.80", "headless": true },
+  "runtime": { "node": "24.21.0", "postgres": "18.6", "backend": "production product host with native PostgreSQL and real filesystem resources" },
+  "chromeTests": {
+    "file": "apps/web/e2e/teachingConversation.spec.ts",
+    "passed": 4,
+    "failed": 0,
+    "cases": [
+      "a missing model keeps the activity and first question and offers the real settings entry",
+      "the formal home and activity conversation persist a first question, a follow-up, reload and stop",
+      "a course activity asks through the fixed help policy in the formal conversation UI",
+      "a product process restart reopens the persisted conversation in the same Chrome session"
+    ],
+    "durationMs": 28500
+  },
+  "packageSmoke": {
+    "distribution": "win32-x64 unsigned candidate built from the same working tree on the Windows host",
+    "install": "installed",
+    "start": "ready",
+    "services": ["client", "space-course", "learning-data", "model-connection", "teaching-agent"],
+    "model": "synthetic loopback chat-completions upstream; one physical request",
+    "steps": ["connection 200", "grant 200", "selection 200", "conversation visible", "reloaded visible"],
+    "passed": true
+  },
+  "screenshots": [
+    "teaching-home-win32.png",
+    "teaching-conversation-win32.png",
+    "teaching-course-win32.png",
+    "teaching-stopped-win32.png",
+    "teaching-missing-model-win32.png",
+    "teaching-model-settings-win32.png",
+    "teaching-restart-win32.png",
+    "package-conversation-win32.png",
+    "package-conversation-reloaded-win32.png"
+  ],
+  "limitations": [
+    "Headless Chrome in a non-interactive Windows session; no physical Chinese IME claim.",
+    "The packaged smoke uses a synthetic loopback model; real provider calls are reported separately in real-model.json.",
+    "View isolation is covered by runtime identity tests and the shared UI space routing, not by a dedicated Windows Chrome case."
+  ]
+}

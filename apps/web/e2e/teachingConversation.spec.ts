@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
-import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime'
+import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential } from '@xunjie/product-runtime'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
@@ -31,7 +31,16 @@ test.beforeAll(async () => {
       send({ id: 'ui-' + index, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
       response.end('data: [DONE]\n\n')
     }
-    if (index === 2) setTimeout(reply, 2500); else reply()
+    if (index === 2) {
+      // Long enough to clear the credential withholding window, then a slow tail for stop.
+      send({ id: 'ui-' + index, choices: [{ index: 0, delta: { role: 'assistant',
+        content: '这是正在生成的界面回答，内容会逐步出现' }, finish_reason: null }] })
+      setTimeout(() => {
+        send({ id: 'ui-' + index, choices: [{ index: 0, delta: { content: '，并在结束后完整保留。' }, finish_reason: null }] })
+        send({ id: 'ui-' + index, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
+        response.end('data: [DONE]\n\n')
+      }, 2500)
+    } else reply()
   })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
   root = await mkdtemp(join(tmpdir(), 'xj-teaching-ui-'))
@@ -47,9 +56,9 @@ test.afterAll(async () => {
   upstream?.closeAllConnections(); if (upstream) await new Promise(resolve => upstream.close(resolve))
 })
 
-async function configureModel(request: import('@playwright/test').APIRequestContext) {
+async function configureModel(request: import('@playwright/test').APIRequestContext,
+  headers: Record<string, string> = { 'content-type': 'application/json', 'x-xj-space': 'personal' }) {
   const connectionId = randomUUID(), grantId = randomUUID()
-  const headers = { 'content-type': 'application/json', 'x-xj-space': 'personal' }
   const port = (upstream.address() as { port: number }).port
   const saved = await request.post(endpoint + '/api/learning/models/connections', { headers, data: {
     requestId: randomUUID(), connectionId, expectedVersion: 0, name: '界面模型', protocol: 'chat-completions',
@@ -94,10 +103,22 @@ test('the formal home and activity conversation persist a first question, a foll
   await expect(page.getByRole('region', { name: '与 Agent 的对话' })).toBeVisible()
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 20000 })
   await expect(page.locator('.teaching-message.student').filter({ hasText: '请解释界面中的第一个学习问题。' })).toBeVisible()
+  const composer = page.getByLabel('你的问题', { exact: true })
+  await page.getByRole('button', { name: '收起对话', exact: true }).click()
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  await expect(composer).toBeFocused()
+  await composer.evaluate(element => element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })))
+  await page.keyboard.insertText('中文输入草稿')
+  await expect(composer).toHaveValue('中文输入草稿')
+  await page.keyboard.press('Enter')
+  await expect(composer).toHaveValue(/中文输入草稿/)
+  await composer.evaluate(element => element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })))
+  await composer.fill('')
   await page.screenshot({ path: join(output, `teaching-conversation-${process.platform}.png`), fullPage: false })
 
   await page.reload()
-  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const reopen = page.getByRole('button', { name: '打开对话', exact: true })
+  if (await reopen.isVisible()) await reopen.click()
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 20000 })
 
   await page.getByLabel('你的问题', { exact: true }).fill('这是界面中的第二个问题。')
@@ -107,14 +128,72 @@ test('the formal home and activity conversation persist a first question, a foll
   await page.getByLabel('你的问题', { exact: true }).fill('请生成一个可以被停止的回答。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await expect(page.getByText('Agent 正在生成回答…')).toBeVisible({ timeout: 20000 })
+  await expect(page.locator('.teaching-message.assistant .turn-caret')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.teaching-message.assistant .turn-body').last()).toContainText('这是')
   await page.getByLabel('你的问题', { exact: true }).fill('生成期间继续输入的新草稿。')
   await expect(page.getByRole('button', { name: '等待当前回答', exact: true })).toBeDisabled()
   await expect(page.getByText('当前回答结束后再发送；问题会先保存在草稿中。')).toBeVisible()
   await page.getByRole('button', { name: '停止', exact: true }).click()
   await expect(page.getByText('回答已停止，已发生的内容仍保留。')).toBeVisible({ timeout: 20000 })
+  await expect(page.getByText('这是正在生成的界面回答，内容会逐步出现', { exact: true })).toBeVisible()
+  await expect(page.locator('.teaching-message.assistant .turn-caret')).toHaveCount(0)
   await expect(page.locator('.teaching-message.student').filter({ hasText: '请生成一个可以被停止的回答。' })).toBeVisible()
   await expect(page.getByLabel('你的问题', { exact: true })).toHaveValue('生成期间继续输入的新草稿。')
   await expect(page.getByRole('button', { name: '发送问题', exact: true })).toBeEnabled()
   await page.screenshot({ path: join(output, `teaching-stopped-${process.platform}.png`), fullPage: false })
   expect(replies.length).toBe(3)
+})
+
+test('a course activity asks through the fixed help policy in the formal conversation UI', async ({ page }) => {
+  const control = await resolveCredential(root, 'control')
+  const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID()
+  const manage = async (path: string, body: unknown) => {
+    const response = await page.request.post(endpoint + '/api/learning/manage/' + path, {
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + control }, data: body })
+    expect(response.status()).toBe(200)
+    return response.json()
+  }
+  await manage('course-import', { formatVersion: 1, requestId: randomUUID(),
+    course: { courseId, name: '课程问答验收' }, task: { taskId, title: '课程问答任务', summary: '固定帮助范围' },
+    release: { releaseId, objectives: ['解释课程概念'], requirements: '结合课堂内容回答。', materials: [], starterWorks: [],
+      capabilities: [], helpPolicy: { version: 1, questions: 'allowed', scope: 'course' } }, resources: [] })
+  const loginName = 'teaching-chrome-' + randomUUID(), password = randomUUID()
+  const member = await manage('members', { requestId: randomUUID(), loginName, password })
+  await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true })
+  expect((await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })).status()).toBe(200)
+  const created = await page.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } })
+  expect(created.status()).toBe(200)
+  const activityId = (await created.json()).activityId as string
+  await configureModel(page.request, { 'content-type': 'application/json' })
+  const expected = '界面回答' + (replies.length + 1)
+  await page.goto(endpoint + '/?space=school&activity=' + activityId)
+  await expect(page.getByRole('heading', { name: '课程问答任务', exact: true })).toBeVisible()
+  const open = page.getByRole('button', { name: '打开对话', exact: true })
+  if (await open.isVisible()) await open.click()
+  await expect(page.getByRole('region', { name: '与 Agent 的对话' })).toBeVisible()
+  await page.getByLabel('你的问题', { exact: true }).fill('课程允许问答时，请解释本任务的核心概念。')
+  await page.getByRole('button', { name: '发送问题', exact: true }).click()
+  await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
+  await expect(page.locator('.teaching-message.student').filter({ hasText: '课程允许问答时' })).toBeVisible()
+  await page.screenshot({ path: join(output, `teaching-course-${process.platform}.png`), fullPage: false })
+})
+
+test('a product process restart reopens the persisted conversation in the same Chrome session', async ({ page }) => {
+  const expected = '界面回答' + (replies.length + 1)
+  await page.goto(endpoint)
+  await page.getByLabel('学习目标', { exact: true }).fill('重启恢复对话')
+  await page.getByLabel('起始问题', { exact: true }).fill('重启之后这个问题和回答还在吗？')
+  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
+  await expect(page.locator('#activity-title')).toHaveText('重启恢复对话')
+  await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
+  const activityId = new URL(page.url()).searchParams.get('activity')!
+  await host.stop()
+  host = await createProductRuntimeHost({ root, createApplication: context => createProductLearningApplication(context) })
+  endpoint = host.endpoint
+  await page.goto(endpoint + '/?space=personal&activity=' + activityId)
+  await expect(page.locator('#activity-title')).toHaveText('重启恢复对话')
+  const open = page.getByRole('button', { name: '打开对话', exact: true })
+  if (await open.isVisible()) await open.click()
+  await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
+  await page.screenshot({ path: join(output, `teaching-restart-${process.platform}.png`), fullPage: false })
 })

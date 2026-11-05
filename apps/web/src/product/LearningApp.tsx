@@ -378,7 +378,7 @@ function LearningView() {
     const selected = key
     const input = pendingRequest ?? createActivitySchema.parse({ requestId: crypto.randomUUID(), goal, question,
       references: reference ? [{ kind: 'url', url: reference, label: reference }] : [] })
-    const ask = askNext.current ?? !!input.question.trim()
+    const ask = askNext.current === true
     askNext.current = null
     // Persist the exact request before dispatch; an unknown result keeps this identity across reloads.
     localStorage.setItem(scopeKey, JSON.stringify(input))

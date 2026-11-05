@@ -31,7 +31,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   useEffect(() => {
     if (firstQuestionOpened.current === activity.activityId) return
     firstQuestionOpened.current = activity.activityId
-    if (localStorage.getItem(firstQuestionKey(activity.activityId))) references.setOpen(true)
+    if (activity.question || localStorage.getItem(firstQuestionKey(activity.activityId))) references.setOpen(true)
   }, [activity.activityId, references])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await workspace.leave(); await draft.leave(); await actions.leave()

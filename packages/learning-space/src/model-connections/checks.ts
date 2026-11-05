@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/model-connections';
@@ -95,6 +96,30 @@ export function createChecks(storage: OwnedStorage, owner: {
     const result = project((await row(identity, attemptId)).body);
     if (result.resultRef) await storage.readResource(result.resultRef);
     return result;
+  }
+  const progressBodySchema = z.object({ text: z.string().max(1_000_000), revision: z.number().int().positive() }).strict();
+  async function progress(identity: SpaceIdentity, attemptId: string) {
+    await owner.authorize(identity);
+    const { rows: [row] } = await storage.read('SELECT body FROM model_attempt_progress WHERE attempt_id=$1 AND scope=$2',
+      [attemptId, scopeOf(identity)]);
+    return row ? progressBodySchema.parse(row.body) : null;
+  }
+  async function saveProgress(identity: SpaceIdentity, attemptId: string, text: string) {
+    if (!text) return;
+    await storage.request({ requestId: 'model-progress:' + attemptId + ':' + randomUUID(),
+      fingerprint: 'model-progress:' + attemptId }, async tx => {
+      const { rows: [row] } = await tx.query('SELECT body FROM model_attempt_progress WHERE attempt_id=$1 AND scope=$2 FOR UPDATE',
+        [attemptId, scopeOf(identity)]);
+      const previous = row ? progressBodySchema.safeParse(row.body) : null;
+      if (previous?.success && previous.data.text.length >= text.length) return null;
+      const body = { text, revision: (previous?.success ? previous.data.revision : 0) + 1 };
+      await tx.query(`INSERT INTO model_attempt_progress(attempt_id,scope,body) VALUES($1,$2,$3)
+        ON CONFLICT(attempt_id) DO UPDATE SET body=$3,updated_at=clock_timestamp()`,
+        [attemptId, scopeOf(identity), JSON.stringify(body)]);
+      return body;
+    }).catch(error => {
+      if (!(error instanceof StorageError) || !['maintenance', 'conflict', 'commit-unknown'].includes(error.code)) throw error;
+    });
   }
   /** Native request reconstruction stays at the model owner; callers never read its resources directly. */
   async function requestPayload(identity: SpaceIdentity, attemptId: string) {
@@ -220,9 +245,19 @@ export function createChecks(storage: OwnedStorage, owner: {
       await storage.pendingIntents();
       if (closed) throw new StorageError('maintenance');
       const requestFetch = await owner.requestFetch?.(identity, attempt);
+      // Only learning runs publish an incremental, credential-safe preview. Probe/check
+      // attempts keep their single settled result and do not add progress rows.
+      let lastProgress = '', lastProgressAt = 0;
+      const onText = attempt.purpose === 'learning' ? (text: string) => {
+        const now = Date.now();
+        if (text.length - lastProgress.length < 64 && now - lastProgressAt < 500) return;
+        lastProgress = text; lastProgressAt = now;
+        void saveProgress(identity, attempt.attemptId, text);
+      } : undefined;
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
-        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647, !!attempt.segment, metadata?.applicationSchema, requestFetch);
+        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647,
+          !!attempt.segment, metadata?.applicationSchema, requestFetch, onText);
       const interruption = controller.signal.reason;
       if ((interruption === 'timeout' || interruption === 'maintenance') && !['completed', 'failed'].includes(result.state)) {
         result.state = 'unknown';
@@ -285,7 +320,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');
     }
   }
-  return { receive, read, list, requestPayload, dispatch, cancel, validate,
+  return { receive, read, list, requestPayload, progress, dispatch, cancel, validate,
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },
     async drain() {

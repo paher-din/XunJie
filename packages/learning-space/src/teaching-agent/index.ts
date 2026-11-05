@@ -133,9 +133,6 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       receiptId: runId ?? input.requestId,
       detail: JSON.stringify({ version: 1, runId, inputId }) });
   }
-  function questionText(input: ActionInput) {
-    return input.draft.question;
-  }
   function refusal(activity: LearningActivity) {
     if (activity.status !== 'open') return 'activity-closed';
     // A course activity always carries its fixed release policy; missing policy never means allowed.
@@ -174,7 +171,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           principalId: input.scope.principalId, kind: activity.identity.kind, name: activity.identity.name }),
         JSON.stringify({ state: 'unknown' })]);
       await appendEvent(tx, input.scope.activityId, 'input', { runId, requestId: input.requestId, inputId,
-        question: questionText(input), references: input.draft.references.map(reference => ({ referenceId: reference.referenceId,
+        question: input.draft.question, references: input.draft.references.map(reference => ({ referenceId: reference.referenceId,
           source: reference.source, sourceName: reference.sourceName, copy: reference.copy })), works: input.works.map(work => ({ objectId: work.objectId,
           name: work.name, kind: work.kind })), goal: activity.goal, activityQuestion: activity.question });
       await appendEvent(tx, input.scope.activityId, 'run-received', { runId, requestId: input.requestId, inputId });
@@ -366,16 +363,43 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
 
   type ModelAttemptFact = Awaited<ReturnType<TeachingAgentOptions['models']['checks']['read']>>;
+  async function lastProgressEvent(activityId: string, attemptId: string) {
+    const { rows: [row] } = await storage.read(`SELECT body FROM teaching_events WHERE activity_id=$1
+      AND kind='assistant-progress' AND body->>'attemptId'=$2 ORDER BY seq DESC LIMIT 1`, [activityId, attemptId]);
+    const body = row?.body as Record<string, unknown> | undefined;
+    return { revision: Number(body?.revision ?? 0), length: Number(body?.length ?? 0) };
+  }
   async function awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
-    initial?: ModelAttemptFact): Promise<ModelAttemptFact> {
+    segmentId: string, initial?: ModelAttemptFact): Promise<ModelAttemptFact> {
     let fact = initial ?? await options.models.checks.read(identity, attemptId);
-    let lastHeartbeat = Date.now(), unknownReads = 0;
+    const known = await lastProgressEvent(run.activityId, attemptId);
+    let lastHeartbeat = Date.now(), unknownReads = 0, lastRevision = known.revision, lastLength = known.length;
+    async function publishProgress() {
+      if (fact.physicalRequestEnded) return;
+      const live = await options.models.checks.progress(identity, attemptId).catch(() => null);
+      if (!live || live.revision <= lastRevision || live.text.length <= lastLength) return;
+      const delta = live.text.slice(lastLength);
+      try {
+        await storage.request({ requestId: `teaching-progress:${attemptId}:${live.revision}`,
+          fingerprint: `teaching-progress:${attemptId}` }, async tx => {
+          await assertAuthority(tx, run.runId, generation);
+          await appendEvent(tx, run.activityId, 'assistant-progress', { runId: run.runId, attemptId, segmentId,
+            revision: live.revision, length: live.text.length, delta });
+          return null;
+        });
+        lastRevision = live.revision; lastLength = live.text.length;
+      } catch (error) {
+        if (!(error instanceof StorageError) || !['conflict', 'maintenance'].includes(error.code)) throw error;
+      }
+    }
+    await publishProgress();
     while (!fact.physicalRequestEnded) {
       const stored = toRun(await runRow(run.runId));
       if (stored.stopRequested && !fact.cancelRequested) await options.models.checks.cancel(identity, attemptId);
       if (Date.now() - lastHeartbeat > leaseMs / 2) { await heartbeat(run.runId, generation); lastHeartbeat = Date.now(); }
       await sleep(200);
       fact = await options.models.checks.read(identity, attemptId);
+      await publishProgress();
       if (fact.state === 'unknown') unknownReads++; else unknownReads = 0;
       if (unknownReads >= 3) break;
     }
@@ -436,7 +460,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           ? await options.models.checks.cancel(identity, run.attemptId)
           : await options.models.checks.dispatch(identity, run.attemptId);
       }
-      try { fact = await awaitAttempt(identity, run, generation, run.attemptId, fact); }
+      try { fact = await awaitAttempt(identity, run, generation, run.attemptId, run.segmentId, fact); }
       catch (error) {
         if (!(error instanceof StorageError) || !['missing', 'forbidden'].includes(error.code)) throw error;
         await close(run, generation, 'paused', 'attempt-unavailable', { state: 'unknown' }, run.model, {
@@ -497,20 +521,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const attempt = await options.models.checks.receive(identity, { attemptId, purpose: 'learning', segmentId: segment.segmentId,
       expectedSequence: segment.sequence, input: { text: context.userText }, limits: { maxOutputTokens } });
     const payload = await options.models.checks.requestPayload(identity, attemptId);
-    // Capacity is judged against the actual native payload, including continued native history.
-    // Without a matching tokenizer the character count is only a definite-over lower bound.
+    // Without a matching tokenizer the character count stays an uncertainty fact. It is recorded
+    // with the payload but never converted into tokens or used to shrink the saved window.
     const payloadChars = JSON.stringify(payload).length;
-    const available = choice.choice.connection.contextWindow === undefined ? undefined
-      : choice.choice.connection.contextWindow - maxOutputTokens;
     const capacity = { ...context.capacity, payloadChars, inputChars: Math.max(context.capacity.inputChars, payloadChars),
-      status: available !== undefined && (available <= 0 || payloadChars > available * 4)
-        ? 'over-window' as const : 'within-upper-bound' as const };
-    if (capacity.status === 'over-window') {
-      await options.models.checks.cancel(identity, attemptId).catch(() => {});
-      await close(run, generation, 'paused', 'capacity-exceeded', { state: 'unknown' }, model, {
-        kind: 'capacity-paused', body: { runId: run.runId, attemptId, reason: 'capacity-exceeded', capacity } });
-      return;
-    }
+      status: 'within-upper-bound' as const };
     const snapshot: TeachingSnapshot = teachingSnapshotSchema.parse({ snapshotId: randomUUID(), activityId: run.activityId,
       runId: run.runId, attemptId, segmentId: segment.segmentId, assemblyVersion: 1, model, maxOutputTokens,
       ...(choice.choice.connection.contextWindow !== undefined ? { contextWindow: choice.choice.connection.contextWindow } : {}),
@@ -559,7 +574,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         expectedSequence: segment.sequence });
       return null;
     });
-    const fact = await awaitAttempt(identity, run, generation, attemptId);
+    const fact = await awaitAttempt(identity, run, generation, attemptId, segment.segmentId);
     if (!fact.physicalRequestEnded) {
       await close(run, generation, 'paused', 'result-unknown', fact.usage, model, {
         kind: 'system-notice', body: { runId: run.runId, attemptId, reason: 'result-unknown' } });
@@ -616,14 +631,41 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const { rows } = await storage.read('SELECT * FROM teaching_events WHERE activity_id=$1 AND seq>$2 ORDER BY seq', [activityId, cursor]);
     const { rows: runRows } = await storage.read('SELECT * FROM teaching_runs WHERE activity_id=$1 ORDER BY created_at', [activityId]);
     const messages: TeachingMessage[] = [];
+    // Progress and the final answer for one attempt share a stable message identity; polling
+    // clients merge them by eventId instead of showing the answer twice.
+    const assistantSlots = new Map<string, number>();
+    const settledAttempts = new Set<string>();
     for (const row of rows) {
       const kind = row.kind as TeachingEventKind, body = row.body as Record<string, unknown>;
       const base = { eventId: row.event_id as string, seq: Number(row.seq), createdAt: new Date(row.created_at as string).toISOString() };
+      const attemptId = typeof body.attemptId === 'string' ? body.attemptId : '';
       if (kind === 'input') messages.push({ ...base, role: 'student', text: String(body.question ?? ''),
         runId: (body.runId as string) ?? null });
-      else if (kind === 'assistant') messages.push({ ...base, role: 'assistant', text: String(body.text ?? ''),
-        runId: (body.runId as string) ?? null, state: body.state === 'stopped' ? 'stopped'
-          : body.state === 'failed' ? 'failed' : 'settled' });
+      else if (kind === 'assistant-progress') {
+        if (attemptId && settledAttempts.has(attemptId)) continue;
+        const delta = typeof body.delta === 'string' ? body.delta : '';
+        const at = attemptId ? assistantSlots.get(attemptId) : undefined;
+        if (at === undefined) {
+          if (attemptId) assistantSlots.set(attemptId, messages.length);
+          messages.push({ ...base, eventId: attemptId ? operationId('teaching-assistant:' + attemptId) : base.eventId,
+            role: 'assistant', text: delta, runId: (body.runId as string) ?? null, state: 'streaming' });
+        } else {
+          const prior = messages[at]!;
+          messages[at] = { ...prior, seq: base.seq, text: prior.text + delta };
+        }
+      } else if (kind === 'assistant') {
+        const state = body.state === 'stopped' ? 'stopped' : body.state === 'failed' ? 'failed' : 'settled';
+        if (attemptId) settledAttempts.add(attemptId);
+        const at = attemptId ? assistantSlots.get(attemptId) : undefined;
+        if (at === undefined) {
+          if (attemptId) assistantSlots.set(attemptId, messages.length);
+          messages.push({ ...base, eventId: attemptId ? operationId('teaching-assistant:' + attemptId) : base.eventId,
+            role: 'assistant', text: String(body.text ?? ''), runId: (body.runId as string) ?? null, state });
+        } else {
+          const prior = messages[at]!;
+          messages[at] = { ...prior, seq: base.seq, text: String(body.text ?? ''), state };
+        }
+      }
       else if (kind === 'model-unavailable') messages.push({ ...base, role: 'system',
         text: `暂时无法继续：${reasonText(body.reason) || '没有可用模型'}。请到模型设置检查连接后重试。`,
         runId: (body.runId as string) ?? null });
@@ -633,6 +675,16 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       else if (kind === 'run-failed') messages.push({ ...base, role: 'system',
         text: `本次回答未完成${reasonText(body.reason) ? `：${reasonText(body.reason)}` : ''}。原问题与历史已保留，可明确继续。`,
         runId: (body.runId as string) ?? null });
+    }
+    // A progress message whose run already settled without a final answer (driver loss, pause)
+    // must not stay "streaming" forever.
+    const runStates = new Map(runRows.map(row => [row.run_id as string, row.state as TeachingRun['state']]));
+    for (let index = 0; index < messages.length; index++) {
+      const message = messages[index]!;
+      const state = message.runId ? runStates.get(message.runId) : undefined;
+      if (message.role !== 'assistant' || message.state !== 'streaming' || !state
+        || ['received', 'running', 'dispatching'].includes(state)) continue;
+      messages[index] = { ...message, state: state === 'stopped' ? 'stopped' : state === 'failed' ? 'failed' : 'unknown' };
     }
     // The cursor may only cover events actually delivered in this response; a later commit is
     // read on the next poll instead of being skipped by a concurrent max(seq).

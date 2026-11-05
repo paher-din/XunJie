@@ -127,7 +127,8 @@ export function createLearningEntry(options: {
         || route === 'execution-environment' || /\/(?:algorithm|dependencies)(?:\/|$)/.test(route)))
         throw new StorageError('maintenance');
       if (options.requiresNamespace && request.method === 'POST'
-        && !['login', 'logout'].includes(route) && !/^(?:manage|connections|native-channel)\//.test(route)
+        && !/^(?:manage|connections|native-channel)\//.test(route)
+        && !['login', 'logout', 'client/start', 'client/complete'].includes(route)
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
       // Fixed dependency and diagnostic routes only: no arbitrary path reaches a resource backend through these.

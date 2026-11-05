@@ -536,3 +536,86 @@ test('a teaching conversation, event log and snapshot survive real backup, isola
   }
   if (failure) throw failure;
 });
+
+test('incremental answer text is published after gateway persistence and settles into one message', { timeout: 180000 }, async () => {
+  const first = '第一段回答：循环不变量必须在每次迭代开始时成立，这样才能由归纳假设推出下一次迭代仍然成立。';
+  const second = '第二段回答：循环结束时，不变量与退出条件一起给出结论。';
+  const upstream = createServer(async (request, response) => {
+    for await (const ignored of request) { /* consume the native payload */ }
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    const send = value => response.write('data: ' + JSON.stringify(value) + '\n\n');
+    send({ id: 'progress', choices: [{ index: 0, delta: { role: 'assistant', content: first }, finish_reason: null }] });
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    send({ id: 'progress', choices: [{ index: 0, delta: { content: second }, finish_reason: null }] });
+    send({ id: 'progress', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] });
+    send({ choices: [], usage: { prompt_tokens: 11, completion_tokens: 3, total_tokens: 14 } });
+    response.end('data: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const root = await mkdtemp(join(tmpdir(), 'xj-teaching-progress-'));
+  const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
+    webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
+    windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
+  const runtime = openProductRuntime({ root, resources });
+  let failure;
+  try {
+    await runtime.install({ profile: 'local' });
+    const { endpoint } = await runtime.start();
+    const api = async (route, body) => {
+      const response = await fetch(new URL('/api/learning/' + route, endpoint), {
+        headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+      return { status: response.status, value: await response.json() };
+    };
+    const connectionId = randomUUID();
+    assert.equal((await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
+      name: '增量回答模型', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
+      path: '/chat/completions', modelId: 'fixture-progress', dialect: 'standard', parameterMode: 'plain', enabled: true,
+      contextWindow: 262144, maxOutputTokens: 8192,
+      credential: { action: 'replace', value: 'synthetic-progress-key' } })).status, 200);
+    const grantId = randomUUID();
+    assert.equal((await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' })).status, 200);
+    assert.equal((await api('models/selection', { requestId: randomUUID(), expectedVersion: 0,
+      source: { kind: 'personal', connectionId, grantId } })).status, 200);
+    const activity = (await api('activities', { requestId: randomUUID(), goal: '观察增量回答', question: '', references: [] })).value;
+    const capabilities = (await api('agent/' + activity.activityId + '/capabilities')).value;
+    const action = { requestId: randomUUID(), scope: { environmentId: activity.identity.environmentId,
+      spaceId: activity.identity.spaceId, principalId: activity.identity.principalId, activityId: activity.activityId },
+      receiver: capabilities.receiver, draft: { token: randomUUID(), question: '请解释循环不变量。', references: [], bases: [] },
+      works: [], evidence: [] };
+    const path = 'intents/' + activity.activityId;
+    assert.equal((await api(path, action)).status, 200);
+    assert.equal((await api(path + '/' + action.requestId + '/dispatch', {})).status, 200);
+    const streaming = await waitFor(async () => {
+      const value = (await api('agent/' + activity.activityId + '/conversation')).value;
+      return value.messages.find(message => message.role === 'assistant' && message.state === 'streaming' && message.text) ?? null;
+    }, 'Incremental answer text was never published.');
+    assert.ok(first.startsWith(streaming.text), 'the live preview is a safe prefix of the answer');
+    assert.ok(streaming.text.length > 0 && streaming.text.length < first.length,
+      'the credentials withheld tail is not published early');
+    assert.ok(!streaming.text.includes('synthetic-progress-key'));
+    const completed = await waitFor(async () => {
+      const value = (await api('agent/' + activity.activityId + '/conversation')).value;
+      return value.runs.at(-1)?.state === 'completed' ? value : null;
+    }, 'The incremental run did not complete.');
+    const assistants = completed.messages.filter(message => message.role === 'assistant');
+    assert.equal(assistants.length, 1, 'progress and the final answer share one message identity');
+    assert.equal(assistants[0].eventId, streaming.eventId, 'the final answer replaces the streaming message in place');
+    assert.equal(assistants[0].text, first + second);
+    assert.equal(assistants[0].state, 'settled');
+    const events = (await api('agent/' + activity.activityId + '/events')).value;
+    const progress = events.filter(event => event.kind === 'assistant-progress');
+    assert.ok(progress.length > 0);
+    assert.deepEqual(progress.map(event => event.body.revision), progress.map((_, index) => index + 1));
+    const reconstructed = progress.map(event => event.body.delta).join('');
+    assert.ok((first + second).startsWith(reconstructed), 'stored deltas reconstruct a prefix of the answer');
+    assert.ok(progress.every(event => event.seq < events.find(item => item.kind === 'assistant').seq),
+      'the settled answer follows every increment');
+    assert.ok(!JSON.stringify(events).includes('synthetic-progress-key'));
+  } catch (error) { failure = error; }
+  finally {
+    try { await runtime.stop(); } catch (error) { failure = failure ? new AggregateError([failure, error]) : error; }
+    upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
+  }
+  if (failure) throw failure;
+});

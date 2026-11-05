@@ -8,7 +8,7 @@
 | --- | --- |
 | `teaching_requests` | 固定输入摘要、接收/取消状态、原回执与 `runId/inputId` 关联 |
 | `teaching_runs` | 状态、停止请求、`attempt_id/segment_id/model/usage`、DB 时间 lease、generation、`previous_run_id` |
-| `teaching_events` | 活动级稳定 `seq` 的输入、上下文装配、派发、答复、终态与系统说明 |
+| `teaching_events` | 活动级稳定 `seq` 的输入、上下文装配、派发、增量进度、答复、终态与系统说明 |
 | `teaching_sessions` | 活动连续的 native segment、固定前缀指纹 |
 | `teaching_snapshots` | 外发前的不可变装配正文、来源、模型参数、`payloadSha256` 与资源引用 |
 
@@ -20,7 +20,9 @@
 
 `context.ts` 分开平台指令、平台运行职责、课程规则、本次引用/作品/问题和跨 Run 历史。课程发布固定帮助策略；策略禁止问答时在接收前直接取消，不产生模型调用。历史按真实 `student/assistant` 角色进入段的可移植前缀；只有连接、前缀或配置变化时才封存旧段并建新段。
 
-每次外发使用保存的 `contextWindow` / `maxOutputTokens`，不套用探针的次数、步数、输出或时间限制。容量事实以最终原生 payload 字符数、输出预留和配置窗口记录为 `counter:"unavailable"` 的必要条件检查；没有任何计数被伪装成准确 token 数。输入超过学习传输边界（前缀 400,000 字符、用户文本 1,000,000 字符）时保留完整输入并暂停，不截断作品或历史。
+每次外发使用保存的 `contextWindow` / `maxOutputTokens`，不套用探针的次数、步数、输出或时间限制。容量事实以最终原生 payload 字符数、输出预留和配置窗口记录为 `counter:"unavailable"` 的不确定性事实，不换算成 token，也不据粗略估算缩小配置窗口；输入超过学习传输边界（前缀 400,000 字符、用户文本 1,000,000 字符）时保留完整输入并暂停，不截断作品或历史。
+
+学习正文由 Gateway 在解析协议增量时经过凭据尾部扣留后写入 `model_attempt_progress`；`RunDriver` 只读取已持久化的安全前缀，按 attempt 稳定身份追加 `assistant-progress` 增量事件。`conversation` 把同一 attempt 的增量与最终答复合并为一条消息（稳定 `eventId`），客户端刷新不会重复显示。完整结果落定后不再发布增量；凭据出现在正文时停止公开，最终结果仍按 Gateway 的敏感输出规则处理。
 
 ## 公开接口
 
@@ -30,6 +32,7 @@
 
 ## 验证
 
-- `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、重启/停止/继续、快照重建、备份/还原/接管。
+- `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、增量发布、重启/停止/继续、快照重建、备份/还原/接管。
 - `apps/server/tests/teaching-agent.driver.runtime.test.mjs`：两个独立 `driverId` 竞争同一 Run，验证 lease/generation 单一派发。
-- `apps/web/e2e/teachingConversation.spec.ts`：正式入口首问、刷新、追加问题、生成期间草稿阻塞、停止与缺模型设置入口。
+- `apps/server/tests/model-progress.test.mjs`：增量发布的凭据尾部扣留与停止公开。
+- `apps/web/e2e/teachingConversation.spec.ts`：正式入口首问、刷新、追加问题、生成期间草稿阻塞、停止、课程问答、进程重启和缺模型设置入口；macOS 与 Windows 桌面 Chrome 均执行。

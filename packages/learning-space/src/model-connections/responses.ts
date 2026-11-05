@@ -3,7 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { compileOutputSchema } from './chat-native.js';
 import { createResponsesAssembler, object, responsesOutput, responsesUsage, responsesSensitiveValues, responsesEventSensitiveValues, validateResponsesNative } from './responses-native.js';
-import { createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
+import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts } from './upstream-facts.js';
 export { validateResponsesNative } from './responses-native.js';
 
@@ -18,8 +18,10 @@ export function responsesCheckPayload(configuration: ModelConfiguration, maxOutp
 
 class MalformedResponse extends Error {}
 export async function runResponses(configuration: ModelConfiguration, apiKey: string, payload: ResponsesPayload,
-  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>, requestFetch: typeof fetch = fetch) {
+  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void) {
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
+  const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const events: unknown[] = [], assembler = createResponsesAssembler();
   let state: 'completed' | 'incomplete' | 'failed' | 'unknown' | 'cancelled' = 'incomplete';
   let reason = 'missing-terminal', bytes = 0, text = '', usage: ModelUsage = { state: 'unknown' };
@@ -56,6 +58,7 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
           usage = responsesUsage(object(response).usage, terminal);
         }
         assembler.add(value);
+        progress?.(assembler.partialText);
       } catch { throw new MalformedResponse(); }
     }
     text = assembler.partialText;

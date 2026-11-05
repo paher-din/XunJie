@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { actionReceiptSchema } from './action-intents.js';
 import { modelUsageSchema } from './model-connections.js';
 import { teachingHelpPolicySchema } from './course-help.js';
 
@@ -29,7 +28,7 @@ export const teachingRunSchema = z.object({
 export type TeachingRun = z.infer<typeof teachingRunSchema>;
 
 export const teachingEventKindSchema = z.enum([
-  'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant',
+  'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'assistant',
   'run-completed', 'run-failed', 'run-stopped', 'stop-requested', 'run-continued',
   'model-unavailable', 'capacity-paused', 'system-notice',
 ]);
@@ -69,12 +68,6 @@ export const teachingSnapshotSchema = z.object({
   createdAt: z.iso.datetime(),
 }).strict();
 export type TeachingSnapshot = z.infer<typeof teachingSnapshotSchema>;
-
-export const teachingRequestViewSchema = z.object({
-  requestId: z.uuid(), runId: z.uuid(), inputId: z.uuid(),
-  state: z.enum(['accepted', 'cancelled']), receipt: actionReceiptSchema,
-}).strict();
-export type TeachingRequestView = z.infer<typeof teachingRequestViewSchema>;
 
 export const teachingStopInputSchema = z.object({ requestId: z.uuid() }).strict();
 export const teachingContinueInputSchema = z.object({ requestId: z.uuid() }).strict();

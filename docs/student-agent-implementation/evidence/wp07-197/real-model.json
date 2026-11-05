@@ -1,0 +1,136 @@
+{
+  "measuredAt": "2026-11-05T15:26:22.660Z",
+  "node": "24.21.0",
+  "provider": "DeepSeek",
+  "model": "deepseek-flash",
+  "authorization": "Bounded acceptance calls approved by the project owner using the existing local private provider configuration. The credential was read at runtime and is not present in this file, code, commits or logs.",
+  "retries": 0,
+  "totalUpstreamRequests": 4,
+  "network": {
+    "reason": "system DNS resolves the provider to a blocked fake-IP range",
+    "path": "acceptance-only loopback HTTP forwarder to the provider public address with verified TLS and SNI",
+    "realIp": "61.170.82.99",
+    "dnsModified": false,
+    "productRelaxation": "none; product network policy and TLS verification were not changed"
+  },
+  "budget": "four bounded text requests: one Chat call capped at 128 output tokens, a second Chat call at 512, one Responses call and one Messages call at 128",
+  "requests": [
+    {
+      "index": 1,
+      "protocol": "chat-completions",
+      "purpose": "teaching text answer under a deliberate 128-token output cap",
+      "parameterMode": "plain",
+      "state": "failed",
+      "reason": "length",
+      "usage": {
+        "state": "final",
+        "inputTokens": 231,
+        "outputTokens": 128,
+        "totalTokens": 359,
+        "cachedTokens": 0,
+        "reasoningTokens": 89
+      },
+      "textChars": 63,
+      "textSha256": "2c6a209332a96ebc707dedc1196417b8ca5b8a1ca9d5ec310a54b335044cb260",
+      "progressEvents": 1,
+      "snapshot": {
+        "maxOutputTokens": 128,
+        "contextWindow": 262144,
+        "payloadSha256": "a0c9482d66e44637ac34060f825d0b819cab9fd25249e609e5cf5d80df58d791"
+      },
+      "upstream": {
+        "path": "/v1/chat/completions",
+        "status": 200
+      }
+    },
+    {
+      "index": 2,
+      "protocol": "chat-completions",
+      "purpose": "same teaching question sent again with a 512-token output cap after the first call hit the 128-token cap",
+      "parameterMode": "plain",
+      "state": "completed",
+      "reason": "stop",
+      "usage": {
+        "state": "final",
+        "inputTokens": 231,
+        "outputTokens": 143,
+        "totalTokens": 374,
+        "cachedTokens": 0,
+        "reasoningTokens": 65
+      },
+      "textChars": 132,
+      "textSha256": "5ee8af1130f87c491fd47239e1a72752dce599a0ffa6cddf0b264f2f8ee10e20",
+      "progressEvents": 1,
+      "snapshot": {
+        "maxOutputTokens": 512,
+        "contextWindow": 262144,
+        "payloadSha256": "531e8675c4b2493b40219a7b9a43c41b8a43215dc879b1ab960d353830792868"
+      },
+      "upstream": {
+        "path": "/v1/chat/completions",
+        "status": 200
+      }
+    },
+    {
+      "index": 3,
+      "protocol": "responses",
+      "purpose": "teaching text answer through the native Responses transport",
+      "parameterMode": "plain",
+      "state": "completed",
+      "reason": "completed",
+      "usage": {
+        "state": "final",
+        "inputTokens": 206,
+        "outputTokens": 34,
+        "totalTokens": 240,
+        "cachedTokens": 0,
+        "reasoningTokens": 0
+      },
+      "textChars": 58,
+      "textSha256": "d45d22c230cb922f3f57dee659edd530f04d94c692bab27dcaa2e1fe4fbf4a6b",
+      "progressEvents": 1,
+      "snapshot": {
+        "maxOutputTokens": 128,
+        "contextWindow": 262144,
+        "payloadSha256": "d07bbff957b0b67c8be230dd3efbbc3b547b611e5297b84efdebf4d72f76090c"
+      },
+      "upstream": {
+        "path": "/v1/responses",
+        "status": 200
+      }
+    },
+    {
+      "index": 4,
+      "protocol": "messages",
+      "purpose": "teaching text answer through the native Messages transport",
+      "parameterMode": "plain",
+      "state": "completed",
+      "reason": "end_turn",
+      "usage": {
+        "state": "final",
+        "inputTokens": 206,
+        "outputTokens": 40,
+        "cachedTokens": 0
+      },
+      "textChars": 69,
+      "textSha256": "078769f6c803b1ed476def153eac51a9c65e4f71d471b34cf3956d44f0329580",
+      "progressEvents": 1,
+      "snapshot": {
+        "maxOutputTokens": 128,
+        "contextWindow": 262144,
+        "payloadSha256": "ead9d54c2ceef231cbb26bc50e216337c06b5b1fbe36e35c99d4ce2ae4e4cbd8"
+      },
+      "upstream": {
+        "path": "/anthropic/v1/messages",
+        "status": 200
+      }
+    }
+  ],
+  "observations": [
+    "All four upstream requests returned HTTP 200 and the product made no automatic retry; the second Chat call was an explicitly bounded acceptance call.",
+    "The 128-token Chat call ended with finish reason length; the 512-token Chat call completed with stop and produced 132 characters.",
+    "Each call used a fresh ephemeral loopback forwarder port, so ports are omitted rather than recorded as provider facts.",
+    "Messages usage reports input and output tokens without a total; the total is recorded only when the provider supplies it.",
+    "Progress events count persisted assistant-progress revisions; each request produced one revision in this bounded run."
+  ]
+}

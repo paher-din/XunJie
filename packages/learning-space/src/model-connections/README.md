@@ -11,6 +11,7 @@
 | `checks.dispatch(identity, id)` | 有效授权与代际下最多一次外发；重复派发只查原记录；没有课程、活动或 Run 前置 |
 | `checks.read/list(identity, id?)` | 只读原事实，并核验结果资源；结果含部分文本、usage 及 resultRef，不返回原生 reasoning 或错误正文 |
 | `checks.cancel(identity, id)` | 未外发确认未开始；外发后 abort 本机 SDK；保留终态竞争的实际事实，上游计算/费用仍未知 |
+| `checks.progress(identity, id)` | 只返回学习 attempt 已通过凭据尾部扣留并持久化的安全正文前缀与修订号；探针不写进度 |
 | `school.save(spaceId, input)` | 仅受认证的宿主管理入口调用；每个学校一个默认连接，CAS 更新、停用、检查许可和限额 |
 | `selection.read/save`、`selection.createGrant/revoke` | 真实主体的显式引用、费用来源及授权版本；撤销不删除历史，不回退到学校额度 |
 | `images.upload` | 接收本主体的固定 PNG 原件或有来源的变换版本；不接受 URL、教师材料 ID 或任意文件路径 |
@@ -37,6 +38,8 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 `POST models/calls` 是受控调用方使用的同一 Gateway 入口：`purpose:"chat-probe"`、稳定 `attemptId`、`segmentId/expectedSequence`、`input:{text,images,toolResults,observations}` 和有限 `limits`。这不建立学习聊天或执行工具。`models/calls/<id>` 的查询、`dispatch/cancel` 复用可靠调用状态机；`models/checks` 仍只接受合成文本检查用途，两类 ID 不能混用。原生探针调用最多 2048 输出 token、30 秒、32 步；完整探针 wire 最多 1 MB、8 张图片，超限拒绝而不裁剪。
 
 学习用途由 `teaching-agent` 的受认证 `RunDriver` 在自己的 owner 内接收，不经过公开 `models/calls`。学习段与 attempt 复用同一选择、授权、segment/check 状态机、三协议 SDK 和原生结果资源，但不受探针次数、段序号、输出或时间上限约束；输出上限与上下文窗口取保存的模型配置，`maxOutputTokens` 不再被探针上限静默改写。每段可携带真实 `user/assistant` 角色的可移植历史；学习调用仍不执行工具。
+
+学习 attempt 的增量正文写入独立 `model_attempt_progress` 表（迁移 11）。三种协议都在解析各自增量后调用同一个凭据尾部扣留发布器：完整凭据出现前不公开可能拼出凭据的尾部，出现后停止公开；探针、检查与取消不产生进度行。进度读取只返回已持久化的安全前缀与修订号，`teaching-agent` 再用稳定 attempt 身份追加事件。
 
 工具参数按 choice/tool index 聚合；只有名字、身份、完整 JSON/schema、整体终态和可读持久结果同时成立，公开结果才出现 `toolIntents`。拒绝、半截参数、截断、未知关键块、缺终态或本地发布失败不交付意图。DeepSeek 保留 `reasoning_content`；已实测 Command Code 方言保留 `reasoning` 及按块索引聚合的 `reasoning_details`，未知关键格式保留原始 chunks 但不可续接。公开投影不返回原生推理。
 

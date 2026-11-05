@@ -34,7 +34,10 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
 ` }, { version: 9, name: 'messages-upstream-facts-contract', sql: `
   ALTER TABLE model_attempts ADD CONSTRAINT model_attempt_upstream_object
     CHECK (NOT (body ? 'upstream') OR jsonb_typeof(body->'upstream')='object');
-` }, modelDeviceTaskMigration];
+` }, modelDeviceTaskMigration, { version: 11, name: 'learning-attempt-progress', sql: `
+  CREATE TABLE model_attempt_progress(attempt_id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
+` }];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');

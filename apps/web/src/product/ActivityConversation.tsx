@@ -9,6 +9,7 @@ import { Markdown } from '../components/chat/Markdown'
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching']
 
 function runLabel(run: TeachingRun) {
+  if (run.stopRequested && activeStates.includes(run.state)) return '已请求停止，等待上游收尾…'
   if (run.state === 'received' || run.state === 'running') return 'Agent 正在准备回答…'
   if (run.state === 'dispatching') return 'Agent 正在生成回答…'
   if (run.state === 'paused' && run.reason === 'model-not-selected') return '尚未选择模型，问题与草稿已保留。'
@@ -78,13 +79,14 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
     {messages.map(message => <article key={message.eventId} className={`teaching-message ${message.role}`} data-state={message.state ?? ''}>
       <span className="teaching-role">{message.role === 'student' ? '你' : message.role === 'assistant' ? 'Agent' : '说明'}</span>
       {message.role === 'assistant'
-        ? <Markdown text={message.text} truncated={message.state === 'stopped' || message.state === 'failed'} />
+        ? <Markdown text={message.text} live={message.state === 'streaming'}
+          truncated={message.state === 'stopped' || message.state === 'failed'} />
         : <div className="preserve-lines">{message.text}</div>}
       {message.role === 'assistant' && message.state === 'stopped' && <span className="detail">（已停止，以上是已发生的内容）</span>}
     </article>)}
     {active && <div className="teaching-run-status" role="status">
       <span>{runLabel(latest)}</span>
-      {!readOnly && <button type="button" className="outline" disabled={busy}
+      {!readOnly && <button type="button" className="outline" disabled={busy || latest.stopRequested}
         onClick={() => void act(() => request(`agent/${activity.activityId}/runs/${latest.runId}/stop`, { requestId: crypto.randomUUID() }))}>停止</button>}
     </div>}
     {!active && latest && latest.state !== 'completed' && <div className="teaching-run-status">
