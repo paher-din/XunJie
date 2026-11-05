@@ -1,12 +1,13 @@
 # 实施规范
 
-本轮工作包及依赖见[实施总览](../student-agent-implementation-overview.md)，各包规范集中放在本目录。
+本轮工作包及依赖见[实施总览](../student-agent-implementation-overview.md)，各包规范与 GitHub 发布入口在本页索引。
 
 | 工作包 | 规范 | GitHub 规范母票 | 范围 |
 | --- | --- | --- | --- |
 | WP01 | [产品运行与数据底座](wp01-product-runtime-and-data.md) | [WP01：产品运行与数据底座](https://github.com/paher-din/XunJie/issues/142) | 工程入口与公共契约准备、原生 PostgreSQL 生命周期、独立环境与部署连接、所属事务和资源、备份升级及恢复交接 |
 | WP02 | [学习空间与可靠工作区](wp02-learning-space-and-reliable-workspace.md) | [WP02：学习空间与可靠工作区](https://github.com/paher-din/XunJie/issues/148) | 个人/学校身份与隔离、课程发布基础记录、可无课程活动、作品与固定引用、静默自动保存、待同步/待发意图及同浏览器恢复 |
 | WP03 | [课程组件宿主与公共执行](wp03-course-components-and-execution.md) | [WP03：课程组件宿主与公共执行](https://github.com/paher-din/XunJie/issues/162) | 固定组件与动态宿主、独立实例与语义引用、依赖准备和自检、有限作业/持续会话、真实结果与恢复、正式产品接线 |
+| WP04 | ALU 浏览器实验能力（完整规范见母票） | [WP04：ALU 浏览器实验能力](https://github.com/paher-din/XunJie/issues/190) | 可复现 Icarus/WASM、正式编辑/虚拟板/波形接线、预测用例与真实观察、4096 组行为、版本归属及 Windows/Mac 桌面 Chrome 恢复；WP05 暂缓 |
 | WP06 | [三协议模型连接](wp06-model-connections.md) | [WP06：三协议模型连接](https://github.com/paher-din/XunJie/issues/163) | 学校/个人模型配置与正式设置接入、三协议直接 SDK、能力证据、图像、持久调用结果、原生续接及错误/用量未知 |
 
 WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#further-notes)；实施前沿以[规范母票](https://github.com/paher-din/XunJie/issues/163)的原生子议题及阻塞关系为准。
@@ -26,6 +27,20 @@ WP06 [#166：Responses 完整接入](https://github.com/paher-din/XunJie/issues/
 WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJie/issues/167)见[实施方案](wp06-messages.md)和[交付记录](../wp06-messages-acceptance.md)，复用现有模型 owner，Mac 后续交接 #178。
 
 [#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/learning-space/src/model-connections/README.md)及[分项验收](../wp06-chat-selection-acceptance.md)。Mac 后续验收统一交接 #178。
+
+## WP04 实施子票
+
+负责人于 2026-11-05 确认以下五项交付边界。完整验收要求见各实施票；认领、完成状态与阻塞关系以 [WP04 规范母票](https://github.com/paher-din/XunJie/issues/190)的原生子议题及依赖为准，本页只保留范围与入口。
+
+| 实施票 | 完整交付边界 |
+| --- | --- |
+| [可复现的 ALU 浏览器运行包](https://github.com/paher-din/XunJie/issues/191) | 固定源码与补丁重建 Icarus/WASM，修正系统模块，真实 Worker 编译/仿真/VCD、四态与预算停止，并以正确实现和负对照验证运行包。 |
+| [正式活动中的 ALU 编辑与运行](https://github.com/paher-din/XunJie/issues/192) | 课程资料与起始作品导入、依赖准备、自检、正式工作区编辑运行、诊断、固定结果及保存同步；接通 WP03 公共执行与真实产品入口。 |
+| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开。 |
+| [波形引用、预测用例与比较解释](https://github.com/paher-din/XunJie/issues/194) | 真实波形与范围引用、运行前预测与理由、比较和解释、已观察/缺项记录、不可变修订及问题草稿恢复。 |
+| [ALU 数据备份、隔离还原与恢复接管](https://github.com/paher-din/XunJie/issues/195) | ALU 作品、预测、检查、观察、VCD 与引用的维护和真实恢复；隔离试还原只读、正式接管拒绝旧安装、原身份查询且不自动重跑。 |
+
+每张功能票随实现完成自己的自动保存、日常重开、失败处理、正式 UI 接线及适用的 Windows/Mac 桌面 Chrome 验证；新增事实与资源同步接入所属维护机制。最后一票专门验收 ALU 的备份、隔离还原与恢复接管，不承接积压的产品整合。WP05 及 Flights 仍暂缓。
 
 ## WP02 子票实施方案
 
