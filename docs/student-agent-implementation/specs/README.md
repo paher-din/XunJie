@@ -42,6 +42,8 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 
 每张功能票随实现完成自己的自动保存、日常重开、失败处理、正式 UI 接线及适用的 Windows/Mac 桌面 Chrome 验证；新增事实与资源同步接入所属维护机制。最后一票专门验收 ALU 的备份、隔离还原与恢复接管，不承接积压的产品整合。WP05 及 Flights 仍暂缓。
 
+#191 的运行包构建、公开适配与复跑入口见 [实施与交付记录](../wp04-191-runtime-plan.md)；Mac 暂缓，产品接线仍按后续实施票完成。
+
 ## WP02 子票实施方案
 
 混合部署与恢复接管见 [#154 实施方案](wp02-hybrid-deployment.md) 与[生产操作及验收记录](../wp02-hybrid-deployment.md)。真实跨机与 Mac 结果分别登记，不以同机替代。

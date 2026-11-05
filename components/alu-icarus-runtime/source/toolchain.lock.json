@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "status": "windows-candidate-mac-deferred",
+  "icarus": {
+    "repository": "https://github.com/steveicarus/iverilog.git",
+    "commit": "c7530dbcc186de2f21eacde14fd28061b885924c"
+  },
+  "emsdk": {
+    "repository": "https://github.com/emscripten-core/emsdk.git",
+    "commit": "0b3bcbc3b005cbb811d48e497eabcc6846d43001",
+    "version": "3.1.64",
+    "emscriptenSource": "https://github.com/emscripten-core/emscripten/tree/a1fe3902bf73a3802eae0357d273d0e37ea79898",
+    "release": "fd61bacaf40131f74987e649a135f1dd559aff60",
+    "linuxX64Tools": {
+      "upstream/bin/clang": "99353aacf4767f69bad46d6043c30700ad71e86bf08d728bda85ad8e47351ebc",
+      "upstream/bin/wasm-opt": "c3407581ffe01ba18350dcb3c56c0aa025b59ab4e635684deaa790c90a954a28",
+      "node/18.20.3_64bit/bin/node": "563a678816281a08dc7da9fd3ece4e1fc5fcc01f68ffe404f6cdd1f715821b8f"
+    }
+  }
+}

@@ -1,0 +1,2 @@
+# Build scripts and source are byte-stable across Windows and Linux checkouts.
+* text eol=lf

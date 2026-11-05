@@ -1,0 +1,17 @@
+{
+  "ivl": {
+    "initialPages": 256,
+    "maximumPages": 4096,
+    "maximumBytes": 268435456
+  },
+  "ivlpp": {
+    "initialPages": 256,
+    "maximumPages": 4096,
+    "maximumBytes": 268435456
+  },
+  "vvp": {
+    "initialPages": 256,
+    "maximumPages": 4096,
+    "maximumBytes": 268435456
+  }
+}

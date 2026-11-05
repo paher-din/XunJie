@@ -1,0 +1,7 @@
+# The manifest covers exact bytes; Git must never rewrite packaged resources.
+* -text
+# Generated compiler glue and upstream license are retained verbatim.
+ivl.js binary
+ivlpp.js binary
+vvp.js binary
+notices/Emscripten-LICENSE binary
