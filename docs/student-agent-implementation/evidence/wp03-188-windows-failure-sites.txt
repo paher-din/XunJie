@@ -1,0 +1,41 @@
+#188 Windows 失败现场阶段证据（清理前归档，已核对不含 token/密码/私钥）
+归档时间: 2026-11-05T07:41:37.353Z
+说明: 四个 %TEMP% 临时根目录已按负责人授权清理；此处保留每处的阶段状态与版本/连接路径证据。
+
+## xunjie-188-school-C55sDq
+state=stopped maintenance.phase=maintenance maintenance.reason=stop
+environmentId=5d862884-4dad-4e17-8d80-a7263c37367e installationId=0f1d6f8b-7f99-45c0-a505-4e50c201b30f
+clientNamespace=xunjie.v1.5d862884-4dad-4e17-8d80-a7263c37367e
+services=[{"unit":"client","serviceId":"af387eae-9955-4e9a-9822-cb798f97d0c8","capabilities":["runtime.status","learning.authority"]},{"unit":"space-course","serviceId":"58b3a83a-9554-4757-8d95-ec33002a3c1d","capabilities":["spaces.access"]},{"unit":"learning-data","serviceId":"79aaaa6c-aba6-427a-b9c7-f9858d895f3a","capabilities":["activity:read","activity:write"]}]
+participants=[{"serviceId":"af387eae-9955-4e9a-9822-cb798f97d0c8","schemaVersion":"1","configurationRefs":["installation"]},{"serviceId":"58b3a83a-9554-4757-8d95-ec33002a3c1d","schemaVersion":"storage/1;owner/9","configurationRefs":["storage:5d862884-4dad-4e17-8d80-a7263c37367e:58b3a83a-9554-4757-8d95-ec33002a3c1d"]},{"serviceId":"79aaaa6c-aba6-427a-b9c7-f9858d895f3a","schemaVersion":"storage/1;owner/16","configurationRefs":["storage:5d862884-4dad-4e17-8d80-a7263c37367e:79aaaa6c-aba6-427a-b9c7-f9858d895f3a"]}]
+installation.keys=["installed","resources","database","host","port","requiredServiceIds","connections"]
+postgres.log tail=2026-11-05 13:15:22.254 CST [53696] LOG:  shutting down | 2026-11-05 13:15:22.257 CST [53696] LOG:  checkpoint starting: shutdown immediate | 2026-11-05 13:15:22.821 CST [53696] LOG:  checkpoint complete: wrote 387 buffers (2.4%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.043 s, sync=0.505 s, total=0.567 s; sync files=312, longest=0.005 s, average=0.002 s; distance=2241 kB, estimate=2241 kB; lsn=0/1A27110, redo lsn=0/1A27110 | 2026-11-05 13:15:22.851 CST [16064] LOG:  database system is shut down
+
+## xunjie-188-school-CEFEEx
+state=stopped maintenance.phase=maintenance maintenance.reason=stop
+environmentId=aee73739-ba31-40b8-b6c2-bf91290e1167 installationId=1d517008-d010-4854-9fd5-46eee3fc7d61
+clientNamespace=xunjie.v1.aee73739-ba31-40b8-b6c2-bf91290e1167
+services=[{"unit":"client","serviceId":"326cf939-d552-4fe9-8df5-71e957bbc21c","capabilities":["runtime.status","learning.authority"]},{"unit":"space-course","serviceId":"f98c2e0c-8d8a-4aab-ad87-9f3af66a3f40","capabilities":["spaces.access"]},{"unit":"learning-data","serviceId":"6baf9bfe-bb6d-40fe-a76a-f504c09844b0","capabilities":["activity:read","activity:write"]}]
+participants=[{"serviceId":"326cf939-d552-4fe9-8df5-71e957bbc21c","schemaVersion":"1","configurationRefs":["installation"]},{"serviceId":"f98c2e0c-8d8a-4aab-ad87-9f3af66a3f40","schemaVersion":"storage/1;owner/9","configurationRefs":["storage:aee73739-ba31-40b8-b6c2-bf91290e1167:f98c2e0c-8d8a-4aab-ad87-9f3af66a3f40"]},{"serviceId":"6baf9bfe-bb6d-40fe-a76a-f504c09844b0","schemaVersion":"storage/1;owner/16","configurationRefs":["storage:aee73739-ba31-40b8-b6c2-bf91290e1167:6baf9bfe-bb6d-40fe-a76a-f504c09844b0"]}]
+installation.keys=["installed","resources","database","host","port","requiredServiceIds","connections"]
+postgres.log tail=2026-11-05 13:21:48.393 CST [4656] LOG:  shutting down | 2026-11-05 13:21:48.396 CST [4656] LOG:  checkpoint starting: shutdown immediate | 2026-11-05 13:21:48.924 CST [4656] LOG:  checkpoint complete: wrote 363 buffers (2.2%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.022 s, sync=0.470 s, total=0.531 s; sync files=311, longest=0.004 s, average=0.002 s; distance=2201 kB, estimate=2201 kB; lsn=0/1A1D198, redo lsn=0/1A1D198 | 2026-11-05 13:21:48.952 CST [5908] LOG:  database system is shut down
+
+## xunjie-188-school-KQibp3
+state=stopped maintenance.phase=maintenance maintenance.reason=stop
+environmentId=24fad2f9-eda2-431c-8dc8-790d0a7ed125 installationId=7a446cf6-ea09-42e2-bea5-bb4139ea735d
+clientNamespace=xunjie.v1.24fad2f9-eda2-431c-8dc8-790d0a7ed125
+services=[{"unit":"client","serviceId":"3ec04f55-86b0-49e8-9062-76e32a0b361e","capabilities":["runtime.status","learning.authority"]},{"unit":"space-course","serviceId":"23f36a22-40da-4a6e-b53f-769f5c5e459e","capabilities":["spaces.access"]},{"unit":"learning-data","serviceId":"6ab2eb11-69c1-4394-bb42-ec002f9a683f","capabilities":["activity:read","activity:write"]}]
+participants=[{"serviceId":"3ec04f55-86b0-49e8-9062-76e32a0b361e","schemaVersion":"1","configurationRefs":["installation"]},{"serviceId":"23f36a22-40da-4a6e-b53f-769f5c5e459e","schemaVersion":"storage/1;owner/9","configurationRefs":["storage:24fad2f9-eda2-431c-8dc8-790d0a7ed125:23f36a22-40da-4a6e-b53f-769f5c5e459e"]},{"serviceId":"6ab2eb11-69c1-4394-bb42-ec002f9a683f","schemaVersion":"storage/1;owner/16","configurationRefs":["storage:24fad2f9-eda2-431c-8dc8-790d0a7ed125:6ab2eb11-69c1-4394-bb42-ec002f9a683f"]}]
+installation.keys=["installed","resources","database","host","port","requiredServiceIds","connections"]
+postgres.log tail=2026-11-05 13:19:58.353 CST [50564] LOG:  shutting down | 2026-11-05 13:19:58.355 CST [50564] LOG:  checkpoint starting: shutdown immediate | 2026-11-05 13:19:59.031 CST [50564] LOG:  checkpoint complete: wrote 363 buffers (2.2%), wrote 4 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.022 s, sync=0.614 s, total=0.679 s; sync files=311, longest=0.028 s, average=0.002 s; distance=2201 kB, estimate=2201 kB; lsn=0/1A1D198, redo lsn=0/1A1D198 | 2026-11-05 13:19:59.058 CST [47264] LOG:  database system is shut down
+
+## xunjie-188-school-p8ceIY
+state=stopped maintenance.phase=maintenance maintenance.reason=stop
+environmentId=bc69a105-5983-4560-992a-b95b94dcf019 installationId=3f74263a-7aee-4974-9ebb-935e05105f4c
+clientNamespace=xunjie.v1.bc69a105-5983-4560-992a-b95b94dcf019
+services=[{"unit":"client","serviceId":"c949050d-6266-4bfb-b8ae-2330e69d0a24","capabilities":["runtime.status","learning.authority"]},{"unit":"space-course","serviceId":"8dbd9035-d1fd-4303-95c5-d49c8f95abbc","capabilities":["spaces.access"]},{"unit":"learning-data","serviceId":"914ccc4d-e696-449a-b83d-fa2dc5008dbf","capabilities":["activity:read","activity:write"]}]
+participants=[{"serviceId":"c949050d-6266-4bfb-b8ae-2330e69d0a24","schemaVersion":"1","configurationRefs":["installation"]},{"serviceId":"8dbd9035-d1fd-4303-95c5-d49c8f95abbc","schemaVersion":"storage/1;owner/9","configurationRefs":["storage:bc69a105-5983-4560-992a-b95b94dcf019:8dbd9035-d1fd-4303-95c5-d49c8f95abbc"]},{"serviceId":"914ccc4d-e696-449a-b83d-fa2dc5008dbf","schemaVersion":"storage/1;owner/16","configurationRefs":["storage:bc69a105-5983-4560-992a-b95b94dcf019:914ccc4d-e696-449a-b83d-fa2dc5008dbf"]}]
+installation.keys=["installed","resources","database","host","port","requiredServiceIds","connections"]
+postgres.log tail=2026-11-05 13:23:38.093 CST [47644] LOG:  shutting down | 2026-11-05 13:23:38.095 CST [47644] LOG:  checkpoint starting: shutdown immediate | 2026-11-05 13:23:38.629 CST [47644] LOG:  checkpoint complete: wrote 363 buffers (2.2%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.022 s, sync=0.498 s, total=0.537 s; sync files=310, longest=0.016 s, average=0.002 s; distance=2201 kB, estimate=2201 kB; lsn=0/1A1D118, redo lsn=0/1A1D118 | 2026-11-05 13:23:38.660 CST [34804] LOG:  database system is shut down
+
+注: 四次失败的原因与修正见 wp03-188-cross-platform.md「失败现场与修正」；对应截图 evidence/wp03-188-windows-failure.png。

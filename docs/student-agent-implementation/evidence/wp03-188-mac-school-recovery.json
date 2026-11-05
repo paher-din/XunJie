@@ -1,0 +1,142 @@
+{
+  "label": "macos-arm64",
+  "ticket": "#188",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-188/product-darwin-arm64",
+  "packageSha256": "10a6d4fd627ca671625d0761d8ce361a2fddadcadb666a2eb16d11bdf6e637a8",
+  "schoolEndpoint": "https://101.201.141.133:8443",
+  "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+  "strictTLS": {
+    "ignoreHTTPSErrors": false,
+    "spkiPinned": true,
+    "relay": "tcp-forward"
+  },
+  "headless": false,
+  "cases": [
+    "real product creates annotation, reference, question, Worker result and a native checkpoint with a lost control reply",
+    "a real school approval plus an installation-bound strict HTTPS runtime grant declares the independent school receiver",
+    "a real TCP link break isolates the school node and reconnect re-queries the same school identity",
+    "isolated Chrome reopens the original components, fixed artifact bytes, references, draft and checkpoint with zero writes",
+    "a lost takeover reply stays isolated and the retry is idempotent",
+    "takeover retires the source and holds a real SSH execution-boundary proof from the independent school node",
+    "the old school grant of the retired installation is refused after the new installation is active",
+    "the independent school node refuses the retired installation runtime connection after its real fence",
+    "after takeover the formal workspace edits in a new namespace and creates a distinct checkpoint instance whose real next result is 1"
+  ],
+  "status": "passed",
+  "components": [
+    {
+      "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+      "version": 4,
+      "digest": "0764a7637105a259ded5e857f04262a022afa26f2ad53e262d3ccf4b8ba8d3db"
+    },
+    {
+      "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+      "version": 2,
+      "digest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9"
+    },
+    {
+      "componentId": "4d0e1c8a-7b52-4a1e-9f3c-2d6b8a0c5e71",
+      "version": 2,
+      "digest": "2c8cd8c1503446352cfb5d609309fca63d29894533744e486f62d7892f9dfc42"
+    }
+  ],
+  "browserVersion": "156.0.8078.80",
+  "lostCheckpointReply": true,
+  "connection": {
+    "connectionId": "cff0a680-84cc-47fa-b209-29b34697aead",
+    "runtimeConnectionId": "b90e415b-2839-489f-a5d6-c6bb07bba1dd",
+    "grantId": "30852a31-024c-4f98-9a0d-1eda6bd7315c",
+    "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+    "strictHTTPS": true,
+    "capability": "learning.authority",
+    "handshake": "ready",
+    "schoolCourseId": "4cd30e67-a5db-4be9-93bc-678861b6aa2d"
+  },
+  "originalSession": {
+    "requestId": "cb4aad40-e141-4c99-b94b-44a74f4f16e9",
+    "inputDigest": "88ac466838873cc00ad9627484eb53e2a3d00dd260b6b027a8e2888e88383826",
+    "executionRef": "4d1451ec-3b20-49f9-85c6-13db9a55251a",
+    "nodeId": "local-darwin",
+    "executorInstanceId": "6149d6a3-6bd4-4358-8d24-fb740706308e"
+  },
+  "browserJob": {
+    "requestId": "e18d27c3-aa52-45fa-9a79-105acf5512b2",
+    "inputDigest": "19974e20d4afbe181395aa777c9defd1b2559bc5c397ac8a81c493f40e5e963c",
+    "executionRef": "b077191a-ae3b-4d8f-9883-cf28bae7e8d6",
+    "artifactSha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+    "artifactByteLength": 97
+  },
+  "relaySeveredTunnels": 1,
+  "realDisconnect": {
+    "mechanism": "tcp-tunnels-destroyed",
+    "severedTunnels": 1,
+    "schoolReachable": false
+  },
+  "backupId": "e368127e-a91e-4c35-9d0b-8e4cd06959c8",
+  "boundary": {
+    "services": [
+      {
+        "serviceId": "6c09dcc3-e3f1-470c-b951-6fa5e620f088",
+        "kind": "xunjie.runtime.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      },
+      {
+        "serviceId": "7e64a3b5-e760-4fa3-a251-f917f956515a",
+        "kind": "xunjie.storage.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      },
+      {
+        "serviceId": "a58c6d06-6476-4307-953f-e5e0473b4031",
+        "kind": "xunjie.learning-data.boundary",
+        "unresolved": 0,
+        "settled": 2,
+        "blocking": 0
+      }
+    ],
+    "receiverIds": [
+      "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4"
+    ]
+  },
+  "takeover": {
+    "backupId": "e368127e-a91e-4c35-9d0b-8e4cd06959c8",
+    "phase": "active",
+    "receiverProof": "ssh-fence-source"
+  },
+  "lostTakeoverReply": true,
+  "oldGrantStatus": 503,
+  "fencedGrant": {
+    "state": "unavailable",
+    "reason": "http_401"
+  },
+  "recoveredSession": {
+    "requestId": "ca60c829-f3f7-44f7-9c03-83d20d78e0b7",
+    "inputDigest": "5bfa920fd4a89298f04cb64c0b3998a577438ffa2e1569ecdc5dcdf7b04174ea",
+    "executionRef": "c398b6ba-32a5-453d-8372-a5270513de95",
+    "nodeId": "local-darwin",
+    "executorInstanceId": "62675a3c-f996-419b-b61d-3e33ab0447a7",
+    "restoredFrom": {
+      "checkpointId": "5441e541-0c9f-4fc6-ae8e-39eb506bd9e4",
+      "sessionRef": "4d1451ec-3b20-49f9-85c6-13db9a55251a",
+      "sha256": "39c747568fdc27d0664c0c6e1df81446065909f1a4a4d77545d84a6ab62385dd"
+    },
+    "nextObservation": {
+      "total": 5,
+      "value": 1,
+      "applied": 3
+    }
+  },
+  "oldNamespaceStatus": 403,
+  "cleanup": [
+    "fulfilled",
+    "fulfilled"
+  ],
+  "temporaryRootRemoved": true
+}

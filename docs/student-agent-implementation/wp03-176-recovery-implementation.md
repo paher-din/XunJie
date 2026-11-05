@@ -115,7 +115,7 @@
 - 连接回归 32/32 通过；接收端含备份恢复后永久拒绝旧安装。一次组合负载中初始就绪检查失败，独立复跑通过并增加依赖诊断；不将该次失败记为通过。
 - 公共契约浏览器检查通过 12 个导出；完整文档链接检查结果以最终交付命令输出为准。首次 product-runtime 单测组的 Windows 文件符号链接 `EPERM` 仍是未通过项，未修改测试绕过权限。
 - 使用最终产品 PostgreSQL/helper 的相关工程组合 **61/61 通过**：[原始测试记录](evidence/wp03-176-engineering.txt)，本地完整日志 `.verification/wp03-176-packaged-tests.log`。包含恢复编排/存储、隔离学习、执行、边界、领取和学校转发；早期错误配置的失败日志 `.verification/wp03-176-final-tests.log` 继续保留，不记为通过。
-- 最终公共契约检查 12 个导出通过；文档检查 193 份 Markdown、1593 个本地目标、0 失败；差异检查通过。没有将全库 `npm run verify` 或 Windows 文件符号链接权限用例声称为通过。
+- 最终公共契约检查 12 个导出通过；文档检查 193 份 Markdown、1593 个本地目标、0 失败；差异检查通过。没有将全库 `npm run verify` 或 Windows 文件符号链接权限用例声称为 #176 通过项；#188 后来在补齐完整 Node 24.21.0 发行版后单独跑通全库 `verify`，见下方交接段，不改写本页结论。
 
 最终产品候选在 `.verification/wp03-176-product-win32-x64-final`，`distribution.json` SHA-256 为 `a38ad414654df2988d943f24084d20c31ec891edc9438e5bf58c74da4b2f15cf`。Chrome 为 156.0.8078.80、Windows 11 x64 10.0.26200、Node 24.21.0、产品声明 PostgreSQL 18.6（固定发行 18.6.1）。
 
@@ -155,3 +155,23 @@
 负责人随后手动清理了上述两处目录，Agent 已用 `Test-Path` 核实均不存在。没有删除原业务环境、原备份或其他工作留下的 `.tmp/`。
 
 最终组合回归第一次误用了缓存解压的 PostgreSQL：中文路径的状态回报出现 `ѭ��`，导致 `realpath` 失败、业务 owner 未登记；清理失败又掩盖了原始就绪异常。改用最终产品包内带 UTF-8 兼容清单的 PostgreSQL 后，存储恢复独立复验 2/2 通过，组合回归改用相同产品资源重跑。缓存诊断的三个测试数据库已用产品 `pg_ctl` 停止；负责人随后清理 `循阶 complete recovery QMfFzJ`、`循阶 failed recovery GC nmzl77`、`循阶 failed recovery GC Q791SB` 三个现场目录，Agent 于 2026-11-05 用 `Test-Path` 核实均不存在。
+
+## #188 跨平台与跨机验收交接（2026-11-05）
+
+负责人拆出的 [#188](https://github.com/paher-din/XunJie/issues/188) 已在 Apple Silicon Mac 与 Windows 11 x64 两台真实客户端上执行，均连接同一台独立 Ubuntu 24.04.5 学校节点。完整交付（可复跑命令、版本、工程检查、桌面 Chrome、真实跨机恢复、失败现场、逐条验收对照与未执行项）见 [WP03 #188 跨平台与跨机验收](wp03-188-cross-platform.md)，本页第 11 项的「尚未验证」由该页取代，但本页 Windows 本机结论不被改写。
+
+| 结果 | 证据 |
+| --- | --- |
+| Mac 实际产品包、原生 PostgreSQL 18.6、桌面 Chrome：备份/隔离只读/接管 3/3 通过 | [结构化报告](evidence/wp03-188-mac-local-recovery.json) |
+| Mac → 独立学校节点完整恢复与接管 9/9 通过 | [结构化报告](evidence/wp03-188-mac-school-recovery.json) · [隔离只读](evidence/wp03-188-mac-isolated.png) · [接管后恢复实例](evidence/wp03-188-mac-recovered.png) |
+| Windows 实际产品包、AppContainer 执行器 → 独立学校节点完整恢复与接管 9/9 通过 | [结构化报告](evidence/wp03-188-windows-school-recovery.json) · [桌面控制台](evidence/wp03-188-windows-desktop.txt) · [隔离只读](evidence/wp03-188-windows-isolated.png) · [接管后恢复实例](evidence/wp03-188-windows-recovered.png) |
+| 两客户端学校 Web 路径各 10/10 通过，含真实 TCP 断链、撤权与按原身份重查 | [Mac](evidence/wp03-188-mac-school-web.json) · [Windows](evidence/wp03-188-windows-school-web.json) |
+| Mac 工程检查：契约浏览器 12 导出、文档链接 0 失败、全量构建、product-runtime 16/16 | [原始输出](evidence/wp03-188-engineering.txt) |
+| 全库 `npm run verify` 159/159 通过（完整 Node 24.21.0 发行版，产品包内 Node 缺 npm 的首次失败已如实记录） | [原始输出](evidence/wp03-188-full-verify.txt) |
+| 两客户端真实产品包上的恢复负例各 7/7 通过：资源缺失/单字节损坏/manifest 篡改/错密钥/legacy/不可核实边界均被拒，原备份逐字节保留 | [Mac](evidence/wp03-188-mac-recovery-negative.json) · [Windows](evidence/wp03-188-windows-recovery-negative.json) |
+| 两客户端执行 disposition 负例各 6/6 通过：产品自身分类 `accepted-not-started`/`stop-pending`/`unknown`，未结命令使维护排空 fail-closed，持有备份字节不变 | [Mac](evidence/wp03-188-mac-execution-disposition.json) · [Windows](evidence/wp03-188-windows-execution-disposition.json) |
+| 真实终止并重启独立学校守护进程、fence 后恢复旧连接文件、可信晚回包 401、新安装授权后旧安装仍被拒 | [Mac 7/7](evidence/wp03-188-mac-school-lifecycle.json) · [Windows 5/5](evidence/wp03-188-windows-school-lifecycle.json) · [停机后学校 Web 10/10 复验](evidence/wp03-188-mac-school-web-post188.json) |
+
+Windows 验收必须运行在交互桌面会话：SSH 会话中产品自带的 AppContainer helper 无法启动子进程，经同一 helper 在两种会话下的对照诊断后改用一次性计划任务；被遮挡的 Chrome 还会延迟组件 iframe 的输入与确认轮询，已在探针侧加节流禁用标志与无副作用点击重试，未修改产品代码或放宽断言。[失败现场](evidence/wp03-188-windows-failure.png) 与 [Mac 失败现场](evidence/wp03-188-mac-failure.png) 均保留。
+
+后续补跑：全库 `npm run verify` 在补齐完整 Node 24.21.0 发行版后 159/159 通过；备份资源缺失、单字节损坏、manifest 篡改、错密钥、legacy 历史格式与「阻塞/不可核实 owner 不生成完整维护成功」已在 Mac 与 Windows 两台真实产品包 + 原生 PostgreSQL 上各 7/7 重跑，原备份字节不变、源未退休。负责人随后再次授权动独立学校节点与停服务，于是三类原先未重跑的负例全部补齐：「已接受未开始」「停止待确认」「未知」三种执行 disposition 由两客户端真实产品包的 owner 边界代码分类（各 6/6，未结命令令维护排空 fail-closed）；独立学校守护进程被真实 `kill` 后由产品 `start` 重启，同一连接身份与原 `requestId`/`inputDigest` 全程保持；fence 后恢复 7 个旧凭据/连接文件、fence 前发出的可信晚回包均返回 401，新 installation 授权后旧 installation 仍被拒（Mac 7/7、Windows 5/5），停机与两次 fence 后学校网页路径再复验 10/10。教学效果依旧未评估。Windows 两轮临时现场目录与一次性计划任务均已按负责人授权移入回收站/删除并核验，阶段证据先脱敏[归档](evidence/wp03-188-windows-failure-sites.txt)。

@@ -15,7 +15,7 @@ WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#furt
 
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
-| [组件与执行数据的备份、还原和接管](https://github.com/paher-din/XunJie/issues/176) | [设计与验收计划](wp03-execution-recovery.md) · [实现与验证](../wp03-176-recovery-implementation.md) | Windows 实际产品包恢复链路已验证；Mac 与学校跨机范围见 #188，教学效果未评估 |
+| [组件与执行数据的备份、还原和接管](https://github.com/paher-din/XunJie/issues/176) | [设计与验收计划](wp03-execution-recovery.md) · [实现与验证](../wp03-176-recovery-implementation.md) · [#188 跨平台与跨机验收](../wp03-188-cross-platform.md) | Windows 实际产品包恢复链路已验证；Mac 与 Windows 客户端连接独立学校节点的跨机验收见 #188，备份资源/恢复格式负例、执行器状态注入的 disposition 负例、真实停节点与 fence 后旧连接/可信晚回包负例均已在两客户端补跑，教学效果未评估 |
 | [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) · [Mac 交接](../wp03-171-mac-handoff.md) | Windows 实现与复审证据见记录；Mac 未执行，不记完整验收 |
 
 ## WP02 子票实施方案

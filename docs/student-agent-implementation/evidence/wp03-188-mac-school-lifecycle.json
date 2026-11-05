@@ -1,0 +1,178 @@
+{
+  "label": "macos-arm64",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-188/product-darwin-arm64",
+  "packageSha256": "10a6d4fd627ca671625d0761d8ce361a2fddadcadb666a2eb16d11bdf6e637a8",
+  "schoolEndpoint": "https://101.201.141.133:8443",
+  "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+  "spki": "TqaZHW4oYaaqfyX85BXffS+8kvcsXOqTvEQDFmDo5EE=",
+  "strictTLS": true,
+  "ignoreHTTPSErrors": false,
+  "sshOnlyMaintenance": true,
+  "nodeLifecycle": {
+    "pid": 300084,
+    "processIdentity": "cfb3bc3d8df8147ba58bc63750b4a0a4427389d4e9a7d804bba9af850e6814fb",
+    "stoppedAt": "2026-11-05T08:58:12.206Z",
+    "listenersWhileDown": 0,
+    "handshakeWhileDown": "unavailable",
+    "reasonWhileDown": "connection_unavailable",
+    "refusedWhileDown": "connection_unavailable",
+    "requestId": "b9fc55a4-99a0-4163-8244-ad1abc4e8c7e",
+    "inputDigest": "a7ff4c25c5013b65f61660e3857d8ebad918dacc9bf1fb27fb67fd349e5ea354",
+    "restartedAt": "2026-11-05T08:58:20.404Z",
+    "listenersAfterRestart": 1,
+    "handshakeAfterRestart": "ready"
+  },
+  "cases": [
+    {
+      "name": "the installed client reaches the independent school node with a scoped strict HTTPS runtime grant",
+      "handshake": "ready",
+      "connectionId": "25e3e96a-0113-4771-a9f0-6f88c6bffe85",
+      "grantId": "387e3d61-079e-474b-9ea2-63c04e642dfd"
+    },
+    {
+      "name": "killing the real school daemon breaks the link without changing the connection identity",
+      "pid": 300084,
+      "handshakeWhileDown": "unavailable",
+      "reasonWhileDown": "connection_unavailable",
+      "refusedWhileDown": "connection_unavailable",
+      "sameRequestId": "b9fc55a4-99a0-4163-8244-ad1abc4e8c7e",
+      "sameInputDigest": "a7ff4c25c5013b65f61660e3857d8ebad918dacc9bf1fb27fb67fd349e5ea354"
+    },
+    {
+      "name": "restarting the school daemon restores the same connection without a new identity or node",
+      "handshake": "ready",
+      "grantId": "387e3d61-079e-474b-9ea2-63c04e642dfd",
+      "connectionId": "25e3e96a-0113-4771-a9f0-6f88c6bffe85",
+      "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+      "requestId": "b9fc55a4-99a0-4163-8244-ad1abc4e8c7e",
+      "inputDigest": "a7ff4c25c5013b65f61660e3857d8ebad918dacc9bf1fb27fb67fd349e5ea354"
+    },
+    {
+      "name": "a slow capability body accepted before the fence cannot regain dispatch authority after it",
+      "requestId": "97914e33-52d9-498c-b682-946e99d078b8",
+      "inputDigest": "dbbad74877074897749ddec53a4de241303200dfba0e4c7f6c7e00fc7ddba7ec",
+      "fencedHandshake": "unavailable",
+      "reason": "http_401",
+      "refusedAfterFence": "http_401",
+      "dispatchRegained": false
+    },
+    {
+      "name": "restoring old grant and connection files after the fence does not regain authority",
+      "restoredFiles": 7,
+      "handshake": "unavailable",
+      "reason": "http_401",
+      "refused": "http_401"
+    },
+    {
+      "name": "a newly authorized successor installation is ready while the retired installation stays refused",
+      "successorInstallationId": "64c380bd-1f66-4595-8a66-4b4891643514",
+      "successorHandshake": "ready",
+      "retiredHandshake": "unavailable",
+      "retiredReason": "http_401"
+    },
+    {
+      "name": "the independent school node still serves strict HTTPS traffic after restart and fencing",
+      "status": 200,
+      "environmentId": "72fa2198-a743-420f-8fb9-e0027e28a37b",
+      "listeners": 1,
+      "strictTLS": true
+    }
+  ],
+  "status": "passed",
+  "startedAt": "2026-11-05T08:58:08.368Z",
+  "schoolEnvironmentId": "72fa2198-a743-420f-8fb9-e0027e28a37b",
+  "connection": {
+    "grantId": "387e3d61-079e-474b-9ea2-63c04e642dfd",
+    "connectionId": "25e3e96a-0113-4771-a9f0-6f88c6bffe85",
+    "sourceEnvironmentId": "1427bd7e-d1bc-4a50-92b2-f02bf2e71a18",
+    "sourceServiceId": "e73028c6-61df-485d-801d-243d20e55718",
+    "sourceInstallationId": "5850b956-e963-4d70-947d-c572079fb9c3",
+    "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+    "capability": "learning.authority",
+    "strictHTTPS": true
+  },
+  "oldConnectionFiles": [
+    "control",
+    "owner-c3c5b44a-61b7-4369-a911-68ca8eb81ad7",
+    "owner-e73028c6-61df-485d-801d-243d20e55718",
+    "postgres-b10573be-f7a7-448a-99f5-7b1b8e0f4f72",
+    "storage-c3c5b44a-61b7-4369-a911-68ca8eb81ad7",
+    "storage-e73028c6-61df-485d-801d-243d20e55718",
+    "wp03-188-lifecycle-runtime"
+  ],
+  "fence": {
+    "proof": {
+      "fenced": true,
+      "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+      "sourceInstallationId": "5850b956-e963-4d70-947d-c572079fb9c3",
+      "execution": {
+        "formatVersion": 1,
+        "boundaryAt": "2026-11-05T08:58:27.602Z",
+        "services": [
+          {
+            "serviceId": "bb0065d1-1607-4735-bfa2-a89fee871c78",
+            "unresolved": 0,
+            "settled": 0,
+            "blocking": 0
+          },
+          {
+            "serviceId": "e07e7ba3-f6a2-4851-9b4c-1833a3f3ecb0",
+            "unresolved": 0,
+            "settled": 3,
+            "blocking": 0
+          },
+          {
+            "serviceId": "c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+            "unresolved": 0,
+            "settled": 0,
+            "blocking": 0
+          }
+        ],
+        "unresolved": 0,
+        "blocking": 0
+      }
+    },
+    "fencedHandshake": {
+      "state": "unavailable",
+      "reason": "http_401"
+    }
+  },
+  "lateReply": {
+    "requestId": "97914e33-52d9-498c-b682-946e99d078b8",
+    "inputDigest": "dbbad74877074897749ddec53a4de241303200dfba0e4c7f6c7e00fc7ddba7ec",
+    "grantId": "387e3d61-079e-474b-9ea2-63c04e642dfd",
+    "sourceInstallationId": "5850b956-e963-4d70-947d-c572079fb9c3",
+    "httpStatus": 401,
+    "response": "{\"error\":\"unauthorized\"}",
+    "archivedUnderOriginalIdentity": true,
+    "dispatchRegained": false,
+    "refusedAfterFence": "http_401"
+  },
+  "oldConnectionRestored": {
+    "files": 7,
+    "handshake": "unavailable",
+    "reason": "http_401",
+    "refused": "http_401",
+    "dispatchRegained": false
+  },
+  "successor": {
+    "installationId": "64c380bd-1f66-4595-8a66-4b4891643514",
+    "grantId": "d44e44c8-ef48-4bb6-86b4-ec7c2d230306",
+    "handshake": "ready",
+    "retiredInstallationHandshake": "unavailable",
+    "retiredReason": "http_401"
+  },
+  "schoolRestored": {
+    "status": 200,
+    "environmentId": "72fa2198-a743-420f-8fb9-e0027e28a37b",
+    "listeners": 1,
+    "strictTLS": true
+  },
+  "schoolUpAtFinish": true,
+  "temporaryRootRemoved": true,
+  "finishedAt": "2026-11-05T08:58:34.320Z"
+}

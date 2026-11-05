@@ -1,0 +1,147 @@
+{
+  "label": "windows-x64",
+  "ticket": "#188",
+  "platform": "win32",
+  "arch": "x64",
+  "os": "10.0.26200",
+  "node": "v24.21.0",
+  "product": "C:\\Users\\h\\XunJie-acceptance\\wp03-188\\product-win32-x64",
+  "packageSha256": "13c8f3d00538468ee1539a79d6d0c9f555cb8632217070673b9f503011293fd4",
+  "schoolEndpoint": "https://101.201.141.133:8443",
+  "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+  "strictTLS": {
+    "ignoreHTTPSErrors": false,
+    "spkiPinned": true,
+    "relay": "tcp-forward"
+  },
+  "headless": false,
+  "cases": [
+    "real product creates annotation, reference, question, Worker result and a native checkpoint with a lost control reply",
+    "a real school approval plus an installation-bound strict HTTPS runtime grant declares the independent school receiver",
+    "a real TCP link break isolates the school node and reconnect re-queries the same school identity",
+    "isolated Chrome reopens the original components, fixed artifact bytes, references, draft and checkpoint with zero writes",
+    "a lost takeover reply stays isolated and the retry is idempotent",
+    "takeover retires the source and holds a real SSH execution-boundary proof from the independent school node",
+    "the old school grant of the retired installation is refused after the new installation is active",
+    "the independent school node refuses the retired installation runtime connection after its real fence",
+    "after takeover the formal workspace edits in a new namespace and creates a distinct checkpoint instance whose real next result is 1"
+  ],
+  "status": "passed",
+  "componentDefinitionsSha256": "815e730abdb407124145c766c7da8fc3ac41afd54b09f46c366064a12f60ec2b",
+  "components": [
+    {
+      "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+      "version": 4,
+      "digest": "0764a7637105a259ded5e857f04262a022afa26f2ad53e262d3ccf4b8ba8d3db"
+    },
+    {
+      "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+      "version": 2,
+      "digest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9"
+    },
+    {
+      "componentId": "4d0e1c8a-7b52-4a1e-9f3c-2d6b8a0c5e71",
+      "version": 2,
+      "digest": "2c8cd8c1503446352cfb5d609309fca63d29894533744e486f62d7892f9dfc42"
+    }
+  ],
+  "browserVersion": "156.0.8078.80",
+  "compute": {
+    "iframeStatus": "已完成",
+    "submits": 3
+  },
+  "lostCheckpointReply": true,
+  "connection": {
+    "connectionId": "95356031-e47e-40ec-b82c-e4c4dc74a05f",
+    "runtimeConnectionId": "2fb31b55-0909-4322-8851-cb16e6f5fb73",
+    "grantId": "39879151-8ea4-45d5-94c6-4ee32aab9042",
+    "receiverId": "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4",
+    "strictHTTPS": true,
+    "capability": "learning.authority",
+    "handshake": "ready",
+    "schoolCourseId": "4cd30e67-a5db-4be9-93bc-678861b6aa2d"
+  },
+  "originalSession": {
+    "requestId": "be2ef7a2-11df-4aae-955a-d2816b51e568",
+    "inputDigest": "04115b73d612adde974cbca487642f04bc055aad076b118b3902cb4ecc41dc09",
+    "executionRef": "f20716dc-9097-48d9-8e69-d33f079bd31f",
+    "nodeId": "local-win32",
+    "executorInstanceId": "9a0a4b30-279d-49c0-9265-b77cd362ac1c"
+  },
+  "browserJob": {
+    "requestId": "6e4b1f46-926c-4f72-a940-8af78524351e",
+    "inputDigest": "2481eebbeff989c3d9e4590c2e4b3bfdd4a9e744f307c54ebcc8e69d01ccb717",
+    "executionRef": "7bcd56df-2263-4b85-8a1e-0dca37698e2a",
+    "artifactSha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+    "artifactByteLength": 97
+  },
+  "relaySeveredTunnels": 1,
+  "realDisconnect": {
+    "mechanism": "tcp-tunnels-destroyed",
+    "severedTunnels": 1,
+    "schoolReachable": false
+  },
+  "backupId": "37c7d5ec-b3ff-4b39-8ae6-30995e9db95b",
+  "boundary": {
+    "services": [
+      {
+        "serviceId": "f4009850-db0e-4d69-8134-7e731414adf0",
+        "kind": "xunjie.runtime.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      },
+      {
+        "serviceId": "bc1d058c-7ddd-4531-a628-99897c3254a3",
+        "kind": "xunjie.storage.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      },
+      {
+        "serviceId": "4c986f4b-ce7b-4760-a667-719e0647610c",
+        "kind": "xunjie.learning-data.boundary",
+        "unresolved": 0,
+        "settled": 2,
+        "blocking": 0
+      }
+    ],
+    "receiverIds": [
+      "72fa2198-a743-420f-8fb9-e0027e28a37b/c3be3834-c8bc-453a-a874-ec83e6ae66b4"
+    ]
+  },
+  "takeover": {
+    "backupId": "37c7d5ec-b3ff-4b39-8ae6-30995e9db95b",
+    "phase": "active",
+    "receiverProof": "ssh-fence-source"
+  },
+  "lostTakeoverReply": true,
+  "oldGrantStatus": 503,
+  "fencedGrant": {
+    "state": "unavailable",
+    "reason": "http_401"
+  },
+  "recoveredSession": {
+    "requestId": "12acb222-851a-4d19-9f81-0fa3951f543a",
+    "inputDigest": "0d9ad28b54ac12242f6cb2c6695e65483d5b11dc984220a86062cbfedc8137ef",
+    "executionRef": "4dc56d4b-5e23-4b74-9522-29d3ea843a7f",
+    "nodeId": "local-win32",
+    "executorInstanceId": "12b3edda-1b2a-49b8-b247-267216950a29",
+    "restoredFrom": {
+      "checkpointId": "404686b4-5020-4daf-8083-b43665528bda",
+      "sessionRef": "f20716dc-9097-48d9-8e69-d33f079bd31f",
+      "sha256": "3cf40fb89c1eb972266572297a09e195c00f389d28e0ef78e9b478ebc7f968ae"
+    },
+    "nextObservation": {
+      "total": 5,
+      "value": 1,
+      "applied": 3
+    }
+  },
+  "oldNamespaceStatus": 403,
+  "cleanup": [
+    "fulfilled",
+    "fulfilled"
+  ],
+  "temporaryRootRemoved": true
+}

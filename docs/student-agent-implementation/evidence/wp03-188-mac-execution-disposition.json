@@ -1,0 +1,173 @@
+{
+  "label": "macos-arm64",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp03-188/product-darwin-arm64",
+  "packageSha256": "10a6d4fd627ca671625d0761d8ce361a2fddadcadb666a2eb16d11bdf6e637a8",
+  "migrationsSha256": "3577a315061e3f6224855a4efd5f813e510e1c1c57e4c91c0d9fcbe0664eaa49",
+  "migrationsCount": 16,
+  "postgresVersion": "18.6",
+  "cases": [
+    {
+      "name": "a clean settled boundary publishes a complete boundary-aware held backup",
+      "backupId": "131715db-fb79-45b1-88a0-bbea6ee543ed",
+      "boundaryServices": 3,
+      "files": 7,
+      "sha256": "9fc56126124c4db444598b624c57387ba7c95688e5a2e5ad82df34178c2a186f"
+    },
+    {
+      "name": "the packaged owner classifies accepted-not-started, stop-pending and unknown commands itself",
+      "kind": "xunjie.learning-data.boundary",
+      "dispositions": {
+        "stop-pending": "8ec1d02d-f072-4f0e-a283-666567798852",
+        "unknown": "a4cf8d65-d8f4-4df1-9d6b-1314618c96f2",
+        "accepted-not-started": "ae7d301a-822d-480c-a772-33a6d6e0abb7"
+      },
+      "blocking": [
+        "unresolved-stop-pending",
+        "unresolved-unknown",
+        "unconfirmed-browser-boundary"
+      ]
+    },
+    {
+      "name": "settling one unknown command leaves stop-pending and accepted-not-started blocking",
+      "settled": 1,
+      "unresolved": 2,
+      "blocking": [
+        "unresolved-stop-pending",
+        "unconfirmed-browser-boundary"
+      ]
+    },
+    {
+      "name": "the packaged owner re-derives an unblocked boundary only after every command is settled",
+      "settled": 3,
+      "unresolved": 0,
+      "blocking": 0
+    },
+    {
+      "name": "accepted-not-started and stop-pending commands make the product refuse maintenance and publish nothing new",
+      "code": "unavailable",
+      "operationPhase": "failed",
+      "maintenancePhase": "failed",
+      "safeToStop": false,
+      "publishedBackups": 1,
+      "heldBackupSha256": "9fc56126124c4db444598b624c57387ba7c95688e5a2e5ad82df34178c2a186f"
+    },
+    {
+      "name": "the source installation survives the refused maintenance run",
+      "sourceState": "failed",
+      "retiredMarker": false
+    }
+  ],
+  "status": "passed",
+  "startedAt": "2026-11-05T08:53:36.440Z",
+  "endpoint": "http://127.0.0.1:59674",
+  "learningOwnerServiceId": "0e947d56-1647-4cf2-8ab4-c08ca04ccc59",
+  "publishedBackup": {
+    "backupId": "131715db-fb79-45b1-88a0-bbea6ee543ed",
+    "services": [
+      {
+        "serviceId": "01f19aff-b6bf-4c19-a546-9fb03f832017",
+        "kind": "xunjie.runtime.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      },
+      {
+        "serviceId": "c2047806-890d-4090-9333-e39731624a02",
+        "kind": "xunjie.storage.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      },
+      {
+        "serviceId": "0e947d56-1647-4cf2-8ab4-c08ca04ccc59",
+        "kind": "xunjie.learning-data.boundary",
+        "unresolved": 0,
+        "settled": 0,
+        "blocking": 0
+      }
+    ],
+    "fingerprint": {
+      "files": 7,
+      "sha256": "9fc56126124c4db444598b624c57387ba7c95688e5a2e5ad82df34178c2a186f"
+    },
+    "sourceEnvironmentId": "d9acda12-0cd7-475d-8ab1-ca6a8efc075c",
+    "sourceInstallationId": "1a79b51d-1c13-4f5c-a3b7-b47dd5a5e861"
+  },
+  "acceptedCommands": {
+    "notStarted": {
+      "requestId": "ae7d301a-822d-480c-a772-33a6d6e0abb7",
+      "executionRef": "fb174b92-7409-40e4-9d9b-7c8aa9af4ceb",
+      "inputDigest": "59d568fe3695520b15542306cf7f5a495057119f964ffc24c5529892a838529f"
+    },
+    "unknown": {
+      "requestId": "a4cf8d65-d8f4-4df1-9d6b-1314618c96f2",
+      "executionRef": "22ede13c-1b69-4e6c-94ba-951fe03dec52",
+      "inputDigest": "0ece08f2943404ea1f08a808c482c0bb82bde0ed61e0d374aa95079eceb24454"
+    },
+    "stopping": {
+      "requestId": "8ec1d02d-f072-4f0e-a283-666567798852",
+      "executionRef": "ed48952c-1ebe-473d-817b-93528b094d1e",
+      "inputDigest": "fe65c9bf4a3a2a314c33fc647b6a9a635d4498996e7dd3ba24638cf7e71e6712"
+    }
+  },
+  "boundary": {
+    "kind": "xunjie.learning-data.boundary",
+    "commands": {
+      "total": 3,
+      "settled": 0
+    },
+    "dispositions": [
+      {
+        "requestId": "8ec1d02d-f072-4f0e-a283-666567798852",
+        "disposition": "stop-pending",
+        "inputDigest": "fe65c9bf4a3a2a314c33fc647b6a9a635d4498996e7dd3ba24638cf7e71e6712",
+        "executionRef": "ed48952c-1ebe-473d-817b-93528b094d1e"
+      },
+      {
+        "requestId": "a4cf8d65-d8f4-4df1-9d6b-1314618c96f2",
+        "disposition": "unknown",
+        "inputDigest": "0ece08f2943404ea1f08a808c482c0bb82bde0ed61e0d374aa95079eceb24454",
+        "executionRef": "22ede13c-1b69-4e6c-94ba-951fe03dec52"
+      },
+      {
+        "requestId": "ae7d301a-822d-480c-a772-33a6d6e0abb7",
+        "disposition": "accepted-not-started",
+        "inputDigest": "59d568fe3695520b15542306cf7f5a495057119f964ffc24c5529892a838529f",
+        "executionRef": "fb174b92-7409-40e4-9d9b-7c8aa9af4ceb"
+      }
+    ],
+    "blocking": [
+      "unresolved-stop-pending",
+      "unresolved-unknown",
+      "unconfirmed-browser-boundary"
+    ]
+  },
+  "lateCommands": {
+    "notStarted": {
+      "requestId": "0fe09a10-49c8-4d00-a7ce-230a9c69fc3b",
+      "executionRef": "b49031fb-fd24-4b72-a5a9-5f6e05378b6d",
+      "inputDigest": "eba40e04e167817bd80581a19bb1fd2ee25322b0c7b5c29d332faee75b8fae4b"
+    },
+    "stopPending": {
+      "requestId": "4ce80589-2017-4997-8dfc-c15052bc186a",
+      "executionRef": "94d935db-0939-4801-8ed0-709c591e0031",
+      "inputDigest": "8714ce16c588b7193ac7f70965745ef4a05a58709a8a4366d345df5b311428ff"
+    }
+  },
+  "refusal": {
+    "code": "unavailable",
+    "operationId": "01bdfc78-1e74-4982-a5f0-06814142fd90",
+    "operationPhase": "failed",
+    "operationError": "unavailable",
+    "maintenancePhase": "failed",
+    "safeToStop": false,
+    "publishedBackups": 1,
+    "heldBackupUnchanged": true
+  },
+  "temporaryRootRemoved": true,
+  "finishedAt": "2026-11-05T08:53:38.061Z"
+}
