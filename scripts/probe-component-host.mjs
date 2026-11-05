@@ -118,7 +118,11 @@ try {
   await note.fill(original);
   await note.focus(); await page.keyboard.press('End');
   await page.keyboard.press('Tab');
+  await expect(frame.getByRole('button', { name: '选择此标注' })).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(frame.getByRole('button', { name: '移除此标注' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(frame.getByRole('button', { name: '选择此标注' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(note).toBeFocused();
   passed('annotation controls support keyboard focus and Chinese multiline text (system IME not exercised)');
