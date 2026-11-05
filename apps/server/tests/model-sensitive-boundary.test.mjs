@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 
@@ -10,8 +10,8 @@ const directory = await mkdtemp(join(tmpdir(), 'xj-sensitive-boundary-'));
 after(() => rm(directory, { recursive: true, force: true }));
 await build({ entryPoints: ['chat', 'responses', 'messages'].map(name => fileURLToPath(new URL(`../../../packages/learning-space/src/model-connections/${name}.ts`, import.meta.url))),
   outdir: directory, bundle: true, platform: 'node', format: 'esm', outExtension: { '.js': '.mjs' },
-  plugins: [{ name: 'installed-dependencies', setup(builder) { builder.onResolve({ filter: /^[^./]/ }, args => ({
-    path: args.path.startsWith('node:') ? args.path : fileURLToPath(import.meta.resolve(args.path)), external: true,
+  plugins: [{ name: 'installed-dependencies', setup(builder) { builder.onResolve({ filter: /^[^./]/ }, args => isAbsolute(args.path) ? undefined : ({
+    path: args.path.startsWith('node:') ? args.path : import.meta.resolve(args.path), external: true,
   })); } }] });
 const adapters = { 'chat-completions': (await import(pathToFileURL(join(directory, 'chat.mjs')))).runChat,
   responses: (await import(pathToFileURL(join(directory, 'responses.mjs')))).runResponses,

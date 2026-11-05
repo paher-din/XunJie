@@ -12,7 +12,7 @@ import { build } from 'esbuild';
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const temporary = await mkdtemp(join(tmpdir(), 'xj-capability-images-'));
 after(() => rm(temporary, { recursive: true, force: true }));
-await symlink(join(repository, 'node_modules'), join(temporary, 'node_modules'));
+await symlink(join(repository, 'node_modules'), join(temporary, 'node_modules'), 'junction');
 await build({ stdin: { contents: `
   export * as capabilities from './packages/learning-space/src/model-connections/capabilities.ts';
   export * as contracts from './packages/contracts/src/model-connections.ts';
