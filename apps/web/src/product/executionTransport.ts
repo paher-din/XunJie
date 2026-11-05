@@ -4,12 +4,43 @@ import { z } from 'zod'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { learningRequest } from './learningTransport'
 import type { ExecutionTransport } from '../tool-execution/retention'
+import { executionHistoryPageSchema, executionArtifactSchema, type ExecutionHistoryEntry } from '@xunjie/contracts/execution'
 
 /** Same execution facts over the owner's HTTP boundary; no second verb set for another location. */
 export function createExecutionTransport(activity: LearningActivity, spaceKey: string, namespace: string): ExecutionTransport {
   const path = 'executions/' + activity.activityId
   const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
   return {
+    history: async () => {
+      const entries: ExecutionHistoryEntry[] = [], cursors = new Set<string>()
+      let cursor: string | null = null
+      do {
+        const page = executionHistoryPageSchema.parse(await request('/history' + (cursor ? '/' + cursor : '')))
+        for (const entry of page.entries) {
+          if (entry.query.scope.activityId !== activity.activityId
+            || entry.query.scope.environmentId !== activity.identity.environmentId
+            || entry.query.scope.spaceId !== activity.identity.spaceId
+            || entry.query.scope.principalId !== activity.identity.principalId) throw new Error('forbidden')
+          entries.push(entry)
+        }
+        cursor = page.nextCursor
+        if (cursor && cursors.has(cursor)) throw new Error('corrupt')
+        if (cursor) cursors.add(cursor)
+      } while (cursor)
+      return entries
+    },
+    artifact: async (requestId: string) => {
+      const value = await request('/' + requestId + '/artifact')
+      if (value === null) return null
+      const artifact = executionArtifactSchema.parse(value)
+      if (artifact.requestId !== requestId || artifact.scope.activityId !== activity.activityId
+        || artifact.scope.environmentId !== activity.identity.environmentId || artifact.scope.spaceId !== activity.identity.spaceId
+        || artifact.scope.principalId !== activity.identity.principalId) throw new Error('forbidden')
+      const bytes = new TextEncoder().encode(artifact.text)
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('')
+      if (hash !== artifact.sha256 || bytes.length !== artifact.byteLength) throw new Error('corrupt')
+      return artifact
+    },
     accept: async (action: ExecutionAction, acceptance: ExecutionAcceptance) => executionQuerySchema.parse(
       await request('', { action, acceptance: executionAcceptanceSchema.parse(acceptance) })),
     read: async (requestId: string) => {

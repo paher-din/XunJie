@@ -10,7 +10,7 @@ const binding: ComponentBinding = { key: 'notes', configuration: { title: 'æ ‡æ³
     stateVersion: 1, stateShape: { type: 'object', properties: { text: { type: 'string', maxLength: 100 } } }, initialState: { text: '' },
     requiredCapabilities: ['workspace.read', 'workspace.change'] }) } }
 
-function fixture() {
+function fixture(readOnly = false) {
   let files: WorkFile[] = [], protectedCount = 0
   let allowed = true
   const receipts = new Map<string, { inputDigest: string; confirmation: 'local-protected'; contentId: string; requestedContentId: string; superseded: boolean }>()
@@ -27,13 +27,25 @@ function fixture() {
     },
     leave: async () => { protectedCount++ } } as unknown as ReliableWorkspace
   const activityId = crypto.randomUUID()
-  const bridge = createComponentBridge(workspace, activityId, binding, () => allowed)
+  const bridge = createComponentBridge(workspace, activityId, binding, () => allowed,
+    undefined, undefined, undefined, undefined, readOnly)
   const message = (method: string, payload: unknown) => ({ hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
     messageId: crypto.randomUUID(), method, payload })
   return { bridge, message, files: () => files, protectedCount: () => protectedCount, deny: () => { allowed = false },
     reopen: () => createComponentBridge(workspace, activityId, binding, () => allowed) }
 }
 describe('component host instance and operation boundary', () => {
+  it('isolated mounts can read the original state but cannot write, execute or mutate references', async () => {
+    const f = fixture(true)
+    expect(await f.bridge.handle(f.message('component.ready', {}))).toEqual({ ready: true })
+    await expect(f.bridge.handle(f.message('workspace.read', {}))).resolves.toHaveProperty('content')
+    for (const method of ['workspace.change', 'execution.submit', 'execution.stop', 'reference.select', 'component.event'])
+      await expect(f.bridge.handle(f.message(method, {}))).rejects.toThrow('forbidden')
+    expect(f.protectedCount()).toBe(0)
+    expect(f.files()).toEqual([])
+    f.deny()
+    await expect(f.bridge.handle(f.message('workspace.read', {}))).rejects.toThrow('forbidden')
+  })
   it('rejects a different instance, closed mount and unsupported method', async () => {
     const f = fixture()
     await expect(f.bridge.handle({ ...f.message('workspace.read', {}), instanceId: 'other' })).rejects.toThrow('stale-connection')

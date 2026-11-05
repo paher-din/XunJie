@@ -4,9 +4,13 @@ import { AlgorithmError } from './algorithm'
 import type { BrowserExecutionReceiver } from './receiver'
 import type { ExecutionRecord } from './ledger'
 import { abandonedQuery } from './ledger'
+import type { ExecutionHistoryEntry } from '@xunjie/contracts/execution'
+import type { ResultRecord } from './store'
 
 /** The service side of the same facts; a local run is usable while it is unreachable. */
 export interface ExecutionTransport {
+  history?(): Promise<ExecutionHistoryEntry[]>
+  artifact?(requestId: string): Promise<Omit<ResultRecord, 'scope' | 'at'> | null>
   accept(action: ExecutionAction, acceptance: ExecutionAcceptance): Promise<ExecutionQuery>
   report(requestId: string, query: ExecutionQuery): Promise<ExecutionQuery>
   stop(requestId: string, stopId: string, reason: string): Promise<ExecutionQuery>

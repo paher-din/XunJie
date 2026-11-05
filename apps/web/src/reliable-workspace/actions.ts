@@ -60,7 +60,7 @@ export class ReliableActions {
   state: ActionQueueState = { ready: false, active: true, items: [], previous: [], error: '', receivers: [] }
   constructor(readonly key: string, private draft: ReliableQuestionDraft,
     private captureWorks: () => ActionInput['works'], private transport: ActionTransport,
-    private access: { denied(): boolean; confirmed(): void }) {
+    private access: { denied(): boolean; confirmed(): void }, private readonly readOnly = false) {
     if (draft.key !== key) throw new Error('问题与作品不属于同一工作区。')
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -102,6 +102,16 @@ export class ReliableActions {
     this.notify({ ready: true, items: [...saved, ...[...this.unprotected.values()].filter(item => !saved.some(other => other.key === item.key))] })
   }
   async open() {
+    if (this.readOnly) {
+      this.stopped = true
+      const remote = await this.transport.list()
+      this.notify({ ready: true, active: false, receivers: [], items: remote.map(item => ({
+        key: JSON.stringify([this.key, item.input.requestId]), scope: this.key, input: item.input,
+        phase: item.state === 'prepared' ? 'ready' : item.state, cancelRequested: item.cancelRequested,
+        remote: item, error: '', history: true,
+      })) })
+      return
+    }
     this.timer ??= setInterval(() => { void this.synchronize() }, NETWORK_MAX_WAIT_MS)
     window.addEventListener('beforeunload', this.beforeUnload)
     try { await this.refresh(); this.notify({ previous: await this.previous() }) }
@@ -137,6 +147,7 @@ export class ReliableActions {
     return this.retainNew(input)
   }
   private async retainNew(input: FixedAction) {
+    if (this.readOnly) throw new Error('还原校验环境不能创建动作。')
     const entry: LocalAction = { key: JSON.stringify([this.key, input.requestId]), scope: this.key,
       input, phase: 'unprotected', cancelRequested: false, preparationAttempted: false, error: '' }
     const existing = this.unprotected.get(input.requestId)
@@ -203,6 +214,7 @@ export class ReliableActions {
     await this.refresh(); void this.synchronize()
   }
   async cancel(requestId: string) {
+    if (this.readOnly) throw new Error('还原校验环境不能取消原动作。')
     if (!await this.read(requestId)) throw new Error('原动作不可读。')
     this.cancellationRequests.add(requestId)
     const key = requestId + ':cancel'
@@ -476,6 +488,7 @@ export class ReliableActions {
     }
   }
   private async synchronize() {
+    if (this.readOnly) return
     if (this.disposed) return
     try {
       for (const entry of this.unprotected.values()) {
@@ -529,12 +542,12 @@ export class ReliableActions {
     } catch { /* Retain contents and retry from the same identity on the next bounded tick. */ }
   }
   suspend() { this.stopped = true; this.notify({ active: false }) }
-  resume() { this.stopped = false; this.notify({ active: !this.accessDenied() }); void this.synchronize() }
+  resume() { if (this.readOnly) return; this.stopped = false; this.notify({ active: !this.accessDenied() }); void this.synchronize() }
   async leave() {
     for (const entry of this.unprotected.values()) await this.retain(entry)
     for (const requestId of this.cancellationRequests) await this.cancelAction(requestId, false)
   }
   async drain() { this.suspend(); await Promise.allSettled([...this.active.values()]) }
   dispose() { this.disposed = true; this.suspend(); if (this.timer) clearInterval(this.timer)
-    window.removeEventListener('beforeunload', this.beforeUnload); this.listeners.clear() }
+    if (!this.readOnly) window.removeEventListener('beforeunload', this.beforeUnload); this.listeners.clear() }
 }

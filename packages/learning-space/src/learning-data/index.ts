@@ -20,6 +20,8 @@ import { sessionRecoveryMigration } from './session-checkpoints.js';
 import type { NativeSessionHostOptions } from './native-sessions.js';
 export type { ActionIntentOptions } from './intents.js';
 export type { NativeSessionHostOptions } from './native-sessions.js';
+export { collectExecutionBoundary, validateExecutionBoundary, executionMaintenanceFormatVersion, executionMaintenanceKind } from './maintenance.js';
+export type { ExecutionBoundaryMaterial, UnresolvedCommand, UnresolvedDisposition } from './maintenance.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,

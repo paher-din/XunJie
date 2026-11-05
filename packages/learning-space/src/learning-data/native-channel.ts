@@ -90,12 +90,14 @@ export function createNativeChannel(storage: OwnedStorage, options: {
   authenticate(token: string, connectionId: string): Promise<SpaceIdentity>;
   authorize(identity: SpaceIdentity, activityId: string): Promise<unknown>;
   authorizeConnection(identity: SpaceIdentity, connectionId: string): Promise<void>;
+  installationActive?(installationId: string): Promise<boolean>;
   leaseMs?: number;
 }) {
   const leaseMs = z.number().int().min(1000).max(60000).parse(options.leaseMs ?? 15000);
   let dispatchOpen = true;
   async function node(token: string, value: unknown) {
     const input = nodeSchema.parse(value);
+    if (options.installationActive && !await options.installationActive(input.installationId)) fail('forbidden');
     const identity = await options.authenticate(token, input.connectionId);
     const { rows: [row] } = await storage.read('SELECT * FROM native_channel_nodes WHERE connection_id=$1', [input.connectionId]);
     if (!row || row.node_id !== input.nodeId || row.installation_id !== input.installationId
@@ -105,6 +107,7 @@ export function createNativeChannel(storage: OwnedStorage, options: {
   }
   async function register(token: string, value: unknown) {
     const input = nodeSchema.parse(value);
+    if (options.installationActive && !await options.installationActive(input.installationId)) fail('forbidden');
     if (input.adapters.some(capability => !productNativeAdapters.some(adapter => adapter.adapterId === capability.adapterId
       && adapter.adapterVersion === capability.adapterVersion && adapter.platforms?.includes(input.platform)))) fail('forbidden');
     const identity = await options.authenticate(token, input.connectionId);
@@ -136,6 +139,7 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       if (session && (session.activity_id !== command.activityId || command.operation === 'submit')) fail('identity-conflict');
       if (!session && command.operation !== 'submit') fail('missing');
       const targetNode = nodeSchema.parse(session?.target_node ?? registered!.snapshot);
+      if (options.installationActive && !await options.installationActive(targetNode.installationId)) fail('forbidden');
       const declaredTarget = z.object({ execution: z.object({ session: z.object({ supervisorEpoch: z.uuid() }) }) }).safeParse(command.payload);
       if (command.operation === 'submit' && declaredTarget.success
         && declaredTarget.data.execution.session.supervisorEpoch !== targetNode.supervisorEpoch) fail('forbidden');
@@ -266,7 +270,8 @@ export function createNativeChannel(storage: OwnedStorage, options: {
     const { rows: [row] } = await storage.read('SELECT * FROM native_channel_commands WHERE command_id=$1 AND connection_id=$2', [input.commandId, input.node.connectionId]);
     if (!row || row.claim_id !== input.claimId || hash(nodeSchema.parse(row.claim_node)) !== hash(input.node)) return fail('forbidden');
     await options.authorize(identity, String(row.activity_id));
-    if (row.claim_generation !== storage.generation || hash(registered.snapshot) !== hash(input.node)) {
+    if (row.claim_generation !== storage.generation || hash(registered.snapshot) !== hash(input.node)
+      || options.installationActive && !await options.installationActive(input.node.installationId)) {
       await storage.request({ requestId: `native-channel-late:${input.commandId}:${hash(input)}`, fingerprint: hash(input) }, async tx => {
         await tx.query(`INSERT INTO native_channel_late_reports(command_id,claim_id,report_digest,node,result) VALUES($1,$2,$3,$4,$5)
           ON CONFLICT DO NOTHING`, [input.commandId, input.claimId, hash(input), JSON.stringify(input.node), JSON.stringify(input.result)]);
@@ -361,6 +366,7 @@ export function createNativeChannel(storage: OwnedStorage, options: {
     const result: NativeChannelNode[] = [];
     for (const row of rows) {
       if (!same(spaceIdentitySchema.parse(row.identity), identity)) continue;
+      if (options.installationActive && !await options.installationActive(String(row.installation_id))) continue;
       try { await options.authorizeConnection(identity, String(row.connection_id)); }
       catch (error) { if (error instanceof StorageError && error.code === 'forbidden') continue; throw error; }
       result.push(nodeSchema.parse(row.snapshot));

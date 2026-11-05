@@ -37,6 +37,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   const inputs = () => draft.snapshot().references.map(reference => ({ ...reference,
     range: { ...reference.range } }))
   const add = useCallback((selection: ReferenceSelection) => {
+    if (draft.isReadOnly()) return false
     if (!draft.snapshot().ready) { setNotice('正在读取原问题草稿，请稍后重试。'); return false }
     const snapshot = snapshotReference(selection.snapshot)
     if (!snapshot || snapshot.workspaceKey !== workspaceKey || !sources.current.has(snapshot.sourceId)) return false
@@ -50,6 +51,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     return true
   }, [draft, workspaceKey])
   const select = useCallback((selection: ReferenceSelection | null, gesture?: object) => {
+    if (draft.isReadOnly()) return
     if (selection && (selection.snapshot.workspaceKey !== workspaceKey || !sources.current.has(selection.snapshot.sourceId))) return
     if (selection) {
       const snapshot = snapshotReference(selection.snapshot)
@@ -139,7 +141,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   } : undefined
   const value: ReferencesController = { workspaceKey, open, setOpen, question: state.question, setQuestion, references: refs,
     pending, select, clearSelection, ask, remove, locate, register, submit, busy,
-    notice, sendAvailable: !!receiver && actionState.ready && actionState.active, draftReady: state.ready,
+    notice, sendAvailable: !!receiver && actionState.ready && actionState.active, draftReady: state.ready, readOnly: draft.isReadOnly(),
     draftError: state.error, ...(conflict ? { draftConflict: conflict } : {}), draftConflictReady: state.conflictReady,
     resolveDraftConflict: resolveConflict }
   return <ReferencesContext.Provider value={value}>{children}</ReferencesContext.Provider>

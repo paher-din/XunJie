@@ -48,6 +48,8 @@ export const nativeSessionMigration: Migration = { version: 7, name: 'native-sta
 ` };
 
 export interface NativeSessionOptions {
+  /** Isolated recovery may read original facts but must not reconcile or launch execution. */
+  readOnly?: () => Promise<boolean>;
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   works: ReturnType<typeof createWorks>;
   authorizeComponent?(identity: SpaceIdentity, activity: LearningActivity, action: ExecutionAction): Promise<void>;
@@ -449,8 +451,10 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     await ensureReady();
     const activity = await options.activity(identity, activityId);
     const before = await find(activityId, requestId);
-    if (before) await reconcilePendingCheckpoints(String(before.session_ref));
-    if (before) await reconcileLive(identity, activity, before);
+    if (before && !await options.readOnly?.()) {
+      await reconcilePendingCheckpoints(String(before.session_ref));
+      await reconcileLive(identity, activity, before);
+    }
     const row = await find(activityId, requestId);
     if (!row) return null;
     const query = queryOf(row);
@@ -464,7 +468,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     await ensureReady();
     const activity = await options.activity(identity, activityId);
     const { rows: pending } = await storage.read('SELECT session_ref FROM native_sessions WHERE activity_id=$1', [activityId]);
-    for (const row of pending) {
+    for (const row of await options.readOnly?.() ? [] : pending) {
       await reconcilePendingCheckpoints(String(row.session_ref));
       const current = await findRef(String(row.session_ref));
       if (current) await reconcileLive(identity, activity, current);
@@ -864,7 +868,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
 
   const ready = { generation: '', promise: null as Promise<void> | null };
   /** 恢复关闸重新打开后按当前代际重新失权，失败的恢复允许重试。 */
-  function ensureReady(): Promise<void> {
+  async function ensureReady(): Promise<void> {
+    if (await options.readOnly?.()) return;
     const generation = currentGeneration();
     if (!ready.promise || ready.generation !== generation) {
       ready.generation = generation;

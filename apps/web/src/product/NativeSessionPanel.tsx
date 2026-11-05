@@ -25,6 +25,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
   activity: LearningActivity; binding: ComponentBinding; authorized: boolean; spaceKey: string; namespace: string
 }) {
   const { workspace, sessions } = useActivitySession()
+  const readOnly = workspace.isReadOnly()
   const state = useSyncExternalStore(sessions.subscribe, sessions.snapshot)
   const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const [amount, setAmount] = useState('')
@@ -37,7 +38,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
   const plan = activity.course?.executionPlan
   const sessionTitle = plan ? '原生会话' : '本机会话'
   useEffect(() => {
-    if (!plan) return
+    if (!plan || readOnly) return
     let current = true
     setChecking(true)
     setEnvironment(undefined)
@@ -48,7 +49,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       }).catch(() => { if (current) setEnvironment(undefined) })
       .finally(() => { if (current) setChecking(false) })
     return () => { current = false }
-  }, [plan, activity, spaceKey, namespace, checkAttempt])
+  }, [plan, activity, spaceKey, namespace, checkAttempt, readOnly])
   const [selectedCheckpoint, setSelectedCheckpoint] = useState('')
   const inputLoaded = useRef(false)
   const queuedInput = useRef<Promise<unknown>>(Promise.resolve())
@@ -56,7 +57,8 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
   const stopIds = useRef(new Map<string, string>())
   const instanceId = `${activity.activityId}:${binding.key}`
   const declared = declaredSession(binding)
-  const bridge = useMemo(() => createComponentBridge(workspace, activity.activityId, binding, () => access.current),
+  const bridge = useMemo(() => createComponentBridge(workspace, activity.activityId, binding, () => access.current,
+    undefined, undefined, undefined, undefined, readOnly),
     [workspace, activity.activityId, binding])
   useEffect(() => () => { void workspace.leave().finally(() => bridge.close()).catch(() => {}) }, [workspace, bridge])
   useEffect(() => {
@@ -85,14 +87,14 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     : state.queries.some(query => query.requestId === request.requestId && query.session?.instanceId === instanceId))
   const unresolved = pending.some(request => request.kind === 'control' && request.requestId === record?.requestId)
   const canPlace = !checking && !placementIssue && (!placement || decision?.location === 'native')
-  const canStart = authorized && !busy && state.ready && !state.error && canPlace
+  const canStart = authorized && !readOnly && !busy && state.ready && !state.error && canPlace
     && !journalPending && pending.length === 0 && (!record || terminal)
-  const canInput = authorized && !busy && !!record && record.state === 'running'
+  const canInput = authorized && !readOnly && !busy && !!record && record.state === 'running'
     && record.statusKnowledge === 'confirmed' && !record.stopRequested && !unresolved && !journalPending
   const reason = record?.reason?.detail
-  const canControl = authorized && !busy && !!record && ['running', 'paused'].includes(record.state)
+  const canControl = authorized && !readOnly && !busy && !!record && ['running', 'paused'].includes(record.state)
     && record.statusKnowledge === 'confirmed' && !record.stopRequested && !unresolved && !journalPending
-  const canEditAmount = authorized && !busy && works.ready && !works.conflict && !!record && !terminal
+  const canEditAmount = authorized && !readOnly && !busy && works.ready && !works.conflict && !!record && !terminal
     && ['running', 'paused'].includes(record.state) && record.statusKnowledge === 'confirmed'
     && !record.stopRequested && !unresolved && !journalPending
   const supported = (effect: Exclude<SessionControlEffect, 'input'>) => declared.controls?.includes(effect)
@@ -156,7 +158,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     } finally { setBusy(false) }
   }
   const stop = async (query: ExecutionQuery) => {
-    if (!authorized || busy || query.stopRequested || isTerminalExecutionState(query.state)) return
+    if (!authorized || readOnly || busy || query.stopRequested || isTerminalExecutionState(query.state)) return
     const stopId = stopIds.current.get(query.requestId) ?? crypto.randomUUID()
     stopIds.current.set(query.requestId, stopId)
     setBusy(true); setNote('')
@@ -184,7 +186,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     finally { setBusy(false) }
   }
   const restore = async (checkpoint: ExecutionCheckpoint) => {
-    if (!authorized || busy || !canPlace) return
+    if (!authorized || readOnly || busy || !canPlace) return
     setBusy(true); setNote('')
     try {
       await workspace.flush()
@@ -214,7 +216,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       {checking ? '正在核对执行环境准备状态…' : placementIssue || decision?.detail}
     </p>}
     {plan && !decision?.location && <button type="button" className="ws-btn ghost"
-      disabled={checking || busy || !authorized} onClick={() => setCheckAttempt(value => value + 1)}>重新检查环境</button>}
+      disabled={checking || busy || !authorized || readOnly} onClick={() => setCheckAttempt(value => value + 1)}>重新检查环境</button>}
     {note && <p role="status" className="execution-note">{note}</p>}
     {pending.length > 0 && <div className="execution-warn" role="status">
       <p>还有操作尚未确认。返回时只查询原请求；继续核对会使用原身份，不会作用于其他恢复实例。</p>
@@ -264,7 +266,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
           disabled={!canControl} onClick={() => void control('checkpoint')}>保存检查点</button>}
         <button type="button" className="ws-btn ghost" disabled={!authorized || busy}
           onClick={() => void refresh(record.requestId)}>核对状态</button>
-        {!terminal && <button type="button" className="ws-btn ghost" disabled={!authorized || busy || record.stopRequested}
+        {!terminal && <button type="button" className="ws-btn ghost" disabled={!authorized || readOnly || busy || record.stopRequested}
           onClick={() => void stop(record)}>停止会话</button>}
         {terminal && <button type="button" className="ws-btn solid" disabled={!canStart} onClick={() => void start()}>开始新会话</button>}
       </div>
@@ -274,7 +276,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
             onChange={event => setSelectedCheckpoint(event.target.value)}>
             {checkpoints.map(item => <option key={item.checkpointId} value={item.checkpointId}>第 {item.appliedSeq} 次操作 · {new Date(item.createdAt).toLocaleTimeString()}</option>)}
           </select></label>
-          <button type="button" className="ws-btn ghost" disabled={!authorized || busy || !canPlace || !checkpoint}
+          <button type="button" className="ws-btn ghost" disabled={!authorized || readOnly || busy || !canPlace || !checkpoint}
             onClick={() => checkpoint && void restore(checkpoint)}>从检查点建立恢复会话</button>
         </> : <p className="execution-hint">{state.checkpointsReady
           ? '尚无可靠检查点。原进程丢失后无法续接内部状态；已有输入和历史仍保留。'

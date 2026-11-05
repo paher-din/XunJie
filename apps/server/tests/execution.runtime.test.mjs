@@ -130,6 +130,19 @@ test('the execution owner keeps the original acceptance, the durable stop and on
     assert.deepEqual((await api(`${path}/${requestId}/result`, resultBody, headers)).value, stored.value);
     assert.equal((await api(`${path}/${requestId}/result`, { ...resultBody, contentId: randomUUID() }, headers)).status, 409);
     assert.equal((await api(`${path}/${requestId}/result`, { ...resultBody, sha256: 'b'.repeat(64) }, headers)).status, 400);
+    const history = await api(`${path}/history`, undefined, headers);
+    assert.equal(history.status, 200);
+    assert.equal(history.value.nextCursor, null);
+    const historical = history.value.entries.find(item => item.action.requestId === requestId);
+    assert.deepEqual(historical.action, action);
+    assert.deepEqual(historical.acceptance, acceptance);
+    assert.equal(historical.query.inputDigest, acceptance.receipt.inputDigest);
+    const artifact = await api(`${path}/${requestId}/artifact`, undefined, headers);
+    assert.equal(artifact.status, 200);
+    assert.equal(artifact.value.text, resultBody.text);
+    assert.equal(artifact.value.sha256, resultBody.sha256);
+    assert.equal(artifact.value.executionRef, executionRef);
+    assert.equal((await api(`${path}/${randomUUID()}/artifact`, undefined, headers)).value, null);
 
     const stopId = randomUUID();
     const stopped = await api(`${path}/${requestId}/stop`, { stopId, reason: '用户请求停止。' }, headers);

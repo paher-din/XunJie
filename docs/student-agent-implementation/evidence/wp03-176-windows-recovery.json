@@ -1,0 +1,73 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "os": "10.0.26200",
+  "node": "v24.21.0",
+  "product": "D:\\XunJie-wp03-173\\.verification\\wp03-176-product-win32-x64-final",
+  "packageSha256": "a38ad414654df2988d943f24084d20c31ec891edc9438e5bf58c74da4b2f15cf",
+  "cases": [
+    "formal product creates annotation, semantic reference, question draft, real Worker result and native checkpoint",
+    "fresh Chrome reads original components, fixed result bytes, references, question and checkpoint without a write",
+    "takeover permits new edits and a distinct checkpoint instance whose real next result is 1; old namespace is rejected"
+  ],
+  "status": "passed",
+  "headless": false,
+  "components": [
+    {
+      "componentId": "6237a554-67ee-4e74-ae33-36faf1223f12",
+      "version": 4,
+      "digest": "0764a7637105a259ded5e857f04262a022afa26f2ad53e262d3ccf4b8ba8d3db"
+    },
+    {
+      "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+      "version": 2,
+      "digest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9"
+    },
+    {
+      "componentId": "4d0e1c8a-7b52-4a1e-9f3c-2d6b8a0c5e71",
+      "version": 2,
+      "digest": "2c8cd8c1503446352cfb5d609309fca63d29894533744e486f62d7892f9dfc42"
+    }
+  ],
+  "postgresVersion": "18.6",
+  "browserVersion": "156.0.8078.80",
+  "lostCheckpointReply": true,
+  "originalSession": {
+    "requestId": "f9f374ef-979e-45d4-b877-aca70ec48b20",
+    "inputDigest": "c54bc1ba115a71d2749e9884f51f3cadcc47ab32083952c711697c269d5fb373",
+    "executionRef": "23f8c6fb-c413-4e80-b1da-a3efd645a4f5",
+    "nodeId": "local-win32",
+    "executorInstanceId": "a787c51f-cb87-4bce-9074-186d4f15e27a"
+  },
+  "browserJob": {
+    "requestId": "e3c8bf86-951e-4344-9bc4-124c51bb49c3",
+    "inputDigest": "8ea1578ae9314ec1d1d1329c4b2a9a86bcb29ee5e5749eaaefc46c7d8b2fab4e",
+    "executionRef": "acf9aa9e-4cd8-42f4-ba2a-03212b63580b",
+    "artifactSha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+    "artifactByteLength": 97
+  },
+  "backupId": "068bee36-ab4a-490a-a6d4-4ae185ed4f44",
+  "lostTakeoverReply": true,
+  "recoveredSession": {
+    "requestId": "ed9fde2d-1af9-4cfd-b394-0c1fa28877c6",
+    "inputDigest": "7a7f0e434d543c9673da41e6dd30b29e5bf0079aeb73b52655d98ee08808c450",
+    "executionRef": "90cfcc37-007b-42c6-a52a-742eab9252c7",
+    "nodeId": "local-win32",
+    "executorInstanceId": "b6ac9ee6-6e82-4c0a-bf95-6b75285284d5",
+    "restoredFrom": {
+      "checkpointId": "07cf9f3d-57f4-41ec-85d6-ef6de9dfbeaf",
+      "sessionRef": "23f8c6fb-c413-4e80-b1da-a3efd645a4f5",
+      "sha256": "7835e0e07067c28277dd339c329eb8ca2a0e4311ec4ab7da5cccebd0423e7a20"
+    },
+    "nextObservation": {
+      "total": 5,
+      "value": 1,
+      "applied": 3
+    }
+  },
+  "cleanup": [
+    "fulfilled",
+    "fulfilled"
+  ],
+  "temporaryRootRemoved": true
+}

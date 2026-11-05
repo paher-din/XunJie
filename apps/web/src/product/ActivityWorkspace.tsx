@@ -10,6 +10,7 @@ export interface ActivityWorkspaceHandle { leave(): Promise<void> }
 export function ActivityWorkspace({ activity, namespace }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }) {
     const scope = workspaceScope(namespace, activity)
     const { workspace } = useActivitySession()
+    const readOnly = workspace.isReadOnly()
     const state = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
     const editorNamespace = useMemo(() => scope + ':' + crypto.randomUUID(), [scope, workspace])
     const [failure, setFailure] = useState('')
@@ -45,12 +46,12 @@ export function ActivityWorkspace({ activity, namespace }: { activity: LearningA
         <WorkspacePopover label="文件" icon="folder-with-files">
           <form className="product-file-form" onSubmit={e => { e.preventDefault(); attempt(() => { setSelected(workspace.create(name, /\.(c|cc|cpp|h|hpp|js|jsx|ts|tsx|py|v|sv|java|rs|go)$/i.test(name) ? 'code' : 'text')); setName('') }) }}>
           <label>文件名<input value={name} required onChange={e => setName(e.target.value)} /></label>
-          <button type="submit" className="ws-btn solid" disabled={!!state.conflict}>新建文件</button>
+          <button type="submit" className="ws-btn solid" disabled={!!state.conflict || readOnly}>新建文件</button>
         </form>
         {file && file.mediaType !== 'application/vnd.xunjie.component-state+json' && <form className="product-file-form" onSubmit={e => { e.preventDefault(); attempt(() => { workspace.rename(file.objectId, rename); setRename('') }) }}>
             <label>新名称<input value={rename} required onChange={e => setRename(e.target.value)} /></label>
-            <button type="submit" className="ws-btn ghost" disabled={!!state.conflict}>重命名</button>
-            <button type="button" className="ws-btn ghost" disabled={!!state.conflict} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
+            <button type="submit" className="ws-btn ghost" disabled={!!state.conflict || readOnly}>重命名</button>
+            <button type="button" className="ws-btn ghost" disabled={!!state.conflict || readOnly} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
           </form>}
         </WorkspacePopover>
         <FileTabs files={state.files.map(f => ({ id: f.objectId, name: f.name }))} activeId={file?.objectId ?? null}
@@ -60,7 +61,7 @@ export function ActivityWorkspace({ activity, namespace }: { activity: LearningA
           {file.encoding === 'utf8' && ['text', 'code'].includes(file.kind) ? <CodeReferenceSource key={state.editorEpoch}
             editorWorkspaceKey={editorNamespace + ':' + state.editorEpoch}
             fileId={file.objectId} sourceName={file.name} language={file.kind === 'text' ? 'plaintext' : /\.c(pp|c)?$/.test(file.name) ? 'cpp' : /\.v$/.test(file.name) ? 'verilog' : 'plaintext'}
-            initialText={file.value} readOnly={!!state.conflict} readOnlyReason={state.conflict ? '请先比较作品分歧' : null}
+            initialText={file.value} readOnly={!!state.conflict || readOnly} readOnlyReason={readOnly ? '还原校验环境中的作品只读' : state.conflict ? '请先比较作品分歧' : null}
             workBasis={() => ({ objectId: file.objectId, contentId: file.contentId, name: file.name,
               kind: file.kind === 'text' ? 'text' : 'code', encoding: 'utf8', mediaType: file.mediaType })}
             onTextChange={(id, text) => attempt(() => workspace.edit(id, text))} onCursorChange={() => {}} />

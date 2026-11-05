@@ -244,12 +244,15 @@ async function main(): Promise<void> {
         && (typeof input.sourceInstallationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId))) throw new Error('接收方核验输入无效');
       const current = (await runtime.status()).environment;
       if (!current.services.some(service => `${current.environmentId}/${service.serviceId}` === input.expectedReceiver)) throw new Error('receiver-identity-conflict');
-      for (const serviceId of input.sourceServiceIds as string[]) await runtime.recovery.fenceSource({
+      let execution;
+      for (const serviceId of input.sourceServiceIds as string[]) execution = (await runtime.recovery.fenceSource({
         sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: serviceId,
-        ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }) });
+        ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }) })).execution;
       output({ fenced: true, receiverId: input.expectedReceiver, sourceEnvironmentId: input.sourceEnvironmentId,
+        ...(input.backupId === undefined ? {} : { backupId: input.backupId }),
+        ...(input.targetInstallationId === undefined ? {} : { targetInstallationId: input.targetInstallationId }),
         ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId }),
-        sourceServiceIds: input.sourceServiceIds });
+        sourceServiceIds: input.sourceServiceIds, execution });
       break;
     }
     case 'recovery-key': {

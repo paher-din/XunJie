@@ -28,8 +28,8 @@ const decode = (base64: string) => {
   return new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
 }
 
-export function ActivityReferences({ activity, spaceKey, namespace, authorized, children }: {
-  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; children: ReactNode
+export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children }: {
+  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode
 }) {
   const scope = workspaceScope(namespace, activity)
   const access = useRef(authorized)
@@ -46,9 +46,9 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       sync: async (input: QuestionDraftSync) => questionDraftViewSchema.parse(
         await learningRequest(activity, spaceKey, namespace, `drafts/${id}`, input)),
     }
-    return new ReliableQuestionDraft(scope, transport)
+    return new ReliableQuestionDraft(scope, transport, readOnly)
   }, [scope, activity.activityId, activity.identity.environmentId, activity.identity.spaceId,
-    activity.identity.principalId, spaceKey, namespace])
+    activity.identity.principalId, spaceKey, namespace, readOnly])
   const workspace = useMemo(() => {
     const path = 'workspaces/' + activity.activityId
     const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
@@ -56,8 +56,8 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       read: async () => workViewSchema.parse(await request('')),
       receipt: async id => { const value = await request('/receipts/' + id); return value === null ? null : workViewSchema.parse(value) },
       sync: async body => workViewSchema.parse(await request('', body)),
-    }, { activityId: activity.activityId, bindings: activity.course?.components ?? [] })
-  }, [scope, spaceKey, namespace])
+    }, { activityId: activity.activityId, bindings: activity.course?.components ?? [] }, readOnly)
+  }, [scope, spaceKey, namespace, readOnly])
   const actions = useMemo(() => {
     const path = 'intents/' + activity.activityId
     const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
@@ -75,19 +75,19 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' },
       scope, Date.now(), () => access.current && !workspace.accessDenied())
     return new ExecutionController(scope, receiver, actions,
-      createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace), undefined, () => access.current && !workspace.accessDenied())
-  }, [scope, actions, activity, spaceKey, namespace])
+      createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace), undefined, () => access.current && !workspace.accessDenied(), readOnly)
+  }, [scope, actions, activity, spaceKey, namespace, readOnly])
   const sessions = useMemo(() => new NativeSessionController(scope,
     createSessionTransport(activity, spaceKey, namespace),
-    () => access.current && !workspace.accessDenied(), new SessionRequests()), [scope, activity, spaceKey, namespace, workspace])
+    () => access.current && !workspace.accessDenied(), new SessionRequests(), readOnly), [scope, activity, spaceKey, namespace, workspace, readOnly])
   useEffect(() => {
     let active = true
-    const unregister = actions.registerLocalExecution(execution.receiver)
+    const unregister = readOnly ? () => {} : actions.registerLocalExecution(execution.receiver)
     void Promise.allSettled([draft.open(), workspace.open()]).then(() => { if (active) return actions.open() })
       .then(() => { if (active) return Promise.all([execution.open(), sessions.open()]) })
       .catch(() => { /* Each partition reports initialization failure and retains its own contents. */ })
     return () => { active = false; unregister(); sessions.dispose(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
-  }, [draft, workspace, actions, execution, sessions])
+  }, [draft, workspace, actions, execution, sessions, readOnly])
   useEffect(() => {
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }

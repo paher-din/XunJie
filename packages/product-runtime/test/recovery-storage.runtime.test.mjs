@@ -32,7 +32,8 @@ test('failed native storage backup releases committed pins so unreferenced file 
         owner: { environmentId: installed.environment.environmentId, serviceId }, password: randomBytes(32).toString('base64url'), migrations });
       storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: 'files', root: join(root, 'resources') }) });
       owner = createStorageRecoveryOwner({ storage, binding, migrations, resources,
-        resourceRoots: [join(root, 'resources')], validateService: async () => {} });
+        resourceRoots: [join(root, 'resources')], installationId: installed.environment.installationId,
+        validateService: async () => {} });
       return [owner];
     } });
     const reference = await storage.stageResource({ uploadId: randomUUID(), scope: 'records/failed-backup',
@@ -88,7 +89,8 @@ test('native owner API, receipts, outbox identity and resource bytes survive an 
         backend: createFileBackend({ id: 'files', root: join(root, 'resources') }) });
       service = createStorageSample(storage);
       return [createStorageRecoveryOwner({ storage, binding, migrations: sampleMigrations, resources,
-        resourceRoots: [join(root, 'resources')], validateService: async () => { assert.ok(await service.read('kept')); } })];
+        resourceRoots: [join(root, 'resources')], installationId: installed.environment.installationId,
+        validateService: async () => { assert.ok(await service.read('kept')); } })];
     } });
     const bytes = Buffer.from('原始工具字节\0\xff');
     const receipt = await service.save({ requestId: 'original-request', id: 'kept', expectedVersion: 0,
@@ -97,6 +99,7 @@ test('native owner API, receipts, outbox identity and resource bytes survive an 
     const result = await restoreProductRecovery({ root: targetRoot, backupDirectory: join(directory, 'backups', manifest.backupId),
       resources, key, targets: [createStorageRecoveryTarget({ owner, admin: async () => await recoveryDatabase(targetRoot),
         resources, backend: createFileBackend({ id: 'files', root: join(targetRoot, 'resources') }), migrations: sampleMigrations,
+        installationId: '00000000-0000-4000-8000-000000000000',
         onRestored(storage) { restoredStorage = storage; recovered = createStorageSample(storage); },
         async validateService() {
           assert.equal((await recovered.read('kept')).body.externalRequestId, 'same-effect');

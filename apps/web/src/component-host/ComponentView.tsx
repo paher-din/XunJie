@@ -36,6 +36,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
   activity: LearningActivity; binding: ComponentBinding; spaceKey: string; namespace: string; authorized: boolean
 }) {
   const { workspace, execution, interactions } = useActivitySession()
+  const readOnly = workspace.isReadOnly()
   const frame = useRef<HTMLIFrameElement>(null)
   const work = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const stateFile = work.files.find(file => file.name === componentStateName(binding.key))
@@ -60,7 +61,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
   const requestScope = useRef('')
   const allowed = useRef(authorized)
   allowed.current = authorized
-  const prepared = requiresPreparation(binding)
+  const prepared = requiresPreparation(binding) && !readOnly
   // The plan the activity was opened with, not the current release: an opening activity keeps the
   // arrangement the teacher reviewed even after a newer release exists.
   const plan = activity.course?.executionPlan
@@ -91,7 +92,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
         .map(key => [key, styles.getPropertyValue('--' + (aliases[key] ?? key)).trim()]))
       return componentInitializeSchema.parse({ hostApiVersion: 1, connectionId: bridge.connectionId, instanceId: bridge.instanceId,
         messageId: crypto.randomUUID(), method: 'host.initialize',
-        payload: { binding, theme, materials, ...(prepared ? {} : { titleFont }), readOnly: !allowed.current,
+        payload: { binding, theme, materials, ...(prepared ? {} : { titleFont }), readOnly: readOnly || !allowed.current,
           ...(prepared ? { preparation: { preparationProtocolVersion: 1, mode: 'production' as const } } : {}) } })
     }
     const failDependency = () => setPreparation(snapshot => snapshot && { ...snapshot,
@@ -108,7 +109,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
       retire()
       const mount = createComponentBridge(workspace, activity.activityId, binding,
         () => live && allowed.current && !workspace.accessDenied(),
-        { controller: execution, canRun: () => live && allowed.current && !workspace.accessDenied() && authorized },
+        { controller: execution, canRun: () => live && allowed.current && !readOnly && !workspace.accessDenied() && authorized },
         event => interactions.accept({ instanceId: mount.instanceId, connectionId: mount.connectionId, event }), {
           select: async ({ expectedContentId, ...requested }, assertCurrent) => {
             await workspace.leave(); assertCurrent()
@@ -123,7 +124,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
         }, plan ? { plan, device: observeExecutionDevice(),
           // This page has observed no eligible school node. Unobserved is reported as "not available",
           // which never turns a run that could start here into a run somewhere else.
-          remoteAvailable: false } : undefined)
+          remoteAvailable: false } : undefined, readOnly)
       const channel = new MessageChannel()
       bridge = mount; port = channel.port1
       locateReference.current = reference => new Promise(resolve => {
@@ -246,7 +247,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
         : '组件暂时无法打开。已有作品仍保留，可在「作品」中读取或导出后重试。')
     })
     return () => { live = false; retire(); loaded.current = () => {}; observer.disconnect(); unsubscribe() }
-  }, [activity, binding, namespace, spaceKey, workspace, execution, interactions, authorized, prepared, attempt])
+  }, [activity, binding, namespace, spaceKey, workspace, execution, interactions, authorized, prepared, attempt, readOnly])
   const blocked = prepared && !!preparation && !preparation.environmentId
   const working = blocked && (preparation.status === 'preparing' || preparation.status === 'unprepared')
   const degraded = prepared && !!preparation?.environmentId

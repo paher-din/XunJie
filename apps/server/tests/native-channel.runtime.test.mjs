@@ -38,7 +38,9 @@ test('authenticated pull channel binds owner, approved connection and installati
     const node = { connectionId: grant.connectionId, nodeId: 'approved-mac-node', installationId: randomUUID(), platform: 'macos-arm64', supervisorEpoch: randomUUID(), adapters: [{ adapterId: 'four-state-accumulator', adapterVersion: 1 }] };
     const activityId = randomUUID(), sessionId = randomUUID();
     let eligible = true;
+    const retiredInstallations = new Set();
     const channel = createNativeChannel(data, {
+      installationActive: async installationId => !retiredInstallations.has(installationId),
       authenticate: spaces.authenticateConnection, authorizeConnection: spaces.authorizeConnection,
       async authorize(member, activity) {
         await spaces.authorize(member);
@@ -110,6 +112,15 @@ test('authenticated pull channel binds owner, approved connection and installati
     eligible = false;
     await assert.rejects(channel.claim(grant.token, node), { code: 'forbidden' });
     eligible = true;
+    retiredInstallations.add(node.installationId);
+    await assert.rejects(channel.register(grant.token, node), { code: 'forbidden' });
+    await assert.rejects(channel.claim(grant.token, node), { code: 'forbidden' });
+    await assert.rejects(channel.enqueue(identity, node.connectionId,
+      { ...command, commandId: randomUUID(), sessionId: randomUUID() }), { code: 'forbidden' });
+    const successor = { ...node, connectionId: other.connectionId, nodeId: 'successor-node',
+      installationId: randomUUID(), supervisorEpoch: randomUUID() };
+    await channel.register(other.token, successor);
+    await assert.rejects(channel.claim(grant.token, node), { code: 'forbidden' });
     await spaces.revokeConnection(identity, grant.connectionId);
     await assert.rejects(channel.claim(grant.token, node), { code: 'forbidden' });
     await assert.rejects(channel.register(grant.token, node), { code: 'forbidden' });
@@ -131,7 +142,10 @@ test('database-free default worker executes real native accumulator and reports 
     const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: learningMigrations });
     storage = await openStorage({ binding, migrations: learningMigrations, backend: createFileBackend({ id: 'channel', root: join(fixture.root, 'resources') }) });
     const identity = { environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: '学校' };
-    const node = await nativeChannelNode({ connectionId: randomUUID(), installationId: randomUUID(), sessionRoot: join(root, 'sessions') });
+    const native = { nodePath: process.execPath, sessionRoot: join(root, 'sessions'),
+      ...(process.platform === 'win32' ? { windowsHelper: process.env.XUNJIE_PRODUCT_WINDOWS_SESSION_HELPER } : {}) };
+    if (process.platform === 'win32') assert.ok(native.windowsHelper, 'Provide the product AppContainer helper through XUNJIE_PRODUCT_WINDOWS_SESSION_HELPER.');
+    const node = await nativeChannelNode({ ...native, connectionId: randomUUID(), installationId: randomUUID() });
     assert.ok(node.adapters.some(item => item.adapterId === 'four-state-accumulator'));
     const children = [], originalCreate = SupervisedSession.create;
     t.mock.method(SupervisedSession, 'create', async function (...args) {
@@ -166,7 +180,7 @@ test('database-free default worker executes real native accumulator and reports 
         if (revokedActivities.has(id)) throw new StorageError('forbidden');
       } });
     await channel.register('approved', node);
-    worker = createNativeChannelWorker({ root, node, native: { nodePath: process.execPath, sessionRoot: join(root, 'sessions') },
+    worker = createNativeChannelWorker({ root, node, native,
       call: (operation, input) => channel[operation]('approved', input) });
     await channel.enqueue(identity, node.connectionId, { commandId: requestId, activityId, sessionId: executionRef, operation: 'submit', payload: { action, activity, execution } });
     await worker.tick();

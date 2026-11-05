@@ -8,7 +8,8 @@ import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/le
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
 import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema, componentPreparationReportsSchema,
   componentPreparationReportReceiptSchema } from '@xunjie/contracts/components';
-import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
+import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, executionHistoryPageSchema,
+  executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
@@ -218,6 +219,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (parts[0] === 'executions') {
       // A run is owned by the same activity the grant names; the fixed basis never travels elsewhere.
       if (parts.length === 2 && body !== undefined) return learning.executions.accept(identity, parts[1]!, body);
+      if ((parts.length === 3 || parts.length === 4) && parts[2] === 'history' && body === undefined)
+        return learning.executions.history(identity, parts[1]!, parts[3]);
+      if (parts.length === 4 && parts[3] === 'artifact' && body === undefined)
+        return learning.executions.artifact(identity, parts[1]!, parts[2]!);
       if (parts.length === 3 && parts[2] === 'sessions' && body === undefined) return learning.executions.sessions(identity, parts[1]!);
       if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && body === undefined)
         return learning.executions.checkpoints(identity, parts[1]!, parts[3]);
@@ -240,7 +245,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control)|/controls/${id})?))?|connections/revoke)$`).test(route)) {
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -310,6 +315,17 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         const page = parsed(checkpointPageSchema, value);
         page.items.forEach(item => checkScope(item.scope));
         return page;
+      }
+      if (route.split('/')[2] === 'history') {
+        const page = parsed(executionHistoryPageSchema, value);
+        page.entries.forEach(item => { checkScope(item.action.scope); checkScope(item.query.scope); });
+        return page;
+      }
+      if (route.endsWith('/artifact')) {
+        const artifact = parsed(executionArtifactSchema, value);
+        checkScope(artifact.scope);
+        if (artifact.requestId !== route.split('/')[2]) throw new StorageError('forbidden');
+        return artifact;
       }
       if (route.endsWith('/sessions')) return Array.isArray(value) ? value.map(checkQuery) : checkQuery(value);
       if (route.split('/')[3] === 'controls') {

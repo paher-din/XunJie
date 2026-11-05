@@ -14,7 +14,7 @@ import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNaviga
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
 
 
-type Context = { clientNamespace: string; profile: string; identities: { key: string; identity: SpaceIdentity }[] }
+type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
 type PendingConnection = { requestId: string; authorizationUrl: string }
 type CreateCourseActivity = { requestId: string; releaseId: string }
 const messages: Record<string, string> = {
@@ -25,11 +25,12 @@ const messages: Record<string, string> = {
   invalid: '请检查填写的内容。', maintenance: '学习服务正在维护，请稍后重试。',
   corrupt: '课程材料或发布版本已损坏，请联系课程管理员。', 'resource-busy': '材料正在准备中，请稍后重试。',
 }
-async function api(path: string, body?: unknown, key?: string, signal?: AbortSignal): Promise<unknown> {
+async function requestLearning(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
   // Course coordination includes several authenticated owner calls; timeout still leaves the original request queryable.
   const timeout = path === 'course-activities' || path === 'activity-status' ? 60000 : 30000
   const response = await fetch('/api/learning/' + path, { method: body === undefined ? 'GET' : 'POST',
-    headers: { 'content-type': 'application/json', ...(key ? { 'x-xj-space': key } : {}) },
+    headers: { 'content-type': 'application/json', ...(key ? { 'x-xj-space': key } : {}),
+      ...(namespace ? { 'x-xj-namespace': namespace } : {}) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ?? AbortSignal.timeout(timeout), credentials: 'same-origin' })
     .catch(() => { throw Object.assign(new Error(messages.unavailable), { code: 'unavailable' }) })
   const result = await response.json()
@@ -88,6 +89,8 @@ function LearningView() {
   const [connectionsOpen, setConnectionsOpen] = useState(false)
   const selectedCourseId = new URLSearchParams(route.search).get('course')
   const [context, setContext] = useState<Context | null>(null)
+  const api = (path: string, body?: unknown, space?: string, signal?: AbortSignal) =>
+    requestLearning(path, body, space, signal, context?.clientNamespace)
   const [contextVerified, setContextVerified] = useState(true)
   const [key, setKey] = useState('')
   const [activities, setActivities] = useState<LearningActivity[] | null>(null)
@@ -532,7 +535,7 @@ function LearningView() {
     spaceKey={key} onSpaceChange={next => void switchSpace(next)} onHome={goHome}
     onConnections={() => { goHome(); setConnectionsOpen(true) }}>
     {context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
-      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
+      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
@@ -549,6 +552,7 @@ function LearningView() {
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />
     </ActivityReferences> : <div className="content home-page product-home">
+      {context?.readOnly && <p role="status" className="product-workspace-notice">这是还原校验环境，作品与历史只读，实验尚未启用。</p>}
       <div className="intro"><h1>{greeting}{identity ? `，${identity.name}` : '，从这里开始学习'}</h1><span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span></div>
       {feedback}
       {!context && !error && <p role="status">正在连接学习空间…</p>}
@@ -579,7 +583,7 @@ function LearningView() {
           {visibleRelease && <article className="product-release" aria-labelledby="release-title"><h3 id="release-title">{visibleRelease.taskTitle}</h3>
             <CourseSections content={visibleRelease} level={4} busy={busy} onMaterial={item => void action(() => readMaterial(visibleRelease.releaseId, item))} />
             {material && <p role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
-            <button type="button" className="primary" disabled={busy || !!coursePending} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
+            <button type="button" className="primary" disabled={busy || !!coursePending || context?.readOnly} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
           </article>}
         </section>}
         <section aria-labelledby="activities-title">
@@ -604,7 +608,7 @@ function LearningView() {
             <label>资料链接（可选）<input type="url" value={reference} disabled={!!pendingRequest} onChange={event => setReference(event.target.value)} placeholder="https://" /></label>
             {pendingRequest && <p className="detail">上次建立活动的结果尚未核对，将先查询原请求。</p>}
             {pendingRequest && <button type="button" className="outline" disabled={busy} onClick={discardPending}>放弃这次请求并重新填写</button>}
-            <button className="primary" disabled={busy || !pendingRequest && !goal.trim() && !question.trim() && !reference}>
+            <button className="primary" disabled={busy || context?.readOnly || !pendingRequest && !goal.trim() && !question.trim() && !reference}>
               {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
           </form>
         </details></section>

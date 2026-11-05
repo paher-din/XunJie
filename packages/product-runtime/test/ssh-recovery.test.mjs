@@ -11,6 +11,7 @@ test('the deployment receiver verifies a remote CLI fencing proof through the SS
   const serviceId = '22222222-2222-4222-8222-222222222222';
   const sourceId = '33333333-3333-4333-8333-333333333333';
   const installationId = '44444444-4444-4444-8444-444444444444';
+  const binding = { backupId: '55555555-5555-4555-8555-555555555555', targetInstallationId: '66666666-6666-4666-8666-666666666666' };
   let supplied;
   const child = new EventEmitter();
   child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.kill = () => {};
@@ -19,8 +20,10 @@ test('the deployment receiver verifies a remote CLI fencing proof through the SS
   const stub = mock.method(cp, 'spawn', (command, args, options) => {
     supplied = { command, args, options };
     process.nextTick(() => {
-      child.stdout.end(JSON.stringify({ fenced: true, receiverId: environmentId + '/' + serviceId,
-        sourceEnvironmentId: sourceId, sourceInstallationId: installationId, sourceServiceIds: [sourceId] }) + '\n'); child.emit('close', 0);
+      child.stdout.end(JSON.stringify({ fenced: true, ...binding, receiverId: environmentId + '/' + serviceId,
+        sourceEnvironmentId: sourceId, sourceInstallationId: installationId, sourceServiceIds: [sourceId],
+        execution: { formatVersion: 1, boundaryAt: new Date().toISOString(), unresolved: 0, blocking: 0,
+          services: [{ serviceId, unresolved: 0, settled: 0, blocking: 0 }] } }) + '\n'); child.emit('close', 0);
     });
     return child;
   });
@@ -28,7 +31,7 @@ test('the deployment receiver verifies a remote CLI fencing proof through the SS
     const receiver = createSshRecoveryReceiver({ id: environmentId + '/' + serviceId, ssh: {
       configFile: resolve('approved-ssh.conf'), host: 'approved-school', nodePath: '/opt/product/resources/node/bin/node',
       cliPath: '/opt/product/app/cli.js', root: "/srv/school's environment" } });
-    const result = await receiver.fence({ environmentId: sourceId, installationId }, [sourceId]);
+    const result = await receiver.fence({ environmentId: sourceId, installationId }, [sourceId], binding);
     assert.equal(result.fenced, true);
     assert.equal(supplied.command, 'ssh');
     assert.ok(supplied.args.includes('StrictHostKeyChecking=yes'));
@@ -52,6 +55,6 @@ test('a successful SSH exit with another receiver identity never confirms fencin
   try {
     const receiver = createSshRecoveryReceiver({ id: id + '/22222222-2222-4222-8222-222222222222', ssh: {
       configFile: resolve('approved-ssh.conf'), host: 'approved-school', nodePath: '/opt/node', cliPath: '/opt/cli.js', root: '/srv/school' } });
-    await assert.rejects(receiver.fence({ environmentId: id, installationId: id }, [id]), /invalid-receiver-proof/);
+    await assert.rejects(receiver.fence({ environmentId: id, installationId: id }, [id], { backupId: id, targetInstallationId: id }), /invalid-receiver-proof/);
   } finally { stub.mock.restore(); }
 });

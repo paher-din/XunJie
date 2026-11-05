@@ -23,6 +23,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
   const { workspace, draft, actions } = useActivitySession()
+  const readOnly = workspace.isReadOnly()
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await workspace.leave(); await draft.leave(); await actions.leave()
   } }), [workspace, draft, actions])
@@ -59,12 +60,13 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           aria-expanded={references.open} onClick={() => references.setOpen(!references.open)}><IconText name="chat-round-dots">询问 Agent</IconText></button>
         <WorkspacePopover label="活动" icon="menu-dots">
           <p>{activity.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
-          <button type="button" className="ws-btn ghost" disabled={busy} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
+          <button type="button" className="ws-btn ghost" disabled={busy || readOnly} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
           <button type="button" className="ws-btn ghost" disabled={busy} onClick={onRefresh}>刷新列表</button>
           {account}
         </WorkspacePopover>
       </div>
     </header>
+    {readOnly && <div role="status" className="product-workspace-notice">这是还原校验环境，作品与历史只读，实验尚未启用。</div>}
     {error && <div className="product-workspace-notice">{error}</div>}
     {toolError && <div role="alert" className="product-workspace-notice">{toolError}</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />

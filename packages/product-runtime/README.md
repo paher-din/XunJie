@@ -62,7 +62,17 @@ takeover 要求最新且仍 held 的源备份、源 `retire` 绑定证明及全�
 
 固定引擎为 17.10、17.11、18.6，升级走逻辑备份与独立目标恢复。失败保留原备份及现场，用兼容资源从原备份再还原到另一个独立目标；只换回旧 binary 不构成数据库回滚。学校 external 的独立目标 cluster、权限、工具及启停由管理员负责，产品不接管其服务生命周期。
 
-## 验证
+## 组件与执行恢复（#176）
+
+维护材料与恢复接线见 [#176 实施记录](../../docs/student-agent-implementation/wp03-176-recovery-implementation.md)。新增备份要求每个必要 owner 提供版本化 `material()`；逐命令证据在加密数据中，公开清单仅保留聚合计数。排队投影不能证明浏览器 Worker 未开始：服务已接收的浏览器命令没有确认终态时，维护拒绝安全排空，保留原身份等待原浏览器核实。
+
+`restore` 后可用同一产品的 `start` 打开目标，状态为 `maintenance`，首页、活动与工作区只读。此模式不启动实验、自检、后台同步或旧队列；个人身份只读取既有绑定，学校隔离登录使用进程内只读会话。接管后重新登录，新的成员写入必须携带当前 `x-xj-namespace`；旧 namespace 和缺失握手均拒绝。普通维护不开放此读取例外。
+
+接收端 fencing 必须通过其真实 owner 排空并返回执行边界，绑定完整源服务集合、源安装、`backupId` 与目标安装。接管持久保存证明；成功回包丢失时重试返回原结果，不再次封闭已开放的目标。安装退休同时约束普通 grant 和学校原生领取通道，并随接收端备份恢复保留；新安装授权不复活旧安装。重新授权仅适用于新的 installation，原文所述 scope 级代际轮换不代替安装永久退休。
+
+实际产品包 Chrome 探针：`node scripts/probe-execution-recovery.mjs <产品包目录> <报告目录>`。它使用包内 Node/PostgreSQL/执行器创建独立测试环境，包含真实计算、检查点、隔离打开和接管；需桌面 Chrome 及测试环境初始化/清理授权。Mac 与独立学校机验收单独跟踪于 [跨平台与跨机验收](https://github.com/paher-din/XunJie/issues/188)。
+
+## 验证命令
 
 ```sh
 npm run typecheck -w @xunjie/product-runtime

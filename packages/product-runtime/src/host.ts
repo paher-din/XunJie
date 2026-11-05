@@ -17,7 +17,7 @@ import { createRecoveryManager, RecoveryError } from './recovery.js';
 import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
 import { createSshRecoveryReceiver } from './ssh-recovery.js';
 import type { SshRecoveryReceiver } from './ssh-recovery.js';
-import type { BackupPolicy, RecoveryOwner } from './recovery-types.js';
+import type { BackupPolicy, ReceiverExecutionBoundary, RecoveryOwner } from './recovery-types.js';
 
 export interface ProductHostOptions {
   root: string;
@@ -25,8 +25,11 @@ export interface ProductHostOptions {
   recoveryOwners?: readonly RecoveryOwner[];
   /** Compose real owner modules after native PostgreSQL is available. */
   createRecoveryOwners?: (context: { root: string; environment: RuntimeEnvironment }) => Promise<readonly RecoveryOwner[]>;
-  createApplication?: (context: { root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration }) => Promise<{
+  createApplication?: (context: { root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration;
+    readOnly: () => Promise<boolean> }) => Promise<{
     owners: readonly RecoveryOwner[];
+    /** Explicit opt-in: the application enforces isolated reads at its own domain boundary. */
+    isolatedReads?: true;
     capabilities?: Readonly<Record<string, CapabilityHandler>>;
     /** Host facts an operator must be able to read before asking this node to run anything. */
     facts?: () => Promise<readonly RuntimeDependencyStatus[]>;
@@ -66,6 +69,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   const releaseOnce = async () => { if (!released) { released = true; await release(); } };
   const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
   const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
+  const isolatedMode = async () => await exists(join(root, 'recovery-state.json'))
+    && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
   if (environment.profile !== 'school' && (!['127.0.0.1', '::1'].includes(config.host)
     || !['127.0.0.1', '[::1]', 'localhost'].includes(new URL(environment.services[0]!.endpoint).hostname))) throw new Error('Device profiles require a loopback listener and endpoint.');
   if (!config.installed) { await releaseOnce(); throw new Error('Product is uninstalled.'); }
@@ -79,7 +84,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   try { await startDatabase(root, config.resources, config.database); }
   catch (error) { startupFailure = (error as Error).message; }
   const application = !startupFailure && options.createApplication
-    ? await options.createApplication({ root, environment, configuration: config }) : undefined;
+    ? await options.createApplication({ root, environment, configuration: config, readOnly: isolatedMode }) : undefined;
   const suppliedOwners = [...(application?.owners ?? []), ...(options.recoveryOwners ?? []), ...(!startupFailure && options.createRecoveryOwners
     ? await options.createRecoveryOwners({ root, environment }) : [])];
   const maintenance = createMaintenanceCoordinator({
@@ -204,10 +209,14 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       // writes close; the module checks proofs read-only before considering any first write.
       const terminalAcknowledgement = () => environment.profile === 'school' && request.method === 'POST'
         && pathname === '/api/learning/native-channel/cleanup';
-      if ((gatesClosed || stopping) && !terminalAcknowledgement()) { send(response, 503, { error: 'maintenance' }); return; }
+      if ((gatesClosed || stopping) && !terminalAcknowledgement()
+        && !(application?.isolatedReads && !stopping && await isolatedMode())) { send(response, 503, { error: 'maintenance' }); return; }
       activeApplicationRequests++;
       try {
-        if ((await authorityClosed() || gatesClosed || stopping) && !terminalAcknowledgement()) { send(response, 503, { error: 'maintenance' }); return; }
+        // Isolated recovery serves the same application through its read-only HTTP boundary.
+        // Ordinary maintenance remains unavailable; no runtime capability is enabled here.
+        if ((await authorityClosed() || gatesClosed || stopping) && !terminalAcknowledgement()
+          && !(application?.isolatedReads && !stopping && await isolatedMode())) { send(response, 503, { error: 'maintenance' }); return; }
         if (application && await application.handle(request, response)) return;
       } finally { activeApplicationRequests--; }
     }
@@ -277,23 +286,56 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
             recoveryKeyRef: input?.recoveryKeyRef ?? saved?.recoveryKeyRef });
         } else if (action === 'resume') result = await recovery.resume();
         else if (action === 'retire') result = await recovery.retire(input);
-        else if (action === 'fence-source') result = await authority.fenceSource(input);
+        else if (action === 'fence-source') {
+          // Fence admission first. Closing this receiver's actual owners then waits for the
+          // asynchronous effects that outlive a capability handler. On failure remain closed;
+          // never turn a handler-only acknowledgement into an execution-safety proof.
+          const proof = await authority.fenceSource(input);
+          const reopen = maintenance.status().phase === 'open';
+          if (reopen || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
+          await maintenance.validate();
+          const boundaryAt = new Date().toISOString();
+          const services: ReceiverExecutionBoundary['services'] = [];
+          for (const owner of suppliedOwners) {
+            const material = await owner.material({ backupId: input.backupId ?? input.sourceInstallationId ?? input.sourceEnvironmentId,
+              boundaryAt, signal: AbortSignal.timeout(30000) });
+            if (material.serviceId !== owner.participant.descriptor.serviceId || material.boundaryAt !== boundaryAt
+              || material.source.environmentId !== environment.environmentId
+              || material.source.installationId !== environment.installationId
+              || material.blocking.length || material.unresolved.length) throw new RecoveryError('unconfirmed-receiver-boundary');
+            services.push({ serviceId: material.serviceId, unresolved: material.unresolved.length,
+              settled: material.settled, blocking: material.blocking.length });
+          }
+          services.push({ serviceId: service.serviceId, unresolved: 0, settled: 0, blocking: 0 });
+          const expectedOwners = maintenance.status().participants.map(item => item.serviceId).sort();
+          if (JSON.stringify(services.map(item => item.serviceId).sort()) !== JSON.stringify(expectedOwners))
+            throw new RecoveryError('missing-receiver-boundary-owner');
+          const execution: ReceiverExecutionBoundary = { formatVersion: 1, boundaryAt, services, unresolved: 0, blocking: 0 };
+          if (reopen) await maintenance.resume();
+          result = { ...proof, execution };
+        }
         else if (action === 'takeover') {
           const source = openProductRuntime({ root: input.sourceRoot });
           const receivers = (input.receivers ?? []) as ({ id: string; root: string } | SshRecoveryReceiver)[];
           result = await recovery.takeover({ source: { retire: value => source.recovery.retire(value) },
-            receivers: receivers.map(receiver => 'ssh' in receiver ? createSshRecoveryReceiver(receiver) : ({ id: receiver.id, async fence(sourceEnvironment, sourceServiceIds) {
+            receivers: receivers.map(receiver => 'ssh' in receiver ? createSshRecoveryReceiver(receiver) : ({ id: receiver.id, async fence(sourceEnvironment, sourceServiceIds, binding) {
               const receiverRuntime = openProductRuntime({ root: receiver.root });
               const target = (await receiverRuntime.status()).environment;
               if (!target.services.some(item => receiver.id === `${target.environmentId}/${item.serviceId}`)) throw new RecoveryError('receiver-identity-conflict');
               // Every source service identity is fenced at each receiving authority. The retired
               // installation is fenced, not the whole environment, so a successor installation can
               // still be authorized and connected.
-              for (const serviceId of sourceServiceIds) await receiverRuntime.recovery.fenceSource({
+              let execution: ReceiverExecutionBoundary | undefined;
+              for (const serviceId of sourceServiceIds) execution = (await receiverRuntime.recovery.fenceSource({
                 sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: serviceId,
+                sourceInstallationId: sourceEnvironment.installationId, ...binding,
+              })).execution;
+              // The proof names the installation that was really fenced, so the takeover cannot
+              // accept an acknowledgement for a different source or a partial service set.
+              return { fenced: true as const, ...binding, receiverId: receiver.id,
+                sourceEnvironmentId: sourceEnvironment.environmentId,
                 sourceInstallationId: sourceEnvironment.installationId,
-              });
-              return { fenced: true };
+                sourceServiceIds: [...sourceServiceIds], execution };
             } })),
           });
           // The grants held by this installation were retired together with the source instance, so

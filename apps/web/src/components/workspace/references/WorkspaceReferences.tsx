@@ -25,6 +25,7 @@ export interface ReferencesController {
   /** False when the real business receiver is not connected yet; drafts still persist. */
   sendAvailable: boolean
   draftReady: boolean
+  readOnly?: boolean
   draftError: string
   draftConflict?: { local: DraftReferenceContent; other: DraftReferenceContent }
   draftConflictReady: boolean
@@ -165,13 +166,13 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
 }
 
 export function WorkspaceReferenceList() {
-  const { references, remove, locate } = useWorkspaceReferences()
+  const { references, remove, locate, readOnly } = useWorkspaceReferences()
   return <section className="wr-references" aria-label="上下文引用">
     {references.length === 0 ? <p className="wr-hint">选择材料或代码，可将片段加入问题。</p> :
       <ol>{references.map((ref, index) => <li key={ref.id}>
         <div className="wr-reference-heading"><button type="button" onClick={() => locate(ref)}
           aria-label={`定位引用 ${index + 1}：${ref.sourceName}`}>{ref.sourceName}</button>
-          <button type="button" aria-label={`移除引用 ${index + 1}`} onClick={() => remove(ref.id)}>移除</button></div>
+          <button type="button" aria-label={`移除引用 ${index + 1}`} disabled={readOnly} onClick={() => remove(ref.id)}>移除</button></div>
         <pre data-kind={ref.kind}>{ref.text}</pre>
       </li>)}</ol>}
   </section>
@@ -179,7 +180,7 @@ export function WorkspaceReferenceList() {
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
 export function WorkspaceReferenceComposer({ closeFocusRef }: { closeFocusRef?: RefObject<HTMLElement | null> } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
-    draftConflict, draftConflictReady, resolveDraftConflict } = useWorkspaceReferences()
+    draftConflict, draftConflictReady, resolveDraftConflict, readOnly } = useWorkspaceReferences()
   const input = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
   const questionId = useId()
@@ -207,7 +208,7 @@ export function WorkspaceReferenceComposer({ closeFocusRef }: { closeFocusRef?: 
     <WorkspaceReferenceList />
     <form onSubmit={event => { event.preventDefault(); if (sendAvailable) void submit() }}>
       <label htmlFor={questionId}>你的问题</label>
-      <textarea ref={input} id={questionId} value={question} disabled={!draftReady} maxLength={QUESTION_TEXT_MAX_LENGTH}
+      <textarea ref={input} id={questionId} value={question} disabled={!draftReady} readOnly={readOnly} maxLength={QUESTION_TEXT_MAX_LENGTH}
         onChange={event => setQuestion(event.target.value)} placeholder="写下想讨论的问题…"
         onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
         onKeyDown={event => {
@@ -216,7 +217,8 @@ export function WorkspaceReferenceComposer({ closeFocusRef }: { closeFocusRef?: 
           }
         }} />
       <div className="wr-send"><span className="wr-hint">{sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
-        : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
+        : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
+          : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
         <button className="wr-primary" type="submit" disabled={!sendAvailable || busy || !question.trim()}>
           {sendAvailable ? busy ? '发送中…' : '发送问题' : '发送问题（尚未接入）'}</button></div>
     </form>

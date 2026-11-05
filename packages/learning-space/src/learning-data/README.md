@@ -16,6 +16,12 @@
 
 `learningMigrations` 在 v4 草稿之后追加 v5 `durable-action-intents`，包含固定输入、派发/取消及真实回执；`validateLearningData` 同时核对原活动范围、不可变输入摘要、资源字节和固定引用。产品宿主将派发关闸/排空纳入同一维护及三 owner 备份恢复。活动、固定动作与已发布内容持续保留，不按页面或活动关闭删除；浏览器独有待发不在服务端备份中。
 
+## 执行历史与恢复读取（#176）
+
+`learning.executions.history(identity, activityId, cursor?)` 按固定请求身份分页返回原动作、接收回执、查询事实和建立时间；每页最多 32 项，不把历史导入派发队列。`artifact(identity, activityId, requestId)` 先核验活动授权和原执行归属，再核对产物绑定、摘要与字节长度，返回原 UTF-8 内容；不通过重新计算补全丢失资源。对应正式 HTTP 为 `GET executions/<activity>/history[/<cursor>]` 与 `GET executions/<activity>/<request>/artifact`，学校转发使用相同接口并重新校验主体范围。
+
+隔离读取不创建作品/问题/执行的新身份，不写浏览器保护分区，也不运行恢复核实写入。原生历史仍保留原节点、执行实例与检查点；真正恢复必须在接管后通过新请求创建关联实例。维护边界逐项重推导原身份、操作位置、停止事实与节点证据，不能仅比较数量或状态类别；浏览器未确认终态时不承诺已排空。
+
 ## 非文本引用（#172）
 
 组件状态和真实执行结果通过注册语义范围生成固定副本，复用 drafts/intents 和 owner 内的资源引用。创建时核对当前课程 authority；保存后的未知适配只读恢复。历史修订、固定动作和资源 pin 参与恢复验证，不修改原迁移。具体格式、保留责任与验证见 [#172 交付](../../../../docs/student-agent-implementation/wp03-semantic-references.md)。

@@ -8,6 +8,7 @@ import { componentInstanceId, componentStateName } from '@xunjie/contracts/compo
 import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, executionActionSchema,
   executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
+import { executionHistoryPageSchema, executionArtifactSchema } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
 import { verifyPlannedExecution } from './plan.js';
 import { createNativeSessions } from './native-sessions.js';
@@ -183,6 +184,40 @@ export function createExecutions(storage: OwnedStorage, options: {
     const found = await find(activityId, requestId);
     return found ? found.query : null;
   }
+  async function history(identity: SpaceIdentity, activityId: string, cursor?: string) {
+    await authorize(identity, activityId);
+    if (cursor) z.uuid().parse(cursor);
+    const { rows } = await storage.read(`SELECT * FROM execution_commands WHERE activity_id=$1
+      AND ($2::uuid IS NULL OR request_id>$2::uuid) ORDER BY request_id LIMIT 33`, [activityId, cursor ?? null]);
+    const entries = rows.slice(0, 32).map(row => {
+      const action = executionActionSchema.parse(row.action_text ? JSON.parse(String(row.action_text)) : row.body);
+      const stored = query(row);
+      if (canonicalDigest(action) !== canonicalDigest(row.body)
+        || row.action_text && createHash('sha256').update(String(row.action_text)).digest('hex') !== stored.inputDigest)
+        fail('corrupt');
+      return { action, acceptance: executionAcceptanceSchema.parse(row.acceptance), query: stored,
+        createdAt: new Date(row.created_at as string).toISOString() };
+    });
+    return executionHistoryPageSchema.parse({ entries,
+      nextCursor: rows.length > 32 ? String(rows[31]!.request_id) : null });
+  }
+  async function artifact(identity: SpaceIdentity, activityId: string, requestId: string) {
+    await authorize(identity, activityId); z.uuid().parse(requestId);
+    const { rows: [row] } = await storage.read('SELECT * FROM execution_results WHERE activity_id=$1 AND request_id=$2',
+      [activityId, requestId]);
+    if (!row) return null;
+    const found = await find(activityId, requestId);
+    if (!found || found.query.executionRef !== row.execution_ref) return fail('corrupt');
+    if (!found.query.output || found.query.output.contentId !== row.content_id
+      || found.query.output.artifact?.sha256 !== row.sha256 || found.query.output.artifact?.byteLength !== row.byte_length)
+      return fail('corrupt');
+    const bytes = Buffer.from(await storage.readResource(String(row.content_id)));
+    if (bytes.length !== row.byte_length || createHash('sha256').update(bytes).digest('hex') !== row.sha256) fail('corrupt');
+    const metadata = row.artifact as { name: string; mediaType: string };
+    return executionArtifactSchema.parse({ executionRef: row.execution_ref, requestId: row.request_id, scope: found.query.scope,
+      name: metadata.name, mediaType: metadata.mediaType, sha256: row.sha256, byteLength: row.byte_length,
+      text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes), output: row.output });
+  }
   /** The native session list lets a reopened view find its original reference, never a new run. */
   async function sessions(identity: SpaceIdentity, activityId: string): Promise<ExecutionQuery[]> {
     const local = native ? await native.list(identity, activityId) : [];
@@ -285,7 +320,7 @@ export function createExecutions(storage: OwnedStorage, options: {
     });
     return executionQuerySchema.parse(saved.result);
   }
-  return { accept, read, report, stop, result, control, sessions,
+  return { accept, read, history, artifact, report, stop, result, control, sessions,
     /** What the Linux restricted entry can enforce; `null` means it was not measured on this host. */
     linuxEntryIsolation: async () => native ? await native.linuxEntryIsolation() : null,
     /** Maintenance reclaims a session by its executor instance, not by a student's current eligibility. */
@@ -309,7 +344,14 @@ export function createExecutions(storage: OwnedStorage, options: {
     recoverNative: async () => { await native?.resume(); },
     closeNativeDispatch: () => { native?.closeDispatch(); },
     /** Maintenance stops own their live processes before the storage owner drains. */
-    shutdown: async () => { await native?.shutdown(); } };
+    shutdown: async () => {
+      await native?.shutdown();
+      // A service projection cannot terminate a disconnected browser Worker. Do not advertise
+      // a safe maintenance stop while any received browser command lacks a confirmed terminal fact.
+      const { rows } = await storage.read(`SELECT request_id FROM execution_commands
+        WHERE state NOT IN ('succeeded','failed','cancelled') OR status_knowledge<>'confirmed' LIMIT 1`);
+      if (rows.length) throw new StorageError('unavailable');
+    } };
 }
 
 /** Recovery validation: every stored command still names its own activity, basis and artifact. */

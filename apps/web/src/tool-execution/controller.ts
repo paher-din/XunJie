@@ -20,6 +20,7 @@ export interface RunAlgorithm { (job: Parameters<typeof runInWorker>[0], signal:
  * query and stop entry points for the runs this page actually started.
  */
 export class ExecutionController {
+  private history: ExecutionRecord[] = []
   private listeners = new Set<() => void>()
   private runs = new Map<string, AbortController>()
   private waiting = 0
@@ -34,7 +35,7 @@ export class ExecutionController {
       execution: ExecutionAction['execution'] }): Promise<unknown>
     cancel(requestId: string): Promise<unknown>
   }, private transport: ExecutionTransport, private provider: AlgorithmProvider,
-  private run: RunAlgorithm = runInWorker, private canAccess: () => boolean = () => true) {
+  private run: RunAlgorithm = runInWorker, private canAccess: () => boolean = () => true, private readonly readOnly = false) {
     this.unsubscribeAccept = receiver.onAccept(requestId => { void this.start(requestId) })
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -47,8 +48,10 @@ export class ExecutionController {
     for (const listener of this.listeners) listener()
   }
   private async refresh() {
-    const records = await this.receiver.store.list(this.scope)
-    this.notify({ ready: true, records: records.sort((a, b) => b.createdAt - a.createdAt) })
+    const records = this.readOnly ? [] : await this.receiver.store.list(this.scope)
+    const localIds = new Set(records.map(item => item.requestId))
+    this.notify({ ready: true, records: [...records, ...this.history.filter(item => !localIds.has(item.requestId))]
+      .sort((a, b) => b.createdAt - a.createdAt) })
   }
   /** Only the durable record can stop a worker; no broadcast or other page's memory is required. */
   private async observeStop(requestId: string, abort: AbortController) {
@@ -87,6 +90,18 @@ export class ExecutionController {
   }
   /** A reload resumes only a command that provably never started; anything else becomes unknown. */
   async open() {
+    if (this.transport.history) {
+      try {
+        const entries = await this.transport.history()
+        this.history = entries.map(entry => ({ scope: this.scope, requestId: entry.query.requestId,
+          inputDigest: entry.query.inputDigest, executionRef: entry.query.executionRef,
+          action: entry.action, acceptance: entry.acceptance, query: entry.query, createdAt: Date.parse(entry.createdAt),
+          generation: -1, startedAt: null, stoppedAt: null }))
+      } catch {
+        if (this.readOnly) { this.notify({ ready: true, error: '暂时无法读取原执行历史。' }); return }
+      }
+    }
+    if (this.readOnly) { await this.refresh(); return }
     const records = await this.receiver.store.list(this.scope)
     for (const record of records) {
       const decided = reconcileOnOpen(record)
@@ -106,6 +121,7 @@ export class ExecutionController {
     }
   }
   async submit(action: ExecutionAction): Promise<void> {
+    if (this.readOnly) throw new Error('还原校验环境不能运行实验。')
     if (!this.canAccess()) throw new Error('forbidden')
     await this.actions.createExecution({ requestId: action.requestId, receiver: action.receiver, execution: action.execution })
     if (!this.canAccess()) throw new Error('forbidden')
@@ -114,6 +130,15 @@ export class ExecutionController {
   }
   async query(requestId: string, inputDigest?: string): Promise<ExecutionQuery | null> {
     if (!this.canAccess()) return null
+    const historical = this.history.find(item => item.requestId === requestId)
+    if (historical && (this.readOnly || !await this.receiver.store.read(this.scope, requestId))) {
+      if (inputDigest && historical.inputDigest !== inputDigest) return null
+      const next = await this.transport.read(requestId)
+      if (!this.canAccess()) return null
+      historical.query = mergeServiceFact(historical.query, next) ?? historical.query
+      await this.refresh()
+      return historical.query
+    }
     const record = await this.receiver.store.read(this.scope, requestId)
     if (!this.canAccess()) return null
     // A query that pins a different input is not asking about this run.
@@ -133,6 +158,10 @@ export class ExecutionController {
   }
   async artifact(requestId: string): Promise<ResultRecord | null> {
     if (!this.canAccess()) return null
+    if (this.history.some(item => item.requestId === requestId) && this.transport.artifact) {
+      const result = await this.transport.artifact(requestId)
+      return this.canAccess() && result ? { ...result, scope: this.scope, at: Date.now() } : null
+    }
     const record = await this.receiver.store.read(this.scope, requestId)
     if (!this.canAccess() || !record) return null
     const result = await this.receiver.store.readResult(this.scope, record.executionRef)
@@ -140,7 +169,15 @@ export class ExecutionController {
   }
   /** `stopId` is the caller's stable identity: retrying the same stop is the same request. */
   async stop(requestId: string, stopId: string = crypto.randomUUID(), inputDigest?: string): Promise<void> {
+    if (this.readOnly) throw new Error('还原校验环境不能停止原执行。')
     const record = await this.receiver.store.read(this.scope, requestId)
+    const historical = this.history.find(item => item.requestId === requestId)
+    if (!record && historical) {
+      if (inputDigest && historical.inputDigest !== inputDigest) throw new Error('conflict')
+      historical.query = mergeServiceFact(historical.query, await this.transport.stop(requestId, stopId, '用户请求停止原执行。')) ?? historical.query
+      await this.refresh()
+      return
+    }
     if (!record) { await this.actions.cancel(requestId); return }
     if (inputDigest && inputDigest !== record.inputDigest) throw new Error('conflict')
     const decision = stopDecision(record, record.query)
@@ -164,7 +201,7 @@ export class ExecutionController {
     try { await this.transport.stop(requestId, stopId, '用户请求停止。') } catch { /* Local stop stays durable. */ }
   }
   private async start(requestId: string) {
-    if (this.disposed) return
+    if (this.disposed || this.readOnly) return
     const record = await this.receiver.store.read(this.scope, requestId)
     if (this.disposed) return
     if (!record?.acceptance.execution) return
@@ -236,6 +273,7 @@ export class ExecutionController {
   }
   /** Service delivery of the same facts; a failure keeps the local truth and retries later. */
   private async flush(requestId: string) {
+    if (this.readOnly) return
     if (this.syncing.has(requestId)) return
     const record = await this.receiver.store.read(this.scope, requestId).catch(() => undefined)
     if (!record?.acceptance.execution) return

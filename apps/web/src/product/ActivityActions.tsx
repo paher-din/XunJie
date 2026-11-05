@@ -8,15 +8,16 @@ const labels: Record<ActionPhase, string> = { unprotected: '尚未可靠保留',
   ready: '等待接收方', dispatched: '已发出，正在核实', accepted: '接收方已接受', cancelled: '已取消', failed: '未被接受' }
 /** These are explicit action facts, not routine editing/save status or generated Agent answers. */
 export function ActivityActions() {
-  const { actions, execution } = useActivitySession()
+  const { actions, execution, workspace } = useActivitySession()
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const runs = useSyncExternalStore(execution.subscribe, execution.snapshot).records
   const [failure, setFailure] = useState('')
   const attempt = async (operation: () => Promise<unknown>) => {
+    if (workspace.isReadOnly()) return
     try { await operation(); setFailure('') }
     catch { setFailure('操作尚未完成，原动作与当前草稿仍保留。请稍后重试或复制原内容。') }
   }
-  if (!state.items.length && !state.previous.length && !state.error && !runs.length) return null
+  if (!state.items.length && !state.previous.length && !state.error) return null
   const question = (item: LocalAction) => !isExecutionAction(item.input)
   const record = (item: LocalAction) => {
     const run = runs.find(candidate => candidate.requestId === item.input.requestId)
@@ -46,14 +47,14 @@ export function ActivityActions() {
       {item.localAcceptance?.receipt && <p className="detail">{item.localAcceptance.receipt.detail}</p>}
       {item.remote?.receipt && <p className="detail">{item.remote.receipt.detail || '接收方已核实原请求。'}</p>}
       {item.error && <p role="alert" className="learning-error">{item.error}</p>}
-      <div className="action-controls">
+      {!workspace.isReadOnly() && <div className="action-controls">
         {!cancelled && !cancelPending && <button type="button"
           onClick={() => void attempt(() => actions.cancel(item.input.requestId))}>取消这次动作</button>}
         {!isExecutionAction(item.input) && item.history && ['ready', 'dispatched'].includes(item.phase) && <button type="button"
           onClick={() => void attempt(() => actions.reconnect(item.input.requestId))}>核对并继续原动作</button>}
         {question(item) && ['cancelled', 'failed'].includes(item.phase) && <button type="button"
           onClick={() => void attempt(() => actions.recover(item.input.requestId))}>恢复为独立草稿</button>}
-      </div>
+      </div>}
       {item.recovered && <div className="learning-recovered-draft">
         <label>取回的问题<textarea readOnly value={item.recovered.question} /></label>
         {item.recovered.references.map(reference => <pre key={reference.referenceId}>{reference.copy}</pre>)}

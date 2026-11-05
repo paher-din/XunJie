@@ -57,7 +57,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
   const records = (canRead ? state.records : []).filter(record => record.action.scope.activityId === activity.activityId
     && record.action.execution.instance.key === binding.key)
   const running = records.some(record => !isTerminalExecutionState(record.query.state))
-  const canRun = authorized && !workspace.accessDenied() && !work.conflict && work.ready && !running
+  const canRun = authorized && !workspace.isReadOnly() && !workspace.accessDenied() && !work.conflict && work.ready && !running
   const rerun = async () => {
     setNote('')
     try {
@@ -107,6 +107,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
       <button type="button" className="ws-btn ghost" disabled={!canRun} onClick={() => void rerun()}>用当前表格重新运行</button>
     </header>
     {note && <p role="status" className="execution-note">{note}</p>}
+    {state.error && <p role="alert" className="execution-warn">{state.error}</p>}
     {!state.ready ? <p className="execution-hint">正在读取本机执行记录…</p>
       : records.length === 0 ? <p className="execution-hint">还没有计算记录。在上方表格视图里选好分组列与数值列后运行计算。</p>
       : <ol className="execution-records">
@@ -126,7 +127,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
             {record.query.reason && <p className="execution-warn">{record.query.reason.detail}</p>}
             <div className="execution-actions">
               <button type="button" className="ws-btn ghost" disabled={!canRead} onClick={() => void query(record.requestId)}>核对状态</button>
-              {!terminal && <button type="button" className="ws-btn ghost" onClick={() => void stop(record.requestId)}>停止</button>}
+              {!terminal && <button type="button" className="ws-btn ghost" disabled={workspace.isReadOnly()} onClick={() => void stop(record.requestId)}>停止</button>}
               {record.query.output?.artifact && <button type="button" className="ws-btn ghost"
                 disabled={!canRead} onClick={() => void download(record.requestId)}>下载 CSV</button>}
             </div>

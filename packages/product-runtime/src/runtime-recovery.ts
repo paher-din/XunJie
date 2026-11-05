@@ -6,6 +6,7 @@ import { isSupportedPostgresVersion } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { runtimeEnvironmentSchema } from '@xunjie/contracts/product-runtime';
 import { atomicJson, exists, readJson } from './io.js';
+import { retiredInstallations, restoreRetiredInstallations } from './retired-installations.js';
 import type { MaintenanceParticipant } from './maintenance.js';
 import { databaseBinding, inspectDatabase, resolveCredential, startDatabase, storeCredential } from './postgres.js';
 import type { DatabaseConfiguration, RuntimeResources } from './postgres.js';
@@ -15,7 +16,7 @@ import { recoveryPg } from './recovery-postgres.js';
 import type { RecoveryDatabaseConnection } from './recovery-postgres.js';
 import { RecoveryError, restoreRecoverySet } from './recovery.js';
 import { verifyRecovery } from './recovery-files.js';
-import type { RecoveryOwner, RecoveryTarget } from './recovery-types.js';
+import type { OwnerBoundaryMaterial, RecoveryOwner, RecoveryTarget } from './recovery-types.js';
 import type { RecoveryManifest } from './recovery-types.js';
 import { createLearningRecoveryTargets } from './learning-entry.js';
 
@@ -61,9 +62,21 @@ export function createRuntimeRecoveryOwner(options: { root: string; participant:
         } finally { await client.end(); }
       }
       return { formatVersion: 1, schemaVersion: '1', ...(engineVersion ? { engineVersion } : {}),
-        data: { environment, configuration: { ...config, requiredServiceIds: options.requiredServiceIds ?? config.requiredServiceIds }, credentials, tls, databaseIdentity } };
+        data: { environment, configuration: { ...config, requiredServiceIds: options.requiredServiceIds ?? config.requiredServiceIds },
+          credentials, tls, databaseIdentity, retiredInstallations: await retiredInstallations(root) } };
     },
     async release() {},
+    /**
+     * The runtime owns installation identity, not execution. Its boundary material asserts the
+     * installation and schema the other owners must agree with; it never claims execution facts.
+     */
+    async material({ boundaryAt }): Promise<OwnerBoundaryMaterial> {
+      const environment = await readJson<RuntimeEnvironment>(join(options.root, 'environment.json'));
+      return { formatVersion: 1, kind: 'xunjie.runtime.boundary', serviceId: options.participant.descriptor.serviceId,
+        boundaryAt, source: { environmentId: environment.environmentId, installationId: environment.installationId },
+        schemaVersion: options.participant.descriptor.schemaVersion, coverage: 'service-received',
+        unresolved: [], settled: 0, retained: { resources: 0, checkpoints: 0 }, blocking: [] };
+    },
   };
 }
 
@@ -76,6 +89,7 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
     async restore({ directory, recovery, signal }) {
       if (recovery.schemaVersion !== '1' || recovery.formatVersion !== 1) throw new RecoveryError('incompatible-runtime-format');
       const data = recovery.data as { environment: RuntimeEnvironment; configuration: InstalledConfiguration;
+        retiredInstallations?: unknown;
         databaseIdentity?: { systemIdentifier: string; databaseOid: string } };
       const source = runtimeEnvironmentSchema.parse(data.environment);
       if (source.services[0]?.serviceId !== options.serviceId) throw new RecoveryError('owner-identity-conflict');
@@ -98,6 +112,7 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
         profile: installed.environment.profile,
         services: source.services.map((service, index) => index === 0 ? { ...service, endpoint: installed.environment.services[0]!.endpoint } : service) };
       await atomicJson(join(options.root, 'environment.json'), environment);
+      await restoreRetiredInstallations(options.root, data.retiredInstallations ?? []);
       const config = await readJson<InstalledConfiguration>(join(options.root, 'installation.json'));
       // Outgoing identities are retained. Their credentials must be reissued by each receiver.
       await atomicJson(join(options.root, 'installation.json'), { ...config, connections: data.configuration.connections });

@@ -225,3 +225,22 @@ export function rejectedExecutionAcceptance(requestId: string, inputDigest: stri
   return executionAcceptanceSchema.parse({ receipt: { requestId, inputDigest, receiver, state: 'rejected',
     receiptId: 'rejected:' + requestId, detail }, execution: null });
 }
+
+/** Read-only history preserves original accepted input; it grants no right to dispatch it. */
+export const executionHistoryEntrySchema = z.object({ action: executionActionSchema,
+  acceptance: executionAcceptanceSchema, query: executionQuerySchema, createdAt: z.iso.datetime() }).strict()
+  .refine(value => value.action.requestId === value.query.requestId
+    && value.acceptance.receipt.requestId === value.query.requestId
+    && value.acceptance.receipt.inputDigest === value.query.inputDigest
+    && JSON.stringify(value.action.scope) === JSON.stringify(value.query.scope)
+    && JSON.stringify(value.action.receiver) === JSON.stringify(value.acceptance.receipt.receiver)
+    && value.acceptance.execution?.executionRef === value.query.executionRef,
+  { message: 'History must preserve the original accepted command identity' });
+export const executionHistoryPageSchema = z.object({ entries: z.array(executionHistoryEntrySchema).max(32),
+  nextCursor: z.uuid().nullable() }).strict();
+export type ExecutionHistoryEntry = z.infer<typeof executionHistoryEntrySchema>;
+export const executionArtifactSchema = z.object({ executionRef: z.uuid(), requestId: z.uuid(),
+  scope: actionScopeSchema,
+  name: z.string().min(1).max(240), mediaType: z.string().min(1).max(200),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/), byteLength: z.number().int().nonnegative(),
+  text: z.string().max(8000000), output: z.json() }).strict();

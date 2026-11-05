@@ -23,7 +23,7 @@ export class NativeSessionController {
   private observed = new Map<string, number>()
   state: NativeSessionState = { ready: false, queries: [], error: '', pending: [], checkpoints: [], checkpointsReady: false }
   constructor(readonly scope: string, private transport: SessionTransport,
-    private canAccess: () => boolean = () => true, private queue?: SessionRequestQueue) {
+    private canAccess: () => boolean = () => true, private queue?: SessionRequestQueue, private readonly readOnly = false) {
     this.journal = { scope, selected: {}, records: [] }
   }
 
@@ -40,6 +40,7 @@ export class NativeSessionController {
       && query.scope.principalId === parsed[3] && query.scope.activityId === parsed[4]
   }
   private async change(update: (journal: SessionJournal) => void) {
+    if (this.readOnly) throw new Error('还原校验环境不能推进会话。')
     if (this.disposed || !this.canAccess()) throw new Error('forbidden')
     const db = await openWorkspaceDatabase()
     const saved = await new Promise<SessionJournal>((resolve, reject) => {
@@ -102,6 +103,12 @@ export class NativeSessionController {
     return record?.stopId ? 'stop' : record?.control ? 'control' : record?.starting ? 'start' : null
   }
   async select(requestId: string) {
+    if (this.readOnly) {
+      const record = this.journal.records.find(item => item.requestId === requestId)
+      if (record) this.journal.selected[record.instanceId] = requestId
+      this.notify({})
+      return
+    }
     await this.change(journal => {
       const record = journal.records.find(item => item.requestId === requestId)
       if (record?.query?.session) journal.selected[record.instanceId] = requestId
@@ -109,6 +116,29 @@ export class NativeSessionController {
   }
   async open() {
     if (this.disposed || !this.canAccess()) return
+    if (this.readOnly) {
+      try {
+        const queries = (await this.transport.list()).filter(query => this.belongs(query))
+        const checkpoints: ActivityCheckpoint[] = [], cursors = new Set<string>()
+        let cursor: string | undefined
+        if (this.transport.checkpoints) do {
+          const page = await this.transport.checkpoints(cursor)
+          checkpoints.push(...page.items)
+          cursor = page.nextCursor ?? undefined
+          if (cursor && cursors.has(cursor)) throw new Error('corrupt')
+          if (cursor) cursors.add(cursor)
+        } while (cursor)
+        if (this.disposed || !this.canAccess()) return
+        this.journal.records = queries.filter(query => query.session).map(query => ({
+          requestId: query.requestId, instanceId: query.session!.instanceId, query }))
+        for (const record of this.journal.records) {
+          if (!this.journal.records.some(item => item.requestId === this.journal.selected[record.instanceId]))
+            this.journal.selected[record.instanceId] = record.requestId
+        }
+        this.notify({ ready: true, queries, checkpoints, checkpointsReady: true, pending: [], error: '' })
+      } catch { this.notify({ ready: true, error: '暂时无法读取原会话与检查点。' }) }
+      return
+    }
     try {
       await this.change(() => {})
       if (this.queue) {
@@ -237,6 +267,7 @@ export class NativeSessionController {
     return result
   }
   async refresh(requestId: string): Promise<ExecutionQuery | null> {
+    if (this.readOnly) { await this.open(); return this.state.queries.find(item => item.requestId === requestId) ?? null }
     if (this.disposed || !this.canAccess()) return null
     const order = ++this.observationOrder
     try {

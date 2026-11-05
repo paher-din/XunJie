@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { componentBundleSchema } from '@xunjie/contracts/components';
 import type { ExecutionDevice, ExecutionPlatform } from '@xunjie/contracts/execution';
@@ -51,6 +52,9 @@ export function createLearningEntry(options: {
   courses?: ReturnType<typeof createCourses>;
   nativeChannel?: ReturnType<typeof createNativeChannel>;
   administratorToken: string;
+  readOnly?: () => Promise<boolean>;
+  /** Recovered installations require the current browser handshake for new member writes. */
+  requiresNamespace?: boolean;
   executionEnvironment?: (identity: SpaceIdentity) => Promise<{ nodeClass: 'device' | 'school-execution-node';
     secureTransport: boolean; remoteAvailable: boolean; device: ExecutionDevice;
     adapters: { adapterId: string; adapterVersion: number; platforms: readonly ExecutionPlatform[] }[] }>;
@@ -63,6 +67,10 @@ export function createLearningEntry(options: {
   };
 }) {
   const { spaces, learning, environment } = options;
+  const isReadOnly = options.readOnly ?? (async () => false);
+  // Recovery credentials are process-local, short-lived read capabilities. They cannot become
+  // normal sessions after takeover and never mutate the restored account/session tables.
+  const recoverySessions = new Map<string, { identity: SpaceIdentity; expiresAt: number }>();
   const cookieName = `xj_${environment.environmentId.replaceAll('-', '')}`;
   const endpoint = new URL(environment.services[0]!.endpoint);
   // The same product may be opened as 127.0.0.1, localhost or [::1] on a loopback listener.
@@ -79,9 +87,16 @@ export function createLearningEntry(options: {
     if (!spaces) throw new StorageError('forbidden');
     if (request.headers['x-xj-space'] === 'personal') {
       if (environment.profile !== 'local' || !options.target) throw new StorageError('forbidden');
-      const personal = await spaces.personal();
-      await spaces.bindMember(personal, options.target);
+      const readOnly = await isReadOnly();
+      const personal = readOnly ? await spaces.readPersonal() : await spaces.personal();
+      if (!readOnly) await spaces.bindMember(personal, options.target);
       return personal;
+    }
+    if (await isReadOnly()) {
+      const saved = recoverySessions.get(session(request));
+      if (!saved || saved.expiresAt <= Date.now()) throw new StorageError('forbidden');
+      await spaces.authorize(saved.identity);
+      return saved.identity;
     }
     const authorization = request.headers.authorization;
     return authorization?.startsWith('Bearer ')
@@ -93,6 +108,14 @@ export function createLearningEntry(options: {
     try {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       let route = pathname.slice('/api/learning/'.length);
+      const readOnly = await isReadOnly();
+      if (readOnly && (request.method !== 'GET' && !['login', 'logout'].includes(route)
+        || /^(?:native-channel|client|connections|manage)(?:\/|$)/.test(route)
+        || route === 'execution-environment' || /\/(?:algorithm|dependencies)(?:\/|$)/.test(route)))
+        throw new StorageError('maintenance');
+      if (options.requiresNamespace && request.method === 'POST'
+        && !['login', 'logout'].includes(route) && !/^(?:manage|connections|native-channel)\//.test(route)
+        && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
       // Fixed dependency and diagnostic routes only: no arbitrary path reaches a resource backend through these.
       const componentDependency = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/dependencies\/[a-z][a-z0-9-]{0,47}$/.test(route);
@@ -112,6 +135,7 @@ export function createLearningEntry(options: {
       const method = request.method;
       let result: unknown;
       const remote = request.headers['x-xj-space'];
+      if (readOnly && typeof remote === 'string' && remote.startsWith('school:')) throw new StorageError('forbidden');
       if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
         const expected = request.headers['x-xj-expected-subject'];
@@ -148,25 +172,33 @@ export function createLearningEntry(options: {
         const identities: { key: string; identity: SpaceIdentity }[] = [];
         if (environment.profile === 'local') {
           if (!spaces || !options.target) throw new StorageError('unavailable');
-          const personal = await spaces.personal();
-          await spaces.bindMember(personal, options.target);
+          const personal = readOnly ? await spaces.readPersonal() : await spaces.personal();
+          if (!readOnly) await spaces.bindMember(personal, options.target);
           identities.push({ key: 'personal', identity: personal });
         }
         if (session(request) && spaces) {
-          try { identities.push({ key: 'school', identity: await spaces.authenticate(session(request), 'session') }); }
+          try { identities.push({ key: 'school', identity: readOnly ? await current(request) : await spaces.authenticate(session(request), 'session') }); }
           catch (error) { if (!(error instanceof StorageError) || error.code !== 'forbidden') throw error; }
         }
-        result = { profile: environment.profile, clientNamespace: environment.clientNamespace,
-          identities: [...identities, ...await options.client?.list() ?? []] };
+        result = { profile: environment.profile, clientNamespace: environment.clientNamespace, readOnly,
+          identities: [...identities, ...(!readOnly ? await options.client?.list() ?? [] : [])] };
       } else if (!spaces || !learning || !options.target) throw new StorageError('forbidden');
       else if (route === 'login' && method === 'POST') {
         const input = z.object({ loginName: z.string(), password: z.string() }).strict().parse(await readLearningBody(request));
-        const login = await spaces.login(input.loginName, input.password);
+        let login;
+        if (readOnly) {
+          const identity = await spaces.verifyPassword(input.loginName, input.password);
+          for (const [token, saved] of recoverySessions) if (saved.expiresAt <= Date.now()) recoverySessions.delete(token);
+          if (recoverySessions.size >= 1000) throw new StorageError('unavailable');
+          login = { token: randomBytes(32).toString('base64url'), identity };
+          recoverySessions.set(login.token, { identity, expiresAt: Date.now() + 8 * 3600000 });
+        } else login = await spaces.login(input.loginName, input.password);
         response.setHeader('set-cookie', `${cookieName}=${login.token}${cookieFlags}; Max-Age=28800`);
         result = { identity: login.identity };
       } else if (route === 'logout' && method === 'POST') {
         await readLearningBody(request);
-        await spaces.logout(session(request));
+        if (readOnly) recoverySessions.delete(session(request));
+        else await spaces.logout(session(request));
         response.setHeader('set-cookie', `${cookieName}=${cookieFlags}; Max-Age=0`);
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
@@ -262,6 +294,10 @@ export function createLearningEntry(options: {
         const parts = route.split('/');
         if (parts.length === 2 && method === 'POST')
           result = await learning.executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
+        else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'history' && method === 'GET')
+          result = await learning.executions.history(identity, parts[1]!, parts[3]);
+        else if (parts.length === 4 && parts[3] === 'artifact' && method === 'GET')
+          result = await learning.executions.artifact(identity, parts[1]!, parts[2]!);
         else if (parts.length === 3 && parts[2] === 'sessions' && method === 'GET')
           result = await learning.executions.sessions(identity, parts[1]!);
         else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && method === 'GET')

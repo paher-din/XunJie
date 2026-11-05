@@ -75,7 +75,8 @@ test('fencing a retired installation cuts the old instance off without voiding i
       requiredCapabilities: ['runtime.status'], optionalCapabilities: [], credentialRef: 'peer' };
     await source.connect(connection, grant.token);
     await source.start();
-    assert.equal((await source.status()).state, 'ready');
+    const sourceStatus = await source.status();
+    assert.equal(sourceStatus.state, 'ready', JSON.stringify(sourceStatus.dependencies));
 
     const key = randomBytes(32);
     await source.setCredential('recovery-key', key.toString('base64'));
@@ -121,5 +122,96 @@ test('fencing a retired installation cuts the old instance off without voiding i
   } finally {
     await target?.stop(); await source.stop(); await receiver.stop();
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('product receiver waits for owner effects and refuses an unconfirmed execution boundary', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'xunjie-176-receiver-effects-'));
+  const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
+    webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
+  const runtime = openProductRuntime({ root: join(directory, 'receiver'), resources });
+  const environment = (await runtime.install({ profile: 'remote' })).environment;
+  const serviceId = randomUUID();
+  let releaseDrain, enterDrain;
+  const drained = new Promise(resolve => { releaseDrain = resolve; });
+  const entered = new Promise(resolve => { enterDrain = resolve; });
+  let blocking = true, closed = false, host;
+  const owner = {
+    participant: {
+      descriptor: { serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: [] },
+      async closeWrites() { closed = true; }, async closeDispatch() { closed = true; },
+      async drain() { enterDrain(); await drained; }, async validate() {}, async resume() { closed = false; },
+    },
+    async material({ boundaryAt }) {
+      assert.equal(closed, true);
+      return { formatVersion: 1, kind: 'test.effects', serviceId, schemaVersion: '1', boundaryAt,
+        source: { environmentId: environment.environmentId, installationId: environment.installationId },
+        coverage: 'service-received', unresolved: [], settled: 1, retained: { resources: 0, checkpoints: 0 },
+        blocking: blocking ? [{ code: 'exit-unconfirmed', detail: 'The owned effect has not confirmed exit.' }] : [] };
+    },
+    async export() { throw new Error('Fencing must not export or run a new experiment.'); }, async release() {},
+  };
+  try {
+    host = await createProductRuntimeHost({ root: join(directory, 'receiver'), recoveryOwners: [owner] });
+    const source = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID() };
+    await runtime.authorize({ ...source, capabilities: ['runtime.status'] });
+    let finished = false;
+    const attempt = runtime.recovery.fenceSource(source).finally(() => { finished = true; });
+    // The HTTP capability already finished. The maintenance protocol still waits for its owner.
+    await entered;
+    assert.equal(finished, false);
+    releaseDrain();
+    await assert.rejects(attempt, { code: 'unconfirmed-receiver-boundary' });
+    assert.equal(closed, true, 'failed evidence collection must not reopen the receiver');
+    await assert.rejects(runtime.authorize({ ...source, capabilities: ['runtime.status'] }),
+      { code: 'source_installation_retired' });
+    blocking = false;
+    const proof = await runtime.recovery.fenceSource(source);
+    assert.equal(proof.execution.blocking, 0);
+    assert.deepEqual(proof.execution.services.find(item => item.serviceId === serviceId),
+      { serviceId, unresolved: 0, settled: 1, blocking: 0 });
+    assert.equal(closed, true, 'a retry does not implicitly resume a receiver held after failure');
+    await host.maintenance.resume();
+    assert.equal(closed, false);
+  } finally {
+    releaseDrain();
+    await host?.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('receiver backup and independent recovery preserve permanent installation rejections', { timeout: 120000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'xunjie-176-retirement-restore-'));
+  const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
+    webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
+  const receiverRoot = join(directory, 'receiver'), targetRoot = join(directory, 'recovered-receiver');
+  const receiver = openProductRuntime({ root: receiverRoot, resources });
+  const target = openProductRuntime({ root: targetRoot, resources });
+  const source = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID() };
+  const key = randomBytes(32);
+  let restored;
+  try {
+    await receiver.install({ profile: 'remote' });
+    await receiver.start();
+    await receiver.authorize({ ...source, capabilities: ['runtime.status'] });
+    await receiver.recovery.fenceSource(source);
+    await receiver.setCredential('test-backup-key', key.toString('base64'));
+    const manifest = await receiver.recovery.backup({ directory: join(directory, 'backups'),
+      recoveryKeyRef: 'test-backup-key', leaveClosed: true });
+    restored = await restoreProductRecovery({ root: targetRoot, resources,
+      backupDirectory: join(directory, 'backups', manifest.backupId), key });
+    for (const owner of restored.owners) await owner.close?.();
+    restored = undefined;
+    await target.start();
+    await target.recovery.takeover({ sourceRoot: receiverRoot, receivers: [] });
+    await assert.rejects(target.authorize({ ...source, capabilities: ['runtime.status'] }), { code: 'source_installation_retired' });
+    await target.authorize({ ...source, sourceInstallationId: randomUUID(), capabilities: ['runtime.status'] });
+    await assert.rejects(target.authorize({ ...source, capabilities: ['runtime.status'] }), { code: 'source_installation_retired' });
+    await target.stop(); await target.start();
+    await assert.rejects(target.authorize({ ...source, capabilities: ['runtime.status'] }), { code: 'source_installation_retired' });
+  } finally {
+    for (const owner of restored?.owners ?? []) await owner.close?.();
+    await Promise.allSettled([receiver.stop(), target.stop()]);
+    await rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
   }
 });

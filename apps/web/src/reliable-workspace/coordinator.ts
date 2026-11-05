@@ -3,6 +3,8 @@ export const NETWORK_MAX_WAIT_MS = 1000
 
 /** Shared protection, initialization and dispatch lifetime for workspace state partitions. */
 export abstract class ReliableStateCoordinator {
+  constructor(protected readonly readOnly = false) {}
+  isReadOnly() { return this.readOnly }
   protected dirty = false
   protected stopped = false
   protected disposed = false
@@ -20,6 +22,7 @@ export abstract class ReliableStateCoordinator {
 
   async open() {
     if (this.disposed || this.ready()) return
+    if (this.readOnly) { await this.initialize(); return }
     this.localTimer ??= setInterval(() => {
       if (this.ready()) void this.protect().catch(() => {})
       else if (!this.denied) void this.initialize().catch(() => {})
@@ -35,6 +38,7 @@ export abstract class ReliableStateCoordinator {
     try { await this.initializing } finally { this.initializing = undefined }
   }
   async protect(): Promise<void> {
+    if (this.readOnly) return
     if (this.protecting) {
       await this.protecting
       if (this.dirty && !this.conflicted()) return this.protect()
@@ -57,7 +61,7 @@ export abstract class ReliableStateCoordinator {
     if (!this.stopped && !this.disposed)
       this.networkTimer ??= setInterval(() => { void this.synchronize() }, NETWORK_MAX_WAIT_MS)
   }
-  async leave(): Promise<void> { do { await this.protect() } while (this.dirty) }
+  async leave(): Promise<void> { if (this.readOnly) return; do { await this.protect() } while (this.dirty) }
   accessDenied() { return this.denied }
   /** Called only after the original scoped route has confirmed current authorization. */
   confirmAccess() { this.denied = false }
@@ -67,6 +71,7 @@ export abstract class ReliableStateCoordinator {
     this.networkTimer = undefined
   }
   resume() {
+    if (this.readOnly) return
     if (this.disposed || !this.stopped) return
     this.stopped = false
     this.denied = false
@@ -78,7 +83,7 @@ export abstract class ReliableStateCoordinator {
     this.suspend()
     if (this.localTimer) clearInterval(this.localTimer)
     this.localTimer = undefined
-    window.removeEventListener('beforeunload', this.beforeUnload)
+    if (!this.readOnly) window.removeEventListener('beforeunload', this.beforeUnload)
     this.clearListeners()
   }
 }

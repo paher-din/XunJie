@@ -52,8 +52,8 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   private listeners = new Set<() => void>()
   state: QuestionDraftState = { ready: false, error: '', question: '', references: [],
     revision: 0, revisionId: null, conflictReady: true }
-  constructor(readonly key: string, private transport: QuestionDraftTransport) {
-    super()
+  constructor(readonly key: string, private transport: QuestionDraftTransport, readOnly = false) {
+    super(readOnly)
     this.record = initialDraftRecord(key, '')
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -73,6 +73,13 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   protected clearListeners() { this.listeners.clear() }
   protected async load() {
     try {
+      if (this.readOnly) {
+        const remote = questionDraftViewSchema.parse(await this.transport.read())
+        this.record = { ...initialDraftRecord(this.key, remote.draftId), remoteRevision: remote.revision,
+          revisionId: remote.revisionId, question: remote.question, references: inputReferences(remote.references) }
+        this.apply(this.record, { ready: true, error: '' })
+        return
+      }
       let local = await this.store.read(this.key)
       if (!local) {
         if (this.stopped) throw new Error('原问题草稿未缓存在本机。')
@@ -106,6 +113,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     }
   }
   change(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
+    if (this.readOnly) throw new Error('还原校验环境中的问题草稿只读。')
     // Preserve a basis added after the last IndexedDB protection; typing must not drop it.
     const bases = mergeBases([...this.record.bases, ...this.pendingBases], addedBases, references)
     this.editEpoch++; this.dirty = true; this.contentToken = crypto.randomUUID()

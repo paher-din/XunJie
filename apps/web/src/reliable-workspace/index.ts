@@ -23,7 +23,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   private listeners = new Set<() => void>()
   state: WorkspaceState = { files: [], ready: false, error: '', conflictReady: false, editorEpoch: 0 }
   constructor(readonly key: string, private transport: WorkTransport,
-    private components?: { activityId: string; bindings: ComponentBinding[] }) { super(); this.record = initialRecord(key, { revision: 0, files: [] }) }
+    private components?: { activityId: string; bindings: ComponentBinding[] }, readOnly = false) { super(readOnly); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
   trackInput<T>(input: Promise<T>): Promise<T> {
@@ -94,7 +94,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       if (!this.state.ready || this.state.conflict) throw new Error('请先读取作品并处理分歧。')
       return structuredClone(this.state.files)
     }, transport, { denied: () => this.accessDenied() || draft.accessDenied(),
-      confirmed: () => { this.confirmAccess(); draft.confirmAccess() } })
+      confirmed: () => { this.confirmAccess(); draft.confirmAccess() } }, this.readOnly)
   }
   private notify(patch: Partial<WorkspaceState> = {}) { this.state = { ...this.state, ...patch, conflictReady: !this.dirty }; for (const listener of this.listeners) listener() }
   protected ready() { return this.state.ready }
@@ -102,6 +102,12 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   protected clearListeners() { this.listeners.clear() }
   protected async load() {
     try {
+      if (this.readOnly) {
+        const remote = workViewSchema.parse(await this.transport.read())
+        this.record = initialRecord(this.key, remote)
+        this.notify({ files: remote.files, ready: true, error: '' })
+        return
+      }
       const local = await this.store.read(this.key)
       if (local) this.record = local
       else {
@@ -134,6 +140,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     }
   }
   change(files: WorkFile[], retainInput = false) {
+    if (this.readOnly) throw new Error('还原校验环境中的作品只读。')
     this.validateComponentEdits(files)
     if (!retainInput) workFilesSchema.parse(files)
     this.editEpoch++; this.dirty = true

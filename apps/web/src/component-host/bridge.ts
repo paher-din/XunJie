@@ -23,7 +23,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
   consume: (event: ComponentEvent) => void = () => {}, references?: {
     select(input: ReturnType<typeof componentReferenceSelectionSchema.parse>, assertCurrent: () => void): Promise<{ selected: true }>;
     locate(input: ReturnType<typeof componentReferenceLocateSchema.parse>, assertCurrent: () => void): Promise<{ located: boolean }>;
-  }, placement?: { plan: CourseExecutionPlan; device: ExecutionDevice; remoteAvailable: boolean }) {
+  }, placement?: { plan: CourseExecutionPlan; device: ExecutionDevice; remoteAvailable: boolean }, readOnly = false) {
   const connectionId = crypto.randomUUID(), instanceId = componentInstanceId(activityId, binding.key)
   const manifest = binding.definition.manifest
   /** A published course plan answers per operation; an operation the plan does not pin gets no answer. */
@@ -45,6 +45,10 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     return { contentId, content }
   }
   function assertWritable() {
+    if (!active) throw new Error('stale-connection')
+    if (readOnly || !canWrite()) throw new Error('forbidden')
+  }
+  function assertReadable() {
     if (!active) throw new Error('stale-connection')
     if (!canWrite()) throw new Error('forbidden')
   }
@@ -87,19 +91,21 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
       throw new Error('forbidden')
   }
   async function handle(raw: unknown) {
-    assertWritable()
+    assertReadable()
     if ((raw as { hostApiVersion?: unknown })?.hostApiVersion !== 1) throw new Error('unsupported-version')
     const parsed = componentMessageSchema.safeParse(raw)
     if (!parsed.success) throw new Error('invalid-input')
     const message = parsed.data
     if (message.connectionId !== connectionId || message.instanceId !== instanceId) throw new Error('stale-connection')
+    if (readOnly && !['workspace.read', 'reference.locate', 'execution.capabilities', 'component.ready', 'component.close'].includes(message.method))
+      throw new Error('forbidden')
     if (message.method === 'reference.select') {
       if (!references) throw new Error('capability-unavailable')
       return references.select(componentReferenceSelectionSchema.parse(message.payload), assertWritable)
     }
     if (message.method === 'reference.locate') {
       if (!references) throw new Error('capability-unavailable')
-      return references.locate(componentReferenceLocateSchema.parse(message.payload), assertWritable)
+      return references.locate(componentReferenceLocateSchema.parse(message.payload), assertReadable)
     }
     if (message.method === 'component.close') { z.object({}).strict().parse(message.payload); active = false; return { closed: true } }
     if (message.method === 'component.ready') { z.object({}).strict().parse(message.payload); return { ready: true } }

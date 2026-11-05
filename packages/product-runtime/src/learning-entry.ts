@@ -4,34 +4,41 @@ import { createFileBackend, openStorage, provisionStorage, StorageError } from '
 import pg from 'pg';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
-  createCourses, spaceCourseMigrations, createLearningAuthority, linuxSessionEntry, productNativeAdapters, createNativeChannel } from '@xunjie/learning-space';
+  createCourses, spaceCourseMigrations, createLearningAuthority, linuxSessionEntry, productNativeAdapters, createNativeChannel,
+  collectExecutionBoundary, validateExecutionBoundary } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { ExecutionDevice } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { ActionIntentOptions, NativeSessionIsolation } from '@xunjie/learning-space';
 import type { InstalledConfiguration } from './runtime.js';
 import { databaseBinding, resolveCredential, storeCredential } from './postgres.js';
-import { atomicJson, exists } from './io.js';
+import { atomicJson, exists, readJson } from './io.js';
 import { createStorageRecoveryOwner } from './storage-recovery.js';
 import { createStorageRecoveryTarget } from './storage-recovery.js';
 import type { RuntimeResources } from './postgres.js';
 import { RecoveryError } from './recovery.js';
-import type { RecoveryOwner } from './recovery-types.js';
+import type { OwnerBoundaryMaterial, RecoveryOwner } from './recovery-types.js';
 import { createSchoolClient } from './school-client.js';
 import { verifyWindowsSessionHelper } from './prerequisites.js';
 import { createNativeChannelClients } from './native-channel-clients.js';
+import { isInstallationRetired } from './retired-installations.js';
 
 /** Normal product composition; no test hosts, account fixtures or legacy SQLite dependencies. */
 export async function createProductLearningApplication(context: {
   root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration;
+  readOnly?: () => Promise<boolean>;
 }, actions: ActionIntentOptions = {}) {
   const { root, environment, configuration } = context;
+  const readOnly = context.readOnly ?? (async () => await exists(join(root, 'recovery-state.json'))
+    && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active');
+  const isolatedAtStartup = await readOnly();
+  const requiresNamespace = await exists(join(root, 'recovery-state.json'));
   const client = environment.profile === 'school' ? undefined : createSchoolClient(root, environment);
   const lifecycle = client ? await createNativeChannelClients({ root, environment, resources: configuration.resources, client }) : undefined;
   const database = await databaseBinding(root, configuration.database);
   if (!database && environment.profile === 'school') throw new Error('School identity requires PostgreSQL.');
-  if (!database) return { owners: [], ...(lifecycle ? { lifecycle } : {}), handle: createLearningEntry({ environment,
-    administratorToken: await resolveCredential(root, 'control'), client }) };
+  if (!database) return { owners: [], isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}), handle: createLearningEntry({ environment,
+    administratorToken: await resolveCredential(root, 'control'), client, readOnly, requiresNamespace }) };
   const { credentialRef, ...connection } = database;
   const admin = { ...connection, password: await resolveCredential(root, credentialRef) };
   const opened: OwnedStorage[] = [];
@@ -115,13 +122,14 @@ export async function createProductLearningApplication(context: {
     const supervised = environment.profile === 'local' || environment.profile === 'school';
     const placement = { nodeClass: environment.profile === 'school' ? 'school-execution-node' as const : 'device' as const,
       secureTransport: new URL(environment.services[0]!.endpoint).protocol === 'https:' };
-    const native = supervised ? { nodePath: process.execPath, placement,
+    const native = supervised ? { nodePath: process.execPath, placement, readOnly,
       ...(windowsHelper ? { windowsHelper } : {}),
       ...(linuxEntry ? { linuxEntry } : {}),
       sessionRoot: join(root, 'native-sessions'),
       nodeId: environment.profile === 'school' ? `school-${environment.installationId}` : `local-${process.platform}` } : undefined;
     let learning: ReturnType<typeof createLearningData>;
     const nativeChannel = environment.profile === 'school' ? createNativeChannel(data.storage, {
+      installationActive: async installationId => !await isInstallationRetired(root, installationId),
       authenticate: (token, connectionId) => spaces.authenticateConnection(token, connectionId),
       authorizeConnection: (identity, connectionId) => spaces.authorizeConnection(identity, connectionId),
       authorize: (identity, activityId) => learning.open(identity, activityId),
@@ -131,6 +139,21 @@ export async function createProductLearningApplication(context: {
       [data, learning.validate]] as const) {
       const recoveryOwner = createStorageRecoveryOwner({ storage: module.storage, binding: module.binding, migrations: module.migrations,
         resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', module === space ? 'space-course' : 'learning-data')],
+        installationId: environment.installationId,
+        // Only the learning-data owner holds execution facts; the component owner reports its own
+        // fixed material through the generic storage boundary.
+        ...(module === data ? { boundary: async (storage: OwnedStorage, { boundaryAt }: { boundaryAt: string }) => {
+          const boundary = await collectExecutionBoundary(storage);
+          return { kind: boundary.kind, settled: boundary.commands.settled,
+            unresolved: boundary.unresolved.map(command => ({ requestId: command.requestId, inputDigest: command.inputDigest,
+              executionRef: command.executionRef, activityId: command.activityId, location: command.location,
+              state: command.state, statusKnowledge: command.statusKnowledge, stopRequested: command.stopRequested,
+              disposition: command.disposition,
+              ...(command.node?.nodeId ? { nodeId: command.node.nodeId } : {}),
+              ...(command.node?.executorInstanceId ? { executorInstanceId: command.node.executorInstanceId } : {}) })),
+            blocking: boundary.blocking, retained: { resources: 0, checkpoints: boundary.checkpoints },
+            evidence: boundary };
+        } } : {}),
         validateService: validate });
       const participant = recoveryOwner.participant;
       let dispatchClosing: Promise<void> | undefined;
@@ -168,12 +191,18 @@ export async function createProductLearningApplication(context: {
     // The isolation answer is host-wide, so the owner measures it once. Status reports the state
     // machine rather than a prose message: `starting` until the unit answers, then `ready` with a
     // structured fact or `unavailable` when this host must refuse native sessions.
-    const measured = linuxEntry ? learning.executions.linuxEntryIsolation() : undefined;
     const probeState: { value?: NativeSessionIsolation | null } = {};
-    if (measured) void measured.then(value => { probeState.value = value; }, () => { probeState.value = null; });
+    let measuring = false;
+    function measureIsolation() {
+      if (!linuxEntry || measuring) return;
+      measuring = true;
+      void learning.executions.linuxEntryIsolation().then(value => { probeState.value = value; }, () => { probeState.value = null; });
+    }
+    if (!isolatedAtStartup) measureIsolation();
     const localIsolationReady = environment.profile === 'local' && (process.platform === 'darwin'
       ? await exists('/usr/bin/sandbox-exec') : process.platform === 'win32' && windowsHelper !== undefined);
     const executionEnvironment = async (identity: SpaceIdentity) => {
+      if (!await readOnly()) measureIsolation();
       const registered = nativeChannel ? (await nativeChannel.nodes(identity)).sort((left, right) => left.nodeId.localeCompare(right.nodeId))[0] : undefined;
       if (registered) return { nodeClass: 'device' as const, secureTransport: placement.secureTransport,
         remoteAvailable: placement.secureTransport && probeState.value !== undefined && probeState.value !== null, device: { platform: registered.platform,
@@ -198,9 +227,10 @@ export async function createProductLearningApplication(context: {
         adapters: productNativeAdapters.map(adapter => ({ adapterId: adapter.adapterId,
           adapterVersion: adapter.adapterVersion, platforms: adapter.platforms ?? [] })) };
     };
-    return { owners, ...(lifecycle ? { lifecycle } : {}), capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, client: schoolClient,
+    return { owners, isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}), capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, client: schoolClient, readOnly, requiresNamespace,
       executionEnvironment, ...(nativeChannel ? { nativeChannel } : {}), target: { ...data.storage.owner, version: 1 }, administratorToken: await resolveCredential(root, 'control') }),
       ...(linuxEntry ? { facts: async () => {
+        if (!await readOnly()) measureIsolation();
         if (probeState.value === undefined) return [{ name: 'native-sessions', required: false,
           state: 'starting' as const, detail: 'measuring-restricted-entry' }];
         const isolation = probeState.value;
@@ -228,7 +258,10 @@ export function createLearningRecoveryTargets(options: {
     return createStorageRecoveryTarget({ owner: { environmentId: options.environment.environmentId, serviceId: descriptor.serviceId },
       admin: async () => { const value = await options.admin(); if (!value) throw new RecoveryError('target-database-required'); return value; },
       resources: options.resources, backend: createFileBackend({ id: unit, root: resourceRoot }), resourceRoots: [resourceRoot],
+      installationId: options.environment.installationId,
       migrations: unit === 'space-course' ? spaceCourseMigrations : learningMigrations,
+      ...(unit === 'learning-data' ? { validateMaterial: async (storage: OwnedStorage, material: OwnerBoundaryMaterial) =>
+        validateExecutionBoundary(storage, material.evidence) } : {}),
       validateService: async storage => {
         if (unit === 'learning-data') return validateLearningData(storage);
         const spaces = createSpaces(storage);
