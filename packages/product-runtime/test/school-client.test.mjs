@@ -76,12 +76,13 @@ test('installed client forwards the course surface and rejects malformed or fore
   const malformedDraftActivityId = randomUUID();
   const catalog = { courses: [{ courseId, name: '课程', tasks: [{ taskId, title: '任务', summary: '',
     releases: [{ releaseId, contentDigest: digest, objectives: ['目标'], publishedAt }] }] }] };
+  const helpPolicy = { version: 1, questions: 'allowed', scope: 'course' };
   const release = { formatVersion: 1, courseId, taskId, releaseId, contentDigest: digest, objectives: ['目标'],
-    requirements: '要求', materials: [material], starterWorks: [], capabilities: [], publishedAt, courseName: '课程', taskTitle: '任务' };
+    requirements: '要求', materials: [material], starterWorks: [], capabilities: [], helpPolicy, publishedAt, courseName: '课程', taskTitle: '任务' };
   const activity = { activityId: randomUUID(), identity: grant.identity, target: grant.target, goal: '任务', question: '',
     references: [], status: 'open', createdAt: publishedAt, course: { associationId: randomUUID(), courseId,
       courseName: '课程', taskId, taskTitle: '任务', releaseId, contentDigest: digest, objectives: ['目标'],
-      requirements: '要求', materials: [material], starterWorks: [], capabilities: [] } };
+      requirements: '要求', materials: [material], starterWorks: [], capabilities: [], helpPolicy } };
   const actionId = randomUUID(), malformedIntentActivity = randomUUID(), foreignIntentActivity = randomUUID();
   const executionId = randomUUID(), malformedExecutionActivity = randomUUID(), foreignExecutionActivity = randomUUID();
   const controlId = randomUUID(), mismatchedControlId = randomUUID();

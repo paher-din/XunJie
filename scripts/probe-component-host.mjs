@@ -45,7 +45,7 @@ try {
   const bytes = Buffer.from(text);
   await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '材料标注验收' },
     task: { taskId, title: '阅读材料，记录你的理解', summary: '材料标注组件验收样例' },
-    release: { releaseId, objectives: ['区分事实与解释'], requirements: '阅读开放材料，选择文字并记下理解或疑问。', starterWorks: [], capabilities: [],
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['区分事实与解释'], requirements: '阅读开放材料，选择文字并记下理解或疑问。', starterWorks: [], capabilities: [],
       components: [{ key: 'annotation', definition, configuration: { title: '材料标注' }, materialIds: [materialId] }],
       materials: [{ materialId, title: '阅读材料', path: 'material.txt', mediaType: 'text/plain', access: 'student',
         byteLength: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }] },

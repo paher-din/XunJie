@@ -58,7 +58,7 @@ test.beforeAll(async ({ browser }, info) => {
   const binding = { key: 'accumulator', definition, configuration: { title: '四态累加模拟' }, materialIds: [] }
   const course = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '有状态会话浏览器验收' },
     task: { taskId, title: '观察四态累加', summary: '' },
-    release: { releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
       starterWorks: [], capabilities: [], components: [binding], materials: [] }, resources: [] }
   if ((await api('manage/course-import', course, admin)).status !== 200) throw new Error('course import failed')
   const member = await api('manage/members', { requestId: randomUUID(), loginName: 'native-ui-student', password }, admin)

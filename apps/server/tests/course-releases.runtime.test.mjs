@@ -29,7 +29,7 @@ function releaseFixture({ courseId, taskId, releaseId, requirements = '实现四
       formatVersion: 1, requestId: randomUUID(),
       course: { courseId, name: '数字逻辑与部件设计' },
       task: { taskId, title: '设计并验证 4 位 ALU', summary: '从题目到仿真验证。' },
-      release: {
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
         releaseId, objectives: ['理解 4 位 ALU 的行为', '用仿真验证边界输入'], requirements,
         materials: [
           { materialId: studentMaterialId, title: 'ALU 题目', path: 'materials/alu.md', mediaType: 'text/markdown',

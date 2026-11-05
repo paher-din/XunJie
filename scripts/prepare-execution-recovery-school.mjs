@@ -25,7 +25,7 @@ const payload = {
   loginName: 'wp03-188-' + randomUUID().slice(0, 8), password: randomUUID(),
   course: { courseId, name: 'WP03 #188 跨机恢复验收' },
   task: { taskId, title: '重开原作品与实验记录', summary: '真实备份、隔离还原与正式接管' },
-  release: {
+  release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
     releaseId, objectives: ['保持原作品、输入与执行身份'],
     requirements: '标注材料、计算固定表格，并为真实会话保存检查点。',
     starterWorks: [], capabilities: [],

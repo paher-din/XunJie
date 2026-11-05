@@ -142,7 +142,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     if (!row) throw new StorageError('missing');
     return row.body as StoredConnection;
   }
-  async function uncheckedSnapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
+  async function uncheckedSnapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning = false): Promise<CheckSnapshot> {
     await options.authorize(identity);
     if ('school' in source) {
       const current = await schoolDefault(identity);
@@ -150,13 +150,14 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [schoolScope(identity.spaceId), source.school.connectionId]);
       if (!row) throw new StorageError('unavailable');
       const stored = row.body as StoredConnection;
-      if (!stored.configuration.enabled || !stored.credentialRef || !stored.policy?.checksAllowed || projection(stored).adapterState !== 'ready') throw new StorageError('unavailable');
-      return { connection: projection(stored), credentialRef: stored.credentialRef, policy: stored.policy,
+      if (!stored.configuration.enabled || !stored.credentialRef || (!learning && !stored.policy?.checksAllowed) || projection(stored).adapterState !== 'ready') throw new StorageError('unavailable');
+      return { connection: projection(stored), credentialRef: stored.credentialRef,
+        ...(stored.policy ? { policy: stored.policy } : {}),
         source: { kind: 'school', ownerScope: schoolScope(identity.spaceId), feeSource: schoolScope(identity.spaceId) } };
     }
     if ('selected' in source) {
       const chosen = await selection.snapshot(identity, source.selectionVersion);
-      if (!chosen.choice.policy.checksAllowed) throw new StorageError('unavailable');
+      if (!learning && !chosen.choice.policy.checksAllowed) throw new StorageError('unavailable');
       const ownerScope = chosen.source.ownerScope;
       const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [ownerScope, chosen.choice.connection.connectionId]);
       if (!row) throw new StorageError('unavailable');
@@ -195,14 +196,16 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
       source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
   }
-  async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
-    const fixed = await uncheckedSnapshot(identity, source);
+  async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning = false): Promise<CheckSnapshot> {
+    const fixed = await uncheckedSnapshot(identity, source, learning);
     await validateModelTarget(fixed.connection, targetClass(fixed.source));
     return fixed;
   }
-  async function assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt'>, ref: string) {
+  async function assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt' | 'purpose'>, ref: string) {
       await options.authorize(identity);
-      if (Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
+      const learning = attempt.purpose === 'learning';
+      // Probe freshness is a connection-check rule, not a generation deadline for learning runs.
+      if (!learning && Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
       const ownerScope = attempt.source?.ownerScope ?? scopeOf(identity);
       if (attempt.source?.kind === 'school' && (identity.kind !== 'school' || ownerScope !== schoolScope(identity.spaceId))) throw new StorageError('forbidden');
       if (attempt.source?.kind === 'personal' && ownerScope !== scopeOf(identity) && !attempt.source.grantId) throw new StorageError('forbidden');
@@ -214,7 +217,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         if (!head) throw new StorageError('forbidden');
         const current = head.body as StoredConnection;
         if (!current.configuration.enabled || current.credentialRef !== ref) throw new StorageError('forbidden');
-        if (attempt.source?.kind === 'school' && !current.policy?.checksAllowed) throw new StorageError('forbidden');
+        if (!learning && attempt.source?.kind === 'school' && !current.policy?.checksAllowed) throw new StorageError('forbidden');
       }
       await validateModelTarget(attempt.connection, targetClass(attempt.source));
   }
@@ -224,7 +227,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   const deviceTasks = createModelDeviceTasks(storage, options.authorize, () => {
     if (writesClosed) throw new StorageError('maintenance');
   });
-  const segments = createChatWork(storage, images, { authorize: options.authorize, snapshot, assertDispatch,
+  const segments = createChatWork(storage, images, { authorize: options.authorize,
+    snapshot: (identity, source, learning) => snapshot(identity, source, learning), assertDispatch,
     readPortable: results.read,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); } });
   const checks = createChecks(storage, {

@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolSpec } from '../components/workspace/CenterToolArea'
@@ -8,22 +8,31 @@ import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
+import { ActivityConversation, FirstQuestionAutoSend, firstQuestionKey } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
+  onModels?: () => void
   details: ReactNode; account: ReactNode; error: ReactNode
 }) {
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
+  const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
   const { workspace, draft, actions } = useActivitySession()
   const readOnly = workspace.isReadOnly()
+  const firstQuestionOpened = useRef<string | null>(null)
+  useEffect(() => {
+    if (firstQuestionOpened.current === activity.activityId) return
+    firstQuestionOpened.current = activity.activityId
+    if (localStorage.getItem(firstQuestionKey(activity.activityId))) references.setOpen(true)
+  }, [activity.activityId, references])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await workspace.leave(); await draft.leave(); await actions.leave()
   } }), [workspace, draft, actions])
@@ -78,7 +87,11 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
         designBody={<ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
-        <WorkspaceReferenceComposer closeFocusRef={ask} /><ActivityActions />
+        <FirstQuestionAutoSend activity={activity} />
+        <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
+          onActiveChange={setConversationActive} />
+        {/* Steering is deferred; a new question waits as a reliable draft until the current run settles. */}
+        <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={conversationActive} /><ActivityActions />
       </aside>}
     </div>
     <SelectionToolbar />

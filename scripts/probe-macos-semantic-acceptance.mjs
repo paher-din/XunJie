@@ -72,7 +72,7 @@ try {
   const courseId = randomUUID(), releaseId = randomUUID();
   await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '语义引用验收' },
     task: { taskId: randomUUID(), title: '标注和聚合结果引用', summary: '' },
-    release: { releaseId, objectives: ['固定真实选中内容'], requirements: '分别选择标注与聚合结果进行讨论。', starterWorks: [], capabilities: [],
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['固定真实选中内容'], requirements: '分别选择标注与聚合结果进行讨论。', starterWorks: [], capabilities: [],
       components: [{ key: 'annotation', definition: annotation, configuration: { title: '材料标注' }, materialIds: [materialId] },
         { key: 'table', definition: aggregation, configuration: { title: '表格聚合' }, materialIds: [] }],
       materials: [{ materialId, title: '阅读材料', path: 'material.txt', mediaType: 'text/plain', access: 'student',

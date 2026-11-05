@@ -124,7 +124,7 @@ try {
     configuration: { title: index ? '材料高亮标注' : '材料标注' }, materialIds: [materialId] }));
   const course = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '独立产品包验收课程' },
     task: { taskId: randomUUID(), title: '阅读与标注', summary: '正式 CLI 路径验收' },
-    release: { releaseId, objectives: ['保留固定材料与标注'], requirements: '阅读并标注，不替换原版本。',
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保留固定材料与标注'], requirements: '阅读并标注，不替换原版本。',
       materials: [{ materialId, title: '公开材料', path: 'materials/open.txt', mediaType: 'text/plain', access: 'student',
         sha256: hash(materialBytes), byteLength: materialBytes.length }], starterWorks: [], capabilities: [], components: bindings } };
   assert.equal(course.resources, undefined);

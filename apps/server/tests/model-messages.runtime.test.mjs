@@ -301,7 +301,8 @@ test('Messages native blocks pending tools and fixed images survive real backup 
       try { assert.ok(restored.owners.length); } finally { for (const owner of restored.owners) await owner.close?.(); }
       targetRuntime = openProductRuntime({ root: targetRoot, resources }); const state = await targetRuntime.start(); assert.equal(state.state, 'maintenance');
       const targetApi = async (path, body) => {
-        const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal',
+          'x-xj-namespace': state.environment.clientNamespace },
           ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) }); return { status: response.status, value: await response.json() };
       };
       const next = call(id, 1); next.input.toolResults = [{ callId: 'restore-tool', outcome: 'not-executed', text: '调用方明确未执行', images: [image] }];

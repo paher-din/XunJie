@@ -54,7 +54,7 @@ try {
   const courseId = randomUUID(), releaseId = randomUUID(), password = randomUUID(), loginName = 'legacy-component-member';
   const member = await call(endpoint, 'manage/members', { requestId: randomUUID(), loginName, password });
   await call(endpoint, 'manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '原大写组件课程' },
-    task: { taskId: randomUUID(), title: '原固定活动', summary: '' }, release: { releaseId, objectives: ['保留原活动状态'], requirements: '保留旧活动', materials: [],
+    task: { taskId: randomUUID(), title: '原固定活动', summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保留原活动状态'], requirements: '保留旧活动', materials: [],
       starterWorks: [], capabilities: [], components: [{ key: 'annotation', definition: original, configuration: { title: '标注' }, materialIds: [] }] }, resources: [] });
   await call(endpoint, 'manage/course-access', { requestId: randomUUID(), courseId, principalId: member.value.principalId, active: true });
   const login = await call(endpoint, 'login', { loginName, password }, {});

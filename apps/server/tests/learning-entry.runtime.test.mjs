@@ -254,7 +254,7 @@ test('space identity persists and authorization follows current membership', { t
         await runtime.setCredential('wp02-recovery-key', recoveryKey.toString('base64'));
         const backupDirectory = await mkdtemp(join(tmpdir(), 'xunjie-learning-backups-'));
         const manifest = await runtime.recovery.backup({ directory: backupDirectory, recoveryKeyRef: 'wp02-recovery-key', leaveClosed: true });
-        assert.equal(manifest.services.length, 3);
+        assert.equal(manifest.services.length, 5);
         const targetRuntime = openProductRuntime({ root: targetRoot, resources });
         try {
           const restored = await restoreProductRecovery({ root: targetRoot, resources,

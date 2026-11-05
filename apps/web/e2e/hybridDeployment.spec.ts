@@ -47,7 +47,7 @@ test.beforeAll(async ({ browser }) => {
   courseReleaseId = releaseId
   const bytes = Buffer.from('# 学校原始题目\n编辑中文作品并重新打开。')
   await api(schoolEndpoint, 'manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '部署验收课程' },
-    task: { taskId, title: '部署验收任务', summary: '' }, release: { releaseId, objectives: ['在原空间继续学习'], requirements: '保存并重开中文作品。',
+    task: { taskId, title: '部署验收任务', summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['在原空间继续学习'], requirements: '保存并重开中文作品。',
       materials: [{ materialId, title: '学校原题', path: 'open.md', mediaType: 'text/markdown', access: 'student',
         sha256: createHash('sha256').update(bytes).digest('hex'), byteLength: bytes.length }], starterWorks: [], capabilities: [] },
     resources: [{ path: 'open.md', contentBase64: bytes.toString('base64') }] }, admin)

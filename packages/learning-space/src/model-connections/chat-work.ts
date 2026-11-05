@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSegmentInputSchema, modelCapabilityInputSchema, modelAttemptSchema, settleModelToolsSchema, modelToolResultSchema, modelSegmentCloseSchema, modelSegmentBoundarySchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelChatInput, ModelCheckInput, ModelCapabilityInput, ModelTool, ModelToolResult } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelChatInput, ModelLearningInput, ModelCheckInput, ModelCapabilityInput, ModelTool, ModelToolResult } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
 import { toolValidators, compileOutputSchema, type NativeChatAssistant } from './chat-native.js';
 import { checkPayload, type ChatPayload } from './chat.js';
@@ -23,7 +23,9 @@ export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-na
   CREATE TABLE model_observations(id uuid NOT NULL,version integer NOT NULL,scope text NOT NULL,body jsonb NOT NULL,PRIMARY KEY(id,version,scope));
 ` }];
 type Segment = { segmentId: string; formatVersion: 1; sequence: number; snapshot: Omit<CheckSnapshot, 'retain' | 'payload'>;
-  prefix: z.infer<typeof modelSegmentInputSchema>['prefix']; prefixDigest: string; portable: { text: string; resultRef?: string | undefined }[];
+  prefix: z.infer<typeof modelSegmentInputSchema>['prefix']; prefixDigest: string;
+  portable: { text: string; role?: 'user' | 'assistant' | undefined; resultRef?: string | undefined }[];
+  purpose?: 'chat-probe' | 'learning';
   headAttemptId: string | null; pendingAttemptId: string | null; closed: boolean; previousSegmentId?: string };
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -36,8 +38,8 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
   authorize(identity: SpaceIdentity): Promise<void>;
   assertWritable(): void;
   readPortable(identity: SpaceIdentity, resultRef: string): Promise<unknown>;
-  snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
-  assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt'>, credentialRef: string): Promise<void>;
+  snapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning?: boolean): Promise<CheckSnapshot>;
+  assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt' | 'purpose'>, credentialRef: string): Promise<void>;
 }) {
   async function stored(identity: SpaceIdentity, id: string) {
     await owner.authorize(identity);
@@ -125,10 +127,14 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     owner.assertWritable(); await owner.authorize(identity);
     const input = modelSegmentInputSchema.parse(value), scope = modelScopeOf(identity), hash = digest({ scope, input });
     const prior = await storage.receipt('model-segment:' + input.requestId, hash); if (prior) return read(identity, input.segmentId);
+    // The shared contract is wide enough for learning; probe segments keep their original wire bounds.
+    if ((input.purpose ?? 'chat-probe') !== 'learning'
+      && (input.prefix.system.length > 8192 || input.prefix.tools.length > 8 || input.portable.length > 8))
+      throw new StorageError('invalid');
     if ('draft' in input.source) throw new StorageError('invalid');
     validatePrefix(input.prefix);
     const options = input.prefix.options;
-    const snapshot = await owner.snapshot(identity, input.source);
+    const snapshot = await owner.snapshot(identity, input.source, input.purpose === 'learning');
     const decision = decideModelCapabilities(snapshot.connection, input.prefix);
     // Preserve explicit diagnostic probes without upgrading evidence. Messages has no JSON-object wire form.
     if (!decision.available && (!options?.capabilityProbe
@@ -148,6 +154,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     const { retain: _retain, ...fixed } = snapshot;
     const body: Segment = { segmentId: input.segmentId, sequence: 0, formatVersion: 1, prefix: input.prefix, portable: input.portable,
       prefixDigest: digest(input.prefix), snapshot: fixed, headAttemptId: null, pendingAttemptId: null, closed: false,
+      purpose: input.purpose ?? 'chat-probe',
       ...(input.previousSegmentId ? { previousSegmentId: input.previousSegmentId } : {}) };
     await storage.request({ requestId: 'model-segment:' + input.requestId, fingerprint: hash }, async tx => {
       if (input.previousSegmentId) {
@@ -168,13 +175,14 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     });
     return read(identity, input.segmentId);
   }
-  async function prepare(identity: SpaceIdentity, input: ModelChatInput): Promise<CheckSnapshot> {
+  async function prepare(identity: SpaceIdentity, input: ModelChatInput | ModelLearningInput): Promise<CheckSnapshot> {
     const segment = await stored(identity, input.segmentId);
+    if ((segment.purpose ?? 'chat-probe') !== input.purpose) throw new StorageError('conflict');
     if (segment.sequence !== input.expectedSequence) throw new StorageError('conflict');
     if (segment.closed) throw new StorageError('conflict');
     if (segment.pendingAttemptId) throw new StorageError('resource-busy');
     await owner.assertDispatch(identity, { connection: segment.snapshot.connection, source: segment.snapshot.source,
-      createdAt: new Date().toISOString() }, segment.snapshot.credentialRef);
+      createdAt: new Date().toISOString(), purpose: segment.purpose ?? 'chat-probe' }, segment.snapshot.credentialRef);
     const responses = segment.snapshot.connection.protocol === 'responses';
     const anthropic = segment.snapshot.connection.protocol === 'messages';
     const messages: ChatPayload['messages'] = [], items: OpenAI.Responses.ResponseInput = [];
@@ -190,6 +198,16 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
         else messageItems.push({ role: 'user', content: parts });
       } else if (responses) items.push({ role: 'user', content: [...(text ? [{ type: 'input_text' as const, text }] : []), ...nativeImages(content)] });
       else messages.push({ role: 'user', content: [...(text ? [{ type: 'text' as const, text }] : []), ...content] });
+    }
+    // Portable history keeps native turn roles instead of flattening both sides into user text.
+    function conversation(role: 'user' | 'assistant', text: string) {
+      if (anthropic) {
+        const last = messageItems.at(-1);
+        const parts: Anthropic.ContentBlockParam[] = [{ type: 'text' as const, text }];
+        if (last?.role === role && Array.isArray(last.content)) last.content.push(...parts);
+        else messageItems.push({ role, content: parts });
+      } else if (responses) items.push({ role, content: text });
+      else messages.push({ role, content: text });
     }
     function messageImages(content: Awaited<ReturnType<typeof images.materialize>>['content']): Anthropic.ImageBlockParam[] {
       return content.map(part => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: part.image_url.url.slice('data:image/png;base64,'.length) } }));
@@ -240,7 +258,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     } else {
       if (input.input.toolResults.length) throw new StorageError('invalid');
       if (!responses && !anthropic) messages.push({ role: 'system', content: segment.prefix.system });
-      for (const portable of segment.portable) user(portable.text);
+      for (const portable of segment.portable) conversation(portable.role ?? 'user', portable.text);
     }
     const image = await images.materialize(identity, input.input.images);
     if (input.input.text || image.content.length) user(input.input.text, image.content);

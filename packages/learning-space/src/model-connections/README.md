@@ -34,7 +34,9 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 
 `POST models/segments` 接收 `segmentId/requestId/source/prefix/portable`，可用 `previousSegmentId` 表达新段出处。`prefix` 固定 `system`、工具 `{name,description,inputSchema}` 和可选参数：显式 `toolChoice`、`responseFormat`、`applicationSchema`、`requiredCapabilities`、`capabilityProbe`。工具只支持同步、有限深度的本地 JSON Schema 校验；异步、外部引用、正则执行等未接入项在外发前拒绝。
 
-`POST models/calls` 是受控调用方使用的同一 Gateway 入口：`purpose:"chat-probe"`、稳定 `attemptId`、`segmentId/expectedSequence`、`input:{text,images,toolResults,observations}` 和有限 `limits`。这不建立学习聊天或执行工具。`models/calls/<id>` 的查询、`dispatch/cancel` 复用可靠调用状态机；`models/checks` 仍只接受合成文本检查用途，两类 ID 不能混用。原生调用最多 2048 输出 token、30 秒、32 步；完整 wire 最多 1 MB、8 张图片，超限拒绝而不裁剪。
+`POST models/calls` 是受控调用方使用的同一 Gateway 入口：`purpose:"chat-probe"`、稳定 `attemptId`、`segmentId/expectedSequence`、`input:{text,images,toolResults,observations}` 和有限 `limits`。这不建立学习聊天或执行工具。`models/calls/<id>` 的查询、`dispatch/cancel` 复用可靠调用状态机；`models/checks` 仍只接受合成文本检查用途，两类 ID 不能混用。原生探针调用最多 2048 输出 token、30 秒、32 步；完整探针 wire 最多 1 MB、8 张图片，超限拒绝而不裁剪。
+
+学习用途由 `teaching-agent` 的受认证 `RunDriver` 在自己的 owner 内接收，不经过公开 `models/calls`。学习段与 attempt 复用同一选择、授权、segment/check 状态机、三协议 SDK 和原生结果资源，但不受探针次数、段序号、输出或时间上限约束；输出上限与上下文窗口取保存的模型配置，`maxOutputTokens` 不再被探针上限静默改写。每段可携带真实 `user/assistant` 角色的可移植历史；学习调用仍不执行工具。
 
 工具参数按 choice/tool index 聚合；只有名字、身份、完整 JSON/schema、整体终态和可读持久结果同时成立，公开结果才出现 `toolIntents`。拒绝、半截参数、截断、未知关键块、缺终态或本地发布失败不交付意图。DeepSeek 保留 `reasoning_content`；已实测 Command Code 方言保留 `reasoning` 及按块索引聚合的 `reasoning_details`，未知关键格式保留原始 chunks 但不可续接。公开投影不返回原生推理。
 

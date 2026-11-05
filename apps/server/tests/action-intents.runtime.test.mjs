@@ -53,7 +53,7 @@ test('an action retains only its fixed inputs without replacing later work or dr
     assert.equal((await api('drafts/' + activity.activityId)).value.question, '后续新问题');
     assert.equal((await api(path + '/' + input.requestId + '/dispatch', {})).status, 503, 'unregistered business receiver is unavailable');
     assert.equal((await api(path + '/' + input.requestId)).value.state, 'prepared', 'workspace receipt is not business acceptance');
-    assert.deepEqual((await api(path + '/capabilities')).value, []);
+    assert.deepEqual((await api(path + '/capabilities')).value.map(item => item.kind), ['question']);
   } finally { await runtime.stop(); }
 });
 
@@ -221,7 +221,7 @@ test('production maintenance drains dispatch and full recovery preserves accepte
     const key = randomBytes(32), backupDirectory = join(directory, 'backups');
     await source.setCredential('action-recovery-key', key.toString('base64'));
     const backup = await source.recovery.backup({ directory: backupDirectory, recoveryKeyRef: 'action-recovery-key', leaveClosed: true });
-    assert.equal(backup.services.length, 4);
+    assert.equal(backup.services.length, 5);
     const restored = await restoreProductRecovery({ root: targetRoot, resources, backupDirectory: join(backupDirectory, backup.backupId), key });
     for (const owner of restored.owners) await owner.close?.();
     targetHost = await createProductRuntimeHost({ root: targetRoot, createApplication: application });
@@ -234,7 +234,8 @@ test('production maintenance drains dispatch and full recovery preserves accepte
     }
     assert.equal((await api(targetHost.endpoint, path + '/' + first.requestId + '/dispatch', {},
       { 'x-xj-namespace': originalNamespace })).status, 403);
-    assert.equal((await api(targetHost.endpoint, path + '/' + first.requestId + '/dispatch', {})).value.receipt.receiptId, accepted.value.receipt.receiptId);
+    const redispatched = await api(targetHost.endpoint, path + '/' + first.requestId + '/dispatch', {},
+      { 'x-xj-namespace': targetHost.environment.clientNamespace }); assert.equal(redispatched.value.receipt?.receiptId, accepted.value.receipt.receiptId, JSON.stringify(redispatched.value));
     assert.deepEqual(receiver.acceptedIds(), [first.requestId]);
   } finally {
     release(); await targetHost?.stop().catch(() => {}); await sourceHost?.stop().catch(() => {});

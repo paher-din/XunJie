@@ -121,7 +121,7 @@ try {
     locations: ['native'], remote: null };
   const executionPlan = { ...planBasis, planDigest: digest(planBasis) };
   await school('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: payload.course, task: payload.task,
-    release: { ...payload.release, components: [{ key: 'accumulator', definition: imported, configuration: payload.configuration, materialIds: [] }], executionPlan }, resources: [] }, true);
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  ...payload.release, components: [{ key: 'accumulator', definition: imported, configuration: payload.configuration, materialIds: [] }], executionPlan }, resources: [] }, true);
   const member = await school('manage/members', { requestId: randomUUID(), loginName: payload.loginName, password: payload.password }, true);
   await school('manage/course-access', { requestId: randomUUID(), courseId: payload.courseId, principalId: member.principalId, active: true }, true);
   pass('通过学校管理 API 导入发布原四态累加课程并授权学生');

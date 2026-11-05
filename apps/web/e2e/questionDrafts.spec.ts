@@ -110,7 +110,7 @@ test('course text and requirements stay as fixed references through collapse, re
   }
   await manage('course-import', { formatVersion: 1, requestId: randomUUID(),
     course: { courseId, name: '固定引用课程' }, task: { taskId, title: '固定引用的任务', summary: '课堂材料' },
-    release: { releaseId, objectives: ['引用材料与要求'], requirements,
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['引用材料与要求'], requirements,
       materials: [{ materialId, title: 'ALU 题目', path: 'alu.txt', mediaType: 'text/plain', access: 'student',
         sha256: sha256(bytes), byteLength: bytes.byteLength }], starterWorks: [], capabilities: [] },
     resources: [{ path: 'alu.txt', contentBase64: bytes.toString('base64') }] })

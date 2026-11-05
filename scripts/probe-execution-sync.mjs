@@ -40,7 +40,7 @@ try {
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
   await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(),
     course: { courseId, name: '断连续传验收' }, task: { taskId, title: '离线计算与同步续传', summary: '执行服务不可达期间照常计算' },
-    release: { releaseId, objectives: ['断网-重连下恰好一次投递'], requirements: '执行服务不可达期间完成计算，恢复后续传。',
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['断网-重连下恰好一次投递'], requirements: '执行服务不可达期间完成计算，恢复后续传。',
       starterWorks: [], capabilities: [],
       components: [{ key: 'table', definition, configuration: { title: '表格聚合' }, materialIds: [] }], materials: [] },
     resources: [] }, admin);

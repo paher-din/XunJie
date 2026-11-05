@@ -21,6 +21,8 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (/^models\/segments\/[^/]+$/.test(route) && body === undefined) return models.segments.read(identity, route.split('/')[2]!);
   if (/^models\/segments\/[^/]+\/tool-results$/.test(route) && body !== undefined) return models.segments.settle(identity, route.split('/')[2]!, body);
   if (/^models\/segments\/[^/]+\/close$/.test(route) && body !== undefined) return models.segments.close(identity, route.split('/')[2]!, body);
+  // Learning attempts are created only by the authenticated RunDriver; the public call wire stays
+  // a diagnostic probe path so it cannot bypass learning admission.
   if (route === 'models/calls' && body !== undefined) return models.checks.receive(identity, modelChatInputSchema.parse(body));
   if (route === 'models/checks') return body === undefined ? (await models.checks.list(identity)).filter(item => item.purpose === 'connection-check')
     : models.checks.receive(identity, modelCheckInputSchema.parse(body));

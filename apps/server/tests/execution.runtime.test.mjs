@@ -42,7 +42,7 @@ test('the execution owner keeps original acceptance, empty-reason stops and one 
     const binding = { key: 'table', definition, configuration: { title: '表格聚合' }, materialIds: [] };
     const course = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '聚合验收样例' },
       task: { taskId, title: '按小组统计得分', summary: '' },
-      release: { releaseId, objectives: ['用受限算法算出一组统计'], requirements: '编辑表格并运行计算。', starterWorks: [],
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['用受限算法算出一组统计'], requirements: '编辑表格并运行计算。', starterWorks: [],
         capabilities: [], components: [binding], materials: [] }, resources: [] };
     assert.equal((await api('manage/course-import', course, admin)).status, 200);
     const password = randomUUID();

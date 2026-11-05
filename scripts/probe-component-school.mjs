@@ -44,7 +44,7 @@ if (mode === 'seed') {
     const releaseId = randomUUID();
     await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(),
       course: { courseId, name: '跨机组件准备验收 179/181' }, task: { taskId, title: '阅读材料，记录理解', summary: '真实学校资源与准备报告' },
-      release: { releaseId, objectives: ['核对事实'], requirements: '阅读并标注材料。', starterWorks: [], capabilities: [],
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['核对事实'], requirements: '阅读并标注材料。', starterWorks: [], capabilities: [],
         components: [{ key: 'annotation', definition: component, configuration: { title: '材料标注' }, materialIds: [materialId] }],
         materials: [{ materialId, title: '阅读材料', path: 'material.txt', mediaType: 'text/plain', access: 'student', sha256: sha(bytes), byteLength: bytes.length }] },
       resources: [{ path: 'material.txt', contentBase64: bytes.toString('base64') }] });

@@ -28,7 +28,7 @@ const payload = {
   course: { courseId, name: '跨机原生会话验收' },
   task: { taskId, title: '观察四态累加', summary: '在学校执行节点上连续输入并观察真实内部状态' },
   configuration: { title: published.manifest.title },
-  release: {
+  release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
     releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
     starterWorks: [], capabilities: [], materials: [],
   },

@@ -26,6 +26,9 @@
 | `GET/POST intents/:activityId` / `GET intents/:activityId/:requestId` | 列出、固定准备或查询原动作；内容确认不等于业务接受 |
 | `GET intents/:activityId/capabilities` | 当前原活动已注册的接收能力；默认空列表，不挂载测试接收器 |
 | `POST intents/:activityId/:requestId/dispatch` / `cancel` | 沿原身份派发、核实及持久协调取消；未知不伪装为未接收或已撤回 |
+| `GET agent/:activityId/conversation` / `events` / `capabilities` | 活动级对话投影、稳定游标事件与已注册接收能力 |
+| `GET agent/:activityId/runs/:runId` / `POST .../stop` / `POST .../continue` | 读取原 Run、持久停止或建立关联后继 Run |
+| `GET agent/:activityId/requests/:requestId` / `snapshots/:snapshotId` | 原请求回执与不可变上下文快照的只读重建 |
 | `GET/POST models/connections` | 当前主体的模型配置投影与期望版本保存；凭据不会读回 |
 | `GET/POST models/checks` / `GET models/checks/:id` | 列表、固定接收及结果查询；只读不生成模型请求 |
 | `POST models/checks/:id/dispatch` / `cancel` | 同一有限检查最多一次 Chat 外发或持久协调取消 |
@@ -36,7 +39,7 @@
 
 设备组合的监听及公开入口仅允许 loopback；学校共享组合不装配设备凭据代理。宿主关闭新入口后等待已接收的异步业务请求结束，包含远端派发和连接凭据持久化，超时不宣告安全排空。
 
-浏览器入口在 `apps/web/src/runtime`：先展示空间和活动，运行身份进入诊断。创建活动前保留准确请求身份，未知时查询原请求；列表读取失败单独反馈，不当成空列表。切换空间使旧异步呈现失效。本入口提供课程发布、课程活动、可靠作品与问题草稿；真实 Agent 发送、实验执行和教师交付尚未接入。
+浏览器入口在 `apps/web/src/runtime`：先展示空间和活动，运行身份进入诊断。创建活动前保留准确请求身份，未知时查询原请求；列表读取失败单独反馈，不当成空列表。切换空间使旧异步呈现失效。本入口提供课程发布、课程活动、可靠作品、问题草稿与正式学习对话；实验执行和教师交付尚未接入。学习对话的持久推进与恢复边界见 [teaching-agent](../teaching-agent/README.md)。
 
 完整使用与验证边界见 [交接说明](../../../../docs/student-agent-implementation/wp02-identity-activity.md)。
 混合部署的 `createLearningAuthority` 在 WP01 认证传输内逐次核验学校连接主体、成员级目标和课程资格，仅提供 access/prepare/confirm/authorize。`manage/local-binding` 仅管理员可用；工作区转发同时校验预期主体与恢复 namespace，部署者不能通过普通重试替换事实 owner。操作与验收见 [#154 交接](../../../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。

@@ -156,6 +156,15 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     });
     return { token, identity: await authenticate(token) };
   }
+  /** Resolve a complete identity from an already-authenticated owner scope (for receivers that only receive IDs). */
+  async function lookup(spaceId: string, principalId: string): Promise<SpaceIdentity> {
+    id.parse(spaceId); id.parse(principalId);
+    const { rows: [row] } = await storage.read(`SELECT m.principal_id,p.space_id,s.kind,s.name FROM memberships m
+      JOIN principals p ON p.id=m.principal_id AND p.space_id=m.space_id JOIN spaces s ON s.id=m.space_id
+      WHERE m.space_id=$1 AND m.principal_id=$2 AND m.active`, [spaceId, principalId]);
+    if (!row) return fail('forbidden');
+    return identity(row);
+  }
   async function authorize(value: SpaceIdentity) {
     const identity = spaceIdentitySchema.parse(value);
     if (identity.environmentId !== storage.owner.environmentId) fail('forbidden');
@@ -237,6 +246,6 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
-  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, login, authenticate, authorize, bindMember, resolveBinding,
+  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, login, authenticate, authorize, lookup, bindMember, resolveBinding,
     logout, authenticateConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

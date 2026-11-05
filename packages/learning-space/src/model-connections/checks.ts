@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelTool } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelLearningInput, ModelTool } from '@xunjie/contracts/model-connections';
 import { connectionCheckPayload, limitPayload, runModel, type NativePayload } from './transport.js';
 import { validateResponsesNative } from './responses.js';
 import { validateMessagesNative, type MessagesPayload } from './messages.js';
@@ -20,7 +20,7 @@ export function createChecks(storage: OwnedStorage, owner: {
   dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } | undefined;
   authorize(identity: SpaceIdentity): Promise<void>;
   snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
-  prepareChat(identity: SpaceIdentity, input: ModelChatInput): Promise<CheckSnapshot>;
+  prepareChat(identity: SpaceIdentity, input: ModelChatInput | ModelLearningInput): Promise<CheckSnapshot>;
   publishChat(tx: OwnedTransaction, attempt: ModelAttempt): Promise<void>;
   credential(identity: SpaceIdentity, ref: string): Promise<string>;
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
@@ -96,6 +96,14 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (result.resultRef) await storage.readResource(result.resultRef);
     return result;
   }
+  /** Native request reconstruction stays at the model owner; callers never read its resources directly. */
+  async function requestPayload(identity: SpaceIdentity, attemptId: string) {
+    await owner.authorize(identity);
+    const found = await row(identity, attemptId);
+    const body = modelAttemptSchema.parse(found.body);
+    const bytes = Buffer.from(await storage.readResource(body.requestRef));
+    return JSON.parse(bytes.toString('utf8')) as Record<string, unknown>;
+  }
   async function list(identity: SpaceIdentity) {
     await owner.authorize(identity);
     await reconcileDispatchers();
@@ -112,9 +120,10 @@ export function createChecks(storage: OwnedStorage, owner: {
     const input = modelAttemptInputSchema.parse(value), scope = scopeOf(identity), fingerprint = digest({ scope, input });
     const prior = await storage.receipt('model-check:' + input.attemptId, fingerprint);
     if (prior) return read(identity, input.attemptId);
+    const learning = input.purpose === 'learning';
     const snapshot = input.purpose === 'connection-check' ? await owner.snapshot(identity, input.source) : await owner.prepareChat(identity, input);
-      const limits = snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
-        timeoutMs: Math.min(input.limits.timeoutMs, snapshot.policy.timeoutMs) } : input.limits;
+      const limits = learning ? input.limits : snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
+        timeoutMs: Math.min(input.limits.timeoutMs!, snapshot.policy.timeoutMs) } : input.limits;
       const payload = snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
         : connectionCheckPayload(snapshot.connection, limits.maxOutputTokens);
       const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
@@ -125,17 +134,19 @@ export function createChecks(storage: OwnedStorage, owner: {
         upstreamStopped: 'unknown', text: '', usage: { state: 'unknown' }, reason: '', requestRef: request.resourceId, resultRef: null,
         createdAt: new Date().toISOString() };
       await storage.request({ requestId: 'model-check:' + input.attemptId, fingerprint }, async tx => {
-        await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-admission:' + scope]);
-        if (snapshot.source) {
-          await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-budget:' + snapshot.source.feeSource]);
-          const { rows: [billed] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE (body->'source'->>'feeSource'=$1 OR (body->'source' IS NULL AND scope=$1)) AND created_at > clock_timestamp()-interval '1 hour'", [snapshot.source.feeSource]);
-          if (Number(billed!.total) >= (snapshot.policy?.maxChecksPerHour ?? 6)) throw new StorageError('resource-busy');
+        if (!learning) {
+          await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-admission:' + scope]);
+          if (snapshot.source) {
+            await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-budget:' + snapshot.source.feeSource]);
+            const { rows: [billed] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE (body->'source'->>'feeSource'=$1 OR (body->'source' IS NULL AND scope=$1)) AND created_at > clock_timestamp()-interval '1 hour'", [snapshot.source.feeSource]);
+            if (Number(billed!.total) >= (snapshot.policy?.maxChecksPerHour ?? 6)) throw new StorageError('resource-busy');
+          }
+          const { rows: [count] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE scope=$1 AND created_at > clock_timestamp()-interval '1 hour'", [scope]);
+          if (Number(count!.total) >= 6) throw new StorageError('resource-busy');
         }
-        const { rows: [count] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE scope=$1 AND created_at > clock_timestamp()-interval '1 hour'", [scope]);
-        if (Number(count!.total) >= 6) throw new StorageError('resource-busy');
         await snapshot.retain?.(tx);
         await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended,input_metadata) VALUES($1,$2,$3,$4,$5,$6,true,$7)',
-          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted', input.purpose === 'chat-probe'
+          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted', input.purpose !== 'connection-check'
             ? { input: input.input, ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
         await tx.reference('model-request:' + input.attemptId, request.resourceId);
         return { attemptId: input.attemptId };
@@ -172,8 +183,10 @@ export function createChecks(storage: OwnedStorage, owner: {
       const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attemptId]);
       const body = modelAttemptSchema.parse(current!.body);
       if (body.state !== 'accepted' || closed) return false;
-      const { rows: [count] } = await tx.query('SELECT count(*)::integer AS total,count(*) FILTER (WHERE scope=$1)::integer AS personal FROM model_attempts WHERE physical_ended=false', [scopeOf(identity)]);
-      if (Number(count!.total) >= 2 || Number(count!.personal) >= 1) throw new StorageError('resource-busy');
+      if (body.purpose !== 'learning') {
+        const { rows: [count] } = await tx.query('SELECT count(*)::integer AS total,count(*) FILTER (WHERE scope=$1)::integer AS personal FROM model_attempts WHERE physical_ended=false AND (body->>\'purpose\')<>\'learning\'', [scopeOf(identity)]);
+        if (Number(count!.total) >= 2 || Number(count!.personal) >= 1) throw new StorageError('resource-busy');
+      }
       const next = { ...body, state: 'dispatched', dispatched: true, physicalRequestEnded: false };
       await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=false,dispatcher_id=$4 WHERE id=$1', [attemptId, next, 'dispatched', owner.dispatcher?.id ?? null]);
       return true;
@@ -193,7 +206,8 @@ export function createChecks(storage: OwnedStorage, owner: {
     } finally { starting--; }
   }
   async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController, metadata: { applicationSchema?: Record<string, unknown> } | null) {
-    const timeout = setTimeout(() => controller.abort('timeout'), attempt.limits.timeoutMs);
+    // Learning calls use no product-level generation deadline; the transport still needs a finite client bound.
+    const timeout = setTimeout(() => controller.abort('timeout'), attempt.limits.timeoutMs ?? 2_147_483_647);
     try {
       await owner.assertDispatch(identity, attempt, ref);
       await storage.pendingIntents();
@@ -208,7 +222,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       const requestFetch = await owner.requestFetch?.(identity, attempt);
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
-        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, !!attempt.segment, metadata?.applicationSchema, requestFetch);
+        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647, !!attempt.segment, metadata?.applicationSchema, requestFetch);
       const interruption = controller.signal.reason;
       if ((interruption === 'timeout' || interruption === 'maintenance') && !['completed', 'failed'].includes(result.state)) {
         result.state = 'unknown';
@@ -271,7 +285,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');
     }
   }
-  return { receive, read, list, dispatch, cancel, validate,
+  return { receive, read, list, requestPayload, dispatch, cancel, validate,
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },
     async drain() {

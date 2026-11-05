@@ -106,7 +106,7 @@ try {
   const resources = [{ path: 'material.txt', contentBase64: bytes.toString('base64') }];
   const importCourse = releaseId => ({ formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '依赖准备验收' },
     task: { taskId, title: '阅读材料，记录你的理解', summary: '组件依赖准备与自检样例' },
-    release: { releaseId, objectives: ['区分事实与解释'], requirements: '阅读开放材料，选择文字并记下理解或疑问。', starterWorks: [], capabilities: [],
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['区分事实与解释'], requirements: '阅读开放材料，选择文字并记下理解或疑问。', starterWorks: [], capabilities: [],
       components: [], materials: [material] }, resources });
   const preparedCourse = importCourse(preparedReleaseId);
   preparedCourse.release.components = [{ key: 'annotation', definition: preparedDefinition, configuration: { title: '材料标注' }, materialIds: [materialId] }];

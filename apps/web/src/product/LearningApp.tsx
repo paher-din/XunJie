@@ -14,6 +14,7 @@ import { useModelSelection } from './ModelSelection'
 import { CourseTiles, LearningTaskCard, LearningCardGrid } from '../components/home/LearningCards'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
+import { rememberFirstQuestion } from './ActivityConversation'
 
 
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
@@ -112,6 +113,7 @@ function LearningView() {
   const [schoolEndpoint, setSchoolEndpoint] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
   const [pendingRequest, setPendingRequest] = useState<CreateActivity | null>(null)
+  const askNext = useRef<boolean | null>(null)
   const [coursePending, setCoursePending] = useState<CreateCourseActivity | null>(null)
   const [notice, setNotice] = useState('')
   const [reload, setReload] = useState(0)
@@ -376,6 +378,8 @@ function LearningView() {
     const selected = key
     const input = pendingRequest ?? createActivitySchema.parse({ requestId: crypto.randomUUID(), goal, question,
       references: reference ? [{ kind: 'url', url: reference, label: reference }] : [] })
+    const ask = askNext.current ?? !!input.question.trim()
+    askNext.current = null
     // Persist the exact request before dispatch; an unknown result keeps this identity across reloads.
     localStorage.setItem(scopeKey, JSON.stringify(input))
     setPendingRequest(input)
@@ -385,6 +389,7 @@ function LearningView() {
       const saved = localStorage.getItem(scopeKey)
       if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
       if (generation === epoch.current && startedSearch === currentSearch.current) {
+        if (ask && input.question.trim()) rememberFirstQuestion(activity.activityId, input.question)
         setPendingRequest(null); rememberActivity(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
         setActivitiesFor(scopeKey)
         setGoal(''); setQuestion(''); setReference('')
@@ -552,7 +557,7 @@ function LearningView() {
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
-        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} account={schoolControls}
+        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
         error={error || notice ? feedback : null} details={<>
           {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
             requirementsContent={<CourseRequirementsReference course={opened.course} />}
@@ -621,8 +626,14 @@ function LearningView() {
             <label>资料链接（可选）<input type="url" value={reference} disabled={!!pendingRequest} onChange={event => setReference(event.target.value)} placeholder="https://" /></label>
             {pendingRequest && <p className="detail">上次建立活动的结果尚未核对，将先查询原请求。</p>}
             {pendingRequest && <button type="button" className="outline" disabled={busy} onClick={discardPending}>放弃这次请求并重新填写</button>}
-            <button className="primary" disabled={busy || context?.readOnly || !pendingRequest && !goal.trim() && !question.trim() && !reference}>
-              {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
+            <div className="product-create-actions">
+              <button className="primary" type="submit" disabled={busy || context?.readOnly || !pendingRequest && !goal.trim() && !question.trim() && !reference}
+                onClick={() => { askNext.current = false }}>
+                {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
+              <button className="outline" type="submit" disabled={busy || context?.readOnly || !question.trim()}
+                onClick={() => { askNext.current = true }}>建立并开始对话</button>
+            </div>
+            <p className="detail">「建立并开始对话」会把你填写的起始问题发送给 Agent；「建立学习活动」只保存目标与问题，稍后可在活动中发送。</p>
           </form>
         </details></section>
       </>}

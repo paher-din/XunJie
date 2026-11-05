@@ -12,6 +12,7 @@ import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
 import type { createNativeChannel } from '../learning-data/native-channel.js';
 import type { createModelGateway } from '../model-connections/index.js';
+import type { createTeachingAgent } from '../teaching-agent/index.js';
 import { routeModels } from '../model-connections/wire.js';
 import { ModelCapabilityError } from '../model-connections/capabilities.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
@@ -60,6 +61,7 @@ export function createLearningEntry(options: {
   courses?: ReturnType<typeof createCourses>;
   nativeChannel?: ReturnType<typeof createNativeChannel>;
   models?: Awaited<ReturnType<typeof createModelGateway>>;
+  teaching?: ReturnType<typeof createTeachingAgent>;
   restoredInstallation?(): Promise<boolean>;
   administratorToken: string;
   readOnly?: () => Promise<boolean>;
@@ -141,7 +143,7 @@ export function createLearningEntry(options: {
         route = route.slice(0, -5);
       }
       if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')
-        || route.startsWith('executions/') || route.startsWith('models/')) && request.headers['x-xj-namespace']
+        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -313,6 +315,32 @@ export function createLearningEntry(options: {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
+      } else if (route.startsWith('agent/')) {
+        if (!options.teaching) throw new StorageError('unavailable');
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const parts = route.split('/');
+        const activityId = parts[1]!;
+        const after = new URL(request.url!, endpoint).searchParams.get('after');
+        const cursor = after === null ? 0 : z.coerce.number().int().nonnegative().parse(after);
+        if (parts.length === 3 && parts[2] === 'conversation' && method === 'GET')
+          result = await options.teaching.conversation(identity, activityId, cursor);
+        else if (parts.length === 3 && parts[2] === 'events' && method === 'GET')
+          result = await options.teaching.events(identity, activityId, cursor);
+        else if (parts.length === 3 && parts[2] === 'capabilities' && method === 'GET')
+          result = await options.teaching.capabilities(identity, activityId);
+        else if (parts.length === 4 && parts[2] === 'runs' && method === 'GET')
+          result = await options.teaching.run(identity, activityId, parts[3]!);
+        else if (parts.length === 5 && parts[2] === 'runs' && parts[4] === 'stop' && method === 'POST')
+          result = await options.teaching.stop(identity, activityId, parts[3]!, await readLearningBody(request));
+        else if (parts.length === 5 && parts[2] === 'runs' && parts[4] === 'continue' && method === 'POST')
+          result = await options.teaching.continueRun(identity, activityId, parts[3]!, await readLearningBody(request));
+        else if (parts.length === 4 && parts[2] === 'requests' && method === 'GET')
+          result = await options.teaching.request(identity, activityId, parts[3]!);
+        else if (parts.length === 4 && parts[2] === 'snapshots' && method === 'GET')
+          result = await options.teaching.snapshot(identity, activityId, parts[3]!);
+        else throw new StorageError('missing');
       } else if (route.startsWith('executions/')) {
         // The execution owner answers accept, query, report, stop and result under one identity.
         const identity = await current(request);

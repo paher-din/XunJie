@@ -41,7 +41,7 @@ try {
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
   await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(),
     course: { courseId, name: '表格聚合验收' }, task: { taskId, title: '按小组统计得分', summary: '浏览器计算与持久执行' },
-    release: { releaseId, objectives: ['用受限算法算出一组统计'], requirements: '编辑表格，选好分组列与数值列后运行计算。',
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['用受限算法算出一组统计'], requirements: '编辑表格，选好分组列与数值列后运行计算。',
       starterWorks: [], capabilities: [],
       components: [{ key: 'table', definition, configuration: { title: '表格聚合' }, materialIds: [] }], materials: [] },
     resources: [] }, admin);
@@ -207,7 +207,7 @@ try {
   const busyDefinition = await api('manage/component-import', { requestId: randomUUID(), ...busy }, admin);
   const busyCourseId = randomUUID(), busyReleaseId = randomUUID();
   await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId: busyCourseId, name: '真实停止验收' },
-    task: { taskId: randomUUID(), title: '运行中的跨标签停止', summary: '' }, release: { releaseId: busyReleaseId,
+    task: { taskId: randomUUID(), title: '运行中的跨标签停止', summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId: busyReleaseId,
       objectives: ['真实 Worker 终止'], requirements: '从另一标签页停止原运行。', starterWorks: [], capabilities: [], materials: [],
       components: [{ key: 'table', definition: busyDefinition, configuration: { title: '表格聚合' }, materialIds: [] }] }, resources: [] }, admin);
   await api('manage/course-access', { requestId: randomUUID(), courseId: busyCourseId, principalId: member.principalId, active: true }, admin);

@@ -178,9 +178,12 @@ export function WorkspaceReferenceList() {
   </section>
 }
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
-export function WorkspaceReferenceComposer({ closeFocusRef }: { closeFocusRef?: RefObject<HTMLElement | null> } = {}) {
+export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false }: {
+  closeFocusRef?: RefObject<HTMLElement | null>; sendBlocked?: boolean
+} = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
     draftConflict, draftConflictReady, resolveDraftConflict, readOnly } = useWorkspaceReferences()
+  const canSend = sendAvailable && !sendBlocked
   const input = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
   const questionId = useId()
@@ -206,21 +209,22 @@ export function WorkspaceReferenceComposer({ closeFocusRef }: { closeFocusRef?: 
     </div>}
     {draftError && <p role="alert" className="wr-notice">{draftError}</p>}
     <WorkspaceReferenceList />
-    <form onSubmit={event => { event.preventDefault(); if (sendAvailable) void submit() }}>
+    <form onSubmit={event => { event.preventDefault(); if (canSend) void submit() }}>
       <label htmlFor={questionId}>你的问题</label>
       <textarea ref={input} id={questionId} value={question} disabled={!draftReady} readOnly={readOnly} maxLength={QUESTION_TEXT_MAX_LENGTH}
         onChange={event => setQuestion(event.target.value)} placeholder="写下想讨论的问题…"
         onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
         onKeyDown={event => {
-          if (sendAvailable && event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+          if (canSend && event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
             event.preventDefault(); void submit()
           }
         }} />
-      <div className="wr-send"><span className="wr-hint">{sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
-        : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
-          : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
-        <button className="wr-primary" type="submit" disabled={!sendAvailable || busy || !question.trim()}>
-          {sendAvailable ? busy ? '发送中…' : '发送问题' : '发送问题（尚未接入）'}</button></div>
+      <div className="wr-send"><span className="wr-hint">{sendBlocked ? '当前回答结束后再发送；问题会先保存在草稿中。'
+        : sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
+          : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
+            : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
+        <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>
+          {sendBlocked ? '等待当前回答' : sendAvailable ? busy ? '发送中…' : '发送问题' : '发送问题（尚未接入）'}</button></div>
     </form>
     <p role="status" className="wr-notice">{notice}</p>
   </section>

@@ -161,7 +161,8 @@ test('independent model deployment backup, isolated restore and takeover retain 
       assert.equal(state.environment.services.some(service => service.unit === 'learning-data'), false);
       await target.recovery.takeover({ sourceRoot: root, receivers: [] });
       const targetApi = async (path, body) => {
-        const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal',
+          'x-xj-namespace': state.environment.clientNamespace },
           ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
         assert.equal(response.status, 200); return response.json();
       };
