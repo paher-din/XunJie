@@ -1,0 +1,180 @@
+{
+  "formatVersion": 1,
+  "issue": 178,
+  "sourceIssue": 167,
+  "scope": "owner8-to-owner9-upgrade",
+  "startedAt": "2026-11-03T06:35:53.539Z",
+  "steps": [
+    {
+      "command": "install",
+      "state": "installed"
+    },
+    {
+      "command": "start",
+      "state": "ready"
+    },
+    {
+      "command": "stop",
+      "state": "stopped"
+    },
+    {
+      "command": "start",
+      "state": "ready"
+    },
+    {
+      "command": "recovery-key",
+      "state": "ok"
+    },
+    {
+      "command": "upgrade",
+      "state": "isolated"
+    },
+    {
+      "command": "start",
+      "state": "maintenance"
+    },
+    {
+      "command": "takeover",
+      "state": "active"
+    },
+    {
+      "command": "status",
+      "state": "ready"
+    },
+    {
+      "command": "recovery-key",
+      "state": "ok"
+    },
+    {
+      "command": "backup",
+      "state": "ok"
+    }
+  ],
+  "oldPackage": {
+    "cliSha256": "272fd1d6b57b72552de06d54f9b4dff0bcace8d490e047f2adb0309040a86465",
+    "resources": {
+      "nodePath": "resources/node/bin/node",
+      "nodeVersion": "24.21.0",
+      "postgresBin": "resources/postgres/bin",
+      "postgresVersion": "18.6",
+      "webRoot": "web"
+    }
+  },
+  "newPackage": {
+    "cliSha256": "24b23e2b26b5f64077dcf29af4da37a1ce7d820e73c6a8caf32586b22c45895d",
+    "resources": {
+      "nodePath": "resources/node/bin/node",
+      "nodeVersion": "24.21.0",
+      "postgresBin": "resources/postgres/bin",
+      "postgresVersion": "18.6",
+      "webRoot": "web"
+    }
+  },
+  "oldEndpoint": "http://127.0.0.1:57722",
+  "old": {
+    "connectionId": "244d6671-8687-4541-9802-8151627099e4",
+    "completedAttempt": "2b8699c6-a409-43ba-b26d-b06676996d00",
+    "completedResultRef": "259aa67d-47b3-4564-8978-63e212b94de9",
+    "completedText": "旧检查保留",
+    "completedUsage": {
+      "state": "final",
+      "inputTokens": 9,
+      "outputTokens": 2,
+      "totalTokens": 11,
+      "cachedTokens": 0
+    },
+    "cancelledAttempt": "2161995a-6183-439d-aac6-f3026e21eb74",
+    "cancelledState": "cancelled",
+    "cancelledReason": "client-abort",
+    "cancelledUsage": {
+      "state": "unknown"
+    },
+    "upstreamRequests": 2
+  },
+  "silentStart": {
+    "attempted": true,
+    "ok": false,
+    "failure": "{\"message\":\"运行库操作失败（start）：Runtime exited during startup; inspect logs/runtime.log.\"}\n",
+    "runtimeLog": "Storage operation failed: incompatible"
+  },
+  "upgradePhase": "isolated",
+  "oldBackup": {
+    "backupId": "46c8f7a7-dff9-47d3-bb50-31a0c06522ec",
+    "services": 4,
+    "schemaVersions": [
+      "1",
+      "storage/1;owner/6",
+      "storage/1;owner/5",
+      "storage/1;owner/8"
+    ]
+  },
+  "fromVersion": "storage/1;owner/8",
+  "isolatedState": "maintenance",
+  "takeoverPhase": "active",
+  "targetState": "ready",
+  "retained": {
+    "connection": {
+      "connectionId": "244d6671-8687-4541-9802-8151627099e4",
+      "name": "Mac #167 owner8 旧连接",
+      "protocol": "chat-completions",
+      "baseUrl": "http://127.0.0.1:57721/v1",
+      "path": "/chat/completions",
+      "modelId": "fixture-old",
+      "dialect": "standard",
+      "parameterMode": "plain",
+      "enabled": true,
+      "version": 1,
+      "routeId": "f503c232-c304-4c2c-bdf8-81cded566e93",
+      "hasCredential": true,
+      "adapterState": "ready",
+      "capabilities": {
+        "text": "unknown",
+        "images": "unknown",
+        "tools": "unknown",
+        "strictSchema": "unknown",
+        "nativeReplay": "unknown",
+        "jsonMode": "unknown",
+        "applicationSchema": "verified"
+      }
+    },
+    "completed": {
+      "state": "completed",
+      "resultRef": "259aa67d-47b3-4564-8978-63e212b94de9",
+      "text": "旧检查保留",
+      "usage": {
+        "state": "final",
+        "inputTokens": 9,
+        "outputTokens": 2,
+        "totalTokens": 11,
+        "cachedTokens": 0
+      }
+    },
+    "cancelled": {
+      "state": "cancelled",
+      "reason": "client-abort",
+      "usage": {
+        "state": "unknown"
+      },
+      "cancelRequested": true
+    },
+    "upstreamRequests": 2
+  },
+  "newGrantAndSelection": {
+    "status": 200,
+    "grantId": "96fa4971-02ff-4db7-bcfa-4812525cab44",
+    "connectionId": "244d6671-8687-4541-9802-8151627099e4"
+  },
+  "toVersion": "storage/1;owner/9",
+  "newBackupSchemaVersions": [
+    "1",
+    "storage/1;owner/6",
+    "storage/1;owner/5",
+    "storage/1;owner/9"
+  ],
+  "retiredSource": {
+    "startRejected": true,
+    "failure": "{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+  },
+  "status": "passed",
+  "finishedAt": "2026-11-03T06:35:59.239Z"
+}

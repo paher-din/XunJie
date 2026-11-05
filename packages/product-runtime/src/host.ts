@@ -34,6 +34,8 @@ export interface ProductHostOptions {
     /** Host facts an operator must be able to read before asking this node to run anything. */
     facts?: () => Promise<readonly RuntimeDependencyStatus[]>;
     lifecycle?: { pause(): Promise<void>; resume(): Promise<void>; close(): Promise<void> };
+    poll?(isOpen: () => boolean): Promise<void>;
+    modelTask?(input: unknown): Promise<unknown>;
     handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
   } | undefined>;
 }
@@ -130,9 +132,14 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       requiredServiceIds: maintenance.status().participants.map(item => item.serviceId) }), ...suppliedOwners],
   });
   let scheduler: ReturnType<typeof setInterval> | undefined;
+  let applicationPoll: ReturnType<typeof setInterval> | undefined;
   let scheduled = false;
   async function authorityClosed() {
-    return gatesClosed || await exists(join(root, 'retired.json')) || await exists(join(root, 'recovery-state.json'))
+    // A maintenance boundary closes admission when the transition starts, not when every
+    // participant has finished closing. Otherwise work accepted in the 'closing' window is
+    // reported as started after the operator asked the host to stop taking new work.
+    return gatesClosed || maintenance.status().phase !== 'open'
+      || await exists(join(root, 'retired.json')) || await exists(join(root, 'recovery-state.json'))
       && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
   }
 
@@ -269,6 +276,12 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           if (await authorityClosed()) throw new RecoveryError('maintenance');
           result = await authority.authorize(input);
         }
+        else if (action === 'model-task') {
+          if (await authorityClosed() || !application?.modelTask) throw new RecoveryError('maintenance');
+          activeApplicationRequests++;
+          try { result = await application.modelTask(input); }
+          finally { activeApplicationRequests--; }
+        }
         else if (action === 'configure') { await recovery.configure(input); result = { configured: true }; }
         else if (action === 'catalog') {
           const saved = await exists(join(root, 'backup-policy.json')) ? await policy()
@@ -389,6 +402,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   }
   async function shutdown() {
     if (scheduler) clearInterval(scheduler);
+    if (applicationPoll) clearInterval(applicationPoll);
     await application?.lifecycle?.close();
     for (const owner of suppliedOwners) await owner.close?.();
     await atomicJson(join(root, 'status.json'), { state: 'stopped', environment, dependencies: [] } satisfies RuntimeStatus);
@@ -438,6 +452,20 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       })().catch(() => {}).finally(() => { scheduled = false; });
     }, 10_000);
     scheduler.unref();
+    if (application?.poll) {
+      const isOpen = () => !gatesClosed && !stopping;
+      let polling = false;
+      applicationPoll = setInterval(() => {
+        if (!isOpen() || polling) return;
+        polling = true;
+        activeApplicationRequests++;
+        void application.poll!(isOpen).catch(() => {}).finally(() => {
+          activeApplicationRequests--;
+          polling = false;
+        });
+      }, 10_000);
+      applicationPoll.unref();
+    }
     return { status, stop, maintenance, recovery, environment, endpoint };
   } catch (error) {
     completeStartup();

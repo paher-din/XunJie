@@ -6,7 +6,7 @@ import { useTeacher } from './context'
 import { TeacherBadge, TeacherButton, TeacherEmpty } from './ui'
 import './teacher-settings.css'
 
-const ModelTab = lazy(() => import('../components/settings/ModelTab').then(module => ({ default: module.ModelTab })))
+const ModelTab = lazy(() => import('../components/settings/LegacyModelTab').then(module => ({ default: module.LegacyModelTab })))
 
 export default function TeacherSettingsPage() {
   const { base, preview, notify } = useTeacher()

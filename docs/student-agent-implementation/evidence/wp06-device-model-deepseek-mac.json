@@ -1,0 +1,71 @@
+{
+  "measuredAt": "2026-11-03T10:31:09.109Z",
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-native-v2",
+  "maxGenerations": 6,
+  "limits": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "results": [
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "nativeMode": "thinking",
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "tool_calls",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 76,
+            "totalTokens": 676,
+            "cachedTokens": 0,
+            "reasoningTokens": 0
+          },
+          "resultRef": "94bbb215-b87f-497d-ad01-176c4feff16a",
+          "physicalRequestEnded": true,
+          "toolCount": 2,
+          "upstreamStatus": 200,
+          "inputImageRead": true
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 934,
+            "outputTokens": 57,
+            "totalTokens": 991,
+            "cachedTokens": 640,
+            "reasoningTokens": 21
+          },
+          "resultRef": "c98c3efd-6348-42d6-bbc9-07b44118c58a",
+          "physicalRequestEnded": true,
+          "nativePreserved": true,
+          "nativeSha256": "b66b9ed077f844745a7f5922564d2a38abdb76e771960cb2e4d9b04ece694745",
+          "nativeFields": [
+            "role",
+            "content",
+            "reasoning_content",
+            "tool_calls"
+          ],
+          "reasoningValue": "empty",
+          "correctNonce": true,
+          "returnedImageRead": true,
+          "pairedImageStrategy": true,
+          "exactImageResourceReplay": true
+        }
+      ],
+      "coreOnly": true
+    }
+  ],
+  "actualGenerations": 2
+}

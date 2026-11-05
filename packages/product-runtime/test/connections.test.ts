@@ -123,7 +123,8 @@ test('routes between two real services without crossing target or source identit
   const first = await host(t, { echo: (payload, caller) => ({ owner: 'first', payload, caller }) }, root);
   const second = await host(t, { echo: (payload) => ({ owner: 'second', payload }) }, root);
   const identity = source();
-  const grantA = await first.authority.authorize({ ...identity, ...installation(), capabilities: ['echo'] });
+  const installationA = installation();
+  const grantA = await first.authority.authorize({ ...identity, ...installationA, capabilities: ['echo'] });
   const grantB = await second.authority.authorize({ ...identity, ...installation(), capabilities: ['echo'] });
   const connectionA = descriptor(first.target, identity);
   const a = outbound(connectionA, grantA.token);
@@ -131,7 +132,7 @@ test('routes between two real services without crossing target or source identit
   assert.equal((await a.check()).state, 'ready');
   assert.equal((await b.check()).state, 'ready');
   assert.deepEqual(await a.request('echo', { value: 7 }), {
-    owner: 'first', payload: { value: 7 }, caller: { ...identity, grantId: grantA.grantId },
+    owner: 'first', payload: { value: 7 }, caller: { ...identity, ...installationA, grantId: grantA.grantId },
   });
   assert.deepEqual(await b.request('echo', { value: 8 }), { owner: 'second', payload: { value: 8 } });
   assert.equal((await outbound(descriptor(second.target, identity), grantA.token).check()).reason, 'http_401');
@@ -152,7 +153,7 @@ test('routes between two real services without crossing target or source identit
   connectionA.sourceServiceId = randomUUID();
   assert.equal((await a.check()).target.endpoint, first.target.endpoint);
   assert.deepEqual(await a.request('echo', 9), {
-    owner: 'first', payload: 9, caller: { ...identity, grantId: grantA.grantId },
+    owner: 'first', payload: 9, caller: { ...identity, ...installationA, grantId: grantA.grantId },
   });
 });
 
@@ -219,7 +220,8 @@ test('disconnect and reconnect retain the original target, source and revoked gr
   let otherCalls = 0;
   const other = await host(t, { echo: () => { otherCalls++; return 'wrong'; } });
   const identity = source();
-  const grant = await receiver.authority.authorize({ ...identity, ...installation(), capabilities: ['echo'] });
+  const installationA = installation();
+  const grant = await receiver.authority.authorize({ ...identity, ...installationA, capabilities: ['echo'] });
   const configuration = descriptor(receiver.target, identity);
   const client = outbound(configuration, grant.token, 500);
   assert.equal((await client.check()).state, 'ready');
@@ -229,7 +231,7 @@ test('disconnect and reconnect retain the original target, source and revoked gr
   await assert.rejects(client.request('echo', 'offline'), hasCode('connection_unavailable'));
   await receiver.restart();
   assert.deepEqual(await client.request('echo', 'reconnected'), {
-    payload: 'reconnected', caller: { ...identity, grantId: grant.grantId },
+    payload: 'reconnected', caller: { ...identity, ...installationA, grantId: grant.grantId },
   });
   await receiver.authority.revoke(grant.grantId);
   await receiver.restart();

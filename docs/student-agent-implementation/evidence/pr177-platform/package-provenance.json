@@ -1,0 +1,28 @@
+{
+  "base": "5aeb49ee2e9fae7319331a732111cfbce15b967f",
+  "packages": {
+    "mac": {
+      "distributionSha256": "d2e043c91cd4499dae285982344ffe513bb40db3152b76fe1bd9d0b9e3cc5de3",
+      "backendUnchangedFromBaseline": true,
+      "backend": {
+        "cli.js": "ec596c502128cdb616c6977be58aa648ad9d8ecbca17ec76386a9d7c75a8ca34",
+        "daemon.js": "d634ff3cf31840dd21253b0dea19ab8cfb92009a6baf6323bbb1e4c70e49832a",
+        "product-runtime.js": "419059bfd05340c9a463c283958c96517d19b343fafa752e518444d0a526adf0"
+      }
+    },
+    "win": {
+      "distributionSha256": "f893b2df7994d28615aeb3568f83c2397dfbb58c82f96e87be6fffbb6810f47d",
+      "backendUnchangedFromBaseline": true,
+      "backend": {
+        "cli.js": "ec596c502128cdb616c6977be58aa648ad9d8ecbca17ec76386a9d7c75a8ca34",
+        "daemon.js": "d634ff3cf31840dd21253b0dea19ab8cfb92009a6baf6323bbb1e4c70e49832a",
+        "product-runtime.js": "419059bfd05340c9a463c283958c96517d19b343fafa752e518444d0a526adf0"
+      }
+    }
+  },
+  "source": {
+    "apps/web/src/product/PersonalModelSettings.tsx": "cc96fd6ff3d98425cc6d6fe7be68a1e24542ff04a1f407d1487739f4f7547ab4",
+    "apps/web/src/product/PersonalModelSettings.test.ts": "fa769aee9b21898e537a7ad31e24bdf4e68c8ea524bddd4ea9448ab6fa723b1d",
+    "apps/web/e2e/personalModelSettings.spec.ts": "8600d59ff9d49dc8921a065a9614ac11cb7535a3b2b716a64a15957ee5ccd780"
+  }
+}

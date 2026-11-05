@@ -1,0 +1,298 @@
+{
+  "measuredAt": "2026-11-03T05:15:47.647Z",
+  "platform": "Windows 11 x64",
+  "kernel": "10.0.26200",
+  "baseline": "92e8cea6b5ad06fb8b967bf56e1450be06f257a4",
+  "featureSnapshot": "3a90baa",
+  "branch": "wp06",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "sdk": "@anthropic-ai/sdk@1.1.0",
+  "adapter": "xunjie-messages-native-v1",
+  "ownerSchemaVersion": 9,
+  "build": {
+    "status": "passed",
+    "fullSnapshot": "47648e3",
+    "finalLocalRuntimeBuildAndFullProductPackage": "3a90baa"
+  },
+  "typecheck": {
+    "status": "passed",
+    "fullSnapshot": "47648e3",
+    "finalLearningSpaceSnapshot": "3a90baa"
+  },
+  "browserContracts": {
+    "passedExports": 11,
+    "failed": 0,
+    "logSha256": "fada6099327cd11bc7f212c878f0addc03186a1a718a4425015cb1fff26ef56d"
+  },
+  "trackedDocumentLinks": {
+    "files": 178,
+    "targets": 1432,
+    "failures": 0,
+    "scope": "Tracked maintained Markdown only; excludes docs/archive and unrelated untracked documents"
+  },
+  "nativeGroupsOverlap": true,
+  "nativeGroupsNote": "Groups overlap and are not a sum of unique tests. Prior failing executions are retained separately. Main seam is production Gateway, real PostgreSQL/identity/resources and actual SDK to controlled HTTP/SSE.",
+  "nativeGroups": [
+    {
+      "description": "Formal bounded Messages check, exact SDK path/version and restart without resend",
+      "snapshot": "initial Messages implementation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "30bbb2da4fbd79cb611df2b565c0e0c859d144bb96dc032e2af19f7b6e0e3498"
+    },
+    {
+      "description": "Two tools, thinking/signature, user/tool images and native restart replay",
+      "snapshot": "initial Messages implementation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "44ab4fa50c72de0bd6ef7ece48b1305f107a0fcd4360bdce18fed5c789b26bb8"
+    },
+    {
+      "description": "Final cumulative usage replacement, missing counters, partial and actual zero",
+      "snapshot": "before owner 9",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "eef02e32313d9f186831ead0f0ea528498daa2c06105e0e2a2b6d7c8ab64dee6"
+    },
+    {
+      "description": "Unknown native schema does not silently fall back, including strict false",
+      "snapshot": "before owner 9",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "a9d756046972a07abb9d572f8ffebea3560232cd26e9f000df8e9c0be2526d62"
+    },
+    {
+      "description": "Real backup, isolated restore, strict takeover and retired source refusal",
+      "snapshot": "before owner 9",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "069aea49dacb04fb4462d7405ac2fae0be79a5897e0c3134fea75359cfc0c2e3"
+    },
+    {
+      "description": "Settled bidirectional Messages/Chat and Messages/Responses new segments",
+      "snapshot": "before owner 9",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "30375258efbb4ec46b091777a239495f4446add62bbd754d0f77dc73ba7181f6"
+    },
+    {
+      "description": "Interleaved JSON tools, UTF8 fragments, empty/null signatures, image count, credential echoes and capability scope",
+      "snapshot": "before owner 9",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "fa90fd21d5d4741888655280159386d35b13d705ea2c34d14c291bb1dd8de2f5"
+    },
+    {
+      "description": "Safe 429/503 status, request identity, retry seconds/date, secret filtering and restart",
+      "snapshot": "47648e3",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "6d77bed0020833dfe36bc9c9f56aa53947aec766be8e395dc927c0a02c1cd59a"
+    },
+    {
+      "description": "Final terminal matrix, cancellation/timeouts, upstream metadata, duplicate v1 slashes and pre-header unknown/no resend",
+      "snapshot": "3a90baa",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "c450b475a80c3c050d0e1a49fd8bce8bd3c89139699a60d03e8b03cea09530b9"
+    },
+    {
+      "description": "Responses terminal matrix after bounded parent budget correction, isolated from builds",
+      "snapshot": "3a90baa",
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "6cd11101255286a5a39d8fcf878643498055a0335daa17d65fa1616b9af799da"
+    }
+  ],
+  "priorNativeExecutions": [
+    {
+      "description": "Seven-file native regression",
+      "snapshot": "before owner 9",
+      "total": 102,
+      "passed": 98,
+      "failed": 4,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "acff1cca4bc66ae1a3e9561754f30b33c672e63b5a63b117dedb513ea2df7c8c",
+      "reason": "Two Windows EBUSY owned temporary cleanup failures and two parent failures; business assertions did not fail; the other five files passed 25/25. Added bounded rm retries only for owned Messages/Responses fixture directories."
+    },
+    {
+      "description": "Owner 9 Messages and Responses regression",
+      "snapshot": "47648e3",
+      "total": 78,
+      "passed": 74,
+      "failed": 2,
+      "cancelled": 2,
+      "skipped": 0,
+      "logSha256": "a9480c58e92f2058d1b5f865487cd6bfa8c51912b59ab97b92c1a79c4fea1e90",
+      "reason": "Messages all 27 passed. One Responses eleven-fixture parent exceeded its 180s aggregate budget under concurrent full-suite load; two child tests could not start. Per-request deadlines were unchanged; aggregate budget alone increased to 600s."
+    },
+    {
+      "description": "Responses parent matrix during dependency typecheck rebuild",
+      "snapshot": "3a90baa",
+      "total": 12,
+      "passed": 10,
+      "failed": 2,
+      "cancelled": 0,
+      "skipped": 0,
+      "logSha256": "8efee226824f6423d136734c3fea01392f5291efa9caba90fe8785da430cc4dd",
+      "reason": "One product host exited before recording identity while shared dist was being rebuilt. Not counted as passing. Repeated in isolation after all shared builds ended."
+    }
+  ],
+  "schemaUpgrade": {
+    "sourceSchemaVersion": 8,
+    "targetSchemaVersion": 9,
+    "source": "#165 complete Windows package and its official CLI install/backup",
+    "path": "WP01 upgrade API -> isolated restore -> strict takeover",
+    "oldCredentialsRetained": true,
+    "oldAttemptUnchanged": true,
+    "newGrantSelectionUsable": true,
+    "result": "passed",
+    "logSha256": "1e0ecb6d8bf752f6daf6460e0d6f0884bae48021cafce2918b6a05c15ae96b7a"
+  },
+  "fullLocalTestFileTasks": {
+    "total": 146,
+    "passed": 131,
+    "failed": 15,
+    "failures": [
+      "packages/product-runtime/test/recovery-files.test.mjs",
+      "packages/storage/test/blobs.test.mjs",
+      "apps/server/tests/account-control.test.ts",
+      "apps/server/tests/application-database.test.ts",
+      "tools/i0-cloud/backup-retained.test.mjs",
+      "tools/i0-cloud/build-runtime-artifact.test.mjs",
+      "tools/i0-cloud/capacity-run-failure.test.mjs",
+      "tools/i0-cloud/deploy-artifact.test.py",
+      "tools/xj-dev-access/package-service.test.mjs",
+      "tools/xj-dev-access/server.test.mjs",
+      "tools/xj-dev/tests/baseline-team.test.mjs",
+      "tools/xj-dev/tests/enrollment-client.test.mjs",
+      "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+      "tools/xj-dev/tests/package-transfer.test.mjs",
+      "tools/xj-dev/tests/repro.test.mjs"
+    ],
+    "sameFailedFileSetAs165": true,
+    "preparationBuildPassed": true,
+    "stages": [
+      {
+        "name": "unit",
+        "total": 23,
+        "passed": 21
+      },
+      {
+        "name": "server",
+        "total": 78,
+        "passed": 76
+      },
+      {
+        "name": "tools",
+        "total": 45,
+        "passed": 34
+      }
+    ],
+    "terminatedAfterOwnershipCheck": [
+      "tools/xj-dev/tests/package-transfer.test.mjs"
+    ],
+    "note": "One full-suite run. The owned transfer task had not exited after 27m45s; only its verified descendant process tree was stopped. Failure and termination do not count as passing.",
+    "summarySha256": "ed1b91a4d910bdaff4dcd4e10a6e55130d37c5c9f86270ac28007e22e15ee1d6"
+  },
+  "chrome": {
+    "platform": "win32",
+    "os": "10.0.26200",
+    "browser": "installed Chrome",
+    "browserVersion": "156.0.8078.76",
+    "headless": false,
+    "measuredAt": "2026-11-03T05:10:54.673Z",
+    "cases": [
+      {
+        "title": "Messages formal draft check save reopen and cancel use the production owner",
+        "status": "passed",
+        "duration": 8585
+      },
+      {
+        "title": "Messages school identity and device selection stay isolated when returning to personal space",
+        "status": "passed",
+        "duration": 7378
+      },
+      {
+        "title": "unsupported Command Code Messages remains configurable but cannot send a model check",
+        "status": "passed",
+        "duration": 2287
+      }
+    ],
+    "ordinaryFormalWeb": {
+      "snapshot": "47648e3",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "4b0ee95b6490ed9c4a70258a28c7d1e4f7238d391a0af37eb402b977ee798717"
+    },
+    "completeProductPackage": {
+      "snapshot": "3a90baa",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "logSha256": "314e7d32d1af3e9d7808f63d86d7b0ccdc06558e730d15ac6e4879fbfb19dffc"
+    },
+    "note": "Each full run includes 3 Messages cases and 8 legacy personal/settings/selection/Responses cases; installed desktop Chrome, headed, single worker. Complete package uses bundled Node/PG and a private root outside the checkout.",
+    "physicalWindowsImeCandidateWindow": "not-tested; CDP composition is not physical IME acceptance"
+  },
+  "package": {
+    "platform": "win32-x64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-11-03T04:58:54.880Z",
+    "cliSha256": "24b23e2b26b5f64077dcf29af4da37a1ce7d820e73c6a8caf32586b22c45895d",
+    "snapshot": "3a90baa",
+    "priorFailedBuild": "Direct node packager Windows fallback quoted outDir incorrectly; supported npm run package:product entry subsequently built the full package successfully."
+  },
+  "realEndpointEvidence": {
+    "path": "wp06-messages-real-win.json",
+    "boundedGenerationAttempts": 12,
+    "automaticRetries": 0,
+    "commandCodeCatalogueGenerationAttempts": 0
+  },
+  "review": {
+    "standardsRemaining": 0,
+    "standardsHardViolations": 0,
+    "standardsJudgmentSmells": 0,
+    "specInitialP2": 1,
+    "specRemaining": 0,
+    "staticReviewSnapshot": "3a90baa",
+    "note": "Two independent review axes; safe upstream metadata finding fixed and re-reviewed. Static review does not replace tests."
+  },
+  "mac": "not-run; specific #167 handoff in #178; no inherited #164 route waiver",
+  "completeIndependentCrossHostDeployment": "separate #168; not delivered or claimed by same-machine two-process tests",
+  "teachingOutcome": "not-evaluated"
+}

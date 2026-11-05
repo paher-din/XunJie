@@ -1,0 +1,49 @@
+
+ RUN  v3.2.7 /Users/robertwu/.codex/worktrees/71aa/XunJie/apps/web
+
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > checks the acknowledged version immediately and ignores pre-save reads without pinning future restored data
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > preserves an action error through late reads, two polls and explicit reads; clears it on successful related retry
+ × src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward 38ms
+   → expected '原配置https://synthetic.invalid/v1密钥已保存编…' to contain '已完成读取'
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > clears recovered read errors without erasing an action failure
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > drops old subject errors, drafts and late responses after an identity change
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > refreshes and confirms CAS without closing or losing keep credential intent
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > refreshes and confirms CAS without closing or losing replace credential intent
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > refreshes and confirms CAS without closing or losing clear credential intent
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > resolves before-commit transport loss using the same identity and frozen payload before saving later edits
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > resolves after-commit transport loss using the same identity and frozen payload before saving later edits
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > moves an uncommitted unknown request to explicit CAS recovery if another tab wins
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > requires a successful refresh and another confirmation when the remote version advances again
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > confirms a lost ACK without an extra version or losing keep intent
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > confirms a lost ACK without an extra version or losing clear intent
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > retains the frozen unknown submission across another transport loss and more edits
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > allows a corrected new submission after a definitive invalid rejection
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > does not discard an uncertain identity when a later reconciliation is denied
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > does not turn an identity conflict into a fresh blind write
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > keeps later edits after a delayed successful ACK, then uses its acknowledged version
+ ↓ src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > does not misclassify a confirmed save as unknown when refreshing model selection fails
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/product/PersonalModelSettings.test.ts > personal model settings recovery through real React controls > publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward
+AssertionError: expected '原配置https://synthetic.invalid/v1密钥已保存编…' to contain '已完成读取'
+
+Expected: "已完成读取"
+Received: "原配置https://synthetic.invalid/v1密钥已保存编辑synthetic已配置chat-completions · 版本 1SDK 路径：/chat/completions · standard · 普通文本图像：尚未验证 · 工具：尚未验证 · strict schema：尚未验证连接检查"
+
+ ❯ src/product/PersonalModelSettings.test.ts:161:32
+    159|       await act(async () => { releaseSecond(); await settle() })
+    160|       const card = document.querySelector('[aria-label="个人连接配置"] .st-p…
+    161|       expect(card.textContent).toContain('已完成读取')
+       |                                ^
+    162|       await act(async () => { releaseFirst(); await settle() })
+    163|       expect(card.textContent).toContain('已完成读取')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 19 skipped (20)
+   Start at  21:01:45
+   Duration  581ms (transform 98ms, setup 0ms, collect 185ms, tests 249ms, environment 0ms, prepare 30ms)
+

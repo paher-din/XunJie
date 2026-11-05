@@ -1,0 +1,68 @@
+{
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "timezone": "Asia/Shanghai",
+  "reviewHead": "0e75a0e3a19c75f4bef4c48440953f011e8eff56",
+  "environment": {
+    "platform": "darwin-arm64",
+    "os": "macOS 27.2 (26B123)",
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "chrome": "156.0.8078.80"
+  },
+  "final": {
+    "directed": {
+      "passed": 181,
+      "failed": 0
+    },
+    "sensitiveBoundary": {
+      "passed": 49,
+      "failed": 0
+    },
+    "reactSettings": {
+      "passed": 18,
+      "failed": 0
+    },
+    "packagePostgres": {
+      "passed": 12,
+      "failed": 0
+    },
+    "packageChrome": {
+      "passed": 9,
+      "failed": 0
+    },
+    "normalWebChrome": {
+      "passed": 9,
+      "failed": 0,
+      "scope": "same UI and earlier protocol snapshot; modal background selector corrected in 3 CAS cases"
+    },
+    "verify": {
+      "status": "passed",
+      "prepare": 4,
+      "buildTest": 1,
+      "unit": 23,
+      "server": 83,
+      "tools": 45,
+      "summary": ".verification/2026-11-03T12-28-25-740Z-EH3wbs/summary.json"
+    },
+    "packageDistributionSha256": "30e65c1b9e6bf4f869562c90425b1b2abcaa096e9dad2c9c35d618aa962992d5"
+  },
+  "earlierRegression": {
+    "nativeFunctions": {
+      "passed": 114,
+      "failed": 0,
+      "scope": "before final malformed native body withholding"
+    },
+    "pairedIndependentProcesses": {
+      "passed": 2,
+      "failed": 0,
+      "scope": "same Mac; authenticated device tasks, credential refusal, persisted resource and restart"
+    }
+  },
+  "notRerun": [
+    "Windows native package and physical IME",
+    "real cross-machine route",
+    "paid provider endpoints",
+    "teaching effectiveness"
+  ]
+}

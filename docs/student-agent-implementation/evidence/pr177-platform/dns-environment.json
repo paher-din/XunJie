@@ -1,0 +1,40 @@
+{
+  "windowsInitialLookup": [
+    {
+      "address": "198.18.0.8",
+      "family": 4
+    }
+  ],
+  "macInitialLookup": [
+    {
+      "address": "198.18.0.132",
+      "family": 4
+    }
+  ],
+  "productPolicyResult": "forbidden",
+  "initialGenerationRequests": 0,
+  "publicDns": [
+    {
+      "resolver": "dns.alidns.com",
+      "status": 200,
+      "answers": [
+        "61.170.82.99",
+        "61.170.66.121"
+      ]
+    },
+    {
+      "resolver": "cloudflare-dns.com",
+      "status": 200,
+      "answers": [
+        "3.173.21.63"
+      ]
+    }
+  ],
+  "temporaryWindowsMapping": {
+    "domain": "api.deepseek.com",
+    "address": "61.170.82.99",
+    "headStatus": 401,
+    "tlsVerified": true
+  },
+  "note": "HEAD had no credentials or generation payload. Mapping is acceptance setup and is removed after the run."
+}

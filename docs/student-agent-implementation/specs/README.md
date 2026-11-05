@@ -17,6 +17,15 @@ WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#furt
 | --- | --- | --- |
 | [组件与执行数据的备份、还原和接管](https://github.com/paher-din/XunJie/issues/176) | [设计与验收计划](wp03-execution-recovery.md) · [实现与验证](../wp03-176-recovery-implementation.md) · [#188 跨平台与跨机验收](../wp03-188-cross-platform.md) | Windows 实际产品包恢复链路已验证；Mac 与 Windows 客户端连接独立学校节点的跨机验收见 #188，备份资源/恢复格式负例、执行器状态注入的 disposition 负例、真实停节点与 fence 后旧连接/可信晚回包负例均已在两客户端补跑，教学效果未评估 |
 | [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) · [Mac 交接](../wp03-171-mac-handoff.md) | Windows 实现与复审证据见记录；Mac 未执行，不记完整验收 |
+## WP06 子票实施方案
+
+WP06 首张子票 [#164：个人模型设置与可靠连接检查](https://github.com/paher-din/XunJie/issues/164)的范围、owner 和测试边界见[实施方案](wp06-personal-model-checks.md)，实际结果与前后截图见[交付记录](../wp06-personal-models-acceptance.md)。
+
+WP06 [#166：Responses 完整接入](https://github.com/paher-din/XunJie/issues/166)的原生结果、工具图像、续接及验收见[实施方案](wp06-responses.md)和[交付记录](../wp06-responses-acceptance.md)。
+
+WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJie/issues/167)见[实施方案](wp06-messages.md)和[交付记录](../wp06-messages-acceptance.md)，复用现有模型 owner，Mac 后续交接 #178。
+
+[#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/learning-space/src/model-connections/README.md)及[分项验收](../wp06-chat-selection-acceptance.md)。Mac 后续验收统一交接 #178。
 
 ## WP02 子票实施方案
 

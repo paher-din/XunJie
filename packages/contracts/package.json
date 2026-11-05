@@ -9,6 +9,7 @@
   ],
   "exports": {
     "./components": { "types": "./dist/components.d.ts", "import": "./dist/components.js" },
+    "./model-connections": { "types": "./dist/model-connections.d.ts", "import": "./dist/model-connections.js" },
     "./action-intents": { "types": "./dist/action-intents.d.ts", "import": "./dist/action-intents.js" },
     "./execution": { "types": "./dist/execution.d.ts", "import": "./dist/execution.js" },
     "./spaces": { "types": "./dist/spaces.d.ts", "import": "./dist/spaces.js" },

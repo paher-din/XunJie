@@ -1,0 +1,36 @@
+{
+  "MeasuredAt": "2026-11-03T13:17:26.2269685Z",
+  "Tasks": [
+    {
+      "Case": "fixture",
+      "RunLevel": "Limited",
+      "LogonType": "Interactive",
+      "UserId": "h",
+      "State": "Ready"
+    },
+    {
+      "Case": "paid",
+      "RunLevel": "Limited",
+      "LogonType": "Interactive",
+      "UserId": "h",
+      "State": "Running"
+    }
+  ],
+  "Processes": [
+    {
+      "ProcessId": 42180,
+      "SessionId": 0,
+      "ExecutablePath": "D:\\XunJie-acceptance\\pr177-platform\\product-win\\resources\\node\\node.exe"
+    },
+    {
+      "ProcessId": 27704,
+      "SessionId": 1,
+      "ExecutablePath": "D:\\XunJie-acceptance\\pr177-platform\\product-win\\resources\\node\\node.exe"
+    },
+    {
+      "ProcessId": 23984,
+      "SessionId": 1,
+      "ExecutablePath": "D:\\XunJie-acceptance\\pr177-platform\\product-win\\resources\\node\\node.exe"
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+{
+  "measuredAt": [
+    "2026-11-02T15:20:52.438Z",
+    "2026-11-02T15:13:05.952Z"
+  ],
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-native-v2",
+  "transport": "production host/Gateway, real identity/PostgreSQL/resources, actual SDK to exact HTTPS endpoint; transparent network observation",
+  "limitsPerGeneration": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "finalGenerations": 11,
+  "investigationGenerations": 10,
+  "totalGenerationsIncludingInvestigation": 21,
+  "results": [
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "nativeMode": "thinking",
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "tool_calls",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 72,
+            "totalTokens": 672,
+            "cachedTokens": 384,
+            "reasoningTokens": 20
+          },
+          "resultRef": "01934c97-52bc-49c9-8a29-5c620523933a",
+          "physicalRequestEnded": true,
+          "toolCount": 2,
+          "inputImageRead": true
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 928,
+            "outputTokens": 87,
+            "totalTokens": 1015,
+            "cachedTokens": 640,
+            "reasoningTokens": 53
+          },
+          "resultRef": "3df17034-11c8-4df2-84fb-cf589772a337",
+          "physicalRequestEnded": true,
+          "nativePreserved": true,
+          "nativeSha256": "2cd8cd2f384e7843cb2b6b807c0d129e728fe735d201e9a2d8b38780ab513a55",
+          "nativeFields": [
+            "role",
+            "content",
+            "reasoning_content",
+            "tool_calls"
+          ],
+          "reasoningValue": "nonempty",
+          "correctNonce": true,
+          "returnedImageRead": true,
+          "pairedImageStrategy": true,
+          "exactImageResourceReplay": true
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "configVersion": 2,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 41,
+            "outputTokens": 5,
+            "totalTokens": 46,
+            "cachedTokens": 0
+          },
+          "resultRef": "fd2a0f18-dcfa-42e6-ad47-5f102e6dfaa0",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 200
+        },
+        {
+          "name": "native-schema-positive",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "67255e16-abaf-4c6c-ad8c-7090892d3e18",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "cab2eb0b-dd81-4f50-95d0-025c28f84b94",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        },
+        {
+          "name": "thinking-with-forced-tool-counterexample",
+          "configVersion": 3,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "bcf2a926-54c7-4349-88bb-68eb9e503e76",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        }
+      ]
+    },
+    {
+      "endpoint": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "protocol": "chat-completions",
+      "nativeMode": "plain",
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "tool_calls",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 78,
+            "totalTokens": 678,
+            "cachedTokens": 384,
+            "reasoningTokens": 26
+          },
+          "resultRef": "884c8ac5-7334-4765-9011-5f64c0c1393b",
+          "physicalRequestEnded": true,
+          "toolCount": 2,
+          "inputImageRead": true
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 935,
+            "outputTokens": 70,
+            "totalTokens": 1005,
+            "cachedTokens": 640,
+            "reasoningTokens": 35
+          },
+          "resultRef": "0822216b-62bd-49f8-956c-eaf497fe0087",
+          "physicalRequestEnded": true,
+          "nativePreserved": true,
+          "nativeSha256": "ec9d63644044203d2a266b011ebd7984dae67ae4a1ad83c3569f85ccd03f76fc",
+          "nativeFields": [
+            "role",
+            "content",
+            "reasoning",
+            "tool_calls",
+            "reasoning_details"
+          ],
+          "reasoningValue": "nonempty",
+          "correctNonce": true,
+          "returnedImageRead": true,
+          "pairedImageStrategy": true,
+          "exactImageResourceReplay": true
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "configVersion": 2,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 70,
+            "outputTokens": 1540,
+            "totalTokens": 1610,
+            "cachedTokens": 0,
+            "reasoningTokens": 1534
+          },
+          "resultRef": "2383c5c6-bb0d-4725-beb5-b3a48575f5fb",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 200
+        },
+        {
+          "name": "native-schema-positive",
+          "configVersion": 2,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 103,
+            "outputTokens": 28,
+            "totalTokens": 131,
+            "cachedTokens": 0,
+            "reasoningTokens": 22
+          },
+          "resultRef": "0abdc990-d1e2-4fe9-810e-6fbedbacfcae",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 200
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "invalid-structured-output",
+          "usage": {
+            "state": "final",
+            "inputTokens": 87,
+            "outputTokens": 117,
+            "totalTokens": 204,
+            "cachedTokens": 0,
+            "reasoningTokens": 111
+          },
+          "resultRef": "05177c30-6b01-4017-8f3d-313681b4e457",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 200
+        }
+      ]
+    }
+  ],
+  "noRawReasoningOrCredentials": true,
+  "teachingOutcome": "not-evaluated"
+}

@@ -4,7 +4,8 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Icon } from '../../icons'
 import { emptyProviderModel, modelConfigurationError, type ModelProvider, type ProviderModel } from '../../lib/settings'
 import { testProviderConnection, testResultText, type TestResult } from '../../lib/connectionTest'
-import { Field, ModelFields, TextInput } from './controls'
+import { Field, ModelFields } from './controls'
+import { ProviderIdentityFields } from './ProviderIdentityFields'
 
 interface ProviderDialogProps {
   open: boolean
@@ -88,15 +89,8 @@ export function ProviderDialog({ open, onClose, provider, onSave }: ProviderDial
             </Dialog.Close>
           </div>
           <div className="st-dialog-body">
-            <Field label="名称" error={errors.name}>
-              <TextInput value={name} placeholder="例如：DeepSeek 官方" onChange={(e) => setName(e.target.value)} />
-            </Field>
-            <Field label="Base URL" tip="兼容 OpenAI 规范的服务端点，通常以 /v1 结尾" error={errors.baseUrl}>
-              <TextInput value={baseUrl} placeholder="https://api.example.com/v1" className="st-mono-input" onChange={(e) => setBaseUrl(e.target.value)} />
-            </Field>
-            <Field label="API Key" tip={PREP_BUILD ? '准备场景不保存真实密钥' : provider?.hasKey ? '已加密保存；留空保留原密钥，填写后替换' : '加密保存在服务端，仅当前账号可用'}>
-              <TextInput type="password" value={apiKey} placeholder="sk-…" className="st-mono-input" onChange={(e) => { setApiKey(e.target.value); setClearKey(false) }} />
-            </Field>
+            <ProviderIdentityFields name={name} baseUrl={baseUrl} apiKey={apiKey} hasKey={provider?.hasKey}
+              errors={errors} onName={setName} onBaseUrl={setBaseUrl} onApiKey={value => { setApiKey(value); setClearKey(false) }} />
 
             {provider?.hasKey && !PREP_BUILD && <label><input type="checkbox" checked={clearKey} onChange={e => { setClearKey(e.target.checked); setApiKey('') }} />清除已保存密钥</label>}
             {saveError && <p role="alert">{saveError}</p>}

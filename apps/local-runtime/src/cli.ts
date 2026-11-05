@@ -41,6 +41,8 @@ const commands: Record<string, readonly string[]> = {
   'school-member': ['file', 'resources'],
   'school-membership': ['file', 'resources'],
   'school-connection': ['file', 'resources'],
+  'school-model': ['file', 'resources'],
+  'model-task': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
   'component-import': ['file', 'resources'],
@@ -205,8 +207,8 @@ async function main(): Promise<void> {
   const installOptions = async (): Promise<InstallOptions> => {
     const config = values.config === undefined ? {} : await jsonFile(required('config'), '安装配置');
     const profile = values.profile ?? config.profile ?? 'local';
-    if (!['local', 'school', 'remote'].includes(String(profile))) {
-      throw new Error('profile 必须是 local、school 或 remote');
+    if (!['local', 'school', 'remote', 'model'].includes(String(profile))) {
+      throw new Error('profile 必须是 local、school、remote 或 model');
     }
     return { ...config, profile } as InstallOptions;
   };
@@ -423,6 +425,23 @@ async function main(): Promise<void> {
     }
     case 'component-status': {
       output(await manageCourse('component-status', await jsonFile(required('file'), '组件装载状态'))); break;
+    }
+    case 'model-task': {
+      const input = await jsonFile(required('file'), '配对模型任务');
+      output(await runtime.modelTask(input));
+      break;
+    }
+    case 'school-model': {
+      const input = await jsonFile(required('file'), '学校默认模型');
+      if (typeof input.credential === 'object' && input.credential !== null && 'value' in input.credential
+        && typeof input.credential.value === 'string') rememberSecret(input.credential.value);
+      const status = await run(() => runtime.status());
+      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+      const response = await fetch(new URL('/api/learning/manage/model-default', status.endpoint), { method: 'POST', redirect: 'error',
+        signal: AbortSignal.timeout(15000), headers: { 'content-type': 'application/json',
+          authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` }, body: JSON.stringify(input) });
+      if (!response.ok) throw new Error(`学校模型操作未完成（${response.status}），请核对配置版本、检查许可和限额`);
+      output(await response.json()); break;
     }
     case 'course-import': {
       const manifestPath = resolve(required('file'));

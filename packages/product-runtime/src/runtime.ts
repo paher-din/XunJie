@@ -83,6 +83,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
 
   async function prepare(input?: InstallOptions, reinstall = false): Promise<ProductPrerequisiteResult> {
     if (input) runtimeEnvironmentSchema.shape.profile.parse(input.profile);
+    if (input?.profile === 'model' && input.database?.mode === 'none') throw new Error('The model profile requires PostgreSQL.');
     let resources: RuntimeResources;
     let database: DatabaseConfiguration;
     if (await exists(configPath)) {
@@ -174,6 +175,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
   }
 
   return {
+    modelTask: (input: unknown) => recoveryControl<unknown>('model-task', input),
     prepare: (input?: InstallOptions) => prepare(input),
     async install(input: InstallOptions = { profile: 'local' }): Promise<RuntimeStatus> {
       runtimeEnvironmentSchema.shape.profile.parse(input.profile);

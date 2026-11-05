@@ -1,0 +1,15 @@
+{
+  "measuredAt": "2026-11-03T06:43:41Z",
+  "endpoint": "https://api.commandcode.ai/provider/v1/models",
+  "httpStatus": 200,
+  "method": "GET",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "modelFound": true,
+  "supportedEndpoints": [
+    "/chat/completions",
+    "/responses"
+  ],
+  "generationAttempts": 0,
+  "dateHeader": "Tue, 03 Nov 2026 06:43:41 GMT",
+  "note": "Public support catalogue only; no Messages request sent, no model substitution."
+}

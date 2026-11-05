@@ -221,7 +221,7 @@ test('production maintenance drains dispatch and full recovery preserves accepte
     const key = randomBytes(32), backupDirectory = join(directory, 'backups');
     await source.setCredential('action-recovery-key', key.toString('base64'));
     const backup = await source.recovery.backup({ directory: backupDirectory, recoveryKeyRef: 'action-recovery-key', leaveClosed: true });
-    assert.equal(backup.services.length, 3);
+    assert.equal(backup.services.length, 4);
     const restored = await restoreProductRecovery({ root: targetRoot, resources, backupDirectory: join(backupDirectory, backup.backupId), key });
     for (const owner of restored.owners) await owner.close?.();
     targetHost = await createProductRuntimeHost({ root: targetRoot, createApplication: application });

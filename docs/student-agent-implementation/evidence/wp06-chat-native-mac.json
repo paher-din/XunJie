@@ -1,0 +1,162 @@
+{
+  "measuredAt": "2026-11-02T16:57:51.686Z",
+  "platform": "macOS 27.2 (26B123) arm64",
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-native-v2",
+  "limits": {
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "generationBudget": {
+    "deepseek": 6,
+    "commandCode": 5,
+    "actualDeepseek": 6,
+    "actualCommandCode": 1,
+    "note": "Bounded attempts on this machine; no automatic retry and no switching models to force success."
+  },
+  "results": [
+    {
+      "provider": "deepseek",
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "nativeMode": "thinking",
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "tool_calls",
+          "usage": {
+            "state": "final",
+            "inputTokens": 600,
+            "outputTokens": 84,
+            "totalTokens": 684,
+            "cachedTokens": 0,
+            "reasoningTokens": 32
+          },
+          "resultRef": "41cdb275-c132-4ece-a1f8-f51858dd4992",
+          "physicalRequestEnded": true,
+          "toolCount": 2,
+          "inputImageRead": true
+        },
+        {
+          "name": "restart-native-tool-image-replay",
+          "configVersion": 1,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 945,
+            "outputTokens": 295,
+            "totalTokens": 1240,
+            "cachedTokens": 640,
+            "reasoningTokens": 256
+          },
+          "resultRef": "9b09950c-14e2-49b4-b460-26d246c611a4",
+          "physicalRequestEnded": true,
+          "nativePreserved": true,
+          "nativeSha256": "55faa010513326f1520bd0c4d5402fa6b4631fc952e120e8bda3b8ebb63a4b87",
+          "nativeFields": [
+            "role",
+            "content",
+            "reasoning_content",
+            "tool_calls"
+          ],
+          "reasoningValue": "nonempty",
+          "correctNonce": true,
+          "returnedImageRead": true,
+          "pairedImageStrategy": true,
+          "exactImageResourceReplay": true
+        },
+        {
+          "name": "json-mode-and-application-validation",
+          "configVersion": 2,
+          "state": "completed",
+          "reason": "stop",
+          "usage": {
+            "state": "final",
+            "inputTokens": 41,
+            "outputTokens": 5,
+            "totalTokens": 46,
+            "cachedTokens": 0
+          },
+          "resultRef": "2824e1c6-0e42-46d4-a055-581148d86706",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 200
+        },
+        {
+          "name": "native-schema-positive",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "0cb4e116-e575-4bc5-9e19-e35d1e9ecc3f",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        },
+        {
+          "name": "native-schema-invalid-counterexample",
+          "configVersion": 2,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "1265f731-1a3a-4301-8aee-425b0e72ae77",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        },
+        {
+          "name": "thinking-with-forced-tool-counterexample",
+          "configVersion": 3,
+          "state": "failed",
+          "reason": "upstream-http",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "18987211-0fc8-4152-81a5-6bfe53a13cc2",
+          "physicalRequestEnded": true,
+          "upstreamStatus": 400
+        }
+      ]
+    },
+    {
+      "provider": "command-code",
+      "endpoint": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "protocol": "chat-completions",
+      "nativeMode": "plain",
+      "cases": [
+        {
+          "name": "image-and-multiple-tools",
+          "configVersion": 1,
+          "state": "failed",
+          "reason": "authentication",
+          "usage": {
+            "state": "unknown"
+          },
+          "resultRef": "cb8d88f3-dac2-4e72-af80-9762417668e1",
+          "physicalRequestEnded": true,
+          "toolCount": 0,
+          "inputImageRead": false
+        }
+      ],
+      "stopped": "credential-rejected"
+    }
+  ],
+  "commandCodeCredential": {
+    "state": "expired",
+    "evidence": "Same-machine curl to https://api.commandcode.ai/provider/v1/chat/completions returned HTTP 401 authentication_error/UNAUTHORIZED: Your API key has expired.",
+    "ownerDecision": "2026-11-03: the owner kept the #164 exemption for this route, so it is recorded as not measured instead of claimed as passed."
+  },
+  "schemaCategories": {
+    "jsonModeAndApplicationValidation": "completed on DeepSeek with plain parameter mode; application schema validated locally",
+    "nativeStrict": "DeepSeek returned HTTP 400 for both the valid and the invalid native json_schema request; native strict is not claimed",
+    "thinkingWithForcedTool": "DeepSeek returned HTTP 400 for thinking plus a forced tool; kept as a counterexample"
+  },
+  "note": "Native reasoning stays in private owner and probe memory; only states, usage, result references, upstream status and wire fidelity are recorded here. No credential, key, SDK request body or raw reasoning text is stored."
+}

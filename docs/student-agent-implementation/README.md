@@ -22,6 +22,10 @@
 | WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |
 | #175 已完成：课程运行方案固定、按操作判定执行位置、Linux 受限会话入口、学校节点真实原生会话与撤权/旧安装失权 | [#175 课程运行方案与学校节点执行](wp03-course-execution-plan.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
+| PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
+| WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
+| WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |
+| WP06 学校/个人来源选择、Chat 图片工具与原生续接的实际交付 | [选择与原生 Chat 验收](wp06-chat-selection-acceptance.md) · [模型 owner](../../packages/learning-space/src/model-connections/README.md) |
 | 学习空间身份、学校接入及无课程活动的生产入口和验证边界 | [学习空间身份与活动交接](wp02-identity-activity.md) |
 | 课程任务、固定发布、访问投影及跨 owner 活动建立的实施方案与验收记录 | [课程任务与固定发布版本实施方案](specs/wp02-course-task-releases.md) · [验收记录](wp02-course-releases-acceptance.md) |
 | 活动作品编辑、自动保存、本机保护、冲突与资源恢复 | [可靠作品编辑与自动保存](wp02-reliable-works.md) |

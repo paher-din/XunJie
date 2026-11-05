@@ -1,0 +1,13 @@
+param([ValidateSet('fixture','paid')][string]$Case)
+$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'
+$base='D:\XunJie-acceptance\pr177-platform'
+$env:NODE_EXTRA_CA_CERTS=Join-Path $base 'ca.pem'
+$env:XUNJIE_ACCEPTANCE_WITNESS_FILE=Join-Path $base ('cross-'+$Case+'-witness.json')
+$env:XUNJIE_ACCEPTANCE_MAX_REQUESTS='5'
+$env:XUNJIE_ACCEPTANCE_UPSTREAMS='https://192.168.3.16:19446/v1/chat/completions,https://api.deepseek.com/v1/chat/completions,https://api.deepseek.com/v1/responses,https://api.deepseek.com/anthropic/v1/messages'
+$env:NODE_OPTIONS='--import=file:///D:/XunJie-acceptance/pr177-platform/model-request-witness.mjs'
+$port=if($Case -eq 'fixture'){19447}else{19448}
+$principal=[Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Requires limited token'}
+& "$base\product-win\resources\node\node.exe" "$base\model-paired-device.mjs" "$base\product-win" "$base\cross-$Case" '--listen' $port "$base\cross-$Case-control.key" 2> "$base\cross-$Case-server.log"
+exit $LASTEXITCODE

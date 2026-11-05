@@ -1,0 +1,348 @@
+{
+  "date": "2026-11-02T20:56:00+08:00",
+  "issue": 178,
+  "sourceIssue": 164,
+  "codeCommit": "b778e394d891d6df7dff6b763c1f070a1ea2170c",
+  "featureCodeCommit": "2b4b87f2b962f38201320ed75ca1398fbd0cf389",
+  "platform": "macOS 27.2 (26B123)",
+  "architecture": "arm64",
+  "hardware": "Apple M5, 16 GiB",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "chrome": "156.0.8078.79",
+  "productPackage": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-02T12:24:32.613Z",
+    "status": "unsigned-candidate",
+    "files": 4069,
+    "size": "406M",
+    "appCliSha256": "7a4571699ff2c4efa0d14222a143a323cb8f6f441fa394680a942d53f5efa19a",
+    "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "bundledNode": {
+      "version": "24.21.0",
+      "mode": "controlled-subset",
+      "archiveSha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057"
+    },
+    "bundledPostgres": {
+      "version": "18.6",
+      "distributionVersion": "18.6.1",
+      "mode": "complete-upstream-archive"
+    },
+    "note": "built after the maintenance-gate fix in packages/product-runtime/src/host.ts"
+  },
+  "dependencyInstall": {
+    "command": "npm ci",
+    "installedPackages": 326,
+    "npmLsObservation": "93 unmet optional dependencies are expected; one hoisted semver@7.8.5 does not satisfy ^6.3.1/^5.0.1 required by build-time packages. Pre-existing dependency hygiene, not introduced by this change; build, typecheck and 147 test tasks still pass."
+  },
+  "build": "passed",
+  "typecheck": "passed",
+  "browserContracts": {
+    "publicExports": 11,
+    "failures": 0
+  },
+  "maintainedDocs": {
+    "files": 172,
+    "localTargets": 1372,
+    "failures": 0,
+    "note": "1365 targets before this section's evidence links were added; 1372 including them. The default scan still covers only what the checker tracks, not untracked user docs."
+  },
+  "fullLocalTestTasks": {
+    "command": "npm test",
+    "status": "passed",
+    "exitCode": 0,
+    "nodeVersion": "v24.21.0",
+    "jobs": 4,
+    "startedAt": "2026-11-02T12:49:28.814Z",
+    "finishedAt": "2026-11-02T12:52:42.761Z",
+    "tasks": 147,
+    "passed": 147,
+    "failed": 0,
+    "skipped": 0,
+    "stages": {
+      "build:test": {
+        "tasks": 1,
+        "passed": 1,
+        "exitCode": 0
+      },
+      "unit": {
+        "tasks": 23,
+        "passed": 23,
+        "exitCode": 0
+      },
+      "server": {
+        "tasks": 78,
+        "passed": 78,
+        "exitCode": 0
+      },
+      "tools": {
+        "tasks": 45,
+        "passed": 45,
+        "exitCode": 0
+      }
+    },
+    "note": "Counts are test-file tasks, not individual assertions. All stages exited 0; unlike the Windows run there were no symlink, path or long-running tool failures."
+  },
+  "nativeModel": {
+    "file": "apps/server/tests/model-gateway.runtime.test.mjs",
+    "tests": 10,
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "note": "Real PostgreSQL, real identities and resources, actual SDK to synthetic HTTP/SSE, killed dispatcher subprocess and lost PG COMMIT replies. The explicit upstream-unsupported case is asserted inside the malformed/failure test at 2b4b87f."
+  },
+  "nativeModelClaimConcurrency": {
+    "file": "apps/server/tests/model-claim-concurrency.runtime.test.mjs",
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "modelItemsTotal": 11,
+  "nativeActionIntents": {
+    "file": "apps/server/tests/action-intents.runtime.test.mjs",
+    "tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nativeLearningCli": {
+    "file": "packages/product-runtime/test/learning-cli.runtime.test.mjs",
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "fourOwnerRecoveryCli": {
+    "status": "passed",
+    "cliSteps": 33,
+    "passedSteps": 31,
+    "expectedRejections": [
+      {
+        "command": "maintenance-resume",
+        "message": "运行库操作失败（maintenance-resume）：Recovery: target-isolated"
+      },
+      {
+        "command": "start",
+        "message": "运行库操作失败（start）：Recovery: source-retired"
+      }
+    ],
+    "units": [
+      "client",
+      "space-course",
+      "learning-data",
+      "model-connection"
+    ],
+    "originalSecondEnvironmentUnchanged": true,
+    "scheduledBackup": {
+      "backupId": "33fef7f2-3af8-49be-9e3f-c235259ec2c4",
+      "boundaryAt": "2026-11-02T12:25:29.893Z"
+    },
+    "engineUpgrade": false,
+    "note": "Formal CLI install/start/status, recovery-key, backup policy/list, four-owner backup, restore to isolated, takeover to active, then stop. Rejections are the intended guards (maintenance-resume refuses an isolated target, start refuses a retired source)."
+  },
+  "threeOwnerBackupTakeover": {
+    "status": "passed",
+    "sourceUnits": [
+      "client",
+      "learning-data",
+      "space-course"
+    ],
+    "restorePhase": "isolated",
+    "isolatedUnits": [
+      "client",
+      "learning-data",
+      "space-course"
+    ],
+    "takeoverPhase": "active",
+    "activeUnits": [
+      "client",
+      "learning-data",
+      "space-course"
+    ],
+    "restartUnits": [
+      "client",
+      "learning-data",
+      "model-connection",
+      "space-course"
+    ],
+    "newModelOwnerEmpty": true,
+    "modelOwnerInitializedOnlyAfterRestart": true,
+    "note": "The fourth owner is created only by a normal stop/start after strict takeover; the exact version check was not bypassed."
+  },
+  "modelRetention": {
+    "status": "passed",
+    "backupServices": 4,
+    "restorePhase": "isolated",
+    "takeoverPhase": "active",
+    "targetState": "ready",
+    "connectionsMatch": true,
+    "checksMatch": true,
+    "credentialRetained": true,
+    "keyNotProjected": true,
+    "upstreamCallsAfterRestore": 2,
+    "note": "Backup, restore and strict takeover keep the saved connection, its credential and the original check; the restored check still reached the fixture upstream and the credential was never projected to the browser."
+  },
+  "chromeOrdinaryWeb": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "workers": 1,
+    "env": [
+      "XUNJIE_E2E_BROWSER_CHANNEL=chrome",
+      "XUNJIE_PRODUCT_POSTGRES_BIN=<package>/resources/postgres/bin",
+      "XUNJIE_PRODUCT_WEB_ROOT=<repo>/apps/web/dist"
+    ],
+    "runtime": "host Node 24.21.0 + apps/web/dist",
+    "browserLaunch": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome, no --headless"
+  },
+  "chromeFullPackage": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "workers": 1,
+    "env": [
+      "XUNJIE_E2E_BROWSER_CHANNEL=chrome",
+      "XUNJIE_PRODUCT_POSTGRES_BIN=<package>/resources/postgres/bin",
+      "XUNJIE_PRODUCT_TEST_PACKAGE=<darwin-arm64 full package>"
+    ],
+    "runtime": "packaged Node and PostgreSQL under a temp root outside the source tree",
+    "browserLaunch": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome, no --headless"
+  },
+  "manualUiCoverage": {
+    "status": "passed",
+    "steps": [
+      {
+        "id": "entry",
+        "passed": true
+      },
+      {
+        "id": "reload-no-auto-check",
+        "passed": true,
+        "dispatches": 0
+      },
+      {
+        "id": "pre-save-snapshot",
+        "passed": true,
+        "savedAfterPreCheck": true
+      },
+      {
+        "id": "blank-key-reuse",
+        "passed": true,
+        "version": 2
+      },
+      {
+        "id": "cas-conflict",
+        "passed": true,
+        "preserved": "本页后来输入"
+      },
+      {
+        "id": "key-clear-and-replace",
+        "passed": true,
+        "cleared": true,
+        "replaced": true
+      },
+      {
+        "id": "auth-target-change",
+        "passed": true,
+        "rejected": true,
+        "keptOriginalTarget": true
+      },
+      {
+        "id": "check-cancel-and-query",
+        "passed": true,
+        "cancelled": true,
+        "queryKeptOriginal": true
+      },
+      {
+        "id": "capability-unknown-usage",
+        "passed": true,
+        "usageUnknownShown": true
+      },
+      {
+        "id": "upstream-unsupported",
+        "passed": true,
+        "explicitUnsupported": true
+      },
+      {
+        "id": "protocol-pending",
+        "passed": true,
+        "adapterPending": true
+      },
+      {
+        "id": "identity-boundary",
+        "passed": true,
+        "status": 403
+      },
+      {
+        "id": "dark-narrow",
+        "passed": true,
+        "width": 720,
+        "height": 900
+      },
+      {
+        "id": "activity-without-model",
+        "passed": true,
+        "activityCreated": true,
+        "questionDraft": "无模型下的问题草稿"
+      }
+    ]
+  },
+  "physicalIme": {
+    "status": "passed",
+    "steps": [
+      {
+        "id": "physical-ime-compose",
+        "passed": true,
+        "composedLength": 9
+      },
+      {
+        "id": "physical-ime-commit",
+        "passed": true,
+        "committed": "中文"
+      },
+      {
+        "id": "physical-meta-edit",
+        "passed": true,
+        "cleared": true,
+        "restored": "中文"
+      },
+      {
+        "id": "physical-tab-focus",
+        "passed": true,
+        "focus": {
+          "tag": "SPAN",
+          "label": "",
+          "inDialog": true
+        }
+      },
+      {
+        "id": "physical-escape-close",
+        "passed": true,
+        "focus": "添加供应商"
+      },
+      {
+        "id": "physical-newline-textarea",
+        "passed": true,
+        "value": "你好\n世界"
+      },
+      {
+        "id": "dark-narrow-focus",
+        "passed": true,
+        "width": 720,
+        "height": 900
+      }
+    ],
+    "committedText": "中文",
+    "textareaValue": "你好\n世界",
+    "note": "Physical keys were sent through System Events with the system Simplified Pinyin input method; CDP composition was not accepted as a substitute."
+  },
+  "realChat": {
+    "file": "wp06-models-real-chat-mac.json",
+    "deepseek": "passed",
+    "commandCode": "failed-authentication"
+  },
+  "teachingEffect": "not-evaluated",
+  "fullCrossHost": "later #168"
+}

@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "issue": 178,
+  "sourceIssue": 167,
+  "scope": "messages-before-after-ui",
+  "startedAt": "2026-11-03T06:47:59.747Z",
+  "steps": [],
+  "before": {
+    "protocolOptions": [
+      "chat-completions",
+      "responses",
+      "messages"
+    ],
+    "protocolLabels": [
+      "Chat Completions",
+      "Responses",
+      "Messages（适配器待接入）"
+    ],
+    "messagesPending": true,
+    "checkDisabledWhenMessages": true
+  },
+  "after": {
+    "protocolOptions": [
+      "chat-completions",
+      "responses",
+      "messages"
+    ],
+    "protocolLabels": [
+      "Chat Completions",
+      "Responses",
+      "Anthropic Messages"
+    ],
+    "messagesAvailable": true,
+    "protocol": "messages",
+    "dialect": "deepseek",
+    "checkText": "检查已完成 · 已记录用量"
+  },
+  "status": "passed",
+  "finishedAt": "2026-11-03T06:48:04.855Z"
+}

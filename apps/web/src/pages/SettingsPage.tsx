@@ -4,7 +4,7 @@ import { IconText, type IconName } from '../icons'
 import { AccountTab } from '../components/settings/AccountTab'
 import { PortraitTab } from '../components/settings/PortraitTab'
 import { AgentTab } from '../components/settings/AgentTab'
-import { ModelTab } from '../components/settings/ModelTab'
+import { LegacyModelTab as ModelTab } from '../components/settings/LegacyModelTab'
 import { PrivacyTab } from '../components/settings/PrivacyTab'
 import { AboutTab, APP_VERSION } from '../components/settings/AboutTab'
 
