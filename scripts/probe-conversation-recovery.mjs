@@ -110,8 +110,12 @@ try {
   }, 'The original question and revised FIFO input complete through the restored product.', 60000);
   assert.equal(final.runs[0].runId, first.runId); assert.equal(f.payloads.length, 3);
   await expect(page.getByRole('region', { name: '与 Agent 的对话', exact: true })).toContainText('这是接管后对原问题的明确回应。');
+  const queuedRecord = page.locator('[data-input-id="' + queued.inputId + '"]');
+  await expect(queuedRecord).toHaveAttribute('data-state', 'adopted');
+  await expect(queuedRecord).toContainText('恢复时保留的排队修订。');
   await page.screenshot({ path: join(evidence, `restore-active-${process.platform}.png`), fullPage: true });
-  record('chrome-active-original-response-and-fifo', { calls: f.payloads.length, runs: final.runs.map(run => ({ runId: run.runId, state: run.state })) });
+  record('chrome-active-original-response-and-fifo', { calls: f.payloads.length, revisedQueueVisibleAsAdopted: true,
+    runs: final.runs.map(run => ({ runId: run.runId, state: run.state })) });
 } catch (error) { failed = error; report.failure = error.message; }
 finally {
   report.modelCalls = f?.payloads.length ?? 0;
