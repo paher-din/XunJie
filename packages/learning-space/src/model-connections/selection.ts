@@ -3,7 +3,7 @@ import { modelDeviceBindingSchema, deviceModelChoiceSchema, deviceRawChoiceSchem
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelGrantInputSchema, modelGrantSchema, revokeModelGrantSchema, selectModelSchema, modelSelectionSchema, modelSelectionSourceSchema } from '@xunjie/contracts/model-connections';
+import { modelGrantInputSchema, modelGrantSchema, revokeModelGrantSchema, selectModelSchema, modelSelectionSchema, modelSelectionSourceSchema, modelAttemptSchema } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
 
 export const selectionMigrations = [{ version: 5, name: 'explicit-model-use-and-selection', sql: `
@@ -214,6 +214,54 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     const result = await resolve(identity, saved?.source);
     if (!result) throw new StorageError('unavailable'); return result;
   }
+  async function pin(identity: SpaceIdentity, pinId: string, expectedVersion: number) {
+    owner.assertWritable(); await owner.authorize(identity);
+    const scope = modelScopeOf(identity);
+    const { rows: [prior] } = await storage.read('SELECT * FROM model_selection_pins WHERE id=$1 AND scope=$2', [pinId, scope]);
+    if (prior) {
+      if (Number(prior.selection_version) !== expectedVersion) throw new StorageError('conflict');
+      return pinned(identity, pinId, expectedVersion);
+    }
+    const selected = await current(identity);
+    if ((selected?.version ?? 0) !== expectedVersion) throw new StorageError('conflict');
+    if (selected?.device) throw new StorageError('unavailable');
+    const source = selected?.source ?? { kind: 'school' as const, connectionId: (await snapshot(identity, expectedVersion)).choice.connection.connectionId };
+    return pinSource(identity, pinId, expectedVersion, source);
+  }
+  /** The authenticated paired adapter supplies a fixed Root source, never the device's current pointer. */
+  async function pinSource(identity: SpaceIdentity, pinId: string, expectedVersion: number, value: unknown) {
+    owner.assertWritable(); await owner.authorize(identity);
+    z.uuid().parse(pinId); z.number().int().nonnegative().parse(expectedVersion);
+    const scope = modelScopeOf(identity), source = modelSelectionSourceSchema.parse(value);
+    const { rows: [prior] } = await storage.read('SELECT * FROM model_selection_pins WHERE id=$1 AND scope=$2', [pinId, scope]);
+    if (prior) {
+      if (Number(prior.selection_version) !== expectedVersion || fingerprint(modelSelectionSourceSchema.parse(prior.source)) !== fingerprint(source))
+        throw new StorageError('identity-conflict');
+      return pinned(identity, pinId, expectedVersion);
+    }
+    const fixed = await resolveChoice(identity, source);
+    await storage.request({ requestId: 'model-selection-pin:' + pinId, fingerprint: fingerprint([scope, pinId, expectedVersion]) }, async tx => {
+      await tx.query('INSERT INTO model_selection_pins(id,scope,selection_version,source,body) VALUES($1,$2,$3,$4,$5)',
+        [pinId, scope, expectedVersion, source, fixed]);
+      return null;
+    });
+    return pinned(identity, pinId, expectedVersion);
+  }
+  async function pinned(identity: SpaceIdentity, pinId: string, expectedVersion: number) {
+    await owner.authorize(identity);
+    const { rows: [row] } = await storage.read('SELECT * FROM model_selection_pins WHERE id=$1 AND scope=$2', [pinId, modelScopeOf(identity)]);
+    if (!row || Number(row.selection_version) !== expectedVersion) throw new StorageError('forbidden');
+    const fixed = row.body as Awaited<ReturnType<typeof snapshot>>;
+    const live = await resolve(identity, row.source as Source);
+    if (!live || live.source.kind !== fixed.source.kind || live.source.ownerScope !== fixed.source.ownerScope
+      || live.source.feeSource !== fixed.source.feeSource
+      || ('grantId' in live.source ? live.source.grantId : undefined) !== ('grantId' in fixed.source ? fixed.source.grantId : undefined)
+      || ('grantVersion' in live.source ? live.source.grantVersion : undefined) !== ('grantVersion' in fixed.source ? fixed.source.grantVersion : undefined)) throw new StorageError('forbidden');
+    if (live.choice.connection.connectionId !== fixed.choice.connection.connectionId
+      || live.choice.connection.version !== fixed.choice.connection.version
+      || live.choice.connection.routeId !== fixed.choice.connection.routeId) throw new StorageError('conflict');
+    return fixed;
+  }
   async function destination(identity: SpaceIdentity, expectedVersion?: number) {
     await owner.authorize(identity);
     const saved = await current(identity);
@@ -256,6 +304,19 @@ export function createModelSelections(storage: OwnedStorage, owner: {
         if (authorization.connectionId !== item.source.connectionId || modelScopeOf(authorization.recipient) !== row.scope) throw new StorageError('corrupt');
       }
     }
+    const { rows: pins } = await storage.read('SELECT * FROM model_selection_pins');
+    for (const row of pins) {
+      const fixed = row.body as Awaited<ReturnType<typeof snapshot>>;
+      modelSelectionSchema.parse({ version: Number(row.selection_version), selected: fixed.choice, options: [] });
+      const source = modelAttemptSchema.shape.source.unwrap().parse(fixed.source);
+      const original = selectModelSchema.shape.source.parse(row.source);
+      if (source.kind !== original.kind || fixed.choice.connection.connectionId !== original.connectionId) throw new StorageError('corrupt');
+      if (original.kind === 'personal') {
+        const authorization = await grant(original.grantId);
+        if (modelScopeOf(authorization.recipient) !== row.scope || authorization.connectionId !== original.connectionId
+          || source.grantId !== original.grantId || source.ownerScope !== modelScopeOf(authorization.owner)) throw new StorageError('corrupt');
+      }
+    }
     const { rows: heads } = await storage.read(`SELECT h.scope,h.binding_version,r.body FROM model_device_choice_heads h
       LEFT JOIN model_paired_requests r ON r.ordinal=h.ordinal AND r.scope=h.scope`);
     for (const head of heads) {
@@ -280,5 +341,5 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   return { read, save, createGrant, revoke, readGrant, assertDeviceGrantActive,
     createDeviceGrant(identity: SpaceIdentity, value: unknown) { if (!deviceGranter) throw new StorageError('unavailable'); return deviceGranter(identity, value); },
     onDeviceGrant(handler: NonNullable<typeof deviceGranter>) { deviceGranter = handler; },
-    onDeviceRevoke(handler: NonNullable<typeof deviceRevoker>) { deviceRevoker = handler; }, snapshot, schoolSnapshot, resolveChoice, destination, importDeviceChoices, authorizeAttempt, validate };
+    onDeviceRevoke(handler: NonNullable<typeof deviceRevoker>) { deviceRevoker = handler; }, snapshot, pin, pinSource, pinned, schoolSnapshot, resolveChoice, destination, importDeviceChoices, authorizeAttempt, validate };
 }

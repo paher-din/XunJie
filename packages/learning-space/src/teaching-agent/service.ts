@@ -6,12 +6,13 @@ import { teachingAgentCallSchema, teachingAgentReceiverId, teachingConversationS
   teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingAgentCapabilitiesSchema, teachingDispatchAuthoritySchema,
   teachingStudentResponseInputSchema, teachingStudentResponseReceiptSchema,
   teachingStudentPresentationInputSchema, teachingStudentPresentationReceiptSchema,
-  teachingInputControlSchema, teachingInputControlReceiptSchema, teachingControlReceiptSchema, teachingContinueInputSchema } from '@xunjie/contracts/teaching-agent';
+  teachingInputControlSchema, teachingInputControlReceiptSchema, teachingControlReceiptSchema, teachingContinueInputSchema,
+  teachingModelSwitchInputSchema, teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent';
 import type { createTeachingAgent } from './index.js';
 
 export type TeachingAgentPort = Pick<ReturnType<typeof createTeachingAgent>, 'receiver' | 'conversation' | 'events' | 'capabilities'
   | 'run' | 'stop' | 'continueRun' | 'request' | 'snapshot' | 'assertCommandDispatch' | 'assertModelDispatch'
-  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt'>;
+  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt' | 'switchModel'>;
 export type TeachingAgentCall = z.infer<typeof teachingAgentCallSchema>;
 const ids = (values: unknown[], count: number) => z.array(z.uuid()).length(count).parse(values);
 
@@ -36,6 +37,7 @@ export function createTeachingAgentService(agent: TeachingAgentPort,
       case 'conversation': return agent.conversation(identity, activityId, z.number().int().nonnegative().parse(args[0] ?? 0));
       case 'events': return agent.events(identity, activityId, z.number().int().nonnegative().parse(args[0] ?? 0));
       case 'capabilities': return agent.capabilities(identity, activityId);
+      case 'switchModel': return agent.switchModel(identity, activityId, teachingModelSwitchInputSchema.parse(args[0]));
       case 'run': return agent.run(identity, activityId, ids(args, 1)[0]!);
       case 'request': return agent.request(identity, activityId, ids(args, 1)[0]!);
       case 'snapshot': return agent.snapshot(identity, activityId, ids(args, 1)[0]!);
@@ -78,6 +80,7 @@ export function createTeachingAgentClient(serviceId: string, identity: SpaceIden
       return { ...value, ...(modelUnavailableReason ? { modelUnavailableReason } : {}) };
     },
     run: async (_identity, _activity, id) => teachingRunSchema.parse(await invoke('run', [id])),
+    switchModel: async (_identity, _activity, input) => teachingModelSwitchSchema.parse(await invoke('switchModel', [teachingModelSwitchInputSchema.parse(input)])),
     stop: async (_identity, _activity, id, input) => teachingRunSchema.parse(await invoke('stop', [id, input])),
     continueRun: async (_identity, _activity, id, input) => teachingRunSchema.parse(await invoke('continueRun', [id, input])),
     request: async (_identity, _activity, id) => actionReceiptSchema.nullable().parse(await invoke('request', [id])),

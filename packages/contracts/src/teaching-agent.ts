@@ -40,6 +40,16 @@ export function isRecoverableTeachingPause(run: { state: string; reason: string;
   return run.state === 'paused' && run.completedAt === null && ['model-not-selected', 'model-unavailable',
     'max-output-missing', 'resource-busy', 'segment-busy', 'result-unknown', 'native-result-unavailable'].includes(run.reason);
 }
+export const teachingModelSwitchStateSchema = z.enum(['accepted', 'completed', 'paused']);
+export const teachingModelSwitchSchema = z.object({
+  requestId: z.uuid(), activityId: z.uuid(), selectionVersion: z.number().int().nonnegative(),
+  state: teachingModelSwitchStateSchema, reason: z.string().max(200),
+  fromSegmentId: z.uuid().nullable(), toSegmentId: z.uuid(),
+  model: teachingModelFactSchema,
+  source: z.object({ kind: z.enum(['school', 'personal']), feeSource: z.string().min(1).max(500) }).strict(),
+  createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),
+}).strict();
+export type TeachingModelSwitch = z.infer<typeof teachingModelSwitchSchema>;
 
 export const teachingEventKindSchema = z.enum([
   'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'assistant',
@@ -50,6 +60,7 @@ export const teachingEventKindSchema = z.enum([
   'native-summary',
   'question-created', 'question-presented', 'student-response', 'question-expired', 'question-cancelled',
   'input-adopted', 'input-revised', 'input-removed', 'input-promoted', 'inputs-paused', 'question-superseded',
+  'model-switch-requested', 'model-switch-completed', 'model-switch-paused',
 ]);
 
 export type TeachingEventKind = z.infer<typeof teachingEventKindSchema>;
@@ -69,6 +80,8 @@ export const teachingMessageSchema = z.object({
   state: z.enum(['streaming', 'settled', 'stopped', 'failed', 'unknown']).optional(),
   kind: z.enum(['native-summary', 'student-response']).optional(),
   summaryTruncated: z.boolean().optional(),
+  model: teachingModelFactSchema.optional(),
+  modelSource: z.enum(['school', 'personal']).optional(),
   createdAt: z.iso.datetime(),
 }).strict();
 export type TeachingMessage = z.infer<typeof teachingMessageSchema>;
@@ -120,6 +133,9 @@ export type TeachingSnapshot = z.infer<typeof teachingSnapshotSchema>;
 
 export const teachingStopInputSchema = z.object({ requestId: z.uuid() }).strict();
 export const teachingContinueInputSchema = z.union([z.object({ requestId: z.uuid() }).strict(), teachingContinueSelectionSchema]);
+export const teachingModelSwitchInputSchema = z.object({
+  requestId: z.uuid(), selectionVersion: z.number().int().nonnegative(),
+}).strict();
 
 export const teachingAgentCapabilitiesSchema = z.object({
   receiver: z.object({ receiverId: z.string(), location: z.literal('remote'), kind: z.literal('question') }).strict(),
@@ -140,7 +156,7 @@ export type TeachingAgentBinding = z.infer<typeof teachingAgentBindingSchema>;
 export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({ version: true }).extend({
   requestId: z.uuid(), identity: spaceIdentitySchema,
 }).strict();
-export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events',
+export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events', 'switchModel',
   'capabilities', 'run', 'stop', 'continueRun', 'request', 'snapshot', 'assertCommandDispatch', 'assertModelDispatch',
   'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt']);
 export const teachingAgentCallSchema = z.object({ version: z.literal(1), operation: teachingAgentOperationSchema,

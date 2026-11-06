@@ -8,13 +8,14 @@ import type { ActionInput, ActionReceipt, ActionReceiver } from '@xunjie/contrac
 import type { ModelUsage } from '@xunjie/contracts/model-connections';
 import {
   teachingAgentReceiverId, teachingContinueInputSchema, teachingConversationSchema, teachingEventSchema,
+  teachingModelSwitchInputSchema, teachingModelSwitchSchema,
   teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingDispatchAuthoritySchema,
   isRecoverableTeachingPause,
 } from '@xunjie/contracts/teaching-agent';
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot,
 } from '@xunjie/contracts/teaching-agent';
-import type { ContextMessage } from './context.js';
+import { buildContext, type ContextMessage } from './context.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
 import { teachingDeploymentMigration, validateTeachingDependencyBindings, type TeachingDispatchAuthority } from './remote-state.js';
@@ -24,8 +25,9 @@ import { teachingInputMigration, createTeachingInputs } from './inputs.js';
 import { orderTeachingWrites } from './input-order.js';
 import { createTeachingInputControls } from './input-controls.js';
 import { createTeachingRunControls } from './run-controls.js';
-import { createTeachingRunDriver, type TeachingRunLimits } from './driver.js';
+import { createTeachingRunDriver, TeachingBudgetError, type TeachingRunLimits } from './driver.js';
 import type { TeachingToolHost } from './tool-types.js';
+import { studentAskDefinition } from './student-questions.js';
 import type { ModelTool } from '@xunjie/contracts/model-connections';
 import { modelLearningInputSchema, modelToolResultSchema } from '@xunjie/contracts/model-connections';
 import type { LearningModelPort } from '../model-connections/service.js';
@@ -69,7 +71,30 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX teaching_snapshots_run ON teaching_snapshots(run_id);
 ` }, teachingToolMigration, studentQuestionMigration, teachingDeploymentMigration,
-{ version: 5, name: 'agent-owned-chunk-channel', sql: chunkChannelMigrationSql }, teachingInputMigration];
+{ version: 5, name: 'agent-owned-chunk-channel', sql: chunkChannelMigrationSql }, { version: 6, name: 'durable-model-switches', sql: `
+  ALTER TABLE teaching_sessions ADD COLUMN selection_version integer;
+  CREATE TABLE teaching_model_switches(request_id uuid PRIMARY KEY,activity_id uuid NOT NULL,
+    selection_version integer NOT NULL,state text NOT NULL CHECK(state IN ('accepted','completed','paused')),
+    reason text NOT NULL DEFAULT '',identity jsonb NOT NULL,target jsonb NOT NULL,
+    from_segment_id uuid,to_segment_id uuid NOT NULL,close_request_id uuid NOT NULL,create_request_id uuid NOT NULL,
+    lease_owner text,lease_expires_at timestamptz,generation integer NOT NULL DEFAULT 0,create_body jsonb,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
+  CREATE INDEX teaching_model_switches_activity ON teaching_model_switches(activity_id,created_at);
+` }, { version: 7, name: 'logical-run-cumulative-budgets', sql: `
+  ALTER TABLE teaching_budgets ADD COLUMN max_input_tokens bigint NOT NULL DEFAULT 1048576,
+    ADD COLUMN max_output_tokens bigint NOT NULL DEFAULT 65536,
+    ADD COLUMN max_call_ms bigint NOT NULL DEFAULT 600000,
+    ADD COLUMN deadline timestamptz;
+  UPDATE teaching_budgets b SET deadline=r.created_at+interval '24 hours' FROM teaching_runs r WHERE r.run_id=b.run_id;
+  ALTER TABLE teaching_budgets ALTER COLUMN deadline SET NOT NULL;
+  INSERT INTO teaching_budgets(run_id,max_model_steps,max_tool_commands,max_parallel_tools,wait_ms,deadline)
+    SELECT run_id,16,64,1,86400000,created_at+interval '24 hours' FROM teaching_runs WHERE true ON CONFLICT DO NOTHING;
+  ALTER TABLE teaching_steps ADD COLUMN input_reserved bigint,
+    ADD COLUMN call_reserved_ms bigint NOT NULL DEFAULT 600000,
+    ADD COLUMN call_started_at timestamptz,ADD COLUMN call_settled_ms bigint;
+  UPDATE teaching_steps SET input_reserved=COALESCE((plan->'model'->>'contextWindow')::bigint,1048576);
+  ALTER TABLE teaching_steps ALTER COLUMN input_reserved SET NOT NULL;
+` }, teachingInputMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -167,6 +192,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const { rows: [prior] } = await tx.query('SELECT state,receipt FROM teaching_requests WHERE request_id=$1 FOR UPDATE', [input.requestId]);
       if (prior) return prior.receipt;
       await tx.query('INSERT INTO teaching_sessions(activity_id) VALUES($1) ON CONFLICT(activity_id) DO NOTHING', [input.scope.activityId]);
+      await tx.query('SELECT activity_id FROM teaching_sessions WHERE activity_id=$1 FOR UPDATE', [input.scope.activityId]);
+      const { rows: switching } = await tx.query(`SELECT request_id FROM teaching_model_switches
+        WHERE activity_id=$1 AND state IN ('accepted','paused') LIMIT 1`, [input.scope.activityId]);
+      if (switching.length) throw new StorageError('conflict');
       const { rows: [previous] } = await tx.query('SELECT run_id,state FROM teaching_runs WHERE activity_id=$1 ORDER BY created_at DESC LIMIT 1', [input.scope.activityId]);
       const busy = previous && !terminal(previous.state as TeachingRun['state']);
       const targetRunId = busy ? String(previous.run_id) : runId;
@@ -179,6 +208,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         JSON.stringify({ environmentId: input.scope.environmentId, spaceId: input.scope.spaceId,
           principalId: input.scope.principalId, kind: activity.identity.kind, name: activity.identity.name }),
         JSON.stringify({ state: 'unknown' }), previous?.run_id ?? null]);
+      if (!busy) await driver.freezeBudget(tx, runId);
       const received = await appendEvent(tx, input.scope.activityId, 'input', { runId: targetRunId, requestId: input.requestId, inputId,
         question: input.draft.question, references: input.draft.references.map(reference => ({ referenceId: reference.referenceId,
           source: reference.source, sourceName: reference.sourceName, copy: reference.copy })), works: input.works.map(work => ({ objectId: work.objectId,
@@ -327,10 +357,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       if (!(error instanceof StorageError) || !['conflict', 'missing', 'commit-unknown'].includes(error.code)) throw error;
     });
   }
-  async function historyBefore(activityId: string, runId: string): Promise<ContextMessage[]> {
-    const { rows: [own] } = await storage.read("SELECT seq FROM teaching_events WHERE activity_id=$1 AND kind IN ('run-received','run-continued') AND body->>'runId'=$2 ORDER BY seq LIMIT 1",
-      [activityId, runId]);
-    const boundary = own ? Number(own.seq) : Number.MAX_SAFE_INTEGER;
+  async function historyThrough(activityId: string, boundary: number, runId?: string): Promise<ContextMessage[]> {
     const { rows } = await storage.read(`SELECT e.kind,e.body,i.state AS input_state,i.adopted_run_id,
       EXISTS(SELECT 1 FROM teaching_events a WHERE a.activity_id=e.activity_id AND a.kind='input-adopted'
         AND a.body->>'inputId'=e.body->>'inputId') AS adoption_logged
@@ -339,7 +366,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     return rows.flatMap((row): ContextMessage[] => {
       const body = row.body as Record<string, unknown>;
       if (row.kind === 'input-adopted' || row.kind === 'input' && row.input_state === 'adopted' && !row.adoption_logged) {
-        if (body.runId === runId || row.adopted_run_id === runId) return [];
+        if (runId && (body.runId === runId || row.adopted_run_id === runId)) return [];
         return typeof body.question === 'string' && body.question ? [{ role: 'student' as const, text: body.question,
           source: { kind: 'input', id: String(body.inputId) + ':' + String(body.version ?? 1), label: '先前已采用的学生输入' } }] : [];
       }
@@ -351,6 +378,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         return [{ role: 'student', text: body.text, source: { kind: 'student-response', id: String(body.responseId), label: '先前问题的学生明确回应' } }];
       return [];
     });
+  }
+  async function historyBefore(activityId: string, runId: string): Promise<ContextMessage[]> {
+    const { rows: [own] } = await storage.read("SELECT seq FROM teaching_events WHERE activity_id=$1 AND kind IN ('run-received','run-continued') AND body->>'runId'=$2 ORDER BY seq LIMIT 1",
+      [activityId, runId]);
+    return historyThrough(activityId, own ? Number(own.seq) : Number.MAX_SAFE_INTEGER, runId);
   }
   async function sessionRow(activityId: string) {
     const { rows: [row] } = await storage.read('SELECT * FROM teaching_sessions WHERE activity_id=$1', [activityId]);
@@ -396,11 +428,176 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     await storage.request({ requestId: 'teaching-segment:' + run.runId + ':' + randomUUID(),
       fingerprint: 'teaching-segment:' + run.runId }, async tx => {
       await assertAuthority(tx, run.runId, generation);
-      await tx.query('UPDATE teaching_sessions SET segment_id=$2,segment_fingerprint=$3,updated_at=clock_timestamp() WHERE activity_id=$1',
-        [activity.activityId, createdId, fingerprint]);
+      await tx.query(`UPDATE teaching_sessions SET segment_id=$2,segment_fingerprint=$3,selection_version=$4,
+        updated_at=clock_timestamp() WHERE activity_id=$1`, [activity.activityId, createdId, fingerprint, selectionVersion]);
       return null;
     });
     return { segmentId: createdId, sequence: segment.sequence, model, fresh: true };
+  }
+
+  async function fullHistory(activityId: string): Promise<ContextMessage[]> {
+    return historyThrough(activityId, Number.MAX_SAFE_INTEGER);
+  }
+  function switchProjection(row: Record<string, unknown>) {
+    const target = row.target as { model: ReturnType<typeof modelFact>; source: { kind: 'school' | 'personal'; feeSource: string } };
+    return teachingModelSwitchSchema.parse({ requestId: row.request_id, activityId: row.activity_id,
+      selectionVersion: Number(row.selection_version), state: row.state, reason: row.reason,
+      fromSegmentId: row.from_segment_id ?? null, toSegmentId: row.to_segment_id,
+      model: target.model, source: target.source, createdAt: new Date(row.created_at as string).toISOString(),
+      updatedAt: new Date(row.updated_at as string).toISOString() });
+  }
+  async function switchRow(requestId: string) {
+    const { rows: [row] } = await storage.read('SELECT * FROM teaching_model_switches WHERE request_id=$1', [requestId]);
+    if (!row) throw new StorageError('missing');
+    return row as Record<string, unknown>;
+  }
+  async function pauseSwitch(row: Record<string, unknown>, reason: string, generation: number) {
+    await storage.request({ requestId: 'teaching-model-switch-pause:' + row.request_id + ':' + reason,
+      fingerprint: canonicalDigest([row.request_id, reason]) }, async tx => {
+      const { rows: updated } = await tx.query(`UPDATE teaching_model_switches SET state='paused',reason=$2,
+        updated_at=clock_timestamp() WHERE request_id=$1 AND state<>'completed' AND lease_owner=$3 AND generation=$4 RETURNING activity_id`, [row.request_id, reason, ownerId, generation]);
+      if (updated.length) await appendEvent(tx, String(row.activity_id), 'model-switch-paused', {
+        requestId: row.request_id, selectionVersion: row.selection_version, reason });
+      return null;
+    });
+    return switchProjection(await switchRow(String(row.request_id)));
+  }
+  async function performModelSwitchBody(member: SpaceIdentity, requestId: string, generation: number) {
+    let row = await switchRow(requestId);
+    if (row.state === 'completed') return switchProjection(row);
+    try {
+      await options.authorize(member);
+      const activity = await options.activity(member, String(row.activity_id));
+      const { rows: active } = await storage.read(`SELECT run_id FROM teaching_runs WHERE activity_id=$1
+        AND state IN ('received','running','dispatching','waiting')
+        AND NOT (state='waiting' AND reason='model-switch-boundary' AND NOT stop_requested) LIMIT 1`, [activity.activityId]);
+      const { rows: unsettled } = await storage.read(`SELECT c.command_id FROM teaching_commands c JOIN teaching_runs r USING(run_id)
+        WHERE r.activity_id=$1 AND (c.state<>'settled' OR NOT EXISTS
+          (SELECT 1 FROM teaching_steps s WHERE s.step_id=c.step_id AND s.paired)) LIMIT 1`, [activity.activityId]);
+      if (active.length || unsettled.length) return pauseSwitch(row, 'segment-busy', generation);
+      if (writesClosed || dispatchClosed) return pauseSwitch(row, 'maintenance', generation);
+      const choice = await options.models.selection.pinned(member, requestId, Number(row.selection_version));
+      const oldId = row.from_segment_id as string | null;
+      if (oldId) {
+        const old = await options.models.segments.read(member, oldId);
+        if (old.pending || old.pendingTools?.length) return pauseSwitch(row, 'segment-busy', generation);
+        if (!old.closed) await options.models.segments.close(member, oldId, {
+          requestId: row.close_request_id, expectedSequence: old.sequence });
+      }
+      const { rows: [latest] } = await storage.read(`SELECT body FROM teaching_requests WHERE activity_id=$1
+        AND state='accepted' ORDER BY created_at DESC LIMIT 1`, [activity.activityId]);
+      const fixedInput = latest?.body ? actionInputSchema.parse(latest.body) : actionInputSchema.parse({
+        requestId: randomUUID(), scope: { environmentId: member.environmentId, spaceId: member.spaceId,
+          principalId: member.principalId, activityId: activity.activityId }, receiver: identity,
+        draft: { token: randomUUID(), question: '', references: [], bases: [] }, works: [], evidence: [] });
+      const history = await fullHistory(activity.activityId);
+      const context = buildContext(activity, fixedInput, history, {
+        maxOutputTokens: choice.choice.connection.maxOutputTokens ?? 1,
+        ...(choice.choice.connection.contextWindow ? { contextWindow: choice.choice.connection.contextWindow } : {}) });
+      const pseudo = { identity: member, activity, input: fixedInput, runId: requestId,
+        stepId: operationId('model-switch-step:' + requestId), snapshotId: operationId('model-switch-snapshot:' + requestId),
+        ...(oldId ? { segmentId: oldId } : {}) };
+      const tools = [studentAskDefinition, ...(options.tools ? await options.tools.definitions(pseudo) : [])];
+      const candidate = { requestId: row.create_request_id, segmentId: row.to_segment_id,
+        purpose: 'learning', source: { selected: true, selectionVersion: Number(row.selection_version), pinId: requestId },
+        prefix: { system: context.system, tools }, portable: history.map(message => ({
+          role: message.role === 'student' ? 'user' as const : 'assistant' as const, text: message.text })),
+        ...(oldId ? { previousSegmentId: oldId } : {}) };
+      const fixed = await storage.request({ requestId: 'teaching-switch-input:' + requestId,
+        fingerprint: canonicalDigest([requestId, row.to_segment_id]) }, async tx => {
+        const { rows: [locked] } = await tx.query(`SELECT * FROM teaching_model_switches WHERE request_id=$1 FOR UPDATE`, [requestId]);
+        if (locked?.lease_owner !== ownerId || Number(locked.generation) !== generation) throw new StorageError('conflict');
+        const body = locked.create_body ?? candidate;
+        await tx.query('UPDATE teaching_model_switches SET create_body=$2 WHERE request_id=$1', [requestId, body]);
+        return body;
+      });
+      if (writesClosed || dispatchClosed) return pauseSwitch(row, 'maintenance', generation);
+      await options.models.segments.create(member, fixed.result);
+      const created = await options.models.segments.read(member, String(row.to_segment_id));
+      const target = row.target as { model: ReturnType<typeof modelFact> };
+      const fingerprint = fingerprintOf(target.model, context.system + canonicalDigest(tools));
+      await storage.request({ requestId: 'teaching-model-switch-complete:' + requestId,
+        fingerprint: canonicalDigest([requestId, row.to_segment_id]) }, async tx => {
+        const { rows: [lease] } = await tx.query('SELECT lease_owner,generation FROM teaching_model_switches WHERE request_id=$1 FOR UPDATE', [requestId]);
+        if (lease?.lease_owner !== ownerId || Number(lease.generation) !== generation) throw new StorageError('conflict');
+        const { rows: updated } = await tx.query(`UPDATE teaching_model_switches SET state='completed',reason='',
+          updated_at=clock_timestamp() WHERE request_id=$1 AND state<>'completed' RETURNING activity_id`, [requestId]);
+        await tx.query(`UPDATE teaching_sessions SET segment_id=$2,segment_fingerprint=$3,selection_version=$4,
+          updated_at=clock_timestamp() WHERE activity_id=$1`,
+        [activity.activityId, row.to_segment_id, fingerprint, row.selection_version]);
+        await tx.query(`UPDATE teaching_runs SET state='received',reason='',updated_at=clock_timestamp()
+          WHERE activity_id=$1 AND state='waiting' AND reason='model-switch-boundary' AND NOT stop_requested`, [activity.activityId]);
+        if (updated.length) await appendEvent(tx, activity.activityId, 'model-switch-completed', {
+          requestId, selectionVersion: row.selection_version, fromSegmentId: oldId, toSegmentId: row.to_segment_id,
+          sequence: created.sequence, target: row.target });
+        return null;
+      });
+      return switchProjection(await switchRow(requestId));
+    } catch (error) {
+      const reason = error instanceof StorageError ? error.code : 'unavailable';
+      return pauseSwitch(row, reason, generation);
+    }
+  }
+  async function performModelSwitch(member: SpaceIdentity, requestId: string) {
+    const claim = await storage.request({ requestId: 'teaching-switch-claim:' + randomUUID(), fingerprint: requestId }, async tx => {
+      const { rows: [row] } = await tx.query(`UPDATE teaching_model_switches SET lease_owner=$2,
+        lease_expires_at=clock_timestamp()+($3 || ' milliseconds')::interval,generation=generation+1
+        WHERE request_id=$1 AND state<>'completed' AND (lease_owner IS NULL OR lease_expires_at<clock_timestamp())
+        RETURNING generation`, [requestId, ownerId, String(leaseMs)]);
+      return row ? Number(row.generation) : null;
+    });
+    if (claim.result === null) return switchProjection(await switchRow(requestId));
+    const generation = Number(claim.result);
+    const heartbeat = setInterval(() => {
+      void storage.request({ requestId: 'teaching-switch-heartbeat:' + randomUUID(), fingerprint: requestId }, async tx => {
+        await tx.query(`UPDATE teaching_model_switches SET lease_expires_at=clock_timestamp()+($4 || ' milliseconds')::interval
+          WHERE request_id=$1 AND lease_owner=$2 AND generation=$3`, [requestId, ownerId, generation, String(leaseMs)]);
+        return null;
+      }).catch(() => {});
+    }, Math.max(50, leaseMs / 3));
+    try { return await performModelSwitchBody(member, requestId, generation); }
+    finally {
+      clearInterval(heartbeat);
+      await storage.request({ requestId: 'teaching-switch-release:' + randomUUID(), fingerprint: requestId }, async tx => {
+        await tx.query('UPDATE teaching_model_switches SET lease_owner=NULL,lease_expires_at=NULL WHERE request_id=$1 AND lease_owner=$2 AND generation=$3', [requestId, ownerId, generation]);
+        return null;
+      });
+    }
+  }
+  const switching = new Map<string, Promise<ReturnType<typeof switchProjection>>>();
+  function applyModelSwitch(member: SpaceIdentity, requestId: string) {
+    const existing = switching.get(requestId);
+    if (existing) return existing;
+    const task = performModelSwitch(member, requestId).finally(() => switching.delete(requestId));
+    switching.set(requestId, task);
+    return task;
+  }
+  async function switchModel(member: SpaceIdentity, activityId: string, value: unknown) {
+    if (writesClosed) throw new StorageError('maintenance');
+    const input = teachingModelSwitchInputSchema.parse(value);
+    const activity = await options.activity(member, activityId);
+    const choice = await options.models.selection.pin(member, input.requestId, input.selectionVersion);
+    const target = { model: modelFact(choice.choice.connection), source: {
+      kind: choice.source.kind, feeSource: choice.source.feeSource } };
+    const saved = await storage.request({ requestId: 'teaching-model-switch:' + input.requestId,
+      fingerprint: canonicalDigest([member, activityId, input, target]) }, async tx => {
+      await tx.query('INSERT INTO teaching_sessions(activity_id) VALUES($1) ON CONFLICT(activity_id) DO NOTHING', [activityId]);
+      const { rows: [session] } = await tx.query('SELECT * FROM teaching_sessions WHERE activity_id=$1 FOR UPDATE', [activityId]);
+      const { rows: pending } = await tx.query(`SELECT request_id FROM teaching_model_switches
+        WHERE activity_id=$1 AND state IN ('accepted','paused') AND request_id<>$2 LIMIT 1`, [activityId, input.requestId]);
+      if (pending.length) throw new StorageError('conflict');
+      const { rows: inserted } = await tx.query(`INSERT INTO teaching_model_switches(request_id,activity_id,selection_version,
+        state,identity,target,from_segment_id,to_segment_id,close_request_id,create_request_id)
+        VALUES($1,$2,$3,'accepted',$4,$5,$6,$7,$8,$9) ON CONFLICT(request_id) DO NOTHING RETURNING request_id`,
+      [input.requestId, activityId, input.selectionVersion, JSON.stringify(member), JSON.stringify(target),
+        session?.segment_id ?? null, operationId('teaching-switch-segment:' + input.requestId),
+        operationId('teaching-switch-close:' + input.requestId), operationId('teaching-switch-create:' + input.requestId)]);
+      if (inserted.length) await appendEvent(tx, activityId, 'model-switch-requested', {
+        requestId: input.requestId, selectionVersion: input.selectionVersion, fromSegmentId: session?.segment_id ?? null, target });
+      return null;
+    });
+    void saved;
+    return applyModelSwitch(member, input.requestId);
   }
 
   type ModelAttemptFact = Awaited<ReturnType<TeachingAgentOptions['models']['checks']['read']>>;
@@ -438,7 +635,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     // accepted. That means no physical request has started, not that the answer has ended.
     while (fact.state === 'accepted' || !fact.physicalRequestEnded) {
       const stored = toRun(await runRow(run.runId));
-      if (stored.stopRequested && !fact.cancelRequested) await options.models.checks.cancel(identity, attemptId);
+      const { rows: [budget] } = await storage.read(`SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1`, [run.runId]);
+      if ((stored.stopRequested || budget?.expired) && !fact.cancelRequested) await options.models.checks.cancel(identity, attemptId);
       if (Date.now() - lastHeartbeat > leaseMs / 2) { await heartbeat(run.runId, generation); lastHeartbeat = Date.now(); }
       await sleep(200);
       fact = await options.models.checks.read(identity, attemptId);
@@ -476,9 +674,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       } catch (error) {
         // A failed owner commit or lost lease never proves an external operation failed. Keep
         // the original step/attempt/command and let recovery query those identities.
-        const reason = error instanceof z.ZodError ? 'corrupt' : error instanceof StorageError ? error.code
+        const reason = error instanceof TeachingBudgetError ? error.message : error instanceof z.ZodError ? 'corrupt' : error instanceof StorageError ? error.code
           : (error as { code?: string }).code === 'capability-unavailable' ? 'model-capability-unavailable' : '';
-        if (['forbidden', 'invalid', 'missing', 'resource-busy', 'corrupt', 'incompatible', 'resource-gone', 'model-capability-unavailable'].includes(reason)) {
+        if (error instanceof TeachingBudgetError || ['forbidden', 'invalid', 'missing', 'resource-busy', 'corrupt', 'incompatible', 'resource-gone', 'model-capability-unavailable'].includes(reason)) {
           const row = await runRow(runId).catch(() => null);
           if (row && !terminal(row.state as TeachingRun['state'])) await finish(run, generation, 'paused', reason,
             (row.usage as ModelUsage) ?? { state: 'unknown' }, (row.model as TeachingRun['model']) ?? null,
@@ -491,11 +689,18 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   async function scan() {
     if (dispatchClosed) return;
+    const { rows: pendingSwitches } = await storage.read(`SELECT request_id,identity FROM teaching_model_switches
+      WHERE state IN ('accepted','paused')`);
+    for (const row of pendingSwitches) void applyModelSwitch(row.identity as SpaceIdentity, String(row.request_id)).catch(() => {});
     for (const runId of await driver.pollWaits()) kick(runId);
     const { rows } = await storage.read(`SELECT run_id FROM teaching_runs r WHERE
       (state IN ('received','running','dispatching') OR (state='waiting' AND (stop_requested OR EXISTS
-        (SELECT 1 FROM teaching_inputs i WHERE i.waiting_on_run_id=r.run_id AND i.state='pending' AND i.mode='steering') OR NOT EXISTS
+        (SELECT 1 FROM teaching_inputs i WHERE i.waiting_on_run_id=r.run_id AND i.state='pending' AND i.mode='steering') OR EXISTS
+        (SELECT 1 FROM teaching_budgets b WHERE b.run_id=r.run_id AND b.deadline<=clock_timestamp()) OR NOT EXISTS
         (SELECT 1 FROM teaching_waits w WHERE w.run_id=r.run_id AND w.state='pending'))))
+      AND NOT (state='waiting' AND reason='model-switch-boundary' AND NOT stop_requested AND NOT EXISTS
+        (SELECT 1 FROM teaching_budgets b WHERE b.run_id=r.run_id AND b.deadline<=clock_timestamp()) AND EXISTS
+        (SELECT 1 FROM teaching_model_switches s WHERE s.activity_id=r.activity_id AND s.state IN ('accepted','paused')))
       AND (lease_expires_at IS NULL OR lease_expires_at < clock_timestamp()) ORDER BY created_at LIMIT 20`);
     for (const row of rows) kick(row.run_id as string);
   }
@@ -560,10 +765,14 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         if (at === undefined) {
           if (attemptId) assistantSlots.set(attemptId, messages.length);
           messages.push({ ...base, eventId: attemptId ? operationId('teaching-assistant:' + attemptId) : base.eventId,
-            role: 'assistant', text: String(body.text ?? ''), runId: (body.runId as string) ?? null, state });
+            role: 'assistant', text: String(body.text ?? ''), runId: (body.runId as string) ?? null, state,
+            ...(body.model ? { model: body.model as never } : {}),
+            ...(body.modelSource === 'school' || body.modelSource === 'personal' ? { modelSource: body.modelSource } : {}) });
         } else {
           const prior = messages[at]!;
-          messages[at] = { ...prior, seq: base.seq, text: String(body.text ?? ''), state };
+          messages[at] = { ...prior, seq: base.seq, text: String(body.text ?? ''), state,
+            ...(body.model ? { model: body.model as never } : {}),
+            ...(body.modelSource === 'school' || body.modelSource === 'personal' ? { modelSource: body.modelSource } : {}) };
         }
       }
       else if (kind === 'model-unavailable') messages.push({ ...base, role: 'system',
@@ -583,6 +792,22 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           ? '本次任务的计算预算已用尽，已暂停继续生成。原问题、明确回应与已发生的结果仍保留。'
           : '本次任务的工具操作预算已用尽，已暂停新操作。原问题、明确回应与已发生的结果仍保留。',
         runId: (body.runId as string) ?? null });
+      else if (kind === 'system-notice' && ['input-token-budget-exhausted', 'output-token-budget-exhausted',
+        'model-call-budget-exhausted', 'run-deadline-exceeded', 'input-budget-bound-unavailable'].includes(String(body.reason)))
+        messages.push({ ...base, role: 'system', text: body.reason === 'run-deadline-exceeded'
+          ? '本次任务已到截止时间，已暂停新操作。原问题、明确回应和已发生的结果仍保留。'
+          : body.reason === 'input-budget-bound-unavailable' ? '当前模型缺少窗口上限，暂时无法核定输入预算，任务已暂停。'
+          : '本次任务的累计模型预算已用尽，已暂停继续生成。切换模型或重启不会重置原预算。',
+        runId: (body.runId as string) ?? null });
+      else if (kind === 'model-switch-completed') {
+        const target = body.target as { model?: { modelId?: string }; source?: { kind?: string } } | undefined;
+        messages.push({ ...base, role: 'system',
+          text: `已切换到${target?.source?.kind === 'school' ? '学校' : '个人'}模型${target?.model?.modelId ? `「${target.model.modelId}」` : ''}。已有对话和工具结果保持原出处，下一条问题从新模型继续。`,
+          runId: null });
+      }
+      else if (kind === 'model-switch-paused') messages.push({ ...base, role: 'system',
+        text: body.reason === 'segment-busy' ? '模型切换正在等待原回答或工具完成；没有改写在途任务，也没有回退到其他模型。'
+          : '模型切换尚未完成；原对话、模型边界和草稿已保留，没有自动改用其他费用来源。', runId: null });
     }
     // A progress message whose run already settled without a final answer (driver loss, pause)
     // must not stay "streaming" forever.
@@ -662,12 +887,17 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const { rows: [prior] } = await tx.query('SELECT state,receipt FROM teaching_requests WHERE request_id=$1 FOR UPDATE', [input.requestId]);
       if (prior) return prior.receipt;
       await tx.query('INSERT INTO teaching_sessions(activity_id) VALUES($1) ON CONFLICT(activity_id) DO NOTHING', [activityId]);
+      await tx.query('SELECT activity_id FROM teaching_sessions WHERE activity_id=$1 FOR UPDATE', [activityId]);
+      const { rows: switching } = await tx.query(`SELECT request_id FROM teaching_model_switches
+        WHERE activity_id=$1 AND state IN ('accepted','paused') LIMIT 1`, [activityId]);
+      if (switching.length) throw new StorageError('conflict');
       await tx.query(`INSERT INTO teaching_requests(request_id,activity_id,input_digest,body,state,run_id,input_id,receipt)
         VALUES($1,$2,$3,$4,'accepted',$5,$6,$7)`, [input.requestId, activityId, inputDigest, JSON.stringify(body),
         newRunId, inputId, JSON.stringify(accepted)]);
       await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,previous_run_id,usage)
         VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [newRunId, activityId, input.requestId, inputId,
         JSON.stringify(identity), previous.runId, JSON.stringify({ state: 'unknown' })]);
+      await driver.freezeBudget(tx, newRunId);
       await appendEvent(tx, activityId, 'input', { runId: newRunId, requestId: input.requestId, inputId,
         question: '请继续', references: original.draft.references.map(reference => ({ referenceId: reference.referenceId,
           source: reference.source, sourceName: reference.sourceName, copy: reference.copy })),
@@ -696,6 +926,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
     await options.authorize(identity);
     if ((await options.activity(identity, activityId)).status !== 'open') throw new StorageError('forbidden');
+    const { rows: [budget] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [association.runId]);
+    if (!budget || budget.expired) throw new StorageError('forbidden');
     await storage.pendingIntents();
     const authority = association.authority ? teachingDispatchAuthoritySchema.parse(association.authority) : undefined;
     if (authority && (authority.runId !== association.runId || authority.activityId !== activityId)) throw new StorageError('forbidden');
@@ -731,6 +963,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     value: TeachingDispatchAuthority & { attemptId: string; dispatch: boolean }) {
     if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
     await options.authorize(identity);
+    const { rows: [budget] } = await storage.read('SELECT deadline>clock_timestamp() AS live FROM teaching_budgets WHERE run_id=$1', [value.runId]);
+    if (!budget?.live) throw new StorageError('forbidden');
     if (value.activityId !== activityId || (await options.activity(identity, activityId)).status !== 'open') throw new StorageError('forbidden');
     const { rows: [row] } = await storage.read(`SELECT r.*,s.dispatch_permitted,s.dispatch_generation FROM teaching_steps s
       JOIN teaching_runs r USING(run_id) WHERE s.attempt_id=$1 AND r.run_id=$2 AND r.activity_id=$3`,
@@ -739,10 +973,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       || row.reason === 'student-response-expired' || row.generation !== value.generation || value.dispatch && (!row.dispatch_permitted || row.dispatch_generation !== value.generation))
       throw new StorageError('forbidden');
     await storage.request({ requestId: 'teaching-verify-permit:'+randomUUID(), fingerprint: value.attemptId }, async tx => {
-      const { rows: [current] } = await tx.query(`SELECT state,reason,stop_requested,generation,lease_owner,lease_expires_at>=clock_timestamp() AS live
+      const { rows: [current] } = await tx.query(`SELECT state,reason,stop_requested,generation,lease_owner,lease_expires_at>=clock_timestamp() AS live,
+        (SELECT deadline>clock_timestamp() FROM teaching_budgets WHERE run_id=$1) AS budget_live
         FROM teaching_runs WHERE run_id=$1 FOR UPDATE`, [value.runId]);
       if (dispatchClosed || writesClosed || !current || current.stop_requested || terminal(current.state as TeachingRun['state'])
-        || current.reason === 'student-response-expired' || current.generation !== value.generation || current.lease_owner !== value.driverId || !current.live) throw new StorageError('forbidden');
+        || current.reason === 'student-response-expired' || current.generation !== value.generation || current.lease_owner !== value.driverId || !current.live || !current.budget_live) throw new StorageError('forbidden');
       return null;
     });
   }
@@ -751,7 +986,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   if (options.start !== false) startTicker();
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
-    run, conversation, events, snapshot, request, stop, continueRun, capabilities, assertCommandDispatch, assertModelDispatch, validate,
+    run, conversation, events, snapshot, request, stop, continueRun, switchModel, capabilities, assertCommandDispatch, assertModelDispatch, validate,
     respond, response: studentQuestions.response, presentQuestion,
     async controlInput(identity: SpaceIdentity, activityId: string, inputId: string, value: unknown) {
       if (writesClosed) throw new StorageError('maintenance');
@@ -773,9 +1008,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     closeDispatch() { dispatchClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     async drain() {
       const deadline = Date.now() + 25_000;
-      while (active.size) {
+      while (active.size || switching.size) {
         if (Date.now() >= deadline) throw new StorageError('maintenance');
-        await Promise.allSettled([...active.values()]);
+        await Promise.allSettled([...active.values(), ...switching.values()]);
       }
     },
     resume() { writesClosed = false; dispatchClosed = false; startTicker(); void scan().catch(() => {}); },
@@ -827,13 +1062,23 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
       throw new StorageError('corrupt');
   }
   const { rows: steps } = await storage.read('SELECT * FROM teaching_steps');
+  const { rows: budgets } = await storage.read('SELECT * FROM teaching_budgets');
+  for (const budget of budgets) {
+    for (const field of ['max_model_steps','max_tool_commands','max_parallel_tools','wait_ms','max_input_tokens','max_output_tokens','max_call_ms'])
+      if (!Number.isSafeInteger(Number(budget[field])) || Number(budget[field]) < 1) throw new StorageError('corrupt');
+    if (!Number.isFinite(new Date(budget.deadline as string).getTime())) throw new StorageError('corrupt');
+  }
   for (const step of steps) {
     const plan = step.plan as { input: unknown };
     const input = modelLearningInputSchema.parse(plan.input);
     if (input.attemptId !== step.attempt_id || input.segmentId !== step.segment_id
       || step.step_id !== operationId(`step:${step.run_id}:${step.step_no}`)
       || step.snapshot_id !== operationId('model-snapshot:' + step.step_id)
-      || input.limits.maxOutputTokens !== step.output_reserved) throw new StorageError('corrupt');
+      || input.limits.maxOutputTokens !== step.output_reserved || !budgets.some(budget => budget.run_id === step.run_id)
+      || !Number.isSafeInteger(Number(step.input_reserved)) || Number(step.input_reserved) < 1
+      || !Number.isSafeInteger(Number(step.call_reserved_ms)) || Number(step.call_reserved_ms) < 1
+      || step.call_settled_ms !== null && (!Number.isSafeInteger(Number(step.call_settled_ms)) || Number(step.call_settled_ms) < 0))
+      throw new StorageError('corrupt');
     if (step.phase !== 'planned') {
       const snapshot = snapshots.find(row => row.snapshot_id === step.snapshot_id);
       if (!snapshot || snapshot.run_id !== step.run_id || snapshot.attempt_id !== step.attempt_id
@@ -864,4 +1109,17 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
       || (wait.state === 'consumed' || wait.purpose === 'cleanup') && command.state !== 'settled') throw new StorageError('corrupt');
   }
   await validateStudentQuestions(storage);
+  const { rows: switches } = await storage.read('SELECT * FROM teaching_model_switches');
+  for (const row of switches) {
+    const target = row.target as { model: unknown; source: unknown };
+    teachingModelSwitchSchema.parse({ requestId: row.request_id, activityId: row.activity_id,
+      selectionVersion: Number(row.selection_version), state: row.state, reason: row.reason,
+      fromSegmentId: row.from_segment_id ?? null, toSegmentId: row.to_segment_id,
+      model: target.model, source: target.source, createdAt: new Date(row.created_at as string).toISOString(),
+      updatedAt: new Date(row.updated_at as string).toISOString() });
+    const session = sessions.find(item => item.activity_id === row.activity_id);
+    // A completed switch remains durable history after a later switch advances the
+    // session to another segment, so only require the owning session to exist here.
+    if (!session) throw new StorageError('corrupt');
+  }
 }

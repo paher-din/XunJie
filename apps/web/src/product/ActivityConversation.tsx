@@ -99,7 +99,10 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
     ...conversation.questions.map(question => ({ kind: 'question' as const, at: question.createdAt, order: 1, question })),
   ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.order - b.order)
   return <section aria-label="与 Agent 的对话" className="teaching-conversation">
-    <h3>学习对话</h3>
+    <div className="teaching-conversation-header">
+      <h3>学习对话</h3>
+      {onModels && !readOnly && <button type="button" className="outline" onClick={onModels}>切换模型</button>}
+    </div>
     {messages.length === 0 && <p className="detail">还没有对话。输入问题并发送后，回答会在这里持续保留。</p>}
     {timeline.map(entry => {
       if (entry.kind === 'tool') return <TeachingToolRecords key={entry.tool.commandId} records={[entry.tool]} onLocate={onLocateTool} />
@@ -118,6 +121,9 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
         ? <Markdown text={message.text} live={message.state === 'streaming'}
           truncated={message.state === 'stopped' || message.state === 'failed'} />
         : <div className="preserve-lines">{message.text}</div>}
+      {message.role === 'assistant' && message.model && <span className="detail">
+        来源：{message.modelSource === 'school' ? '学校模型' : message.modelSource === 'personal' ? '个人模型' : '原模型'} · {message.model.modelId} · {message.model.protocol}
+      </span>}
       {message.role === 'assistant' && message.state === 'stopped' && <span className="detail">（已停止，以上是已发生的内容）</span>}
       {message.inputId && conversation.inputs.find(input => input.inputId === message.inputId) && <AgentInputRecord
         input={conversation.inputs.find(input => input.inputId === message.inputId)!} scope={scope} readOnly={readOnly || activity.status !== 'open'}

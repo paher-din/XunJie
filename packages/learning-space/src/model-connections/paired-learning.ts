@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
 import { storageOwnerSchema } from '@xunjie/contracts/storage';
@@ -45,7 +45,7 @@ const destinationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('school') }).strict(),
 ]);
 type Destination = z.infer<typeof destinationSchema>;
-type RouteKind = 'segment' | 'attempt' | 'image' | 'result';
+type RouteKind = 'segment' | 'attempt' | 'image' | 'result' | 'pin';
 const savedRequestSchema = z.object({ kind: z.literal('device-options').optional(), identity: spaceIdentitySchema, request: learningModelRequestSchema,
   origin: pairedModelOriginSchema, destination: destinationSchema, forwarded: learningModelRequestSchema, localReply: learningModelReplySchema.optional() }).strict();
 
@@ -131,7 +131,8 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
     const original = savedRequestSchema.parse(row.body);
     if (original.origin.operationId !== id || modelScopeOf(original.identity) !== modelScopeOf(identity)
       || hash(original.identity) !== hash(original.request.identity) || hash(original.identity) !== hash(original.forwarded.identity)
-      || original.request.operation !== original.forwarded.operation && !(original.request.operation === 'selection.snapshot' && original.forwarded.operation === 'selection.resolve')) throw new StorageError('corrupt');
+      || original.request.operation !== original.forwarded.operation && !(original.request.operation === 'selection.snapshot' && original.forwarded.operation === 'selection.resolve')
+        && !(original.request.operation === 'selection.pin' && original.forwarded.operation === 'selection.pinSource')) throw new StorageError('corrupt');
     if (original.kind === 'device-options' || identity.kind !== 'school' || original.destination.kind !== 'device'
       || original.destination.binding.grantId !== binding.grantId
       || original.destination.binding.installationId !== binding.installationId) throw new StorageError('forbidden');
@@ -160,23 +161,23 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
       return destination;
     });
   }
-  async function fixGrant(identity: SpaceIdentity, kind: 'segment' | 'attempt', id: string, grantId: string, version: number) {
+  async function fixGrant(identity: SpaceIdentity, kind: 'segment' | 'attempt' | 'pin', id: string, grantId: string, version: number) {
     const scope = modelScopeOf(identity);
     await storage.request({ requestId: 'paired-grant:' + hash([scope, kind, id]), fingerprint: hash([grantId, version]) }, async tx => {
       options.assertWritable();
       await tx.query('INSERT INTO model_paired_grants VALUES($1,$2,$3,$4,$5)', [scope, kind, id, grantId, version]); return null;
     });
   }
-  async function grantRoute(identity: SpaceIdentity, kind: 'segment' | 'attempt', id: string) {
+  async function grantRoute(identity: SpaceIdentity, kind: 'segment' | 'attempt' | 'pin', id: string) {
     const { rows: [row] } = await storage.read('SELECT grant_id,binding_version FROM model_paired_grants WHERE scope=$1 AND kind=$2 AND id=$3', [modelScopeOf(identity), kind, id]);
     return row;
   }
   async function assertRequestGrant(identity: SpaceIdentity, request: LearningModelRequest, destination: Destination) {
     if (destination.kind !== 'device') return;
     const operation = request.operation;
-    if (!['segments.create', 'checks.receive', 'checks.dispatch'].includes(operation)) return;
-    const kind = operation === 'checks.dispatch' ? 'attempt' : 'segment';
-    const id = operation === 'checks.dispatch' ? String(request.args[0])
+    if (!['segments.create', 'checks.receive', 'checks.dispatch', 'selection.pin', 'selection.pinned'].includes(operation)) return;
+    const kind = operation.startsWith('selection.') ? 'pin' : operation === 'checks.dispatch' ? 'attempt' : 'segment';
+    const id = operation.startsWith('selection.') || operation === 'checks.dispatch' ? String(request.args[0])
       : String((request.args[0] as { segmentId: string }).segmentId);
     const fixed = await grantRoute(identity, kind, id);
     if (fixed) {
@@ -216,16 +217,22 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
         else if ('selected' in segment.source) {
           const selectionId = hash([origin.operationId, 'selection']).slice(0, 32);
           const operationId = `${selectionId.slice(0,8)}-${selectionId.slice(8,12)}-4${selectionId.slice(13,16)}-a${selectionId.slice(17,20)}-${selectionId.slice(20)}`;
-          const snapshot = await request({ operation: 'selection.snapshot', identity, args: [segment.source.selectionVersion] }, { ...origin, operationId });
+          const pinId = segment.source.pinId;
+          const snapshot = await request({ operation: pinId ? 'selection.pinned' : 'selection.snapshot', identity,
+            args: pinId ? [pinId, segment.source.selectionVersion] : [segment.source.selectionVersion] }, { ...origin, operationId });
           if (!snapshot.ok) return snapshot;
           const choice = (snapshot.value as { choice: { kind: string; connection: { connectionId: string; version: number } } }).choice;
           const { rows: [selectionRequest] } = await storage.read('SELECT body FROM model_paired_requests WHERE id=$1 AND scope=$2', [operationId, scope]);
           if (!selectionRequest) throw new StorageError('corrupt');
           destination = choice.kind === 'school' ? { kind: 'school' } : savedRequestSchema.parse(selectionRequest.body).destination;
-          if (destination.kind === 'device') {
+          if (destination.kind === 'device' && !pinId) {
             const original = savedRequestSchema.parse(selectionRequest.body);
             if (original.forwarded.operation !== 'selection.resolve') throw new StorageError('corrupt');
             forwarded = { ...input, args: [segment, original.forwarded.args[0]] };
+          } else if (destination.kind === 'device' && pinId) {
+            const grant = await grantRoute(identity, 'pin', String(pinId));
+            if (!grant) throw new StorageError('corrupt');
+            await fixGrant(identity, 'segment', segment.segmentId, String(grant.grant_id), Number(grant.binding_version));
           }
           if (choice.kind === 'school') forwarded = { ...input, args: [{ ...segment, source: { school: { connectionId: choice.connection.connectionId, version: choice.connection.version } } }] };
         } else {
@@ -274,6 +281,19 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
         // Refresh only public options. The device's own selected pointer is never imported.
         const binding = await readBinding(identity);
         destination = binding ? { kind: 'device', binding } : { kind: 'school' };
+      } else if (operation === 'selection.pin') {
+        const selected = await models.selection.destination(identity, args[1] as number);
+        destination = selected ? { kind: 'device', binding: selected.binding } : { kind: 'school' };
+        await fixRoute(identity, 'pin', args[0] as string, destination);
+        if (selected) {
+          if (selected.source.kind !== 'personal') throw new StorageError('corrupt');
+          await fixGrant(identity, 'pin', args[0] as string, selected.source.grantId, selected.binding.version);
+          forwarded = { ...input, operation: 'selection.pinSource', args: [args[0], args[1], selected.source] };
+        }
+      } else if (operation === 'selection.pinned') {
+        destination = await route(identity, 'pin', args[0] as string);
+      } else if (operation === 'selection.pinSource') {
+        throw new StorageError('forbidden'); // Only the Root adapter constructs this fixed-source device request.
       } else if (operation === 'selection.snapshot') {
         const selected = await models.selection.destination(identity, args[0] as number);
         destination = selected ? { kind: 'device', binding: selected.binding } : { kind: 'school' };
@@ -288,7 +308,8 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
     await assertRequestGrant(identity, input, saved.destination);
     let reply: LearningModelReply;
     if (saved.destination.kind === 'school') {
-      if (saved.localReply) reply = saved.localReply;
+      if (operation === 'selection.pinned') reply = await local(saved.forwarded);
+      else if (saved.localReply) reply = saved.localReply;
       else {
         const value = await local(saved.forwarded);
         const receipt = await storage.request({ requestId: 'paired-model-local-reply:' + origin.operationId, fingerprint }, async tx => {
@@ -349,6 +370,8 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
         reply = { ok: true, value: await models.selection.read(identity) };
       }
     }
+    if (operation === 'selection.pin' && reply.ok) return request({ operation: 'selection.pinned', identity, args },
+      { ...origin, operationId: randomUUID() });
     return reply;
   }
   async function validate() { await validatePairedLearning(storage); await models.deviceTasks.validate(); }
@@ -377,6 +400,6 @@ export async function validatePairedLearning(storage: OwnedStorage) {
     if (saved.origin.operationId !== row.id || modelScopeOf(saved.identity) !== row.scope || modelScopeOf(saved.request.identity) !== row.scope) throw new StorageError('corrupt');
   }
   const { rows: routes } = await storage.read('SELECT scope,kind,id,body FROM model_paired_routes');
-  for (const row of routes) { z.enum(['segment', 'attempt', 'image', 'result']).parse(row.kind); z.uuid().parse(row.id); await validateDestination(row.scope as string, destinationSchema.parse(row.body)); }
+  for (const row of routes) { z.enum(['segment', 'attempt', 'image', 'result', 'pin']).parse(row.kind); z.uuid().parse(row.id); await validateDestination(row.scope as string, destinationSchema.parse(row.body)); }
 
 }

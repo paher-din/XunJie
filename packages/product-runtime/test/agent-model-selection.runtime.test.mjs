@@ -151,6 +151,15 @@ test('installed school settings share the Root pointer and independent Agent dis
       assert.equal(payloads.at(-1).model, modelId, 'the actual SDK reaches the selected owner/configuration');
       return run;
     }
+    async function switchTo(connectionId) {
+      const input = { requestId: randomUUID(), selectionVersion: rootPointer.version };
+      const route = `agent/${activity.activityId}/model-switches`;
+      const result = await deviceApi(route, input, selected);
+      assert.equal(result.state, 'completed', JSON.stringify(result));
+      assert.equal(result.model.connectionId, connectionId);
+      assert.deepEqual(await deviceApi(route, input, selected), result);
+      return { input, result, route };
+    }
     await ask(personalModelId, 'device-route');
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'school', connectionId: schoolModelId } }, selected);
@@ -161,6 +170,7 @@ test('installed school settings share the Root pointer and independent Agent dis
       source: { kind: 'personal', connectionId: personalModelId, grantId: personalGrantId } }, personal);
     const schoolPointer = await deviceApi('models/selection', undefined, selected);
     assert.equal(schoolPointer.version, rootPointer.version); assert.deepEqual(schoolPointer.selected, rootPointer.selected);
+    await switchTo(schoolModelId);
     await ask(schoolModelId, 'school-route');
     // Root self is configured by the Root school webpage, not moved from the installed device.
     await schoolApi('models/connections', configuration(selfModelId, 'root-self-route'));
@@ -171,9 +181,21 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.deepEqual(selfGrant.owner, identity, 'self in a school space belongs to the Root model owner');
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'personal', connectionId: selfModelId, grantId: selfGrantId } }, selected);
+    await switchTo(selfModelId);
     await ask(selfModelId, 'root-self-route');
+    rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
+      source: { kind: 'personal', connectionId: personalModelId, grantId: deviceGrantId } }, selected);
+    const fixedDeviceSwitch = await switchTo(personalModelId);
+    rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
+      source: { kind: 'school', connectionId: schoolModelId } }, selected);
+    await agent.stop(); await agent.start();
+    assert.deepEqual(await deviceApi(fixedDeviceSwitch.route, fixedDeviceSwitch.input, selected), fixedDeviceSwitch.result,
+      'restart and later Root selection must not retarget the original device switch');
     assert.equal(payloads.length, 3, 'changing/reading selection does not dispatch hidden model requests');
     await deviceApi('models/grants/'+deviceGrantId+'/revoke', { requestId: randomUUID(), expectedVersion: deviceGrant.version }, selected);
+    const revokedSwitch = await fetch(deviceState.endpoint+'/api/learning/'+fixedDeviceSwitch.route, { method: 'POST',
+      headers: { 'content-type': 'application/json', ...selected }, body: JSON.stringify(fixedDeviceSwitch.input) });
+    assert.equal(revokedSwitch.status, 403, 'the completed switch receipt cannot bypass live Root/device grant revocation');
     const revokedView = await schoolApi('models/selection');
     assert.ok(!revokedView.options.some(choice => choice.grantId === deviceGrantId));
     const denied = await fetch(deviceState.endpoint+'/api/learning/models/selection', { method:'POST',
@@ -185,6 +207,6 @@ test('installed school settings share the Root pointer and independent Agent dis
   } finally {
     await Promise.allSettled([agent.stop(), device.stop(), school.stop()]);
     upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });

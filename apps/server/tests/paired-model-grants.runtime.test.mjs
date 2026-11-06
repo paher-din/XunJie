@@ -42,7 +42,10 @@ async function setup() {
   await root.school.save(identity.spaceId, { ...base, requestId: randomUUID(), connectionId: schoolId, policy: { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 2048, timeoutMs: 30000 } });
   await device.save(identity, { ...base, requestId: randomUUID(), connectionId: selfId });
   await device.save(personal, { ...base, requestId: randomUUID(), connectionId: personalId });
-  paired = createPairedLearningModels(rootStorage, root, { authorize: async () => {}, authorizeBinding: async () => {}, authorizeOrigin: async () => {}, assertWritable() {}, timeoutMs: 180, pollIntervalMs: 5 });
+  // A successful real-PG owner handshake is not the injected lost-ACK fault.
+  // Give Windows/fsync/source instrumentation a bounded window; holdRevoke/holdAck
+  // below still withhold the original receipt and prove revoke-before-ACK.
+  paired = createPairedLearningModels(rootStorage, root, { authorize: async () => {}, authorizeBinding: async () => {}, authorizeOrigin: async () => {}, assertWritable() {}, timeoutMs: 1800, pollIntervalMs: 5 });
   binding = await paired.bind(identity, { requestId: randomUUID(), expectedVersion: 0, owner: deviceStorage.owner, installationId: randomUUID(), grantId: randomUUID(), connectionId: randomUUID() });
   const pair = { grantId: binding.grantId, installationId: binding.installationId };
   const source = { sourceEnvironmentId: binding.owner.environmentId, sourceServiceId: binding.owner.serviceId, sourceInstallationId: binding.installationId, grantId: binding.grantId, connectionId: binding.connectionId };

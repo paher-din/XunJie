@@ -66,7 +66,8 @@ export function createStudentQuestions(storage: OwnedStorage, owner: {
     const { rows: [budget] } = await tx.query('SELECT wait_ms FROM teaching_budgets WHERE run_id=$1', [run.runId]);
     const { rows: [wait] } = await tx.query(`INSERT INTO teaching_waits(wait_id,run_id,step_id,command_id,purpose,state,reason,
       identity,command_digest,deadline,next_check_at) VALUES($1,$2,$3,$4,'result','pending','student',
-      (SELECT identity FROM teaching_runs WHERE run_id=$2),$5,clock_timestamp()+($6 || ' milliseconds')::interval,clock_timestamp())
+      (SELECT identity FROM teaching_runs WHERE run_id=$2),$5,
+      LEAST(clock_timestamp()+($6 || ' milliseconds')::interval,(SELECT deadline FROM teaching_budgets WHERE run_id=$2)),clock_timestamp())
       RETURNING deadline,clock_timestamp() AS created_at`, [waitId, run.runId, step.step_id, command.commandId,
       canonicalDigest(command), String(budget?.wait_ms ?? 86_400_000)]);
     const body = { ...input, source: { label: String(command.basis.sourceLabel), detail: input.source },

@@ -4,7 +4,7 @@ import { actionInputSchema, type ActionInput } from '@xunjie/contracts/action-in
 import { teachingInputSchema, type TeachingEventKind, type TeachingRun } from '@xunjie/contracts/teaching-agent';
 import { operationId } from './identity.js';
 
-export const teachingInputMigration: Migration = { version: 6, name: 'ordered-durable-agent-inputs', sql: `
+export const teachingInputMigration: Migration = { version: 8, name: 'ordered-durable-agent-inputs', sql: `
   ALTER TABLE teaching_waits ADD COLUMN observed_step_id uuid REFERENCES teaching_steps(step_id);
   -- Before steering could wake a Wait, a later model step necessarily included the settled result.
   UPDATE teaching_waits w SET observed_step_id=(SELECT next.step_id FROM teaching_steps original

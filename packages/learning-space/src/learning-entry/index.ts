@@ -360,6 +360,8 @@ export function createLearningEntry(options: {
           result = await teaching.events(identity, activityId, cursor);
         else if (parts.length === 3 && parts[2] === 'capabilities' && method === 'GET')
           result = await teaching.capabilities(identity, activityId);
+        else if (parts.length === 3 && parts[2] === 'model-switches' && method === 'POST')
+          result = await teaching.switchModel(identity, activityId, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'runs' && method === 'GET')
           result = await teaching.run(identity, activityId, parts[3]!);
         else if (parts.length === 5 && parts[2] === 'runs' && parts[4] === 'stop' && method === 'POST')

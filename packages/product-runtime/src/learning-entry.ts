@@ -285,7 +285,7 @@ export async function createProductLearningApplication(context: {
       if (!context || request.identity.kind !== 'school' || !paired) return localModelService(request);
       if (!context.source.sourceInstallationId) throw new StorageError('forbidden');
       const operation = request.operation;
-      const read = ['selection.read', 'selection.snapshot', 'segments.read', 'checks.read', 'checks.progress', 'checks.summary',
+      const read = ['selection.read', 'selection.snapshot', 'selection.pinned', 'segments.read', 'checks.read', 'checks.progress', 'checks.summary',
         'checks.requestPayload', 'images.read'].includes(operation);
       const fingerprint = createHash('sha256').update(JSON.stringify([request, context.source.grantId, context.input.authority ?? null])).digest('hex');
       const operationId = read ? randomUUID() : `${fingerprint.slice(0, 8)}-${fingerprint.slice(8, 12)}-4${fingerprint.slice(13, 16)}-a${fingerprint.slice(17, 20)}-${fingerprint.slice(20, 32)}`;

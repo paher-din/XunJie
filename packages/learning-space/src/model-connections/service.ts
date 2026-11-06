@@ -10,7 +10,7 @@ import type { createModelGateway } from './index.js';
 type Gateway = Awaited<ReturnType<typeof createModelGateway>>;
 /** Node-only learning boundary; no configuration, credentials or native resource access. */
 export type LearningModelPort = {
-  selection: Pick<Gateway['selection'], 'read' | 'snapshot' | 'resolveChoice'>;
+  selection: Pick<Gateway['selection'], 'read' | 'snapshot' | 'resolveChoice' | 'pin' | 'pinSource' | 'pinned'>;
   segments: Pick<Gateway['segments'], 'create' | 'read' | 'settle' | 'close'>;
   checks: Pick<Gateway['checks'], 'receive' | 'read' | 'requestPayload' | 'progress' | 'summary' | 'dispatch' | 'cancel'>;
   results: Pick<Gateway['results'], 'retain'>;
@@ -21,6 +21,9 @@ export type LearningModelPort = {
 const argumentSchemas = {
   'selection.read': z.tuple([spaceIdentitySchema.optional()]),
   'selection.snapshot': z.tuple([z.number().int().nonnegative()]),
+  'selection.pin': z.tuple([z.uuid(), z.number().int().nonnegative()]),
+  'selection.pinSource': z.tuple([z.uuid(), z.number().int().nonnegative(), modelSelectionSourceSchema]),
+  'selection.pinned': z.tuple([z.uuid(), z.number().int().nonnegative()]),
   'selection.resolve': z.tuple([modelSelectionSourceSchema]),
   'segments.create': z.tuple([modelSegmentInputSchema.refine(v => v.purpose === 'learning' && !('draft' in v.source)), modelSelectionSourceSchema.optional()]),
   'segments.read': z.tuple([z.uuid()]),
@@ -104,6 +107,9 @@ const image = modelImageRefSchema.extend({ resourceId: z.uuid(), mediaType: z.li
 const resultSchemas = {
   'selection.read': modelSelectionSchema,
   'selection.snapshot': z.object({ choice: modelChoiceSchema, source: modelAttemptSchema.shape.source.unwrap() }).strict(),
+  'selection.pin': z.object({ choice: modelChoiceSchema, source: modelAttemptSchema.shape.source.unwrap() }).strict(),
+  'selection.pinSource': z.object({ choice: modelChoiceSchema, source: modelAttemptSchema.shape.source.unwrap() }).strict(),
+  'selection.pinned': z.object({ choice: modelChoiceSchema, source: modelAttemptSchema.shape.source.unwrap() }).strict(),
   'selection.resolve': z.object({ choice: modelChoiceSchema, source: modelAttemptSchema.shape.source.unwrap() }).strict(),
   'segments.create': segment, 'segments.read': segment, 'segments.settle': segment,
   'segments.close': segment.extend({ boundary: modelSegmentBoundarySchema }),
@@ -174,6 +180,9 @@ export function createLearningModelService(models: LearningModelPort, authorize:
         case 'selection.read': result = await models.selection.read(identity, ...argumentSchemas['selection.read'].parse(request.args)); break;
         case 'selection.resolve': result = await models.selection.resolveChoice(identity, ...argumentSchemas['selection.resolve'].parse(request.args)); break;
         case 'selection.snapshot': result = await models.selection.snapshot(identity, ...argumentSchemas['selection.snapshot'].parse(request.args)); break;
+        case 'selection.pin': result = await models.selection.pin(identity, ...argumentSchemas['selection.pin'].parse(request.args)); break;
+        case 'selection.pinSource': result = await models.selection.pinSource(identity, ...argumentSchemas['selection.pinSource'].parse(request.args)); break;
+        case 'selection.pinned': result = await models.selection.pinned(identity, ...argumentSchemas['selection.pinned'].parse(request.args)); break;
         case 'segments.create': result = await models.segments.create(identity, ...argumentSchemas['segments.create'].parse(request.args)); break;
         case 'segments.read': result = await models.segments.read(identity, ...argumentSchemas['segments.read'].parse(request.args)); break;
         case 'segments.settle': result = await models.segments.settle(identity, ...argumentSchemas['segments.settle'].parse(request.args)); break;
@@ -213,6 +222,9 @@ export function createLearningModelClient(call: LearningModelCall): LearningMode
   }
   return {
     selection: {
+      pin: (identity, ...args) => invoke('selection.pin', identity, args) as ReturnType<LearningModelPort['selection']['pin']>,
+      pinSource: (identity, ...args) => invoke('selection.pinSource', identity, args) as ReturnType<LearningModelPort['selection']['pinSource']>,
+      pinned: (identity, ...args) => invoke('selection.pinned', identity, args) as ReturnType<LearningModelPort['selection']['pinned']>,
       read: (identity, ...args) => invoke('selection.read', identity, args) as ReturnType<LearningModelPort['selection']['read']>,
       snapshot: (identity, ...args) => invoke('selection.snapshot', identity, args) as ReturnType<LearningModelPort['selection']['snapshot']>,
       resolveChoice: (identity, ...args) => invoke('selection.resolve', identity, args) as ReturnType<LearningModelPort['selection']['resolveChoice']>,
