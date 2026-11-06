@@ -1,0 +1,272 @@
+{
+ "formatVersion": 1,
+ "recordedAt": "2026-11-06T15:26:52Z",
+ "issue": "https://github.com/paher-din/XunJie/issues/208",
+ "sourceIssue": "https://github.com/paher-din/XunJie/issues/201",
+ "branch": "wp07",
+ "acceptanceHead": "92de78f809f9bd01548bbe8f0ac837a1f614f637",
+ "originWp07": "7caf8c597d3f731527b185427decada28fb3eef3",
+ "environment": {
+  "os": "macOS 27.2",
+  "osBuild": "26B123",
+  "kernel": "Darwin 27.2.0 arm64",
+  "cpu": "Apple M5",
+  "model": "Mac17,3",
+  "arch": "arm64",
+  "memoryBytes": 17179869184,
+  "chrome": "156.0.8078.80",
+  "browser": "installed desktop Google Chrome; headed; one worker",
+  "node": "24.21.0",
+  "npm": "11.19.0",
+  "postgres": "18.6",
+  "postgresDistribution": "18.6.1",
+  "inputMethod": "com.bytedance.inputmethod.doubaoime.pinyin",
+  "deployment": "source runtime: apps/server + apps/web/dist-runtime + managed PostgreSQL"
+ },
+ "engineering": {
+  "typecheck": {
+   "status": "passed",
+   "exitCode": 0,
+   "log": ".verification/201/typecheck.log"
+  },
+  "build": {
+   "status": "passed",
+   "exitCode": 0,
+   "log": ".verification/201/build.log"
+  },
+  "browserContracts": {
+   "status": "passed",
+   "exports": 14,
+   "log": ".verification/wp07-208-mac/contracts-browser.log"
+  },
+  "docs": {
+   "status": "passed",
+   "markdownFiles": 223,
+   "localTargets": 2038,
+   "failures": 0,
+   "log": ".verification/wp07-208-mac/check-docs-final.log"
+  },
+  "runtimeSwitchBudget": {
+   "status": "passed",
+   "file": "apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs",
+   "test": "switching at a paired tool boundary keeps the same Run and its cumulative budgets",
+   "total": 1,
+   "pass": 1,
+   "fail": 0,
+   "skipped": 0,
+   "durationMs": 30384,
+   "tap": ".verification/wp07-208-mac/tools-recovery-switch.tap"
+  }
+ },
+ "connections": [
+  {
+   "name": "学校统一模型",
+   "protocol": "chat-completions",
+   "target": "school-approved loopback http://127.0.0.1:<port>/v1",
+   "result": "passed"
+  },
+  {
+   "name": "个人 Responses 模型",
+   "protocol": "responses",
+   "target": "personal HTTPS public tunnel",
+   "result": "passed"
+  },
+  {
+   "name": "个人 Messages 模型",
+   "protocol": "messages",
+   "target": "personal HTTPS public tunnel",
+   "result": "passed"
+  }
+ ],
+ "browser": {
+  "status": "passed",
+  "spec": "apps/web/e2e/teachingModelSwitch.spec.ts",
+  "runner": "Playwright, installed Chrome channel, headed, workers=1",
+  "measuredAt": "2026-11-06T15:09:14.768Z",
+  "cases": [
+   {
+    "title": "school and personal models switch both ways while prior questions, answers, work and tool results keep their provenance",
+    "status": "passed",
+    "duration": 15308
+   },
+   {
+    "title": "a switch requested during a slow answer waits for the original call, keeps duplicate identity and rejects a competing request before continuing on the new model",
+    "status": "passed",
+    "duration": 12858
+   },
+   {
+    "title": "a lost switch reply is explicit, keeps the activity readable after reload and a product process restart, and can be reapplied",
+    "status": "passed",
+    "duration": 9832
+   },
+   {
+    "title": "stopping an answer keeps the stopped state and the unsent draft",
+    "status": "passed",
+    "duration": 4457
+   }
+  ],
+  "requestCount": 10,
+  "expectedModelSwitchStatus": "已为当前学习活动切换到「…」。已有消息和结果保留原出处。",
+  "invoicePauseStatus": "当前回答或工具仍在收尾；切换请求已保留，完成后将继续核对。",
+  "lostReplyStatus": "切换结果尚未确认：…",
+  "screenshots": [
+   "model-switch-school-before-darwin.png",
+   "model-switch-school-to-personal-darwin.png",
+   "model-switch-personal-answer-darwin.png",
+   "model-switch-all-protocols-darwin.png",
+   "model-switch-personal-to-school-darwin.png",
+   "model-switch-inflight-paused-darwin.png",
+   "model-switch-inflight-continued-darwin.png",
+   "model-switch-network-lost-darwin.png",
+   "model-switch-reload-after-lost-darwin.png",
+   "model-switch-after-restart-darwin.png",
+   "model-switch-stopped-draft-darwin.png"
+  ]
+ },
+ "packageEntry": {
+  "status": "partial",
+  "cases": [
+   {
+    "title": "school and personal models switch both ways while prior questions, answers, work and tool results keep their provenance",
+    "status": "passed",
+    "duration": 15318
+   },
+   {
+    "title": "a switch requested during a slow answer waits for the original call, keeps duplicate identity and rejects a competing request before continuing on the new model",
+    "status": "passed",
+    "duration": 12789
+   },
+   {
+    "title": "stopping an answer keeps the stopped state and the unsent draft",
+    "status": "passed",
+    "duration": 4454
+   }
+  ],
+  "requestCount": 8,
+  "note": "场景 1、2、4 通过；场景 3（产品进程重启）未在包入口作为通过项记录，source runtime 场景 3 已通过。"
+ },
+ "ime": {
+  "status": "passed",
+  "probe": "scripts/probe-student-ask-ime.mjs",
+  "cases": 13,
+  "productDistributionSha256": "1f4512bd85415e7c0ec6414aa99660116b6007e7d3ffbf800b1bdb75e4de6914",
+  "browserVersion": "156.0.8078.80",
+  "inputMethod": {
+   "requested": "com.bytedance.inputmethod.doubaoime.pinyin",
+   "currentBefore": "com.apple.keylayout.ABC",
+   "selected": "TISSelectInputSource status=0 requested=com.bytedance.inputmethod.doubaoime.pinyin now=com.bytedance.inputmethod.doubaoime.pinyin",
+   "currentAfter": "com.bytedance.inputmethod.doubaoime.pinyin",
+   "restoredTo": "com.apple.keylayout.ABC"
+  },
+  "signals": {
+   "compositionStarts": 5,
+   "compositionUpdates": 39,
+   "compositionEnds": 5,
+   "composingKeydowns": 39,
+   "chineseCompositionCommits": [
+    "你好",
+    "世界",
+    "上海"
+   ],
+   "trustedKeydowns": 44
+  },
+  "screenshots": [
+   "student-ask-ime-candidate-darwin.png",
+   "student-ask-ime-digit-candidate-darwin.png"
+  ],
+  "note": "同一系统物理 IME 探针复用于本轮完整包；脚本原始元数据 ticket #209/source #199，本轮只引用其 product/package、输入法和 13/13 结果。"
+ },
+ "realModel": {
+  "status": "passed",
+  "probe": "scripts/probe-model-switch.mjs",
+  "scope": "installed school/device model owners and portable boundaries; not Teaching RunDriver",
+  "model": "deepseek-flash",
+  "generations": 6,
+  "requests": 6,
+  "allHttp200": true,
+  "protocols": [
+   {
+    "protocol": "chat-completions",
+    "passed": true,
+    "modelRequests": 2
+   },
+   {
+    "protocol": "responses",
+    "passed": true,
+    "modelRequests": 2
+   },
+   {
+    "protocol": "messages",
+    "passed": true,
+    "modelRequests": 2
+   }
+  ],
+  "limits": {
+   "maxGenerations": 6,
+   "perProtocol": 2,
+   "maxOutputTokens": 2048,
+   "timeoutMs": 30000,
+   "retries": 0
+  },
+  "reportSha256": "60bbfe473fb1b23dafeea7f7fba28fcd61b294469f5bd8194234b4b625d532dd"
+ },
+ "productPackage": {
+  "path": "<acceptance>/product-darwin-arm64-full",
+  "profile": "full",
+  "platform": "darwin-arm64",
+  "status": "unsigned-candidate",
+  "distributionSha256": "1f4512bd85415e7c0ec6414aa99660116b6007e7d3ffbf800b1bdb75e4de6914",
+  "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+  "appCliSha256": "0c8e49c76ec5871f8edf574a3fc724d1e4034d4ba95f1205ad0052bf88ffd4e8",
+  "webTreeSha256": "a1aaff402b9b16f6af00382cbe8b4bccaad99e9e380e9a9a256577861b68d88b",
+  "webFiles": 160,
+  "webBytes": 11422237,
+  "packageBytes": 415449292,
+  "entryHashes": {
+   "entries": 220,
+   "verified": 220,
+   "mismatches": []
+  },
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "postgresDistribution": "18.6.1",
+  "verification": {
+   "archiveChecksums": "passed",
+   "productionDependencyGraph": "passed",
+   "workspacePathsInBundles": "absent",
+   "nativeProcessProbes": "not-run",
+   "backupUpgradeProbes": "not-run",
+   "cleanMachineAcceptance": "cancelled-by-owner",
+   "productSigning": "deferred-by-user",
+   "notarization": "deferred-by-user",
+   "gatekeeper": "not-run"
+  },
+  "lifecycle": {
+   "status": "passed",
+   "endpoint": "http://127.0.0.1:51388",
+   "states": [
+    "installed",
+    "ready",
+    "ready",
+    "stopped",
+    "ready",
+    "stopped",
+    "stopped"
+   ],
+   "postgresDependency": "ready 18.6",
+   "log": ".verification/wp07-208-mac/package-cli.log"
+  }
+ },
+ "boundaries": {
+  "packageEntryScenario3": "not-run",
+  "packageSigningNotarizationGatekeeper": "not-run/deferred-by-user",
+  "cleanMachineAcceptance": "cancelled-by-owner",
+  "nativeProcessProbes": "not-run",
+  "backupUpgradeProbes": "not-run",
+  "directPublicDeepSeekInBrowser": "not-run: host DNS proxy resolves external hostnames into 198.18.0.0/15; product special-address policy rejects as designed; real provider verified by protocol boundary probe",
+  "teachingEffect": "not-evaluated"
+ },
+ "teaching": "not-evaluated",
+ "productCodeBaseMerge": "7caf8c597d3f731527b185427decada28fb3eef3",
+ "recordCommit": "92de78f809f9bd01548bbe8f0ac837a1f614f637"
+}

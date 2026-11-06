@@ -130,6 +130,10 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       <ModelSelection controller={selection}
       onSelected={saved => switchConversation(saved.version)}
       onCheck={() => void act('selected', '检查当前模型', () => check({ selected: true, selectionVersion: selection.selection!.version }))} />
+      {activityId && selection.selection?.selected && <div className="product-model-selection-actions">
+        <button type="button" className="outline" disabled={switchStatus === '正在核对原回答与工具边界…'}
+          onClick={() => void switchConversation(selection.selection!.version)}>将当前选用应用到学习活动</button>
+      </div>}
       {activityId && <p role={switchFailed ? 'alert' : 'status'} className={switchFailed ? 'learning-error' : 'detail'}>{switchStatus || '从当前学习活动进入设置；新选用会在原调用和工具结清后继续此活动。'}</p>}
       <div role="region" aria-label="个人连接配置"><ModelTab connections={connections} attempts={attempts} loading={loading} error={[loadError, actionError?.message].filter(Boolean).join('；')}
       onReload={() => void reload(true)} onNew={() => setDialog({ connection: null })} onEdit={connection => setDialog({ connection })}
