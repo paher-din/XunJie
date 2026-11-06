@@ -3,6 +3,8 @@ import { teachingStudentResponseInputSchema, teachingStudentResponseReceiptSchem
 import type { TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
 import { canonicalValue } from '@xunjie/contracts/execution'
 import { StudentResponseStore, type LocalStudentResponse } from '../reliable-workspace/student-responses'
+import { deliverAgentOperation } from '../reliable-workspace/agent-controls'
+import { useActivitySession } from './ActivitySession'
 import './student-questions.css'
 
 const store = new StudentResponseStore()
@@ -12,6 +14,7 @@ const reasons: Record<string, string> = {
   'version-mismatch': '问题已变化，这份输入没有用于另一个问题。',
   'question-missing': '原问题当前不可用，这份输入仍保留。',
   'activity-closed': '活动已关闭，这份输入仍保留。', 'run-terminated': '原任务已结束，这份输入仍保留。',
+  'question-superseded': '原提问已暂缓，这份回应未用于当前问题，可另行补充。',
 }
 
 export function StudentQuestionCard({ question, activityId, scope, readOnly, request, onConfirmed, focusRequested, onFocused }: {
@@ -19,6 +22,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   request: (route: string, body?: unknown) => Promise<unknown>
   onConfirmed: () => Promise<void>; focusRequested?: boolean; onFocused?: () => void
 }) {
+  const { draft } = useActivitySession()
   const key = JSON.stringify([scope, question.questionId, question.version, question.waitVersion])
   const [record, setRecord] = useState<LocalStudentResponse | null>(null)
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
@@ -34,9 +38,11 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
       const bytes = new TextEncoder().encode(JSON.stringify(canonicalValue({ activityId, questionId: question.questionId, input: saved.input })))
       const inputDigest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('')
       if (!alive.current || !writable.current) return
-      const known = await request(`responses/${saved.input.requestId}`)
-      if (!alive.current || !writable.current) return
-      const receipt = teachingStudentResponseReceiptSchema.parse(known ?? await request(`questions/${question.questionId}/responses`, saved.input))
+      const receipt = await deliverAgentOperation({ requestId: saved.input.requestId, queryRoute: `responses/${saved.input.requestId}`,
+        route: `questions/${question.questionId}/responses`, input: saved.input }, (route, body) => {
+        if (!alive.current || !writable.current) throw new Error('原回应入口已关闭。')
+        return request(route, body)
+      }, value => teachingStudentResponseReceiptSchema.parse(value))
       if (!alive.current || !writable.current) return
       if (receipt.requestId !== saved.input.requestId || receipt.questionId !== question.questionId
         || receipt.questionVersion !== saved.input.questionVersion || receipt.waitVersion !== saved.input.waitVersion || receipt.inputDigest !== inputDigest)
@@ -116,7 +122,8 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   const valid = record?.mode === 'choice' ? !!record.optionId : !!record?.text.trim()
   const status = question.state === 'answered' ? '回应已接收，内容保留在对话中。' : question.state === 'skipped' ? '你已明确跳过这次提问。'
     : question.state === 'expired' ? '这次提问已到期，回应入口已关闭。' : question.state === 'cancelled' ? '原任务已停止，这次提问已取消。'
-      : readOnly ? '当前只读，可以查看原问题与回应。' : '等你明确回应；关闭或忽略不会记作回答。'
+      : question.state === 'superseded' ? '已暂缓：你已补充新的方向，原提问关闭，未把未交的内容当作回应。'
+        : readOnly ? '当前只读，可以查看原问题与回应。' : '等你明确回应；关闭或忽略不会记作回答。'
   return <section ref={card} role="group" aria-label="Agent 的提问" tabIndex={-1}
     className="student-question" data-student-question={question.questionId} data-state={question.state}>
     <h4>Agent 的提问</h4><p className="preserve-lines student-question-prompt">{question.question}</p>
@@ -143,5 +150,10 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
     {record && (record.text || record.optionId) && <button type="button" className="student-response-copy" onClick={() => {
       void navigator.clipboard.writeText(record.text || question.options.find(option => option.id === record.optionId)?.label || '').catch(() => setError('暂时无法复制，请直接选中输入文字保存。'))
     }}>复制保留的回应</button>}
+    {record && (record.text || record.optionId) && question.state === 'superseded' && !readOnly && <button type="button" className="outline" onClick={() => {
+      const text = record.text || question.options.find(option => option.id === record.optionId)?.label || ''
+      const current = draft.snapshot()
+      draft.change([current.question, text].filter(Boolean).join('\n\n'), current.references)
+    }}>作为新的补充放入输入区</button>}
   </section>
 }

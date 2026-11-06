@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { teachingControlReceiptSchema, isRecoverableTeachingPause } from '@xunjie/contracts/teaching-agent'
 import type { TeachingInput, TeachingRun } from '@xunjie/contracts/teaching-agent'
+import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
 import { agentControlStore, protectAgentOperation, confirmAgentOperation, deliverAgentOperation,
   type LocalAgentControl, type PendingAgentOperation } from '../reliable-workspace/agent-controls'
 import './agent-interaction.css'
+import { useActivitySession } from './ActivitySession'
 
 type Request = (route: string, body?: unknown) => Promise<unknown>
 const controlReasons: Record<string, string> = {
@@ -16,6 +18,7 @@ const controlReasons: Record<string, string> = {
 
 /** Every control is protected before delivery. Remounts query the original receipt before retrying. */
 function useAgentControl(scope: string, target: string, readOnly: boolean, request: Request, confirmed: () => Promise<void>) {
+  const { workspace } = useActivitySession()
   const key = JSON.stringify([scope, 'agent-control', target])
   const [record, setRecord] = useState<LocalAgentControl | null>(null)
   const [protectedDraft, setProtectedDraft] = useState(true)
@@ -65,7 +68,7 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
     const version = ++revision.current
     setProtectedDraft(false)
     setRecord({ ...record, ...patch })
-    writes.current = writes.current.catch(() => {}).then(() => agentControlStore.change(key, saved => ({ ...(saved ?? record), ...patch })))
+    writes.current = workspace.trackInput(writes.current.catch(() => {}).then(() => agentControlStore.change(key, saved => ({ ...(saved ?? record), ...patch }))))
     void writes.current.then(() => { if (alive.current && revision.current === version) { setError(''); setProtectedDraft(true) } })
       .catch(() => { if (alive.current) setError('草稿尚未在本机可靠保留，请复制后重试。') })
   }
@@ -78,7 +81,7 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
       if (current?.pending) { await deliver(current.pending); return }
       const requestId = crypto.randomUUID()
       const pending = { requestId, route, queryRoute: 'controls/' + requestId, input: { ...body, requestId } }
-      const saved = await protectAgentOperation(key, scope, pending)
+      const saved = await workspace.trackInput(protectAgentOperation(key, scope, pending))
       if (!alive.current) return
       setRecord(saved); await deliver(pending)
     } catch { if (alive.current) setError('操作尚未在本机可靠保留，原内容仍在这里。') }
@@ -110,7 +113,7 @@ export function AgentInputRecord({ input, scope, readOnly, request, onConfirmed 
       {input.mode === 'queue' && <button type="button" className="outline" disabled={disabled} onClick={() => void control.submit(`inputs/${input.inputId}/control`, { version: 1, expectedVersion: input.version, operation: 'promote' })}>改为引导</button>}
     </div>}
     {editing && draft && <div className="agent-input-editor">
-      <label>修改待处理内容<textarea aria-label="修改待处理内容" rows={4} value={draft.text} disabled={disabled} maxLength={8000}
+      <label>修改待处理内容<textarea aria-label="修改待处理内容" rows={4} value={draft.text} disabled={disabled} maxLength={QUESTION_TEXT_MAX_LENGTH}
         onChange={event => control.change({ draft: { ...draft, text: event.target.value } })} /></label>
       <div className="agent-control-actions">
         <button type="button" className="primary" disabled={disabled || !editable || !draft.text.trim()} onClick={() => void control.submit(`inputs/${input.inputId}/control`,

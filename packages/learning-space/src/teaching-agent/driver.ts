@@ -108,6 +108,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   }
   async function assertDispatch(run: TeachingRun, generation: number) {
     if (await expired(run.runId)) throw new TeachingBudgetError('run-deadline-exceeded');
+    if ((await owner.runRow(run.runId)).reason === 'wait-expired') throw new TeachingBudgetError('wait-expired');
     if (owner.dispatchClosed()) throw new StorageError('maintenance');
     await owner.authorize(owner.identity(await owner.runRow(run.runId)));
     const { rows: log } = await storage.read(`SELECT s.next_seq,e.seq,e.kind,e.event_version FROM teaching_sessions s
@@ -663,6 +664,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const current = await owner.runRow(run.runId);
       run = owner.toRun(current);
       if (terminal(run.state)) return;
+      if (run.reason === 'wait-expired') {
+        await pause(run, generation, 'wait-expired');
+        await stopTools(owner.toRun(await owner.runRow(run.runId))); return;
+      }
       if (await expired(run.runId)) {
         const saved = await step(run.runId);
         if (saved?.phase !== 'model' && saved?.phase !== 'final') {
@@ -811,8 +816,15 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         if (wait.state === 'pending' && updated?.state === 'expired') {
           await event(tx, run.activityId, 'wait-expired', { runId: run.runId, waitId: wait.wait_id, commandId: wait.command_id });
           // Expiry stops automatic advancement; bounded checks still archive the original result.
-          if (wait.purpose === 'result') await tx.query(`UPDATE teaching_runs SET state='paused',reason='wait-expired',lease_owner=NULL,lease_expires_at=NULL,
-            updated_at=clock_timestamp() WHERE run_id=$1 AND state='waiting'`, [run.runId]);
+          if (wait.purpose === 'result') {
+            // A discussion may be generating while its original tool Wait expires. Keep its
+            // physical call/lease for truthful settlement, but bar every later dispatch and FIFO.
+            await tx.query(`UPDATE teaching_runs SET reason='wait-expired',
+              state=CASE WHEN state='waiting' AND lease_owner IS NULL THEN 'paused' ELSE state END,
+              completed_at=CASE WHEN state='waiting' AND lease_owner IS NULL THEN clock_timestamp() ELSE completed_at END,
+              updated_at=clock_timestamp() WHERE run_id=$1 AND state IN ('received','running','dispatching','waiting')`, [run.runId]);
+            await owner.inputs.afterFinish(tx, run, 'paused', 'wait-expired');
+          }
         }
         return null;
       });

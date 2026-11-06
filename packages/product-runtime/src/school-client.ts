@@ -13,6 +13,7 @@ import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSche
   executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
+import { teachingInteractionSettingsSchema, teachingControlReceiptSchema, teachingInputControlReceiptSchema } from '@xunjie/contracts/teaching-agent';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
@@ -572,6 +573,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyReference', reference)); },
     });
     const identity = connection.grant!.identity;
+    if (route === 'agent-settings') return body === undefined ? learning.agentPreferences.read(identity) : learning.agentPreferences.save(identity, body);
+    if (route.startsWith('agent-settings/receipts/')) return learning.agentPreferences.receipt(identity, route.slice('agent-settings/receipts/'.length));
     if (route === 'activities') return body === undefined ? learning.list(identity) : learning.create(identity, body as never);
     if (route.startsWith('activities/')) return learning.open(identity, route.slice(11));
     if (route === 'activity-status') return learning.setStatus(identity, body as never);
@@ -619,11 +622,12 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+      `|agent-settings(?:/receipts/${id})?` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
       `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
-      `|agent/${id}(?:/(?:conversation|events|capabilities|model-switches|requests/${id}|snapshots/${id}|responses/${id}|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
+      `|agent/${id}(?:/(?:conversation|events|capabilities|model-switches|requests/${id}|snapshots/${id}|responses/${id}|controls/${id}|inputs/${id}/control|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -631,7 +635,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -662,6 +666,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         || JSON.stringify(activity.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
       return activity;
     };
+    if (route === 'agent-settings' || route.startsWith('agent-settings/receipts/')) return value === null ? null : parsed(teachingInteractionSettingsSchema, value);
+    if (/^agent\/[^/]+\/controls\//.test(route)) return value === null ? null : parsed(teachingControlReceiptSchema, value);
+    if (/^agent\/[^/]+\/inputs\//.test(route)) return parsed(teachingInputControlReceiptSchema, value);
     if (route.startsWith('intents/')) {
       if (route.endsWith('/capabilities')) return parsed(z.array(actionReceiverSchema), value);
       const checkIntent = (candidate: unknown) => {

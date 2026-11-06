@@ -9,6 +9,7 @@ import { canonicalDigest, operationId } from './identity.js';
 export function createTeachingRunControls(storage: OwnedStorage, owner: {
   models: LearningModelPort;
   appendEvent(tx: OwnedTransaction, activityId: string, kind: TeachingEventKind, body: Record<string, unknown>): Promise<unknown>;
+  freezeBudget(tx: OwnedTransaction, runId: string): Promise<void>;
 }) {
   async function stop(activityId: string, runId: string, value: unknown) {
     const input = teachingStopInputSchema.parse(value), fingerprint = canonicalDigest({ activityId, runId, operation: 'stop', input });
@@ -42,13 +43,14 @@ export function createTeachingRunControls(storage: OwnedStorage, owner: {
       if (!previous) throw new StorageError('missing');
       const { rows: active } = await tx.query(`SELECT run_id FROM teaching_runs WHERE activity_id=$1
         AND state IN ('received','running','dispatching','waiting') LIMIT 1`, [activityId]);
+      const { rows: switches } = await tx.query(`SELECT request_id FROM teaching_model_switches WHERE activity_id=$1 AND state IN ('accepted','paused') LIMIT 1`, [activityId]);
       const { rows: unknown } = await tx.query(`SELECT command_id FROM teaching_commands WHERE run_id=$1
         AND (state='dispatching' OR outcome->>'state'='unknown') LIMIT 1`, [runId]);
       const { rows: selected } = await tx.query(`SELECT i.* FROM teaching_inputs i WHERE activity_id=$1
         AND input_id=ANY($2::uuid[]) ORDER BY seq`, [activityId, input.inputs.map(item => item.inputId)]);
       const resuming = !previous.stop_requested && isRecoverableTeachingPause({ state: String(previous.state),
         reason: String(previous.reason), completedAt: previous.completed_at ? new Date(previous.completed_at as string).toISOString() : null });
-      let reason = active.length ? 'run-active' : !resuming && (native && !native.physicalRequestEnded || unknown.length) ? 'original-effects-unconfirmed'
+      let reason = active.length ? 'run-active' : switches.length ? 'model-switch-pending' : !resuming && (native && !native.physicalRequestEnded || unknown.length) ? 'original-effects-unconfirmed'
         : !resuming && !input.inputs.length ? 'select-inputs' : selected.length !== input.inputs.length ? 'input-missing' : '';
       if (!reason) for (const selectedInput of selected) {
         const expected = input.inputs.find(item => item.inputId === selectedInput.input_id)!;
@@ -73,6 +75,7 @@ export function createTeachingRunControls(storage: OwnedStorage, owner: {
         await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,previous_run_id,usage)
           VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [nextRunId, activityId, root.request_id, root.input_id,
           JSON.stringify(identity), runId, JSON.stringify({ state: 'unknown' })]);
+        await owner.freezeBudget(tx, nextRunId);
         for (const item of selected) {
           await tx.query("UPDATE teaching_inputs SET state='pending',reason='',waiting_on_run_id=$2 WHERE input_id=$1", [item.input_id, nextRunId]);
           await tx.query('INSERT INTO teaching_run_input_selections VALUES($1,$2,$3)', [nextRunId, item.input_id, item.version]);

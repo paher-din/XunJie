@@ -49,13 +49,14 @@ export async function fixture(answer = (_payload, response) => reply(response, {
     } catch (error) { failures.push(error); response.destroy(error); }
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
-  const root = await mkdtemp(join(tmpdir(), 'xj-input-control-'));
+  const external = process.env.XUNJIE_INPUT_CONTROL_ENDPOINT;
+  const root = external ? '' : await mkdtemp(join(tmpdir(), 'xj-input-control-'));
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
-    webRoot: fileURLToPath(new URL('../../../web/dist-runtime', import.meta.url)),
+    webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../../../web/dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
-  const runtime = openProductRuntime({ root, resources });
-  await runtime.install({ profile: 'local' });
-  let endpoint = (await runtime.start()).endpoint;
+  const runtime = external ? null : openProductRuntime({ root, resources });
+  if (runtime) await runtime.install({ profile: 'local' });
+  let endpoint = external ?? (await runtime.start()).endpoint;
   const raw = async (route, body, headers = { 'x-xj-space': 'personal' }) => {
     const response = await fetch(new URL('/api/learning/' + route, endpoint), {
       headers: { 'content-type': 'application/json', ...headers },
@@ -75,7 +76,8 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         path: '/chat/completions', modelId: 'fixture-input-control', dialect: 'standard', parameterMode: 'plain', enabled: true,
         contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-input-control-key' } });
       await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
-      await api('models/selection', { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId, grantId } });
+      const selected = await api('models/selection');
+      await api('models/selection', { requestId: randomUUID(), expectedVersion: selected.version, source: { kind: 'personal', connectionId, grantId } });
     },
     async activity(goal = '核对补充与排队的真实顺序') {
       return api('activities', { requestId: randomUUID(), goal, question: '', references: [] });
@@ -98,6 +100,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
     },
     /** Published host configuration seam: independent production owner, real dependencies, controlled receipt timing. */
     async controlled(activity, overrides = {}) {
+      if (!runtime) throw new Error('Controlled owner tests require their own native runtime.');
       const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
       async function reopen(unit, migrations) {
         const service = environment.services.find(item => item.unit === unit);
@@ -128,8 +131,8 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         backend: createFileBackend({ id: 'input-control-agent', root: join(root, 'controlled-agent-resources') }) });
       ownedStorages.push(storage);
       const tools = createTeachingTools({ learning: () => learning, courses });
-      const makeAgent = (options = {}) => {
-        const agent = createTeachingAgent(storage, { models, tools, authorize: who => spaces.authorize(who),
+      const makeAgent = (options = {}, ownerStorage = storage) => {
+        const agent = createTeachingAgent(ownerStorage, { models, tools, authorize: who => spaces.authorize(who),
           identityFor: scope => spaces.lookup(scope.spaceId, scope.principalId), activity: (who, id) => learning.open(who, id),
           start: false, driverId: randomUUID(), scanIntervalMs: 40, ...overrides, ...options });
         ownedAgents.push(agent); return agent;
@@ -156,7 +159,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       const accepted = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       return { input, receipt: accepted.receipt, ...JSON.parse(accepted.receipt.detail) };
     },
-    async restart() { await runtime.stop(); endpoint = (await runtime.start()).endpoint; },
+    async restart() { if (!runtime) throw new Error('External package lifecycle belongs to its launcher.'); await runtime.stop(); endpoint = (await runtime.start()).endpoint; },
     async close() {
       const errors = [];
       ownedAgents.forEach(agent => { agent.closeDispatch(); agent.close(); });
@@ -169,6 +172,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         try { await learning.executions.shutdown(); } catch (error) { errors.push(error); }
       }
       await Promise.allSettled(ownedStorages.map(storage => storage.close()));
+      if (!runtime) { if (errors.length) throw new AggregateError(errors, 'External fixture cleanup failed'); return; }
       let stopped = false;
       try { await runtime.stop(); stopped = true; } catch (error) { errors.push(error); }
       if (stopped) {

@@ -1,10 +1,209 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createHash, randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, dirname, resolve, basename } from 'node:path';
+import { openProductRuntime, restoreProductRecovery } from '@xunjie/product-runtime';
 import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
 import { executionActionSchema } from '@xunjie/contracts/execution';
+import { actionInputSchema } from '@xunjie/contracts/action-intents';
+import { StorageError } from '@xunjie/storage';
 import { fixture, reply, until } from './support/teaching-input-control.mjs';
+
+test('input revisions, personal preferences and controls survive maintenance, read-only restore and fenced takeover', { timeout: 300000 }, async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = await fixture(async (_payload, response, index) => {
+    if (index === 1) { await gate; response.writeHead(500, { 'content-type': 'application/json' }); response.end('{"error":{"message":"controlled failure"}}'); }
+    else reply(response, { text: '接管后只采用明确选择的修订内容。' });
+  });
+  const directory = await mkdtemp(join(tmpdir(), 'xj-input-recovery-'));
+  let target;
+  try {
+    await f.configure();
+    const preferenceInput = { requestId: randomUUID(), expectedVersion: 0, busyInputMode: 'queue' };
+    const preference = await f.api('agent-settings', preferenceInput);
+    const activity = await f.activity(), base = `agent/${activity.activityId}`, original = await f.send(activity, '原任务等待受控失败。');
+    await until(() => f.payloads.length === 1, 'The original request starts.');
+    const queued = await f.send(activity, '接收时的排队原文。', { version: 1, mode: 'queue', basis: { source: 'preference', preferenceVersion: 1 } });
+    const edit = { version: 1, requestId: randomUUID(), expectedVersion: 1, operation: 'revise', text: '接管后使用这个修订版本。' };
+    const edited = await f.api(`${base}/inputs/${queued.inputId}/control`, edit);
+    release();
+    await until(async () => (await f.api(`${base}/runs/${original.runId}`)).state === 'failed', 'The round pauses all queued content.');
+    const before = await f.api(`${base}/conversation`), context = await f.api('context'), key = randomBytes(32);
+    await f.runtime.setCredential('input-recovery-key', key.toString('base64'));
+    const backup = await f.runtime.recovery.backup({ directory, recoveryKeyRef: 'input-recovery-key', leaveClosed: true });
+    const targetRoot = join(directory, 'target');
+    const restored = await restoreProductRecovery({ root: targetRoot, resources: f.resources, backupDirectory: join(directory, backup.backupId), key });
+    for (const owner of restored.owners) await owner.close?.();
+    target = openProductRuntime({ root: targetRoot, resources: f.resources });
+    let state = await target.start();
+    const api = async (route, body, headers = {}) => {
+      const response = await fetch(state.endpoint + '/api/learning/' + route, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal', ...headers },
+        ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+      return { status: response.status, body: await response.json() };
+    };
+    assert.equal(state.state, 'maintenance');
+    assert.deepEqual((await api(`${base}/conversation`)).body.inputs, before.inputs);
+    assert.deepEqual((await api(`${base}/controls/${edit.requestId}`)).body, edited);
+    assert.deepEqual((await api('agent-settings')).body, preference);
+    assert.equal((await api('agent-settings', { requestId: randomUUID(), expectedVersion: 1, busyInputMode: 'steering' })).status, 503);
+    assert.equal(f.payloads.length, 1);
+    assert.equal((await target.recovery.takeover({ sourceRoot: f.root, receivers: [] })).phase, 'active');
+    const after = (await api('context')).body;
+    assert.notEqual(after.clientNamespace, context.clientNamespace);
+    const input = { version: 2, requestId: randomUUID(), inputs: [{ inputId: queued.inputId, expectedVersion: 2 }] };
+    assert.equal((await api(`${base}/runs/${original.runId}/continue`, input, { 'x-xj-namespace': context.clientNamespace })).status, 403);
+    const continued = await api(`${base}/runs/${original.runId}/continue`, input, { 'x-xj-namespace': after.clientNamespace });
+    assert.equal(continued.status, 200);
+    await until(async () => (await api(`${base}/runs/${continued.body.runId}`)).body.state === 'completed', 'Selected revision resumes only after takeover.');
+    await target.stop(); state = await target.start();
+    assert.equal((await api(`${base}/controls/${input.requestId}`)).body.continuedRunId, continued.body.runId);
+    assert.deepEqual((await api('agent-settings/receipts/' + preferenceInput.requestId)).body, preference);
+    assert.equal(f.payloads.length, 2);
+    assert.match(JSON.stringify(f.payloads[1]), /接管后使用这个修订版本/);
+  } finally {
+    release(); await target?.stop(); await f.close();
+    if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('xj-input-recovery-')) throw new Error('Unexpected cleanup target');
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+});
+
+test('two advancing owners preserve a permitted real tool and reject the unstarted batch after a lost steering commit receipt', { timeout: 240000 }, async () => {
+  let release, started;
+  const gate = new Promise(resolve => { release = resolve; }), dispatched = new Promise(resolve => { started = resolve; });
+  const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'batch.txt', kind: 'text', encoding: 'utf8',
+    mediaType: 'text/plain', value: '真实批次读取：29。' };
+  const f = await fixture((_payload, response, index) => index === 1 ? reply(response, { calls: [
+    { id: 'permitted-read', name: 'read_work', arguments: { objectId: work.objectId, contentId: work.contentId } },
+    { id: 'unstarted-read', name: 'read_work', arguments: { objectId: work.objectId, contentId: work.contentId } },
+  ] }) : reply(response, { text: '保留已许可的实际读取，未开始项依新方向停止。' }));
+  try {
+    const activity = await f.activity(), c = await f.controlled(activity);
+    await c.learning.works.sync(c.identity, activity.activityId, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    let lostId = '', lost = false, dispatches = 0;
+    const boundary = new Proxy(c.storage, { get(target, property) {
+      if (property === 'request') return async (input, effect) => {
+        const result = await target.request(input, effect);
+        if (!lost && input.requestId === 'teaching-accept:' + lostId) { lost = true; throw new StorageError('commit-unknown'); }
+        return result;
+      };
+      return Reflect.get(target, property);
+    } });
+    const first = c.makeAgent({ tools: { ...c.tools, dispatch: async (...args) => {
+      const outcome = await c.tools.dispatch(...args); dispatches++; started(); await gate; return outcome;
+    } } }, boundary), second = c.makeAgent();
+    first.closeDispatch();
+    const original = await c.send('执行批次读取。', undefined, [work], first);
+    await c.send('模型建立前补充：核对固定来源。', undefined, [work], first);
+    assert.equal(f.payloads.length, 0);
+    first.resume();
+    await dispatched;
+    second.resume();
+    lostId = randomUUID();
+    const steering = actionInputSchema.parse({ ...original.input, requestId: lostId,
+      draft: { ...original.input.draft, token: randomUUID(), question: '改变方向，未开始的批次不用再做。' } });
+    const hash = createHash('sha256').update(JSON.stringify(steering)).digest('hex');
+    await assert.rejects(first.accept(steering, hash), error => error.code === 'commit-unknown');
+    const accepted = await second.query(lostId, hash);
+    assert.equal(accepted.state, 'accepted');
+    assert.deepEqual(await second.accept(steering, hash), accepted);
+    release();
+    const final = await until(async () => {
+      const value = await second.conversation(c.identity, activity.activityId);
+      return value.runs[0]?.state === 'completed' ? value : null;
+    }, 'The original Run settles once under competing production owners.');
+    assert.equal(final.runs.length, 1);
+    assert.equal(final.tools.find(tool => tool.callId === 'permitted-read').result.file.value, work.value);
+    assert.equal(final.tools.find(tool => tool.callId === 'unstarted-read').outcome, 'not-dispatched');
+    assert.equal(final.inputs.filter(input => input.requestId === lostId).length, 1);
+    const events = await second.events(c.identity, activity.activityId);
+    assert.equal(events.filter(event => event.kind === 'input-adopted' && event.body.inputId === JSON.parse(accepted.detail).inputId).length, 1);
+    assert.equal(events.filter(event => event.kind === 'tool-permitted').length, 1);
+    assert.equal(dispatches, 1);
+    assert.equal(f.payloads.length, 2);
+    assert.match(JSON.stringify(f.payloads[0]), /模型建立前补充：核对固定来源/);
+  } finally { release(); await f.close(); }
+});
+
+test('explicit continuation after a model failure carries verified tool effects into a new model segment', { timeout: 240000 }, async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'measured.txt', kind: 'text', encoding: 'utf8',
+    mediaType: 'text/plain', value: '已核实的独立实测：水位是 31.75 cm。' };
+  const f = await fixture(async (_payload, response, index) => {
+    if (index === 1) reply(response, { calls: [{ id: 'measured-source', name: 'read_work', arguments: { objectId: work.objectId, contentId: work.contentId } }] });
+    else if (index === 2) { await gate; response.writeHead(500, { 'content-type': 'application/json' }); response.end('{"error":{"message":"controlled failure"}}'); }
+    else reply(response, { text: '沿已核实的原结果解释新的问题。' });
+  });
+  try {
+    await f.configure();
+    const activity = await f.activity(), base = `agent/${activity.activityId}`;
+    await f.api(`workspaces/${activity.activityId}`, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    const first = await f.send(activity, '实际读取固定测量资料。', undefined, [work]);
+    await until(() => f.payloads.length === 2, 'The real tool completed before holding only the following model response.');
+    const queued = await f.send(activity, '继续解释原实测依据，不重新实验。', { version: 1, mode: 'queue', basis: { source: 'explicit', preferenceVersion: 0 } });
+    release();
+    await until(async () => (await f.api(`${base}/runs/${first.runId}`)).state === 'failed', 'The original model transport fails.');
+    await f.configure();
+    const next = await f.api(`${base}/runs/${first.runId}/continue`, { version: 2, requestId: randomUUID(), inputs: [{ inputId: queued.inputId, expectedVersion: 1 }] });
+    await until(async () => (await f.api(`${base}/runs/${next.runId}`)).state === 'completed', 'Only the explicitly selected input starts a successor.');
+    assert.equal(f.payloads.length, 3);
+    assert.match(JSON.stringify(f.payloads[2]), /31\.75 cm/);
+    const value = await f.api(`${base}/conversation`), tool = value.tools.find(item => item.callId === 'measured-source');
+    assert.equal(tool.outcome, 'completed');
+    const event = (await f.api(`${base}/events`)).find(item => item.kind === 'context-assembled' && item.body.runId === next.runId);
+    const snapshot = await f.api(`${base}/snapshots/${event.body.snapshotId}`);
+    assert.ok(snapshot.sources.some(source => source.id === tool.commandId), 'A portable effect retains its original command provenance.');
+    assert.notEqual(next.segmentId, value.runs[0].segmentId);
+  } finally { release(); await f.close(); }
+});
+
+test('a long-tool deadline pauses unconsumed input even while steering discussion is generating', { timeout: 240000 }, async () => {
+  let release, original, controlled;
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = await fixture(async (_payload, response, index) => {
+    if (index === 1) reply(response, { calls: [{ id: 'deadline-aggregation', name: 'course_operation', arguments: {
+      componentKey: 'table', operationId: 'aggregate', parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } } }] });
+    else { await gate; reply(response, { text: '新的讨论已发生，原实验期限不能重置。' }); }
+  });
+  try {
+    const activity = await f.browserCourse(), c = await f.controlled(activity, { limits: { waitMs: 2500 } });
+    controlled = c;
+    const binding = activity.course.components[0], manifest = binding.definition.manifest;
+    const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'components/table.json', kind: 'state', encoding: 'json',
+      mediaType: 'application/vnd.xunjie.component-state+json', value: JSON.stringify({ formatVersion: 1,
+        instanceId: activity.activityId + ':table', componentId: manifest.componentId, version: manifest.version,
+        definitionDigest: binding.definition.digest, stateVersion: 1, operationId: randomUUID(), content: manifest.initialState }) };
+    await c.learning.works.sync(c.identity, activity.activityId, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    c.agent.resume();
+    original = await c.send('运行真实聚合，但保留原等待期限。', undefined, [work]);
+    const before = await until(async () => {
+      const value = await c.agent.conversation(c.identity, activity.activityId);
+      return value.waits.length && value.runs[0].state === 'waiting' ? value : null;
+    }, 'The production tool has an accepted browser Wait.');
+    await c.send('等待期间先讨论新的目标。');
+    await until(() => f.payloads.length === 2, 'Steering starts discussion before the old Wait ends.');
+    const pending = await c.send('尚未采用的下一项。', { version: 1, mode: 'queue', basis: { source: 'explicit', preferenceVersion: 0 } });
+    await until(async () => (await c.agent.conversation(c.identity, activity.activityId)).waits[0].state === 'expired', 'The original Wait expires.');
+    release();
+    const final = await until(async () => {
+      const value = await c.agent.conversation(c.identity, activity.activityId);
+      return value.runs[0].state === 'paused' ? value : null;
+    }, 'Expiry must pause the original Run instead of completing discussion and advancing queue.');
+    assert.equal(final.runs.length, 1);
+    assert.equal(final.runs[0].reason, 'wait-expired');
+    assert.ok(final.runs[0].completedAt, 'Hard expiry is terminal.');
+    assert.equal(final.inputs.find(input => input.inputId === pending.inputId).state, 'paused');
+    assert.equal(final.waits[0].deadline, before.waits[0].deadline);
+    assert.equal(f.payloads.length, 2);
+  } finally {
+    release();
+    if (original && controlled) await controlled.agent.stop(controlled.identity, original.input.scope.activityId, original.runId, { requestId: randomUUID() });
+    await f.close();
+  }
+});
 
 test('the real subject owns a persistent busy-input preference with immutable original receipts', { timeout: 180000 }, async () => {
   const f = await fixture();
@@ -236,6 +435,10 @@ test('a failed round pauses all remaining inputs and only explicitly selected co
       assert.equal(item.state, 'paused');
       assert.ok(item.reason);
     }
+    const legacy = { requestId: randomUUID() };
+    assert.equal((await f.raw(`${base}/runs/${first.runId}/continue`, legacy)).status, 409,
+      'An old unqualified continue wire cannot manufacture a new retry round.');
+    assert.equal((await f.api(`${base}/controls/${legacy.requestId}`)).reason, 'select-inputs');
     const input = { version: 2, requestId: randomUUID(), inputs: [{ inputId: selected.inputId, expectedVersion: 1 }] };
     const continued = await f.api(`${base}/runs/${first.runId}/continue`, input);
     assert.notEqual(continued.runId, first.runId);
@@ -261,7 +464,20 @@ test('new steering pairs unpermitted old native tool calls as not executed, then
   const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'basis.txt', kind: 'text', encoding: 'utf8',
     mediaType: 'text/plain', value: '真实固定文件：边界值 17。' };
   const f = await fixture(async (_payload, response, index) => {
-    if (index === 1) await gate;
+    if (index === 1) {
+      const args = JSON.stringify({ objectId: work.objectId, contentId: work.contentId }), cut = Math.floor(args.length / 2);
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      response.write('data: ' + JSON.stringify({ id: 'old-tool-stream', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [
+        { index: 0, id: 'old-read', type: 'function', function: { name: 'read_work', arguments: args.slice(0, cut) } },
+      ] }, finish_reason: null }] }) + '\n\n');
+      await gate;
+      for (const chunk of [
+        { id: 'old-tool-stream', choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: args.slice(cut) } }] }, finish_reason: null }] },
+        { id: 'old-tool-stream', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] },
+        { choices: [], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } },
+      ]) response.write('data: ' + JSON.stringify(chunk) + '\n\n');
+      response.end('data: [DONE]\n\n'); return;
+    }
     if (index < 3) reply(response, { calls: [{ id: index === 1 ? 'old-read' : 'new-read', name: 'read_work',
       arguments: { objectId: work.objectId, contentId: work.contentId } }] });
     else reply(response, { text: '依据真实读取的边界值 17 继续。' });

@@ -51,8 +51,10 @@ export interface FixedTeachingInput {
 export function createTeachingInputs(storage: OwnedStorage, owner: {
   appendEvent(tx: OwnedTransaction, activityId: string, kind: TeachingEventKind, body: Record<string, unknown>): Promise<unknown>;
   supersedeQuestion(tx: OwnedTransaction, activityId: string, runId: string, inputId: string): Promise<void>;
+  freezeBudget(tx: OwnedTransaction, runId: string): Promise<void>;
 }) {
   async function register(tx: OwnedTransaction, input: ActionInput, runId: string, sequence: number) {
+    await owner.freezeBudget(tx, runId);
     const inputId = operationId('teaching-input:' + input.requestId);
     await tx.query(`INSERT INTO teaching_inputs(input_id,request_id,activity_id,seq,version,mode,state,
       received_run_id,waiting_on_run_id,basis) VALUES($1,$2,$3,$4,1,$5,'pending',$6,$6,$7)`,
@@ -122,6 +124,7 @@ export function createTeachingInputs(storage: OwnedStorage, owner: {
     await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,previous_run_id,usage)
       VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [nextRunId, run.activityId, input.requestId, next.input_id,
       JSON.stringify(previous.identity), run.runId, JSON.stringify({ state: 'unknown' })]);
+    await owner.freezeBudget(tx, nextRunId);
     await tx.query(`UPDATE teaching_inputs SET waiting_on_run_id=$2 WHERE waiting_on_run_id=$1 AND state='pending'`, [run.runId, nextRunId]);
     await owner.appendEvent(tx, run.activityId, 'run-received', {
       runId: nextRunId, previousRunId: run.runId, requestId: input.requestId, inputId: next.input_id, source: 'explicit-queue',

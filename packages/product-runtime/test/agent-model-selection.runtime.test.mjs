@@ -79,6 +79,13 @@ test('installed school settings share the Root pointer and independent Agent dis
       grantId: modelGrant.grantId, connectionId } }, admin);
     await deviceApi('manage/model-binding', { connectionId, runtimeConnectionId, target: modelTarget }, deviceAdmin);
     const personal = { 'x-xj-space': 'personal' }, selected = { 'x-xj-space': 'school:'+connectionId };
+    const interaction = await deviceApi('agent-settings', undefined, selected);
+    assert.equal(interaction.busyInputMode, 'steering');
+    const preferenceRequest = { requestId: randomUUID(), expectedVersion: interaction.version, busyInputMode: 'queue' };
+    const preference = await deviceApi('agent-settings', preferenceRequest, selected);
+    assert.deepEqual(await schoolApi('agent-settings'), preference, 'Installed school preferences belong to the actual learning owner.');
+    assert.deepEqual(await deviceApi('agent-settings/receipts/' + preferenceRequest.requestId, undefined, selected), preference);
+    assert.equal((await deviceApi('agent-settings', undefined, personal)).busyInputMode, 'steering', 'School and device personal settings are isolated.');
     const configuration = (connectionId, modelId) => ({ requestId: randomUUID(), connectionId, expectedVersion: 0,
       name: modelId, protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, path: '/chat/completions',
       modelId, dialect: 'standard', parameterMode: 'plain', enabled: true, contextWindow: 262144, maxOutputTokens: 1024,
@@ -204,6 +211,20 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.equal(denied.status,403,JSON.stringify(await denied.json()));
     assert.equal((await deviceApi('models/selection', undefined, personal)).selected.grantId, personalGrantId,
       'revoking a school device grant preserves the personal-space grant and pointer');
+    const controlBase = `agent/${activity.activityId}`;
+    assert.equal(await deviceApi(`${controlBase}/controls/${randomUUID()}`, undefined, selected), null);
+    const originalInput = (await deviceApi(`${controlBase}/conversation`, undefined, selected)).inputs.at(-1);
+    const inputControl = { version: 1, requestId: randomUUID(), expectedVersion: originalInput.version,
+      operation: 'revise', text: '已采用后不能改写的内容。' };
+    const controlled = await deviceApi(`${controlBase}/inputs/${originalInput.inputId}/control`, inputControl, selected);
+    assert.equal(controlled.status, 'rejected'); assert.equal(controlled.reason, 'input-consumed');
+    assert.deepEqual(await deviceApi(`${controlBase}/controls/${inputControl.requestId}`, undefined, selected), controlled);
+    const continued = { version: 2, requestId: randomUUID(), inputs: [] };
+    const refused = await fetch(deviceState.endpoint + '/api/learning/' + controlBase + '/runs/' + originalInput.adoptedRunId + '/continue',
+      { method: 'POST', headers: { 'content-type': 'application/json', ...selected }, body: JSON.stringify(continued) });
+    assert.equal(refused.status, 409);
+    assert.equal((await deviceApi(`${controlBase}/controls/${continued.requestId}`, undefined, selected)).status, 'rejected');
+    assert.equal(payloads.length, 3, 'Input/control receipt queries and rejected late edits never create a model call.');
   } finally {
     await Promise.allSettled([agent.stop(), device.stop(), school.stop()]);
     upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));

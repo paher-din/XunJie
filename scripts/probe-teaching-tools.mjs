@@ -11,7 +11,9 @@ import net from 'node:net';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
-  'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false } } });
+  'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false },
+  'input-control': { type: 'boolean', default: false } } });
+if (values['student-ask'] && values['input-control']) throw new Error('Choose one acceptance scenario.');
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
 if (values['provider-address'] && !net.isIP(values['provider-address'])) throw new Error('--provider-address must be an IP address.');
@@ -30,11 +32,11 @@ try {
 }
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
-  capability: values['student-ask'] ? 'student.ask' : 'read_work',
-  limits: { maxGenerations: protocols.length * 2, maxPerProtocol: 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
+  capability: values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
+  limits: { maxGenerations: protocols.length * (values['input-control'] ? 4 : 2), maxPerProtocol: values['input-control'] ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
-let generations = 0;
+let generations = 0, releaseInputControl = () => {}, responseGate = Promise.resolve();
 const byPath = new Map(), observed = [];
 const relay = createServer(async (request, response) => {
   const path = request.url;
@@ -50,8 +52,10 @@ const relay = createServer(async (request, response) => {
     headers: { ...request.headers, host: 'api.deepseek.com' }, timeout: report.limits.timeoutMs,
     ...(values['provider-address'] ? { lookup: (_host, _options, callback) => callback(null,
       [{ address: values['provider-address'], family: net.isIP(values['provider-address']) }]) } : {}),
-  }, result => {
+  }, async result => {
     item.status = result.statusCode;
+    await responseGate;
+    if (response.destroyed) { result.destroy(); return; }
     response.writeHead(result.statusCode, result.headers);
     result.pipe(response); result.on('end', () => { item.elapsedMs = Date.now() - started; });
   });
@@ -87,6 +91,7 @@ try {
     report.results.push(item);
     const before = generations;
     try {
+      if (values['input-control']) responseGate = new Promise(resolve => { releaseInputControl = resolve; });
       const connectionId = randomUUID(), grantId = randomUUID();
       const prefix = protocol === 'messages' ? '/anthropic' : '/v1';
       const path = protocol === 'messages' ? '/v1/messages' : protocol === 'responses' ? '/responses' : '/chat/completions';
@@ -111,6 +116,24 @@ try {
       const receipt = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       assert.equal(receipt.state, 'accepted');
       const runId = JSON.parse(receipt.receipt.detail).runId;
+      let queued;
+      if (values['input-control']) {
+        const deadline = Date.now() + 35000;
+        while (generations === before && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+        assert.equal(generations, before + 1, 'The first real generation starts before steering is accepted.');
+        const send = async (mode, question, works) => {
+          const body = { ...input, requestId: randomUUID(), delivery: { version: 1, mode, basis: { source: 'explicit', preferenceVersion: 0 } },
+            draft: { ...input.draft, token: randomUUID(), question }, works };
+          await api('intents/' + activity.activityId, body);
+          const accepted = await api(`intents/${activity.activityId}/${body.requestId}/dispatch`, {});
+          return { ...JSON.parse(accepted.receipt.detail), requestId: body.requestId };
+        };
+        queued = await send('queue', '整轮结束后，只用一句话确认我选择把这个问题排队，不调用工具。', []);
+        const steering = await send('steering', `补充当前目标：仍须实际调用 read_work 读取 objectId=${work.objectId}、contentId=${work.contentId}；依据实测只简短核对水位增加多少，不修改作品，不另问问题。`, [work]);
+        assert.equal(steering.runId, runId); assert.equal(queued.runId, runId);
+        item.steeringInputId = steering.inputId; item.queuedInputId = queued.inputId;
+        releaseInputControl(); responseGate = Promise.resolve();
+      }
       let conversation;
       let explicitResponse;
       const deadline = Date.now() + 90000;
@@ -133,7 +156,9 @@ try {
             explicitResponse = responseInput;
           }
         }
-        if (['completed', 'failed', 'paused', 'stopped'].includes(conversation.runs.find(run => run.runId === runId)?.state)) break;
+        const original = conversation.runs.find(run => run.runId === runId);
+        const successor = queued && conversation.runs.find(run => run.inputId === queued.inputId);
+        if (['failed', 'paused', 'stopped'].includes(original?.state) || original?.state === 'completed' && (!queued || successor?.state === 'completed')) break;
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       const run = conversation.runs.find(run => run.runId === runId);
@@ -159,9 +184,24 @@ try {
       } else {
         assert.ok(conversation.tools.some(tool => tool.name === 'read_work' && tool.outcome === 'completed'));
         assert.match(answer, /25|二十五/);
+        if (values['input-control']) {
+          assert.equal(conversation.runs.length, 2);
+          assert.equal(conversation.inputs.find(input => input.inputId === item.steeringInputId)?.adoptedRunId, runId);
+          const successor = conversation.runs.find(run => run.inputId === queued.inputId);
+          assert.equal(successor?.state, 'completed'); assert.equal(successor?.previousRunId, runId);
+          const events = await api(`agent/${activity.activityId}/events`);
+          const snapshots = await Promise.all(events.filter(event => event.kind === 'context-assembled')
+            .map(event => api(`agent/${activity.activityId}/snapshots/${event.body.snapshotId}`)));
+          assert.ok(snapshots.some(snapshot => snapshot.sources.some(source => source.kind === 'input' && source.id?.startsWith(item.steeringInputId))));
+          item.snapshotDigests = snapshots.map(snapshot => snapshot.payloadSha256);
+          item.queuedSuccessor = { state: successor.state, linked: true };
+          const beforeRead = generations; await api(`agent/${activity.activityId}/conversation`); await api(`agent/${activity.activityId}/conversation`);
+          assert.equal(generations, beforeRead);
+        }
       }
       item.passed = true;
     } catch (error) { item.reason ??= error instanceof assert.AssertionError ? 'acceptance-assertion' : error.message; }
+    finally { releaseInputControl(); responseGate = Promise.resolve(); }
     item.modelRequests = generations - before;
   }
 } finally {
