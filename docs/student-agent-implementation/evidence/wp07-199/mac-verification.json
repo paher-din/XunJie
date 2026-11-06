@@ -1,0 +1,432 @@
+{
+  "formatVersion": 1,
+  "recordedAt": "2026-11-06T13:07:32.000Z",
+  "issue": "https://github.com/paher-din/XunJie/issues/209",
+  "sourceIssue": "https://github.com/paher-din/XunJie/issues/199",
+  "branch": "wp07",
+  "acceptanceHead": "55a746189eb96e5f1717bb6549305d2c4bb2c7fc",
+  "originWp07": "55a746189eb96e5f1717bb6549305d2c4bb2c7fc",
+  "productCode": {
+    "implementationBase": "0db776529d9d72756ca9385e42533f1df41b4156",
+    "features": "5e9cf4ad",
+    "reviewFixes": "e0e2fcdb",
+    "fixturesAndEvidence": "6b2ef11b",
+    "laterStandaloneDeployment": "9cdc6e69",
+    "merge": "b7cd5224"
+  },
+  "environment": {
+    "os": "macOS 27.2",
+    "osBuild": "26B123",
+    "kernel": "Darwin 27.2.0 arm64",
+    "cpu": "Apple M5",
+    "arch": "arm64",
+    "memoryBytes": 17179869184,
+    "chrome": "156.0.8078.80",
+    "browser": "installed desktop Google Chrome; headed; one worker",
+    "node": "24.21.0",
+    "nodeRuntime": "pinned upstream node-v24.21.0-darwin-arm64 archive unpacked in private cache",
+    "npm": "11.19.0",
+    "postgres": "18.6",
+    "postgresDistribution": "18.6.1",
+    "postgresRuntime": "postgresql-18.6.1-aarch64-apple-darwin"
+  },
+  "engineering": {
+    "typecheck": {
+      "status": "passed",
+      "exitCode": 0
+    },
+    "build": {
+      "status": "passed",
+      "exitCode": 0,
+      "log": ".verification/wp07-199-mac/build.log"
+    },
+    "browserContracts": {
+      "status": "passed",
+      "exports": 14,
+      "log": ".verification/wp07-199-mac/contracts-browser.log"
+    },
+    "docs": {
+      "status": "passed",
+      "markdownFiles": 221,
+      "localTargets": 2034,
+      "failures": 0,
+      "note": "220 files / 2016 targets before this record; 221 files / 2034 targets after adding the Mac acceptance record and evidence",
+      "log": ".verification/wp07-199-mac/check-docs-final.log"
+    }
+  },
+  "nativeRuntime": [
+    {
+      "file": "apps/server/tests/teaching-agent.student-ask.runtime.test.mjs",
+      "total": 12,
+      "pass": 12,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 37490,
+      "log": ".verification/wp07-199-mac/student-ask.runtime.log",
+      "tap": ".verification/wp07-199-mac/student-ask.runtime.tap"
+    },
+    {
+      "file": "apps/server/tests/teaching-agent.runtime.test.mjs",
+      "total": 9,
+      "pass": 9,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 26359,
+      "log": ".verification/wp07-199-mac/teaching-agent.runtime.log",
+      "tap": ".verification/wp07-199-mac/teaching-agent.runtime.tap"
+    },
+    {
+      "file": "apps/server/tests/teaching-agent.driver.runtime.test.mjs",
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 4372,
+      "log": ".verification/wp07-199-mac/teaching-agent.driver.runtime.log",
+      "tap": ".verification/wp07-199-mac/teaching-agent.driver.runtime.tap"
+    },
+    {
+      "file": "apps/server/tests/teaching-agent.tools.runtime.test.mjs",
+      "total": 8,
+      "pass": 8,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 20980,
+      "log": ".verification/wp07-199-mac/teaching-agent.tools.runtime.log",
+      "tap": ".verification/wp07-199-mac/teaching-agent.tools.runtime.tap"
+    },
+    {
+      "file": "apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs",
+      "total": 17,
+      "pass": 17,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 48391,
+      "log": ".verification/wp07-199-mac/teaching-agent.tools-recovery.runtime.log",
+      "tap": ".verification/wp07-199-mac/teaching-agent.tools-recovery.runtime.tap"
+    },
+    {
+      "file": "apps/server/tests/teaching-tools-host.runtime.test.mjs",
+      "total": 6,
+      "pass": 6,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 9483,
+      "log": ".verification/wp07-199-mac/teaching-tools-host.runtime.log",
+      "tap": ".verification/wp07-199-mac/teaching-tools-host.runtime.tap"
+    }
+  ],
+  "productPackage": {
+    "path": "<acceptance>/product-darwin-arm64-full",
+    "profile": "full",
+    "platform": "darwin-arm64",
+    "status": "unsigned-candidate",
+    "signing": {
+      "status": "unsigned",
+      "signingAndNotarization": "deferred-by-user",
+      "buildBlocking": false
+    },
+    "distributionSha256": "aa8b260ebe6358d8dc322807fdc6552e5658b9e082d5d4f5f2366e007bdb4d1f",
+    "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "appCliSha256": "7070decc12d95efe27cc2a11a125095befeb6a75a98c22b8ea8164afda161a52",
+    "webTreeSha256": "f2b57988c1095a65a684656a9226c1acaf2473ba82687015262012e05635295f",
+    "webFiles": 160,
+    "webBytes": 11419566,
+    "entryHashes": {
+      "entries": 220,
+      "verified": 220,
+      "mismatches": []
+    },
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "postgresDistribution": "18.6.1",
+    "verification": {
+      "archiveChecksums": "passed",
+      "productionDependencyGraph": "passed",
+      "workspacePathsInBundles": "absent",
+      "nativeProcessProbes": "not-run",
+      "backupUpgradeProbes": "not-run",
+      "cleanMachineAcceptance": "cancelled-by-owner",
+      "productSigning": "deferred-by-user",
+      "notarization": "deferred-by-user",
+      "gatekeeper": "not-run"
+    },
+    "buildLog": ".verification/wp07-199-mac/package-build.log",
+    "packageBytes": 424005632,
+    "lifecycle": {
+      "status": "passed",
+      "root": "<acceptance>/product-root",
+      "steps": [
+        {
+          "label": "install",
+          "exitCode": 0,
+          "state": "installed",
+          "endpoint": null,
+          "durationMs": 4332
+        },
+        {
+          "label": "start",
+          "exitCode": 0,
+          "state": "ready",
+          "endpoint": "http://127.0.0.1:51839",
+          "durationMs": 683
+        },
+        {
+          "label": "status",
+          "exitCode": 0,
+          "state": "ready",
+          "endpoint": "http://127.0.0.1:51839",
+          "durationMs": 114
+        },
+        {
+          "label": "stop",
+          "exitCode": 0,
+          "state": "stopped",
+          "endpoint": null,
+          "durationMs": 324
+        },
+        {
+          "label": "start-again",
+          "exitCode": 0,
+          "state": "ready",
+          "endpoint": "http://127.0.0.1:51839",
+          "durationMs": 579
+        },
+        {
+          "label": "stop-again",
+          "exitCode": 0,
+          "state": "stopped",
+          "endpoint": null,
+          "durationMs": 323
+        },
+        {
+          "label": "status-final",
+          "exitCode": 0,
+          "state": "stopped",
+          "endpoint": null,
+          "durationMs": 100
+        }
+      ],
+      "finalState": "stopped",
+      "log": ".verification/wp07-199-mac/package-lifecycle.json"
+    }
+  },
+  "chrome": {
+    "formalWeb": {
+      "status": "passed",
+      "passed": 4,
+      "total": 4,
+      "skipped": 0,
+      "durationMs": 21000,
+      "log": ".verification/wp07-199-mac/chrome-web.log",
+      "webRoot": "apps/web/dist",
+      "screenshotsRef": "见 evidence/wp07-199 下的 student-ask-*-darwin.png（完整包实际运行）与 student-ask-before-darwin.png"
+    },
+    "fullPackage": {
+      "status": "passed",
+      "passed": 4,
+      "total": 4,
+      "skipped": 0,
+      "durationMs": 20100,
+      "log": ".verification/wp07-199-mac/chrome-package.log",
+      "endpoint": "http://127.0.0.1:51839",
+      "screenshotsRef": "见 evidence/wp07-199 下同名 darwin 截图"
+    },
+    "baseline": {
+      "status": "passed",
+      "passed": 1,
+      "total": 1,
+      "note": "separate historical before-change capture, outside the four business scenarios",
+      "log": ".verification/wp07-199-mac/chrome-web-baseline.log"
+    }
+  },
+  "physicalIme": {
+    "status": "passed",
+    "cases": 13,
+    "signals": {
+      "compositionStarts": 5,
+      "compositionUpdates": 39,
+      "compositionEnds": 5,
+      "composingKeydowns": 39,
+      "chineseCompositionCommits": [
+        "你好",
+        "世界",
+        "上海"
+      ],
+      "trustedKeydowns": 44
+    },
+    "inputMethod": {
+      "requested": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "currentBefore": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "selected": "TISSelectInputSource status=0 requested=com.bytedance.inputmethod.doubaoime.pinyin now=com.bytedance.inputmethod.doubaoime.pinyin",
+      "currentAfter": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "restoredTo": "com.bytedance.inputmethod.doubaoime.pinyin"
+    },
+    "report": ".verification/wp07-199-mac/student-ask-ime.log",
+    "reportSha256": "afb3326f89cadff20130d87fa8662c1915077da7b036a8d4cd99f33745a10394",
+    "probeSha256": "f0853ae57c2acd292fdcf70da5dd6490f6406596a373220baa3716c78b5953c4",
+    "note": "final run 13/13; two earlier probe self-checks failed on the probe baseline/event-capture assumptions, not on product behavior"
+  },
+  "realModel": {
+    "status": "passed",
+    "reportSha256": "30808f00570d7094c83f4b9838277526e20cea8877f876479aea4faaf9819854",
+    "limits": {
+      "maxGenerations": 6,
+      "maxPerProtocol": 2,
+      "maxOutputTokens": 2048,
+      "timeoutMs": 30000,
+      "retries": 0
+    },
+    "generations": 6,
+    "results": [
+      {
+        "protocol": "chat-completions",
+        "sdk": "openai@7.42.0",
+        "passed": true,
+        "state": "completed",
+        "reason": "stop",
+        "modelRequests": 2,
+        "tools": [
+          "student_ask:completed"
+        ],
+        "responseAdopted": true,
+        "usage": {
+          "state": "final",
+          "inputTokens": 3416,
+          "outputTokens": 557,
+          "totalTokens": 3973,
+          "cachedTokens": 1792,
+          "reasoningTokens": 112
+        },
+        "answerSha256": "4bddf8b404e1f9055f333ae47f53c669129b238672638f31b5e4316fbf58b71f",
+        "snapshotDigests": [
+          "b51d113f525dcc6163bfdc4e0a1f8b62c1f5a5d7c8f92adb4deb637f2d596be8",
+          "ce09dd5d40a26fb29fb7d68cf59a33a3105a9c3f8a769ce3c07e98f7e66acba1"
+        ]
+      },
+      {
+        "protocol": "responses",
+        "sdk": "openai@7.42.0",
+        "passed": true,
+        "state": "completed",
+        "reason": "completed",
+        "modelRequests": 2,
+        "tools": [
+          "student_ask:completed"
+        ],
+        "responseAdopted": true,
+        "usage": {
+          "state": "final",
+          "inputTokens": 3559,
+          "outputTokens": 729,
+          "totalTokens": 4288,
+          "cachedTokens": 2944,
+          "reasoningTokens": 288
+        },
+        "answerSha256": "be914106a8c504a9f09c45065c109db526488c6e449bbf442eedd4b71c3a8697",
+        "snapshotDigests": [
+          "a988ce1bf5fa3c7615e36be059141a3ec4bd2f0b583a2f458df01333813efbf1",
+          "35d8f174bbf6474c86fca10233ab12de4a5657929bfac0d072633fc9d51ffb80"
+        ]
+      },
+      {
+        "protocol": "messages",
+        "sdk": "@anthropic-ai/sdk@1.1.0",
+        "passed": true,
+        "state": "completed",
+        "reason": "end_turn",
+        "modelRequests": 2,
+        "tools": [
+          "student_ask:completed"
+        ],
+        "responseAdopted": true,
+        "usage": {
+          "state": "final",
+          "inputTokens": 620,
+          "outputTokens": 774,
+          "cachedTokens": 2944
+        },
+        "answerSha256": "12a2b79973b4fa883c01307a8826cbbb98d1eea9ba5095e552e0ab564523fd6f",
+        "snapshotDigests": [
+          "6ab5d67a654ccbbb386333458197257da45f269483773578dd90386ac9fac4a1",
+          "eb59c86d278c9ab84d8bdb15c61899ecf9bb9fd9a9b9f8b4517c415a929d7569"
+        ]
+      }
+    ]
+  },
+  "teachingEffect": "not-evaluated",
+  "screenshots": [
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-before-darwin.png",
+      "bytes": 71934,
+      "sha256": "2ccfda19d1e7e60783605bcc74aa3d1a0708481015af1d4e2cdbf512e4cf9484"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-choice-darwin.png",
+      "bytes": 74255,
+      "sha256": "3ea5657d27bc567170b577538c78af507a0c7b8bc6d16c6d30c2aa92c17294b9"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-dark-narrow-darwin.png",
+      "bytes": 66583,
+      "sha256": "094d5686c03405353a82c6ab72646db688d65eb029bb40783a4b71fd215a3b74"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-ime-candidate-darwin.png",
+      "bytes": 1611486,
+      "sha256": "f65b3c6bcdc26ff6dc31c85c8b54a499a067b711b2f1af90292c37088ac10777"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-ime-dark-darwin.png",
+      "bytes": 81782,
+      "sha256": "9314302fae8118d9da8afcf19bb96ac563df41f1e4d7b13f40e919bf26e143ad"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-ime-digit-candidate-darwin.png",
+      "bytes": 1613403,
+      "sha256": "9c98eb98c62a835c14a28ccf5ba780eb076fab1ee02255e11e69d0bcdeb7dc63"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-ime-light-darwin.png",
+      "bytes": 93337,
+      "sha256": "19ca844957fa5ede5201bf5d8cf4ee4b7249016c37249f64b412347452c79de0"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-ime-narrow-darwin.png",
+      "bytes": 73203,
+      "sha256": "4a50c4a8b210c28325739796ac124d582432abc0312b5b832bda4300665a83e4"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-ip-darwin.png",
+      "bytes": 52057,
+      "sha256": "e3a06ace4005f0bd730a4761c8e3fbb0f9cac6cc5bab313be18e69de6e62abc8"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-receipt-recovered-darwin.png",
+      "bytes": 78406,
+      "sha256": "dda97ecfa88acf5ac4dd7bfaa9da4a4812344aaab34009e9f221c7caac78b2b0"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-skipped-darwin.png",
+      "bytes": 65975,
+      "sha256": "93129c10604f07b525760fc74b73c5fc0a6ca400a5606cf700301c0fbb6acf2b"
+    },
+    {
+      "path": "docs/student-agent-implementation/evidence/wp07-199/student-ask-text-darwin.png",
+      "bytes": 77183,
+      "sha256": "1f6e775c4a0ad108f7893c2fcd9364251b1609a2d92da04bd8dbf2ce1215e809"
+    }
+  ],
+  "commands": {
+    "typecheck": "npm run typecheck",
+    "build": "npm run build",
+    "contracts": "npm run check:contracts:browser",
+    "docs": "npm run check:docs",
+    "runtime": "XUNJIE_PRODUCT_POSTGRES_BIN=<postgres-bin> node --test <runtime-test-file>",
+    "chromeWeb": "XUNJIE_PRODUCT_POSTGRES_BIN=<postgres-bin> XUNJIE_PRODUCT_WEB_ROOT=$PWD/apps/web/dist XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_XJ_DEV_URL=http://127.0.0.1 npx playwright test --config apps/web/playwright.config.ts studentAsk.spec.ts --headed --workers=1 --grep-invert baseline",
+    "packageBuild": "node scripts/package-product.mjs --platform darwin-arm64 --profile full --out <acceptance>/product-darwin-arm64-full",
+    "chromePackage": "XUNJIE_STUDENT_ASK_ENDPOINT=<cli-endpoint> XUNJIE_PRODUCT_POSTGRES_BIN=<acceptance>/product-darwin-arm64-full/resources/postgres/bin XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_XJ_DEV_URL=http://127.0.0.1 npx playwright test --config apps/web/playwright.config.ts studentAsk.spec.ts --headed --workers=1 --grep-invert baseline",
+    "physicalIme": "XUNJIE_PRODUCT_PACKAGE=<acceptance>/product-darwin-arm64-full XUNJIE_STUDENT_ASK_IME_OUTPUT=<acceptance>/ime node scripts/probe-student-ask-ime.mjs",
+    "realModel": "node scripts/probe-teaching-tools.mjs --student-ask --credentials-file <approved-private-file> --out <sanitized-report>"
+  }
+}
