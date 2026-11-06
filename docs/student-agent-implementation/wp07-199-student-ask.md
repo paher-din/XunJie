@@ -40,7 +40,7 @@ Windows 11 x64 10.0.26200，Intel Core Ultra 9 275HX，安装版 Google Chrome `
 | 完整 Windows 产品包的桌面 Chrome | 正式 CLI `install/start/stop` 成功，4/4、0 跳过。 |
 | DeepSeek `deepseek-flash` 三协议真实用途 | 最终产品代码三条路线均成功，快照核对 `responseAdopted=true`；网络失败和有限补验分别保留。 |
 | 本机完整测试与依赖恢复后补验 | 完整轮本地文件任务 82/160，通过 prepare 4/4 与 build:test 1/1；受依赖中断影响。恢复后 unit/server 为 108/115，之后产物归档和核验器 2 文件补验通过（38 测试通过、2 平台跳过），按文件收敛为 110/115，仍有下述 5 个失败文件。 |
-| Apple Silicon Mac | 未验；本地可行性尝试与实际待办追加到用户指定的 [#178](https://github.com/paher-din/XunJie/issues/178)。 |
+| Apple Silicon Mac | 未验；由已有合格 Mac 环境的接手者在 [Mac 明确回应平台验收（#209）](https://github.com/paher-din/XunJie/issues/209) 直接验收交付，原 [Mac 汇总（#178）](https://github.com/paher-din/XunJie/issues/178) 保留索引。 |
 | 系统物理中文输入法 | 未验。Chrome 受控中文原文、换行、焦点和键盘已覆盖，未冒称物理候选窗通过。 |
 | 教学效果 | 未评估；工程与模型成功不证明学生理解或学习收益。 |
 
@@ -72,6 +72,6 @@ TDD 从公开 HTTP/Agent/Gateway/PG 和正式 Chrome 边界逐项完成。首轮
 
 ## 复跑与平台交接
 
-先完成构建，运行原生/Chrome 宿主时不重建共享依赖。原生主文件为 `apps/server/tests/teaching-agent.student-ask.runtime.test.mjs`；桌面入口为 `apps/web/e2e/studentAsk.spec.ts` 的四个业务场景，历史 baseline capture 默认不运行。环境要求、全部 Mac 命令和清单见 [#178 的 #199 分节](https://github.com/paher-din/XunJie/issues/178)。完整包先用包内 CLI 安装启动，再通过 `XUNJIE_STUDENT_ASK_ENDPOINT` 将同一 Chrome 用例接到实际入口；结束后用该包停止。
+先完成构建，运行原生/Chrome 宿主时不重建共享依赖。原生主文件为 `apps/server/tests/teaching-agent.student-ask.runtime.test.mjs`；桌面入口为 `apps/web/e2e/studentAsk.spec.ts` 的四个业务场景，历史 baseline capture 默认不运行。已有 Mac 环境所需版本、全部命令和清单见独立交接票 [Mac 明确回应平台验收（#209）](https://github.com/paher-din/XunJie/issues/209)。完整包先用包内 CLI 安装启动，再通过 `XUNJIE_STUDENT_ASK_ENDPOINT` 将同一 Chrome 用例接到实际入口；结束后用该包停止。
 
-本机为 Intel Windows。已检查本地虚拟化与既有 Mac 连接入口，并核对 [QEMU VMApple 官方条件](https://www.qemu.org/docs/master/system/arm/vmapple.html)：受支持路径要求 Apple Silicon macOS 宿主，当前机器不满足，尚未启动 macOS 客体。WSL、ARM Linux 或改变 UA 不能作为 Apple Silicon Mac 的正式 Chrome/Keychain/原生 PG/系统输入法证据。取得获准 Apple Silicon 宿主后，可先建立满足条件的隔离 macOS 环境再验收；既有 Windows 结果不计作 Mac 通过。
+本机为 Intel Windows。初步核对 [QEMU VMApple 官方条件](https://www.qemu.org/docs/master/system/arm/vmapple.html) 后，又实际在现有 Ubuntu WSL2 中验证 KVM VM/vCPU 创建，并用独立解包的 QEMU 8.2.2 启动了 2 vCPU 的通用 x86_64 UEFI 虚拟机；虚拟机已正常退出。这证明本地虚拟化基础可用，尚未下载、安装或启动 macOS，也未形成 Apple Silicon 验收环境。按负责人 2026-11-06 要求停止尝试并清理，本次新增工具、固件及临时文件共 558,653,825 字节已删除，原有 WSL/Ubuntu/Docker 和 Windows 验收证据保留。独立交接票只交付已有 Mac 环境上的验收，不包含环境搭建；既有 Windows 或通用虚拟机结果不计作 Mac 通过。
