@@ -125,7 +125,7 @@ test('fencing a retired installation cuts the old instance off without voiding i
   }
 });
 
-test('product receiver waits for owner effects and refuses an unconfirmed execution boundary', async () => {
+for (const boundTakeover of [false, true]) test(`product receiver waits for owner effects and ${boundTakeover ? 'resumes a verified takeover retry' : 'keeps a failed manual fence closed'}`, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'xunjie-176-receiver-effects-'));
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
     webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
@@ -153,7 +153,8 @@ test('product receiver waits for owner effects and refuses an unconfirmed execut
   };
   try {
     host = await createProductRuntimeHost({ root: join(directory, 'receiver'), recoveryOwners: [owner] });
-    const source = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID() };
+    const source = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID(),
+      ...(boundTakeover ? { backupId: randomUUID(), targetInstallationId: randomUUID() } : {}) };
     await runtime.authorize({ ...source, capabilities: ['runtime.status'] });
     let finished = false;
     const attempt = runtime.recovery.fenceSource(source).finally(() => { finished = true; });
@@ -170,8 +171,8 @@ test('product receiver waits for owner effects and refuses an unconfirmed execut
     assert.equal(proof.execution.blocking, 0);
     assert.deepEqual(proof.execution.services.find(item => item.serviceId === serviceId),
       { serviceId, unresolved: 0, settled: 1, blocking: 0 });
-    assert.equal(closed, true, 'a retry does not implicitly resume a receiver held after failure');
-    await host.maintenance.resume();
+    assert.equal(closed, !boundTakeover, 'only a fully bound takeover retry may resume its receiver');
+    if (!boundTakeover) await host.maintenance.resume();
     assert.equal(closed, false);
   } finally {
     releaseDrain();

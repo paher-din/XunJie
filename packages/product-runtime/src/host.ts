@@ -341,7 +341,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           // Fence admission first. Closing this receiver's actual owners then waits for the
           // asynchronous effects that outlive a capability handler. On failure remain closed;
           // never turn a handler-only acknowledgement into an execution-safety proof.
-          const reopen = maintenance.status().phase === 'open' || maintenance.status().reason === 'receiver-fence';
+          const boundTakeover = input.backupId && input.sourceInstallationId && input.targetInstallationId;
+          const reopen = maintenance.status().phase === 'open'
+            || maintenance.status().reason === 'receiver-fence' && Boolean(boundTakeover);
           gatesClosed = true;
           if (maintenance.status().phase === 'open' || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
           await maintenance.validate();
