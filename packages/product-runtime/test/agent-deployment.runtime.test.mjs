@@ -73,10 +73,16 @@ test('an independently installed Agent answers the original activity and survive
     let legacyConversation; const legacyDeadline = Date.now() + 10000;
     do {
       legacyConversation = await api(`agent/${legacy.activityId}/conversation`);
-      if (legacyConversation.runs[0]?.state === 'paused') break;
+      const run = legacyConversation.runs[0];
+      // The conversation event prefix and Run projection are read separately. Wait
+      // for the terminal notice as well before freezing the pre-binding snapshot.
+      if (run?.state === 'paused' && legacyConversation.messages.some(message =>
+        message.role === 'system' && message.runId === run.runId)) break;
       await new Promise(resolve => setTimeout(resolve, 30));
     } while (Date.now() < legacyDeadline);
     assert.equal(legacyConversation.runs[0]?.state, 'paused');
+    assert.ok(legacyConversation.messages.some(message => message.role === 'system'
+      && message.runId === legacyConversation.runs[0].runId));
     // Reproduce an upgraded pre-deployment activity: Agent facts exist before a route row.
     // Only fixture setup touches storage; the assertions below use the production HTTP API.
     const legacyBinding = JSON.parse(await resolveCredential(join(directory, 'school'), 'storage-' + dataService.serviceId));

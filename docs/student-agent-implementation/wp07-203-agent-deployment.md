@@ -1,6 +1,6 @@
 # WP07 #203：Agent 独立部署与跨机验收
 
-[需求 #203](https://github.com/paher-din/XunJie/issues/203)的实现、工程验证和本票部署验收已完成。最终交付为 `final-r4` 两平台完整产品包；六个真实模型主循环及 Windows 独立 Agent 生命周期检查全部通过，一次性环境已清理。
+[需求 #203](https://github.com/paher-din/XunJie/issues/203)的实现、工程验证和本票部署验收已完成。`final-r4` 两平台完整产品包对应推送前整合 #199 之前的 #203 源码；六个真实模型主循环及 Windows 独立 Agent 生命周期检查全部通过，一次性环境已清理。后续源码整合的验证边界见下文。
 
 [双轴审查与需求对应](wp07-203-code-review.md) · [工程证据](evidence/wp07-203/engineering-verification.json) · [部署与耗时汇总](evidence/wp07-203/deployment-verification.json) · [最终清理](evidence/wp07-203/final-task-cleanup-r4.json)
 
@@ -84,6 +84,14 @@ r1/r2/r3 主循环是被替代候选的诊断证据，最终结果只以上表 r
 [最终清理审计](evidence/wp07-203/final-task-cleanup-r4.json)通过：两平台任务 runtime root、任务进程、Chrome job/计划任务、测试 CA/私钥、私有构建快照和旧候选均已清理。仅保留最终两平台包、Windows 最终部署副本及脱敏证据；没有修改共享部署。主线 Chrome 产生的临时 PG 环境也已停止并删除。
 
 工程、实际部署、浏览器与教学效果分别记录。local 用例为全本机 profile 内的学校课程成员活动；没有把它等同于个人自由活动的全部行为。Windows native 隔离课程执行与 Linux 产品部署本票没有补跑；教学效果未评估。完整崩溃、撤权和并发故障由相关工程回归证明，简单重启探针不替代这些反例。
+
+## 推送前整合 #199
+
+推送前将 `origin/wp07` 的明确回应实现（`6b2ef11`）合入 #203（`9cdc6e6`）。保留远程已发布的学生提问迁移 v3，独立部署与分片迁移顺延为 v4、v5；独立 Agent 的公开 RPC 接入 `respond`、`response`、`presentQuestion`，学校 HTTP 路由继续使用活动已固定的 Agent owner。过期问题仍拒绝新的模型与工具派发。
+
+新增真实 PostgreSQL、两个正式产品子进程及真实授权连接的明确回应集成回归，模型上游使用合成流。覆盖呈现不作答、跨活动拒绝、明确回应推进原 Run、回执幂等、两端重启、超期晚回应和后续显式请求。未增加真实付费生成；上述 r4 包的摘要与跨机证据仍属于整合前候选，不能作为本次合并源码重新打包或跨机复验的记录。
+
+[整合验证记录](evidence/wp07-203/integration-verification.json)：完整门禁通过，包括类型、构建、公共 wire、文档链接及 unit 28、server 88、tools 45 个任务。相关原生初轮 44 项中 43 通过，1 项因旧对话夹具提前冻结事件前缀失败；修正夹具并补充超期场景后，受影响的两个产品集成用例均通过。桌面 Chrome 10 项通过、2 项旧 UI 基线截图跳过，未改写 #199 的 Windows 原始截图。工程、浏览器与原始失败日志一并保留；本次未重新进行跨机产品包或教学效果验收。
 
 ## 复验入口
 

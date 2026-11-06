@@ -45,7 +45,10 @@ export function ActivityActions() {
       </>}
       {query?.reason && <p className="detail">{query.reason.code}：{query.reason.detail}</p>}
       {item.localAcceptance?.receipt && <p className="detail">{item.localAcceptance.receipt.detail}</p>}
-      {item.remote?.receipt && <p className="detail">{item.remote.receipt.detail || '接收方已核实原请求。'}</p>}
+      {item.remote?.receipt && <p className="detail">{item.remote.receipt.receiver.receiverId.startsWith('teaching-agent:')
+        ? item.remote.receipt.state === 'accepted' ? 'Agent 已接收这次学习请求，进展和回应保留在学习对话中。'
+          : '这次学习请求已取消，原输入仍保留。'
+        : item.remote.receipt.detail || '接收方已核实原请求。'}</p>}
       {item.error && <p role="alert" className="learning-error">{item.error}</p>}
       {!workspace.isReadOnly() && <div className="action-controls">
         {!cancelled && !cancelPending && <button type="button"

@@ -361,6 +361,12 @@ export function createLearningEntry(options: {
           result = await teaching.request(identity, activityId, parts[3]!);
         else if (parts.length === 4 && parts[2] === 'snapshots' && method === 'GET')
           result = await teaching.snapshot(identity, activityId, parts[3]!);
+        else if (parts.length === 5 && parts[2] === 'questions' && parts[4] === 'responses' && method === 'POST')
+          result = await teaching.respond(identity, activityId, parts[3]!, await readLearningBody(request));
+        else if (parts.length === 5 && parts[2] === 'questions' && parts[4] === 'presentations' && method === 'POST')
+          result = await teaching.presentQuestion(identity, activityId, parts[3]!, await readLearningBody(request));
+        else if (parts.length === 4 && parts[2] === 'responses' && method === 'GET')
+          result = await teaching.response(identity, activityId, parts[3]!);
         else throw new StorageError('missing');
       } else if (route.startsWith('executions/')) {
         // The execution owner answers accept, query, report, stop and result under one identity.

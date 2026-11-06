@@ -79,7 +79,7 @@ async function fixture(answer, { course = false } = {}) {
     await Promise.allSettled(storages.map(storage => storage.close()));
     await runtime.stop();
     if (upstream.listening) await new Promise(resolve => upstream.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
   try {
     await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
@@ -152,7 +152,9 @@ async function fixture(answer, { course = false } = {}) {
       const agent = createTeachingAgent(ownedStorage, { authorize: who => spaces.authorize(who),
         identityFor: scope => spaces.lookup(scope.spaceId, scope.principalId),
         activity: (who, id) => learning.open(who, id), models, tools: host,
-        start: false, driverId: randomUUID(), leaseMs: 1500, scanIntervalMs: 40, ...driverOptions });
+        // Ordinary scenarios use the production lease; takeover scenarios below
+        // explicitly keep the short lease required by their injected process loss.
+        start: false, driverId: randomUUID(), scanIntervalMs: 40, ...driverOptions });
       agents.push(agent);
       return agent;
     };
@@ -208,7 +210,13 @@ test('a reserved model-step budget survives restart and prevents another paid co
   try {
     const first = f.makeAgent({ limits: { maxModelSteps: 1 } });
     const runId = await f.send(first, [work]); first.resume();
-    await until(async () => (await first.run(f.identity, f.activity.activityId, runId)).state === 'paused', 'model budget did not pause');
+    await until(async () => (await first.run(f.identity, f.activity.activityId, runId)).state === 'paused', 'model budget did not pause')
+      .catch(async error => {
+        const conversation = await f.conversation(first);
+        throw new Error(error.message + '\n' + JSON.stringify({ runs: conversation.runs,
+          tools: conversation.tools.map(tool => ({ name: tool.name, state: tool.state })),
+          events: (await f.events(first)).map(event => event.kind) }), { cause: error });
+      });
     const before = await f.conversation(first);
     assert.equal(before.runs[0].reason, 'model-step-budget-exhausted');
     assert.equal(before.tools[0].result.file.value, work.value);
@@ -269,7 +277,7 @@ test('saved native result survives loss before association, rereads the original
         }
         return fact;
       } } };
-      const first = f.makeAgent({ models: gateway });
+      const first = f.makeAgent({ models: gateway, leaseMs: 1500 });
       const runId = await f.send(first, [work]);
       await until(() => original, 'did not reach complete durable native result');
       await first.drain(); first.closeDispatch(); first.close();
@@ -279,7 +287,7 @@ test('saved native result survives loss before association, rereads the original
       // Move the real workspace head while the accepted immutable input stays unchanged.
       await f.learning.works.sync(f.identity, f.activity.activityId, { requestId: randomUUID(), baseRevision: 1,
         files: [{ ...work, contentId: randomUUID(), value: '新的内容：999。' }] });
-      const recovered = f.makeAgent({ models: gateway }); recovered.resume();
+      const recovered = f.makeAgent({ models: gateway, leaseMs: 1500 }); recovered.resume();
       const result = await f.completed(recovered, runId);
       assert.ok(reads.filter(id => id === original.attemptId).length >= 2);
       const events = await f.events(recovered), intent = events.find(event => event.kind === 'tool-intent');
@@ -397,13 +405,13 @@ test('two real driver generations share the saved attempt and only the winner re
         if (!entered) { entered = true; await gate.promise; }
         return command;
       } };
-      const first = f.makeAgent({ tools: host, driverId: 'real-driver-a' });
+      const first = f.makeAgent({ tools: host, driverId: 'real-driver-a', leaseMs: 1500 });
       const runId = await f.send(first, [work]);
       await until(() => entered, 'first generation did not reach the real prepare boundary');
       // A healthy driver renews through a slow prepare RPC. Simulate the original node
       // losing dispatch authority before expecting a successor to claim its expired lease.
       first.closeDispatch();
-      const second = f.makeAgent({ tools: host, driverId: 'real-driver-b' }); second.resume();
+      const second = f.makeAgent({ tools: host, driverId: 'real-driver-b', leaseMs: 1500 }); second.resume();
       const result = await f.completed(second, runId);
       gate.resolve(); await first.drain();
       assert.equal(prepared.length, 2);

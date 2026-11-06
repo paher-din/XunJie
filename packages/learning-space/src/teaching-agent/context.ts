@@ -1,8 +1,8 @@
 import type { ActionInput } from '@xunjie/contracts/action-intents';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 
-export interface ContextMessage { role: 'student' | 'assistant'; text: string }
-export interface ContextSource { kind: 'platform' | 'run' | 'course' | 'input' | 'history' | 'material'; id?: string; label: string }
+export interface ContextMessage { role: 'student' | 'assistant'; text: string; source?: ContextSource }
+export interface ContextSource { kind: 'platform' | 'run' | 'course' | 'input' | 'history' | 'material' | 'student-response'; id?: string; label: string }
 export interface ContextCapacity {
   counter: 'unavailable';
   inputChars: number;
@@ -70,6 +70,7 @@ export function buildContext(activity: LearningActivity, input: ActionInput, his
     { kind: 'input', id: input.requestId, label: '学生问题与固定输入' },
   ];
   if (history.length) sources.push({ kind: 'history', label: '此前学生对话与 Agent 答复' });
+  for (const message of history) if (message.source) sources.push(message.source);
   if (activity.course) {
     sources.push({ kind: 'course', id: activity.course.releaseId, label: '课程发布、帮助策略与任务要求' });
     for (const material of activity.course.materials) sources.push({ kind: 'material', id: material.materialId, label: material.title });

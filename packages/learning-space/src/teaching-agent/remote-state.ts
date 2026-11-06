@@ -5,7 +5,7 @@ import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agen
 import type { z } from 'zod';
 export { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
 
-export const teachingDeploymentMigration: Migration = { version: 3, name: 'agent-dependency-identity-and-permits', sql: `
+export const teachingDeploymentMigration: Migration = { version: 4, name: 'agent-dependency-identity-and-permits', sql: `
   CREATE TABLE teaching_dependency_bindings(name text PRIMARY KEY,body jsonb NOT NULL);
   ALTER TABLE teaching_steps ADD COLUMN dispatch_generation integer;
 ` };

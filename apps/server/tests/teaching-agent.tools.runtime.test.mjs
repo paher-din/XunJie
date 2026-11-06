@@ -85,7 +85,7 @@ async function fixture(answer, protocol = 'chat-completions') {
     async restart() { await runtime.stop(); endpoint = (await runtime.start()).endpoint; },
     async close() {
       await runtime.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
-      await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     } };
 }
 
