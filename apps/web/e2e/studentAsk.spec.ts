@@ -10,7 +10,8 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const evidence = fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-199', import.meta.url))
+const evidence = process.env.XUNJIE_STUDENT_ASK_EVIDENCE_DIR
+  ?? fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-199', import.meta.url))
 let runtime: ReturnType<typeof openProductRuntime>
 let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 let root = '', endpoint = ''
@@ -60,6 +61,12 @@ test.beforeAll(async () => {
     } catch (error) { modelErrors.push(String(error)); response.destroy() }
   })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
+  // A fresh, already-started complete product package can use the same public
+  // Chrome scenarios without replacing its CLI, daemon or bundled application.
+  if (process.env.XUNJIE_STUDENT_ASK_ENDPOINT) {
+    endpoint = process.env.XUNJIE_STUDENT_ASK_ENDPOINT
+    return
+  }
   root = await mkdtemp(join(tmpdir(), 'xj-student-ask-ui-'))
   runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0',
     postgresBin, postgresVersion: '18.6',
@@ -194,7 +201,7 @@ test('Chinese text survives an unaccepted send and a lost acceptance reply is qu
   await expect(card.getByRole('button', { name: '跳过这次提问', exact: true })).toHaveCount(0)
   const entry = card.getByLabel('你的回应', { exact: true })
   await entry.focus(); await page.keyboard.insertText(text)
-  await expect(card.getByText('输入已在本机保留。', { exact: true })).toBeVisible()
+  await expect(entry).toHaveValue(text)
   await page.reload(); await expect(entry).toHaveValue(text)
   await card.getByRole('button', { name: '提交回应', exact: true }).click()
   await expect(card.getByRole('button', { name: '核对原回应', exact: true })).toBeEnabled()

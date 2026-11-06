@@ -12,7 +12,7 @@ import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
-import { ActivityConversation, FirstQuestionAutoSend, firstQuestionKey } from './ActivityConversation'
+import { ActivityConversation, FirstQuestionAutoSend, firstQuestionKey, currentStudentQuestion } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
 import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
@@ -57,8 +57,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     const read = async () => {
       try {
         const value = teachingConversationSchema.parse(await learningRequest(activity, spaceKey, namespace, `agent/${activity.activityId}/conversation`))
-        if (current) setPendingQuestion(value.questions.find(question => question.state === 'pending'
-          && value.runs.some(run => run.runId === question.runId && ['received', 'running', 'dispatching', 'waiting'].includes(run.state) && !run.stopRequested)) ?? null)
+        if (current) setPendingQuestion(currentStudentQuestion(value))
       } catch { if (current) setPendingQuestion(null) }
     }
     void read()

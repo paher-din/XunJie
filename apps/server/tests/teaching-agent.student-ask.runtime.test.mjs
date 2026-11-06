@@ -473,3 +473,80 @@ test('a new model configuration reconstructs the question behind a prior explici
     assert.equal(f.payloads.length, 3);
   } finally { await f.close(); }
 });
+
+test('expiry closes an unpresented native question call before another request in the same activity', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response, index) => index === 1 ? reply(response, { calls: [
+    { id: 'expiring-first', input: { ...prompt, question: '这份预测先等你回应。' } },
+    { id: 'never-presented-second', input: { ...prompt, question: '这份问题不应在首问超期后出现。' } },
+  ] }) : reply(response, { text: '新请求可继续，未把先前未回答的问题当作已经回答。' }));
+  try {
+    const controlled = await f.controlled({ limits: { waitMs: 1000 } }), { agent } = controlled;
+    const firstRun = await controlled.send();
+    await until(async () => (await agent.conversation(f.activity.identity, f.activity.activityId)).questions.length === 1, 'The first question must be saved.');
+    agent.resume();
+    await until(async () => (await agent.run(f.activity.identity, f.activity.activityId, firstRun)).state === 'paused', 'Question expiry must finish native cleanup.');
+    const nextRun = await controlled.send();
+    const next = await until(async () => {
+      const value = await agent.run(f.activity.identity, f.activity.activityId, nextRun);
+      return ['completed', 'paused', 'failed', 'stopped'].includes(value.state) ? value : null;
+    }, 'The next request must not stay behind an unpaired call.');
+    assert.equal(next.state, 'completed', 'The original native tool batch must be fully paired before a new request.');
+    const conversation = await agent.conversation(f.activity.identity, f.activity.activityId);
+    assert.equal(conversation.questions.length, 1);
+    assert.equal(conversation.questions[0].state, 'expired');
+    const notStarted = conversation.tools.find(tool => tool.callId === 'never-presented-second');
+    assert.equal(notStarted.outcome, 'not-dispatched');
+    assert.equal(notStarted.state, 'settled');
+    assert.equal(conversation.messages.filter(message => message.kind === 'student-response').length, 0);
+    assert.equal(f.payloads.length, 2);
+    assert.ok(JSON.stringify(f.payloads[1]).includes('student-response-expired'));
+    const events = await agent.events(f.activity.identity, f.activity.activityId);
+    assert.equal(events.filter(event => event.kind === 'tools-paired' && event.body.runId === firstRun).length, 1);
+  } finally { await f.close(); }
+});
+
+test('the model receives the complete legal 4000-unit response with quotes, newlines and Unicode', { timeout: 240000 }, async () => {
+  const f = await fixture((_payload, response, index) => index === 1 ? reply(response, { ask: true })
+    : reply(response, { text: '根据完整的明确回应继续核对。' }));
+  const directory = await mkdtemp(join(tmpdir(), 'xj-student-response-retention-'));
+  try {
+    const text = '"\\\n🧪字'.repeat(665) + '0123TAIL!?';
+    assert.equal(text.length, 4000);
+    const runId = await f.send(), question = await f.question(runId), base = `agent/${f.activity.activityId}`;
+    const accepted = await f.api(`${base}/questions/${question.questionId}/responses`, { requestId: randomUUID(),
+      questionVersion: 1, waitVersion: 1, answer: { kind: 'text', text } });
+    await until(async () => (await f.api(`${base}/runs/${runId}`)).state === 'completed', 'The response should continue its original Run.');
+    // Read only the real SDK request received by the upstream. Both complete documents and
+    // explicitly numbered lossless parts are valid model-facing response representations.
+    const documents = f.payloads[1].messages.flatMap(message => {
+      if (message.role !== 'user') return [];
+      const content = typeof message.content === 'string' ? [message.content]
+        : Array.isArray(message.content) ? message.content.filter(part => part.type === 'text').map(part => part.text) : [];
+      return content.flatMap(text => {
+        try {
+          const observation = JSON.parse(text);
+          if (observation.source !== 'caller') return [];
+          const document = JSON.parse(observation.text);
+          return [typeof document.feedback === 'string' ? JSON.parse(document.feedback) : document];
+        } catch { return []; }
+      });
+    }).filter(document => (document.responseId ?? document.response?.requestId) === accepted.requestId);
+    const complete = documents.find(document => document.kind === 'student-response' && document.answer?.kind === 'text');
+    const parts = documents.filter(document => document.kind === 'student-response-part' && document.field === 'answer.text')
+      .sort((left, right) => left.part - right.part);
+    const original = documents.find(document => document.kind === 'student-response' && document.response?.answer.kind === 'text');
+    const adopted = complete?.answer.text ?? original?.response.answer.text ?? parts.map(part => part.text).join('');
+    assert.equal(adopted, text, 'The actual request must contain every code unit of the accepted response.');
+    const events = await f.api(`${base}/events`), last = events.filter(event => event.kind === 'context-assembled').at(-1);
+    const snapshot = await f.api(`${base}/snapshots/${last.body.snapshotId}`);
+    assert.ok(snapshot.sources.some(source => source.kind === 'student-response' && source.id === accepted.requestId));
+    await f.restart();
+    assert.equal((await f.api(`${base}/conversation`)).questions[0].response.answer.text, text);
+    const key = randomBytes(32);
+    await f.runtime.setCredential('long-student-response', key.toString('base64'));
+    await f.runtime.recovery.backup({ directory, recoveryKeyRef: 'long-student-response', leaveClosed: true });
+    assert.equal(f.payloads.length, 2, 'History and owner validation must not regenerate the accepted answer.');
+  } finally {
+    await f.close(); await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+});

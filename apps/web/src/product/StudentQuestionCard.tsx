@@ -21,7 +21,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
 }) {
   const key = JSON.stringify([scope, question.questionId, question.version, question.waitVersion])
   const [record, setRecord] = useState<LocalStudentResponse | null>(null)
-  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [protectedInput, setProtectedInput] = useState(false)
+  const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const alive = useRef(false), writable = useRef(!readOnly), card = useRef<HTMLElement>(null)
   const writes = useRef<Promise<unknown>>(Promise.resolve()), revision = useRef(0)
   writable.current = !readOnly
@@ -45,7 +45,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
         if (!current || current.input?.requestId !== saved.input!.requestId) throw new Error('原回应需要重新核对。')
         return { ...current, receipt }
       })
-      if (alive.current) { setRecord(updated); setError(''); setProtectedInput(true); await onConfirmed() }
+      if (alive.current) { setRecord(updated); setError(''); await onConfirmed() }
     } catch {
       if (alive.current) setError('回应结果尚未确认，输入已保留。请核对原回应；不会另建一次提交。')
     } finally { if (alive.current) setBusy(false) }
@@ -59,7 +59,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
         if (saved.scope !== scope) throw new Error('回应不属于当前空间。')
         if (writable.current) saved = await store.change(key, current => current ?? saved)
         if (!alive.current) return
-        setRecord(saved); setProtectedInput(true)
+        setRecord(saved)
         if (saved.input && !saved.receipt) void deliver(saved)
       } catch { if (alive.current) { setRecord(initial()); setError('本机保护暂不可用，请保留或复制输入后重试。') } }
     })()
@@ -86,9 +86,9 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   const edit = (change: Partial<Pick<LocalStudentResponse, 'mode' | 'optionId' | 'text'>>) => {
     if (!record || readOnly || busy || record.input && !record.receipt) return
     const value = { ...record, ...change }, version = ++revision.current
-    setRecord(value); setProtectedInput(false)
+    setRecord(value)
     writes.current = writes.current.catch(() => {}).then(() => store.change(key, current => ({ ...(current ?? value), ...change })))
-    void writes.current.then(() => { if (alive.current && revision.current === version) { setProtectedInput(true); setError('') } })
+    void writes.current.then(() => { if (alive.current && revision.current === version) setError('') })
       .catch(() => { if (alive.current) setError('输入尚未在本机可靠保留，请复制后重试。') })
   }
   const submit = async (skip = false) => {
@@ -106,7 +106,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
               ? { kind: 'choice', optionId: record.optionId } : { kind: 'text', text: record.text } }) }
       })
       if (!alive.current) return
-      setRecord(saved); setProtectedInput(true)
+      setRecord(saved)
       await deliver(saved)
     } catch { if (alive.current) setError('回应尚未在本机可靠保留，输入仍在这里，请复制或重试。') }
     finally { if (alive.current) setBusy(false) }
@@ -115,7 +115,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   const canAnswer = question.state === 'pending' && !readOnly && !pending && !busy
   const valid = record?.mode === 'choice' ? !!record.optionId : !!record?.text.trim()
   const status = question.state === 'answered' ? '回应已接收，内容保留在对话中。' : question.state === 'skipped' ? '你已明确跳过这次提问。'
-    : question.state === 'expired' ? '这次提问已到期，原任务已暂停。' : question.state === 'cancelled' ? '原任务已停止，这次提问已取消。'
+    : question.state === 'expired' ? '这次提问已到期，回应入口已关闭。' : question.state === 'cancelled' ? '原任务已停止，这次提问已取消。'
       : readOnly ? '当前只读，可以查看原问题与回应。' : '等你明确回应；关闭或忽略不会记作回答。'
   return <section ref={card} role="group" aria-label="Agent 的提问" tabIndex={-1}
     className="student-question" data-student-question={question.questionId} data-state={question.state}>
@@ -134,7 +134,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
       </div>}
       <div className="student-question-actions"><button type="submit" className="primary" disabled={!canAnswer || !valid}>提交回应</button>
         {question.skippable && <button type="button" className="outline" disabled={!canAnswer} onClick={() => void submit(true)}>跳过这次提问</button>}</div>
-      {!readOnly && <p className="detail">{pending ? '正在核对原回应，输入已保留。' : protectedInput ? '输入已在本机保留。' : '正在保护输入…'}</p>}
+      {pending && !readOnly && <p className="detail">正在核对原回应，输入已保留。</p>}
     </form>}
     <p className="student-question-status" role="status">{status}</p>
     {pending && !readOnly && <button type="button" className="outline" disabled={busy} onClick={() => void deliver(record!)}>核对原回应</button>}

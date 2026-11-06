@@ -141,7 +141,7 @@ export function createStudentQuestions(storage: OwnedStorage, owner: {
     await tx.query("UPDATE teaching_student_questions SET state='expired' WHERE question_id=$1", [saved.questionId]);
     await tx.query("UPDATE teaching_waits SET state='expired' WHERE wait_id=$1 AND state='pending'", [saved.waitId]);
     await tx.query("UPDATE teaching_commands SET state='settled',outcome=$2,updated_at=clock_timestamp() WHERE command_id=$1", [saved.commandId, JSON.stringify(outcome)]);
-    await tx.query(`UPDATE teaching_runs SET state='paused',reason='student-response-expired',lease_owner=NULL,lease_expires_at=NULL,
+    await tx.query(`UPDATE teaching_runs SET state='waiting',reason='student-response-expired',lease_owner=NULL,lease_expires_at=NULL,
       updated_at=clock_timestamp() WHERE run_id=$1 AND state='waiting' AND stop_requested=false`, [saved.runId]);
     for (const kind of ['question-expired', 'wait-expired'] as const) await event(tx, String(row.activity_id), kind,
       { runId: saved.runId, questionId: saved.questionId, questionVersion: saved.version, waitId: saved.waitId,
@@ -198,8 +198,8 @@ export function createStudentQuestions(storage: OwnedStorage, owner: {
       if (!reason && saved && row && run) {
         const explicit = { requestId: input.requestId, answer: input.answer, text, processedAt: receipt.processedAt };
         const outcome: TeachingToolOutcome = { state: 'completed', feedback: { outcome: 'success', images: [],
-          text: JSON.stringify({ kind: 'student-response', questionId, questionVersion: saved.version, waitVersion: saved.waitVersion,
-            question: saved.question, source: saved.source, response: explicit }) },
+          text: input.answer.kind === 'skip' ? '学生明确跳过了本次提问；完整回应及来源另以明确回应观察提供。'
+            : '学生已明确回应本次提问；完整原文及来源另以明确回应观察提供。' },
           result: { questionId, questionVersion: saved.version, waitVersion: saved.waitVersion, responseId: input.requestId,
             answerState: input.answer.kind === 'skip' ? 'skipped' : 'answered', question: saved.question, source: saved.source, response: explicit },
           source: { label: '学生对当前提问的明确回应' } };

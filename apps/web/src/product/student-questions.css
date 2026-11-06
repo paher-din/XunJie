@@ -9,7 +9,7 @@
 .student-question-text { display: grid; gap: 8px; margin: 12px 0; color: var(--ink-soft); }
 .student-question textarea { width: 100%; min-height: 88px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 13px/1.5 var(--font-sans); resize: vertical; }
 .student-question-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
-.student-question button { min-height: 32px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; font: 500 13px/1.5 var(--font-sans); overflow-wrap: anywhere; }
+.student-question button { min-height: 32px; max-width: 100%; padding: 4px 16px; border: 1px solid var(--line-strong); border-radius: 8px; font: 500 13px/1.5 var(--font-sans); overflow-wrap: anywhere; }
 .student-question button.primary { background: var(--primary); color: var(--on-primary); }
 .student-question button.outline { background: var(--paper); color: var(--ink-soft); }
 .student-question button:disabled { cursor: default; color: var(--muted); background: var(--chip-bg); }

@@ -10,11 +10,17 @@ import { StudentQuestionCard } from './StudentQuestionCard'
 
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
 
+export function currentStudentQuestion(value: TeachingConversation) {
+  return value.questions.find(question => question.state === 'pending'
+    && value.runs.some(run => run.runId === question.runId && activeStates.includes(run.state) && !run.stopRequested)) ?? null
+}
+
 function runLabel(run: TeachingRun, waits: TeachingWait[]) {
   if (run.stopRequested && activeStates.includes(run.state)) return '已请求停止，正在核对原任务…'
   if (run.state === 'received' || run.state === 'running') return 'Agent 正在准备回答…'
   if (run.state === 'dispatching') return 'Agent 正在生成回答…'
   if (run.state === 'waiting') {
+    if (run.reason === 'student-response-expired') return '回应等待已到期，正在结清原调用；不会重新生成。'
     const reasons = new Set(waits.filter(wait => wait.runId === run.runId && wait.state === 'pending').map(wait => wait.reason))
     return [reasons.has('student') && 'Agent 在等你明确回应，可以继续编辑作品。',
       reasons.has('browser') && '等待浏览器连接或操作结果…', reasons.has('execution') && '等待实验结果…',
@@ -57,8 +63,7 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
       const value = teachingConversationSchema.parse(await request(`agent/${activityId}/conversation`))
       if (mounted.current && shown.current === scope) {
         setConversation(value); setError('')
-        onQuestionChange?.(value.questions.find(question => question.state === 'pending'
-          && value.runs.some(run => run.runId === question.runId && activeStates.includes(run.state) && !run.stopRequested)) ?? null)
+        onQuestionChange?.(currentStudentQuestion(value))
       }
     } catch (cause) {
       if (mounted.current && shown.current === scope && (cause as { code?: string }).code !== 'unavailable')

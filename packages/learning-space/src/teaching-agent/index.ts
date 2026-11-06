@@ -631,11 +631,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
     await options.activity(identity, activityId);
     await storage.pendingIntents();
-    const { rows: [row] } = await storage.read(`SELECT r.state,r.stop_requested,c.state AS command_state,s.snapshot_id
+    const { rows: [row] } = await storage.read(`SELECT r.state,r.reason,r.stop_requested,c.state AS command_state,s.snapshot_id
       FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id JOIN teaching_steps s ON s.step_id=c.step_id
       WHERE c.command_id=$1 AND c.run_id=$2 AND c.step_id=$3 AND r.activity_id=$4`,
       [association.commandId, association.runId, association.stepId, activityId]);
-    if (!row || row.snapshot_id !== association.snapshotId || row.stop_requested || terminal(row.state as TeachingRun['state'])
+    if (!row || row.snapshot_id !== association.snapshotId || row.stop_requested || row.reason === 'student-response-expired' || terminal(row.state as TeachingRun['state'])
       || !['dispatching', 'waiting'].includes(String(row.command_state))) throw new StorageError('forbidden');
   }
   async function validate() {
