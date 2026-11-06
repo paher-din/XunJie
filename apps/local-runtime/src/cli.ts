@@ -402,7 +402,7 @@ async function main(): Promise<void> {
       const algorithm = input.algorithm as { path?: unknown } | undefined;
       if (algorithm && typeof algorithm.path !== 'string') throw new Error('组件算法通过 path 从导入目录读取');
       const algorithmBase64 = algorithm ? (await confined('组件算法', algorithm.path as string)).toString('base64') : undefined;
-      const { path: _path, algorithm: _algorithm, dependencies: declared, ...body } = input;
+      const { path: _path, algorithm: _algorithm, dependencies: declared, runtimeFiles, ...body } = input;
       // Dependency bytes come from the import directory by declared path, keyed to the manifest's fixed resourceId.
       const manifest = object(body.manifest, '组件清单');
       const declaredDependencies = manifest.dependencies;
@@ -415,10 +415,26 @@ async function main(): Promise<void> {
         return { path: dependency.path, resourceId: entry.resourceId };
       });
       if (declared !== undefined && !Array.isArray(declared)) throw new Error('组件依赖必须是数组');
+      // A format 3 definition pins its whole runtime file set; each is read by declared path and still
+      // digest-checked by the owner, so an import cannot substitute bytes for a file the manifest names.
+      const declaredRuntime = manifest.runtime === undefined ? undefined
+        : object(manifest.runtime, '组件运行档案').resources;
+      const runtimeResources = runtimeFiles === undefined ? undefined
+        : (Array.isArray(runtimeFiles) ? runtimeFiles : []).map(item => {
+          const file = object(item, '组件运行资源');
+          const entry = (Array.isArray(declaredRuntime) ? declaredRuntime : [])
+            .map(candidate => object(candidate, '清单运行资源')).find(candidate => candidate.resourceId === file.resourceId);
+          if (typeof file.path !== 'string' || !entry) throw new Error('组件运行资源需要 resourceId 与 path，且清单必须声明同一资源');
+          return { path: file.path, resourceId: file.resourceId as string };
+        });
+      if (runtimeFiles !== undefined && !Array.isArray(runtimeFiles)) throw new Error('组件运行资源必须是数组');
       output(await manageCourse('component-import', { ...body, contentBase64: bytes.toString('base64'),
         ...(algorithmBase64 === undefined ? {} : { algorithmBase64 }),
+        ...(runtimeResources ? { runtimeResources: await Promise.all(runtimeResources.map(async item =>
+          ({ resourceId: item.resourceId, contentBase64: (await confined('组件运行资源', item.path)).toString('base64') }))) } : {}),
         ...(resources ? { dependencies: await Promise.all(resources.map(async item =>
-          ({ resourceId: item.resourceId, contentBase64: (await confined('组件依赖', item.path)).toString('base64') }))) } : {}) })); break;
+          ({ resourceId: item.resourceId, contentBase64: (await confined('组件依赖', item.path)).toString('base64') }))) } : {}) },
+        runtimeResources ? 300000 : 15000)); break;
     }
     case 'component-read': {
       output(await manageCourse('component-read', await jsonFile(required('file'), '组件查询'))); break;

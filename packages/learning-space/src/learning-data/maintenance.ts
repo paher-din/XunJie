@@ -1,6 +1,7 @@
 import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage } from '@xunjie/storage';
 import { canonicalValue, type ExecutionQuery } from '@xunjie/contracts/execution';
+import { readNativeChannelSettlement } from './native-channel.js';
 
 /**
  * The execution owner writes the maintenance boundary it really observed: which commands it had
@@ -89,6 +90,7 @@ export async function collectExecutionBoundary(storage: OwnedStorage): Promise<E
     }
   }
   async function channelCommands() {
+    const channelSettlement = await readNativeChannelSettlement(storage);
     const { rows } = await storage.read('SELECT request_id,activity_id,input_digest,execution_ref,execution FROM channel_executions ORDER BY request_id');
     for (const row of rows) {
       // The school ledger keeps the original accepted query. A non-terminal query here is the
@@ -97,9 +99,9 @@ export async function collectExecutionBoundary(storage: OwnedStorage): Promise<E
       if (!query || typeof query !== 'object') throw new StorageError('corrupt');
       const state = String(query.state);
       const knowledge = query.statusKnowledge === 'unknown' ? 'unknown' : 'confirmed';
-      if (terminal(state) && knowledge === 'confirmed') { settled += 1; continue; }
+      if (terminal(state) && knowledge === 'confirmed' || channelSettlement.confirms(query)) { settled += 1; continue; }
       const stops = ids(await storage.read(`SELECT command_id FROM channel_execution_intents
-        WHERE request_id=$1 AND operation='stop' ORDER BY command_id`, [row.request_id]), 'command_id');
+        WHERE request_id=$1 AND command->>'operation'='stop' ORDER BY command_id`, [row.request_id]), 'command_id');
       const checkpoints = ids(await storage.read('SELECT checkpoint_id FROM channel_session_checkpoints WHERE session_ref=$1 ORDER BY checkpoint_id',
         [row.execution_ref]), 'checkpoint_id');
       const session = query.session;

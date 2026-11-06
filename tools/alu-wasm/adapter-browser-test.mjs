@@ -176,6 +176,37 @@ try {
     check((await revisedRuntime.simulate({ artifact: compiled.artifact })).code === 'invalid-input', 'old compilation artifact is rejected by changed adapter identity');
     const damagedRuntime = await createIcarusRuntime({ identity, assets, adapters, baseUrl: location.origin + '/tampered/' });
     check((await damagedRuntime.compile(request)).code === 'resource-integrity', 'actual resource bytes are checked before JS evaluation');
+    // A product host already holds these files (verified against the course release) and hands them over
+    // instead of letting the Worker fetch. The same compile/simulate path must run from bytes alone.
+    const names = ['ivl.js', 'ivl.wasm', 'ivlpp.js', 'ivlpp.wasm', 'vvp.js', 'vvp.wasm'];
+    const fetched = {};
+    for (const name of names) fetched[name] = new Uint8Array(await (await fetch('/assets/' + name)).arrayBuffer());
+    // No base URL is supplied, so a run that reached for the network could not resolve anything.
+    const fixedRuntime = await createIcarusRuntime({ identity, assets, adapters, resources: fetched });
+    const fixedCompile = await fixedRuntime.compile(structuredClone(request));
+    const fixedRun = await fixedRuntime.simulate({ artifact: fixedCompile.artifact, expectedIndices: Array.from({ length: 4096 }, (_, i) => i) });
+    check(fixedCompile.status === 'completed' && fixedRun.observationState === 'complete',
+      'fixed verified bytes run a real compile and simulation without a base URL: '
+      + JSON.stringify({ compile: fixedCompile.status === 'completed' ? fixedCompile.status : fixedCompile, run: fixedRun.status === 'completed' ? fixedRun.observationState : fixedRun }).slice(0, 400));
+    check(JSON.stringify(fixedRun.observations) === JSON.stringify(first.observations), 'byte-supplied run produces the same 4096 observations as the served package');
+    const mixedModes = await createIcarusRuntime({ identity, assets, adapters, resources: fetched, baseUrl: location.origin + '/assets/' })
+      .then(() => false, () => true);
+    check(mixedModes, 'a descriptor cannot claim both fixed bytes and a base URL');
+    const incompleteSet = { ...fetched };
+    delete incompleteSet['vvp.wasm'];
+    let refusedIncomplete = false;
+    try { await createIcarusRuntime({ identity, assets, adapters, resources: incompleteSet }); } catch { refusedIncomplete = true; }
+    check(refusedIncomplete, 'a missing fixed resource is refused at creation instead of being fetched');
+    const shortSet = { ...fetched, 'vvp.wasm': fetched['vvp.wasm'].slice(1) };
+    let refusedShort = false;
+    try { await createIcarusRuntime({ identity, assets, adapters, resources: shortSet }); } catch { refusedShort = true; }
+    check(refusedShort, 'a fixed resource of the wrong length is refused before any Worker starts');
+    const tamperedBytes = { ...fetched, 'ivl.wasm': fetched['ivl.wasm'].slice() };
+    tamperedBytes['ivl.wasm'][1024] ^= 1;
+    const tamperedFixed = await createIcarusRuntime({ identity, assets, adapters, resources: tamperedBytes });
+    const tamperedOutcome = await tamperedFixed.compile(structuredClone(request));
+    check(tamperedOutcome.code === 'resource-integrity', 'supplied bytes are re-verified in the Worker and never evaluated: '
+      + JSON.stringify(tamperedOutcome).slice(0, 200));
     const memoryCompile = await runtime.compile({ top: 'tb', sources: [{ path: 'memory.sv', content: 'module tb; integer arr[0:100000000]; initial begin arr[100000000]=1; $display("%d",arr[100000000]); $finish; end endmodule' }] });
     check(memoryCompile.status === 'completed', 'oversized-memory fixture compiles as actual HDL');
     const memoryResult = await runtime.simulate({ artifact: memoryCompile.artifact });

@@ -111,6 +111,95 @@ export function isNativeSessionAction(action: ExecutionAction): boolean {
   return action.execution.plan.location === 'native';
 }
 
+/**
+ * A format 3 run needs a real toolchain, so its budget is not the 5 s / 16 MiB aggregate ceiling.
+ * Every value is still a declared ceiling the adapter enforces, not a promise about the browser.
+ */
+export const executionLimitsV3Schema = z.object({
+  compileTimeoutMs: z.number().int().min(1000).max(30000),
+  simulateTimeoutMs: z.number().int().min(100).max(5000),
+  jobTimeoutMs: z.number().int().min(1000).max(40000),
+  memoryMiB: z.number().int().min(16).max(512),
+  inputBytes: z.number().int().min(1).max(1048576),
+  textBytes: z.number().int().min(1024).max(2097152),
+  vcdBytes: z.number().int().min(1024).max(8388608),
+  resultBytes: z.number().int().min(1024).max(16777216),
+  concurrentJobs: z.number().int().min(1).max(2),
+  queuedJobs: z.number().int().min(0).max(4),
+}).strict();
+export type ExecutionLimitsV3 = z.infer<typeof executionLimitsV3Schema>;
+
+/** One pinned runtime file. The adapter reads these bytes; nothing here is a URL. */
+export const executionRuntimeResourceSchema = z.object({
+  resourceId: z.uuid(), sha256: digest, byteLength: z.number().int().min(1).max(8388608),
+  path: z.string().min(1).max(200), role: z.enum(['toolchain-script', 'toolchain-wasm', 'data', 'scaffold', 'attachment']),
+  mediaType: z.string().min(1).max(120),
+}).strict();
+export type ExecutionRuntimeResourceRef = z.infer<typeof executionRuntimeResourceSchema>;
+
+/**
+ * Everything a format 3 run is judged against, captured at click time and never re-read from a mutable head.
+ * A v2 action stays byte-identical: this is a separate branch, not an extension of the v2 basis.
+ */
+export const executionBasisV3Schema = z.object({
+  /** The student's own HDL files and any declared read-only dependencies, by content and digest. */
+  works: workFilesSchema,
+  runtime: z.object({
+    adapterId: identifier, adapterVersion: z.number().int().positive(),
+    bundleIdentity: digest, resources: z.array(executionRuntimeResourceSchema).min(1).max(32),
+  }).strict(),
+  compile: z.object({
+    top: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_$]{0,199}$/),
+    entryFiles: z.array(z.string().min(1).max(200)).min(1).max(64),
+    includeDirs: z.array(z.string().min(1).max(200)).max(32),
+    strictExprWidth: z.boolean().optional(),
+  }).strict(),
+  observation: z.object({
+    scaffoldResourceId: z.uuid(), scaffoldVersion: z.number().int().positive(),
+    ports: z.object({ result: z.string().min(1).max(64), carry: z.string().min(1).max(64) }).strict(),
+    resultFormat: z.literal('xunjie-observations-v1'),
+  }).strict(),
+  /** The course release and rule the run is judged by; the client cites them, the owner re-derives them. */
+  course: z.object({ releaseId: z.uuid(), behaviorRuleDigest: digest, planDigest: digest }).strict(),
+  expected: z.object({ stateContentId: z.uuid().nullable() }).strict(),
+}).strict();
+export type ExecutionBasisV3 = z.infer<typeof executionBasisV3Schema>;
+
+/**
+ * A format 3 execution action. It stays the same `kind` and the same receiver, so one ledger serves both
+ * formats; only the protocol version and the basis/limits shape differ.
+ */
+export const executionActionV3Schema = z.object({ protocolVersion: z.literal(3), kind: z.literal('execution'),
+  requestId: z.uuid(), scope: actionScopeSchema, receiver: actionReceiverSchema,
+  execution: z.object({
+    instance: executionInstanceSchema,
+    operation: z.object({ operationId: identifier, effect: z.literal('execute') }).strict(),
+    /** A/B/M/S/Cin only: the published control shape of this operation, validated by that operation's schema. */
+    parameters: z.unknown(),
+    basis: executionBasisV3Schema, limits: executionLimitsV3Schema, plan: executionPlanSchema,
+    initiator: z.object({ kind: z.enum(['student', 'agent', 'self-check', 'teacher-preview']),
+      principalId: z.uuid() }).strict(),
+  }).strict() }).strict()
+  .refine(value => value.receiver.kind === 'execution', { message: 'An execution action needs an execution receiver' })
+  .refine(value => value.execution.initiator.principalId === value.scope.principalId
+    || value.execution.initiator.kind === 'self-check' || value.execution.initiator.kind === 'teacher-preview',
+  { message: 'A student or agent initiator must be the fixed scope principal' })
+  .refine(value => value.execution.plan.location === 'browser' && value.execution.plan.kind === 'job',
+    { message: 'A format 3 run is a fixed browser job' })
+  .refine(value => value.execution.basis.compile.entryFiles.every(path =>
+    value.execution.basis.works.some(file => file.name === path)), { message: 'A compilation entry must be a fixed work file' })
+  .refine(value => new Set(value.execution.basis.runtime.resources.map(item => item.path)).size
+    === value.execution.basis.runtime.resources.length, { message: 'Runtime resource paths must be unique' })
+  .refine(value => JSON.stringify(value).length <= 4000000, { message: 'fixed execution input exceeds its supported recovery envelope' });
+export type ExecutionActionV3 = z.infer<typeof executionActionV3Schema>;
+
+/** One dispatch point for every owner that must read either format: the ledger, history, forwarding and maintenance. */
+export const anyExecutionActionSchema = z.union([executionActionSchema, executionActionV3Schema]);
+export type AnyExecutionAction = z.infer<typeof anyExecutionActionSchema>;
+export function isV3Action(action: AnyExecutionAction): action is ExecutionActionV3 {
+  return action.protocolVersion === 3;
+}
+
 /** One session input with its own stable identity and the sequence the caller last observed. */
 export const executionControlSchema = z.object({ controlId: z.uuid(), operationId: identifier,
   effect: sessionControlEffectSchema, expectedSeq: z.number().int().nonnegative(), parameters: z.unknown() }).strict();
@@ -120,9 +209,9 @@ export type ExecutionControl = z.infer<typeof executionControlSchema>;
 export const executionStopSchema = z.object({ stopId: z.uuid(), reason: z.string().max(200) }).strict();
 export type ExecutionStop = z.infer<typeof executionStopSchema>;
 
-export const fixedActionSchema = z.union([actionInputSchema, executionActionSchema]);
+export const fixedActionSchema = z.union([actionInputSchema, anyExecutionActionSchema]);
 export type FixedAction = z.infer<typeof fixedActionSchema>;
-export function isExecutionAction(action: FixedAction): action is ExecutionAction {
+export function isExecutionAction(action: FixedAction): action is AnyExecutionAction {
   return (action as { kind?: unknown }).kind === 'execution';
 }
 /** Legacy records have no discriminator; only an explicit execution kind changes what an action means. */
@@ -227,7 +316,7 @@ export function rejectedExecutionAcceptance(requestId: string, inputDigest: stri
 }
 
 /** Read-only history preserves original accepted input; it grants no right to dispatch it. */
-export const executionHistoryEntrySchema = z.object({ action: executionActionSchema,
+export const executionHistoryEntrySchema = z.object({ action: anyExecutionActionSchema,
   acceptance: executionAcceptanceSchema, query: executionQuerySchema, createdAt: z.iso.datetime() }).strict()
   .refine(value => value.action.requestId === value.query.requestId
     && value.acceptance.receipt.requestId === value.query.requestId
@@ -239,8 +328,11 @@ export const executionHistoryEntrySchema = z.object({ action: executionActionSch
 export const executionHistoryPageSchema = z.object({ entries: z.array(executionHistoryEntrySchema).max(32),
   nextCursor: z.uuid().nullable() }).strict();
 export type ExecutionHistoryEntry = z.infer<typeof executionHistoryEntrySchema>;
+export const executionRetainedResourceSchema = z.object({contentId:z.uuid(),name:z.string().min(1).max(120),
+  mediaType:z.string().min(1).max(120),sha256:digest,byteLength:z.number().int().min(0).max(8388608),text:z.string().max(8388608)}).strict();
+export type ExecutionRetainedResource = z.infer<typeof executionRetainedResourceSchema>;
 export const executionArtifactSchema = z.object({ executionRef: z.uuid(), requestId: z.uuid(),
   scope: actionScopeSchema,
   name: z.string().min(1).max(240), mediaType: z.string().min(1).max(200),
   sha256: z.string().regex(/^[a-f0-9]{64}$/), byteLength: z.number().int().nonnegative(),
-  text: z.string().max(8000000), output: z.json() }).strict();
+  text: z.string().max(8000000), output: z.json(),resources:z.array(executionRetainedResourceSchema).max(4).optional() }).strict();

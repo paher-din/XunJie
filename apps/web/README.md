@@ -29,6 +29,8 @@ XunJie 主仓库的师生共用 Web 工程。首次内容由设计仓库 `XunJie
 
 后续 WP 在上述外壳、页面与工作区对应位置新增或替换能力，完成所属模块公开接口的真实接线，并清理被替代的实现。教学交付（WP12）接当前活动操作；不再建立另一套正式学习页。仍被旧执行／教师路径使用的组件和 API 由对应 WP 替换时移除。
 
+WP04 的正式 ALU 单次实验已接入同一活动页、作品和组件工具区，复用可靠编辑、公共执行、固定结果及资源保留。课程包见 [ALU 导入说明](../../components/alu-experiment/README.md)，实际 Windows 产品包/普通 Web、离线运行、双标签及界面对照见 [#192 本机交付](../../docs/student-agent-implementation/wp04-192-windows-acceptance.md)；Mac 和独立学校 HTTPS 验收边界单独记录。
+
 WP06 #164 已在同一外壳加入“模型设置”（`?settings=models`），通过 `PersonalModelSettings` / 纯展示 `ModelTab` 消费独立模型 owner：管理本人连接，保存前或保存后进行有限 Chat 文本检查，查询原检查及取消。普通正式 Web 和独立产品包使用同一实现。检查成功不验证图像/工具/strict schema，也不启用真实 Agent；模型未配置不阻止活动、作品和问题草稿。协议、凭据及恢复边界见[模型连接模块](../../packages/learning-space/src/model-connections/README.md)。旧设置控制器显式使用 `LegacyModelTab`，不与正式配置双写或相互回退。
 
 正式交付执行 `npm run build:runtime -w @xunjie/web` 与 `npm run package:product -- --platform <目标平台>`，后者提供真实宿主与同源 API；单独运行 Vite 默认页只提供前端，须由产品宿主提供 `/api/learning`。`npm run dev:prep -w @xunjie/web` 是原已确认 UI 的隔离参考。新界面与证据见 [#159 实施与验收](../../docs/student-agent-implementation/wp02-product-ui.md)。

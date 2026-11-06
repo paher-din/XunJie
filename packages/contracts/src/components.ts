@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const identifier = z.string().regex(/^[a-z][a-z0-9-]{0,47}$/);
 /** Shape property names are ordinary JSON keys, so camelCase is allowed; nothing executable. */
-const propertyKey = z.string().regex(/^[a-z][a-zA-Z0-9-]{0,47}$/);
+const propertyKey = z.string().regex(/^[a-zA-Z][a-zA-Z0-9-]{0,47}$/);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 /** Deliberately bounded declarative state language; no executable validators from imports. */
 export type StateShape = { type: 'string'; maxLength: number } | { type: 'number' } | { type: 'boolean' }
@@ -103,6 +103,12 @@ export const componentManifestSchema = z.object({
 export type ComponentManifest = z.infer<typeof componentManifestSchema>;
 export const componentCapabilities = ['workspace.read', 'workspace.change', 'material.highlight'] as const;
 export type ComponentCapability = typeof componentCapabilities[number];
+/**
+ * A format 3 runtime is the only component that can ask for a real executor. It is a separate list
+ * rather than an extra member of the one above, so a format 1 or 2 manifest still cannot declare it.
+ */
+export const componentRuntimeCapabilities = ['workspace.read', 'workspace.change', 'execution.submit'] as const;
+export type ComponentRuntimeCapability = typeof componentRuntimeCapabilities[number];
 
 /**
  * A locked browser dependency: exact package/version plus the immutable resource its bytes must match.
@@ -174,23 +180,190 @@ export const componentPreparedManifestSchema = z.object({
   .refine(value => value.environment.capabilityDependencies.every(item => item.dependencyIds.every(id => value.dependencies.some(entry => entry.dependencyId === id))),
     'A capability depends on an undeclared dependency');
 export type ComponentPreparedManifest = z.infer<typeof componentPreparedManifestSchema>;
-/** Format versions stay separate branches: a v1 definition must never gain defaulted v2 fields, which would move its digest. */
-export const componentAnyManifestSchema = z.union([componentManifestSchema, componentPreparedManifestSchema]);
+
+/**
+ * A fixed multi-resource browser runtime. The host ships the executor code for an Adapter it knows;
+ * the course declares only that identity and pins the exact resources the Adapter will read. A course
+ * resource can therefore never turn itself into a host adapter.
+ */
+export const componentRuntimeResourceRoles = ['toolchain-script', 'toolchain-wasm', 'data', 'scaffold', 'attachment'] as const;
+export const componentRuntimeResourceSchema = z.object({
+  resourceId: z.uuid(), sha256: digest, byteLength: z.number().int().min(1).max(8388608),
+  /** Relative to the runtime root; unique, no traversal. The Adapter resolves files by this path. */
+  path: z.string().min(1).max(200),
+  role: z.enum(componentRuntimeResourceRoles),
+  mediaType: z.enum(['text/javascript', 'application/wasm', 'application/json', 'text/plain', 'application/pdf', 'application/gzip']),
+}).strict();
+export type ComponentRuntimeResource = z.infer<typeof componentRuntimeResourceSchema>;
+
+/** The only operation a fixed ALU-style runtime exposes in this format version. */
+export const componentRunOperationSchema = z.object({
+  operationId: identifier, effect: z.literal('execute'),
+  /** A/B/M/S/Cin and nothing else; every control input is binary, outputs keep their four states. */
+  parameters: stateShapeSchema,
+  /** Fixed compilation inputs. The student's file set is the include closure this names, not a guess. */
+  compile: z.object({
+    top: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_$]{0,199}$/),
+    entryFiles: z.array(z.string().min(1).max(200)).min(1).max(64),
+    includeDirs: z.array(z.string().min(1).max(200)).max(32),
+    strictExprWidth: z.boolean().optional(),
+  }).strict(),
+  /** How the observation is read back: read-only scaffold, public ports and result format. */
+  observation: z.object({
+    scaffoldResourceId: z.uuid(), scaffoldVersion: z.number().int().positive(),
+    ports: z.object({ result: z.string().min(1).max(64), carry: z.string().min(1).max(64) }).strict(),
+    resultFormat: z.literal('xunjie-observations-v1'),
+  }).strict(),
+  result: stateShapeSchema,
+  budgets: z.object({
+    compileTimeoutMs: z.number().int().min(1000).max(30000),
+    simulateTimeoutMs: z.number().int().min(100).max(5000),
+    jobTimeoutMs: z.number().int().min(1000).max(40000),
+    memoryMiB: z.number().int().min(16).max(512),
+    inputBytes: z.number().int().min(1).max(1048576),
+    textBytes: z.number().int().min(1024).max(2097152),
+    vcdBytes: z.number().int().min(1024).max(8388608),
+    resultBytes: z.number().int().min(1024).max(16777216),
+  }).strict(),
+}).strict();
+export type ComponentRunOperation = z.infer<typeof componentRunOperationSchema>;
+
+const componentRuntimeSchema = z.object({
+  /** Host-shipped executor; the course names it and can never supply its code. */
+  adapterId: identifier, adapterVersion: z.number().int().positive(),
+  /** Identity of the whole fixed file set the Adapter reads, recomputed by the host before any run. */
+  bundleIdentity: digest,
+  resources: z.array(componentRuntimeResourceSchema).min(1).max(32),
+  operations: z.array(componentRunOperationSchema).min(1).max(4),
+}).strict()
+  .refine(value => new Set(value.resources.map(item => item.resourceId)).size === value.resources.length,
+    'Runtime resource identities must be unique')
+  .refine(value => new Set(value.resources.map(item => item.path)).size === value.resources.length,
+    'Runtime resource paths must be unique')
+  .refine(value => value.resources.every(item => item.path.split('/').every(part => part && part !== '.' && part !== '..')
+    && !item.path.startsWith('/') && !item.path.includes('\\')), 'Runtime resource paths must be relative and traversal-free')
+  .refine(value => new Set(value.operations.map(item => item.operationId)).size === value.operations.length,
+    'Runtime operation identities must be unique')
+  .refine(value => value.resources.filter(item => item.role === 'toolchain-script' || item.role === 'toolchain-wasm')
+    .every(item => item.mediaType === 'text/javascript' || item.mediaType === 'application/wasm'),
+  'Executable runtime resources must be JavaScript or WebAssembly')
+  .refine(value => value.resources.filter(item => item.role === 'scaffold').every(item => item.mediaType === 'text/plain'),
+    'A sampling scaffold is fixed Verilog text')
+  .refine(value => value.operations.every(operation => value.resources.some(item =>
+    item.resourceId === operation.observation.scaffoldResourceId && item.role === 'scaffold')),
+  'An operation must observe through a declared scaffold resource')
+  .refine(value => value.resources.reduce((total, item) => total + item.byteLength, 0) <= 16777216,
+    'Runtime resources exceed the declared 16 MiB preparation budget');
+
+/** Format 3 preparation: a real toolchain rather than a script bundle, so the feature set is explicit. */
+export const componentRuntimeEnvironmentSchema = z.object({
+  preparationType: z.literal('browser'), preparationProtocolVersion: z.literal(2),
+  requiredFeatures: z.array(z.enum(['worker', 'webassembly', 'crypto-subtle', 'indexeddb', 'message-port', 'web-locks'])).max(8),
+  selfTestVersion: z.number().int().positive(),
+}).strict();
+export type ComponentRuntimeEnvironment = z.infer<typeof componentRuntimeEnvironmentSchema>;
+
+/** A self-check that really compiles and simulates a fixed miniature module; it reads no student work. */
+export const componentRuntimeSelfTestSchema = z.object({
+  selfTestVersion: z.number().int().positive(),
+  fixture: z.object({
+    resourceId: z.uuid(), path: z.string().min(1).max(200), top: z.string().min(1).max(200),
+    /** The exact four-state observation a correct toolchain produces for this fixture. */
+    expect: z.object({ result: z.string().regex(/^[01xz]{1,32}$/), carry: z.string().regex(/^[01xz]$/) }).strict(),
+  }).strict(),
+  timeoutMs: z.number().int().min(1000).max(120000),
+}).strict();
+
+/** Budgets measured for a fixed toolchain; the Adapter enforces them, this only declares them. */
+export const componentRuntimeBudgetSchema = z.object({
+  resourceCount: z.number().int().min(1).max(32), totalResourceBytes: z.number().int().min(1).max(16777216),
+  preparationTimeoutMs: z.number().int().min(1000).max(300000), selfTestTimeoutMs: z.number().int().min(1000).max(120000),
+  concurrentJobs: z.number().int().min(1).max(2), queuedJobs: z.number().int().min(0).max(4),
+  cacheScope: z.literal('device-local'),
+}).strict();
+
+export const componentRuntimeManifestSchema = z.object({
+  formatVersion: z.literal(3), componentId: z.uuid(), version: z.number().int().positive(),
+  hostApiVersion: z.literal(1), preparationProtocolVersion: z.literal(2), title: z.string().min(1).max(100),
+  entry: z.object({ resourceId: z.uuid(), sha256: digest, byteLength: z.number().int().min(1).max(1000000),
+    mediaType: z.literal('text/html') }).strict(),
+  stateVersion: z.number().int().positive(), stateShape: stateShapeSchema, initialState: z.unknown().transform(normalized),
+  requiredCapabilities: z.array(z.enum(componentRuntimeCapabilities)).max(3),
+  runtime: componentRuntimeSchema,
+  environment: componentRuntimeEnvironmentSchema, budget: componentRuntimeBudgetSchema,
+  selfTest: componentRuntimeSelfTestSchema,
+}).strict()
+  .refine(value => acceptsState(value.stateShape, value.initialState), 'Initial state does not match its declared structure')
+  .refine(value => value.requiredCapabilities.includes('execution.submit'), 'A runtime component requires the execution capability')
+  .refine(value => value.environment.selfTestVersion === value.selfTest.selfTestVersion,
+    'Self-test version is declared twice with different values')
+  .refine(value => value.runtime.resources.length + 1 <= value.budget.resourceCount,
+    'Declared resource count exceeds the component budget')
+  .refine(value => value.runtime.resources.reduce((total, item) => total + item.byteLength, value.entry.byteLength)
+    <= value.budget.totalResourceBytes, 'Declared resources exceed the component budget')
+  .refine(value => value.runtime.resources.some(item => item.resourceId === value.selfTest.fixture.resourceId),
+    'The self-test fixture must be a declared runtime resource')
+  .refine(value => value.runtime.resources.every(item => item.resourceId !== value.entry.resourceId),
+    'A runtime resource cannot reuse the entry resource');
+export type ComponentRuntimeManifest = z.infer<typeof componentRuntimeManifestSchema>;
+
+/** Format versions stay separate branches: a v1 definition must never gain defaulted v2/v3 fields, which would move its digest. */
+export const componentAnyManifestSchema = z.union([componentManifestSchema, componentPreparedManifestSchema, componentRuntimeManifestSchema]);
 export type ComponentAnyManifest = z.infer<typeof componentAnyManifestSchema>;
 export function manifestDependencies(manifest: ComponentAnyManifest): ComponentDependency[] {
-  return manifest.formatVersion === 1 ? [] : [...manifest.dependencies].sort((a, b) => a.loadOrder - b.loadOrder);
+  // A format 3 runtime reads a fixed file set, not the v2 script-dependency list; it is not a dependency in that sense.
+  if (manifest.formatVersion !== 2) return [];
+  return [...manifest.dependencies].sort((a, b) => a.loadOrder - b.loadOrder);
 }
+/** Every resource a definition pins besides its entry, in a form the preparation/retention owners can iterate. */
+export type ComponentManifestResource = { kind: 'algorithm'; resourceId: string; sha256: string; byteLength: number
+  mediaType: string } | { kind: 'dependency'; resourceId: string; sha256: string; byteLength: number; mediaType: string }
+  | { kind: 'runtime'; resourceId: string; path: string; role: string; sha256: string; byteLength: number; mediaType: string };
+export function manifestResources(manifest: ComponentAnyManifest): ComponentManifestResource[] {
+  if (manifest.formatVersion === 1) return manifest.algorithm ? [{ kind: 'algorithm' as const, ...manifest.algorithm.resource }] : [];
+  if (manifest.formatVersion === 2) return manifest.dependencies.map(item => ({ kind: 'dependency' as const, resourceId: item.resourceId,
+    sha256: item.sha256, byteLength: item.byteLength, mediaType: item.mediaType }));
+  return manifest.runtime.resources.map(item => ({ kind: 'runtime' as const, resourceId: item.resourceId, path: item.path,
+    role: item.role, sha256: item.sha256, byteLength: item.byteLength, mediaType: item.mediaType }));
+}
+/** The retained reference one non-entry resource is pinned under; the owner reads it by its own identity. */
+export function componentResourceReference(manifest: ComponentAnyManifest,
+  item: Pick<ComponentManifestResource, 'kind' | 'resourceId'> & { path?: string }): string {
+  const scope = `component/${manifest.componentId}/${manifest.version}`;
+  if (item.kind === 'algorithm') return `${scope}/algorithm`;
+  if (item.kind === 'dependency') {
+    const dependency = manifest.formatVersion === 2
+      ? manifest.dependencies.find(entry => entry.resourceId === item.resourceId) : undefined;
+    return componentDependencyReference(manifest.componentId, manifest.version, dependency?.dependencyId ?? item.resourceId);
+  }
+  // Runtime resources are addressed by their declared relative path, so a reader never guesses order.
+  return `${scope}/runtime/${item.path}`;
+}
+/** The runtime an entry-level host must already ship before a format 3 definition may be mounted. */
+export function runtimeAdapter(manifest: ComponentAnyManifest) {
+  return manifest.formatVersion === 3 ? manifest.runtime : undefined;
+}
+
 
 export const componentDefinitionSchema = z.object({ manifest: componentAnyManifestSchema, digest }).strict();
 export type ComponentDefinition = z.infer<typeof componentDefinitionSchema>;
 export const componentBundleSchema = z.object({ definition: componentDefinitionSchema, contentBase64: z.string().max(1400000) }).strict();
 export const componentResourceContentSchema = z.object({ resourceId: z.uuid(), contentBase64: z.string().max(2800000) }).strict();
+/**
+ * A format 3 upload is bounded by the largest single runtime file the manifest may declare (8 MiB), not by a
+ * script. A script-sized bound would refuse a toolchain WASM that the same manifest legitimately pins.
+ */
+export const componentRuntimeUploadSchema = z.object({ resourceId: z.uuid(), contentBase64: z.string().max(11200000) }).strict();
 export const componentImportSchema = z.object({ requestId: z.uuid(), manifest: componentAnyManifestSchema,
-  contentBase64: z.string().max(1400000), algorithmBase64: z.string().max(1400000).optional(), dependencies: z.array(componentResourceContentSchema).max(8).optional() }).strict()
+  contentBase64: z.string().max(1400000), algorithmBase64: z.string().max(1400000).optional(),
+  dependencies: z.array(componentResourceContentSchema).max(8).optional(),
+  /** Format 3 pins every runtime file; the upload must match it one-for-one. */
+  runtimeResources: z.array(componentRuntimeUploadSchema).max(32).optional() }).strict()
   .refine(value => value.manifest.formatVersion !== 1 || !value.manifest.algorithm || value.algorithmBase64 !== undefined,
     'A declared algorithm must be uploaded with the manifest that pins it')
-  .refine(value => value.manifest.formatVersion === 1 || value.dependencies !== undefined, 'A prepared component must submit its dependency resources')
-  .refine(value => value.manifest.formatVersion === 2 || !value.dependencies, 'A format 1 component carries no dependency resources')
+  .refine(value => value.manifest.formatVersion !== 2 || value.dependencies !== undefined, 'A prepared component must submit its dependency resources')
+  .refine(value => value.manifest.formatVersion !== 1 || !value.dependencies, 'A format 1 component carries no dependency resources')
+  .refine(value => value.manifest.formatVersion === 3 || !value.runtimeResources, 'Only a format 3 component carries runtime resources')
   .refine(value => {
     // Total on every branch: a missing list is reported above, never thrown from here as a non-validation error.
     if (value.manifest.formatVersion !== 2 || !value.dependencies) return true
@@ -199,6 +372,15 @@ export const componentImportSchema = z.object({ requestId: z.uuid(), manifest: c
       && submitted.length === value.manifest.dependencies.length
       && manifestDependencies(value.manifest).every(item => submitted.some(content => content.resourceId === item.resourceId))
   }, 'Dependency resources must match the manifest exactly')
+  .refine(value => {
+    if (value.manifest.formatVersion !== 3) return true
+    // Every pinned runtime file is uploaded, and the product-shipped Adapter is deliberately not among
+    // them: it is not a runtime resource, so no course can hand the host its own executor.
+    const submitted = value.runtimeResources ?? []
+    return new Set(submitted.map(item => item.resourceId)).size === submitted.length
+      && submitted.length === value.manifest.runtime.resources.length
+      && value.manifest.runtime.resources.every(item => submitted.some(content => content.resourceId === item.resourceId))
+  }, 'Runtime resources must match the manifest exactly')
   .refine(value => value.manifest.componentId === value.manifest.componentId.toLowerCase(),
     'New component registrations require canonical lowercase UUIDs');
 export type ComponentImport = z.infer<typeof componentImportSchema>;
@@ -208,6 +390,18 @@ export const componentDependencyContentSchema = z.object({
   mediaType: z.literal('text/javascript'), contentBase64: z.string().max(2800000),
 }).strict();
 export type ComponentDependencyContent = z.infer<typeof componentDependencyContentSchema>;
+/**
+ * One runtime file a release really serves, addressed by the relative path its own manifest declared.
+ * Every declared role is answered here, toolchain included: the six Icarus files are release resources the
+ * client authorizes and digest-checks one by one. What is never answered is the Adapter itself — that
+ * ships with the product, so a course cannot hand the host its own executor.
+ */
+export const componentRuntimeResourceContentSchema = z.object({
+  resourceId: z.uuid(), path: z.string().min(1).max(200), role: z.enum(componentRuntimeResourceRoles),
+  sha256: digest, byteLength: z.number().int().min(1).max(8388608), mediaType: z.string().min(1).max(120),
+  contentBase64: z.string().max(11200000),
+}).strict();
+export type ComponentRuntimeResourceContent = z.infer<typeof componentRuntimeResourceContentSchema>;
 /** The algorithm is delivered only through the authorised release, never from the component view. */
 export const componentAlgorithmBundleSchema = z.object({ definition: componentDefinitionSchema,
   mediaType: z.literal('application/wasm'), entry: identifier, memoryPages: z.number().int().min(1).max(256),
@@ -290,8 +484,9 @@ export const preparationReasonCodes = ['none', 'resource-missing', 'resource-cor
   'device-feature-missing', 'protocol-unsupported', 'budget-exceeded', 'storage-unavailable', 'permission-pending',
   'self-test-failed', 'self-test-interrupted', 'self-test-mismatch', 'outcome-unknown', 'unsupported'] as const;
 export type PreparationReasonCode = typeof preparationReasonCodes[number];
+/** Both lists are accepted here because a projection states what one device observed for whatever it mounted. */
 export const preparationCapabilitySchema = z.object({
-  capability: z.enum(componentCapabilities), availability: capabilityAvailabilitySchema,
+  capability: z.enum([...componentCapabilities, ...componentRuntimeCapabilities]), availability: capabilityAvailabilitySchema,
   reason: z.enum(preparationReasonCodes), verification: preparationVerificationSchema,
   limitation: z.string().max(300).optional(),
 }).strict();
@@ -309,7 +504,8 @@ export type PreparationStage = z.infer<typeof preparationStageSchema>;
  */
 export const componentPreparationReportSchema = z.object({
   formatVersion: z.literal(1), componentId: z.uuid(), version: z.number().int().positive(), definitionDigest: digest,
-  preparationProtocolVersion: z.literal(1), selfTestVersion: z.number().int().positive(),
+  /** Protocol 2 is the runtime one. A report states the protocol it actually ran, not the newest supported. */
+  preparationProtocolVersion: z.union([z.literal(1), z.literal(2)]), selfTestVersion: z.number().int().positive(),
   hostVersion: z.string().min(1).max(64), device: preparationDeviceSchema,
   status: z.enum(preparationStatuses), reason: z.enum(preparationReasonCodes),
   stage: preparationStageSchema, capabilities: z.array(preparationCapabilitySchema).max(8),
@@ -317,7 +513,13 @@ export const componentPreparationReportSchema = z.object({
   resourceBytes: z.number().int().min(0).max(100000000),
   cacheHit: z.boolean(), preview: z.boolean(),
   memoryNote: z.string().max(300).optional(),
-}).strict();
+}).strict()
+  // A protocol 1 component cannot declare an execution capability, and a protocol 2 runtime cannot project
+  // anything its own manifest could not have asked for.
+  .refine(value => value.capabilities.every(item => value.preparationProtocolVersion === 1
+    ? (componentCapabilities as readonly string[]).includes(item.capability)
+    : (componentRuntimeCapabilities as readonly string[]).includes(item.capability)),
+  'A preparation report may only project capabilities its own protocol can declare');
 export type ComponentPreparationReport = z.infer<typeof componentPreparationReportSchema>;
 export const componentPreparationReportSubmissionSchema = z.object({ reportId: z.uuid(), requestId: z.uuid(), report: componentPreparationReportSchema }).strict();
 export type ComponentPreparationReportSubmission = z.infer<typeof componentPreparationReportSubmissionSchema>;

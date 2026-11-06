@@ -5,9 +5,11 @@ import type { Migration, OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { componentInstanceId, componentStateName } from '@xunjie/contracts/components';
-import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, executionActionSchema,
+import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, anyExecutionActionSchema as executionActionSchema,
   executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
-import type { ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
+import type { AnyExecutionAction as ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
+import { verifyRuntimeBasis } from './runtime-basis.js';
+import { executionRetainedResourceSchema, type ExecutionRetainedResource } from '@xunjie/contracts/execution';
 import { executionHistoryPageSchema, executionArtifactSchema } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
 import { verifyPlannedExecution } from './plan.js';
@@ -86,6 +88,10 @@ export function createExecutions(storage: OwnedStorage, options: {
       || manifest.componentId !== instance.componentId || manifest.version !== instance.componentVersion
       || manifest.stateVersion !== instance.stateVersion || manifest.hostApiVersion !== instance.hostApiVersion
       || binding.definition.digest !== instance.definitionDigest) fail('identity-conflict');
+    if(action.protocolVersion===3) {
+      verifyPlannedExecution(activity,{key:instance.key,definitionDigest:instance.definitionDigest,operationId:action.execution.operation.operationId,location:'browser'});
+      verifyRuntimeBasis(activity,binding,action);return;
+    }
     if (manifest.formatVersion !== 1) fail('missing');
     const operation = manifest.operations?.find(item => item.operationId === action.execution.operation.operationId);
     if (!operation || operation.effect !== action.execution.operation.effect) fail('missing');
@@ -116,6 +122,7 @@ export function createExecutions(storage: OwnedStorage, options: {
    * order of two independent uploads.
    */
   function verifyState(action: ExecutionAction) {
+    if(action.protocolVersion===3) return;
     const state = action.execution.basis.state, expected = action.execution.basis.expected.stateContentId;
     if ((state?.contentId ?? null) !== expected) fail('invalid');
     if (!state) return;
@@ -173,7 +180,7 @@ export function createExecutions(storage: OwnedStorage, options: {
       const { rows: [row] } = await tx.query('SELECT * FROM execution_commands WHERE request_id=$1 FOR UPDATE', [action.requestId]);
       if (!row || row.activity_id !== activityId || row.input_digest !== inputDigest) fail('identity-conflict');
       for (const file of action.execution.basis.works) await tx.reference(`execution/${action.requestId}/work/${file.contentId}`, file.contentId);
-      const state = action.execution.basis.state;
+      const state = action.protocolVersion===2 ? action.execution.basis.state : null;
       if (state) await tx.reference(`execution/${action.requestId}/state`, state.contentId);
       return query(row);
     });
@@ -217,10 +224,16 @@ export function createExecutions(storage: OwnedStorage, options: {
       return fail('corrupt');
     const bytes = Buffer.from(await storage.readResource(String(row.content_id)));
     if (bytes.length !== row.byte_length || createHash('sha256').update(bytes).digest('hex') !== row.sha256) fail('corrupt');
-    const metadata = row.artifact as { name: string; mediaType: string };
+    const metadata = row.artifact as { name: string; mediaType: string; resources?:Omit<ExecutionRetainedResource,'text'>[] };
+    const resources:ExecutionRetainedResource[]=[];
+    for(const ref of metadata.resources??[]) {
+      const resource=Buffer.from(await storage.readResource(ref.contentId));
+      if(resource.length!==ref.byteLength || createHash('sha256').update(resource).digest('hex')!==ref.sha256) fail('corrupt');
+      resources.push({...ref,text:new TextDecoder('utf-8',{fatal:true}).decode(resource)});
+    }
     return executionArtifactSchema.parse({ executionRef: row.execution_ref, requestId: row.request_id, scope: found.query.scope,
       name: metadata.name, mediaType: metadata.mediaType, sha256: row.sha256, byteLength: row.byte_length,
-      text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes), output: row.output });
+      text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes), output: row.output, ...(resources.length?{resources}:{}) });
   }
   /** The native session list lets a reopened view find its original reference, never a new run. */
   async function sessions(identity: SpaceIdentity, activityId: string): Promise<ExecutionQuery[]> {
@@ -287,24 +300,42 @@ export function createExecutions(storage: OwnedStorage, options: {
     if (native && await native.owns(activityId, requestId)) fail('invalid');
     const input = z.object({ contentId: z.uuid(), output: z.unknown(), text: z.string().max(2000000),
       name: z.string().min(1).max(120), mediaType: z.string().min(1).max(120),
-      sha256: z.string().regex(/^[a-f0-9]{64}$/), byteLength: z.number().int().positive().max(1048576) }).strict().parse(value);
+      sha256: z.string().regex(/^[a-f0-9]{64}$/), byteLength: z.number().int().positive().max(1048576),
+      resources:z.array(executionRetainedResourceSchema).max(4).optional() }).strict().parse(value);
     const found = await find(activityId, requestId);
     if (!found) fail('missing');
+    const acceptedAction=executionActionSchema.parse(found.row.body);
+    if(input.resources?.length && acceptedAction.protocolVersion!==3) fail('invalid');
+    const extras=input.resources??[];
+    if(new Set(extras.map(r=>r.contentId)).size!==extras.length || extras.some(r=>r.contentId===input.contentId)) fail('invalid');
+    if(acceptedAction.protocolVersion===3 && extras.reduce((n,r)=>n+r.byteLength,Buffer.byteLength(input.text))>acceptedAction.execution.limits.resultBytes)fail('invalid');
+    for(const ref of extras) {
+      const bytes=Buffer.from(ref.text,'utf8');
+      if(bytes.length!==ref.byteLength || createHash('sha256').update(bytes).digest('hex')!==ref.sha256)fail('invalid');
+    }
     const bytes = Buffer.from(input.text, 'utf8');
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     if (bytes.length !== input.byteLength || sha256 !== input.sha256) fail('invalid');
     const { rows: [previous] } = await storage.read('SELECT * FROM execution_results WHERE request_id=$1', [requestId]);
     if (previous) {
-      if (previous.content_id !== input.contentId || previous.sha256 !== sha256) fail('identity-conflict');
+      if (previous.content_id !== input.contentId || previous.sha256 !== sha256
+        || canonicalDigest((previous.artifact as {resources?:unknown}).resources??[])!==canonicalDigest(extras.map(({text: _text,...ref})=>ref))) fail('identity-conflict');
       return found.query;
     }
-    const artifact = { name: input.name, mediaType: input.mediaType, byteLength: bytes.length, sha256 };
-    const output = { contentId: input.contentId, output: input.output, artifact };
+    const resourceRefs=extras.map(({text: _text,...ref})=>ref);
+    const artifact = { name: input.name, mediaType: input.mediaType, byteLength: bytes.length, sha256,
+      ...(resourceRefs.length?{resources:resourceRefs}:{}) };
+    for(const ref of extras) {
+      const staged=await storage.stageResource({uploadId:ref.contentId,scope:`execution/${requestId}`,bytes:Buffer.from(ref.text,'utf8'),mediaType:ref.mediaType,contentVersion:1});
+      if(staged.sha256!==ref.sha256 || staged.byteLength!==ref.byteLength)fail('corrupt');
+    }
+    const output = { contentId: input.contentId, output: input.output,
+      artifact:{name:input.name,mediaType:input.mediaType,byteLength:bytes.length,sha256} };
     const reference = await storage.stageResource({ uploadId: input.contentId, scope: `execution/${requestId}`, bytes,
       mediaType: input.mediaType, contentVersion: 1 });
     if (reference.resourceId !== input.contentId || reference.sha256 !== sha256 || reference.byteLength !== bytes.length) fail('corrupt');
     const saved = await storage.request({ requestId: 'execution-result:' + requestId,
-      fingerprint: digest({ activityId, contentId: input.contentId, sha256 }) }, async tx => {
+      fingerprint: digest({ activityId, contentId: input.contentId, sha256, ...(extras.length?{resources:resourceRefs}:{}) }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2 FOR UPDATE',
         [activityId, requestId]);
       if (!row) fail('missing');
@@ -316,6 +347,7 @@ export function createExecutions(storage: OwnedStorage, options: {
         VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(request_id) DO NOTHING`, [requestId, activityId, current.executionRef,
         input.contentId, sha256, bytes.length, JSON.stringify(artifact), JSON.stringify(input.output)]);
       await tx.reference(`execution/${requestId}/result`, input.contentId);
+      for(const ref of extras)await tx.reference(`execution/${requestId}/resource/${ref.contentId}`,ref.contentId);
       if (existing) return current;
       const withOutput = executionQuerySchema.parse({ ...current, output });
       await tx.query('UPDATE execution_commands SET output=$2,updated_at=clock_timestamp() WHERE request_id=$1',
@@ -390,7 +422,7 @@ export async function validateExecutions(storage: OwnedStorage) {
       || !acceptance.execution || acceptance.execution.executionRef !== stored.executionRef
       || acceptance.execution.acceptedSeq > stored.confirmedSeq
       || JSON.stringify(acceptance.receipt.receiver) !== JSON.stringify(action.receiver)) corrupt('command identity or receipt');
-    const state = action.execution.basis.state;
+    const state = action.protocolVersion===2 ? action.execution.basis.state : null;
     if (state) {
       const { rows: [content] } = await storage.read(`SELECT activity_id,encoding,media_type FROM work_contents WHERE content_id=$1`,
         [state.contentId]);
@@ -404,6 +436,19 @@ export async function validateExecutions(storage: OwnedStorage) {
       [`execution/${stored.requestId}/state`]);
     if (state && (links.length !== 1 || links[0]!.resource_id !== state.contentId)) throw new StorageError('corrupt');
     if (!state && links.length) throw new StorageError('corrupt');
+    if(action.protocolVersion===3) {
+      if(!body)throw new StorageError('corrupt');
+      const binding=body.course?.components?.find(item=>item.key===action.execution.instance.key);
+      if(!binding)corrupt('runtime binding missing');
+      else verifyRuntimeBasis(body,binding,action);
+      for(const file of action.execution.basis.works) {
+        const bytes=Buffer.from(await storage.readResource(file.contentId));
+        if(!bytes.equals(Buffer.from(file.value,'utf8')))corrupt('fixed runtime work bytes');
+        const {rows:pins}=await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+          [`execution/${stored.requestId}/work/${file.contentId}`]);
+        if(pins.length!==1||pins[0]!.resource_id!==file.contentId)corrupt('fixed runtime work pin');
+      }
+    }
   }
   const { rows: stops } = await storage.read('SELECT * FROM execution_stops');
   for (const row of stops) {
@@ -429,5 +474,13 @@ export async function validateExecutions(storage: OwnedStorage) {
     const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
       [`execution/${row.request_id}/result`]);
     if (links.length !== 1 || links[0]!.resource_id !== row.content_id) throw new StorageError('corrupt');
+    const metadata=row.artifact as {resources?:Omit<ExecutionRetainedResource,'text'>[]};
+    for(const ref of metadata.resources??[]) {
+      const bytes=Buffer.from(await storage.readResource(ref.contentId));
+      if(bytes.length!==ref.byteLength || createHash('sha256').update(bytes).digest('hex')!==ref.sha256)throw new StorageError('corrupt');
+      const {rows:pins}=await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+        [`execution/${row.request_id}/resource/${ref.contentId}`]);
+      if(pins.length!==1||pins[0]!.resource_id!==ref.contentId)throw new StorageError('corrupt');
+    }
   }
 }

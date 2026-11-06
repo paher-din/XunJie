@@ -1,6 +1,14 @@
 export interface FixedFile { path: string; content: string }
 export interface Asset { bytes: number; sha256: string }
-export interface RuntimeDescriptor { identity: string; baseUrl: string; assets: Record<string, Asset>; adapters: Record<string, Asset> }
+/**
+ * A descriptor is served one of two ways. With `baseUrl` the package fetches its own files; with
+ * `resources` the caller hands over every verified byte and nothing is ever fetched. A partial or
+ * mistyped set is refused at creation, never completed from the network.
+ */
+export type RuntimeDescriptor = { identity: string; assets: Record<string, Asset>; adapters: Record<string, Asset> } & (
+  { baseUrl: string; resources?: undefined }
+  | { resources: Record<string, Uint8Array>; baseUrl?: undefined }
+);
 export interface Controls { signal?: AbortSignal; timeoutMs?: number; onStage?: (stage: string) => void }
 export interface CompileRequest {
   top: string;

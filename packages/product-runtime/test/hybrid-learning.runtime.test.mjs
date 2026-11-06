@@ -294,9 +294,14 @@ async function exercisePairedDevice(profile) {
         sourceServiceId: target.serviceId, target: schoolStatus.environment.services[0],
         requiredCapabilities: ['learning.authority'], optionalCapabilities: [], credentialRef: 'hybrid-school-runtime' }, renewed.token);
       const reconnect = randomUUID();
-      await api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint });
+      // A recovered installation only accepts member writes that carry the current handshake's
+      // namespace, so the pairing that opens this space must send it like the browser does.
+      const namespace = { 'x-xj-namespace': isolated.environment.clientNamespace };
+      await assert.rejects(api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint }),
+        /forbidden/, 'a recovered installation must not accept a pairing without the current namespace');
+      await api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint }, namespace);
       await api(schoolStatus.endpoint, 'connections/approve', { requestId: reconnect }, { cookie });
-      await api(isolated.endpoint, 'client/complete', { requestId: reconnect });
+      await api(isolated.endpoint, 'client/complete', { requestId: reconnect }, namespace);
       const restoredAdmin = { authorization: 'Bearer ' + await resolveCredential(restoredRoot, 'control') };
       await api(isolated.endpoint, 'manage/local-binding', { connectionId: reconnect, runtimeConnectionId: restoredRuntimeConnectionId, target }, restoredAdmin);
       const restoredSpace = { 'x-xj-space': 'school:' + reconnect };

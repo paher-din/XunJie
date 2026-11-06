@@ -1,4 +1,4 @@
-import { advanceExecution, executionQuerySchema, isTerminalExecutionState, type ExecutionAction, type ExecutionQuery, type ExecutionState } from '@xunjie/contracts/execution'
+import { advanceExecution, executionQuerySchema, isTerminalExecutionState, type AnyExecutionAction, type ExecutionQuery, type ExecutionState } from '@xunjie/contracts/execution'
 import type { ExecutionAcceptance } from '@xunjie/contracts/execution'
 
 /** One accepted command as this browser owns it. Never derived from an iframe's memory. */
@@ -7,7 +7,8 @@ export interface ExecutionRecord {
   requestId: string
   inputDigest: string
   executionRef: string
-  action: ExecutionAction
+  /** Format 2 aggregate or format 3 toolchain run: one ledger holds both, dispatched by protocolVersion. */
+  action: AnyExecutionAction
   acceptance: ExecutionAcceptance
   query: ExecutionQuery
   /** Executor generation that owns this run; a newer page must not adopt an older generation's run. */

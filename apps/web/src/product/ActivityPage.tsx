@@ -10,6 +10,7 @@ import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorks
 import { ActivityActions } from './ActivityActions'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
+import { RuntimeTool } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
@@ -33,7 +34,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   // A component may declare a restricted run or a native stateful session; both keep their
   // record, query and stop in this area instead of inside the opaque view.
   const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
-    (binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
+    (binding.definition.manifest.formatVersion === 3
+      ? <RuntimeTool key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>
+      : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
       ? <div key={binding.key} className="component-tool">
         <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
         {nativeAvailable || activity.course?.executionPlan ? <NativeSessionPanel activity={activity} binding={binding} authorized={authorized} spaceKey={spaceKey} namespace={namespace} />
@@ -76,7 +79,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         beforeToolChange={() => workspace.leave()}
         tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
-        designBody={<ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
+        designBody={<>{(activity.course?.components??[]).filter(b=>b.definition.manifest.formatVersion===3).map(binding=>
+          <RuntimeTool compact key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>)}
+          <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></>} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
         <WorkspaceReferenceComposer closeFocusRef={ask} /><ActivityActions />
       </aside>}

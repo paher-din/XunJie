@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "name": "xunjie-icarus-worker",
-  "version": "0.1.0",
-  "identity": "d27007d2f8725b22fc5ff3b7f79b4179c12c103d7789c5bd318cb9be5aa86026",
+  "version": "0.3.0",
+  "identity": "f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd",
   "assets": {
     "ivl.js": {
       "bytes": 72734,
@@ -31,20 +31,20 @@
   },
   "adapters": {
     "index.mjs": {
-      "bytes": 5238,
-      "sha256": "987d50f3ea7fe1eedf3cdb5454d8cb072c7716ade362dd75ffacce24b57407b9"
+      "bytes": 6508,
+      "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
     },
     "worker.mjs": {
-      "bytes": 11367,
-      "sha256": "a22974b2eb826796084fd1420bb69d7774b986117eb14ba1307d75b37e8cbf5d"
+      "bytes": 12537,
+      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
     },
     "identity.mjs": {
       "bytes": 1833,
       "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
     },
     "index.d.mts": {
-      "bytes": 1772,
-      "sha256": "83b72867b72bfe8d5159a9a11e8d8ffe2cf7e5e60ce904a84e64cec29f953fb1"
+      "bytes": 2150,
+      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
     }
   },
   "files": {
@@ -77,20 +77,20 @@
       "sha256": "0e495e931690f2a29e7d5b030bd7988865f92486e37d1ad9a52bd8561f30226b"
     },
     "index.mjs": {
-      "bytes": 5238,
-      "sha256": "987d50f3ea7fe1eedf3cdb5454d8cb072c7716ade362dd75ffacce24b57407b9"
+      "bytes": 6508,
+      "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
     },
     "worker.mjs": {
-      "bytes": 11367,
-      "sha256": "a22974b2eb826796084fd1420bb69d7774b986117eb14ba1307d75b37e8cbf5d"
+      "bytes": 12537,
+      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
     },
     "identity.mjs": {
       "bytes": 1833,
       "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
     },
     "index.d.mts": {
-      "bytes": 1772,
-      "sha256": "83b72867b72bfe8d5159a9a11e8d8ffe2cf7e5e60ce904a84e64cec29f953fb1"
+      "bytes": 2150,
+      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
     },
     "COPYING.icarus": {
       "bytes": 18092,
@@ -210,5 +210,5 @@
     "cacheEntries": 8,
     "cacheBytes": 33554432
   },
-  "scope": "Runtime package only; Windows desktop Chrome and Apple Silicon Mac desktop Chrome validated; no product integration or teaching claim"
+  "scope": "Fixed resources and verified-byte loader; product and platform acceptance recorded separately."
 }

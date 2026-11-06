@@ -68,12 +68,12 @@ for (const name of [...resourceNames, 'checksums.txt', 'index.mjs', 'worker.mjs'
   files[name] = { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 const adapters = Object.fromEntries(adapterNames.map(name => [name, files[name]]));
-const manifest = { formatVersion: 1, name: 'xunjie-icarus-worker', version: '0.1.0',
+const manifest = { formatVersion: 1, name: 'xunjie-icarus-worker', version: '0.3.0',
   identity: await bundleIdentity(assets, adapters), assets, adapters, files, toolchain: lock,
   compilerConfiguration, license: { icarus: 'See COPYING.icarus and corresponding source notices',
     correspondingSource: 'source/iverilog.tar.gz', modifications: 'source/port.py', bundledRuntimeNotices: 'notices/' },
   limits: { files: 64, fixedFileBytes: 1048576, textOutputBytes: 2097152, generatedFileBytes: 8388608,
     totalFileExtentBytesPerModule: 16777216, moduleMemoryBytes: 268435456, parallelWorkersPerModuleRealm: 1, maxWallTimeMs: 60000, cacheEntries: 8, cacheBytes: 33554432 },
-  scope: 'Runtime package only; Windows desktop Chrome validated, Apple Silicon Mac deferred; no product integration or teaching claim' };
+  scope: 'Runtime package only; Windows desktop Chrome and Apple Silicon Mac desktop Chrome validated for the served base-URL path; no product integration or teaching claim' };
 await writeFile(resolve(destination, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 console.log(JSON.stringify({ directory: resolve(destination), identity: manifest.identity, files: Object.keys(files).length }));

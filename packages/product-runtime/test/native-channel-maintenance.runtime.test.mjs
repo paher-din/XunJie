@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,33 @@ async function until(check, timeout = 25000) {
   while (!await check()) { assert.ok(Date.now() < end, 'condition did not become true'); await delay(40); }
 }
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; } };
+async function nativePid(instanceId, sessionRoot, heartbeat) {
+  assert.match(instanceId, /^[0-9a-f-]{36}$/i);
+  if (process.platform === 'win32') {
+    // The AppContainer child runs the session's private node.exe. Query the OS independently of
+    // executor cleanup reports; Windows does not expose a process environment through Unix ps.
+    const prefix = sessionRoot.replaceAll('/', '\\').replace(/\\?$/, '\\').replaceAll("'", "''");
+    const script = `$ids = @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { ($_.ExecutablePath -and $_.ExecutablePath.IndexOf('${prefix}', [StringComparison]::OrdinalIgnoreCase) -ge 0) -or ($_.CommandLine -and $_.CommandLine.IndexOf('${prefix}', [StringComparison]::OrdinalIgnoreCase) -ge 0) } | Select-Object -ExpandProperty ProcessId); ConvertTo-Json -InputObject $ids -Compress`;
+    const deadline = Date.now() + 10000;
+    for (;;) {
+      // This read-only OS observation is setup, not an injected outage. Keep the real lease alive
+      // while starting the Windows query, then stop heartbeating before the scenario begins.
+      await heartbeat();
+      const { stdout } = await exec('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand',
+        Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 10000, maxBuffer: 1024 * 1024 });
+      const pids = JSON.parse(stdout.trim());
+      if (pids.length || Date.now() >= deadline) {
+        assert.equal(pids.length, 1, 'the accepted native instance must identify exactly one real Windows child');
+        return Number(pids[0]);
+      }
+      await delay(50);
+    }
+  }
+  const { stdout } = await exec('ps', ['eww', '-axo', 'pid=,command='], { maxBuffer: 16 * 1024 * 1024 });
+  const line = stdout.split('\n').find(line => line.includes(`XJ_SESSION_INSTANCE=${instanceId}`));
+  assert.ok(line, 'the accepted native instance must be a real OS process');
+  return Number(line.trim().split(/\s+/)[0]);
+}
 
 // All setup and school observations use the installed product HTTP boundary. Only transport is
 // faulted: the executor, PostgreSQL, sandbox, and process termination remain real.
@@ -29,7 +56,12 @@ async function schoolFixture({ publishPlan = false } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'xj-channel-maintenance-'));
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
     postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, postgresVersion: '18.6',
-    webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
+    webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
+    // A managed database on Windows is gated on the packaged prerequisite helper, so this fixture
+    // declares it the same way the other native runtime fixtures do.
+    windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)),
+    // Real isolation on Windows comes from the packaged session helper; macOS uses sandbox-exec.
+    ...(process.env.XUNJIE_NATIVE_SESSION_HELPER ? { windowsSessionHelper: process.env.XUNJIE_NATIVE_SESSION_HELPER } : {}) };
   const runtime = openProductRuntime({ root, resources });
   let host, worker, terminal, terminalReply, hostStopped = false;
   const claims = [];
@@ -57,7 +89,8 @@ async function schoolFixture({ publishPlan = false } = {}) {
     await ok('connections/approve', { requestId: connectionId }, student);
     const grant = await ok('connections/exchange', { requestId: connectionId, verifier });
     const auth = { authorization: `Bearer ${grant.token}` };
-    const native = { nodePath: process.execPath, sessionRoot: join(root, 'device-sessions') };
+    const native = { nodePath: process.execPath, sessionRoot: join(root, 'device-sessions'),
+      ...(process.env.XUNJIE_NATIVE_SESSION_HELPER ? { windowsHelper: process.env.XUNJIE_NATIVE_SESSION_HELPER } : {}) };
     const node = await nativeChannelNode({ ...native, connectionId, installationId: randomUUID() });
     assert.ok(node.adapters.some(item => item.adapterId === 'four-state-accumulator'), 'real native isolation is required');
     const call = async (operation, input) => {
@@ -115,10 +148,7 @@ async function schoolFixture({ publishPlan = false } = {}) {
     const running = await ok(`${path}/${requestId}`, undefined, student);
     assert.equal(running.state, 'running');
     // OS process identity, independent of executor cleanup reports.
-    const { stdout } = await exec('ps', ['eww', '-axo', 'pid=,command='], { maxBuffer: 16 * 1024 * 1024 });
-    const line = stdout.split('\n').find(line => line.includes(`XJ_SESSION_INSTANCE=${running.session.executorInstanceId}`));
-    assert.ok(line, 'the accepted native instance must be a real OS process');
-    const pid = Number(line.trim().split(/\s+/)[0]);
+    const pid = await nativePid(running.session.executorInstanceId, native.sessionRoot, () => worker.tick());
     assert.equal(alive(pid), true);
     return { root, resources, runtime, host, worker, api, ok, auth, student, node, running, pid, path, requestId, action, plan, claims,
       stopHost,
@@ -144,7 +174,13 @@ async function schoolFixture({ publishPlan = false } = {}) {
         await rm(root, { recursive: true, force: true });
       } };
   } catch (error) {
-    await worker?.stop(); await host?.stop(); await rm(root, { recursive: true, force: true }); throw error;
+    // Teardown failures must not replace the error under test: a participant that cannot quiesce is
+    // itself a finding, but only after the original failure has been reported.
+    blockTerminal = false; offline = false;
+    await worker?.stop().catch(() => undefined);
+    await host?.stop().catch(() => undefined);
+    await rm(root, { recursive: true, force: true }).catch(() => undefined);
+    throw error;
   }
 }
 
@@ -290,6 +326,7 @@ test('product backup and isolated restore preserve course plan, original actions
     cleanups: (await storage.read(`SELECT command_id,claim_id,node,owner,generation,execution_identity,proof_digest
       FROM native_channel_cleanups ORDER BY command_id`)).rows,
   });
+  let testFailure;
   try {
     const controlled = await f.control(1);
     assert.equal(controlled.session.appliedSeq, 1);
@@ -314,7 +351,10 @@ test('product backup and isolated restore preserve course plan, original actions
     await closeHandles();
     const key = randomBytes(32), backups = join(directory, 'backups');
     const backup = await f.host.recovery.backup({ directory: backups, key, leaveClosed: true });
-    assert.equal(backup.services.length, 3);
+    const serviceVersions = values => values.map(({ serviceId, schemaVersion }) => ({ serviceId, schemaVersion }))
+      .sort((a, b) => a.serviceId.localeCompare(b.serviceId));
+    assert.deepEqual(serviceVersions(backup.services),
+      serviceVersions(f.host.maintenance.status().participants), 'backup must include every registered owner and its actual schema version');
     assert.equal(f.host.maintenance.status().safeToStop, true);
     await f.stopHost(); // Free the source PG before creating the independent restore PG.
     const restored = await restoreProductRecovery({ root: targetRoot, resources: f.resources, installation: { profile: 'school' },
@@ -344,15 +384,27 @@ test('product backup and isolated restore preserve course plan, original actions
     const call = async (operation, body) => fetch(new URL('/api/learning/native-channel/' + operation, targetHost.endpoint), {
       method: 'POST', headers: { 'content-type': 'application/json', ...f.auth }, body: JSON.stringify(body) });
     for (const operation of ['register', 'claim', 'heartbeat', 'report']) assert.equal((await call(operation, f.node)).status, 503);
-    assert.equal((await call('cleanup', f.terminal)).status, 200);
+    assert.equal((await call('cleanup', f.terminal)).status, 503,
+      'an isolated clone must not acknowledge the original worker through the business channel');
+    const afterHttp = await openOwner(targetRoot, 'learning-data', learningMigrations);
+    assert.deepEqual(await facts(afterHttp), before, 'isolated HTTP rejection preserves the original facts and cleanup proofs');
+    await closeHandles();
     await assert.rejects(targetHost.maintenance.resume(), /target-isolated/);
     assert.equal(alive(f.pid), false);
     assert.equal(f.claims.length, 2, 'restoring never requests another submit or control from the original worker');
-  } finally {
-    await closeHandles(); await closeOwners();
-    await targetHost?.stop();
-    await targetRuntime.stop();
-    await f.close();
-    await rm(directory, { recursive: true, force: true });
+  } catch (error) { testFailure = error; throw error; }
+  finally {
+    const cleanupFailures = [];
+    for (const cleanup of [closeHandles, closeOwners, () => targetHost?.stop(), async () => {
+      const initialized = await access(join(targetRoot, '.xunjie-root')).then(() => true, error => {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+      });
+      if (initialized) await targetRuntime.stop();
+    }, () => f.close(), () => rm(directory, { recursive: true, force: true })]) {
+      try { await cleanup(); } catch (error) { cleanupFailures.push(error); }
+    }
+    if (cleanupFailures.length) throw new AggregateError([...(testFailure ? [testFailure] : []), ...cleanupFailures],
+      'Native recovery test cleanup failed', { cause: testFailure ?? cleanupFailures[0] });
   }
 });

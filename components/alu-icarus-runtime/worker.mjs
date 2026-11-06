@@ -46,31 +46,47 @@ self.onmessage = async ({ data }) => {
       if (textBytes > 2 * 1024 * 1024) exceedOutput('Text output exceeds 2 MiB');
       output.push(line);
     };
+    // A run either reads the fixed files the calling owner already verified, or fetches them from the
+    // package's own base URL. The two modes never mix: once a fixed byte set is declared, a file it
+    // does not carry fails the run instead of quietly reaching the network.
+    const fixed = bundle.resources;
+    async function readAsset(name, ext) {
+      const asset = bundle.assets[`${name}.${ext}`];
+      if (!asset || !/^[a-f0-9]{64}$/.test(asset.sha256) || !Number.isInteger(asset.bytes) || asset.bytes < 1 || asset.bytes > 16 * 1024 * 1024) fail('invalid-input', 'Invalid asset manifest');
+      if (fixed) {
+        const supplied = fixed[`${name}.${ext}`];
+        if (!(supplied instanceof Uint8Array) || supplied.length !== asset.bytes) fail('resource-unavailable', `${name}.${ext}: fixed bytes missing`);
+        // The owner hashed them, but this Worker is the process that executes them, so it re-verifies.
+        if (await hash(supplied) !== asset.sha256) fail('resource-integrity', `${name}.${ext}: digest mismatch`);
+        return supplied;
+      }
+      let response;
+      try { response = await fetch(new URL(`${name}.${ext}`, bundle.baseUrl)); }
+      catch { fail('resource-unavailable', `${name}.${ext}: network failure`); }
+      if (!response.ok) fail('resource-unavailable', `${name}.${ext}: ${response.status}`);
+      const reader = response.body.getReader(); const parts = []; let size = 0;
+      for (;;) {
+        const { done, value } = await reader.read(); if (done) break;
+        size += value.length;
+        if (size > asset.bytes) { await reader.cancel(); fail('resource-integrity', 'Asset larger than manifest'); }
+        parts.push(value);
+      }
+      const bytes = new Uint8Array(size); let offset = 0;
+      for (const part of parts) { bytes.set(part, offset); offset += part.length; }
+      if (size !== asset.bytes || await hash(bytes) !== asset.sha256) fail('resource-integrity', 'Asset digest mismatch');
+      return bytes;
+    }
     async function load(name, output) {
       stage = 'load-' + name; postMessage({ kind: 'stage', stage });
-      const resources = await Promise.all(['js', 'wasm'].map(async ext => {
-        const asset = bundle.assets[`${name}.${ext}`];
-        if (!asset || !/^[a-f0-9]{64}$/.test(asset.sha256) || !Number.isInteger(asset.bytes) || asset.bytes < 1 || asset.bytes > 16 * 1024 * 1024) fail('invalid-input', 'Invalid asset manifest');
-        let response;
-        try { response = await fetch(new URL(`${name}.${ext}`, bundle.baseUrl)); }
-        catch { fail('resource-unavailable', `${name}.${ext}: network failure`); }
-        if (!response.ok) fail('resource-unavailable', `${name}.${ext}: ${response.status}`);
-        const reader = response.body.getReader(); const parts = []; let size = 0;
-        for (;;) {
-          const { done, value } = await reader.read(); if (done) break;
-          size += value.length;
-          if (size > asset.bytes) { await reader.cancel(); fail('resource-integrity', 'Asset larger than manifest'); }
-          parts.push(value);
-        }
-        const bytes = new Uint8Array(size); let offset = 0;
-        for (const part of parts) { bytes.set(part, offset); offset += part.length; }
-        if (size !== asset.bytes || await hash(bytes) !== asset.sha256) fail('resource-integrity', 'Asset digest mismatch');
-        return bytes;
-      }));
+      const resources = await Promise.all(['js', 'wasm'].map(ext => readAsset(name, ext)));
       const url = URL.createObjectURL(new Blob([resources[0]], { type: 'text/javascript' }));
       try {
         const factory = (await import(url)).default;
-        const module = await factory({ wasmBinary: resources[1], locateFile: file => new URL(file, bundle.baseUrl).href,
+        // The module is always handed its own bytes. `locateFile` only names the binary here: the glue
+        // needs a stable key, and resolving a URL against this Blob module would throw. Nothing fetches it,
+        // because `wasmBinary` is present; in served mode the name resolves to the package's own base URL.
+        const module = await factory({ wasmBinary: resources[1],
+          locateFile: bundle.baseUrl ? file => new URL(file, bundle.baseUrl).href : file => file,
           print: print(output), printErr: print(diagnostics) });
         // Enforce the MEMFS file extent while native writes occur, including seek.
         // Emscripten syscalls dispatch through FS.write; checking only readback

@@ -61,9 +61,18 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     await assert.rejects(run('fence-source', source, '--file', await input('wrong-receiver', {
       expectedReceiver: randomUUID() + '/' + randomUUID(), sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] })),
     error => { assert.match(error.stderr, /receiver-identity-conflict/); return true; });
-    assert.deepEqual(await run('fence-source', source, '--file', await input('fence-source', {
-      expectedReceiver: receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] })), {
-      fenced: true, receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] });
+    const { execution, ...fenceProof } = await run('fence-source', source, '--file', await input('fence-source', {
+      expectedReceiver: receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] }));
+    assert.deepEqual(fenceProof, { fenced: true, receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] });
+    // An acknowledgement alone is not a proof: the receiver must report the execution boundary it
+    // really observed, and that boundary must name exactly the owners this installation runs.
+    assert.equal(execution.formatVersion, 1);
+    assert.ok(!Number.isNaN(Date.parse(execution.boundaryAt)), 'the fence must report when the boundary was taken');
+    assert.equal(execution.unresolved, 0);
+    assert.equal(execution.blocking, 0);
+    assert.ok(execution.services.some(item => item.serviceId === started.environment.services[0].serviceId),
+      'the boundary must name the receiver service that took it');
+    assert.ok(execution.services.every(item => item.unresolved === 0 && item.blocking === 0));
     const body = { requestId: randomUUID(), goal: '通过正式 CLI 恢复活动', question: '', references: [] };
     const created = await fetch(new URL('/api/learning/activities', started.endpoint), { method: 'POST',
       headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' }, body: JSON.stringify(body) });

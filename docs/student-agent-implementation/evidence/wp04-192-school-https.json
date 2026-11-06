@@ -1,0 +1,97 @@
+{
+  "kind": "alu-school-https",
+  "ticket": "#192",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "publicIp": "192.168.31.196",
+  "certificatePin": "spki-sha256",
+  "cases": [
+    "a Windows school deployment listens on a non-loopback address over TLS",
+    "strict TLS is verified against the probe CA and the entry answers as the school profile",
+    "the fixed ALU component and course import through the school owner",
+    "a Chrome with no local product opens the school entry over pinned HTTPS",
+    "the fixed runtime resources are authorized, verified and self-checked from the school entry",
+    "a real Worker run over the school HTTPS entry produces a real carry observation",
+    "the school owner keeps the fixed basis, Chinese source and the original VCD",
+    "the school page reached no loopback or device-local service"
+  ],
+  "traffic": [
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/f2bf1532-4d63-4ca5-806c-3155d82865b6/result",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/f2bf1532-4d63-4ca5-806c-3155d82865b6/report",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/1e85fa27-c942-4f97-9a1d-b829bd5c1130/result",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/b86b97a8-1622-46bb-8fbe-21f20b28aee1/1e85fa27-c942-4f97-9a1d-b829bd5c1130/report",
+      "status": 200
+    }
+  ],
+  "refused": [],
+  "status": "passed",
+  "endpoint": "https://192.168.31.196:45029",
+  "context": {
+    "profile": "school",
+    "clientNamespace": "xunjie.v1.3300f6b5-30fd-41a1-8f19-89757596c1ef",
+    "readOnly": false,
+    "identities": []
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "b86b97a8-1622-46bb-8fbe-21f20b28aee1",
+  "consoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://192.168.31.196:45029/favicon.ico"
+    }
+  ],
+  "pageHosts": [
+    "192.168.31.196:45029"
+  ],
+  "pageSchemes": [
+    "blob:",
+    "https:"
+  ]
+}

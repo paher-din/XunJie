@@ -1,0 +1,102 @@
+{
+  "formatVersion": 1,
+  "date": "2026-11-06",
+  "branch": "wp04",
+  "base": "2d030fc857933e593f8cdc93c4390747e556b45a",
+  "workingTree": "uncommitted; prior task work retained",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "external": {
+    "status": "passed",
+    "files": 4,
+    "tests": 14,
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "concurrency": 1,
+    "forceExit": false,
+    "cases": [
+      "a managed school binding stores school activity works only in its installed client owner",
+      "a paired independent model owner serves Chat and cancellation without a learning-data owner",
+      "the normal CLI restores all learning owners and reaches schema upgrade validation",
+      "school maintenance waits for the original native process exit and authenticated terminal acknowledgement",
+      "HTTP outage makes school maintenance fail despite real lease-expiry cleanup, then confirmation can retry",
+      "original cleanup capability survives course revocation without restoring execution eligibility",
+      "original cleanup capability survives member revocation without restoring execution eligibility",
+      "original cleanup capability survives connection revocation without restoring execution eligibility",
+      "product backup and isolated restore preserve course plan, original actions, claimed targets and cleanup proofs without replay",
+      "native PostgreSQL preserves committed data and discards an interrupted transaction after SIGKILL",
+      "a database port conflict reports failure and leaves the unrelated listener alive",
+      "a school host uses an existing PostgreSQL without owning its process lifecycle",
+      "a failed PostgreSQL stop can be retried using the already drained maintenance boundary",
+      "a compatible database behind the same address cannot silently replace the bound external owner"
+    ],
+    "groups": {
+      "hybrid-learning": 2,
+      "learning-cli": 1,
+      "native-channel-maintenance": 6,
+      "postgres": 5
+    }
+  },
+  "finalGates": [
+    {
+      "name": "typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "build-all",
+      "exitCode": 0
+    },
+    {
+      "name": "contracts-browser",
+      "exitCode": 0
+    },
+    {
+      "name": "channel-boundary",
+      "exitCode": 0
+    }
+  ],
+  "boundaryRegression": {
+    "tests": 2,
+    "passed": 2,
+    "scope": "real PostgreSQL; original stop identities; mismatched cleanup/original identity remains unresolved; matching exit evidence settles without rewriting historical query"
+  },
+  "product": {
+    "status": "passed",
+    "candidate": ".verification/wp04-192-closeout/windows-product",
+    "distributionSha256": "49f4620b9214b90ef02f4d0648269177e377dc44a51f844b698dfe0a7307d5a6",
+    "entries": 222,
+    "browserReport": "wp04-192-windows-closeout-product.json",
+    "cases": 17
+  },
+  "sourceSha256": {
+    "packages/learning-space/src/learning-data/maintenance.ts": "541fb425ec521576082122887878edae8b9f5b460f4183f881c67e68fd252444",
+    "packages/learning-space/src/learning-data/native-channel.ts": "265335a9f7cccbda3de444113d65e830a3a53a8217de1f8dba667d602513e4e9",
+    "apps/server/tests/execution-boundary.runtime.test.mjs": "8e4ed45fe3b8142e26a771c8ca05979779956f98b6e0268fb29de6098c1571af",
+    "packages/product-runtime/test/native-channel-maintenance.runtime.test.mjs": "3a4399e5637270b79016bc9b26e9a0981df163669c022a0c2e912a757cd9c563",
+    "packages/product-runtime/test/postgres.runtime.test.mjs": "12c53c37b91723d132d0e07668b5c47c1b598ee079d804db0211f282c9a9fcef",
+    "packages/product-runtime/test/hybrid-learning.runtime.test.mjs": "a7a7d5212f9fdbbf071965a7839b0bf35e38ee7c19ac6e63bf6d22278c618fa1",
+    "packages/product-runtime/test/learning-cli.runtime.test.mjs": "500d19c93e4cee5dd0a0ae25b7d4b682a1fc9308fa1de42d8205bce8943edad8"
+  },
+  "cleanup": {
+    "oldTestPostgresStopped": 14,
+    "directoriesDeleted": 0
+  },
+  "notValidated": [
+    "Apple Silicon Mac (#206)",
+    "cross-machine school HTTPS",
+    "OS IME candidate window",
+    "ALU backup/isolated-restore/takeover combination (#195)",
+    "real Agent/teacher integration",
+    "teaching effectiveness"
+  ],
+  "documentation": {
+    "deliveryRecordLocalTargets": 23,
+    "deliveryRecordFailures": 0,
+    "defaultCheckFailures": 48,
+    "defaultFailuresConfinedToExistingTmp": true
+  }
+}

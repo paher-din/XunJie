@@ -26,6 +26,12 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     private components?: { activityId: string; bindings: ComponentBinding[] }, readOnly = false) { super(readOnly); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
+  /** Import starters only into a pristine workspace; deleting a file later must never re-seed it. */
+  initializeStarters(files:WorkFile[]) {
+    if(!this.state.ready || this.state.conflict || this.isReadOnly() || this.accessDenied()
+      || this.record.localRevision!==0 || this.record.remoteRevision!==0 || this.state.files.length) return
+    this.change(workFilesSchema.parse(files))
+  }
   trackInput<T>(input: Promise<T>): Promise<T> {
     this.inputs.add(input)
     const settled = () => { this.inputs.delete(input) }

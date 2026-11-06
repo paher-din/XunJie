@@ -1,5 +1,5 @@
 import { actionReceiptSchema } from '@xunjie/contracts/action-intents'
-import { executionAcceptanceSchema, type ExecutionAcceptance, type ExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution'
+import { executionAcceptanceSchema, type ExecutionAcceptance, type AnyExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution'
 import type { ActionReceiverIdentity } from '@xunjie/contracts/action-intents'
 import { ExecutionStore, type ResultRecord, type StopRecord } from './store'
 import type { ExecutionRecord } from './ledger'
@@ -14,7 +14,7 @@ export class BrowserExecutionReceiver {
   constructor(readonly identity: ActionReceiverIdentity, readonly scope: string, readonly generation: number, private canAccept: () => boolean = () => true) {}
   /** The controller observes real acceptances, not a polled guess about them. */
   onAccept(listener: (requestId: string) => void) { this.acceptListeners.add(listener); return () => { this.acceptListeners.delete(listener) } }
-  async accept(action: ExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
+  async accept(action: AnyExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
     if (!this.canAccept()) throw Object.assign(new Error('forbidden'), { code: 'forbidden' })
     const receipt = actionReceiptSchema.parse({ requestId: action.requestId, inputDigest, receiver: action.receiver,
       state: 'accepted', receiptId: 'browser:' + action.requestId, detail: '已在本机可靠保存命令与待处理事实。' })
@@ -72,7 +72,7 @@ export class BrowserExecutionReceiver {
   async retainResult(value: ResultRecord): Promise<ResultRecord> {
     await this.store.result(value)
     const saved = await this.store.readResult(value.scope, value.executionRef)
-    if (!saved || saved.text !== value.text || saved.sha256 !== value.sha256)
+    if (!saved || saved.text !== value.text || saved.sha256 !== value.sha256 || JSON.stringify(saved.resources)!==JSON.stringify(value.resources))
       throw new Error('结果文件未能通过重读校验，未发布引用。')
     return saved
   }

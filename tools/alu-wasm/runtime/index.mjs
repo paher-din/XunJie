@@ -1,18 +1,41 @@
-import { bundleIdentity, dependencyIdentity } from './identity.mjs';
+import { bundleIdentity, dependencyIdentity, resourceNames } from './identity.mjs';
 let liveWorkers = 0;
 function oversizedFiles(files) {
   if (!Array.isArray(files)) return false; // Detailed shape errors are checked in the Worker.
   return files.length > 64 || files.reduce((size, file) => size + (typeof file?.content === 'string' ? file.content.length : 0), 0) > 1024 * 1024;
 }
 const inputFailure = () => ({ status: 'failed', code: 'input-budget', stage: 'before-dispatch', diagnostics: [] });
+/**
+ * The fixed file set as bytes. Declaring it turns off the network path entirely: the six files this
+ * package needs must all be present, at the exact declared length. A missing or short file fails the
+ * run here, before a Worker exists, rather than falling back to fetching what was not supplied.
+ */
+function fixedResources(resources, assets) {
+  const names = [...resourceNames];
+  if (Object.keys(resources).length !== names.length) throw new Error('Fixed resources must cover the complete runtime file set');
+  const bytes = {};
+  for (const name of names) {
+    const value = resources[name];
+    if (!(value instanceof Uint8Array) || value.length !== assets[name].bytes)
+      throw new Error(`Fixed resource ${name} does not match its declared length`);
+    bytes[name] = value;
+  }
+  return bytes;
+}
 
 // The caller owns execution identities, retained observations and authorization.
 // This adapter owns only a bounded Worker and a disposable compilation cache.
 export async function createIcarusRuntime(descriptor) {
-  const bundle = structuredClone(descriptor);
+  const bundle = structuredClone({ ...descriptor, resources: undefined });
   if (await bundleIdentity(bundle.assets, bundle.adapters) !== bundle.identity) throw new Error('Runtime manifest identity mismatch');
-  bundle.baseUrl = new URL(bundle.baseUrl).href;
-  if (!bundle.baseUrl.endsWith('/')) throw new Error('Runtime base URL must end with /');
+  // Either the caller supplies every verified byte, or the package is served from its own base URL.
+  if (descriptor.resources !== undefined && descriptor.baseUrl !== undefined)
+    throw new Error('A runtime is served either from fixed bytes or from a base URL, not both');
+  if (descriptor.resources !== undefined) bundle.resources = fixedResources(descriptor.resources, bundle.assets);
+  else {
+    bundle.baseUrl = new URL(descriptor.baseUrl).href;
+    if (!bundle.baseUrl.endsWith('/')) throw new Error('Runtime base URL must end with /');
+  }
   const cache = new Map(); let cacheBytes = 0, active = false;
   function execute(task, { signal, timeoutMs = task.kind === 'compile' ? 30_000 : 5_000, onStage } = {}) {
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new Error('Timeout must be 1..60000 ms');
