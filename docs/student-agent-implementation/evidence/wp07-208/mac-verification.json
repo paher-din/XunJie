@@ -4,7 +4,7 @@
  "issue": "https://github.com/paher-din/XunJie/issues/208",
  "sourceIssue": "https://github.com/paher-din/XunJie/issues/201",
  "branch": "wp07",
- "acceptanceHead": "7caf8c597d3f731527b185427decada28fb3eef3",
+ "acceptanceHead": "92de78f809f9bd01548bbe8f0ac837a1f614f637",
  "originWp07": "7caf8c597d3f731527b185427decada28fb3eef3",
  "environment": {
   "os": "macOS 27.2",
@@ -255,5 +255,7 @@
   "directPublicDeepSeekInBrowser": "not-run: host DNS proxy resolves external hostnames into 198.18.0.0/15; product special-address policy rejects as designed; real provider verified by protocol boundary probe",
   "teachingEffect": "not-evaluated"
  },
- "teaching": "not-evaluated"
+ "teaching": "not-evaluated",
+ "productCodeBaseMerge": "7caf8c597d3f731527b185427decada28fb3eef3",
+ "recordCommit": "92de78f809f9bd01548bbe8f0ac837a1f614f637"
 }
