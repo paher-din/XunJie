@@ -1,0 +1,126 @@
+{
+  "measuredAt": "2026-11-06T10:13:10.579Z",
+  "model": "deepseek-flash",
+  "capability": "student.ask",
+  "limits": {
+    "maxGenerations": 6,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with TLS hostname verification and explicitly resolved provider address",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "upstream-http",
+      "modelRequests": 1,
+      "tools": [],
+      "usage": {
+        "state": "unknown"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3391,
+        "outputTokens": 516,
+        "totalTokens": 3907,
+        "cachedTokens": 2816,
+        "reasoningTokens": 92
+      },
+      "answerSha256": "3d00fc3a9720b18d83091f3e450b80dc5dd5543626a0bda08701641a89ec3083",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "在“四态累加、对 4 取余”的规则下，你预测：当前状态为 3，再输入 2，累加后对 4 取余会得到哪个状态？",
+        "source": "来源：当前学习目标“依据明确预测解释四态累加”，即状态与输入相加后对 4 取余。",
+        "presentedAt": null,
+        "skippable": false
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "a988ce1bf5fa3c7615e36be059141a3ec4bd2f0b583a2f458df01333813efbf1",
+        "0d0f5c8175cd8ef7f2d228c78a76ff7bd3e5b893ff35e69930eb7e174b6df799"
+      ]
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "end_turn",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 607,
+        "outputTokens": 714,
+        "cachedTokens": 2944
+      },
+      "answerSha256": "51ce20036f03d0d437784a734c5ab10748e5eb0a687dbca03ceea30c43566632",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "预测题：如果一个四态累加器的当前状态是 3，此时输入 2，按“对 4 取余”的规则更新，更新后的状态会是多少？",
+        "source": "来源：本次活动的学习目标「依据明确预测解释四态累加」；四态即状态在对 4 取余下循环，形式为 (状态 + 输入) mod 4。此题为纯预测，不需要查阅任何材料。",
+        "presentedAt": null,
+        "skippable": true
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "6ab5d67a654ccbbb386333458197257da45f269483773578dd90386ac9fac4a1",
+        "da0f4af25e7e8df3a1c858e95d8f49514a349cf04343c6a3ab0f2c344ca21461"
+      ]
+    }
+  ],
+  "generations": 5,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": null,
+      "elapsedMs": 0
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 1850
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 2150
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 2543
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 2341
+    }
+  ]
+}

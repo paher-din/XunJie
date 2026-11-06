@@ -1,0 +1,72 @@
+{
+  "measuredAt": "2026-11-06T10:10:07.983Z",
+  "model": "deepseek-flash",
+  "capability": "student.ask",
+  "limits": {
+    "maxGenerations": 6,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "upstream-http",
+      "modelRequests": 1,
+      "tools": [],
+      "usage": {
+        "state": "unknown"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "upstream-http",
+      "modelRequests": 1,
+      "tools": [],
+      "usage": {
+        "state": "unknown"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "upstream-http",
+      "modelRequests": 1,
+      "tools": [],
+      "usage": {
+        "state": "unknown"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "generations": 3,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": null,
+      "elapsedMs": 0
+    },
+    {
+      "path": "/v1/responses",
+      "status": null,
+      "elapsedMs": 0
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": null,
+      "elapsedMs": 0
+    }
+  ]
+}

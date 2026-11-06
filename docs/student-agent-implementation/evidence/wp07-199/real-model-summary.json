@@ -1,0 +1,141 @@
+{
+  "formatVersion": 1,
+  "productCodeCommit": "e0e2fcdb4eb4f32cb893b1a2e659e7b006fb74f9",
+  "measuredAt": "2026-11-06T10:30:23.518Z",
+  "model": "deepseek-flash",
+  "capability": "student.ask",
+  "initialProductCodeCommit": "5e9cf4ad9d8374a3c32829dbb92a594ea3018220",
+  "finalResults": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3531,
+        "outputTokens": 687,
+        "totalTokens": 4218,
+        "cachedTokens": 2816,
+        "reasoningTokens": 250
+      },
+      "answerSha256": "5895891b7f90e74f8c8ca2e7a51af1cce189834ee8b29f6773d3f88faf1b4c49",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "在“四态累加（每步对 4 取余）”的设定下，如果当前状态是 3，再输入 2，你预测下一步的状态会是多少？请先说出你的预测及理由。",
+        "source": "依据本次自主学习活动的目标“依据明确预测解释四态累加”，即状态按输入量累加并对 4 取余。",
+        "presentedAt": null,
+        "skippable": false
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "b51d113f525dcc6163bfdc4e0a1f8b62c1f5a5d7c8f92adb4deb637f2d596be8",
+        "89b58610559e7bbb83bcd7c353411f78b2570b495656343f978df6004f899ee4"
+      ],
+      "report": "real-model-chat-final.json"
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3391,
+        "outputTokens": 516,
+        "totalTokens": 3907,
+        "cachedTokens": 2816,
+        "reasoningTokens": 92
+      },
+      "answerSha256": "3d00fc3a9720b18d83091f3e450b80dc5dd5543626a0bda08701641a89ec3083",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "在“四态累加、对 4 取余”的规则下，你预测：当前状态为 3，再输入 2，累加后对 4 取余会得到哪个状态？",
+        "source": "来源：当前学习目标“依据明确预测解释四态累加”，即状态与输入相加后对 4 取余。",
+        "presentedAt": null,
+        "skippable": false
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "a988ce1bf5fa3c7615e36be059141a3ec4bd2f0b583a2f458df01333813efbf1",
+        "0d0f5c8175cd8ef7f2d228c78a76ff7bd3e5b893ff35e69930eb7e174b6df799"
+      ],
+      "report": "real-model-final-addressed.json"
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "end_turn",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 607,
+        "outputTokens": 714,
+        "cachedTokens": 2944
+      },
+      "answerSha256": "51ce20036f03d0d437784a734c5ab10748e5eb0a687dbca03ceea30c43566632",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "预测题：如果一个四态累加器的当前状态是 3，此时输入 2，按“对 4 取余”的规则更新，更新后的状态会是多少？",
+        "source": "来源：本次活动的学习目标「依据明确预测解释四态累加」；四态即状态在对 4 取余下循环，形式为 (状态 + 输入) mod 4。此题为纯预测，不需要查阅任何材料。",
+        "presentedAt": null,
+        "skippable": true
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "6ab5d67a654ccbbb386333458197257da45f269483773578dd90386ac9fac4a1",
+        "da0f4af25e7e8df3a1c858e95d8f49514a349cf04343c6a3ab0f2c344ca21461"
+      ],
+      "report": "real-model-final-addressed.json"
+    }
+  ],
+  "attempts": {
+    "relayAdmissions": 16,
+    "upstreamHttp200": 12,
+    "noUpstreamHttpResponse": 4,
+    "initialAdmissions": 6,
+    "failedDnsAdmissions": 3,
+    "addressedAdmissions": 5,
+    "chatOnlyAdmissions": 2
+  },
+  "limits": {
+    "perProtocol": 2,
+    "sdkRetries": 0,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000
+  },
+  "notes": [
+    "All final protocol results come from the same product code; only the probe later gained a protocol selector and safe connection diagnostics.",
+    "Four connection attempts received no upstream HTTP response; original failed reports are retained. TLS hostname/certificate verification remained enabled.",
+    "The successful Chat-only probe initially exited 1 because it still expected three results; the selected-protocol count check was corrected without repeating paid generations.",
+    "The separate missing-dependency attempt never loaded the probe and admitted no provider request.",
+    "Successful model behavior is not evidence of learning outcomes or Mac browser acceptance."
+  ]
+}

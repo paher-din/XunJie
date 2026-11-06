@@ -1,0 +1,64 @@
+{
+  "measuredAt": "2026-11-06T10:30:23.518Z",
+  "model": "deepseek-flash",
+  "capability": "student.ask",
+  "limits": {
+    "maxGenerations": 2,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with TLS hostname verification and explicitly resolved provider address",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3531,
+        "outputTokens": 687,
+        "totalTokens": 4218,
+        "cachedTokens": 2816,
+        "reasoningTokens": 250
+      },
+      "answerSha256": "5895891b7f90e74f8c8ca2e7a51af1cce189834ee8b29f6773d3f88faf1b4c49",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "在“四态累加（每步对 4 取余）”的设定下，如果当前状态是 3，再输入 2，你预测下一步的状态会是多少？请先说出你的预测及理由。",
+        "source": "依据本次自主学习活动的目标“依据明确预测解释四态累加”，即状态按输入量累加并对 4 取余。",
+        "presentedAt": null,
+        "skippable": false
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "b51d113f525dcc6163bfdc4e0a1f8b62c1f5a5d7c8f92adb4deb637f2d596be8",
+        "89b58610559e7bbb83bcd7c353411f78b2570b495656343f978df6004f899ee4"
+      ]
+    }
+  ],
+  "generations": 2,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 2190
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 2021
+    }
+  ]
+}

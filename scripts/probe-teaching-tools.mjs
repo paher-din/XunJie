@@ -11,10 +11,13 @@ import net from 'node:net';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
-  'provider-address': { type: 'string' }, 'student-ask': { type: 'boolean', default: false } } });
+  'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false } } });
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
 if (values['provider-address'] && !net.isIP(values['provider-address'])) throw new Error('--provider-address must be an IP address.');
+const supportedProtocols = ['chat-completions', 'responses', 'messages'];
+if (values.protocol && !supportedProtocols.includes(values.protocol)) throw new Error('Unsupported --protocol.');
+const protocols = values.protocol ? [values.protocol] : supportedProtocols;
 const privateText = (await readFile(resolve(values['credentials-file']), 'utf8')).replace(/^\uFEFF/, '');
 let provider;
 try {
@@ -28,7 +31,7 @@ try {
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
   capability: values['student-ask'] ? 'student.ask' : 'read_work',
-  limits: { maxGenerations: 6, maxPerProtocol: 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
+  limits: { maxGenerations: protocols.length * 2, maxPerProtocol: 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
 let generations = 0;
@@ -53,7 +56,13 @@ const relay = createServer(async (request, response) => {
     result.pipe(response); result.on('end', () => { item.elapsedMs = Date.now() - started; });
   });
   upstream.on('timeout', () => upstream.destroy(new Error('probe-timeout')));
-  upstream.on('error', () => { if (!response.headersSent) response.writeHead(502); response.end(); });
+  upstream.on('error', error => {
+    item.elapsedMs = Date.now() - started;
+    // Record only known network classifications, never upstream error text or credentials.
+    item.connectionError = ['SELF_SIGNED_CERT_IN_CHAIN', 'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+      'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED'].includes(error.code) ? error.code : 'upstream-connection';
+    if (!response.headersSent) response.writeHead(502); response.end();
+  });
   response.on('close', () => upstream.destroy());
   request.pipe(upstream);
 });
@@ -72,7 +81,7 @@ try {
     const value = await response.json(); if (!response.ok) throw new Error('Production boundary: ' + response.status + ':' + value.error); return value;
   };
   let selectionVersion = 0;
-  for (const protocol of ['chat-completions', 'responses', 'messages']) {
+  for (const protocol of protocols) {
     const item = { protocol, sdk: protocol === 'messages' ? '@anthropic-ai/sdk@1.1.0' : 'openai@7.42.0',
       passed: false, state: null, reason: null, modelRequests: 0, tools: [], usage: null, answerSha256: null };
     report.results.push(item);
@@ -163,4 +172,4 @@ try {
   await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 console.log(JSON.stringify(report));
-if (report.results.length !== 3 || report.results.some(item => !item.passed)) process.exitCode = 1;
+if (report.results.length !== protocols.length || report.results.some(item => !item.passed)) process.exitCode = 1;
