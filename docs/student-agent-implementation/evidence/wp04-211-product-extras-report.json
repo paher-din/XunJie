@@ -1,0 +1,177 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "candidate": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/dist/product-darwin-arm64-wp04-211b",
+  "browser": "156.0.8078.80",
+  "cases": [
+    "formal product imports the new stateVersion2 course",
+    "a tutor question draft survives work enablement without being cleared or sent",
+    "a full 4096-input check does not clear or send the tutor question draft (only its own draft store saves it)",
+    "a check still completes from local execution while the application API is unavailable",
+    "reconnect syncs exactly one offline check and reload does not rerun the old check",
+    "browser records the live Worker and the loaded WASM resource sizes for resource accounting",
+    "archived stateVersion1 course renders its five-select single-run form and produces real F=0000/Cout=1"
+  ],
+  "timings": {},
+  "status": "passed",
+  "draftRequests": [
+    {
+      "url": "http://127.0.0.1:56219/api/learning/drafts/f79f10ae-d5ca-47ff-9b19-80c4fe3ea6e7",
+      "method": "POST"
+    }
+  ],
+  "resources": {
+    "primary": 1784,
+    "extras": [
+      {
+        "name": "check-observations.json",
+        "byteLength": 291146
+      },
+      {
+        "name": "diagnostics.txt",
+        "byteLength": 238
+      },
+      {
+        "name": "check-traces.json",
+        "byteLength": 1646482
+      }
+    ],
+    "total": 1939650
+  },
+  "runtime": {
+    "wasmResponses": [
+      {
+        "url": "http://127.0.0.1:56219/api/learning/releases/19200000-0000-4000-8000-000000000076/components/alu/resources/ivl.wasm",
+        "status": 200,
+        "contentLength": 0,
+        "contentType": "application/json; charset=utf-8"
+      },
+      {
+        "url": "http://127.0.0.1:56219/api/learning/releases/19200000-0000-4000-8000-000000000076/components/alu/resources/ivlpp.wasm",
+        "status": 200,
+        "contentLength": 0,
+        "contentType": "application/json; charset=utf-8"
+      },
+      {
+        "url": "http://127.0.0.1:56219/api/learning/releases/19200000-0000-4000-8000-000000000076/components/alu/resources/vvp.wasm",
+        "status": 200,
+        "contentLength": 0,
+        "contentType": "application/json; charset=utf-8"
+      }
+    ],
+    "observedWorkers": [
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js",
+      "http://127.0.0.1:56219/assets/worker-AqHx1oS1.js"
+    ],
+    "largeResources": [
+      {
+        "name": "http://127.0.0.1:56219/assets/runtime-nmzfEewm.js",
+        "initiatorType": "script",
+        "transferSize": 1068483,
+        "encodedBodySize": 1068183,
+        "decodedBodySize": 1068183
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/runtime-CasJ-C1K.css",
+        "initiatorType": "link",
+        "transferSize": 196467,
+        "encodedBodySize": 196167,
+        "decodedBodySize": 196167
+      },
+      {
+        "name": "http://127.0.0.1:56219/fonts/lxgw-wenkai-regular.woff2",
+        "initiatorType": "css",
+        "transferSize": 837480,
+        "encodedBodySize": 837180,
+        "decodedBodySize": 837180
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/editor.api-C6zfZLBw.js",
+        "initiatorType": "script",
+        "transferSize": 557844,
+        "encodedBodySize": 557544,
+        "decodedBodySize": 557544
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/editorOptions-BkUIZjyq.js",
+        "initiatorType": "script",
+        "transferSize": 106630,
+        "encodedBodySize": 106330,
+        "decodedBodySize": 106330
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/actions-CawZG6aD.js",
+        "initiatorType": "script",
+        "transferSize": 281835,
+        "encodedBodySize": 281535,
+        "decodedBodySize": 281535
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/register-DvgA1lRE.js",
+        "initiatorType": "script",
+        "transferSize": 702751,
+        "encodedBodySize": 702451,
+        "decodedBodySize": 702451
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/textModel-D_cPzfEi.js",
+        "initiatorType": "script",
+        "transferSize": 264521,
+        "encodedBodySize": 264221,
+        "decodedBodySize": 264221
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/actionViewItems-6agXuMD4.js",
+        "initiatorType": "script",
+        "transferSize": 103124,
+        "encodedBodySize": 102824,
+        "decodedBodySize": 102824
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/toolbar-ZqqaLHjR.js",
+        "initiatorType": "script",
+        "transferSize": 188082,
+        "encodedBodySize": 187782,
+        "decodedBodySize": 187782
+      },
+      {
+        "name": "http://127.0.0.1:56219/assets/register-CXGL1rSp.js",
+        "initiatorType": "script",
+        "transferSize": 205003,
+        "encodedBodySize": 204703,
+        "decodedBodySize": 204703
+      }
+    ],
+    "memory": {
+      "usedJSHeapSize": 79501355,
+      "totalJSHeapSize": 130714667,
+      "jsHeapSizeLimit": 4395630592
+    },
+    "liveWorkers": [],
+    "hardwareConcurrency": 10,
+    "device": {
+      "cpu": "Apple M5",
+      "cores": 10,
+      "totalMemoryBytes": 17179869184,
+      "freeMemoryBytes": 241795072,
+      "loadAverage": [
+        5.92138671875,
+        4.9208984375,
+        4.236328125
+      ],
+      "platform": "darwin",
+      "arch": "arm64"
+    }
+  }
+}

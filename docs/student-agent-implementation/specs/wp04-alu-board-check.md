@@ -4,7 +4,7 @@
 
 > **实施状态（2026-11-07）：** 本方案的三操作课程包 v2、适配器、4096 检查、状态与 UI 已在本工作树实现；工程检查、真实 WASM 检查及 Windows 本机产品 Chrome 证据见 [实现与验收记录](../wp04-193-acceptance.md)。Apple Silicon Mac、独立学校 HTTPS 路径、完整 A01–A13 平台矩阵和教学效果未执行；实施差异以实现记录为准。
 
-以下保留2026-11-06的设计基线；当日仅交付文档，未实施验收。2026-11-07已按负责人要求实现并审查修复，最终实现与验证以顶部交付记录为准；Mac、跨机与系统输入法转交 [#211](https://github.com/paher-din/XunJie/issues/211)，不计作通过。交互及线框见 [工作区设计](../wp04-193-workspace-design.md)，视觉遵循 [DESIGN.md](../../../DESIGN.md)，模块职责遵循 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。
+以下保留2026-11-06的设计基线；当日仅交付文档，未实施验收。2026-11-07已按负责人要求实现并审查修复，最终实现与验证以顶部交付记录为准；Mac、跨机与系统输入法由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并已登记于[#211 验收记录](../wp04-211-acceptance.md)，不计作通过。交互及线框见 [工作区设计](../wp04-193-workspace-design.md)，视觉遵循 [DESIGN.md](../../../DESIGN.md)，模块职责遵循 [ADR 0003](../adr/0003-runtime-entrypoints-and-owned-modules.md)。
 
 ## 1. 交付边界与现状
 

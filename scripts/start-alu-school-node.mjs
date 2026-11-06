@@ -15,16 +15,19 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const { values } = parseArgs({ options: {
-  endpoint: { type: 'string' }, root: { type: 'string' }, package: { type: 'string' },
+  endpoint: { type: 'string' }, 'api-endpoint': { type: 'string' }, root: { type: 'string' }, package: { type: 'string' },
   payload: { type: 'string' }, out: { type: 'string' }, cert: { type: 'string' }, key: { type: 'string' },
 } });
 for (const name of ['endpoint', 'root', 'package', 'payload', 'out', 'cert', 'key'])
-  if (!values[name]) throw new Error(`usage: --endpoint=URL --root=DIR --package=DIR --payload=FILE --out=FILE --cert=FILE --key=FILE`);
+  if (!values[name]) throw new Error(`usage: --endpoint=URL [--api-endpoint=URL] --root=DIR --package=DIR --payload=FILE --out=FILE --cert=FILE --key=FILE`);
 
 const product = resolve(values.package);
 const runtime = await import(pathToFileURL(join(product, 'app/product-runtime.js')).href);
 const root = resolve(values.root);
 const endpoint = values.endpoint;
+// Some isolated school hosts cannot hairpin their own public address; the seed calls may
+// use a local address while the published endpoint and pinned certificate stay public.
+const apiEndpoint = values['api-endpoint'] ?? endpoint;
 const url = new URL(endpoint);
 const port = Number(url.port || 443);
 
@@ -48,7 +51,7 @@ const schoolState = { state: started.state, requiredDependencies: required, opti
 
 const admin = { authorization: `Bearer ${await runtime.resolveCredential(root, 'control')}` };
 const api = async (route, body) => {
-  const response = await fetch(new URL('/api/learning/' + route, endpoint), { method: 'POST',
+  const response = await fetch(new URL('/api/learning/' + route, apiEndpoint), { method: 'POST',
     headers: { 'content-type': 'application/json', ...admin }, body: JSON.stringify(body),
     signal: AbortSignal.timeout(30000) });
   const value = await response.json();

@@ -28,7 +28,10 @@ export function ActivityWorkspace({ activity, namespace,spaceKey,authorized }: {
           // Same fixed definition and same verified bytes as the material list: a starter already
           // held by this browser is read without asking the service again.
           const value=await materialCache.text(activity,activity.course!,spaceKey,namespace,material)
-          files.push({objectId:starter.workId,contentId:crypto.randomUUID(),name:starter.title,kind:/\.(sv|v|c|py|js)$/.test(starter.title)?'code':'text',encoding:'utf8',mediaType:'text/plain',value})
+          // Starter ids name a published template, not a row in this activity's work store.
+          // A per-activity object id keeps two activities of the same release from colliding
+          // on the work store's global object identity (#206 identity-conflict).
+          files.push({objectId:crypto.randomUUID(),contentId:crypto.randomUUID(),name:starter.title,kind:/\.(sv|v|c|py|js)$/.test(starter.title)?'code':'text',encoding:'utf8',mediaType:'text/plain',value})
         }
         if(live && files.length)workspace.initializeStarters(files)
       })().catch(error=>{if(live)setFailure(error instanceof Error?error.message:'无法读取起始作品。')})

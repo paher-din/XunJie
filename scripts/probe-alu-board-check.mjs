@@ -24,7 +24,8 @@ if (process.env.XUNJIE_ALU_PRODUCT_ROOT) {
   const declared = JSON.parse(await readFile(join(packageRoot, 'resources.json'), 'utf8'));
   resources = { ...declared, nodePath: resolve(packageRoot, declared.nodePath),
     postgresBin: resolve(packageRoot, declared.postgresBin), webRoot: resolve(packageRoot, declared.webRoot),
-    ...(declared.windowsPrerequisitePath ? { windowsPrerequisitePath: resolve(packageRoot, declared.windowsPrerequisitePath) } : {}) };
+    ...(declared.windowsPrerequisitePath ? { windowsPrerequisitePath: resolve(packageRoot, declared.windowsPrerequisitePath) } : {}),
+    ...(declared.windowsSessionHelper ? { windowsSessionHelper: resolve(packageRoot, declared.windowsSessionHelper) } : {}) };
   const bundled = await import(pathToFileURL(join(packageRoot, 'app/product-runtime.js')).href);
   runtimeFactory = bundled.openProductRuntime;
   credential = bundled.resolveCredential;

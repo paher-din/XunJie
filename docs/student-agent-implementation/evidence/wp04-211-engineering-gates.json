@@ -1,0 +1,108 @@
+{
+  "kind": "engineering-gates",
+  "ticket": "#211",
+  "date": "2026-11-07",
+  "baseline": "fe65fff2852334b5699a144cfb4951c873adc3c1",
+  "branch": "wp04",
+  "node": "24.21.0",
+  "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie",
+  "commands": [
+    {
+      "command": "node scripts/build.mjs typecheck",
+      "status": "passed",
+      "exit": 0,
+      "log": "docs/student-agent-implementation/evidence/wp04-211-typecheck.log"
+    },
+    {
+      "command": "node scripts/build.mjs all",
+      "status": "passed",
+      "exit": 0,
+      "log": "docs/student-agent-implementation/evidence/wp04-211-build.log"
+    },
+    {
+      "command": "vitest run --maxWorkers=4 --minWorkers=1",
+      "status": "passed",
+      "files": 83,
+      "tests": 935,
+      "failed": 0,
+      "skipped": 0,
+      "log": "docs/student-agent-implementation/evidence/wp04-211-web-tests-max4.log",
+      "note": "项目 Web 全量；默认 worker 数下 LegacyAluExperimentTool 单测曾出现一次时序 flake（1/935），用 --maxWorkers=4 复跑全绿，未改测试或忽略失败。"
+    },
+    {
+      "command": "npm run check:contracts:browser",
+      "status": "passed",
+      "publicExports": 13,
+      "log": "docs/student-agent-implementation/evidence/wp04-211-contracts-browser.log"
+    },
+    {
+      "command": "node tools/alu-wasm/check-browser-test.mjs",
+      "status": "passed",
+      "checks": 162,
+      "vcdBytes": 4249880,
+      "badIndices": 256,
+      "badRows": 1024,
+      "unknownIndices": 1536,
+      "unknownRows": 6144,
+      "log": "docs/student-agent-implementation/evidence/wp04-211-alu-wasm-check.log"
+    },
+    {
+      "command": "node --test apps/server/tests/runtime-enabled-basis.runtime.test.mjs",
+      "status": "passed",
+      "tests": 3,
+      "note": "#193 已审查门禁；本轮未改该模块",
+      "log": "docs/student-agent-implementation/evidence/wp04-193-reviewed-engineering-gates.json"
+    }
+  ],
+  "packages": {
+    "darwin-arm64": {
+      "path": "dist/product-darwin-arm64-wp04-211b",
+      "distributionSha256": "66047e4392e3da7545065119fe992a56021fefb46da7a45b17055dc605c64c9c"
+    },
+    "win32-x64": {
+      "path": "dist/product-win32-x64-wp04-211",
+      "distributionSha256": "b7db2a5c5636cbbd79172c29a097d10affe5e94c1e8f7c16fdc351d5551fb787"
+    },
+    "linux-x64": {
+      "path": "wp04-211-cross/product-linux-x64b",
+      "distributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3"
+    }
+  },
+  "sourceFiles": {
+    "apps/web/src/product/ActivityWorkspace.tsx": {
+      "bytes": 8894,
+      "sha256": "d17f0b51d7818a205b1a1b075bed6503a6533db4cd91d3f37643a22a1346a1aa"
+    },
+    "scripts/probe-alu-board-check.mjs": {
+      "bytes": 24252,
+      "sha256": "d0dcc461bb2b7e4cfbce17b837f2cee357ca07ce3061df461b7c250273fca06a"
+    },
+    "scripts/start-alu-school-node.mjs": {
+      "bytes": 5324,
+      "sha256": "95b06cded37ada8538edb8da9dc67dc99c5cca05eceb3662b95260d1ac44d229"
+    },
+    "scripts/probe-alu-211-product-extras.mjs": {
+      "bytes": 17647,
+      "sha256": "f783a5a10f13d6569d9345835eee2e1b6bd8092c69156e6da6b85280bb3e4ff2"
+    },
+    "scripts/probe-alu-211-school-client.mjs": {
+      "bytes": 44962,
+      "sha256": "06bdf7a96144401b14590a2eaa69082dfcbe71e9956b1c7e767cfebc5780e3c0"
+    },
+    "scripts/probe-alu-ime-macos-211.mjs": {
+      "bytes": 29981,
+      "sha256": "8e39082e1e1c59a5f826f38f211624b733860214dabbc06d0f0f9f4d541c6efe"
+    }
+  },
+  "failedAttempts": [
+    {
+      "command": "vitest run (默认并行)",
+      "status": "failed-flake",
+      "files": "83",
+      "tests": "935",
+      "failed": 1,
+      "log": "docs/student-agent-implementation/evidence/wp04-211-web-tests-default-flake.log",
+      "note": "LegacyAluExperimentTool 单测单次时序 flake；--maxWorkers=4 全绿，未改测试。"
+    }
+  ]
+}

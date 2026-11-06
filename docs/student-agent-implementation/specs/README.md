@@ -36,7 +36,7 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 | --- | --- |
 | [可复现的 ALU 浏览器运行包](https://github.com/paher-din/XunJie/issues/191) | 固定源码与补丁重建 Icarus/WASM，修正系统模块，真实 Worker 编译/仿真/VCD、四态与预算停止，并以正确实现和负对照验证运行包。 |
 | [正式活动中的 ALU 编辑与运行](https://github.com/paher-din/XunJie/issues/192) | 课程资料与起始作品导入、依赖准备、自检、正式工作区编辑运行、诊断、固定结果及保存同步；接通 WP03 公共执行与真实产品入口。 |
-| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开；[#193 设计与实施方案](wp04-alu-board-check.md) · [工作区交互设计](../wp04-193-workspace-design.md) · [审查修复与本机验收](../wp04-193-acceptance.md)。剩余 Mac/跨机 HTTPS/系统输入法由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续，未记作通过。 |
+| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开；[#193 设计与实施方案](wp04-alu-board-check.md) · [工作区交互设计](../wp04-193-workspace-design.md) · [审查修复与本机验收](../wp04-193-acceptance.md)。Mac/跨机 HTTPS/系统输入法已由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并逐条登记于[#211 验收记录](../wp04-211-acceptance.md)，未用转交抵扣通过。 |
 | [波形引用、预测用例与比较解释](https://github.com/paher-din/XunJie/issues/194) | 真实波形与范围引用、运行前预测与理由、比较和解释、已观察/缺项记录、不可变修订及问题草稿恢复。 |
 | [ALU 数据备份、隔离还原与恢复接管](https://github.com/paher-din/XunJie/issues/195) | ALU 作品、预测、检查、观察、VCD 与引用的维护和真实恢复；隔离试还原只读、正式接管拒绝旧安装、原身份查询且不自动重跑。 |
 
