@@ -18,6 +18,7 @@ import { NativeSessionPanel } from './NativeSessionPanel'
 import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
 import { learningRequest, workspaceScope } from './learningTransport'
 import { GuidancePresentation } from '../components/workspace/guidance/GuidancePresentation'
+import { AgentInputMode } from './AgentInteraction'
 
 async function focusLocation(root: HTMLDivElement | null, selector: string) {
   for (let attempt = 0; attempt < 20; attempt++) {
@@ -41,7 +42,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
-  const { workspace, draft, actions, execution, sessions } = useActivitySession()
+  const { workspace, draft, actions, execution, sessions, inputInteraction } = useActivitySession()
   const root = useRef<HTMLDivElement>(null)
   const [tool, setTool] = useState<ToolKey>('design')
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
@@ -175,8 +176,10 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
           onActiveChange={setConversationActive} onLocateTool={locateTool} onQuestionChange={setPendingQuestion}
           focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} />
-        {/* Steering is deferred; a new question waits as a reliable draft until the current run settles. */}
-        <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={conversationActive} /><ActivityActions />
+        <AgentInputMode active={conversationActive} />
+        <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={!inputInteraction.ready}
+          blockedHint="正在核对本次发送方式，问题与引用仍保留。" blockedLabel="核对发送方式…"
+          submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
       </aside>}
     </div>
     <SelectionToolbar />

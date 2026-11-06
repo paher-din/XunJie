@@ -5,12 +5,13 @@ import { actionInputSchema, actionReceiptSchema } from '@xunjie/contracts/action
 import { teachingAgentCallSchema, teachingAgentReceiverId, teachingConversationSchema, teachingEventSchema,
   teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingAgentCapabilitiesSchema, teachingDispatchAuthoritySchema,
   teachingStudentResponseInputSchema, teachingStudentResponseReceiptSchema,
-  teachingStudentPresentationInputSchema, teachingStudentPresentationReceiptSchema } from '@xunjie/contracts/teaching-agent';
+  teachingStudentPresentationInputSchema, teachingStudentPresentationReceiptSchema,
+  teachingInputControlSchema, teachingInputControlReceiptSchema, teachingControlReceiptSchema, teachingContinueInputSchema } from '@xunjie/contracts/teaching-agent';
 import type { createTeachingAgent } from './index.js';
 
 export type TeachingAgentPort = Pick<ReturnType<typeof createTeachingAgent>, 'receiver' | 'conversation' | 'events' | 'capabilities'
   | 'run' | 'stop' | 'continueRun' | 'request' | 'snapshot' | 'assertCommandDispatch' | 'assertModelDispatch'
-  | 'respond' | 'response' | 'presentQuestion'>;
+  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt'>;
 export type TeachingAgentCall = z.infer<typeof teachingAgentCallSchema>;
 const ids = (values: unknown[], count: number) => z.array(z.uuid()).length(count).parse(values);
 
@@ -41,10 +42,12 @@ export function createTeachingAgentService(agent: TeachingAgentPort,
       case 'respond': return agent.respond(identity, activityId,
         z.uuid().parse(args[0]), teachingStudentResponseInputSchema.parse(args[1]));
       case 'response': return agent.response(identity, activityId, ids(args, 1)[0]!);
+      case 'controlInput': return agent.controlInput(identity, activityId, z.uuid().parse(args[0]), teachingInputControlSchema.parse(args[1]));
+      case 'inputControlReceipt': return agent.inputControlReceipt(identity, activityId, ids(args, 1)[0]!);
       case 'presentQuestion': return agent.presentQuestion(identity, activityId,
         z.uuid().parse(args[0]), teachingStudentPresentationInputSchema.parse(args[1]));
-      case 'stop': case 'continueRun': return agent[call.operation](identity, activityId,
-        z.uuid().parse(args[0]), teachingStopInputSchema.parse(args[1]));
+      case 'stop': return agent.stop(identity, activityId, z.uuid().parse(args[0]), teachingStopInputSchema.parse(args[1]));
+      case 'continueRun': return agent.continueRun(identity, activityId, z.uuid().parse(args[0]), teachingContinueInputSchema.parse(args[1]));
       case 'assertCommandDispatch': {
         const { authority, ...association } = z.object({ runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(),
           commandId: z.uuid(), authority: teachingDispatchAuthoritySchema.optional() }).strict().parse(args[0]);
@@ -82,6 +85,9 @@ export function createTeachingAgentClient(serviceId: string, identity: SpaceIden
     respond: async (_identity, _activity, id, input) => teachingStudentResponseReceiptSchema.parse(
       await invoke('respond', [id, teachingStudentResponseInputSchema.parse(input)])),
     response: async (_identity, _activity, id) => teachingStudentResponseReceiptSchema.nullable().parse(await invoke('response', [id])),
+    controlInput: async (_identity, _activity, id, input) => teachingInputControlReceiptSchema.parse(
+      await invoke('controlInput', [id, teachingInputControlSchema.parse(input)])),
+    inputControlReceipt: async (_identity, _activity, id) => teachingControlReceiptSchema.nullable().parse(await invoke('inputControlReceipt', [id])),
     presentQuestion: async (_identity, _activity, id, input) => teachingStudentPresentationReceiptSchema.parse(
       await invoke('presentQuestion', [id, teachingStudentPresentationInputSchema.parse(input)])),
     assertCommandDispatch: async (_identity, _activity, association) => { await invoke('assertCommandDispatch', [association]); },

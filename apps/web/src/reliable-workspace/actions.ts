@@ -121,12 +121,14 @@ export class ReliableActions {
   private beforeUnload = (event: BeforeUnloadEvent) => {
     if (this.unprotected.size || this.cancellationRequests.size) { event.preventDefault(); event.returnValue = '' }
   }
-  async create(options: { requestId: string; receiver: ActionReceiverIdentity; evidence?: ActionInput['evidence']; objectIds?: string[] }) {
+  async create(options: { requestId: string; receiver: ActionReceiverIdentity; evidence?: ActionInput['evidence']; objectIds?: string[];
+    delivery?: ActionInput['delivery'] }) {
     // Capture all partitions before the first await. Later edits are independent from this input.
     const works = structuredClone(this.captureWorks())
     const scope = scopeFromKey(this.key)
     const input: FixedAction = actionInputSchema.parse({ requestId: options.requestId, scope, receiver: options.receiver, draft: this.draft.capture(),
-      works: options.objectIds ? works.filter(file => options.objectIds!.includes(file.objectId)) : works, evidence: options.evidence ?? [] })
+      works: options.objectIds ? works.filter(file => options.objectIds!.includes(file.objectId)) : works, evidence: options.evidence ?? [],
+      ...(options.delivery ? { delivery: structuredClone(options.delivery) } : {}) })
     if (options.objectIds?.some(id => !works.some(file => file.objectId === id))) throw new Error('所需作品已不在当前工作区。')
     return this.retainNew(input)
   }

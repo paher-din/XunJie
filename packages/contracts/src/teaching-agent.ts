@@ -4,8 +4,11 @@ import { teachingHelpPolicySchema } from './course-help.js';
 import { runtimeServiceSchema } from './product-runtime.js';
 import { spaceIdentitySchema } from './spaces.js';
 import { teachingStudentQuestionSchema } from './student-questions.js';
+import { teachingInputSchema, teachingContinueSelectionSchema } from './teaching-input-control.js';
 
 export * from './student-questions.js';
+export * from './teaching-inputs.js';
+export * from './teaching-input-control.js';
 
 export { teachingHelpPolicySchema } from './course-help.js';
 
@@ -32,14 +35,21 @@ export const teachingRunSchema = z.object({
 }).strict();
 export type TeachingRun = z.infer<typeof teachingRunSchema>;
 
+/** A pause can wait for configuration or original-identity verification without ending its Run budget. */
+export function isRecoverableTeachingPause(run: { state: string; reason: string; completedAt: string | null }) {
+  return run.state === 'paused' && run.completedAt === null && ['model-not-selected', 'model-unavailable',
+    'max-output-missing', 'resource-busy', 'segment-busy', 'result-unknown', 'native-result-unavailable'].includes(run.reason);
+}
+
 export const teachingEventKindSchema = z.enum([
   'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'assistant',
-  'run-completed', 'run-failed', 'run-stopped', 'stop-requested', 'run-continued',
+  'run-completed', 'run-failed', 'run-stopped', 'stop-requested', 'run-continued', 'run-resumed',
   'model-unavailable', 'capacity-paused', 'system-notice',
   'step-completed', 'tool-intent', 'tool-permitted', 'tool-result', 'tools-paired',
-  'wait-created', 'wait-consumed', 'wait-expired', 'budget-reserved', 'budget-settled',
+  'wait-created', 'wait-consumed', 'wait-expired', 'wait-observed', 'budget-reserved', 'budget-settled',
   'native-summary',
   'question-created', 'question-presented', 'student-response', 'question-expired', 'question-cancelled',
+  'input-adopted', 'input-revised', 'input-removed', 'input-promoted', 'inputs-paused', 'question-superseded',
 ]);
 
 export type TeachingEventKind = z.infer<typeof teachingEventKindSchema>;
@@ -55,6 +65,7 @@ export const teachingMessageSchema = z.object({
   eventId: z.uuid(), seq: z.number().int().nonnegative(),
   role: z.enum(['student', 'assistant', 'system']),
   text: z.string(), runId: z.uuid().nullable(),
+  inputId: z.uuid().optional(),
   state: z.enum(['streaming', 'settled', 'stopped', 'failed', 'unknown']).optional(),
   kind: z.enum(['native-summary', 'student-response']).optional(),
   summaryTruncated: z.boolean().optional(),
@@ -91,6 +102,7 @@ export const teachingConversationSchema = z.object({
   messages: z.array(teachingMessageSchema), runs: z.array(teachingRunSchema),
   tools: z.array(teachingToolRecordSchema).default([]), waits: z.array(teachingWaitSchema).default([]),
   questions: z.array(teachingStudentQuestionSchema).default([]),
+  inputs: z.array(teachingInputSchema).default([]),
 }).strict();
 export type TeachingConversation = z.infer<typeof teachingConversationSchema>;
 
@@ -107,7 +119,7 @@ export const teachingSnapshotSchema = z.object({
 export type TeachingSnapshot = z.infer<typeof teachingSnapshotSchema>;
 
 export const teachingStopInputSchema = z.object({ requestId: z.uuid() }).strict();
-export const teachingContinueInputSchema = z.object({ requestId: z.uuid() }).strict();
+export const teachingContinueInputSchema = z.union([z.object({ requestId: z.uuid() }).strict(), teachingContinueSelectionSchema]);
 
 export const teachingAgentCapabilitiesSchema = z.object({
   receiver: z.object({ receiverId: z.string(), location: z.literal('remote'), kind: z.literal('question') }).strict(),
@@ -130,7 +142,7 @@ export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({
 }).strict();
 export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events',
   'capabilities', 'run', 'stop', 'continueRun', 'request', 'snapshot', 'assertCommandDispatch', 'assertModelDispatch',
-  'respond', 'response', 'presentQuestion']);
+  'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt']);
 export const teachingAgentCallSchema = z.object({ version: z.literal(1), operation: teachingAgentOperationSchema,
   identity: spaceIdentitySchema, activityId: z.uuid(), args: z.array(z.unknown()).max(4) }).strict();
 

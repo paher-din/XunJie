@@ -42,7 +42,7 @@ export const teachingStudentQuestionSchema = z.object({
   question: teachingStudentAskInputSchema.shape.question, options: teachingStudentAskInputSchema.shape.options,
   allowText: z.boolean(), skippable: z.boolean(),
   source: z.object({ label: z.string().min(1).max(500), detail: teachingStudentAskInputSchema.shape.source }).strict(),
-  state: z.enum(['pending', 'answered', 'skipped', 'expired', 'cancelled']),
+  state: z.enum(['pending', 'answered', 'skipped', 'expired', 'cancelled', 'superseded']),
   response: z.object({ requestId: z.uuid(), answer: teachingStudentAnswerSchema, text: z.string().max(4000),
     processedAt: z.iso.datetime() }).strict().nullable(),
   presentedAt: z.iso.datetime().nullable(), createdAt: z.iso.datetime(), deadline: z.iso.datetime(),

@@ -150,7 +150,7 @@ export function createLearningEntry(options: {
         route = route.slice(0, -5);
       }
       if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')
-        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/')) && request.headers['x-xj-namespace']
+        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -331,7 +331,16 @@ export function createLearningEntry(options: {
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
-      else if (route === 'course-activities' && method === 'POST') {
+      else if (route === 'agent-settings' || route.startsWith('agent-settings/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const parts = route.split('/');
+        if (parts.length === 1 && method === 'GET') result = await learning.agentPreferences.read(identity);
+        else if (parts.length === 1 && method === 'POST') result = await learning.agentPreferences.save(identity, await readLearningBody(request));
+        else if (parts.length === 3 && parts[1] === 'receipts' && method === 'GET') result = await learning.agentPreferences.receipt(identity, parts[2]!);
+        else throw new StorageError('missing');
+      } else if (route === 'course-activities' && method === 'POST') {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
@@ -367,6 +376,10 @@ export function createLearningEntry(options: {
           result = await teaching.presentQuestion(identity, activityId, parts[3]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'responses' && method === 'GET')
           result = await teaching.response(identity, activityId, parts[3]!);
+        else if (parts.length === 5 && parts[2] === 'inputs' && parts[4] === 'control' && method === 'POST')
+          result = await teaching.controlInput(identity, activityId, parts[3]!, await readLearningBody(request));
+        else if (parts.length === 4 && parts[2] === 'controls' && method === 'GET')
+          result = await teaching.inputControlReceipt(identity, activityId, parts[3]!);
         else throw new StorageError('missing');
       } else if (route.startsWith('executions/')) {
         // The execution owner answers accept, query, report, stop and result under one identity.

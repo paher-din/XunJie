@@ -9,6 +9,7 @@ import type { ModelUsage } from '@xunjie/contracts/model-connections';
 import {
   teachingAgentReceiverId, teachingContinueInputSchema, teachingConversationSchema, teachingEventSchema,
   teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingDispatchAuthoritySchema,
+  isRecoverableTeachingPause,
 } from '@xunjie/contracts/teaching-agent';
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot,
@@ -19,6 +20,10 @@ import { teachingToolMigration } from './tool-migrations.js';
 import { teachingDeploymentMigration, validateTeachingDependencyBindings, type TeachingDispatchAuthority } from './remote-state.js';
 import { chunkChannelMigrationSql, createChunkChannel } from './chunk-channel.js';
 import { studentQuestionMigration, createStudentQuestions, validateStudentQuestions } from './student-questions.js';
+import { teachingInputMigration, createTeachingInputs } from './inputs.js';
+import { orderTeachingWrites } from './input-order.js';
+import { createTeachingInputControls } from './input-controls.js';
+import { createTeachingRunControls } from './run-controls.js';
 import { createTeachingRunDriver, type TeachingRunLimits } from './driver.js';
 import type { TeachingToolHost } from './tool-types.js';
 import type { ModelTool } from '@xunjie/contracts/model-connections';
@@ -64,7 +69,7 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX teaching_snapshots_run ON teaching_snapshots(run_id);
 ` }, teachingToolMigration, studentQuestionMigration, teachingDeploymentMigration,
-{ version: 5, name: 'agent-owned-chunk-channel', sql: chunkChannelMigrationSql }];
+{ version: 5, name: 'agent-owned-chunk-channel', sql: chunkChannelMigrationSql }, teachingInputMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -88,6 +93,7 @@ export interface TeachingAgentOptions {
 }
 
 export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgentOptions) {
+  storage = orderTeachingWrites(storage);
   const ownerId = options.driverId ?? JSON.stringify([storage.owner.environmentId, storage.owner.serviceId, process.pid]);
   const leaseMs = options.leaseMs ?? 10_000;
   const scanIntervalMs = options.scanIntervalMs ?? 5_000;
@@ -156,28 +162,32 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     if (reason) return receipt(input, inputDigest, 'cancelled', null, null);
     const runId = operationId('teaching-run:' + input.requestId);
     const inputId = operationId('teaching-input:' + input.requestId);
-    const accepted = receipt(input, inputDigest, 'accepted', runId, inputId);
     const stored = await storage.request({ requestId: 'teaching-accept:' + input.requestId,
       fingerprint: digest({ scope: input.scope, inputDigest }) }, async tx => {
       const { rows: [prior] } = await tx.query('SELECT state,receipt FROM teaching_requests WHERE request_id=$1 FOR UPDATE', [input.requestId]);
       if (prior) return prior.receipt;
       await tx.query('INSERT INTO teaching_sessions(activity_id) VALUES($1) ON CONFLICT(activity_id) DO NOTHING', [input.scope.activityId]);
+      const { rows: [previous] } = await tx.query('SELECT run_id,state FROM teaching_runs WHERE activity_id=$1 ORDER BY created_at DESC LIMIT 1', [input.scope.activityId]);
+      const busy = previous && !terminal(previous.state as TeachingRun['state']);
+      const targetRunId = busy ? String(previous.run_id) : runId;
+      const accepted = receipt(input, inputDigest, 'accepted', targetRunId, inputId);
       await tx.query(`INSERT INTO teaching_requests(request_id,activity_id,input_digest,body,state,run_id,input_id,receipt)
         VALUES($1,$2,$3,$4,'accepted',$5,$6,$7)`, [input.requestId, input.scope.activityId, inputDigest,
-        JSON.stringify(input), runId, inputId, JSON.stringify(accepted)]);
-      await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,usage)
-        VALUES($1,$2,$3,$4,$5,'received',$6)`, [runId, input.scope.activityId, input.requestId, inputId,
+        JSON.stringify(input), targetRunId, inputId, JSON.stringify(accepted)]);
+      if (!busy) await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,usage,previous_run_id)
+        VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [runId, input.scope.activityId, input.requestId, inputId,
         JSON.stringify({ environmentId: input.scope.environmentId, spaceId: input.scope.spaceId,
           principalId: input.scope.principalId, kind: activity.identity.kind, name: activity.identity.name }),
-        JSON.stringify({ state: 'unknown' })]);
-      await appendEvent(tx, input.scope.activityId, 'input', { runId, requestId: input.requestId, inputId,
+        JSON.stringify({ state: 'unknown' }), previous?.run_id ?? null]);
+      const received = await appendEvent(tx, input.scope.activityId, 'input', { runId: targetRunId, requestId: input.requestId, inputId,
         question: input.draft.question, references: input.draft.references.map(reference => ({ referenceId: reference.referenceId,
           source: reference.source, sourceName: reference.sourceName, copy: reference.copy })), works: input.works.map(work => ({ objectId: work.objectId,
           name: work.name, kind: work.kind })), goal: activity.goal, activityQuestion: activity.question });
-      await appendEvent(tx, input.scope.activityId, 'run-received', { runId, requestId: input.requestId, inputId });
+      await inputs.register(tx, input, targetRunId, received.seq);
+      if (!busy) await appendEvent(tx, input.scope.activityId, 'run-received', { runId, requestId: input.requestId, inputId });
       return accepted;
     });
-    kick(runId);
+    kick(JSON.parse((stored.result as ActionReceipt).detail).runId);
     return actionReceiptSchema.parse(stored.result);
   }
 
@@ -262,18 +272,46 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     extraEvents: { kind: TeachingEventKind; body: Record<string, unknown> }[] = []) {
     const row = await runRow(run.runId);
     if (riskOwnershipLost(row, generation)) throw new StorageError('conflict');
-    await storage.request({ requestId: 'teaching-finish:' + run.runId + ':' + randomUUID(),
+    const finished = await storage.request({ requestId: 'teaching-finish:' + run.runId + ':' + randomUUID(),
       fingerprint: 'teaching-finish:' + run.runId }, async tx => {
       await assertAuthority(tx, run.runId, generation);
-      const { rows: [current] } = await tx.query('SELECT state FROM teaching_runs WHERE run_id=$1', [run.runId]);
-      if (!current || terminal(current.state as TeachingRun['state'])) return null;
-      if (event) await appendEvent(tx, run.activityId, event.kind, event.body);
-      for (const extra of extraEvents) await appendEvent(tx, run.activityId, extra.kind, extra.body);
-      await tx.query(`UPDATE teaching_runs SET state=$2,reason=$3,usage=$4,model=$5,completed_at=clock_timestamp(),
-        lease_owner=NULL,lease_expires_at=NULL,updated_at=clock_timestamp() WHERE run_id=$1`, [run.runId, state, reason,
-        JSON.stringify(usage), JSON.stringify(model)]);
-      return null;
+      const { rows: [current] } = await tx.query('SELECT state,stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
+      if (!current || terminal(current.state as TeachingRun['state'])) return { finished: true, next: null };
+      const finalState = current.stop_requested ? 'stopped' : state;
+      const finalReason = current.stop_requested ? 'stop-requested' : reason;
+      const steering = finalState === 'completed' && await inputs.hasSteering(tx, run);
+      const { rows: resultWaits } = finalState === 'completed' ? await tx.query(`SELECT state,observed_step_id FROM teaching_waits
+        WHERE run_id=$1 AND purpose='result' AND (state='pending' OR (state='consumed' AND observed_step_id IS NULL))`, [run.runId]) : { rows: [] };
+      const readyResult = resultWaits.some(wait => wait.state === 'consumed');
+      if (finalState === 'completed' && (steering || resultWaits.length)) {
+        for (const saved of [event, ...extraEvents]) if (saved && saved.kind !== 'run-completed')
+          await appendEvent(tx, run.activityId, saved.kind, saved.body);
+        await tx.query(`UPDATE teaching_steps SET phase='completed' WHERE run_id=$1
+          AND step_no=(SELECT max(step_no) FROM teaching_steps WHERE run_id=$1)`, [run.runId]);
+        const advancing = steering || readyResult;
+        await tx.query(`UPDATE teaching_runs SET state=$4,usage=$2,model=$3,
+          lease_owner=CASE WHEN $5 THEN lease_owner ELSE NULL END,
+          lease_expires_at=CASE WHEN $5 THEN lease_expires_at ELSE NULL END,updated_at=clock_timestamp()
+          WHERE run_id=$1`, [run.runId, JSON.stringify(usage), JSON.stringify(model), advancing ? 'running' : 'waiting', advancing]);
+        return { finished: !advancing, next: null };
+      }
+      let stopRecorded = false;
+      for (const saved of [event, ...extraEvents]) if (saved) {
+        const kind = current.stop_requested && ['run-completed', 'run-failed'].includes(saved.kind) ? 'run-stopped' : saved.kind;
+        stopRecorded ||= kind === 'run-stopped';
+        await appendEvent(tx, run.activityId, kind, kind !== saved.kind
+          ? { ...saved.body, reason: finalReason, nativeReason: saved.body.reason ?? '' } : saved.body);
+      }
+      if (finalState === 'stopped' && !stopRecorded) await appendEvent(tx, run.activityId, 'run-stopped', { runId: run.runId, reason: finalReason });
+      await tx.query(`UPDATE teaching_runs SET state=$2,reason=$3,usage=$4,model=$5,
+        completed_at=CASE WHEN $6 THEN NULL ELSE clock_timestamp() END,
+        lease_owner=NULL,lease_expires_at=NULL,updated_at=clock_timestamp() WHERE run_id=$1`, [run.runId, finalState, finalReason,
+        JSON.stringify(usage), JSON.stringify(model), isRecoverableTeachingPause({ state: finalState, reason: finalReason, completedAt: null })]);
+      return { finished: true, next: await inputs.afterFinish(tx, run, finalState, finalReason) };
     });
+    const result = finished.result as { finished: boolean; next: string | null };
+    if (result.next) kick(result.next);
+    return result.finished;
   }
   function riskOwnershipLost(row: RunRow, generation: number) {
     return Number(row.generation) !== generation || row.lease_owner !== ownerId;
@@ -290,14 +328,21 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     });
   }
   async function historyBefore(activityId: string, runId: string): Promise<ContextMessage[]> {
-    const { rows: [own] } = await storage.read("SELECT seq FROM teaching_events WHERE activity_id=$1 AND kind='input' AND body->>'runId'=$2 LIMIT 1",
+    const { rows: [own] } = await storage.read("SELECT seq FROM teaching_events WHERE activity_id=$1 AND kind IN ('run-received','run-continued') AND body->>'runId'=$2 ORDER BY seq LIMIT 1",
       [activityId, runId]);
     const boundary = own ? Number(own.seq) : Number.MAX_SAFE_INTEGER;
-    const { rows } = await storage.read(`SELECT kind,body FROM teaching_events WHERE activity_id=$1
-      AND seq < $2 AND kind IN ('input','assistant','question-created','student-response') ORDER BY seq`, [activityId, boundary]);
+    const { rows } = await storage.read(`SELECT e.kind,e.body,i.state AS input_state,i.adopted_run_id,
+      EXISTS(SELECT 1 FROM teaching_events a WHERE a.activity_id=e.activity_id AND a.kind='input-adopted'
+        AND a.body->>'inputId'=e.body->>'inputId') AS adoption_logged
+      FROM teaching_events e LEFT JOIN teaching_inputs i ON i.input_id::text=e.body->>'inputId'
+      WHERE e.activity_id=$1 AND e.seq<$2 AND e.kind IN ('input','input-adopted','assistant','question-created','student-response') ORDER BY e.seq`, [activityId, boundary]);
     return rows.flatMap((row): ContextMessage[] => {
       const body = row.body as Record<string, unknown>;
-      if (row.kind === 'input') return typeof body.question === 'string' && body.question ? [{ role: 'student' as const, text: body.question }] : [];
+      if (row.kind === 'input-adopted' || row.kind === 'input' && row.input_state === 'adopted' && !row.adoption_logged) {
+        if (body.runId === runId || row.adopted_run_id === runId) return [];
+        return typeof body.question === 'string' && body.question ? [{ role: 'student' as const, text: body.question,
+          source: { kind: 'input', id: String(body.inputId) + ':' + String(body.version ?? 1), label: '先前已采用的学生输入' } }] : [];
+      }
       if (row.kind === 'assistant') return typeof body.text === 'string' && body.text ? [{ role: 'assistant' as const, text: body.text }] : [];
       if (row.kind === 'question-created' && typeof body.question === 'string') return [{ role: 'assistant',
         text: '此前 Agent 记录的提问（不代表学生已看见或回答）：' + body.question,
@@ -403,10 +448,14 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     }
     return fact;
   }
+  const inputs = createTeachingInputs(storage, { appendEvent,
+    supersedeQuestion: (tx, activityId, runId, inputId) => studentQuestions.supersede(tx, activityId, runId, inputId) });
+  const inputControls = createTeachingInputControls(storage, { inputs, appendEvent });
+  const runControls = createTeachingRunControls(storage, { models: options.models, appendEvent });
   const studentQuestions = createStudentQuestions(storage, { activity: options.activity, appendEvent });
   const driver = createTeachingRunDriver(storage, {
     ...options, driverId: ownerId, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
-    assertAuthority, appendEvent, historyBefore, ensureSegment, awaitAttempt, finish, studentQuestions,
+    assertAuthority, appendEvent, historyBefore, ensureSegment, awaitAttempt, finish, studentQuestions, inputs,
   });
 
   const starting = new Set<string>();
@@ -444,7 +493,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     if (dispatchClosed) return;
     for (const runId of await driver.pollWaits()) kick(runId);
     const { rows } = await storage.read(`SELECT run_id FROM teaching_runs r WHERE
-      (state IN ('received','running','dispatching') OR (state='waiting' AND (stop_requested OR NOT EXISTS
+      (state IN ('received','running','dispatching') OR (state='waiting' AND (stop_requested OR EXISTS
+        (SELECT 1 FROM teaching_inputs i WHERE i.waiting_on_run_id=r.run_id AND i.state='pending' AND i.mode='steering') OR NOT EXISTS
         (SELECT 1 FROM teaching_waits w WHERE w.run_id=r.run_id AND w.state='pending'))))
       AND (lease_expires_at IS NULL OR lease_expires_at < clock_timestamp()) ORDER BY created_at LIMIT 20`);
     for (const row of rows) kick(row.run_id as string);
@@ -483,8 +533,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const kind = row.kind as TeachingEventKind, body = row.body as Record<string, unknown>;
       const base = { eventId: row.event_id as string, seq: Number(row.seq), createdAt: new Date(row.created_at as string).toISOString() };
       const attemptId = typeof body.attemptId === 'string' ? body.attemptId : '';
-      if (kind === 'input') messages.push({ ...base, role: 'student', text: String(body.question ?? ''),
-        runId: (body.runId as string) ?? null });
+      if (kind === 'input' || kind === 'input-promoted') messages.push({ ...base, role: 'student', text: String(body.question ?? ''),
+        ...(typeof body.inputId === 'string' ? { inputId: body.inputId } : {}), runId: (body.runId as string) ?? null });
       else if (kind === 'student-response' && body.status === 'accepted') messages.push({ ...base, role: 'student',
         kind: 'student-response', text: String(body.text ?? ''), runId: (body.runId as string) ?? null });
       else if (kind === 'native-summary' && body.source === 'model-native' && typeof body.text === 'string' && body.text)
@@ -547,7 +597,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     // The cursor may only cover events actually delivered in this response; a later commit is
     // read on the next poll instead of being skipped by a concurrent max(seq).
     return teachingConversationSchema.parse({ activityId, cursor: rows.length ? Number(rows.at(-1)!.seq) : cursor, messages,
-      runs: runRows.map(toRun), tools: await driver.records(activityId), waits: await driver.waits(activityId), questions: await studentQuestions.list(activityId) });
+      runs: runRows.map(toRun), tools: await driver.records(activityId), waits: await driver.waits(activityId), questions: await studentQuestions.list(activityId),
+      inputs: await inputs.list(activityId) });
   }
   async function events(identity: SpaceIdentity, activityId: string, after = 0): Promise<TeachingEvent[]> {
     await options.activity(identity, activityId);
@@ -579,14 +630,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const input = teachingStopInputSchema.parse(value);
     const current = toRun(await runRow(runId));
     if (current.activityId !== activityId) throw new StorageError('missing');
-    await storage.request({ requestId: 'teaching-stop:' + input.requestId, fingerprint: 'teaching-stop:' + runId }, async tx => {
-      const { rows: [row] } = await tx.query('SELECT state,stop_requested FROM teaching_runs WHERE run_id=$1 FOR UPDATE', [runId]);
-      if (!row) throw new StorageError('missing');
-      if (terminal(row.state as TeachingRun['state']) || row.stop_requested) return null;
-      await tx.query('UPDATE teaching_runs SET stop_requested=true,updated_at=clock_timestamp() WHERE run_id=$1', [runId]);
-      await appendEvent(tx, activityId, 'stop-requested', { runId, requestId: input.requestId, source: 'student' });
-      return null;
-    });
+    await runControls.stop(activityId, runId, input);
     await stopAttempt(runId);
     await driver.stopTools(toRun(await runRow(runId)));
     kick(runId);
@@ -596,6 +640,12 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     if (writesClosed) throw new StorageError('maintenance');
     await options.activity(identity, activityId);
     const input = teachingContinueInputSchema.parse(value);
+    if ('version' in input) {
+      const receipt = await runControls.continueSelected(identity, activityId, runId, input);
+      if (receipt.status !== 'accepted' || !receipt.continuedRunId) throw new StorageError('conflict');
+      kick(receipt.continuedRunId);
+      return toRun(await runRow(receipt.continuedRunId));
+    }
     const previous = toRun(await runRow(runId));
     if (previous.activityId !== activityId) throw new StorageError('missing');
     if (!terminal(previous.state)) throw new StorageError('conflict');
@@ -703,6 +753,22 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
     run, conversation, events, snapshot, request, stop, continueRun, capabilities, assertCommandDispatch, assertModelDispatch, validate,
     respond, response: studentQuestions.response, presentQuestion,
+    async controlInput(identity: SpaceIdentity, activityId: string, inputId: string, value: unknown) {
+      if (writesClosed) throw new StorageError('maintenance');
+      await options.activity(identity, activityId);
+      z.uuid().parse(inputId);
+      const receipt = await inputControls.control(activityId, inputId, value);
+      if (receipt.replacementInputId) {
+        const { rows: [next] } = await storage.read('SELECT waiting_on_run_id FROM teaching_inputs WHERE input_id=$1', [receipt.replacementInputId]);
+        if (next) kick(String(next.waiting_on_run_id));
+      }
+      return receipt;
+    },
+    async inputControlReceipt(identity: SpaceIdentity, activityId: string, requestId: string) {
+      await options.activity(identity, activityId);
+      z.uuid().parse(requestId);
+      return inputControls.receipt(activityId, requestId);
+    },
     closeWrites() { writesClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     closeDispatch() { dispatchClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     async drain() {

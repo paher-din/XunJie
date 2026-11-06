@@ -7,6 +7,7 @@ import { useActivitySession } from './ActivitySession'
 import { Markdown } from '../components/chat/Markdown'
 import { TeachingToolRecords, type TeachingToolLocator } from './TeachingToolRecords'
 import { StudentQuestionCard } from './StudentQuestionCard'
+import { AgentInputRecord, AgentRunControls } from './AgentControls'
 
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
 
@@ -50,7 +51,6 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   const { workspace } = useActivitySession()
   const [conversation, setConversation] = useState<TeachingConversation | null>(null)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
   const mounted = useRef(true)
   const scope = workspaceScope(namespace, activity)
   const shown = useRef(scope)
@@ -72,7 +72,7 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   }, [activity.activityId, request, scope, onQuestionChange])
   useEffect(() => {
     shown.current = scope
-    setConversation(null); setError(''); setBusy(false)
+    setConversation(null); setError('')
     onQuestionChange?.(null)
   }, [scope, onQuestionChange])
   useEffect(() => {
@@ -86,13 +86,6 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   useEffect(() => { onActiveChange?.(active) }, [active, onActiveChange])
   useEffect(() => () => { onActiveChange?.(false) }, [onActiveChange])
   const readOnly = workspace.isReadOnly()
-  const act = async (operation: () => Promise<unknown>) => {
-    if (readOnly) return
-    setBusy(true)
-    try { await operation(); await refresh(); setError('') }
-    catch { setError('操作尚未完成，原对话与问题仍保留。请稍后重试。') }
-    finally { setBusy(false) }
-  }
   if (!conversation) {
     return <section aria-label="与 Agent 的对话" className="teaching-conversation">
       <h3>学习对话</h3>
@@ -126,17 +119,18 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
           truncated={message.state === 'stopped' || message.state === 'failed'} />
         : <div className="preserve-lines">{message.text}</div>}
       {message.role === 'assistant' && message.state === 'stopped' && <span className="detail">（已停止，以上是已发生的内容）</span>}
+      {message.inputId && conversation.inputs.find(input => input.inputId === message.inputId) && <AgentInputRecord
+        input={conversation.inputs.find(input => input.inputId === message.inputId)!} scope={scope} readOnly={readOnly || activity.status !== 'open'}
+        request={agentRequest} onConfirmed={refresh} />}
     </article>})}
     {active && <div className="teaching-run-status" role="status">
       <span>{runLabel(latest, conversation.waits)}</span>
-      {!readOnly && <button type="button" className="outline" disabled={busy || latest.stopRequested}
-        onClick={() => void act(() => request(`agent/${activity.activityId}/runs/${latest.runId}/stop`, { requestId: crypto.randomUUID() }))}>停止</button>}
+      <AgentRunControls key={scope + latest.runId} run={latest} inputs={conversation.inputs} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh} />
     </div>}
     {!active && latest && latest.state !== 'completed' && <div className="teaching-run-status">
       <span>{runLabel(latest, conversation.waits)}</span>
       <div className="teaching-run-actions">
-        {!readOnly && <button type="button" className="outline" disabled={busy}
-          onClick={() => void act(() => request(`agent/${activity.activityId}/runs/${latest.runId}/continue`, { requestId: crypto.randomUUID() }))}>继续这次学习</button>}
+        <AgentRunControls key={scope + latest.runId} run={latest} inputs={conversation.inputs} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh} />
         {onModels && latest.state === 'paused' && ['model-not-selected', 'model-unavailable', 'max-output-missing'].includes(latest.reason) &&
           <button type="button" className="outline" onClick={onModels}>打开模型设置</button>}
       </div>
@@ -153,26 +147,27 @@ export function rememberFirstQuestion(activityId: string, question: string) {
 
 /** A first question is already fixed in the activity creation input; this sends the same text through the durable action queue. */
 export function FirstQuestionAutoSend({ activity }: { activity: LearningActivity }) {
-  const { draft, actions } = useActivitySession()
+  const { draft, actions, inputInteraction } = useActivitySession()
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const receiver = state.receivers.find(item => item.kind === 'question')
   const sent = useRef(false)
   useEffect(() => {
-    if (sent.current || !receiver || !state.ready) return
+    if (sent.current || !receiver || !state.ready || !inputInteraction.ready || !inputInteraction.writable) return
     const key = firstQuestionKey(activity.activityId)
     const raw = localStorage.getItem(key)
     if (!raw) return
     let saved: { requestId: string; question: string }
     try { saved = JSON.parse(raw) as typeof saved } catch { localStorage.removeItem(key); return }
     if (!saved.requestId || !saved.question.trim()) { localStorage.removeItem(key); return }
+    if (state.items.some(item => item.input.requestId === saved.requestId)) { localStorage.removeItem(key); return }
     sent.current = true
     void (async () => {
       try {
         if (!draft.snapshot().question) draft.change(saved.question, [])
-        await actions.create({ requestId: saved.requestId, receiver })
+        await actions.create({ requestId: saved.requestId, receiver, delivery: inputInteraction.delivery })
         localStorage.removeItem(key)
       } catch { sent.current = false }
     })()
-  }, [actions, activity.activityId, draft, receiver, state.ready])
+  }, [actions, activity.activityId, draft, receiver, state.ready, state.items, inputInteraction.ready, inputInteraction.writable, inputInteraction.delivery])
   return null
 }

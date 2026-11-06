@@ -19,6 +19,7 @@ import { createAlgorithmProvider } from '../tool-execution/provider'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
 import { NativeSessionController } from '../tool-execution/session-controller'
 import { SessionRequests } from '../tool-execution/session-requests'
+import { useAgentInteraction } from './AgentInteraction'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -32,6 +33,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode
 }) {
   const scope = workspaceScope(namespace, activity)
+  const inputInteraction = useAgentInteraction(activity.identity, spaceKey, namespace, authorized && !readOnly)
   const access = useRef(authorized)
   access.current = authorized
   const interactions = useMemo(() => new ComponentInteractions(), [scope])
@@ -100,8 +102,9 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions }}>
-    <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}</DraftReferencesProvider>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction }}>
+    <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions} delivery={inputInteraction.delivery}
+      deliveryReady={inputInteraction.ready} onCreated={inputInteraction.reset}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }
 

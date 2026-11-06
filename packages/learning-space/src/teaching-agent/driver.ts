@@ -13,12 +13,16 @@ import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
 import { studentAskDefinition, prepareStudentAsk, type createStudentQuestions } from './student-questions.js';
 import { studentResponseObservations } from './student-response-context.js';
+import type { createTeachingInputs } from './inputs.js';
 
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
 type Model = NonNullable<TeachingRun['model']>;
 interface Plan {
   input: ModelLearningInput; model: Model; sources: TeachingSnapshot['sources']; createdAt: string;
+  inputBasis?: ActionInput; inputSequence?: number;
+  inputVersions?: { inputId: string; version: number; inputDigest: string }[];
+  waitVersions?: { waitId: string; outcomeDigest: string }[];
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
@@ -47,6 +51,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   models: LearningModelPort;
   tools?: TeachingToolHost;
   studentQuestions: ReturnType<typeof createStudentQuestions>;
+  inputs: ReturnType<typeof createTeachingInputs>;
   limits?: Partial<TeachingRunLimits>;
   dispatchClosed(): boolean;
   runRow(runId: string): Promise<Row>;
@@ -65,7 +70,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttempt): Promise<ModelAttempt>;
   finish(run: TeachingRun, generation: number, state: TeachingRun['state'], reason: string, usage: ModelUsage,
-    model: TeachingRun['model'], event: Event | null, extras?: Event[]): Promise<void>;
+    model: TeachingRun['model'], event: Event | null, extras?: Event[]): Promise<boolean>;
 }) {
   const limits = { ...defaultLimits, ...owner.limits };
   for (const value of Object.values(limits)) if (!Number.isSafeInteger(value) || value < 1) throw new StorageError('invalid');
@@ -105,11 +110,27 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     const { rows } = await storage.read('SELECT * FROM teaching_commands WHERE step_id=$1 ORDER BY ordinal', [stepId]);
     return rows;
   }
+  async function readyWaits(run: TeachingRun, tx?: OwnedTransaction) {
+    const read = tx ? tx.query.bind(tx) : storage.read.bind(storage);
+    const { rows } = await read(`SELECT c.*,w.wait_id FROM teaching_waits w JOIN teaching_commands c USING(command_id)
+      WHERE w.run_id=$1 AND w.purpose='result' AND w.state='consumed' AND w.observed_step_id IS NULL
+      ORDER BY w.consumed_at,w.wait_id`, [run.runId]);
+    return rows;
+  }
+  function outcomeObservations(row: Row) {
+    const outcome = row.outcome as TeachingToolOutcome;
+    if ((row.command as TeachingPreparedTool).name === studentAskDefinition.name && typeof outcome.result.responseId === 'string')
+      return studentResponseObservations(outcome);
+    return [{ observationId: operationId('tool-observation:' + row.command_id + ':' + canonicalDigest(outcome)),
+      version: 1, source: 'caller' as const, text: JSON.stringify({ commandId: row.command_id, source: outcome.source,
+        state: outcome.state, feedback: outcome.feedback.text }).slice(0, 8192) }];
+  }
   async function scopeFor(run: TeachingRun, saved: Row, generation?: number): Promise<TeachingToolScope> {
     const identity = owner.identity(await owner.runRow(run.runId));
     const request = await owner.requestRow(run.requestId);
     if (!request) throw new StorageError('corrupt');
-    return { identity, activity: await owner.activity(identity, run.activityId), input: actionInputSchema.parse(request.body),
+    return { identity, activity: await owner.activity(identity, run.activityId),
+      input: actionInputSchema.parse((saved.plan as Plan | undefined)?.inputBasis ?? request.body),
       runId: run.runId, stepId: String(saved.step_id), snapshotId: String(saved.snapshot_id),
       ...(typeof saved.segment_id === 'string' ? { segmentId: saved.segment_id } : {}),
       ...(generation === undefined ? {} : { authority: { runId: run.runId, activityId: run.activityId,
@@ -123,6 +144,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   }
   async function planNext(run: TeachingRun, generation: number, previous?: Row) {
     const scope = await scopeFor(run, previous ?? { step_id: operationId('step:' + run.runId + ':0'), snapshot_id: run.runId });
+    const fixedInputs = await owner.inputs.pending(run);
+    const ready = await readyWaits(run);
+    const root = fixedInputs.find(item => item.inputId === run.inputId);
+    if (root) scope.input = root.input;
     if (scope.activity.status !== 'open' || scope.activity.course && scope.activity.course.helpPolicy?.questions !== 'allowed')
       throw new StorageError('forbidden');
     let plan: Plan;
@@ -131,18 +156,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const native = await owner.models.segments.read(scope.identity, String(previous.segment_id));
       if (native.pending || native.pendingTools?.length) throw new StorageError('resource-busy');
       const rows = await commands(String(previous.step_id));
-      const observations = rows.filter(row => (row.initial_outcome as TeachingToolOutcome | null)?.state === 'accepted'
-        || (row.initial_outcome as TeachingToolOutcome | null)?.state === 'unknown').flatMap(row => {
-          const outcome = row.outcome as TeachingToolOutcome;
-          if ((row.command as TeachingPreparedTool).name === studentAskDefinition.name && typeof outcome.result.responseId === 'string')
-            return studentResponseObservations(outcome);
-          return [{
-          observationId: operationId('tool-observation:' + row.command_id), version: 1, source: 'caller' as const,
-          text: JSON.stringify({ commandId: row.command_id, source: outcome.source,
-            state: outcome.state, feedback: outcome.feedback.text }).slice(0, 8192),
-          }];
-        });
-      const responses: TeachingSnapshot['sources'] = rows.flatMap(row => {
+      const results = [...rows.filter(row => !ready.some(wait => wait.command_id === row.command_id)
+        && ['accepted', 'unknown'].includes(String((row.initial_outcome as TeachingToolOutcome | null)?.state))), ...ready];
+      const observations = results.flatMap(outcomeObservations);
+      const responses: TeachingSnapshot['sources'] = results.flatMap(row => {
         const command = row.command as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome;
         return command.name === studentAskDefinition.name && typeof outcome.result.responseId === 'string'
           ? [{ kind: 'student-response' as const, id: outcome.result.responseId, label: '学生对当前提问的明确回应' }] : [];
@@ -170,13 +187,28 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
         model: native.model, sources: context.sources, createdAt: new Date().toISOString() };
     }
+    const additions = fixedInputs.filter(item => previous || item.inputId !== run.inputId);
+    const texts = additions.map(item => buildContext(scope.activity, item.input, [],
+      { maxOutputTokens: plan.input.limits.maxOutputTokens }).userText);
+    if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
+    if (plan.input.input.text.length > 1000000) { await pause(run, generation, 'capacity-exceeded'); return null; }
+    plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
+    plan.inputSequence = Math.max((previous?.plan as Plan | undefined)?.inputSequence ?? 0, ...fixedInputs.map(item => item.sequence));
+    plan.inputVersions = fixedInputs.map(({ inputId, version, inputDigest }) => ({ inputId, version, inputDigest }));
+    plan.waitVersions = ready.map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
+    plan.sources.push(...ready.map(row => ({ kind: 'history' as const, id: String(row.wait_id), label: '原操作已核实的结果或回应' })));
+    plan.sources.push(...fixedInputs.map(item => ({ kind: 'input' as const, id: item.inputId + ':' + item.version,
+      label: item.inputId === run.inputId ? '本次固定输入版本' : '已纳入的学生补充' })));
     const number = previous ? Number(previous.step_no) + 1 : 0;
     const stepId = operationId(`step:${run.runId}:${number}`), attemptId = operationId('model-attempt:' + stepId);
     plan.input.attemptId = attemptId;
     const snapshotId = operationId('model-snapshot:' + stepId);
     await assertDispatch(run, generation);
-    let exhausted = false;
+    let exhausted = false, changed = false;
     await transaction(run, generation, async tx => {
+      if (!await owner.inputs.matches(tx, run, fixedInputs)) { changed = true; return; }
+      const currentWaits = (await readyWaits(run, tx)).map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
+      if (JSON.stringify(currentWaits) !== JSON.stringify(plan.waitVersions)) { changed = true; return; }
       const { rows: [current] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
       if (current?.stop_requested) throw new StorageError('conflict');
       await tx.query(`INSERT INTO teaching_budgets VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
@@ -189,9 +221,15 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens]);
       await tx.query(`UPDATE teaching_runs SET attempt_id=$2,segment_id=$3,model=$4,state='running',updated_at=clock_timestamp()
         WHERE run_id=$1`, [run.runId, attemptId, plan.input.segmentId, JSON.stringify(plan.model)]);
+      await owner.inputs.adopt(tx, run, stepId, fixedInputs);
+      for (const wait of plan.waitVersions!) {
+        await tx.query('UPDATE teaching_waits SET observed_step_id=$2 WHERE wait_id=$1 AND observed_step_id IS NULL', [wait.waitId, stepId]);
+        await event(tx, run.activityId, 'wait-observed', { runId: run.runId, stepId, waitId: wait.waitId, outcomeDigest: wait.outcomeDigest });
+      }
       await event(tx, run.activityId, 'budget-reserved', { runId: run.runId, stepId, attemptId,
         modelSteps: 1, outputTokens: plan.input.limits.maxOutputTokens, inputTokens: 'unknown' });
     });
+    if (changed) return planNext(run, generation, previous);
     if (exhausted) { await pause(run, generation, 'model-step-budget-exhausted'); return null; }
     return (await step(run.runId))!;
   }
@@ -262,9 +300,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         consumer: 'run', consumerId: run.runId });
       await settleUsage(run, generation, saved, fact, 'final');
       const settled = owner.toRun(await owner.runRow(run.runId));
-      await owner.finish(run, generation, state, stopped ? 'stop-requested' : fact.reason, settled.usage,
+      const finished = await owner.finish(run, generation, state, stopped ? 'stop-requested' : fact.reason, settled.usage,
         (saved.plan as unknown as Plan).model, extras.shift()!, extras);
-      return false;
+      return !finished;
     }
     // All prepared commands, the native result association, and step completion share one commit.
     const prepared = await Promise.all(intents.map(async (intent, ordinal) => {
@@ -385,6 +423,18 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     });
   }
   async function advanceTools(run: TeachingRun, generation: number, saved: Row, scope: TeachingToolScope) {
+    async function supersededBeforePermit(tx: OwnedTransaction, row: Row) {
+      const direction = await owner.inputs.newerDirection(tx, run, (saved.plan as Plan).inputSequence);
+      if (!direction) return false;
+      const outcome = unsent('steering-before-dispatch');
+      outcome.feedback.text = '学生已补充方向，尚未取得许可的旧操作未执行。';
+      const { rows: closed } = await tx.query(`UPDATE teaching_commands SET state='settled',outcome=$2,initial_outcome=$2,
+        updated_at=clock_timestamp() WHERE command_id=$1 AND state='prepared' RETURNING command_id`,
+        [row.command_id, JSON.stringify(outcome)]);
+      if (closed.length) await event(tx, run.activityId, 'tool-result', { runId: run.runId, stepId: saved.step_id,
+        commandId: row.command_id, callId: row.call_id, blockedByInputId: direction.inputId, outcome });
+      return true;
+    }
     const rows = await commands(String(saved.step_id));
     for (const row of rows) {
       const command = row.command as unknown as TeachingPreparedTool;
@@ -394,6 +444,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         if (command.name === studentAskDefinition.name) {
           await assertDispatch(run, generation);
           await transaction(run, generation, async tx => {
+            if (await supersededBeforePermit(tx, row)) return;
             const { rows: [current] } = await tx.query('SELECT state FROM teaching_commands WHERE command_id=$1 FOR UPDATE', [command.commandId]);
             const { rows: [runRow] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
             if (current?.state !== 'prepared' || runRow?.stop_requested) return;
@@ -413,6 +464,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await assertDispatch(run, generation);
         let permitted = false;
         await transaction(run, generation, async tx => {
+          if (await supersededBeforePermit(tx, row)) return;
           const { rows: [current] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
           if (current?.stop_requested) return;
           // A conservative serial lane is valid for all component effects. Its lock is owned by
@@ -478,12 +530,19 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       return false;
     }
     if (known.some(row => row.state !== 'settled')) {
+      let steering = false;
       await transaction(run, generation, async tx => {
+        steering = await owner.inputs.hasSteering(tx, run);
+        if (steering) {
+          await tx.query("UPDATE teaching_steps SET phase='completed' WHERE step_id=$1", [saved.step_id]);
+          await tx.query("UPDATE teaching_runs SET state='running',updated_at=clock_timestamp() WHERE run_id=$1", [run.runId]);
+          return;
+        }
         await tx.query("UPDATE teaching_steps SET phase='waiting' WHERE step_id=$1", [saved.step_id]);
         await tx.query(`UPDATE teaching_runs SET state='waiting',lease_owner=NULL,lease_expires_at=NULL,
           updated_at=clock_timestamp() WHERE run_id=$1`, [run.runId]);
       });
-      return false;
+      return steering;
     }
     await transaction(run, generation, async tx => { await tx.query("UPDATE teaching_steps SET phase='completed' WHERE step_id=$1", [saved.step_id]); });
     return true;

@@ -92,6 +92,26 @@ export function createStudentQuestions(storage: OwnedStorage, owner: {
     const { rows: [row] } = await storage.read('SELECT receipt FROM teaching_student_responses WHERE activity_id=$1 AND request_id=$2', [activityId, requestId]);
     return row ? teachingStudentResponseReceiptSchema.parse(row.receipt) : null;
   }
+  /** Ordered with explicit responses and input acceptance; supersession is never recorded as an answer. */
+  async function supersede(tx: OwnedTransaction, activityId: string, runId: string, inputId: string) {
+    const { rows } = await tx.query(`SELECT * FROM teaching_student_questions WHERE activity_id=$1 AND run_id=$2
+      AND state='pending' ORDER BY created_at FOR UPDATE`, [activityId, runId]);
+    for (const row of rows) {
+      const saved = question(row);
+      const outcome: TeachingToolOutcome = { state: 'completed', feedback: { outcome: 'success', images: [],
+        text: '学生另发补充取代了尚未回应的问题。原提问已暂缓；没有记录学生回答。' },
+        result: { questionId: saved.questionId, questionVersion: saved.version, answerState: 'superseded',
+          reason: 'question-superseded', supersededByInputId: inputId }, source: { label: '已暂缓的原学习提问' } };
+      await tx.query("UPDATE teaching_student_questions SET state='superseded' WHERE question_id=$1", [saved.questionId]);
+      await tx.query("UPDATE teaching_waits SET state='consumed',consumed_at=clock_timestamp() WHERE wait_id=$1 AND state='pending'", [saved.waitId]);
+      await tx.query("UPDATE teaching_commands SET state='settled',outcome=$2,updated_at=clock_timestamp() WHERE command_id=$1",
+        [saved.commandId, JSON.stringify(outcome)]);
+      await event(tx, activityId, 'question-superseded', { runId, questionId: saved.questionId, inputId, reason: 'new-steering' });
+      await event(tx, activityId, 'wait-consumed', { runId, waitId: saved.waitId, commandId: saved.commandId,
+        source: 'question-superseded', answered: false });
+      await event(tx, activityId, 'tool-result', { runId, commandId: saved.commandId, outcome });
+    }
+  }
   async function present(identity: SpaceIdentity, activityId: string, questionId: string, value: unknown) {
     const activity = await owner.activity(identity, activityId);
     teachingStudentQuestionSchema.shape.questionId.parse(questionId);
@@ -174,6 +194,7 @@ export function createStudentQuestions(storage: OwnedStorage, owner: {
       const wait = saved ? (await tx.query('SELECT *,deadline>clock_timestamp() AS live FROM teaching_waits WHERE wait_id=$1 FOR UPDATE', [saved.waitId])).rows[0] : null;
       let reason = !saved || !run || !wait ? 'question-missing'
         : input.questionVersion !== saved.version || input.waitVersion !== Number(wait.version) ? 'version-mismatch'
+        : saved.state === 'superseded' ? 'question-superseded'
         : ['answered', 'skipped'].includes(saved.state) || wait.state === 'consumed' ? 'already-answered'
         : run.stop_requested || saved.state === 'cancelled' ? 'cancelled'
         : saved.state === 'expired' || !wait.live ? 'expired'
@@ -221,7 +242,7 @@ export function createStudentQuestions(storage: OwnedStorage, owner: {
     });
     return teachingStudentResponseReceiptSchema.parse(result.result);
   }
-  return { list, open, response, respond, present, cancelRun, expire };
+  return { list, open, response, respond, present, cancelRun, expire, supersede };
 }
 
 /** New facts belong to the same owner maintenance and are checked without invoking tools or models. */
@@ -238,7 +259,8 @@ export async function validateStudentQuestions(storage: OwnedStorage) {
       || saved.waitId !== row.wait_id || saved.runId !== row.run_id || row.command_run !== row.run_id
       || saved.waitVersion !== row.wait_version || saved.questionId !== operationId('student-question:' + saved.commandId)
       || !!saved.response !== ['answered', 'skipped'].includes(saved.state)
-      || saved.response && (row.wait_state !== 'consumed' || row.command_state !== 'settled')) throw new StorageError('corrupt');
+      || saved.response && (row.wait_state !== 'consumed' || row.command_state !== 'settled')
+      || saved.state === 'superseded' && (saved.response || row.wait_state !== 'consumed' || row.command_state !== 'settled')) throw new StorageError('corrupt');
   }
   const { rows: responses } = await storage.read('SELECT * FROM teaching_student_responses');
   for (const row of responses) {

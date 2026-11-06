@@ -551,7 +551,7 @@ function LearningView() {
     modelName={modelSelection.selection?.selected?.connection.name ?? '未选用模型'}
     onConnections={() => { closeModels(); goHome(); setConnectionsOpen(true) }}>
     {modelsOpen && context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
-      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection} />
+      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection} readOnly={context.readOnly} />
     : context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}

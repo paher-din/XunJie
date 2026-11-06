@@ -178,8 +178,9 @@ export function WorkspaceReferenceList() {
   </section>
 }
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
-export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false }: {
+export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel }: {
   closeFocusRef?: RefObject<HTMLElement | null>; sendBlocked?: boolean
+  blockedHint?: string; blockedLabel?: string; submitLabel?: string
 } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
     draftConflict, draftConflictReady, resolveDraftConflict, readOnly } = useWorkspaceReferences()
@@ -219,12 +220,12 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false 
             event.preventDefault(); void submit()
           }
         }} />
-      <div className="wr-send"><span className="wr-hint">{sendBlocked ? '当前回答结束后再发送；问题会先保存在草稿中。'
+      <div className="wr-send"><span className="wr-hint">{sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
         : sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
           : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
             : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
         <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>
-          {sendBlocked ? '等待当前回答' : sendAvailable ? busy ? '发送中…' : '发送问题' : '发送问题（尚未接入）'}</button></div>
+          {sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable ? busy ? '发送中…' : submitLabel ?? '发送问题' : '发送问题（尚未接入）'}</button></div>
     </form>
     <p role="status" className="wr-notice">{notice}</p>
   </section>
