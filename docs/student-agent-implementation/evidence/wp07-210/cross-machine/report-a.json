@@ -1,0 +1,96 @@
+{
+  "kind": "cross-machine-input-control-client",
+  "phase": "A",
+  "measuredAt": "2026-11-06T19:03:17.374Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "endpoint": "https://192.168.3.39:9443",
+  "checks": [
+    {
+      "name": "the Windows host authenticated to the Mac school over LAN HTTPS",
+      "detail": "{\"endpoint\":\"https://192.168.3.39:9443\",\"host\":\"LAPTOP-S7A4IQFU\"}"
+    },
+    {
+      "name": "the Mac Agent received steering and queue inputs over the cross-machine connection",
+      "detail": "{\"runId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\",\"steering\":{\"inputId\":\"6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c\",\"state\":\"pending\",\"mode\":\"steering\"},\"queue\":{\"inputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"state\":\"pending\",\"mode\":\"queue\"},\"runState\":\"dispatching\"}"
+    },
+    {
+      "name": "a stop whose reply was lost is queryable by the original identity and pauses unconsumed inputs",
+      "detail": "{\"stopRequestId\":\"37337bba-f002-4f5f-bb4b-ec4100778e7d\",\"lost\":{\"responseStatus\":200,\"dropped\":true,\"bodyRead\":false},\"retriedStop\":false,\"receipt\":{\"operation\":\"stop\",\"status\":\"accepted\"},\"runState\":\"stopped\",\"paused\":[{\"inputId\":\"0d7998f4-38a7-4991-b01f-db59ffb7ed66\",\"state\":\"paused\",\"mode\":\"steering\"},{\"inputId\":\"6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c\",\"state\":\"paused\",\"mode\":\"steering\"},{\"inputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"state\":\"paused\",\"mode\":\"queue\"}]}"
+    },
+    {
+      "name": "the original Run stops and only the explicitly selected input continues in a linked Run",
+      "detail": "{\"continueRequestId\":\"810824ec-d9f8-4bfd-891f-bd262b7a21f7\",\"selectedInputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"successorRunId\":\"38b44674-6025-4e4c-bc5a-862247bc6ca9\",\"successorState\":\"completed\",\"successorPreviousRunId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\"}"
+    }
+  ],
+  "facts": {
+    "received": {
+      "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+      "steering": {
+        "inputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+        "state": "pending",
+        "mode": "steering"
+      },
+      "queue": {
+        "inputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+        "state": "pending",
+        "mode": "queue"
+      },
+      "runState": "dispatching"
+    },
+    "stop": {
+      "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+      "lost": {
+        "responseStatus": 200,
+        "dropped": true,
+        "bodyRead": false
+      },
+      "retriedStop": false,
+      "receipt": {
+        "operation": "stop",
+        "status": "accepted"
+      },
+      "runState": "stopped",
+      "paused": [
+        {
+          "inputId": "0d7998f4-38a7-4991-b01f-db59ffb7ed66",
+          "state": "paused",
+          "mode": "steering"
+        },
+        {
+          "inputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+          "state": "paused",
+          "mode": "steering"
+        },
+        {
+          "inputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+          "state": "paused",
+          "mode": "queue"
+        }
+      ]
+    },
+    "continue": {
+      "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+      "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+      "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+      "successorState": "completed",
+      "successorPreviousRunId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b"
+    },
+    "state": {
+      "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+      "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+      "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+      "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+      "selectedVersion": 1,
+      "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+      "steeringInputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+      "queuedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668"
+    }
+  },
+  "status": "passed"
+}

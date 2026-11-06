@@ -1,0 +1,226 @@
+{
+  "formatVersion": 1,
+  "issue": 210,
+  "sourceIssue": 200,
+  "measuredAt": "2026-11-06T19:03:38.725Z",
+  "sourceRevision": "7381fe958597001aacfa08b6da9f3b7a35a6b673",
+  "topology": {
+    "client": {
+      "hostname": "LAPTOP-S7A4IQFU",
+      "platform": "win32",
+      "arch": "x64",
+      "os": "10.0.26200",
+      "node": "v24.15.0"
+    },
+    "school": {
+      "hostname": "Robert-Wu-MacBook-Air.local",
+      "platform": "darwin",
+      "arch": "arm64",
+      "os": "27.2.0"
+    },
+    "transport": "direct LAN HTTPS, no tunnel or SSH product traffic",
+    "endpoint": "https://192.168.3.39:9443",
+    "clientAddress": "192.168.3.8",
+    "schoolAddress": "192.168.3.39"
+  },
+  "package": {
+    "distributionSha256": "a064611a74b9e027ba187ef668eb73801429d2b766bf22b0f7d4d53383f6e3bf",
+    "createdAt": "2026-11-06T18:46:45.631Z",
+    "platform": "darwin-arm64"
+  },
+  "schoolOwner": {
+    "environmentId": "b47082d9-6e9d-4dee-b4d5-67f8db950a24",
+    "installationId": "475ac9da-812e-4c4d-a632-e436e9b2756c",
+    "profile": "school",
+    "services": [
+      {
+        "unit": "client",
+        "serviceId": "bfa9f60a-51c1-45b9-93e1-1e565f459c35"
+      },
+      {
+        "unit": "space-course",
+        "serviceId": "71ab5f1a-c065-4928-ba9d-f1bf8d714650"
+      },
+      {
+        "unit": "learning-data",
+        "serviceId": "b3b9af0e-c4a1-4109-891f-e1780245b4f0"
+      },
+      {
+        "unit": "model-connection",
+        "serviceId": "81a8846e-fa25-470e-b8a0-3db84c3650ed"
+      },
+      {
+        "unit": "teaching-agent",
+        "serviceId": "c14746b9-bed0-429e-ab35-f410b2d6a83a"
+      }
+    ],
+    "memberPrincipalId": "a0e67034-d498-4edb-89ca-f52bcaa168ae",
+    "spaceId": "31e0a600-f057-4468-a6a5-0ce642a7940d"
+  },
+  "course": {
+    "courseId": "d55fb4b8-9382-4365-a50b-37899aa7739a",
+    "releaseId": "f2f1f602-bf61-40cd-91ea-59a8f229d302",
+    "activityId": "74eaab28-aebb-48d7-93ae-8c5b310bfe61"
+  },
+  "model": {
+    "connectionId": "502f0491-ff1e-40fe-9106-0cdd2f341dde",
+    "version": 1
+  },
+  "state": {
+    "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+    "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+    "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+    "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+    "selectedVersion": 1,
+    "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+    "steeringInputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+    "queuedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+    "verifiedAfterRestart": true
+  },
+  "checks": [
+    {
+      "name": "the Windows host authenticated to the Mac school over LAN HTTPS",
+      "detail": "{\"endpoint\":\"https://192.168.3.39:9443\",\"host\":\"LAPTOP-S7A4IQFU\"}"
+    },
+    {
+      "name": "the Mac Agent received steering and queue inputs over the cross-machine connection",
+      "detail": "{\"runId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\",\"steering\":{\"inputId\":\"6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c\",\"state\":\"pending\",\"mode\":\"steering\"},\"queue\":{\"inputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"state\":\"pending\",\"mode\":\"queue\"},\"runState\":\"dispatching\"}"
+    },
+    {
+      "name": "a stop whose reply was lost is queryable by the original identity and pauses unconsumed inputs",
+      "detail": "{\"stopRequestId\":\"37337bba-f002-4f5f-bb4b-ec4100778e7d\",\"lost\":{\"responseStatus\":200,\"dropped\":true,\"bodyRead\":false},\"retriedStop\":false,\"receipt\":{\"operation\":\"stop\",\"status\":\"accepted\"},\"runState\":\"stopped\",\"paused\":[{\"inputId\":\"0d7998f4-38a7-4991-b01f-db59ffb7ed66\",\"state\":\"paused\",\"mode\":\"steering\"},{\"inputId\":\"6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c\",\"state\":\"paused\",\"mode\":\"steering\"},{\"inputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"state\":\"paused\",\"mode\":\"queue\"}]}"
+    },
+    {
+      "name": "the original Run stops and only the explicitly selected input continues in a linked Run",
+      "detail": "{\"continueRequestId\":\"810824ec-d9f8-4bfd-891f-bd262b7a21f7\",\"selectedInputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"successorRunId\":\"38b44674-6025-4e4c-bc5a-862247bc6ca9\",\"successorState\":\"completed\",\"successorPreviousRunId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\"}"
+    },
+    {
+      "name": "the Windows host authenticated to the Mac school over LAN HTTPS",
+      "detail": "{\"endpoint\":\"https://192.168.3.39:9443\",\"host\":\"LAPTOP-S7A4IQFU\"}"
+    },
+    {
+      "name": "after the school restart the original control, Run and successor are still queryable by their original identities",
+      "detail": "{\"control\":{\"requestId\":\"37337bba-f002-4f5f-bb4b-ec4100778e7d\",\"operation\":\"stop\",\"status\":\"accepted\",\"runId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\"},\"originalRun\":{\"runId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\",\"state\":\"stopped\"},\"successorRun\":{\"runId\":\"38b44674-6025-4e4c-bc5a-862247bc6ca9\",\"state\":\"completed\",\"previousRunId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\"},\"selectedInput\":{\"inputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"state\":\"adopted\"}}"
+    }
+  ],
+  "clientReports": {
+    "phaseA": {
+      "received": {
+        "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+        "steering": {
+          "inputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+          "state": "pending",
+          "mode": "steering"
+        },
+        "queue": {
+          "inputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+          "state": "pending",
+          "mode": "queue"
+        },
+        "runState": "dispatching"
+      },
+      "stop": {
+        "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+        "lost": {
+          "responseStatus": 200,
+          "dropped": true,
+          "bodyRead": false
+        },
+        "retriedStop": false,
+        "receipt": {
+          "operation": "stop",
+          "status": "accepted"
+        },
+        "runState": "stopped",
+        "paused": [
+          {
+            "inputId": "0d7998f4-38a7-4991-b01f-db59ffb7ed66",
+            "state": "paused",
+            "mode": "steering"
+          },
+          {
+            "inputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+            "state": "paused",
+            "mode": "steering"
+          },
+          {
+            "inputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+            "state": "paused",
+            "mode": "queue"
+          }
+        ]
+      },
+      "continue": {
+        "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+        "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+        "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+        "successorState": "completed",
+        "successorPreviousRunId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b"
+      },
+      "state": {
+        "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+        "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+        "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+        "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+        "selectedVersion": 1,
+        "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+        "steeringInputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+        "queuedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668"
+      }
+    },
+    "phaseB": {
+      "afterRestart": {
+        "control": {
+          "requestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+          "operation": "stop",
+          "status": "accepted",
+          "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b"
+        },
+        "originalRun": {
+          "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+          "state": "stopped"
+        },
+        "successorRun": {
+          "runId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+          "state": "completed",
+          "previousRunId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b"
+        },
+        "selectedInput": {
+          "inputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+          "state": "adopted"
+        }
+      }
+    }
+  },
+  "fixture": {
+    "requests": 2,
+    "events": [
+      {
+        "index": 1,
+        "at": "2026-11-06T19:03:17.994Z",
+        "delayMs": 15000,
+        "messageCount": 5
+      },
+      {
+        "index": 2,
+        "at": "2026-11-06T19:03:18.604Z",
+        "delayMs": 0,
+        "messageCount": 6
+      }
+    ],
+    "note": "controlled external model transport; the school product, PostgreSQL and Agent are real"
+  },
+  "restart": {
+    "stopExit": 0,
+    "startExit": 0,
+    "state": "ready",
+    "postRestartQueriesVerified": true
+  },
+  "failuresOrUnexecuted": [
+    "A direct public HTTPS school on the approved cloud host using port 9443 was not reachable: the cloud network accepted TCP but reset TLS before the certificate, consistent with the security group only exposing 8443. The approved 8443 instance was occupied by another work package and was not touched.",
+    "The cross-machine control check used the approved Windows host as a production HTTPS API client; it did not use desktop Chrome for this item.",
+    "Teaching effect was not evaluated."
+  ],
+  "teaching": "not-evaluated",
+  "status": "passed"
+}

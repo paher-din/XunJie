@@ -1,0 +1,107 @@
+{
+  "kind": "macos-system-ime-input-control-acceptance",
+  "ticket": "#210",
+  "sourceIssue": "#200",
+  "startedAt": "2026-11-06T18:55:22.704Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "osBuild": "26B123",
+  "sourceRevision": "7381fe958597001aacfa08b6da9f3b7a35a6b673",
+  "product": {
+    "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp07-210/product-darwin-arm64-full",
+    "distributionSha256": "a064611a74b9e027ba187ef668eb73801429d2b766bf22b0f7d4d53383f6e3bf"
+  },
+  "probeSha256": "0ff78a1ee4e10e4b908e9108fddf95c9a4c661d37d0d646dab40743dbd0a102f",
+  "node": "v24.21.0",
+  "postgres": "postgres (PostgreSQL) 18.6",
+  "browser": "Google Chrome",
+  "inputMethod": {
+    "requested": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "currentBefore": "com.apple.keylayout.ABC",
+    "selected": "TISSelectInputSource status=0 requested=com.bytedance.inputmethod.doubaoime.pinyin now=com.bytedance.inputmethod.doubaoime.pinyin",
+    "currentAfter": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "restoredTo": "com.apple.keylayout.ABC"
+  },
+  "injection": {
+    "tool": "xjkeys + System Events",
+    "mechanism": "CGEventPost(.cghidEventTap, .hidSystemState) and System Events physical key codes",
+    "accessibilityTrusted": true,
+    "syntheticText": false
+  },
+  "cases": [
+    {
+      "name": "the system Chinese pinyin input method is selected through TIS",
+      "detail": "com.bytedance.inputmethod.doubaoime.pinyin"
+    },
+    {
+      "name": "system IME composition and Space candidates edit the composer in Chinese without sending",
+      "detail": "\"你好吗\""
+    },
+    {
+      "name": "a Chinese busy draft survives result arrival with focus and reading position intact",
+      "detail": "{\"value\":\"刘\",\"active\":\"TEXTAREA\",\"conversationTop\":0,\"windowTop\":0}"
+    },
+    {
+      "name": "the Chinese response submits once and continues the original Run",
+      "detail": "\"我是\""
+    },
+    {
+      "name": "candidate-confirmation Enter keeps text in the composer and sends nothing on the dark narrow desktop",
+      "detail": "{\"beforeEnter\":\"zhong'guo\",\"afterEnter\":\"zhongguo\"}"
+    },
+    {
+      "name": "the page records trusted composition signals rather than synthetic text input",
+      "detail": "{\"compositionStarts\":6,\"compositionUpdates\":29,\"compositionEnds\":6,\"composingKeydowns\":29,\"chineseCompositionCommits\":[\"你好\",\"吗\",\"刘\",\"我\",\"是\"],\"trustedKeydowns\":30}"
+    }
+  ],
+  "steps": [
+    {
+      "step": "background-scroll",
+      "scroll": {
+        "kind": "window",
+        "top": 0
+      }
+    },
+    {
+      "step": "candidate-enter",
+      "beforeEnter": "zhong'guo",
+      "afterEnter": "zhongguo",
+      "activeAfterEnter": "TEXTAREA",
+      "payloads": 3
+    },
+    {
+      "step": "candidate-enter",
+      "beforeEnter": "zhong'guo",
+      "afterEnter": "zhongguo"
+    }
+  ],
+  "signals": {
+    "compositionStarts": 6,
+    "compositionUpdates": 29,
+    "compositionEnds": 6,
+    "composingKeydowns": 29,
+    "chineseCompositionCommits": [
+      "你好",
+      "吗",
+      "刘",
+      "我",
+      "是"
+    ],
+    "trustedKeydowns": 30
+  },
+  "screenshots": {
+    "ime-candidate-nihao": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-candidate-nihao.png",
+    "ime-composer-chinese": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-composer-chinese.png",
+    "ime-response-candidate": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-response-candidate.png",
+    "ime-response-chinese": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-response-chinese.png",
+    "ime-candidate-dark-narrow": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-candidate-dark-narrow.png",
+    "ime-dark-narrow": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-dark-narrow.png",
+    "ime-light": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-210/ime-light.png"
+  },
+  "status": "passed",
+  "teaching": "not-evaluated",
+  "endpoint": "http://127.0.0.1:59685",
+  "browserVersion": "156.0.8078.80",
+  "finishedAt": "2026-11-06T18:56:03.798Z"
+}

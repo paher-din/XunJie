@@ -1,0 +1,11 @@
+{
+  "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+  "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+  "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+  "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+  "selectedVersion": 1,
+  "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+  "steeringInputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+  "queuedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+  "verifiedAfterRestart": true
+}

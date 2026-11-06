@@ -1,0 +1,47 @@
+{
+  "kind": "cross-machine-input-control-client",
+  "phase": "B",
+  "measuredAt": "2026-11-06T19:03:21.460Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "endpoint": "https://192.168.3.39:9443",
+  "checks": [
+    {
+      "name": "the Windows host authenticated to the Mac school over LAN HTTPS",
+      "detail": "{\"endpoint\":\"https://192.168.3.39:9443\",\"host\":\"LAPTOP-S7A4IQFU\"}"
+    },
+    {
+      "name": "after the school restart the original control, Run and successor are still queryable by their original identities",
+      "detail": "{\"control\":{\"requestId\":\"37337bba-f002-4f5f-bb4b-ec4100778e7d\",\"operation\":\"stop\",\"status\":\"accepted\",\"runId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\"},\"originalRun\":{\"runId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\",\"state\":\"stopped\"},\"successorRun\":{\"runId\":\"38b44674-6025-4e4c-bc5a-862247bc6ca9\",\"state\":\"completed\",\"previousRunId\":\"2c873fd4-820d-4ab0-b9c3-541ab6751a5b\"},\"selectedInput\":{\"inputId\":\"adc7968c-0b1d-4078-828a-72d5a3c0a668\",\"state\":\"adopted\"}}"
+    }
+  ],
+  "facts": {
+    "afterRestart": {
+      "control": {
+        "requestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+        "operation": "stop",
+        "status": "accepted",
+        "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b"
+      },
+      "originalRun": {
+        "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+        "state": "stopped"
+      },
+      "successorRun": {
+        "runId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+        "state": "completed",
+        "previousRunId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b"
+      },
+      "selectedInput": {
+        "inputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+        "state": "adopted"
+      }
+    }
+  },
+  "status": "passed"
+}

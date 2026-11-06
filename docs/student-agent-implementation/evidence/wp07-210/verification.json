@@ -1,0 +1,304 @@
+{
+  "formatVersion": 1,
+  "issue": 210,
+  "sourceIssue": 200,
+  "branch": "wp07",
+  "sourceRevision": "7381fe958597001aacfa08b6da9f3b7a35a6b673",
+  "measuredAt": "2026-11-06T19:06:23.610Z",
+  "environment": {
+    "machine": "Apple M5 (Mac17,3), arm64, 16 GB",
+    "os": "macOS 27.2 (26B123), Darwin 27.2.0",
+    "chrome": "156.0.8078.80",
+    "node": "v26.0.0",
+    "postgres": "18.6 (Homebrew postgresql@18)",
+    "inputMethod": "com.bytedance.inputmethod.doubaoime.pinyin"
+  },
+  "package": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "unsigned": true,
+    "distributionSha256": "a064611a74b9e027ba187ef668eb73801429d2b766bf22b0f7d4d53383f6e3bf",
+    "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "createdAt": "2026-11-06T18:46:45.631Z",
+    "cliLifecycle": {
+      "endpoint": "http://127.0.0.1:56180",
+      "environmentId": "4fc419c8-ef0d-4e55-90bb-507da177be22",
+      "installationId": "f9c2ecbe-e5e3-40b0-9154-a0cf70ce8c6c",
+      "install": "installed",
+      "start": "ready",
+      "postgres": "18.6 ready",
+      "stop": "stopped",
+      "uninstall": "uninstalled"
+    }
+  },
+  "build": {
+    "all": {
+      "exit": 0,
+      "executed": true
+    },
+    "typecheck": {
+      "exit": 0
+    },
+    "browserContracts": {
+      "exit": 0,
+      "exports": 14
+    }
+  },
+  "native": {
+    "inputControl": {
+      "command": "node --test apps/server/tests/teaching-agent.input-control.runtime.test.mjs",
+      "passed": 16,
+      "failed": 0,
+      "exit": true,
+      "log": ".verification/wp07-210/input-control-clean.tap"
+    },
+    "studentAsk": {
+      "command": "node --test apps/server/tests/teaching-agent.student-ask.runtime.test.mjs",
+      "passed": 12,
+      "failed": 0,
+      "exit": true,
+      "log": ".verification/wp07-210/student-ask-clean.tap"
+    },
+    "agentRuntime": {
+      "command": "node --test apps/server/tests/teaching-agent.runtime.test.mjs",
+      "passed": 6,
+      "failed": 0,
+      "exit": true,
+      "log": ".verification/wp07-210/agent-runtime.tap"
+    },
+    "firstContaminatedRun": {
+      "status": "not-product-failure",
+      "reason": "concurrent build replaced dist-runtime during the first run",
+      "log": ".verification/wp07-210/input-control.tap"
+    }
+  },
+  "browser": {
+    "web": {
+      "webRoot": "apps/web/dist",
+      "browser": "installed Google Chrome headed",
+      "passed": 5,
+      "failed": 0,
+      "exit": 0,
+      "log": ".verification/wp07-210/e2e-web-headed.log"
+    },
+    "package": {
+      "entry": "package CLI install/start endpoint",
+      "browser": "installed Google Chrome headed",
+      "passed": 5,
+      "failed": 0,
+      "exit": 0,
+      "log": ".verification/wp07-210/e2e-package-headed.log",
+      "cliLifecycle": {
+        "install": 0,
+        "start": 0,
+        "stop": 0,
+        "uninstall": 0
+      }
+    },
+    "headedProof": {
+      "configHeadless": false,
+      "debugLaunchHeadlessFlags": 0,
+      "debugLaunchCount": 1,
+      "log": ".verification/wp07-210/debug-input-control.log"
+    },
+    "screenshots": [
+      "input-settings-after-darwin.png",
+      "input-control-queue-darwin.png",
+      "input-control-revised-darwin.png",
+      "input-control-deferred-dark-darwin.png",
+      "input-control-continue-darwin.png"
+    ]
+  },
+  "ime": {
+    "status": "passed",
+    "cases": 6,
+    "signals": {
+      "compositionStarts": 6,
+      "compositionUpdates": 29,
+      "compositionEnds": 6,
+      "composingKeydowns": 29,
+      "chineseCompositionCommits": [
+        "你好",
+        "吗",
+        "刘",
+        "我",
+        "是"
+      ],
+      "trustedKeydowns": 30
+    },
+    "inputMethod": {
+      "requested": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "currentBefore": "com.apple.keylayout.ABC",
+      "selected": "TISSelectInputSource status=0 requested=com.bytedance.inputmethod.doubaoime.pinyin now=com.bytedance.inputmethod.doubaoime.pinyin",
+      "currentAfter": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "restoredTo": "com.apple.keylayout.ABC"
+    },
+    "screenshots": [
+      "ime-candidate-nihao",
+      "ime-composer-chinese",
+      "ime-response-candidate",
+      "ime-response-chinese",
+      "ime-candidate-dark-narrow",
+      "ime-dark-narrow",
+      "ime-light"
+    ],
+    "report": "docs/student-agent-implementation/evidence/wp07-210/input-control-ime.json",
+    "scrollCheck": {
+      "kind": "window",
+      "top": 0,
+      "note": "no scrollable container in this IME scenario; composer value and focus were preserved"
+    }
+  },
+  "crossMachine": {
+    "status": "passed",
+    "checks": 6,
+    "topology": {
+      "client": {
+        "hostname": "LAPTOP-S7A4IQFU",
+        "platform": "win32",
+        "arch": "x64",
+        "os": "10.0.26200",
+        "node": "v24.15.0"
+      },
+      "school": {
+        "hostname": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "os": "27.2.0"
+      },
+      "transport": "direct LAN HTTPS, no tunnel or SSH product traffic",
+      "endpoint": "https://192.168.3.39:9443",
+      "clientAddress": "192.168.3.8",
+      "schoolAddress": "192.168.3.39"
+    },
+    "state": {
+      "runId": "2c873fd4-820d-4ab0-b9c3-541ab6751a5b",
+      "stopRequestId": "37337bba-f002-4f5f-bb4b-ec4100778e7d",
+      "continueRequestId": "810824ec-d9f8-4bfd-891f-bd262b7a21f7",
+      "selectedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+      "selectedVersion": 1,
+      "successorRunId": "38b44674-6025-4e4c-bc5a-862247bc6ca9",
+      "steeringInputId": "6dcb2be9-ac1b-44c0-a374-f58d4bbc1b8c",
+      "queuedInputId": "adc7968c-0b1d-4078-828a-72d5a3c0a668",
+      "verifiedAfterRestart": true
+    },
+    "restart": {
+      "stopExit": 0,
+      "startExit": 0,
+      "state": "ready",
+      "postRestartQueriesVerified": true
+    },
+    "failuresOrUnexecuted": [
+      "A direct public HTTPS school on the approved cloud host using port 9443 was not reachable: the cloud network accepted TCP but reset TLS before the certificate, consistent with the security group only exposing 8443. The approved 8443 instance was occupied by another work package and was not touched.",
+      "The cross-machine control check used the approved Windows host as a production HTTPS API client; it did not use desktop Chrome for this item.",
+      "Teaching effect was not evaluated."
+    ],
+    "report": "docs/student-agent-implementation/evidence/wp07-210/cross-machine-input-control.json",
+    "raw": "docs/student-agent-implementation/evidence/wp07-210/cross-machine"
+  },
+  "realModel": {
+    "status": "passed",
+    "generations": 12,
+    "limits": {
+      "maxGenerations": 12,
+      "maxPerProtocol": 4,
+      "maxOutputTokens": 2048,
+      "timeoutMs": 30000,
+      "retries": 0
+    },
+    "results": [
+      {
+        "protocol": "chat-completions",
+        "passed": true,
+        "modelRequests": 4,
+        "tools": [
+          {
+            "name": "read_work",
+            "outcome": "not-dispatched"
+          },
+          {
+            "name": "read_work",
+            "outcome": "completed"
+          }
+        ],
+        "queuedSuccessor": {
+          "state": "completed",
+          "linked": true
+        }
+      },
+      {
+        "protocol": "responses",
+        "passed": true,
+        "modelRequests": 4,
+        "tools": [
+          {
+            "name": "read_work",
+            "outcome": "not-dispatched"
+          },
+          {
+            "name": "read_work",
+            "outcome": "completed"
+          }
+        ],
+        "queuedSuccessor": {
+          "state": "completed",
+          "linked": true
+        }
+      },
+      {
+        "protocol": "messages",
+        "passed": true,
+        "modelRequests": 4,
+        "tools": [
+          {
+            "name": "read_work",
+            "outcome": "not-dispatched"
+          },
+          {
+            "name": "read_work",
+            "outcome": "completed"
+          }
+        ],
+        "queuedSuccessor": {
+          "state": "completed",
+          "linked": true
+        }
+      }
+    ],
+    "httpStatuses": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "report": "docs/student-agent-implementation/evidence/wp07-210/real-model-input-control.json"
+  },
+  "teaching": "not-evaluated",
+  "failuresOrUnexecuted": [
+    "A direct public HTTPS school on the approved cloud host using port 9443 was not reachable: the cloud network accepted TCP but reset TLS before the certificate, consistent with the security group only exposing 8443. The approved 8443 instance was occupied by another work package and was not touched.",
+    "The cross-machine control check used the approved Windows host as a production HTTPS API client; it did not use desktop Chrome for this item.",
+    "Teaching effect was not evaluated.",
+    "The first native run was contaminated by a concurrent build replacing dist-runtime; the clean rerun is the reported result.",
+    "The cross-machine item used a production HTTPS API client on Windows, not desktop Chrome.",
+    "Full package signing, notarization and Gatekeeper are out of scope; the package is unsigned.",
+    "No product code defect was found in this acceptance."
+  ],
+  "cleanup": {
+    "crossMachineSchool": "stopped/uninstalled/removed",
+    "crossMachineFixture": "stopped/removed",
+    "windowsTemporaryDirectory": "removed",
+    "cloudHostTemporaryPackage": "removed",
+    "packageRuntime": "stopped/uninstalled",
+    "packageCandidate": "removed",
+    "inputMethod": "restored to ABC",
+    "evidenceRetained": true
+  }
+}
