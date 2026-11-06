@@ -115,6 +115,6 @@ XUNJIE_PRODUCT_POSTGRES_BIN=/absolute/postgres/bin node scripts/probe-alu-window
 
 ## 旧消费者、剩余范围与边界
 
-聚合输入/结果语义已由其 Adapter 和 presenter 消费；ALU 不接旧节点、HDL session 或 build/load 编排。`HdlToolArea` 仍由 `PrepWorkspacePage` 消费，`ExecutionNodeSelect` 仍由准备页和教师页消费，因此未删除这些共享文件。本轮未执行文件/目录删除、修改 `.env`/凭据/CI/CD、公开部署或推送代码。
+聚合输入/结果语义已由其 Adapter 和 presenter 消费；ALU 不接旧节点、HDL session 或 build/load 编排。`HdlToolArea` 仍由 `PrepWorkspacePage` 消费，`ExecutionNodeSelect` 仍由准备页和教师页消费，因此未删除这些共享文件。本轮未执行文件/目录删除、修改 `.env`/凭据/CI/CD 或公开部署。交付提交已按负责人指示推送到 `wp04` 远程分支；推送不改变上文未验收项的结论。
 
 #192 剩余验收已按负责人要求统一转交 [跨平台与剩余验收 #206](https://github.com/paher-din/XunJie/issues/206)：Mac 本机完整包、Windows/Mac 客户端连接独立学校 HTTPS 节点、两平台系统输入法候选窗原生取证，以及最终候选可获取、版本固定和受影响复验。Windows 学校 HTTPS 入口已按上表实测，但这是同一台机器上的非回环 TLS 监听，不是跨机学校部署证据，也不代表学校旧安装接管。Windows 中文正文输入/保存与代码执行已覆盖，中文组合事件路径已按上表取证；**系统输入法候选窗本身的原生操作未取证**。刷新后关页重开按 A10 只认“未知、不重跑”，本票不宣称关页后 Worker 继续存活——浏览器 Worker 随页面结束，Spec §8 要求的是如实记为未知，而不是保活。完整离线首次启动、完整备份/隔离还原/接管（#195）、真实 Agent/教师链及教学效果保持原工作包边界，没有因本次转交而宣称通过。
