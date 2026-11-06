@@ -44,7 +44,7 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 
 #191 的运行包构建、公开适配与复跑入口见 [实施与交付记录](../wp04-191-runtime-plan.md)；Apple Silicon Mac 验收已完成并记录于 [Mac 验收记录](../wp04-205-mac-acceptance.md)，产品接线仍按后续实施票完成。
 
-正式活动编辑与运行的公共执行改造、固定多资源准备、单次实验、结果保留和分项验收见 [#192 设计与实施方案](wp04-alu-edit-run.md)及[交互设计](../wp04-192-workspace-design.md)。2026-11-06 的实际实现、产品包与普通 Web 结果见 [Windows 本机交付](../wp04-192-windows-acceptance.md)，Mac 接续 [#206](https://github.com/paher-din/XunJie/issues/206)；不将本机证据当作完整平台矩阵通过。
+正式活动编辑与运行的公共执行改造、固定多资源准备、单次实验、结果保留和分项验收见 [#192 设计与实施方案](wp04-alu-edit-run.md)及[交互设计](../wp04-192-workspace-design.md)。2026-11-06 的实际实现、产品包与普通 Web 结果见 [Windows 本机交付](../wp04-192-windows-acceptance.md)，Apple Silicon Mac 本机实跑与 #206 逐项登记见 [跨平台与剩余验收登记](../wp04-206-acceptance.md)及[#206](https://github.com/paher-din/XunJie/issues/206)；不将本机证据当作完整平台矩阵通过。
 
 ## WP02 子票实施方案
 

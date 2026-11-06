@@ -1,0 +1,166 @@
+{
+  "kind": "alu-school-cross-machine-client",
+  "ticket": "#206",
+  "label": "windows-x64",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.15.0",
+  "endpoint": "https://101.201.141.133:8443",
+  "schoolHost": "101.201.141.133",
+  "schoolNodePlatform": "linux",
+  "schoolNodeArch": "x64",
+  "schoolDistributionSha256": "4efce27d89b0787e0bc3f388b13feb171d57ff54229ea717ef92198dde9edb43",
+  "clientAddresses": [
+    "fe80::dac7:5201:c7b7:db03",
+    "198.18.0.1",
+    "fe80::dac7:5201:c7b7:db03",
+    "172.30.227.68",
+    "fe80::bc13:2d5a:2498:e62d",
+    "192.168.3.8",
+    "::1",
+    "127.0.0.1",
+    "fe80::84ce:c705:87c4:12ed",
+    "172.31.128.1"
+  ],
+  "clientLocalProduct": false,
+  "studentTrafficUsesSsh": false,
+  "startedAt": "2026-11-06T14:56:19.381Z",
+  "cases": [
+    "the school service and PostgreSQL run on a different machine from this client",
+    "strict TLS is verified with the pinned public key and the entry answers as the school profile",
+    "a school member and the fixed ALU course activity are served by the independent node",
+    "a desktop Chrome with no local product opens the independent school entry",
+    "the fixed runtime resources are authorized, verified and self-checked over the network",
+    "a real Worker run over the cross-machine school HTTPS entry produces a real carry observation",
+    "the remote school owner keeps the fixed basis, Chinese source and the original VCD",
+    "the school page reached no loopback, device-local service or SSH tunnel"
+  ],
+  "refused": [],
+  "traffic": [
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/6157857e-a027-4755-b0e4-112639184827/result",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/6157857e-a027-4755-b0e4-112639184827/report",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/774318c0-503a-4f7a-815d-53c4e9aff783/result",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0571a6d4-58dc-4ae4-86bf-e3c823ac52ac/774318c0-503a-4f7a-815d-53c4e9aff783/report",
+      "status": 200
+    }
+  ],
+  "status": "passed",
+  "browser": "156.0.8078.80",
+  "activityId": "0571a6d4-58dc-4ae4-86bf-e3c823ac52ac",
+  "consoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://101.201.141.133:8443/favicon.ico"
+    }
+  ],
+  "pageHosts": [
+    "101.201.141.133:8443"
+  ],
+  "pageSchemes": [
+    "blob:",
+    "https:"
+  ],
+  "finishedAt": "2026-11-06T14:57:04.590Z"
+}

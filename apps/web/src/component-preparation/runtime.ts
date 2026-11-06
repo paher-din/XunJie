@@ -34,6 +34,35 @@ export function createRuntimePreparation(options: {store?:PreparationStore; chec
     }
     return result
   }
+  async function cachedState(target:PreparationTarget) {
+    const m=manifestOf(target), refs=[{...m.entry,path:'$entry'},...m.runtime.resources]
+    let cacheHit=true,resourceBytes=0
+    for(const ref of refs) {
+      const cached=await store.readResource(ref.sha256)
+      if(!cached || cached.bytes.length!==ref.byteLength || await sha256(cached.bytes)!==ref.sha256) {cacheHit=false;break}
+      resourceBytes+=cached.bytes.length
+    }
+    return {cacheHit,resourceBytes}
+  }
+  async function submitReport(target:PreparationTarget, record:PreparationRecord, write:(r:PreparationRecord)=>Promise<void>) {
+    const m=manifestOf(target)
+    const report=componentPreparationReportSchema.parse({formatVersion:1,componentId:m.componentId,version:m.version,
+      definitionDigest:target.binding.definition.digest,preparationProtocolVersion:2,selfTestVersion:m.selfTest.selfTestVersion,hostVersion,device:record.device,
+      status:record.status,reason:record.reason,stage:record.stage,capabilities:record.capabilities,durationMs:record.durationMs,
+      resourceBytes:record.resourceBytes,cacheHit:record.cacheHit,preview:target.activity.purpose==='preview'})
+    // Keep an unacknowledged immutable submission; a new observation never changes its bytes.
+    if(!record.reportPayload || record.reportSubmitted) {
+      record.reportPayload=report;record.reportId=crypto.randomUUID();record.reportRequestId=crypto.randomUUID();record.reportSubmitted=false
+    }
+    await write(record)
+    const submission={reportId:record.reportId,requestId:record.reportRequestId,report:record.reportPayload}
+    // Reporting is independent of activation. A stalled service must not delay a verified local run.
+    void learningRequest(target.activity,target.spaceKey,target.namespace,route(target,'/preparation-report'),submission)
+      .then(()=>withPreparationLock(runtimeScope(target),async()=>{
+        const current=await store.read(record.preparationId)
+        if(current?.reportRequestId===submission.requestId)await store.write({...current,reportSubmitted:true})
+      })).catch(()=>{ /* The original immutable report remains pending. */ })
+  }
   async function prepare(target:PreparationTarget, requestId:string) {
     return withPreparationLock(runtimeScope(target),async()=>{
       const m=manifestOf(target), scopeKey=runtimeScope(target), device=detectDevice(), deviceFingerprint=await fingerprint(device)
@@ -48,7 +77,27 @@ export function createRuntimePreparation(options: {store?:PreparationStore; chec
         reportId:null,reportRequestId:null,reportSubmitted:false,diagnostics:[],createdAt:now,updatedAt:now}
       const start=Date.now()
       const deadline=start+m.budget.preparationTimeoutMs
-      const commit=async()=>{record.updatedAt=new Date().toISOString();await store.write(structuredClone(record))}
+      const write=async(r:PreparationRecord)=>{r.updatedAt=new Date().toISOString();await store.write(structuredClone(r))}
+      const commit=()=>write(record)
+      // A duplicate prepare must not transiently downgrade the record the active environment already points to.
+      // The format-2 preparation module uses the same warm path: reuse a verified identity after checking cached bytes.
+      const active=await store.readEnvironment(scopeKey)
+      const activeRecord=active?await store.read(active.preparationId):undefined
+      if(active && activeRecord && active.definitionDigest===target.binding.definition.digest
+        && active.preparationId===activeRecord.preparationId && active.environmentId===activeRecord.environmentId
+        && activeRecord.scopeKey===scopeKey && activeRecord.requestDigest===requestDigest
+        && activeRecord.definitionDigest===target.binding.definition.digest && activeRecord.componentId===m.componentId
+        && activeRecord.version===m.version && activeRecord.status==='ready' && activeRecord.stage==='activate'
+        && activeRecord.deviceFingerprint===deviceFingerprint) {
+        let cacheHit=false,resourceBytes=0
+        try {({cacheHit,resourceBytes}=await cachedState(target))}catch{cacheHit=false}
+        if(cacheHit) {
+          const warm=structuredClone(activeRecord)
+          warm.cacheHit=cacheHit;warm.resourceBytes=resourceBytes
+          try {await submitReport(target,warm,write);return snapshot(warm)}
+          catch {return snapshot(activeRecord)}
+        }
+      }
       await commit()
       try {
         record.stage='detect'; await commit()
@@ -91,22 +140,7 @@ export function createRuntimePreparation(options: {store?:PreparationStore; chec
         record.capabilities=m.requiredCapabilities.map(capability=>({capability,availability:'available',reason:'none',verification:'verified'}))
         await store.activate(record,{scopeKey,environmentId:record.environmentId,preparationId:record.preparationId,componentId:m.componentId,
           version:m.version,definitionDigest:target.binding.definition.digest,activatedAt:new Date().toISOString()})
-        const report=componentPreparationReportSchema.parse({formatVersion:1,componentId:m.componentId,version:m.version,
-          definitionDigest:target.binding.definition.digest,preparationProtocolVersion:2,selfTestVersion:m.selfTest.selfTestVersion,hostVersion,device,
-          status:record.status,reason:record.reason,stage:record.stage,capabilities:record.capabilities,durationMs:record.durationMs,
-          resourceBytes,cacheHit,preview:target.activity.purpose==='preview'})
-        // Keep an unacknowledged immutable submission; a new observation never changes its bytes.
-        if(!record.reportPayload || record.reportSubmitted) {
-          record.reportPayload=report;record.reportId=crypto.randomUUID();record.reportRequestId=crypto.randomUUID();record.reportSubmitted=false
-        }
-        await commit()
-        const submission={reportId:record.reportId,requestId:record.reportRequestId,report:record.reportPayload}
-        // Reporting is independent of activation. A stalled service must not delay a verified local run.
-        void learningRequest(target.activity,target.spaceKey,target.namespace,route(target,'/preparation-report'),submission)
-          .then(()=>withPreparationLock(scopeKey,async()=>{
-            const current=await store.read(record.preparationId)
-            if(current?.reportRequestId===submission.requestId)await store.write({...current,reportSubmitted:true})
-          })).catch(()=>{ /* The original immutable report remains pending. */ })
+        await submitReport(target,record,write)
       } catch(error) {
         const message=error instanceof Error?error.message:String(error)
         const reason:PreparationReasonCode=message==='preparation-timeout'?'self-test-interrupted':message==='resource-corrupt'?'resource-corrupt':message==='unsupported-version'?'protocol-unsupported':

@@ -1,14 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Icon, IconText, type IconName } from '../../icons'
 import { FluidHighlight } from '../FluidHighlight'
 import { useFluidHover, useRegisterFluidHoverItem } from '../../lib/fluidHover'
 
 const icons: IconName[] = ['virtual-board', 'code-square', 'structure']
-const covers: Record<string, string> = {
-  数字逻辑与部件设计: '/courses/digital-logic.png',
-  程序设计基础: '/courses/programming-basics.png',
-  数据结构: '/courses/data-structures.png',
-}
 
 /** Presentation shared by the product catalog and the isolated legacy preview. */
 export function CourseTiles({ courses, toneOf, onOpen, titleOf = id => id, summaryOf }: {
@@ -29,10 +24,10 @@ function CourseTile({ id, title, summary, tone, index, register, onOpen }: {
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   useRegisterFluidHoverItem(register, index, ref)
-  const [failed, setFailed] = useState(false)
   return <button ref={ref} className="course-tile" data-course-id={id} onClick={event => onOpen(event.detail === 0)}>
-    {covers[title] && !failed ? <img className="course-cover" src={covers[title]} alt="" onError={() => setFailed(true)} />
-      : <span className={`course-cover-ph course-${tone % 3}`} aria-hidden><Icon name={icons[tone % 3]} size={48} /></span>}
+    {/* DESIGN.md C1–C4: the geometric fallback is the confirmed cover. No illustration has been
+        produced yet, so never request a non-existent /courses/*.png (which only caused a 404). */}
+    <span className={`course-cover-ph course-${tone % 3}`} aria-hidden><Icon name={icons[tone % 3]} size={48} /></span>
     <span className="course-tile-body"><h3>{title}</h3><p>{summary}</p>
       <span className="course-tile-foot"><span className="cb-primary">查看任务</span></span>
     </span>

@@ -1,0 +1,29 @@
+{
+  "kind": "macos-os-ime-candidate-window",
+  "ticket": "#206",
+  "item": "X4",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "desiredInputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+  "startedAt": "2026-11-06T14:38:11.218Z",
+  "cases": [
+    "a real product editor is focused in desktop Chrome",
+    "the operating system Chinese input method is selected through Text Input Sources",
+    "the operating system draws the Chinese candidate window over the product editor",
+    "a real Space shortcut commits the selected Chinese candidate into the editor",
+    "a real Escape shortcut cancels composition without changing the protected text"
+  ],
+  "status": "passed",
+  "browser": "156.0.8078.80",
+  "pageUrl": "https://101.201.141.133:8443",
+  "inputSourceSelection": "SELECTED 0 com.bytedance.inputmethod.doubaoime.pinyin\nCURRENT com.bytedance.inputmethod.doubaoime.pinyin",
+  "activeInputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+  "candidateWindow": [
+    "WINDOW 64 layer=2147483628 owner=豆包输入法"
+  ],
+  "compositionVisible": true,
+  "committedText": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Buil",
+  "afterCancelText": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Buil",
+  "finishedAt": "2026-11-06T14:38:36.189Z"
+}

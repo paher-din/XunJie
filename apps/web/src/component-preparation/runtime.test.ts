@@ -1,6 +1,6 @@
 import {afterEach,describe,expect,it,vi} from 'vitest'
 import {aluPackage} from '../../../../components/alu-experiment/package.mjs'
-import {createRuntimePreparation} from './runtime'
+import {createRuntimePreparation,runtimeScope} from './runtime'
 import type {PreparationStore,PreparationRecord,CachedResource,ActiveEnvironment} from './store'
 import type {PreparationTarget} from './preparation'
 import {sha256} from './device'
@@ -84,4 +84,28 @@ describe('fixed runtime preparation',()=>{
     expect(resumed.preparationId).toBe(ready.preparationId)
     expect((await f.store.read(ready.preparationId))!.reportRequestId).toBe(report.reportRequestId)
   })
+  it('keeps an activated ready environment usable while a duplicate prepare is in flight',async()=>{
+    const f=await fixture(),prepare=createRuntimePreparation({store:f.store,check:f.check})
+    const first=await prepare.prepare(f.target,crypto.randomUUID())
+    expect(first.status).toBe('ready')
+    // Pause the duplicate prepare at the first cache read: the current code has already downgraded the
+    // activated record to `preparing`, while a cache-valid warm path must leave it `ready`.
+    const readResource=f.store.readResource.bind(f.store)
+    let release=()=>{},opened=()=>{},armed=false,pausedOnce=false,secondSettled=false
+    const paused=new Promise<void>(resolve=>{release=()=>resolve()}),windowOpen=new Promise<void>(resolve=>{opened=()=>resolve()})
+    f.store.readResource=async digest=>{
+      const cached=await readResource(digest)
+      if(armed&&!pausedOnce){pausedOnce=true;opened();await paused}
+      return cached
+    }
+    armed=true
+    const second=prepare.prepare(f.target,crypto.randomUUID()).then(result=>{secondSettled=true;return result})
+    try {
+      await Promise.race([windowOpen,second.then(()=>{throw new Error('duplicate prepare finished before cache validation')})])
+      expect(secondSettled).toBe(false)
+      expect((await f.store.readEnvironment(runtimeScope(f.target)))?.preparationId).toBe(first.preparationId)
+      await expect(prepare.resources(f.target)).resolves.toHaveProperty('ivl.wasm')
+      expect((await f.store.read(first.preparationId))?.status).toBe('ready')
+    } finally {release();await second}
+  },10000)
 })
