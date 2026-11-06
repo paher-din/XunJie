@@ -16,10 +16,11 @@ interface Fixture {
   api(route: `agent/${string}/controls/${string}`, body?: unknown): Promise<TeachingControlReceipt | null>;
   api(route: string, body?: unknown, headers?: Record<string, string>): Promise<unknown>;
   raw(route: string, body?: unknown, headers?: Record<string, string>): Promise<{ status: number; body: unknown }>;
-  configure(): Promise<void>;
+  configure(headers?: Record<string, string>): Promise<void>;
   activity(goal?: string): Promise<LearningActivity>;
   browserCourse(): Promise<LearningActivity>;
-  send(activity: LearningActivity, question: string, delivery?: ActionInput['delivery'], works?: ActionInput['works']): Promise<{
+  browserCourse(options: { withSession: true }): Promise<{ activity: LearningActivity; headers: Record<string, string>; login: { loginName: string; password: string } }>;
+  send(activity: LearningActivity, question: string, delivery?: ActionInput['delivery'], works?: ActionInput['works'], headers?: Record<string, string>): Promise<{
     input: ActionInput; receipt: ActionReceipt; runId: string; inputId: string;
   }>;
   restart(): Promise<void>; close(): Promise<void>;

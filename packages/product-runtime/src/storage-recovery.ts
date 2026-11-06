@@ -115,6 +115,7 @@ export function createStorageRecoveryTarget(options: {
   validateService: (storage: OwnedStorage) => Promise<void>;
   /** The owner re-derives its evidence from the restored data and compares it with the material. */
   validateMaterial?: (storage: OwnedStorage, material: OwnerBoundaryMaterial) => Promise<void>;
+  boundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
 }): RecoveryTarget {
   let restored: OwnedStorage | undefined;
   return {
@@ -165,7 +166,8 @@ export function createStorageRecoveryTarget(options: {
         await storeCredential(targetRoot, `storage-${options.owner.serviceId}`, JSON.stringify(binding));
         await options.onRestored?.(restored, binding);
         return createStorageRecoveryOwner({ storage: restored, binding, migrations: options.migrations, resources: options.resources,
-          resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService });
+          resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService,
+          boundary: options.boundary });
       } catch (error) { await restored?.close(); restored = undefined; throw error; }
     },
     async validate() {

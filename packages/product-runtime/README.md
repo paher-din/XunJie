@@ -38,6 +38,8 @@ import {
 
 `createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。完整默认组合共五个 owner（含 runtime），独立 Agent 组合共两个。
 
+教学 Agent 的正常与独立装配均登记领域清单；目标通过所属 owner 的 `validateTeachingBoundary` 重读记录和资源原字节核对，运行层不枚举或修改 Agent 业务表。返回的还原 owner 保留同一领域清单接口，供隔离校验及后续备份使用。维护与接管沿用本模块的关闸、源退休、接收端撤权及命名空间流程；见 [#204 交付](../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)。
+
 恢复 WP06 之前的三 owner 备份时，隔离目标保留原 owner 集合，通过原有精确版本校验完成接管；接管后正常停止并启动一次，才初始化空的模型 owner。新模型配置不会从 legacy 或其他空间自动导入。新的四 owner 备份已包含模型配置、加密凭据和原生检查资源，按正常流程完整恢复。
 
 每个 owner 提供 `MaintenanceParticipant` 与 `RecoveryOwner.export/release`，宿主以 requiredServiceIds 列明必需服务。全部参与者关闭新写/派发、排空并确认同一边界后才导出任何 owner。只注册 participant 而缺少 recovery owner、遗漏必需参与者或验证失败均不得生成可用完整备份。`resourceRoots` 须列出真实资源位置，备份目录不得与环境/文件资源根重叠。

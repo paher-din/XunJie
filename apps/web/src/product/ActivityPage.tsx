@@ -160,7 +160,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         </WorkspacePopover>
       </div>
     </header>
-    {readOnly && <div role="status" className="product-workspace-notice">这是还原校验环境，作品与历史只读，实验尚未启用。</div>}
+    {readOnly && <div role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</div>}
     {error && <div className="product-workspace-notice">{error}</div>}
     {toolError && <div role="alert" className="product-workspace-notice">{toolError}</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />

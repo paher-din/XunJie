@@ -578,7 +578,7 @@ function LearningView() {
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />
     </ActivityReferences> : <div className="content home-page product-home">
-      {context?.readOnly && <p role="status" className="product-workspace-notice">这是还原校验环境，作品与历史只读，实验尚未启用。</p>}
+      {context?.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
       <div className="intro"><h1>{greeting}{identity ? `，${identity.name}` : '，从这里开始学习'}</h1><span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span></div>
       {feedback}
       {!context && !error && <p role="status">正在连接学习空间…</p>}

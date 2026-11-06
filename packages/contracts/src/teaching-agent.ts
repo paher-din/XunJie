@@ -61,15 +61,25 @@ export const teachingEventKindSchema = z.enum([
   'question-created', 'question-presented', 'student-response', 'question-expired', 'question-cancelled',
   'input-adopted', 'input-revised', 'input-removed', 'input-promoted', 'inputs-paused', 'question-superseded',
   'model-switch-requested', 'model-switch-completed', 'model-switch-paused',
+  'extension',
 ]);
 
 export type TeachingEventKind = z.infer<typeof teachingEventKindSchema>;
+
+/** Optional extension payloads are kept verbatim; they cannot declare required execution semantics. */
+export const teachingIgnorableExtensionSchema = z.object({
+  ignorable: z.literal(true), extensionId: z.string().regex(/^[a-z][a-z0-9.-]{0,127}$/),
+  extensionVersion: z.number().int().positive(), payload: z.unknown(),
+}).passthrough();
 
 export const teachingEventSchema = z.object({
   activityId: z.uuid(), seq: z.number().int().nonnegative(), eventId: z.uuid(),
   kind: teachingEventKindSchema, version: z.literal(1),
   body: z.record(z.string(), z.unknown()), createdAt: z.iso.datetime(),
-}).strict();
+}).strict().superRefine((event, context) => {
+  if (event.kind === 'extension' && !teachingIgnorableExtensionSchema.safeParse(event.body).success)
+    context.addIssue({ code: 'custom', path: ['body'], message: 'Unsupported required extension event' });
+});
 export type TeachingEvent = z.infer<typeof teachingEventSchema>;
 
 export const teachingMessageSchema = z.object({

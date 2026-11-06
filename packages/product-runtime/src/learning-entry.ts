@@ -36,6 +36,7 @@ import { createMemberAgentBindings, createActivityAgentRoutes, createTeachingAge
 import type { PairedModelOrigin } from '@xunjie/learning-space';
 import type { TeachingAgentPort } from '@xunjie/learning-space';
 import { teachingAgentBindingInputSchema, teachingAgentReceiverId } from '@xunjie/contracts/teaching-agent';
+import { collectTeachingBoundary, validateTeachingBoundary } from '@xunjie/learning-space';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 const agentDependencyAuthorization = new AsyncLocalStorage<(identity: SpaceIdentity) => Promise<void>>();
@@ -336,7 +337,7 @@ export async function createProductLearningApplication(context: {
               ...(command.node?.executorInstanceId ? { executorInstanceId: command.node.executorInstanceId } : {}) })),
             blocking: boundary.blocking, retained: { resources: 0, checkpoints: boundary.checkpoints },
             evidence: boundary };
-        } } : {}),
+        } } : module === agent ? { boundary: collectTeachingBoundary } : {}),
         validateService: validate });
       const participant = recoveryOwner.participant;
       let dispatchClosing: Promise<void> | undefined;
@@ -570,7 +571,9 @@ export function createLearningRecoveryTargets(options: {
       migrations: unit === 'space-course' ? spaceCourseMigrations : unit === 'model-connection' ? modelMigrations
         : unit === 'teaching-agent' ? teachingAgentMigrations : learningMigrations,
       ...(unit === 'learning-data' ? { validateMaterial: async (storage: OwnedStorage, material: OwnerBoundaryMaterial) =>
-        validateExecutionBoundary(storage, material.evidence) } : {}),
+        validateExecutionBoundary(storage, material.evidence) } : unit === 'teaching-agent' ? {
+          boundary: collectTeachingBoundary, validateMaterial: validateTeachingBoundary,
+        } : {}),
       validateService: async storage => {
         if (unit === 'learning-data') return validateLearningData(storage);
         if (unit === 'teaching-agent') return validateTeachingAgent(storage);

@@ -56,7 +56,7 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 | [切换模型并延续学习](https://github.com/paher-din/XunJie/issues/201) | 获准边界的模型/协议切换、原生段封存与跨 owner 来源、原结果保留、预算连续及失败恢复。 |
 | [ALU 的真实 Agent 辅导](https://github.com/paher-din/XunJie/issues/202) | 消费 WP04 的正式编辑、观察及用例能力，围绕真实代码/反例/波形求助与验证；只解释、不代改，Agent 验证与学生预测分别保留。 |
 | [Agent 独立部署与真实跨机对话](https://github.com/paher-din/XunJie/issues/203) | teaching-agent 正式装配与配对、本机/学校/真实跨机混合路径、原 owner 查询、断线撤权及重启恢复。 |
-| [学习对话的备份、还原与接管](https://github.com/paher-din/XunJie/issues/204) | 会话/请求快照与未结 Run/命令/Wait/预算的跨安装备份恢复、隔离只读还原、正式接管和旧实例失权。 |
+| [学习对话的备份、还原与接管](https://github.com/paher-din/XunJie/issues/204) | 会话/请求快照与未结 Run/命令/Wait/预算的跨安装备份恢复、隔离只读还原、正式接管和旧实例失权。[实施选择](wp07-conversation-recovery.md) · [交付与验收](../wp07-204-conversation-recovery.md)。 |
 
 每张功能票随实现完成正式接线、日常恢复、资源保留与维护登记，以及适用的工程、真实模型/工具和 Windows/Mac 桌面 Chrome 验证。备份还原票专门验证跨安装恢复，不承接积压的保存或 UI 接线。
 

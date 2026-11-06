@@ -4,7 +4,7 @@ import { actionInputSchema, type ActionInput } from '@xunjie/contracts/action-in
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import type { ModelAttempt, ModelLearningInput, ModelTool, ModelUsage } from '@xunjie/contracts/model-connections';
-import { teachingEventKindSchema, teachingSnapshotSchema, teachingToolRecordSchema, teachingWaitSchema,
+import { teachingEventKindSchema, teachingIgnorableExtensionSchema, teachingSnapshotSchema, teachingToolRecordSchema, teachingWaitSchema,
   type TeachingRun, type TeachingEventKind, type TeachingSnapshot } from '@xunjie/contracts/teaching-agent';
 import type { LearningModelPort } from '../model-connections/service.js';
 import { cleanupScopeFor } from './tools-execution.js';
@@ -111,11 +111,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if ((await owner.runRow(run.runId)).reason === 'wait-expired') throw new TeachingBudgetError('wait-expired');
     if (owner.dispatchClosed()) throw new StorageError('maintenance');
     await owner.authorize(owner.identity(await owner.runRow(run.runId)));
-    const { rows: log } = await storage.read(`SELECT s.next_seq,e.seq,e.kind,e.event_version FROM teaching_sessions s
+    const { rows: log } = await storage.read(`SELECT s.next_seq,e.seq,e.kind,e.event_version,
+      CASE WHEN e.kind='extension' THEN e.body ELSE NULL END AS extension_body FROM teaching_sessions s
       LEFT JOIN teaching_events e USING(activity_id) WHERE s.activity_id=$1 ORDER BY e.seq`, [run.activityId]);
-    if (!log.length || log.some((row, index) => Number(row.seq) !== index + 1 || row.event_version !== 1
-      || !teachingEventKindSchema.safeParse(row.kind).success) || Number(log[0]!.next_seq) !== log.length + 1)
+    if (!log.length || log.some((row, index) => Number(row.seq) !== index + 1) || Number(log[0]!.next_seq) !== log.length + 1)
       throw new StorageError('corrupt');
+    if (log.some(row => row.event_version !== 1 || !teachingEventKindSchema.safeParse(row.kind).success
+      || row.kind === 'extension' && !teachingIgnorableExtensionSchema.safeParse(row.extension_body).success))
+      throw new StorageError('incompatible');
     await transaction(run, generation, async tx => {
       const { rows: [row] } = await tx.query('SELECT stop_requested,state,reason FROM teaching_runs WHERE run_id=$1', [run.runId]);
       if (!row || row.stop_requested || terminal(row.state) || row.reason === 'student-response-expired') throw new StorageError('conflict');

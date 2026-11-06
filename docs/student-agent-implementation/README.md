@@ -29,6 +29,7 @@
 | WP07 Agent 固定提问、可靠明确回应及原 Run 继续 | [#199 实现与验收](wp07-199-student-ask.md) · [实施选择](specs/wp07-student-ask.md) · [双轴审查](wp07-199-code-review.md) · [Agent owner](../../packages/learning-space/src/teaching-agent/README.md) |
 | WP07 忙碌时引导、FIFO 排队、输入修订及暂停选择继续 | [#200 实施选择](specs/wp07-input-control.md) · [实现与验收](wp07-200-input-control.md) · [双轴审查](wp07-200-code-review.md) |
 | WP07 #200 的 macOS 引导、排队与暂停续接实机验收 | [#210 macOS 验收](wp07-210-mac-acceptance.md) |
+| WP07 学习对话的完整备份、隔离还原与权威接管 | [#204 实施选择](specs/wp07-conversation-recovery.md) · [交付与验收](wp07-204-conversation-recovery.md) · [Mac/跨机交接 #212](https://github.com/paher-din/XunJie/issues/212) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |

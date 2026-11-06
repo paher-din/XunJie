@@ -69,20 +69,21 @@ export async function fixture(answer = (_payload, response) => reply(response, {
     return result.body;
   };
   return { root, resources, runtime, api, raw, payloads, failures, get endpoint() { return endpoint; },
-    async configure() {
+    async configure(headers) {
+      const modelApi = (route, body) => api(route, body, headers);
       const connectionId = randomUUID(), grantId = randomUUID();
-      await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
+      await modelApi('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
         name: '运行中输入验收', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
         path: '/chat/completions', modelId: 'fixture-input-control', dialect: 'standard', parameterMode: 'plain', enabled: true,
         contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-input-control-key' } });
-      await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
-      const selected = await api('models/selection');
-      await api('models/selection', { requestId: randomUUID(), expectedVersion: selected.version, source: { kind: 'personal', connectionId, grantId } });
+      await modelApi('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
+      const selected = await modelApi('models/selection');
+      await modelApi('models/selection', { requestId: randomUUID(), expectedVersion: selected.version, source: { kind: 'personal', connectionId, grantId } });
     },
     async activity(goal = '核对补充与排队的真实顺序') {
       return api('activities', { requestId: randomUUID(), goal, question: '', references: [] });
     },
-    async browserCourse() {
+    async browserCourse({ withSession = false } = {}) {
       const headers = { authorization: 'Bearer ' + await resolveCredential(root, 'control') };
       const definition = await api('manage/component-import', { requestId: randomUUID(), ...await aggregationPackage() }, headers);
       const courseId = randomUUID(), releaseId = randomUUID(), password = randomUUID();
@@ -96,7 +97,9 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       const login = await fetch(new URL('/api/learning/login', endpoint), { method: 'POST',
         headers: { 'content-type': 'application/json' }, body: JSON.stringify({ loginName: 'input-control-student', password }) });
       assert.equal(login.status, 200);
-      return api('course-activities', { requestId: randomUUID(), releaseId }, { cookie: login.headers.get('set-cookie').split(';')[0] });
+      const studentHeaders = { cookie: login.headers.get('set-cookie').split(';')[0] };
+      const activity = await api('course-activities', { requestId: randomUUID(), releaseId }, studentHeaders);
+      return withSession ? { activity, headers: studentHeaders, login: { loginName: 'input-control-student', password } } : activity;
     },
     /** Published host configuration seam: independent production owner, real dependencies, controlled receipt timing. */
     async controlled(activity, overrides = {}) {
@@ -149,14 +152,14 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         },
       };
     },
-    async send(activity, question, delivery, works = []) {
-      const receiver = (await api(`agent/${activity.activityId}/capabilities`)).receiver;
+    async send(activity, question, delivery, works = [], headers) {
+      const receiver = (await api(`agent/${activity.activityId}/capabilities`, undefined, headers)).receiver;
       const input = { requestId: randomUUID(), scope: { environmentId: activity.identity.environmentId,
         spaceId: activity.identity.spaceId, principalId: activity.identity.principalId, activityId: activity.activityId }, receiver,
         draft: { token: randomUUID(), question, references: [], bases: [] }, works, evidence: [],
         ...(delivery ? { delivery } : {}) };
-      await api(`intents/${activity.activityId}`, input);
-      const accepted = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
+      await api(`intents/${activity.activityId}`, input, headers);
+      const accepted = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {}, headers);
       return { input, receipt: accepted.receipt, ...JSON.parse(accepted.receipt.detail) };
     },
     async restart() { if (!runtime) throw new Error('External package lifecycle belongs to its launcher.'); await runtime.stop(); endpoint = (await runtime.start()).endpoint; },

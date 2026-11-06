@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { StorageError, type OwnedStorage, type StorageBinding } from '@xunjie/storage';
 import { createTeachingAgent, createTeachingAgentService, createTeachingDependencyClient,
-  createLearningModelClient, teachingAgentMigrations, createTeachingDependencyBinding, createChunkChannel } from '@xunjie/learning-space';
+  createLearningModelClient, teachingAgentMigrations, createTeachingDependencyBinding, createChunkChannel, collectTeachingBoundary } from '@xunjie/learning-space';
 import type { TeachingDispatchAuthority } from '@xunjie/learning-space';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
@@ -66,7 +66,7 @@ export function createStandaloneAgentApplication(options: {
   };
   const owner = createStorageRecoveryOwner({ storage, binding, migrations: teachingAgentMigrations,
     resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', 'teaching-agent')],
-    installationId: environment.installationId, validateService: teaching.validate });
+    installationId: environment.installationId, validateService: teaching.validate, boundary: collectTeachingBoundary });
   const participant = owner.participant;
   return {
     owners: [{ ...owner, participant: { ...participant,

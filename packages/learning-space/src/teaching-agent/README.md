@@ -63,6 +63,14 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 `chunk-channel.ts` 在有界 WP01 JSON 通道上传递较大的固定输入、快照和工具结果，分片及回复由实际 owner 持久保留并校验资源引用。未知回包按原业务身份查询，分片通道不会重放未知外部效果；维护和恢复同样验证这些资源。
 
+## 跨安装维护与恢复
+
+`collectTeachingBoundary(storage)` 在关闸、排空后读取本 owner 的完整记录及引用资源，返回版本化的 `xunjie.teaching-agent.boundary`：各表数量与内容摘要、原 Run/请求身份、未结与停止待确认状态、资源原字节摘要，以及待处理输入、命令和学生问题数量。物理模型调用和执行的安全边界仍由模型与执行 owner 分别确认；Agent idle 不构成备份许可。
+
+`validateTeachingBoundary` 在独立目标重新导出相同事实后核对清单。受支持的旧通用清单仍走原服务/资源校验；未知必需清单版本拒绝恢复。日志外壳仍为 v1，可忽略扩展使用 `kind: extension` 和显式 `ignorable: true` 的版本化正文，查询保留原件，推进不解释其语义。未知必需事件及外壳版本拒绝推进，已发布迁移保持不变。
+
+完整流程及实际平台范围见 [#204 交付](../../../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)；Mac 与真实跨机交接见 [#212](https://github.com/paher-din/XunJie/issues/212)。隔离副本只读，维护者通过正式 CLI 接管；恢复不重置原预算、Wait 或命令，不重放未知效果。
+
 ## 验证
 
 - `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、增量发布、重启/停止/继续、快照重建、备份/还原/接管。
@@ -70,6 +78,7 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 - `apps/server/tests/teaching-agent.tools.runtime.test.mjs`：三协议真实工具往返、固定旧版本、不可消费输出拒绝、跨活动授权、请求重建和工具资源备份还原。
 - `apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs`：真实 Gateway／作品／原生会话／WASM 的关联前中断、丢回执、双推进者、预算、停止与晚结果。
 - `apps/server/tests/teaching-agent.student-ask.runtime.test.mjs`：真实 HTTP/Agent/Gateway/PG 的问题、呈现、明确选择/文字/跳过、原身份查询、竞争回应、期限/预算、重启、隔离只读和接管。
+- `apps/server/tests/teaching-agent.recovery.runtime.test.mjs`：正式独立还原的完整 owner 清单、修订队列/预算、学生与真实 WP03 工具 Wait、接管确认丢失、旧客户端拒绝及未知必需格式拒绝。
 - `apps/server/tests/teaching-tools-host.runtime.test.mjs`：执行点资格、连续原生状态、浏览器领取与撤销、固定来源和维护所属边界。
 - `apps/server/tests/model-progress.test.mjs`：增量发布的凭据尾部扣留与停止公开。
 - `apps/web/e2e/teachingConversation.spec.ts`：正式入口首问、刷新、追加问题、生成期间保留新草稿和引导入口、停止、课程问答、进程重启和缺模型设置入口；macOS 与 Windows 桌面 Chrome 均执行。

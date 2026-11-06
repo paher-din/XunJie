@@ -130,7 +130,7 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
         request={agentRequest} onConfirmed={refresh} />}
     </article>})}
     {active && <div className="teaching-run-status" role="status">
-      <span>{runLabel(latest, conversation.waits)}</span>
+      <span>{readOnly ? '这是还原校验副本，原问题与任务状态只读；请由维护者完成接管后继续。' : runLabel(latest, conversation.waits)}</span>
       <AgentRunControls key={scope + latest.runId} run={latest} inputs={conversation.inputs} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh} />
     </div>}
     {!active && latest && (latest.state !== 'completed' || conversation.inputs.some(input => ['pending', 'paused'].includes(input.state))) && <div className="teaching-run-status">
