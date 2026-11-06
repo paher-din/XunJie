@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { modelUsageSchema } from './model-connections.js';
 import { teachingHelpPolicySchema } from './course-help.js';
+import { teachingStudentQuestionSchema } from './student-questions.js';
+
+export * from './student-questions.js';
 
 export { teachingHelpPolicySchema } from './course-help.js';
 
@@ -34,6 +37,7 @@ export const teachingEventKindSchema = z.enum([
   'step-completed', 'tool-intent', 'tool-permitted', 'tool-result', 'tools-paired',
   'wait-created', 'wait-consumed', 'wait-expired', 'budget-reserved', 'budget-settled',
   'native-summary',
+  'question-created', 'question-presented', 'student-response', 'question-expired', 'question-cancelled',
 ]);
 
 export type TeachingEventKind = z.infer<typeof teachingEventKindSchema>;
@@ -50,7 +54,7 @@ export const teachingMessageSchema = z.object({
   role: z.enum(['student', 'assistant', 'system']),
   text: z.string(), runId: z.uuid().nullable(),
   state: z.enum(['streaming', 'settled', 'stopped', 'failed', 'unknown']).optional(),
-  kind: z.literal('native-summary').optional(),
+  kind: z.enum(['native-summary', 'student-response']).optional(),
   summaryTruncated: z.boolean().optional(),
   createdAt: z.iso.datetime(),
 }).strict();
@@ -60,7 +64,7 @@ export const teachingToolRecordSchema = z.object({
   commandId: z.uuid(), runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(),
   callId: z.string(), name: z.string(), version: z.literal(1),
   state: z.enum(['prepared', 'dispatching', 'waiting', 'settled']),
-  effect: z.enum(['read', 'execute', 'input', 'stop']),
+  effect: z.enum(['read', 'execute', 'input', 'stop', 'ask']),
   location: z.enum(['owner', 'browser', 'native', 'remote']),
   arguments: z.record(z.string(), z.unknown()), basis: z.record(z.string(), z.unknown()),
   outcome: z.enum(['not-dispatched', 'accepted', 'completed', 'failed', 'unknown']).nullable(),
@@ -74,7 +78,8 @@ export type TeachingToolRecord = z.infer<typeof teachingToolRecordSchema>;
 export const teachingWaitSchema = z.object({
   waitId: z.uuid(), runId: z.uuid(), stepId: z.uuid(), commandId: z.uuid(),
   state: z.enum(['pending', 'consumed', 'expired']),
-  reason: z.enum(['execution', 'browser', 'unknown', 'cleanup']),
+  reason: z.enum(['execution', 'browser', 'unknown', 'cleanup', 'student']),
+  version: z.number().int().positive().default(1),
   deadline: z.iso.datetime(), nextCheckAt: z.iso.datetime(), consumedAt: z.iso.datetime().nullable(),
 }).strict();
 export type TeachingWait = z.infer<typeof teachingWaitSchema>;
@@ -83,6 +88,7 @@ export const teachingConversationSchema = z.object({
   activityId: z.uuid(), cursor: z.number().int().nonnegative(),
   messages: z.array(teachingMessageSchema), runs: z.array(teachingRunSchema),
   tools: z.array(teachingToolRecordSchema).default([]), waits: z.array(teachingWaitSchema).default([]),
+  questions: z.array(teachingStudentQuestionSchema).default([]),
 }).strict();
 export type TeachingConversation = z.infer<typeof teachingConversationSchema>;
 
@@ -90,7 +96,7 @@ export const teachingSnapshotSchema = z.object({
   snapshotId: z.uuid(), activityId: z.uuid(), runId: z.uuid(), attemptId: z.uuid(), segmentId: z.uuid(),
   assemblyVersion: z.literal(1), model: teachingModelFactSchema,
   maxOutputTokens: z.number().int().positive(), contextWindow: z.number().int().positive().optional(),
-  sources: z.array(z.object({ kind: z.enum(['platform', 'run', 'course', 'input', 'history', 'material']),
+  sources: z.array(z.object({ kind: z.enum(['platform', 'run', 'course', 'input', 'history', 'material', 'student-response']),
     id: z.string().max(200).optional(), label: z.string().max(200) }).strict()),
   payloadSha256: z.string().regex(/^[a-f0-9]{64}$/),
   payload: z.record(z.string(), z.unknown()),

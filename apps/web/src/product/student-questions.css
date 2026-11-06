@@ -1,0 +1,17 @@
+.student-question { margin: 12px 0; padding: 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); font-size: 13px; overflow-wrap: anywhere; }
+.student-question h4 { margin: 0 0 8px; font: 600 13px/1.5 var(--font-sans); color: var(--muted); }
+.student-question-prompt { margin: 0 0 8px; color: var(--ink); }
+.student-question-source, .student-question-status { margin: 8px 0; font-size: 12px; color: var(--muted); }
+.student-question fieldset { margin: 12px 0; padding: 0; border: 0; min-width: 0; }
+.student-question legend { margin-bottom: 6px; color: var(--ink-soft); }
+.student-question fieldset label { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 0; cursor: pointer; }
+.student-question input[type='radio'] { flex: none; accent-color: var(--ink); }
+.student-question-text { display: grid; gap: 8px; margin: 12px 0; color: var(--ink-soft); }
+.student-question textarea { width: 100%; min-height: 88px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 13px/1.5 var(--font-sans); resize: vertical; }
+.student-question-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+.student-question button { min-height: 32px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: 8px; font: 500 13px/1.5 var(--font-sans); overflow-wrap: anywhere; }
+.student-question button.primary { background: var(--primary); color: var(--on-primary); }
+.student-question button.outline { background: var(--paper); color: var(--ink-soft); }
+.student-question button:disabled { cursor: default; color: var(--muted); background: var(--chip-bg); }
+.student-question .student-response-copy { padding: 0; border: 0; background: none; color: var(--ink-soft); font-size: 12px; text-decoration: underline; }
+.student-question :focus-visible, .student-question:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

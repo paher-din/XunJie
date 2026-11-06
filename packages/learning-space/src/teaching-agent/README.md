@@ -15,6 +15,9 @@
 | `teaching_commands` | 独立 command ID、原生 call ID、固定命令依据、派发许可、原回执与完整结果资源 |
 | `teaching_waits` | 原命令、身份与摘要、期限、确定性查询时点和唯一消费事实 |
 | `teaching_budgets` | 本 Run 固定的模型步骤、工具命令、并行和 Wait 配置 |
+| `teaching_student_questions` | 固定 `student.ask` 问题、来源、问题/Wait 版本、呈现与明确回答状态 |
+| `teaching_student_presentations` | 幂等呈现回执；不代表学生回答或模型已采用 |
+| `teaching_student_responses` | 独立输入身份、原文摘要、接受/拒绝结果及原回应查询 |
 
 接收、Run、输入与事件在同一事务提交；同身份同内容返回原回执，换内容冲突。接收前取消写入持久取消记录，迟到派发不能复活。`RunDriver` 用 `clock_timestamp()` 领取代际与 lease，条件提交保证单一推进权；lease 只决定推进权，不是生成期限。过期接管先按原 attempt 身份查询/续接，已接受未派发的 attempt 由新推进者继续派发，不第二次付费生成。
 
@@ -32,6 +35,8 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 长任务的接受回执先闭合原生工具调用，另存持久 Wait。等待释放模型连接和内存 Run 处理者；有界程序查询原执行，真实结果作为有来源的新观察继续模型。重复通知只消费一次，晚结果归档原 Run，不复活终态。默认配置与具体持久屏障见 [实施选择](../../../../docs/student-agent-implementation/specs/wp07-agent-tools.md)。
 
+`RunDriver` 另外登记固定的 `student.ask` 能力，三协议原生函数名为 `student_ask`。问题、Wait、工具接受和日志在同一准入事务提交，并遵守既有串行工具通道；呈现与明确回应分别记录。回应以独立 requestId、问题版本和 Wait 版本唯一消费原等待，随后按当前资格及剩余预算继续同一 Run。普通新消息不被文本分类成回应。期限结束、停止和晚回应保留实际原因，不复活终态。设计见[明确回应](../../../../docs/student-agent-implementation/specs/wp07-student-ask.md)。
+
 ## 上下文与模型
 
 `context.ts` 分开平台指令、平台运行职责、课程规则、本次引用/作品/问题和跨 Run 历史。课程发布固定帮助策略；策略禁止问答时在接收前直接取消，不产生模型调用。历史按真实 `student/assistant` 角色进入段的可移植前缀；只有连接、前缀或配置变化时才封存旧段并建新段。
@@ -46,13 +51,17 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 活动页面使用同一个 `ActivityConversation` 控制器轮询对话、显示 Run 状态并提供停止/继续；问题草稿和固定引用仍由可靠草稿 owner 保存。首页“建立并开始对话”把首问写入持久草稿后创建无课程活动，活动页以固定 `requestId` 发送并隔离切换活动后的迟到回复。
 
+明确回应使用 `agent/<activityId>/questions/<questionId>/presentations|responses` 和 `agent/<activityId>/responses/<requestId>`；呈现 POST 不消费 Wait，回应回包不明时 GET 查询原身份。对话卡片沿现有工作区 IndexedDB 的附加 v8 存储先固定输入再提交，未接受时保留原文。IP 仅定位到同一卡片，不自动作答或抢焦点；隔离还原只读展示原事实。所有新表参加相同 owner 的迁移、保留、备份、校验与接管。
+
 ## 验证
 
 - `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、增量发布、重启/停止/继续、快照重建、备份/还原/接管。
 - `apps/server/tests/teaching-agent.driver.runtime.test.mjs`：两个独立 `driverId` 竞争同一 Run，验证 lease/generation 单一派发。
 - `apps/server/tests/teaching-agent.tools.runtime.test.mjs`：三协议真实工具往返、固定旧版本、不可消费输出拒绝、跨活动授权、请求重建和工具资源备份还原。
 - `apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs`：真实 Gateway／作品／原生会话／WASM 的关联前中断、丢回执、双推进者、预算、停止与晚结果。
+- `apps/server/tests/teaching-agent.student-ask.runtime.test.mjs`：真实 HTTP/Agent/Gateway/PG 的问题、呈现、明确选择/文字/跳过、原身份查询、竞争回应、期限/预算、重启、隔离只读和接管。
 - `apps/server/tests/teaching-tools-host.runtime.test.mjs`：执行点资格、连续原生状态、浏览器领取与撤销、固定来源和维护所属边界。
 - `apps/server/tests/model-progress.test.mjs`：增量发布的凭据尾部扣留与停止公开。
 - `apps/web/e2e/teachingConversation.spec.ts`：正式入口首问、刷新、追加问题、生成期间草稿阻塞、停止、课程问答、进程重启和缺模型设置入口；macOS 与 Windows 桌面 Chrome 均执行。
 - `apps/web/e2e/teachingTools.spec.ts`：正式对话中的工具记录、来源定位、真实组件、浏览器等待／停止／重开和丢回执核对；实际平台结果以 #198 交付证据为准。
+- `apps/web/e2e/studentAsk.spec.ts`：正式 Chrome 回应入口、IP 定位、焦点/草稿保护、中文原文、未接收/丢回包、明确跳过和明暗窄桌面；实际平台通过项与未执行项分别报告。

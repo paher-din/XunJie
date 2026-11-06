@@ -16,6 +16,7 @@ import type {
 import type { ContextMessage } from './context.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
+import { studentQuestionMigration, createStudentQuestions, validateStudentQuestions } from './student-questions.js';
 import { createTeachingRunDriver, type TeachingRunLimits } from './driver.js';
 import type { TeachingToolHost } from './tool-types.js';
 import type { ModelTool } from '@xunjie/contracts/model-connections';
@@ -60,7 +61,7 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     attempt_id uuid NOT NULL,segment_id uuid NOT NULL,body jsonb NOT NULL,resource_id uuid NOT NULL,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX teaching_snapshots_run ON teaching_snapshots(run_id);
-` }, teachingToolMigration];
+` }, teachingToolMigration, studentQuestionMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -286,11 +287,16 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       [activityId, runId]);
     const boundary = own ? Number(own.seq) : Number.MAX_SAFE_INTEGER;
     const { rows } = await storage.read(`SELECT kind,body FROM teaching_events WHERE activity_id=$1
-      AND seq < $2 AND kind IN ('input','assistant') ORDER BY seq`, [activityId, boundary]);
+      AND seq < $2 AND kind IN ('input','assistant','question-created','student-response') ORDER BY seq`, [activityId, boundary]);
     return rows.flatMap((row): ContextMessage[] => {
       const body = row.body as Record<string, unknown>;
       if (row.kind === 'input') return typeof body.question === 'string' && body.question ? [{ role: 'student' as const, text: body.question }] : [];
       if (row.kind === 'assistant') return typeof body.text === 'string' && body.text ? [{ role: 'assistant' as const, text: body.text }] : [];
+      if (row.kind === 'question-created' && typeof body.question === 'string') return [{ role: 'assistant',
+        text: '此前 Agent 记录的提问（不代表学生已看见或回答）：' + body.question,
+        source: { kind: 'history', id: String(body.questionId), label: '先前记录的 Agent 提问' } }];
+      if (row.kind === 'student-response' && body.status === 'accepted' && typeof body.text === 'string')
+        return [{ role: 'student', text: body.text, source: { kind: 'student-response', id: String(body.responseId), label: '先前问题的学生明确回应' } }];
       return [];
     });
   }
@@ -388,9 +394,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     }
     return fact;
   }
+  const studentQuestions = createStudentQuestions(storage, { activity: options.activity, appendEvent });
   const driver = createTeachingRunDriver(storage, {
     ...options, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
-    assertAuthority, appendEvent, historyBefore, ensureSegment, awaitAttempt, finish,
+    assertAuthority, appendEvent, historyBefore, ensureSegment, awaitAttempt, finish, studentQuestions,
   });
 
   const starting = new Set<string>();
@@ -463,6 +470,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const attemptId = typeof body.attemptId === 'string' ? body.attemptId : '';
       if (kind === 'input') messages.push({ ...base, role: 'student', text: String(body.question ?? ''),
         runId: (body.runId as string) ?? null });
+      else if (kind === 'student-response' && body.status === 'accepted') messages.push({ ...base, role: 'student',
+        kind: 'student-response', text: String(body.text ?? ''), runId: (body.runId as string) ?? null });
       else if (kind === 'native-summary' && body.source === 'model-native' && typeof body.text === 'string' && body.text)
         messages.push({ ...base, role: 'system', kind: 'native-summary', text: body.text,
           ...(body.truncated === true ? { summaryTruncated: true } : {}),
@@ -504,6 +513,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       else if (kind === 'system-notice' && body.reason === 'step-record-unavailable') messages.push({ ...base, role: 'system',
         text: '原任务的恢复依据不完整，已暂停。原请求和结果仍保留，没有重新执行。',
         runId: (body.runId as string) ?? null });
+      else if (kind === 'system-notice' && ['model-step-budget-exhausted', 'tool-budget-exhausted'].includes(String(body.reason)))
+        messages.push({ ...base, role: 'system', text: body.reason === 'model-step-budget-exhausted'
+          ? '本次任务的计算预算已用尽，已暂停继续生成。原问题、明确回应与已发生的结果仍保留。'
+          : '本次任务的工具操作预算已用尽，已暂停新操作。原问题、明确回应与已发生的结果仍保留。',
+        runId: (body.runId as string) ?? null });
     }
     // A progress message whose run already settled without a final answer (driver loss, pause)
     // must not stay "streaming" forever.
@@ -518,7 +532,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     // The cursor may only cover events actually delivered in this response; a later commit is
     // read on the next poll instead of being skipped by a concurrent max(seq).
     return teachingConversationSchema.parse({ activityId, cursor: rows.length ? Number(rows.at(-1)!.seq) : cursor, messages,
-      runs: runRows.map(toRun), tools: await driver.records(activityId), waits: await driver.waits(activityId) });
+      runs: runRows.map(toRun), tools: await driver.records(activityId), waits: await driver.waits(activityId), questions: await studentQuestions.list(activityId) });
   }
   async function events(identity: SpaceIdentity, activityId: string, after = 0): Promise<TeachingEvent[]> {
     await options.activity(identity, activityId);
@@ -627,12 +641,23 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   async function validate() {
     await validateTeachingAgent(storage);
   }
+  async function respond(identity: SpaceIdentity, activityId: string, questionId: string, value: unknown) {
+    if (writesClosed) throw new StorageError('maintenance');
+    const receipt = await studentQuestions.respond(identity, activityId, questionId, value);
+    if (receipt.status === 'accepted' && receipt.runId) kick(receipt.runId);
+    return receipt;
+  }
+  async function presentQuestion(identity: SpaceIdentity, activityId: string, questionId: string, value: unknown) {
+    if (writesClosed) throw new StorageError('maintenance');
+    return studentQuestions.present(identity, activityId, questionId, value);
+  }
 
   const receiver: ActionReceiver = { identity, accept, query, cancel };
   if (options.start !== false) startTicker();
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
     run, conversation, events, snapshot, request, stop, continueRun, capabilities, assertCommandDispatch, validate,
+    respond, response: studentQuestions.response, presentQuestion,
     closeWrites() { writesClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     closeDispatch() { dispatchClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     async drain() {
@@ -725,4 +750,5 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
       || wait.wait_id !== operationId((wait.purpose === 'cleanup' ? 'teaching-cleanup-wait:' : 'teaching-wait:') + wait.command_id)
       || (wait.state === 'consumed' || wait.purpose === 'cleanup') && command.state !== 'settled') throw new StorageError('corrupt');
   }
+  await validateStudentQuestions(storage);
 }

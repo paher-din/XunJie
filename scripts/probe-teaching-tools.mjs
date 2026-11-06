@@ -11,14 +11,23 @@ import net from 'node:net';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
-  'provider-address': { type: 'string' } } });
+  'provider-address': { type: 'string' }, 'student-ask': { type: 'boolean', default: false } } });
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
 if (values['provider-address'] && !net.isIP(values['provider-address'])) throw new Error('--provider-address must be an IP address.');
-const document = JSON.parse(await readFile(resolve(values['credentials-file']), 'utf8'));
-const provider = document.providers?.find(item => /deepseek/i.test(item.preset ?? item.name ?? '') && item.key);
+const privateText = (await readFile(resolve(values['credentials-file']), 'utf8')).replace(/^\uFEFF/, '');
+let provider;
+try {
+  const document = JSON.parse(privateText);
+  provider = document.providers?.find(item => /deepseek/i.test(item.preset ?? item.name ?? '') && item.key);
+} catch {
+  const line = privateText.split(/\r?\n/).find(line => /deepseek/i.test(line));
+  const key = line?.match(/\bsk-[A-Za-z0-9_-]{8,}/)?.[0];
+  if (key) provider = { key };
+}
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
+  capability: values['student-ask'] ? 'student.ask' : 'read_work',
   limits: { maxGenerations: 6, maxPerProtocol: 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
@@ -79,22 +88,42 @@ try {
       await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
       const selection = await api('models/selection', { requestId: randomUUID(), expectedVersion: selectionVersion,
         source: { kind: 'personal', connectionId, grantId } }); selectionVersion = selection.version;
-      const activity = await api('activities', { requestId: randomUUID(), goal: '核对固定资料与实际工具来源', question: '', references: [] });
+      const activity = await api('activities', { requestId: randomUUID(), goal: values['student-ask'] ? '依据明确预测解释四态累加' : '核对固定资料与实际工具来源', question: '', references: [] });
       const receiver = (await api(`agent/${activity.activityId}/capabilities`)).receiver;
       const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'observation.txt', kind: 'text', encoding: 'utf8',
         mediaType: 'text/plain', value: '本次实际记录：水位从 12 cm 增加到 37 cm。此文件是固定观测材料，不是学生掌握程度的证明。' };
       const input = { requestId: randomUUID(), scope: { environmentId: activity.identity.environmentId, spaceId: activity.identity.spaceId,
         principalId: activity.identity.principalId, activityId: activity.activityId }, receiver,
-        draft: { token: randomUUID(), question: `请先实际调用 read_work 工具读取 objectId=${work.objectId}、contentId=${work.contentId}，
-然后根据工具结果简短解释水位变化。必须先读取工具；不要再调用其他工具，不要修改作品。`, references: [], bases: [] }, works: [work], evidence: [] };
+        draft: { token: randomUUID(), question: values['student-ask']
+          ? '先实际调用 student_ask 工具，只问一个关于“状态 3 加输入 2 后对 4 取余”的预测问题。给出简明来源，允许自由文字，可提供选项；不要把问题只作为普通文字输出。等我明确回应后，依据那份回应简短解释并结束。只提问一次，不读取作品或调用其他工具，不要求任何内部标识。'
+          : `请先实际调用 read_work 工具读取 objectId=${work.objectId}、contentId=${work.contentId}，
+然后根据工具结果简短解释水位变化。必须先读取工具；不要再调用其他工具，不要修改作品。`, references: [], bases: [] }, works: values['student-ask'] ? [] : [work], evidence: [] };
       await api('intents/' + activity.activityId, input);
       const receipt = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       assert.equal(receipt.state, 'accepted');
       const runId = JSON.parse(receipt.receipt.detail).runId;
       let conversation;
+      let explicitResponse;
       const deadline = Date.now() + 90000;
       while (Date.now() < deadline) {
         conversation = await api(`agent/${activity.activityId}/conversation`);
+        if (values['student-ask'] && !explicitResponse) {
+          const question = conversation.questions?.find(question => question.runId === runId && question.state === 'pending');
+          if (question) {
+            item.question = { version: question.version, waitVersion: question.waitVersion, question: question.question,
+              source: question.source.detail, presentedAt: question.presentedAt, skippable: question.skippable };
+            assert.equal(question.presentedAt, null, 'API-only history must not manufacture a display acknowledgement.');
+            const responseInput = { requestId: randomUUID(), questionVersion: question.version, waitVersion: question.waitVersion,
+              answer: question.allowText ? { kind: 'text', text: '我预计为 1；先算 3 加 2 得到 5，再对 4 取余。请核对我的推理。' }
+                : { kind: 'choice', optionId: question.options[0].id } };
+            const route = `agent/${activity.activityId}/questions/${question.questionId}/responses`;
+            const accepted = await api(route, responseInput);
+            assert.equal(accepted.status, 'accepted');
+            assert.deepEqual(await api(route, responseInput), accepted);
+            assert.deepEqual(await api(`agent/${activity.activityId}/responses/${responseInput.requestId}`), accepted);
+            explicitResponse = responseInput;
+          }
+        }
         if (['completed', 'failed', 'paused', 'stopped'].includes(conversation.runs.find(run => run.runId === runId)?.state)) break;
         await new Promise(resolve => setTimeout(resolve, 200));
       }
@@ -104,8 +133,24 @@ try {
       const answer = conversation.messages.filter(message => message.role === 'assistant').map(message => message.text).join('\n');
       item.answerSha256 = createHash('sha256').update(answer).digest('hex');
       assert.equal(run?.state, 'completed');
-      assert.ok(conversation.tools.some(tool => tool.name === 'read_work' && tool.outcome === 'completed'));
-      assert.match(answer, /25|二十五/);
+      if (values['student-ask']) {
+        assert.ok(explicitResponse, 'The real model must actually use student.ask.');
+        assert.equal(conversation.questions.filter(question => question.runId === runId).length, 1);
+        const events = await api(`agent/${activity.activityId}/events`);
+        const snapshots = await Promise.all(events.filter(event => event.kind === 'context-assembled')
+          .map(event => api(`agent/${activity.activityId}/snapshots/${event.body.snapshotId}`)));
+        item.responseAdopted = snapshots.some(snapshot => snapshot.sources.some(source => source.kind === 'student-response' && source.id === explicitResponse.requestId)
+          && JSON.stringify(snapshot.payload).includes('student-response'));
+        assert.ok(item.responseAdopted);
+        item.snapshotDigests = snapshots.map(snapshot => snapshot.payloadSha256);
+        assert.ok(answer.trim());
+        const beforeHistory = generations;
+        await api(`agent/${activity.activityId}/conversation`); await api(`agent/${activity.activityId}/conversation`);
+        assert.equal(generations, beforeHistory);
+      } else {
+        assert.ok(conversation.tools.some(tool => tool.name === 'read_work' && tool.outcome === 'completed'));
+        assert.match(answer, /25|二十五/);
+      }
       item.passed = true;
     } catch (error) { item.reason ??= error instanceof assert.AssertionError ? 'acceptance-assertion' : error.message; }
     item.modelRequests = generations - before;

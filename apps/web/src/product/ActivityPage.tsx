@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolKey, type ToolSpec } from '../components/workspace/CenterToolArea'
@@ -15,6 +15,9 @@ import { ActivityActions } from './ActivityActions'
 import { ActivityConversation, FirstQuestionAutoSend, firstQuestionKey } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
+import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
+import { learningRequest, workspaceScope } from './learningTransport'
+import { GuidancePresentation } from '../components/workspace/guidance/GuidancePresentation'
 
 async function focusLocation(root: HTMLDivElement | null, selector: string) {
   for (let attempt = 0; attempt < 20; attempt++) {
@@ -43,6 +46,25 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const [tool, setTool] = useState<ToolKey>('design')
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
   const readOnly = workspace.isReadOnly()
+  const scope = workspaceScope(namespace, activity)
+  const [pendingQuestion, setPendingQuestion] = useState<TeachingStudentQuestion | null>(null)
+  const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
+  const questionFocused = useCallback(() => setFocusQuestionId(null), [])
+  useEffect(() => { setPendingQuestion(null); setFocusQuestionId(null) }, [scope])
+  useEffect(() => {
+    if (references.open || !authorized || readOnly) return
+    let current = true
+    const read = async () => {
+      try {
+        const value = teachingConversationSchema.parse(await learningRequest(activity, spaceKey, namespace, `agent/${activity.activityId}/conversation`))
+        if (current) setPendingQuestion(value.questions.find(question => question.state === 'pending'
+          && value.runs.some(run => run.runId === question.runId && ['received', 'running', 'dispatching', 'waiting'].includes(run.state) && !run.stopRequested)) ?? null)
+      } catch { if (current) setPendingQuestion(null) }
+    }
+    void read()
+    const timer = setInterval(() => { void read() }, 5000)
+    return () => { current = false; clearInterval(timer) }
+  }, [scope, references.open, authorized, readOnly, activity, spaceKey, namespace])
   const firstQuestionOpened = useRef<string | null>(null)
   useEffect(() => {
     if (firstQuestionOpened.current === activity.activityId) return
@@ -152,11 +174,19 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
         <FirstQuestionAutoSend activity={activity} />
         <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
-          onActiveChange={setConversationActive} onLocateTool={locateTool} />
+          onActiveChange={setConversationActive} onLocateTool={locateTool} onQuestionChange={setPendingQuestion}
+          focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} />
         {/* Steering is deferred; a new question waits as a reliable draft until the current run settles. */}
         <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={conversationActive} /><ActivityActions />
       </aside>}
     </div>
     <SelectionToolbar />
+    {pendingQuestion && !references.open && authorized && !readOnly && <GuidancePresentation
+      item={{ id: scope + ':' + pendingQuestion.questionId, label: '等你回应',
+        content: { kind: 'text', text: 'Agent 有一个关于当前学习目标的问题。你可以继续编辑作品，准备好后再回应。' },
+        actions: [{ id: 'answer', label: '回答当前问题', primary: true }] }} state="waiting"
+      companionAction={{ id: 'answer', label: '学习助手：回答当前问题' }} onAction={() => {
+        setFocusQuestionId(pendingQuestion.questionId); references.setOpen(true)
+      }} />}
   </div>
 }

@@ -10,6 +10,7 @@ import type { createModelGateway } from '../model-connections/index.js';
 import { buildContext, type ContextMessage } from './context.js';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
+import { studentAskDefinition, prepareStudentAsk, type createStudentQuestions } from './student-questions.js';
 
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
@@ -42,6 +43,7 @@ function combinedUsage(facts: ModelUsage[]): ModelUsage {
 export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   models: Awaited<ReturnType<typeof createModelGateway>>;
   tools?: TeachingToolHost;
+  studentQuestions: ReturnType<typeof createStudentQuestions>;
   limits?: Partial<TeachingRunLimits>;
   dispatchClosed(): boolean;
   runRow(runId: string): Promise<Row>;
@@ -105,7 +107,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   async function pause(run: TeachingRun, generation: number, reason: string, model = run.model) {
     const current = owner.toRun(await owner.runRow(run.runId));
     await owner.finish(run, generation, 'paused', reason, current.usage, model ?? current.model,
-      { kind: reason.startsWith('model-') || reason === 'max-output-missing' ? 'model-unavailable' : 'system-notice',
+      { kind: ['model-not-selected', 'model-unavailable', 'model-capability-unavailable', 'max-output-missing'].includes(reason) ? 'model-unavailable' : 'system-notice',
         body: { runId: run.runId, reason } });
   }
   async function planNext(run: TeachingRun, generation: number, previous?: Row) {
@@ -124,9 +126,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           text: JSON.stringify({ commandId: row.command_id, source: (row.outcome as TeachingToolOutcome).source,
             state: (row.outcome as TeachingToolOutcome).state, feedback: (row.outcome as TeachingToolOutcome).feedback.text }).slice(0, 8192),
         }));
+      const responses: TeachingSnapshot['sources'] = rows.flatMap(row => {
+        const command = row.command as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome;
+        return command.name === studentAskDefinition.name && typeof outcome.result.responseId === 'string'
+          ? [{ kind: 'student-response' as const, id: outcome.result.responseId, label: '学生对当前提问的明确回应' }] : [];
+      });
       plan = { input: { ...priorPlan.input, expectedSequence: native.sequence,
         input: { text: '', images: [], toolResults: [], observations } }, model: priorPlan.model,
-        sources: priorPlan.sources, createdAt: new Date().toISOString() };
+        sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString() };
     } else {
       const selection = await owner.models.selection.read(scope.identity);
       if (!selection.selected) { await pause(run, generation, selection.unavailableReason ?? 'model-not-selected'); return null; }
@@ -140,7 +147,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
           { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded' } }); return null;
       }
-      const tools = owner.tools ? await owner.tools.definitions(scope) : [];
+      const tools = [studentAskDefinition, ...(owner.tools ? await owner.tools.definitions(scope) : [])];
       const native = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selection.version,
         context.system, history, generation, tools);
       plan = { input: { attemptId: run.runId, purpose: 'learning', segmentId: native.segmentId, expectedSequence: native.sequence,
@@ -248,8 +255,11 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const commandId = operationId('teaching-command:' + saved.step_id + ':' + intent.callId);
       let command: TeachingPreparedTool, outcome: TeachingToolOutcome | null = null;
       try {
-        if (!owner.tools) throw new StorageError('forbidden');
-        command = await owner.tools.prepare(scope, intent, commandId);
+        if (intent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, intent, commandId);
+        else {
+          if (!owner.tools) throw new StorageError('forbidden');
+          command = await owner.tools.prepare(scope, intent, commandId);
+        }
       } catch (error) {
         if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict'].includes(error.code)) throw error;
         command = { version: 1, commandId, name: intent.name, arguments: intent.arguments, effect: 'read',
@@ -348,6 +358,24 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const stopped = owner.toRun(await owner.runRow(run.runId)).stopRequested;
       if (row.state === 'prepared') {
         if (stopped) { await saveOutcome(run, saved, row, unsent('run-stopped-before-dispatch'), generation); continue; }
+        if (command.name === studentAskDefinition.name) {
+          await assertDispatch(run, generation);
+          await transaction(run, generation, async tx => {
+            const { rows: [current] } = await tx.query('SELECT state FROM teaching_commands WHERE command_id=$1 FOR UPDATE', [command.commandId]);
+            const { rows: [runRow] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
+            if (current?.state !== 'prepared' || runRow?.stop_requested) return;
+            await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['teaching-tool-lanes']);
+            const { rows: conflicts } = await tx.query(`SELECT c.command_id FROM teaching_commands c JOIN teaching_runs r USING(run_id)
+              WHERE c.state IN ('dispatching','waiting') AND c.command_id<>$1
+              AND (c.run_id=$2 OR (r.identity->>'principalId'=$3 AND c.command->>'conflictKey'=$4)) LIMIT 1`,
+              [command.commandId, run.runId, scope.identity.principalId, command.conflictKey]);
+            if (conflicts.length) return;
+            await event(tx, run.activityId, 'tool-permitted', { runId: run.runId, stepId: saved.step_id,
+              commandId: command.commandId, generation, effect: command.effect, location: command.location });
+            await owner.studentQuestions.open(tx, run, saved, command);
+          });
+          continue;
+        }
         if (!owner.tools) throw new StorageError('forbidden');
         await assertDispatch(run, generation);
         let permitted = false;
@@ -523,6 +551,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     });
   }
   async function stopTools(run: TeachingRun) {
+    await owner.studentQuestions.cancelRun(run);
     if (!owner.tools) return;
     const { rows } = await storage.read(`SELECT c.*,s.snapshot_id,s.segment_id FROM teaching_commands c
       JOIN teaching_steps s USING(step_id) WHERE c.run_id=$1 AND c.command->>'effect' IN ('execute','input') ORDER BY c.created_at`, [run.runId]);
@@ -539,8 +568,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
 
   /** Bounded deterministic queries; no model connection or long-lived Run worker is held. */
   async function pollWaits() {
+    await owner.studentQuestions.expire();
     const { rows } = await storage.read(`SELECT w.*,r.state AS run_state FROM teaching_waits w JOIN teaching_runs r USING(run_id)
-      WHERE w.state IN ('pending','expired') AND w.next_check_at<=clock_timestamp() ORDER BY w.next_check_at,w.wait_id LIMIT 20`);
+      WHERE w.state IN ('pending','expired') AND w.reason<>'student' AND w.next_check_at<=clock_timestamp() ORDER BY w.next_check_at,w.wait_id LIMIT 20`);
     const awakened = new Set<string>();
     for (const wait of rows) {
       const run = owner.toRun(await owner.runRow(String(wait.run_id)));

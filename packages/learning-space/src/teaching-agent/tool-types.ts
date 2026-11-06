@@ -23,7 +23,7 @@ export interface TeachingPreparedTool {
   commandId: string;
   name: string;
   arguments: Record<string, unknown>;
-  effect: 'read' | 'execute' | 'input' | 'stop';
+  effect: 'read' | 'execute' | 'input' | 'stop' | 'ask';
   conflictKey: string;
   location: 'owner' | 'browser' | 'native' | 'remote';
   basis: Record<string, unknown>;
