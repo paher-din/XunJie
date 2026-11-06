@@ -43,7 +43,7 @@ export class ExecutionStore {
   }
   /** Identical identity returns the original acceptance; different input under one request is refused. */
   async accept(scope: string, action: AnyExecutionAction, inputDigest: string, acceptance: ExecutionAcceptance,
-    generation: number): Promise<ExecutionRecord> {
+    generation: number, canCommit: () => boolean = () => true): Promise<ExecutionRecord> {
     const db = await openWorkspaceDatabase()
     // The record is keyed by the same workspace scope every later read, list and result lookup uses.
     const key = recordKey(scope, action.requestId)
@@ -64,6 +64,10 @@ export class ExecutionStore {
           if (previous) {
             if (previous.inputDigest !== inputDigest) { failure = Object.assign(new Error('同一执行身份不能改变输入。'), { code: 'identity-conflict' }); tx.abort(); return }
             result = previous; return
+          }
+          if (!canCommit()) {
+            failure = Object.assign(new Error('候选输入已改变或反馈已暂停，未接收旧观察。'), { code: 'candidate-changed' })
+            tx.abort(); return
           }
           const query: ExecutionQuery = { requestId: action.requestId, inputDigest, scope: action.scope,
             executionRef: acceptance.execution!.executionRef, state: 'queued', statusKnowledge: 'confirmed',

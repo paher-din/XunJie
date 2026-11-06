@@ -14,6 +14,7 @@
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
 | WP04 正式 ALU 活动的资料导入、公共执行适配、编辑运行及固定结果恢复 | [#192 设计与实施方案](specs/wp04-alu-edit-run.md) · [工作区交互设计](wp04-192-workspace-design.md) · [Windows 本机交付](wp04-192-windows-acceptance.md) · [#206 跨平台与剩余验收登记](wp04-206-acceptance.md) · [Mac 接续验收票](https://github.com/paher-din/XunJie/issues/206) |
+| WP04 虚拟板自由实验、已启用作品、4096 组检查及反例/恢复 | [#193 设计与实施方案](specs/wp04-alu-board-check.md) · [工作区交互设计](wp04-193-workspace-design.md) · [审查修复与本机验收](wp04-193-acceptance.md)；剩余 Mac/跨机 HTTPS/系统输入法由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续，未记作通过 |
 | WP03 合入 main 的双轴审查、冲突裁决与 Windows 集成复验 | [PR #189 审查与复验](wp03-pr189-review.md) |
 | WP03 组件与未结执行的一致备份、隔离只读还原及权威接管 | [#176 设计与验收计划](specs/wp03-execution-recovery.md) · [实现与本机验收](wp03-176-recovery-implementation.md) · [#188 Mac/学校跨机验收](wp03-188-cross-platform.md) |
 | WP03 的浏览器有限作业：固定执行请求、持久接收、真实 Worker/WASM 计算、查询/停止与结果重读 | [浏览器计算与持久执行](wp03-execution.md) · [固定表格聚合样例](../../components/table-aggregation/README.md) |

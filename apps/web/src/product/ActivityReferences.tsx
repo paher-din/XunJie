@@ -13,6 +13,7 @@ import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
 import { ComponentInteractions } from '../component-host/interactions'
 import { BrowserExecutionReceiver } from '../tool-execution/receiver'
+import { runtimeCandidateIsCurrent } from '../tool-execution/runtime-action'
 import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
 import { createAdapterRegistry } from '../tool-execution/adapters'
@@ -70,7 +71,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   const execution = useMemo(() => {
     // One page load is one executor generation; an older page cannot adopt a newer run.
     const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' },
-      scope, Date.now(), () => access.current && !workspace.accessDenied())
+      scope, Date.now(), () => access.current && !workspace.accessDenied(), action => runtimeCandidateIsCurrent(workspace, activity, action))
     return new ExecutionController(scope, receiver, actions, createExecutionTransport(activity, spaceKey, namespace),
       createAdapterRegistry({ provider: createAlgorithmProvider(activity, spaceKey, namespace), runtimeResources: async action => {
         const binding=activity.course?.components?.find(b=>b.key===action.execution.instance.key)

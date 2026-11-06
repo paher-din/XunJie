@@ -11,17 +11,23 @@ import type { ExecutionRecord } from './ledger'
 export class BrowserExecutionReceiver {
   readonly store = new ExecutionStore()
   private acceptListeners = new Set<(requestId: string) => void>()
-  constructor(readonly identity: ActionReceiverIdentity, readonly scope: string, readonly generation: number, private canAccept: () => boolean = () => true) {}
+  constructor(readonly identity: ActionReceiverIdentity, readonly scope: string, readonly generation: number, private canAccept: () => boolean = () => true,
+    private candidateIsCurrent: (action: AnyExecutionAction) => boolean = () => true) {}
   /** The controller observes real acceptances, not a polled guess about them. */
   onAccept(listener: (requestId: string) => void) { this.acceptListeners.add(listener); return () => { this.acceptListeners.delete(listener) } }
   async accept(action: AnyExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
     if (!this.canAccept()) throw Object.assign(new Error('forbidden'), { code: 'forbidden' })
     const receipt = actionReceiptSchema.parse({ requestId: action.requestId, inputDigest, receiver: action.receiver,
       state: 'accepted', receiptId: 'browser:' + action.requestId, detail: '已在本机可靠保存命令与待处理事实。' })
-    const record = await this.store.accept(this.scope, action, inputDigest, executionAcceptanceSchema.parse({ receipt,
-      execution: { executionRef: crypto.randomUUID(), acceptedSeq: 1 } }), this.generation)
-    for (const listener of this.acceptListeners) listener(action.requestId)
-    return record.acceptance
+    try {
+      const record = await this.store.accept(this.scope, action, inputDigest, executionAcceptanceSchema.parse({ receipt,
+        execution: { executionRef: crypto.randomUUID(), acceptedSeq: 1 } }), this.generation, () => this.canAccept() && this.candidateIsCurrent(action))
+      for (const listener of this.acceptListeners) listener(action.requestId)
+      return record.acceptance
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'candidate-changed') throw error
+      return executionAcceptanceSchema.parse({ receipt: { ...receipt, state: 'rejected', detail: '候选输入已改变或反馈已暂停，未接收旧观察。' }, execution: null })
+    }
   }
   async query(requestId: string, inputDigest: string): Promise<ExecutionQuery | null> {
     const record = await this.store.read(this.scope, requestId)

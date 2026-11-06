@@ -142,6 +142,8 @@ export type ExecutionRuntimeResourceRef = z.infer<typeof executionRuntimeResourc
  * A v2 action stays byte-identical: this is a separate branch, not an extension of the v2 basis.
  */
 export const executionBasisV3Schema = z.object({
+  /** Free observations/checks cite the successful explicit run that enabled these exact works. */
+  enabledBy: z.object({ requestId: z.uuid(), inputDigest: digest, executionRef: z.uuid() }).strict().optional(),
   /** The student's own HDL files and any declared read-only dependencies, by content and digest. */
   works: workFilesSchema,
   runtime: z.object({

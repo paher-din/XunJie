@@ -4,7 +4,10 @@ import { sha256 } from '../component-preparation/device'
 import { acquireSlot } from './runner'
 
 export { manifest as icarusManifest }
-export const icarusProfile={adapterId:'icarus-alu',adapterVersion:1,operationId:'run-single',memoryMiB:256} as const
+/** One host adapter owns these fixed ALU operations; the version stays 1 so already-published runs remain executable. */
+export const aluOperationIds=['run-single','observe-enabled','check-all'] as const
+export type AluOperationId=typeof aluOperationIds[number]
+export const icarusProfile={adapterId:'icarus-alu',adapterVersion:1,operationIds:aluOperationIds,memoryMiB:256} as const
 /** The product owns the controller code; all six executable assets are fixed, verified course resources. */
 export async function verifiedIcarus(identity: string, resources: Record<string, Uint8Array>) {
   if (identity !== manifest.identity) throw new Error('unsupported-version')

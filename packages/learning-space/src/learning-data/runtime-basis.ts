@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
 import { acceptsState, type ComponentBinding } from '@xunjie/contracts/components';
-import { canonicalValue, type ExecutionActionV3 } from '@xunjie/contracts/execution';
+import { canonicalValue, type ExecutionActionV3, type AnyExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 const same=(a:unknown,b:unknown)=>hash(a)===hash(b);
@@ -12,8 +12,14 @@ export function verifyRuntimeBasis(activity:LearningActivity,binding:ComponentBi
   if(m.formatVersion!==3) return fail();
   const op=m.runtime.operations.find(o=>o.operationId===action.execution.operation.operationId);
   if(!op || !acceptsState(op.parameters,action.execution.parameters)) return fail();
-  const params=action.execution.parameters as Record<string,number>;
-  if(Object.entries({A:15,B:15,M:1,S:3,Cin:1}).some(([k,max])=>{const value=params[k];return value===undefined||!Number.isInteger(value)||value<0||value>max;})) return fail();
+  if(op.operationId==='run-single' ? b.enabledBy!==undefined : !b.enabledBy) return fail();
+  const params=action.execution.parameters;
+  if(op.operationId==='check-all') {
+    if(!params || typeof params!=='object' || Array.isArray(params) || Object.keys(params).length) return fail();
+  } else {
+    const controls=params as Record<string,number>;
+    if(Object.entries({A:15,B:15,M:1,S:3,Cin:1}).some(([k,max])=>{const value=controls[k];return value===undefined||!Number.isInteger(value)||value<0||value>max;})) return fail();
+  }
   if(!same(b.runtime,{adapterId:m.runtime.adapterId,adapterVersion:m.runtime.adapterVersion,bundleIdentity:m.runtime.bundleIdentity,resources:m.runtime.resources})
     || !same(b.compile,op.compile)||!same(b.observation,op.observation))return fail();
   const plan=activity.course?.executionPlan;
@@ -26,4 +32,24 @@ export function verifyRuntimeBasis(activity:LearningActivity,binding:ComponentBi
   if(code.some(f=>f.encoding!=='utf8'||! /\.(sv|v|svh|vh)$/.test(f.name))
     || code.reduce((n,f)=>n+Buffer.byteLength(f.value,'utf8'),0)>action.execution.limits.inputBytes)return fail();
   if(b.expected.stateContentId!==null && !b.works.some(f=>f.kind==='state'&&f.contentId===b.expected.stateContentId))return fail();
+}
+
+/** Compare retained facts, not an editable client activation flag or current workspace head. */
+export function verifyEnabledRuntimeSource(action: ExecutionActionV3, source: AnyExecutionAction | undefined,
+  confirmed: ExecutionQuery | undefined) {
+  if (action.execution.operation.operationId === 'run-single') return;
+  const cite = action.execution.basis.enabledBy;
+  const invalid = () => { throw new StorageError('invalid'); };
+  if (!cite || !source || source.protocolVersion !== 3 || !confirmed) return invalid();
+  const a = action.execution, original = source.execution;
+  const output = confirmed.output?.output as { f?: string; cout?: string; observationState?: string } | undefined;
+  if (source.requestId !== cite.requestId || confirmed.requestId !== cite.requestId
+    || confirmed.inputDigest !== cite.inputDigest || confirmed.executionRef !== cite.executionRef
+    || confirmed.state !== 'succeeded' || confirmed.statusKnowledge !== 'confirmed' || !confirmed.output
+    || original.operation.operationId !== 'run-single' || !same(source.scope, action.scope)
+    || !same(original.instance, a.instance) || !same(original.basis.runtime, a.basis.runtime)
+    || !same(original.basis.course, a.basis.course)
+    || !same(original.basis.works.filter(f => f.kind === 'code'), a.basis.works.filter(f => f.kind === 'code'))
+    || !output || !/^[01xz]{4}$/.test(output.f ?? '') || !/^[01xz]$/.test(output.cout ?? '')
+    || !['complete', 'complete-with-unknown'].includes(output.observationState ?? '')) return invalid();
 }

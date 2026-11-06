@@ -8,7 +8,7 @@ import { componentInstanceId, componentStateName } from '@xunjie/contracts/compo
 import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, anyExecutionActionSchema as executionActionSchema,
   executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { AnyExecutionAction as ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
-import { verifyRuntimeBasis } from './runtime-basis.js';
+import { verifyRuntimeBasis, verifyEnabledRuntimeSource } from './runtime-basis.js';
 import { executionRetainedResourceSchema, type ExecutionRetainedResource } from '@xunjie/contracts/execution';
 import { executionHistoryPageSchema, executionArtifactSchema } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
@@ -166,6 +166,13 @@ export function createExecutions(storage: OwnedStorage, options: {
       return existing.query;
     }
     verifyState(action);
+    if (action.protocolVersion === 3 && action.execution.operation.operationId !== 'run-single') {
+      const source = await find(activityId, action.execution.basis.enabledBy!.requestId);
+      verifyEnabledRuntimeSource(action, source ? executionActionSchema.parse(source.row.body) : undefined, source?.query);
+      const { rows: retained } = await storage.read('SELECT request_id FROM execution_results WHERE activity_id=$1 AND request_id=$2',
+        [activityId, action.execution.basis.enabledBy!.requestId]);
+      if (!retained.length) fail('invalid');
+    }
     for (const file of action.execution.basis.works) await works.registerBasis(identity, activityId, file);
     const begun: ExecutionQuery = executionQuerySchema.parse({ requestId: action.requestId, inputDigest,
       scope, executionRef: acceptance.execution.executionRef, state: 'queued', statusKnowledge: 'confirmed',
@@ -441,6 +448,11 @@ export async function validateExecutions(storage: OwnedStorage) {
       const binding=body.course?.components?.find(item=>item.key===action.execution.instance.key);
       if(!binding)corrupt('runtime binding missing');
       else verifyRuntimeBasis(body,binding,action);
+      if (action.execution.basis.enabledBy) {
+        const { rows: [source] } = await storage.read('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2',
+          [row.activity_id, action.execution.basis.enabledBy.requestId]);
+        verifyEnabledRuntimeSource(action, source ? executionActionSchema.parse(source.body) : undefined, source ? query(source) : undefined);
+      }
       for(const file of action.execution.basis.works) {
         const bytes=Buffer.from(await storage.readResource(file.contentId));
         if(!bytes.equals(Buffer.from(file.value,'utf8')))corrupt('fixed runtime work bytes');

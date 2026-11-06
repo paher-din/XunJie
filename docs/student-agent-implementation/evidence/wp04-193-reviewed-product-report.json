@@ -1,0 +1,77 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "root": "C:\\Users\\p3148\\AppData\\Local\\Temp\\xj-alu-board-SPzr8D",
+  "candidate": "workspace production Web/runtime",
+  "cases": [
+    "new component v2 and three-operation course import into the formal product",
+    "check is disabled before any work is enabled",
+    "board and numeric input render in the existing ALU experiment tab",
+    "starter produces and enables a four-state X observation instead of a fake zero",
+    "editing code after enablement shows “modified but not run” and does not silently test the head",
+    "virtual switches A=15/B=0/M=1/S=00/Cin=1 produce real F=0000/Cout=1 through the enabled work",
+    "the host five-control numeric editor is the same input state as the switches",
+    "a free observation still reaches the real Worker while the application API is unavailable; inputs and results remain local",
+    "full 4096-input check passes with 16384 compared rows and 1536 reserved inputs covered",
+    "the real service refuses a check whose HDL differs from its successful enabled source",
+    "input can change while a check occupies the slot; the check result does not preempt the board, and the latest candidate is observed after it finishes",
+    "an out-of-range numeric draft is marked invalid and leaves the committed input and reading unchanged",
+    "a switch is keyboard operable with Space and keeps aria-pressed in sync",
+    "fixed drop-carry work is reported as failing with 256 unique counterexample inputs, not as a pass",
+    "refresh restores the enabled input, observation and selected latest failed report without recomputation",
+    "an actual zero-time Worker is stopped through the original execution controller",
+    "normal work and check remain usable after a real Worker stop",
+    "narrow desktop and dark theme render the same board, inputs and check report",
+    "900px desktop keeps the board, values and check action reachable",
+    "200% content zoom keeps check controls in the reflowed desktop (CSS zoom, not a claim about OS display scaling)",
+    "real split panes mount compact/full views but accept exactly one observation for one input change",
+    "two real tabs preserve both run identities and either serialize from fresh activation bases or expose a conflict"
+  ],
+  "timings": {
+    "starterRunStartedAt": "2026-11-06T18:02:52.588Z",
+    "starterRunMs": 302,
+    "codeRunMs": 473,
+    "lastInputToObservationMs": 367,
+    "offlineObservationMs": 352,
+    "checkPassMs": 1493,
+    "checkPrimaryBytes": 1788,
+    "checkResources": [
+      {
+        "name": "check-observations.json",
+        "byteLength": 291150
+      },
+      {
+        "name": "diagnostics.txt",
+        "byteLength": 238
+      },
+      {
+        "name": "check-traces.json",
+        "byteLength": 1646482
+      }
+    ],
+    "checkResourceBytes": 1939658,
+    "checkDuringInputMs": 1498,
+    "checkFailMs": 951,
+    "refreshMs": 1101,
+    "stopMs": 302
+  },
+  "status": "passed",
+  "browser": "156.0.8078.80",
+  "sourceRejection": {
+    "status": 400,
+    "reason": "invalid"
+  },
+  "twoTabs": {
+    "requests": [
+      "528f7680-b842-4790-91bc-cc12e03d7833",
+      "7fea6e14-653d-49c9-8d27-bd28d26415ed"
+    ],
+    "bases": [
+      4,
+      5
+    ],
+    "activationRevision": 6,
+    "conflictVisible": false,
+    "resolution": "serialized-from-fresh-bases"
+  }
+}

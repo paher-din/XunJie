@@ -407,8 +407,12 @@ export const componentAlgorithmBundleSchema = z.object({ definition: componentDe
   mediaType: z.literal('application/wasm'), entry: identifier, memoryPages: z.number().int().min(1).max(256),
   sha256: digest, byteLength: z.number().int().positive(), contentBase64: z.string().max(1400000) }).strict();
 export type ComponentAlgorithmBundle = z.infer<typeof componentAlgorithmBundleSchema>;
+/** Fixed declarative instrument wiring. Signal names/widths are validated by the course adapter. */
+const boardPinsSchema = z.record(z.string().min(1).max(32), z.array(z.number().int().min(0).max(255)).min(1).max(32))
+  .refine(value => Object.keys(value).length <= 32);
 export const componentBindingSchema = z.object({ key: identifier, definition: componentDefinitionSchema,
-  configuration: z.object({ title: z.string().min(1).max(200) }).strict(), materialIds: z.array(z.uuid()).max(20) }).strict();
+  configuration: z.object({ title: z.string().min(1).max(200), boardMapping: z.object({ version: z.literal(1),
+    inputs: boardPinsSchema, outputs: boardPinsSchema }).strict().optional() }).strict(), materialIds: z.array(z.uuid()).max(20) }).strict();
 export type ComponentBinding = z.infer<typeof componentBindingSchema>;
 export const componentBindingsSchema = z.array(componentBindingSchema).max(8)
   .refine(items => new Set(items.map(item => item.key)).size === items.length);

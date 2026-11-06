@@ -33,6 +33,18 @@ describe('fixed ALU execution through the shared receiver',()=>{
       expect((await receiver.accept(action,digest)).execution?.executionRef).toBe(accepted.execution?.executionRef)
       const changed=structuredClone(action);changed.execution.basis.works[0].value='different'
       await expect(receiver.accept(changed,await digestOf(changed))).rejects.toThrow('同一执行身份')
+      let current = true
+      const guarded = new BrowserExecutionReceiver(action.receiver, key, 2, () => true, () => current)
+      const candidate = structuredClone(action); candidate.requestId = crypto.randomUUID()
+      const candidateDigest = await digestOf(candidate)
+      const accepting = guarded.accept(candidate, candidateDigest)
+      current = false // Changes during database opening/protection, before the receiver commits.
+      expect((await accepting).receipt.state).toBe('rejected')
+      expect(await guarded.store.read(key, candidate.requestId)).toBeUndefined()
+      current = true
+      const first = await guarded.accept(candidate, candidateDigest)
+      current = false
+      expect(await guarded.accept(candidate, candidateDigest)).toEqual(first)
     } finally {workspace.dispose()}
   })
 })

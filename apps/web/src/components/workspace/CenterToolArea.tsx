@@ -68,8 +68,15 @@ export const SEGMAP: Record<number, string> = {
   5: 'acdfg',
   6: 'acdefg',
   7: 'abc',
-  8: 'abcdef',
+  8: 'abcdefg',
   9: 'abcdfg',
+  // The ALU's result display is a hexadecimal digit; the old counter still only passes 0–9.
+  10: 'abcefg',
+  11: 'cdefg',
+  12: 'adef',
+  13: 'bcdeg',
+  14: 'adefg',
+  15: 'aefg',
 }
 const SEGPATHS: Record<string, string> = {
   a: 'M8 8h44',
