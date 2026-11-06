@@ -16,6 +16,7 @@ import * as agentExecution from '../../../packages/learning-space/dist/learning-
 import { createConnectionAuthority } from '@xunjie/product-runtime/connections';
 import { teachingAgentMigrations } from '../../../packages/learning-space/dist/teaching-agent/index.js';
 import { createTeachingRunDriver } from '../../../packages/learning-space/dist/teaching-agent/driver.js';
+import { createStudentQuestions } from '../../../packages/learning-space/dist/teaching-agent/student-questions.js';
 import { createTeachingTools } from '../../../packages/learning-space/dist/teaching-agent/tools.js';
 import { canonicalValue } from '@xunjie/contracts/execution';
 const actionScope = (identity, activityId) => ({ environmentId: identity.environmentId, spaceId: identity.spaceId, principalId: identity.principalId, activityId });
@@ -81,7 +82,7 @@ for (const revoked of ['grant', 'activity']) test(`actual execution owner cleans
     const started = await f.owner.agent.dispatch(f.identity, f.activity.activityId, f.context, f.action);
     assert.equal(started.state, 'running');
     await assert.rejects(f.owner.agent.dispatch(f.identity, f.activity.activityId,
-      { ...f.context, origin: { ...f.context.origin, grantId: randomUUID() } }, f.action), { code: 'identity-conflict' });
+      { ...f.context, origin: { ...f.context.origin, sourceInstallationId: randomUUID() } }, f.action), { code: 'identity-conflict' });
     const authorize = async (identity, activityId, origin) => {
       await f.authorize(identity, activityId);
       try { if (origin) await f.authority.assertSourceAuthorized(origin, 'teaching.dependencies'); }
@@ -124,7 +125,7 @@ test('Driver cleanup reconstructs the original stored scope after activity revoc
       basis: { requestId: f.action.requestId, scope: { identity: f.identity, activityId: f.activity.activityId,
         runId: run.runId, stepId: f.context.stepId, snapshotId: f.context.snapshotId, segmentId, input, course: f.activity.course } } };
     await f.storage.request({ requestId: randomUUID(), fingerprint: 'original-driver-fault-state' }, async tx => {
-      await tx.query("INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,usage) VALUES($1,$2,$3,$4,$5,'waiting',$6)",
+      await tx.query("INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,usage,stop_requested) VALUES($1,$2,$3,$4,$5,'waiting',$6,true)",
         [run.runId, run.activityId, requestId, run.inputId, f.identity, {state:'unknown'}]);
       await tx.query("INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved) VALUES($1,$2,0,$3,$4,$5,'waiting',$6,0,0)",
         [f.context.stepId, run.runId, randomUUID(), segmentId, f.context.snapshotId, {}]);
@@ -134,8 +135,10 @@ test('Driver cleanup reconstructs the original stored scope after activity revoc
     });
     f.revoke();
     const host = createTeachingTools({ learning: () => ({ executions: f.owner, open: f.authorize }), courses: {} });
+    const appendEvent = async () => null;
+    const studentQuestions = createStudentQuestions(f.storage, { activity: f.authorize, appendEvent });
     const driver = createTeachingRunDriver(f.storage, { tools: host, models: {}, activity: async () => { assert.fail('cleanup must not read current activity'); },
-      runRow: async () => ({...run,identity:f.identity}), identity: () => f.identity, appendEvent: async () => null,
+      runRow: async () => ({...run,identity:f.identity}), identity: () => f.identity, appendEvent, studentQuestions,
       dispatchClosed: () => false, requestRow: async () => { assert.fail('cleanup must not reload current sources'); } });
     await driver.stopTools(run);
     const [record] = await driver.records(run.activityId);
@@ -167,6 +170,39 @@ test('owner authorization scanning is bounded, fair and stops monitoring confirm
     assert.equal(checks,21,'confirmed ended sessions leave the recurring authorization scan');
     await f.owner.agent.validate();
   } finally { await f.close(); }
+});
+
+test('a stale authorization scan cannot cancel a command after a real replacement grant is adopted', { timeout: 120000 }, async () => {
+  const f = await fixture();
+  let entered, release;
+  const checked = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { release = resolve; });
+  try {
+    await f.owner.agent.dispatch(f.identity, f.activity.activityId, f.context, f.action);
+    await f.authority.revoke(f.grant.grantId);
+    const scan = f.owner.agent.reconcileAuthorization(async (_identity, _activityId, origin) => {
+      try { await f.authority.assertSourceAuthorized(origin, 'teaching.dependencies'); }
+      catch { entered(); await gate; throw new StorageError('forbidden'); }
+    });
+    await checked;
+    const grant = await f.authority.authorize({ sourceEnvironmentId: f.context.origin.sourceEnvironmentId, sourceServiceId: f.context.origin.sourceServiceId,
+      sourceInstallationId: f.context.origin.sourceInstallationId, capabilities: ['teaching.dependencies'] });
+    await f.owner.agent.adoptAuthorization({ ...f.context.origin, grantId: grant.grantId },
+      (from, to) => Promise.resolve(from.sourceInstallationId === to.sourceInstallationId));
+    release(); await scan;
+    assert.equal((await f.owner.agent.status(f.identity, f.activity.activityId, f.context, f.action.requestId)).cancelled, false);
+    assert.equal((await f.owner.read(f.identity, f.activity.activityId, f.action.requestId)).stopRequested, false);
+    await f.authority.revoke(grant.grantId);
+    const deadline = Date.now() + 5000;
+    while (!(await f.owner.agent.status(f.identity, f.activity.activityId, f.context, f.action.requestId)).cancelled) {
+      await f.owner.agent.reconcileAuthorization(async (_identity, _activityId, origin) => {
+        try { await f.authority.assertSourceAuthorized(origin, 'teaching.dependencies'); }
+        catch { throw new StorageError('forbidden'); }
+      });
+      assert.ok(Date.now() < deadline, 'revoking every adopted grant must still cancel the original command');
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    await f.owner.agent.validate();
+  } finally { release(); await f.close(); }
 });
 
 

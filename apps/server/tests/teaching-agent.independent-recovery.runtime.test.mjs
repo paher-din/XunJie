@@ -5,7 +5,8 @@ import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
 import { test } from 'node:test';
-import { openProductRuntime, restoreProductRecovery, resolveCredential } from '@xunjie/product-runtime';
+import { createProductRuntimeHost, createProductLearningApplication, openProductRuntime, restoreProductRecovery, resolveCredential } from '@xunjie/product-runtime';
+import { StorageError } from '@xunjie/storage';
 import { fixture, reply, until } from './support/teaching-input-control.mjs';
 import { runPublishedAggregation } from './support/teaching-recovery.mjs';
 import { executionActionSchema } from '@xunjie/contracts/execution';
@@ -27,7 +28,7 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
   const sourceRoot = join(directory, 'source'), targetRoot = join(directory, 'target');
   const source = openProductRuntime({ root: sourceRoot, resources: f.resources });
   const target = openProductRuntime({ root: targetRoot, resources: f.resources });
-  let backend = await freePort(), restored, failure, browser, page;
+  let backend = await freePort(), restored, failure, browser, page, receiverHost;
   // A stable product address forwards real HTTP only. Both sides remain full production hosts.
   const proxy = createServer((incoming, outgoing) => {
     const forwarded = httpRequest({ hostname: '127.0.0.1', port: backend, path: incoming.url, method: incoming.method, headers: incoming.headers }, response => {
@@ -38,6 +39,18 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
   await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
   const publicEndpoint = `http://127.0.0.1:${proxy.address().port}`;
   try {
+    if (mode === 'tool') {
+      await f.runtime.stop();
+      let failMaterialOnce = true;
+      receiverHost = await createProductRuntimeHost({ root: f.root, createApplication: async context => {
+        const application = await createProductLearningApplication(context);
+        return { ...application, owners: application.owners.map(owner => !owner.receiverMaterial ? owner : { ...owner,
+          async receiverMaterial(input) {
+            if (failMaterialOnce) { failMaterialOnce = false; throw new StorageError('unavailable'); }
+            return owner.receiverMaterial(input);
+          } }) };
+      } });
+    }
     await f.configure();
     const dormant = await f.activity('接收学校中无关的休眠学习对话');
     await f.send(dormant, '保留这个未回应的问题。');
@@ -94,7 +107,9 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
     assert.equal(material.evidence.tables.teaching_runs.count, 1); assert.equal(material.evidence.pending.studentQuestions, mode === 'student' ? 1 : 0);
     for (const entry of restored.owners) await entry.close?.(); restored = undefined;
     const isolated = await target.start(); assert.equal(isolated.state, 'maintenance'); assert.equal(f.payloads.length, 2);
-    await target.recovery.takeover({ sourceRoot, receivers: [{ id: `${data.environmentId}/${data.serviceId}`, root: f.root }] });
+    const takeover = { sourceRoot, receivers: [{ id: `${data.environmentId}/${data.serviceId}`, root: f.root }] };
+    if (mode === 'tool') await assert.rejects(target.recovery.takeover(takeover), error => error.code === 'maintenance-failed');
+    await target.recovery.takeover(takeover);
     backend = targetPort;
     const freshInbound = await target.authorize({ sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId,
       sourceInstallationId: schoolEnvironment.installationId, capabilities: ['teaching.agent'] }, agent.serviceId);
@@ -105,9 +120,11 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
       sourceInstallationId: isolated.environment.installationId, capabilities: ['teaching.dependencies'] }, data.serviceId);
     await target.connect(dependency, freshDependency.token);
     const after = await api(base + '/conversation');
-    const rotatedGrant = await f.runtime.authorize({ sourceEnvironmentId: agent.environmentId, sourceServiceId: agent.serviceId,
-      sourceInstallationId: isolated.environment.installationId, capabilities: ['teaching.dependencies'] }, data.serviceId);
+    const grants = await Promise.all([0, 1].map(() => f.runtime.authorize({ sourceEnvironmentId: agent.environmentId, sourceServiceId: agent.serviceId,
+      sourceInstallationId: isolated.environment.installationId, capabilities: ['teaching.dependencies'] }, data.serviceId)));
+    const rotatedGrant = grants[0];
     await target.reconnect({ ...dependency, credentialRef: 'recovery-dependencies-rotated' }, rotatedGrant.token);
+    await f.runtime.revoke(grants[1].grantId); await f.runtime.revoke(freshDependency.grantId);
     await target.recovery.takeover({ sourceRoot, receivers: [{ id: `${data.environmentId}/${data.serviceId}`, root: f.root }] });
     assert.deepEqual((await api(base + '/conversation')).questions, after.questions);
     assert.deepEqual(after.questions, before.questions); assert.equal(after.runs[0].runId, first.runId);
@@ -161,6 +178,7 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
     for (const [runtime, root] of [[target, targetRoot], [source, sourceRoot]]) if (await access(join(root, 'installation.json')).then(() => true, () => false)) {
       try { await runtime.stop(); } catch (error) { errors.push(error); }
     }
+    try { await receiverHost?.stop(); } catch (error) { errors.push(error); }
     try { await f.close(); } catch (error) { errors.push(error); }
     proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve));
     if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('xj-independent-recovery-')) throw new Error('Unexpected cleanup target');

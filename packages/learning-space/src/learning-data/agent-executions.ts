@@ -87,9 +87,12 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
         FROM agent_execution_commands c LEFT JOIN agent_execution_origins o ON o.command_id=$2
         LEFT JOIN agent_execution_authorities a ON a.command_id=$2 WHERE c.command_id=$1`, [fixed.commandId, requestId]);
       if (saved) {
+        const current = originSchema.parse(saved.current_source), caller = originSchema.parse(context.origin);
         if (saved.activity_id !== activityId || saved.request_id !== requestId || saved.kind !== kind
           || saved.input_digest !== inputDigest || hash(saved.association) !== hash(fixed)
-          || hash(saved.current_source) !== hash(originSchema.parse(context.origin))) fail('identity-conflict');
+          || current.sourceEnvironmentId !== caller.sourceEnvironmentId || current.sourceServiceId !== caller.sourceServiceId
+          || current.sourceInstallationId !== caller.sourceInstallationId) fail('identity-conflict');
+        // The host authenticated this live grant; multiple credentials for the same installation do not change its command identity.
         return; // The immutable original receipt is already present; never replay a different fingerprint.
       }
     }
@@ -192,7 +195,7 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
     });
     const commandIds = z.array(z.uuid()).parse(claimed.result);
     if (!commandIds.length) return [];
-    const { rows } = await storage.read(`SELECT c.*,o.identity,COALESCE(a.source,o.source) AS source,o.cleanup_state FROM agent_execution_origins o
+    const { rows } = await storage.read(`SELECT c.*,o.identity,COALESCE(a.source,o.source) AS source,a.history,o.cleanup_state FROM agent_execution_origins o
       JOIN agent_execution_commands c USING(command_id) LEFT JOIN agent_execution_authorities a USING(command_id)
       WHERE c.command_id=ANY($1::uuid[]) ORDER BY c.command_id`, [commandIds]);
     const results: { requestId: string; state: 'pending' | 'confirmed'; query: ExecutionQuery | null }[] = [];
@@ -202,7 +205,23 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
       const origin = row.source === null ? undefined : originSchema.parse(row.source);
       if (row.cleanup_state === 'none') {
         try {
-          await authorize(identity, activityId, origin);
+          const candidates: (AgentExecutionOrigin | undefined)[] = [origin];
+          if (origin && row.history) {
+            const history = z.array(z.object({ from: originSchema, to: originSchema }).strict()).parse(row.history);
+            for (const candidate of history.flatMap(transfer => [transfer.to, transfer.from])) {
+              if (candidate.sourceEnvironmentId === origin.sourceEnvironmentId && candidate.sourceServiceId === origin.sourceServiceId
+                && candidate.sourceInstallationId === origin.sourceInstallationId && !candidates.some(saved => saved?.grantId === candidate.grantId)) candidates.push(candidate);
+            }
+          }
+          let denied: unknown;
+          for (const candidate of candidates) {
+            try { await authorize(identity, activityId, candidate); denied = undefined; break; }
+            catch (error) {
+              if (!(error instanceof StorageError) || !['forbidden', 'missing', 'identity-conflict'].includes(error.code)) throw error;
+              denied = error;
+            }
+          }
+          if (denied) throw denied;
           if (await terminalFact(storage, activityId, String(row.request_id))) {
             await storage.request({ requestId: `agent-origin-ended:${row.command_id}`, fingerprint: String(row.input_digest) }, async tx => {
               await tx.query("UPDATE agent_execution_origins SET cleanup_state='ended' WHERE command_id=$1 AND cleanup_state='none'", [row.command_id]);
@@ -220,10 +239,17 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
       // Re-read and verify original scope/digest before recording or touching any physical owner.
       const original = await root(identity, activityId, context, String(row.request_id), false);
       if (!original) fail('corrupt');
-      await storage.request({ requestId: `agent-origin-cleanup:${row.command_id}`, fingerprint: String(row.input_digest) }, async tx => {
-        await tx.query("UPDATE agent_execution_origins SET cleanup_state='pending' WHERE command_id=$1 AND cleanup_state='none'", [row.command_id]);
-        return null;
-      });
+      if (row.cleanup_state === 'none') {
+        const checkedSource = hash(row.source);
+        const cleanup = await storage.request({ requestId: `agent-origin-cleanup:${row.command_id}:${checkedSource}`, fingerprint: String(row.input_digest) }, async tx => {
+          const { rows: [current] } = await tx.query(`SELECT o.cleanup_state,COALESCE(a.source,o.source) AS source FROM agent_execution_origins o
+            LEFT JOIN agent_execution_authorities a USING(command_id) WHERE o.command_id=$1 FOR UPDATE OF o`, [row.command_id]);
+          if (!current || current.cleanup_state !== 'none' || hash(current.source) !== checkedSource) return false;
+          await tx.query("UPDATE agent_execution_origins SET cleanup_state='pending' WHERE command_id=$1", [row.command_id]);
+          return true;
+        });
+        if (!cleanup.result) continue; // A newly adopted authorization must be checked before its command can be cleaned.
+      }
       const digest = createHash('sha256').update('agent-stop:' + row.command_id).digest('hex');
       const stopId = `${digest.slice(0,8)}-${digest.slice(8,12)}-4${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;
       let query: ExecutionQuery | null;
@@ -245,14 +271,14 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
   }
   async function adoptAuthorization(value: unknown, successor: (from: AgentExecutionOrigin, to: AgentExecutionOrigin) => Promise<boolean>) {
     const source = originSchema.parse(value);
-    const { rows } = await storage.read(`SELECT o.command_id,o.identity,c.activity_id,COALESCE(a.source,o.source) AS source,
-      a.command_id IS NOT NULL AS transferred FROM agent_execution_origins o JOIN agent_execution_commands c USING(command_id)
+    const { rows } = await storage.read(`SELECT o.command_id,o.identity,c.activity_id,COALESCE(a.source,o.source) AS source
+      FROM agent_execution_origins o JOIN agent_execution_commands c USING(command_id)
       LEFT JOIN agent_execution_authorities a USING(command_id) WHERE o.cleanup_state='none' AND c.cancelled=false AND o.source IS NOT NULL`);
     const transfers: { commandId: string; from: AgentExecutionOrigin }[] = [];
     for (const row of rows) {
       const from = originSchema.parse(row.source);
       if (from.sourceEnvironmentId !== source.sourceEnvironmentId || from.sourceServiceId !== source.sourceServiceId
-        || from.grantId === source.grantId || from.sourceInstallationId === source.sourceInstallationId && !row.transferred) continue;
+        || from.grantId === source.grantId) continue;
       const activity = await options.activity(spaceIdentitySchema.parse(row.identity), String(row.activity_id));
       if (activity.status !== 'open' || !await successor(from, source)) continue;
       transfers.push({ commandId: String(row.command_id), from });
@@ -263,11 +289,14 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
         const { rows: [current] } = await tx.query(`SELECT o.cleanup_state,c.cancelled,COALESCE(a.source,o.source) AS source
           FROM agent_execution_origins o JOIN agent_execution_commands c USING(command_id)
           LEFT JOIN agent_execution_authorities a USING(command_id) WHERE o.command_id=$1 FOR UPDATE OF o,c`, [transfer.commandId]);
-        if (!current || current.cleanup_state !== 'none' || current.cancelled || hash(current.source) !== hash(transfer.from)) continue;
+        if (!current || current.cleanup_state !== 'none' || current.cancelled) continue;
+        const from = originSchema.parse(current.source);
+        if (hash(from) !== hash(transfer.from) && (from.sourceEnvironmentId !== source.sourceEnvironmentId
+          || from.sourceServiceId !== source.sourceServiceId || from.sourceInstallationId !== source.sourceInstallationId)) fail('identity-conflict');
         await tx.query(`INSERT INTO agent_execution_authorities VALUES($1,$2,$3)
           ON CONFLICT(command_id) DO UPDATE SET source=EXCLUDED.source,
           history=agent_execution_authorities.history||EXCLUDED.history`,
-        [transfer.commandId, source, JSON.stringify([{ from: transfer.from, to: source }])]);
+        [transfer.commandId, source, JSON.stringify([{ from, to: source }])]);
       }
       return null;
     });

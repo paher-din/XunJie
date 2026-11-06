@@ -343,7 +343,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           // never turn a handler-only acknowledgement into an execution-safety proof.
           const reopen = maintenance.status().phase === 'open' || maintenance.status().reason === 'receiver-fence';
           gatesClosed = true;
-          if (reopen || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
+          if (maintenance.status().phase === 'open' || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
           await maintenance.validate();
           let proof: SourceFenceProof | undefined;
           for (const serviceId of new Set<string>(sourceServiceIds)) for (const target of authorities.values()) {
