@@ -4,6 +4,7 @@ import { teachingContinueSelectionSchema, teachingRunControlReceiptSchema,
   teachingStopInputSchema, isRecoverableTeachingPause, type TeachingRunControlReceipt, type TeachingEventKind } from '@xunjie/contracts/teaching-agent';
 import type { LearningModelPort } from '../model-connections/service.js';
 import { canonicalDigest, operationId } from './identity.js';
+import { insertTeachingRun } from './run-records.js';
 
 /** Explicit controls use the same durable order and original-identity ledger as input revision. */
 export function createTeachingRunControls(storage: OwnedStorage, owner: {
@@ -72,10 +73,8 @@ export function createTeachingRunControls(storage: OwnedStorage, owner: {
           source: 'student-explicit', originalBudgetPreserved: true });
       } else if (nextRunId) {
         const root = selected[0]!;
-        await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,previous_run_id,usage)
-          VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [nextRunId, activityId, root.request_id, root.input_id,
-          JSON.stringify(identity), runId, JSON.stringify({ state: 'unknown' })]);
-        await owner.freezeBudget(tx, nextRunId);
+        await insertTeachingRun(tx, { runId: nextRunId, activityId, requestId: String(root.request_id), inputId: String(root.input_id),
+          identity, previousRunId: runId }, owner.freezeBudget);
         for (const item of selected) {
           await tx.query("UPDATE teaching_inputs SET state='pending',reason='',waiting_on_run_id=$2 WHERE input_id=$1", [item.input_id, nextRunId]);
           await tx.query('INSERT INTO teaching_run_input_selections VALUES($1,$2,$3)', [nextRunId, item.input_id, item.version]);

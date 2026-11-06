@@ -11,6 +11,28 @@ import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { StorageError } from '@xunjie/storage';
 import { fixture, reply, until } from './support/teaching-input-control.mjs';
 
+test('an expired student question pauses every queued input with its original reason', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response) => reply(response, { calls: [{ id: 'expiring-question', name: 'student_ask', arguments: {
+    question: '等待你的明确预测。', source: '当前任务', options: [], allowText: true, skippable: true } }] }));
+  try {
+    const activity = await f.activity(), c = await f.controlled(activity, { limits: { waitMs: 1500 } });
+    c.agent.resume();
+    const original = await c.send('先问我，再等回应。');
+    await until(async () => (await c.agent.conversation(c.identity, activity.activityId)).questions[0]?.state === 'pending', 'The original question waits.');
+    const queued = await c.send('等完整一轮结束后再处理。', { version: 1, mode: 'queue', basis: { source: 'explicit', preferenceVersion: 0 } });
+    const final = await until(async () => {
+      const value = await c.agent.conversation(c.identity, activity.activityId);
+      return value.runs[0]?.state === 'paused' ? value : null;
+    }, 'The expired question closes the original Run.');
+    assert.equal(final.runs[0].runId, original.runId);
+    const pending = final.inputs.find(input => input.inputId === queued.inputId);
+    assert.equal(pending.state, 'paused'); assert.equal(pending.reason, 'student-response-expired');
+    assert.ok((await c.agent.events(c.identity, activity.activityId)).some(event => event.kind === 'inputs-paused'
+      && event.body.inputIds.includes(queued.inputId)));
+    assert.equal(f.payloads.length, 1);
+  } finally { await f.close(); }
+});
+
 test('input revisions, personal preferences and controls survive maintenance, read-only restore and fenced takeover', { timeout: 300000 }, async () => {
   let release;
   const gate = new Promise(resolve => { release = resolve; });
@@ -305,6 +327,9 @@ test('steering wakes discussion during a real long-tool Wait, then the original 
     await learning.executions.report(identity, activity.activityId, commandId, report);
     assert.equal((await agent.conversation(identity, activity.activityId)).runs.length, 2);
     assert.equal(f.payloads.length, 4);
+    await agent.stop(identity, activity.activityId, first.runId, { requestId: randomUUID() });
+    await agent.validate();
+    assert.equal(f.payloads.length, 4, 'Archiving original cleanup must not change the immutable observed result or call a model.');
   } finally { try { await cleanupResult(); } finally { await f.close(); } }
 });
 

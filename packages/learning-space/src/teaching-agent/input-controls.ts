@@ -4,10 +4,12 @@ import { teachingInputControlSchema, teachingInputControlReceiptSchema, type Tea
   teachingControlReceiptSchema, type TeachingInputControlReceipt } from '@xunjie/contracts/teaching-agent';
 import { canonicalDigest, operationId } from './identity.js';
 import { teachingInputDigest, teachingInputFromRow, type createTeachingInputs } from './inputs.js';
+import { insertTeachingRun } from './run-records.js';
 
 export function createTeachingInputControls(storage: OwnedStorage, owner: {
   inputs: ReturnType<typeof createTeachingInputs>;
   appendEvent(tx: OwnedTransaction, activityId: string, kind: TeachingEventKind, body: Record<string, unknown>): Promise<{ seq: number }>;
+  freezeBudget(tx: OwnedTransaction, runId: string): Promise<void>;
 }) {
   async function read(tx: OwnedTransaction, activityId: string, inputId: string) {
     const { rows: [row] } = await tx.query(`SELECT i.*,v.body FROM teaching_inputs i JOIN teaching_input_revisions v
@@ -47,9 +49,8 @@ export function createTeachingInputControls(storage: OwnedStorage, owner: {
           await tx.query(`INSERT INTO teaching_requests(request_id,activity_id,input_digest,body,state,run_id,input_id,receipt)
             VALUES($1,$2,$3,$4,'accepted',$5,$6,$7)`, [requestId, activityId, receipt.inputDigest, JSON.stringify(promoted), runId,
             replacementInputId, JSON.stringify(receipt)]);
-          if (!active) await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,previous_run_id,usage)
-            VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [runId, activityId, requestId, replacementInputId, JSON.stringify(latest.identity),
-            latest.run_id, JSON.stringify({ state: 'unknown' })]);
+          if (!active) await insertTeachingRun(tx, { runId, activityId, requestId, inputId: replacementInputId,
+            identity: latest.identity, previousRunId: String(latest.run_id) }, owner.freezeBudget);
           await tx.query("UPDATE teaching_inputs SET state='superseded',reason='promoted-to-new-input' WHERE input_id=$1", [inputId]);
           const event = await owner.appendEvent(tx, activityId, 'input-promoted', { inputId: replacementInputId, runId,
             fromInputId: inputId, fromVersion: input.expectedVersion, requestId: input.requestId, question: fixed.draft.question });

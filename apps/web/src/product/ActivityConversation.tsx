@@ -133,8 +133,8 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
       <span>{runLabel(latest, conversation.waits)}</span>
       <AgentRunControls key={scope + latest.runId} run={latest} inputs={conversation.inputs} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh} />
     </div>}
-    {!active && latest && latest.state !== 'completed' && <div className="teaching-run-status">
-      <span>{runLabel(latest, conversation.waits)}</span>
+    {!active && latest && (latest.state !== 'completed' || conversation.inputs.some(input => ['pending', 'paused'].includes(input.state))) && <div className="teaching-run-status">
+      <span>{latest.state === 'completed' ? '仍有待处理输入，选择后继续。' : runLabel(latest, conversation.waits)}</span>
       <div className="teaching-run-actions">
         <AgentRunControls key={scope + latest.runId} run={latest} inputs={conversation.inputs} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh} />
         {onModels && latest.state === 'paused' && ['model-not-selected', 'model-unavailable', 'max-output-missing'].includes(latest.reason) &&

@@ -15,6 +15,19 @@ const controlReasons: Record<string, string> = {
   'original-effects-unconfirmed': '原操作仍在核对，暂时不能建立后继任务。',
   'select-inputs': '请先选择要继续处理的输入。', 'run-active': '当前任务仍在运行，请先核对其状态。',
 }
+const pauseReasons: Record<string, string> = {
+  'stop-requested': '你已停止原任务，等待你决定如何继续。',
+  'student-response-expired': '原提问等待回应的期限已到，自动推进已暂停。',
+  'wait-expired': '原操作等待结果的期限已到，自动推进已暂停。',
+  'model-not-selected': '尚未选择模型，可以检查设置后继续。',
+  'model-unavailable': '当前模型暂不可用，输入仍保留。',
+  'model-step-budget-exhausted': '本次任务的计算预算已用尽。',
+  'tool-budget-exhausted': '本次任务的操作预算已用尽。',
+  'input-token-budget-exhausted': '本次任务的输入额度已用尽。',
+  'output-token-budget-exhausted': '本次任务的输出额度已用尽。',
+  'model-call-budget-exhausted': '本次任务的调用时间已用尽。',
+  'run-deadline-exceeded': '本次任务的总期限已到。',
+}
 
 /** Every control is protected before delivery. Remounts query the original receipt before retrying. */
 function useAgentControl(scope: string, target: string, readOnly: boolean, request: Request, confirmed: () => Promise<void>) {
@@ -44,7 +57,8 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
       const saved = await agentControlStore.change(key, current => {
         if (!current) throw new Error('原记录暂不可用。')
         return receipt.status === 'accepted' && pending.input.operation === 'revise' && current.draft && current.draft.text === pending.input.text
-          ? { ...current, draft: { ...current.draft, editing: false } } : current
+          ? { ...current, draft: { ...current.draft, editing: false,
+            expectedVersion: 'input' in receipt && receipt.input ? receipt.input.version : current.draft.expectedVersion } } : current
       })
       if (alive.current) {
         setRecord(saved); setError(receipt.status === 'rejected' ? controlReasons[receipt.reason] ?? '操作未生效，原内容仍保留。' : '')
@@ -102,16 +116,20 @@ export function AgentInputRecord({ input, scope, readOnly, request, onConfirmed 
   return <div className="agent-input-record" data-input-id={input.inputId} data-state={input.state}>
     <p className="detail">{status} · {input.mode === 'queue' ? '本轮结束后处理' : '引导当前任务'}</p>
     {input.version > 1 && <div className="preserve-lines"><span className="detail">当前版本：{input.version}</span><p>{input.input.draft.question}</p></div>}
-    {input.state === 'paused' && <p className="detail">暂停原因：{input.reason || '原任务未正常完成'}</p>}
+    {input.state === 'paused' && <><p className="detail">{pauseReasons[input.reason] ?? '原任务未正常完成，输入仍保留，可选择后继续。'}</p>
+      {input.reason && <details><summary>技术详情</summary><p className="detail">{input.reason}</p></details>}</>}
     <details><summary>发送时的依据与版本</summary><p className="detail">版本 {input.version}；{input.input.delivery?.basis.source === 'preference' ? '使用当时的个人偏好' : '本次明确选择'}。</p>
       {input.input.draft.references.map(ref => <p className="detail" key={ref.referenceId}>引用：{ref.sourceName}</p>)}
       {input.input.works.map(work => <p className="detail" key={work.objectId}>作品：{work.name}</p>)}
     </details>
     {editable && !editing && !readOnly && <div className="agent-control-actions">
-      <button type="button" className="outline" disabled={disabled} onClick={() => control.change({ draft: { text: input.input.draft.question, expectedVersion: input.version, editing: true } })}>编辑</button>
+      <button type="button" className="outline" disabled={disabled} onClick={() => control.change({ draft: { text: draft?.text ?? input.input.draft.question,
+        expectedVersion: draft?.expectedVersion ?? input.version, editing: true } })}>编辑</button>
       <button type="button" className="outline" disabled={disabled} onClick={() => void control.submit(`inputs/${input.inputId}/control`, { version: 1, expectedVersion: input.version, operation: 'remove' })}>移除</button>
       {input.mode === 'queue' && <button type="button" className="outline" disabled={disabled} onClick={() => void control.submit(`inputs/${input.inputId}/control`, { version: 1, expectedVersion: input.version, operation: 'promote' })}>改为引导</button>}
     </div>}
+    {!editable && !editing && draft && (draft.text !== input.input.draft.question || draft.expectedVersion !== input.version) && <button type="button"
+      className="outline" disabled={disabled} onClick={() => control.change({ draft: { ...draft, editing: true } })}>查看保留的修改草稿</button>}
     {editing && draft && <div className="agent-input-editor">
       <label>修改待处理内容<textarea aria-label="修改待处理内容" rows={4} value={draft.text} disabled={disabled} maxLength={QUESTION_TEXT_MAX_LENGTH}
         onChange={event => control.change({ draft: { ...draft, text: event.target.value } })} /></label>

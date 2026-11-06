@@ -72,6 +72,6 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 - `apps/server/tests/teaching-agent.student-ask.runtime.test.mjs`：真实 HTTP/Agent/Gateway/PG 的问题、呈现、明确选择/文字/跳过、原身份查询、竞争回应、期限/预算、重启、隔离只读和接管。
 - `apps/server/tests/teaching-tools-host.runtime.test.mjs`：执行点资格、连续原生状态、浏览器领取与撤销、固定来源和维护所属边界。
 - `apps/server/tests/model-progress.test.mjs`：增量发布的凭据尾部扣留与停止公开。
-- `apps/web/e2e/teachingConversation.spec.ts`：正式入口首问、刷新、追加问题、生成期间草稿阻塞、停止、课程问答、进程重启和缺模型设置入口；macOS 与 Windows 桌面 Chrome 均执行。
+- `apps/web/e2e/teachingConversation.spec.ts`：正式入口首问、刷新、追加问题、生成期间保留新草稿和引导入口、停止、课程问答、进程重启和缺模型设置入口；macOS 与 Windows 桌面 Chrome 均执行。
 - `apps/web/e2e/teachingTools.spec.ts`：正式对话中的工具记录、来源定位、真实组件、浏览器等待／停止／重开和丢回执核对；实际平台结果以 #198 交付证据为准。
 - `apps/web/e2e/studentAsk.spec.ts`：正式 Chrome 回应入口、IP 定位、焦点/草稿保护、中文原文、未接收/丢回包、明确跳过和明暗窄桌面；实际平台通过项与未执行项分别报告。

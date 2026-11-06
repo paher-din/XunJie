@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { teachingRunControlReceiptSchema } from '@xunjie/contracts/teaching-agent'
 import { fixture, reply, until } from '../../server/tests/support/teaching-input-control.mjs'
 
 const evidence = process.env.XUNJIE_INPUT_CONTROL_EVIDENCE_DIR
@@ -74,7 +75,7 @@ test('personal interaction settings persist and the busy composer freezes the ch
       return value.inputs.find((input: { input: { draft: { question: string } } }) => input.input.draft.question.startsWith('界面排队'))?.state
     }).toBe('pending')
     const received = (await f.api(`agent/${activity.activityId}/conversation`)).inputs.at(-1)
-    expect(received.input.delivery).toEqual({ version: 1, mode: 'queue', basis: { source: 'preference', preferenceVersion: (await f.api('agent-settings')).version } })
+    expect(received?.input.delivery).toEqual({ version: 1, mode: 'queue', basis: { source: 'preference', preferenceVersion: (await f.api('agent-settings')).version } })
     expect(f.payloads.length).toBe(1)
     await page.getByLabel('你的问题', { exact: true }).fill('尚未发送的中文草稿\n保留下一步想法。')
     await page.screenshot({ path: join(evidence, `input-control-queue-${process.platform}.png`) })
@@ -106,6 +107,9 @@ test('queued input editing survives reload and lost control receipts without cha
     await queued.getByRole('button', { name: '编辑', exact: true }).click()
     await queued.getByLabel('修改待处理内容', { exact: true }).fill('修改草稿，刷新后仍保留。')
     await expect(queued).toContainText('修改草稿已在本机保留。')
+    await queued.getByRole('button', { name: '保留草稿并收起', exact: true }).click()
+    await queued.getByRole('button', { name: '编辑', exact: true }).click()
+    await expect(queued.getByLabel('修改待处理内容', { exact: true })).toHaveValue('修改草稿，刷新后仍保留。')
     await page.reload()
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(page.getByLabel('修改待处理内容', { exact: true })).toHaveValue('修改草稿，刷新后仍保留。')
@@ -177,6 +181,7 @@ test('stop and selected continuation keep original control identities and remove
     await until(() => f.payloads.length === 1, 'Original generation is in flight.')
     await f.send(activity, '这条待处理内容要移除。', { version: 1, mode: 'queue', basis: { source: 'explicit', preferenceVersion: 0 } })
     const selected = await f.send(activity, '这条输入由我选择继续。', { version: 1, mode: 'queue', basis: { source: 'explicit', preferenceVersion: 0 } })
+    await f.send(activity, '另一条暂停的引导稍后还要继续。')
     await page.goto(f.endpoint + '/?activity=' + activity.activityId)
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
     const conversation = page.getByRole('region', { name: '与 Agent 的对话', exact: true })
@@ -196,10 +201,18 @@ test('stop and selected continuation keep original control identities and remove
     await expect(page.getByText('只处理你明确选择继续的输入。', { exact: true })).toBeVisible({ timeout: 20000 })
     const value = await f.api(`agent/${activity.activityId}/conversation`)
     expect(value.runs.length).toBe(2)
-    expect(value.inputs.find((input: { inputId: string }) => input.inputId === selected.inputId).state).toBe('adopted')
+    expect(value.inputs.find((input: { inputId: string }) => input.inputId === selected.inputId)?.state).toBe('adopted')
     expect(f.payloads.length).toBe(2)
     expect(controls.length).toBe(1)
-    expect((await f.api(`agent/${activity.activityId}/controls/${controls[0]}`)).operation).toBe('stop')
+    expect(teachingRunControlReceiptSchema.parse(await f.api(`agent/${activity.activityId}/controls/${controls[0]}`)).operation).toBe('stop')
+    await conversation.getByRole('checkbox', { name: '另一条暂停的引导稍后还要继续。', exact: true }).check()
+    await conversation.getByRole('button', { name: '继续选中的输入', exact: true }).click()
+    await expect.poll(async () => {
+      const runs = (await f.api(`agent/${activity.activityId}/conversation`)).runs
+      return runs.length === 3 && runs.at(-1)?.state === 'completed'
+    }).toBe(true)
+    expect((await f.api(`agent/${activity.activityId}/conversation`)).runs.length).toBe(3)
+    expect(f.payloads.length).toBe(3)
     await page.screenshot({ path: join(evidence, `input-control-continue-${process.platform}.png`) })
   } finally { await f.close() }
 })
@@ -242,7 +255,7 @@ test('explicit response bypasses queue, consumption rejects a late edit and anot
     await expect(page.getByText('明确回应与补充第 4 步。', { exact: true })).toBeVisible({ timeout: 20000 })
     const value = await f.api(`agent/${activity.activityId}/conversation`)
     expect(value.runs.length).toBe(2)
-    expect(value.inputs.find((input: { inputId: string }) => input.inputId === queued.inputId).version).toBe(1)
+    expect(value.inputs.find((input: { inputId: string }) => input.inputId === queued.inputId)?.version).toBe(1)
     expect(value.questions[0].state).toBe('answered')
     expect(f.payloads.length).toBe(4)
   } finally { releaseEdit(); releaseModel(); await f.close() }

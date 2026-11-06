@@ -26,6 +26,7 @@ import { orderTeachingWrites } from './input-order.js';
 import { createTeachingInputControls } from './input-controls.js';
 import { createTeachingRunControls } from './run-controls.js';
 import { validateTeachingInputs } from './input-validation.js';
+import { insertTeachingRun } from './run-records.js';
 import { createTeachingRunDriver, TeachingBudgetError, type TeachingRunLimits } from './driver.js';
 import type { TeachingToolHost } from './tool-types.js';
 import { studentAskDefinition } from './student-questions.js';
@@ -204,12 +205,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       await tx.query(`INSERT INTO teaching_requests(request_id,activity_id,input_digest,body,state,run_id,input_id,receipt)
         VALUES($1,$2,$3,$4,'accepted',$5,$6,$7)`, [input.requestId, input.scope.activityId, inputDigest,
         JSON.stringify(input), targetRunId, inputId, JSON.stringify(accepted)]);
-      if (!busy) await tx.query(`INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,usage,previous_run_id)
-        VALUES($1,$2,$3,$4,$5,'received',$6,$7)`, [runId, input.scope.activityId, input.requestId, inputId,
-        JSON.stringify({ environmentId: input.scope.environmentId, spaceId: input.scope.spaceId,
-          principalId: input.scope.principalId, kind: activity.identity.kind, name: activity.identity.name }),
-        JSON.stringify({ state: 'unknown' }), previous?.run_id ?? null]);
-      if (!busy) await driver.freezeBudget(tx, runId);
+      if (!busy) await insertTeachingRun(tx, { runId, activityId: input.scope.activityId, requestId: input.requestId, inputId,
+        identity: activity.identity, previousRunId: previous ? String(previous.run_id) : null }, driver.freezeBudget);
       const received = await appendEvent(tx, input.scope.activityId, 'input', { runId: targetRunId, requestId: input.requestId, inputId,
         question: input.draft.question, references: input.draft.references.map(reference => ({ referenceId: reference.referenceId,
           source: reference.source, sourceName: reference.sourceName, copy: reference.copy })), works: input.works.map(work => ({ objectId: work.objectId,
@@ -656,7 +653,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   const inputs = createTeachingInputs(storage, { appendEvent, freezeBudget: (tx, runId) => driver.freezeBudget(tx, runId),
     supersedeQuestion: (tx, activityId, runId, inputId) => studentQuestions.supersede(tx, activityId, runId, inputId) });
-  const inputControls = createTeachingInputControls(storage, { inputs, appendEvent });
+  const inputControls = createTeachingInputControls(storage, { inputs, appendEvent,
+    freezeBudget: (tx, runId) => driver.freezeBudget(tx, runId) });
   const runControls = createTeachingRunControls(storage, { models: options.models, appendEvent,
     freezeBudget: (tx, runId) => driver.freezeBudget(tx, runId) });
   const studentQuestions = createStudentQuestions(storage, { activity: options.activity, appendEvent });
@@ -1092,9 +1090,20 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
     if (wait.observed_step_id) {
       const observed = steps.find(step => step.step_id === wait.observed_step_id);
       const plan = observed?.plan as { inputVersions?: unknown[]; waitVersions?: { waitId: string; outcomeDigest: string }[] } | undefined;
-      if (!observed || observed.run_id !== wait.run_id || wait.state !== 'consumed' || wait.purpose !== 'result'
-        || plan?.inputVersions && !plan.waitVersions?.some(fixed => fixed.waitId === wait.wait_id && fixed.outcomeDigest === canonicalDigest(command.outcome)))
-        throw new StorageError('corrupt');
+      if (!observed || observed.run_id !== wait.run_id || wait.state !== 'consumed' || wait.purpose !== 'result') throw new StorageError('corrupt');
+      if (plan?.inputVersions) {
+        const fixed = plan.waitVersions?.find(fixed => fixed.waitId === wait.wait_id);
+        const { rows: observations } = await storage.read(`SELECT body FROM teaching_events WHERE activity_id=$1
+          AND kind='wait-observed' AND body->>'waitId'=$2 AND body->>'stepId'=$3`, [runs.find(run => run.run_id === wait.run_id)?.activity_id,
+          wait.wait_id, wait.observed_step_id]);
+        const fact = observations[0]?.body as { outcomeDigest?: string; outcome?: unknown } | undefined;
+        // Cleanup can append a new physical-state head. The model consumed the immutable
+        // observation committed with its plan, never that later mutable command projection.
+        if (!fixed || observations.length !== 1 || !fact?.outcome || fact.outcomeDigest !== fixed.outcomeDigest
+          || canonicalDigest(fact.outcome) !== fixed.outcomeDigest) throw new StorageError('corrupt');
+        const outcome = fact.outcome as { feedback: object };
+        modelToolResultSchema.parse({ callId: command.call_id, ...outcome.feedback });
+      }
     }
   }
   await validateStudentQuestions(storage);

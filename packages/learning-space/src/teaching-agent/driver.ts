@@ -283,7 +283,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       await owner.inputs.adopt(tx, run, stepId, fixedInputs);
       for (const wait of plan.waitVersions!) {
         await tx.query('UPDATE teaching_waits SET observed_step_id=$2 WHERE wait_id=$1 AND observed_step_id IS NULL', [wait.waitId, stepId]);
-        await event(tx, run.activityId, 'wait-observed', { runId: run.runId, stepId, waitId: wait.waitId, outcomeDigest: wait.outcomeDigest });
+        await event(tx, run.activityId, 'wait-observed', { runId: run.runId, stepId, waitId: wait.waitId,
+          outcomeDigest: wait.outcomeDigest, outcome: ready.find(row => row.wait_id === wait.waitId)!.outcome });
       }
       await event(tx, run.activityId, 'budget-reserved', { runId: run.runId, stepId, attemptId,
         modelSteps: 1, outputTokens: plan.input.limits.maxOutputTokens, inputTokens: 'unknown', inputReserve,
@@ -656,6 +657,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         lease_owner=NULL,lease_expires_at=NULL WHERE run_id=$1`, [run.runId, stopped ? 'stopped' : 'paused', stopped ? 'stop-requested' : 'student-response-expired']);
       await event(tx, run.activityId, stopped ? 'run-stopped' : 'system-notice', { runId: run.runId,
         reason: stopped ? 'stop-requested' : 'student-response-expired', nativeToolsPaired: true });
+      await owner.inputs.afterFinish(tx, run, stopped ? 'stopped' : 'paused', stopped ? 'stop-requested' : 'student-response-expired');
     });
   }
   async function execute(initial: TeachingRun, generation: number) {
