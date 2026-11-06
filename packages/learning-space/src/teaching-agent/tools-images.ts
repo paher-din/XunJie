@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
 import type { WorkFile } from '@xunjie/contracts/learning-data';
-import type { createModelGateway } from '../model-connections/index.js';
+import type { LearningModelPort } from '../model-connections/service.js';
 import type { TeachingToolScope } from './tool-types.js';
-export type TeachingImageModels = Pick<Awaited<ReturnType<typeof createModelGateway>>, 'images' | 'segments'>;
+export type TeachingImageModels = Pick<LearningModelPort, 'images' | 'segments'>;
 export async function imageRoute(scope: TeachingToolScope, models?: TeachingImageModels) {
   if (!models || !scope.segmentId) return { available: false as const, reason: 'fixed-model-segment-required' };
   const segment = await models.segments.read(scope.identity, scope.segmentId);

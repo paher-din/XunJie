@@ -9,7 +9,7 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (route === 'models/selection') return body === undefined ? models.selection.read(identity, deviceOwner) : models.selection.save(identity, body);
   if (route === 'models/grants' && body !== undefined) {
     const input = modelGrantInputSchema.parse(body);
-    if (input.owner === 'device' && !deviceOwner) throw new StorageError('forbidden');
+    if (input.owner === 'device' && !deviceOwner) return models.selection.createDeviceGrant(identity, input);
     return models.selection.createGrant(identity, input.owner === 'device' ? deviceOwner! : identity, input);
   }
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);

@@ -1,6 +1,8 @@
 import { z } from 'zod';
-import { modelUsageSchema } from './model-connections.js';
+import { modelUsageSchema, modelToolResultSchema } from './model-connections.js';
 import { teachingHelpPolicySchema } from './course-help.js';
+import { runtimeServiceSchema } from './product-runtime.js';
+import { spaceIdentitySchema } from './spaces.js';
 
 export { teachingHelpPolicySchema } from './course-help.js';
 
@@ -109,3 +111,34 @@ export const teachingAgentCapabilitiesSchema = z.object({
 export function teachingAgentReceiverId(ownerServiceId: string) {
   return `teaching-agent:${ownerServiceId}`;
 }
+
+/** Maintainer-owned routing facts. Connection secrets never enter this descriptor. */
+export const teachingAgentBindingSchema = z.object({
+  version: z.literal(1), connectionId: z.uuid(),
+  target: runtimeServiceSchema.refine(service => service.unit === 'teaching-agent'),
+  installationId: z.uuid(),
+}).strict();
+export type TeachingAgentBinding = z.infer<typeof teachingAgentBindingSchema>;
+export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({ version: true }).extend({
+  requestId: z.uuid(), identity: spaceIdentitySchema,
+}).strict();
+export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events',
+  'capabilities', 'run', 'stop', 'continueRun', 'request', 'snapshot', 'assertCommandDispatch', 'assertModelDispatch']);
+export const teachingAgentCallSchema = z.object({ version: z.literal(1), operation: teachingAgentOperationSchema,
+  identity: spaceIdentitySchema, activityId: z.uuid(), args: z.array(z.unknown()).max(4) }).strict();
+
+export const teachingPreparedToolSchema = z.object({ version: z.literal(1), commandId: z.uuid(), name: z.string().min(1),
+  arguments: z.record(z.string(), z.unknown()), effect: z.enum(['read', 'execute', 'input', 'stop']), conflictKey: z.string().min(1),
+  location: z.enum(['owner', 'browser', 'native', 'remote']), basis: z.record(z.string(), z.unknown()) }).strict();
+export const teachingToolOutcomeSchema = z.object({ state: z.enum(['not-dispatched', 'accepted', 'completed', 'failed', 'unknown']),
+  feedback: modelToolResultSchema.omit({ callId: true }), result: z.record(z.string(), z.unknown()),
+  source: z.object({ label: z.string(), componentKey: z.string().optional(), requestId: z.uuid().optional(), contentId: z.uuid().optional() }).strict(),
+  execution: z.object({ requestId: z.uuid(), executionRef: z.string(), inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional() }).strict();
+export const teachingDispatchAuthoritySchema = z.object({ runId: z.uuid(), activityId: z.uuid(),
+  driverId: z.string().min(1).max(1000), generation: z.number().int().positive() }).strict();
+export const teachingDependencyCallSchema = z.object({ version: z.literal(1),
+  operation: z.enum(['authorize', 'identityFor', 'activity', 'model', 'tool.definitions', 'tool.prepare', 'tool.dispatch', 'tool.reconcile', 'tool.stop']),
+  identity: spaceIdentitySchema.optional(),
+  activityId: z.uuid().optional(),
+  scope: z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict().optional(),
+  authority: teachingDispatchAuthoritySchema.optional(), args: z.array(z.unknown()).max(4) }).strict();

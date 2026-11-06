@@ -38,7 +38,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
   authorize(identity: SpaceIdentity): Promise<void>;
   assertWritable(): void;
   readPortable(identity: SpaceIdentity, resultRef: string): Promise<unknown>;
-  snapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning?: boolean): Promise<CheckSnapshot>;
+  snapshot(identity: SpaceIdentity, source: ModelCheckInput['source'], learning?: boolean, selectedSource?: unknown): Promise<CheckSnapshot>;
   assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt' | 'purpose'>, credentialRef: string): Promise<void>;
 }) {
   async function stored(identity: SpaceIdentity, id: string) {
@@ -123,9 +123,10 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     const snapshot = await owner.snapshot(identity, input.source);
     return decideModelCapabilities(snapshot.connection, input.prefix);
   }
-  async function create(identity: SpaceIdentity, value: unknown) {
+  async function create(identity: SpaceIdentity, value: unknown, selectedSource?: unknown) {
     owner.assertWritable(); await owner.authorize(identity);
-    const input = modelSegmentInputSchema.parse(value), scope = modelScopeOf(identity), hash = digest({ scope, input });
+    const input = modelSegmentInputSchema.parse(value), scope = modelScopeOf(identity), hash = digest({ scope, input, ...(selectedSource ? { selectedSource } : {}) });
+    if (selectedSource && (!('selected' in input.source) || input.purpose !== 'learning')) throw new StorageError('invalid');
     const prior = await storage.receipt('model-segment:' + input.requestId, hash); if (prior) return read(identity, input.segmentId);
     // The shared contract is wide enough for learning; probe segments keep their original wire bounds.
     if ((input.purpose ?? 'chat-probe') !== 'learning'
@@ -134,7 +135,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if ('draft' in input.source) throw new StorageError('invalid');
     validatePrefix(input.prefix);
     const options = input.prefix.options;
-    const snapshot = await owner.snapshot(identity, input.source, input.purpose === 'learning');
+    const snapshot = await owner.snapshot(identity, input.source, input.purpose === 'learning', selectedSource);
     const decision = decideModelCapabilities(snapshot.connection, input.prefix);
     // Preserve explicit diagnostic probes without upgrading evidence. Messages has no JSON-object wire form.
     if (!decision.available && (!options?.capabilityProbe
@@ -323,7 +324,8 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (segment.headAttemptId === fact.attemptId || segment.sequence > fact.segment.sequence && segment.pendingAttemptId !== fact.attemptId) return;
     if (segment.pendingAttemptId !== fact.attemptId || segment.sequence !== fact.segment.sequence) throw new StorageError('conflict');
     await tx.query('UPDATE model_segments SET body=$2 WHERE id=$1', [segment.segmentId,
-      { ...segment, sequence: segment.sequence + 1, headAttemptId: fact.attemptId, pendingAttemptId: null }]);
+      { ...segment, sequence: segment.sequence + 1, headAttemptId: fact.attemptId, pendingAttemptId: null,
+        closed: segment.closed || fact.state !== 'completed' }]);
     if (fact.resultRef) await tx.reference('model-segment-result:' + fact.attemptId, fact.resultRef);
   }
   async function validate() {

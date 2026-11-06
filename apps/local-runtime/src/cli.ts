@@ -26,7 +26,7 @@ const commands: Record<string, readonly string[]> = {
   delete: ['environment-id', 'resources'],
   database: ['resources'],
   'set-credential': ['ref', 'file', 'resources'],
-  authorize: ['file', 'out', 'resources'],
+  authorize: ['file', 'out', 'resources', 'service-id'],
   revoke: ['grant-id', 'resources'],
   connect: ['file', 'resources'],
   'recovery-key': ['out'],
@@ -44,6 +44,9 @@ const commands: Record<string, readonly string[]> = {
   'school-model': ['file', 'resources'],
   'model-task': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
+  'agent-binding': ['file', 'resources'],
+  'model-device-binding': ['file', 'resources'],
+  'model-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
   'component-import': ['file', 'resources'],
   'component-read': ['file', 'resources'],
@@ -148,7 +151,7 @@ async function main(): Promise<void> {
         resources: { type: 'string' }, profile: { type: 'string' },
         file: { type: 'string' }, ref: { type: 'string' },
         out: { type: 'string' }, 'environment-id': { type: 'string' },
-        'grant-id': { type: 'string' }, json: { type: 'boolean' },
+        'grant-id': { type: 'string' }, 'service-id': { type: 'string' }, json: { type: 'boolean' },
         help: { type: 'boolean' },
       },
     });
@@ -207,8 +210,8 @@ async function main(): Promise<void> {
   const installOptions = async (): Promise<InstallOptions> => {
     const config = values.config === undefined ? {} : await jsonFile(required('config'), '安装配置');
     const profile = values.profile ?? config.profile ?? 'local';
-    if (!['local', 'school', 'remote', 'model'].includes(String(profile))) {
-      throw new Error('profile 必须是 local、school、remote 或 model');
+    if (!['local', 'school', 'remote', 'model', 'agent'].includes(String(profile))) {
+      throw new Error('profile 必须是 local、school、remote、model 或 agent');
     }
     return { ...config, profile } as InstallOptions;
   };
@@ -226,7 +229,7 @@ async function main(): Promise<void> {
   };
   const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result' | 'component-import' | 'component-read' | 'component-status', body: unknown, timeout = 15000) => {
     const status = await run(() => runtime.status());
-    if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+    if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本产品环境');
     const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
       method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeout),
       headers: { 'content-type': 'application/json', authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` },
@@ -372,19 +375,22 @@ async function main(): Promise<void> {
     case 'school-member':
     case 'school-membership':
     case 'school-connection':
-    case 'learning-binding': {
-      const input = await jsonFile(required('file'), '学校成员操作');
+    case 'learning-binding':
+    case 'agent-binding':
+    case 'model-device-binding':
+    case 'model-binding': {
+      const input = await jsonFile(required('file'), '产品管理操作');
       if (typeof input.password === 'string') rememberSecret(input.password);
       const status = await run(() => runtime.status());
-      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本产品环境');
       const action = command === 'school-member' ? 'members' : command === 'school-membership' ? 'membership'
-        : command === 'learning-binding' ? 'local-binding' : 'connection';
+        : command === 'learning-binding' ? 'local-binding' : command === 'school-connection' ? 'connection' : command;
       const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
         method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
         headers: { 'content-type': 'application/json', authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` },
         body: JSON.stringify(input),
       });
-      if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
+      if (!response.ok) throw new Error(`产品管理操作未完成（${response.status}），请核对输入及当前授权`);
       output(await response.json()); break;
     }
     case 'component-import': {
@@ -436,7 +442,7 @@ async function main(): Promise<void> {
       if (typeof input.credential === 'object' && input.credential !== null && 'value' in input.credential
         && typeof input.credential.value === 'string') rememberSecret(input.credential.value);
       const status = await run(() => runtime.status());
-      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本产品环境');
       const response = await fetch(new URL('/api/learning/manage/model-default', status.endpoint), { method: 'POST', redirect: 'error',
         signal: AbortSignal.timeout(15000), headers: { 'content-type': 'application/json',
           authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` }, body: JSON.stringify(input) });
@@ -545,7 +551,7 @@ async function main(): Promise<void> {
           sourceServiceId: input.sourceServiceId,
           sourceInstallationId,
           capabilities: input.capabilities,
-        } as Authorization);
+        } as Authorization, values['service-id'] as string | undefined);
         grantId = grant.grantId;
         rememberSecret(grant.token);
         await destination.writeFile(`${JSON.stringify(grant, null, 2)}\n`, 'utf8');

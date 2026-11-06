@@ -9,9 +9,9 @@ import { canonicalValue, decideExecutionPlacement, defaultExecutionLimits, execu
 import type { ModelToolIntent } from '@xunjie/contracts/model-connections';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
-import type { AgentExecutionContext } from '../learning-data/agent-executions.js';
+import type { AgentExecutionContext, AgentExecutionOrigin } from '../learning-data/agent-executions.js';
 import { verifyPlannedExecution } from '../learning-data/plan.js';
-import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
+import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
 import { teachingDefinitions } from './tools-schema.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-images.js';
 
@@ -28,12 +28,13 @@ export function createTeachingTools(options: {
   courses: Courses;
   models?: TeachingImageModels;
   /** Alternative to scope.assertDispatch for hosts that reconstruct a permit by original association. */
+  executionOrigin?: () => AgentExecutionOrigin | undefined;
   authorizeDispatch?: (scope: TeachingToolScope, command: TeachingPreparedTool) => Promise<void>;
   device?: (scope: TeachingToolScope) => Promise<ExecutionDevice | undefined>;
   environment?: (scope: TeachingToolScope) => Promise<{ device: ExecutionDevice; remoteAvailable: boolean }>;
 }): TeachingToolHost {
   const learning = options.learning;
-  async function authorize(scope: TeachingToolScope) {
+  async function authorize(scope: TeachingToolCleanupScope) {
     actionInputSchema.parse(scope.input);
     const identity = { environmentId: scope.identity.environmentId, spaceId: scope.identity.spaceId,
       principalId: scope.identity.principalId, activityId: scope.activity.activityId };
@@ -43,15 +44,18 @@ export function createTeachingTools(options: {
     if (current.course?.helpPolicy?.questions === 'disabled') fail('forbidden');
     return current;
   }
-  function context(scope: TeachingToolScope, command: TeachingPreparedTool): AgentExecutionContext {
-    return { runId: scope.runId, stepId: scope.stepId, commandId: command.commandId, snapshotId: scope.snapshotId,
+  function context(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, newDispatch = false): AgentExecutionContext {
+    const origin = options.executionOrigin?.();
+    // Reconciliation/claim reads use the already accepted original command, not a new Driver permit.
+    const { authority: _authority, ...acceptedScope } = scope;
+    return { ...(origin ? { origin } : {}), runId: scope.runId, stepId: scope.stepId, commandId: command.commandId, snapshotId: scope.snapshotId,
       assertDispatch: async () => {
         if ((scope as HostScope).assertDispatch) await (scope as HostScope).assertDispatch!();
-        else if (options.authorizeDispatch) await options.authorizeDispatch(scope, command);
+        else if (options.authorizeDispatch) await options.authorizeDispatch((newDispatch ? scope : acceptedScope) as TeachingToolScope, command);
         else fail('forbidden');
       } };
   }
-  function scopeBasis(scope: TeachingToolScope) {
+  function scopeBasis(scope: TeachingToolCleanupScope) {
     return { identity: scope.identity, activityId: scope.activity.activityId, runId: scope.runId,
       stepId: scope.stepId, snapshotId: scope.snapshotId, segmentId: scope.segmentId ?? null, input: scope.input, course: scope.activity.course ?? null };
   }
@@ -200,7 +204,7 @@ export function createTeachingTools(options: {
         ...(command.arguments.contentId ? { contentId: String(command.arguments.contentId) } : {}) },
       ...(query ? { execution: { requestId: query.requestId, executionRef: query.executionRef, inputDigest: query.inputDigest } } : {}) };
   }
-  async function queryOutcome(scope: TeachingToolScope, command: TeachingPreparedTool, query: ExecutionQuery | null) {
+  async function queryOutcome(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, query: ExecutionQuery | null) {
     if (!query) return null;
     let state: TeachingToolOutcome['state'] = query.statusKnowledge === 'unknown' ? 'unknown'
       : query.state === 'failed' || query.state === 'cancelled' ? 'failed' : query.state === 'succeeded' ? 'completed' : 'accepted';
@@ -265,7 +269,7 @@ export function createTeachingTools(options: {
       return outcome(command, 'completed', { source, ...await options.courses.referenceText(scope.identity, source) }, '课程开放材料');
     }
     if (command.name === 'course_operation') {
-      const ctx = context(scope, command), requestId = String(command.basis.requestId);
+      const ctx = context(scope, command, true), requestId = String(command.basis.requestId);
       const query = command.basis.control
         ? await learning().executions.agent.control(scope.identity, id, ctx, requestId, command.basis.control)
         : await learning().executions.agent.dispatch(scope.identity, id, ctx, command.basis.action);
@@ -283,7 +287,7 @@ export function createTeachingTools(options: {
     const query = await learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
     return await queryOutcome(scope, command, query) ?? cancellationOutcome(scope, command, requestId);
   }
-  async function cancellationOutcome(scope: TeachingToolScope, command: TeachingPreparedTool, requestId: string, cleanup = false) {
+  async function cancellationOutcome(scope: TeachingToolCleanupScope, command: TeachingPreparedTool, requestId: string, cleanup = false) {
     const inspect = cleanup ? learning().executions.agent.cleanupStatus : learning().executions.agent.status;
     const status = await inspect(scope.identity, scope.activity.activityId, context(scope, command), requestId);
     if (!status?.cancelled) return null;
@@ -291,7 +295,7 @@ export function createTeachingTools(options: {
       { requestId, cancelled: true, delivery: status.claimed ? 'stopping-original-browser' : 'cancelled-before-dispatch',
         browserId: status.browserId }, status.claimed ? '正在核对原浏览器停止' : '已取消待发命令');
   }
-  async function stop(scope: TeachingToolScope, command: TeachingPreparedTool) {
+  async function stop(scope: TeachingToolCleanupScope, command: TeachingPreparedTool) {
     // Cleanup checks the durable original capability, not current eligibility for new effects.
     if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
     if (command.effect === 'read') return null;
@@ -300,6 +304,8 @@ export function createTeachingTools(options: {
       { stopId: stopId(command.commandId), reason: '' });
     if (!query) return cancellationOutcome(scope, command, requestId, true);
     try {
+      // Normal eligibility may expose the original late result/artifact. Revoked callers
+      // receive only the restricted cleanup proof below, never source/result contents.
       await authorize(scope);
       const evidence = await queryOutcome(scope, command, query);
       if (evidence) {
@@ -309,7 +315,7 @@ export function createTeachingTools(options: {
             sessionStopped: !!query.session && completed }, '原执行清理', query);
       }
     } catch (error) {
-      if (!(error instanceof StorageError) || !['forbidden', 'identity-conflict'].includes(error.code)) throw error;
+      if (!(error instanceof StorageError) || !['forbidden', 'identity-conflict', 'missing'].includes(error.code)) throw error;
     }
     const completed = query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state);
     const state = completed ? command.name === 'execution_stop' || query.state === 'succeeded' ? 'completed' : 'failed' : 'unknown';

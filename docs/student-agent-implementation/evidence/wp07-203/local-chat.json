@@ -1,0 +1,215 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T08:18:49.273Z",
+  "mode": "local",
+  "protocol": "chat-completions",
+  "status": "failed",
+  "host": {
+    "name": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0"
+  },
+  "limits": {
+    "maxGenerations": 24,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "stages": [
+    {
+      "name": "private-provider-configured",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:18:49.325Z",
+      "fact": {
+        "configured": true,
+        "secretRecorded": false
+      },
+      "finishedAt": "2026-11-06T08:18:49.326Z"
+    },
+    {
+      "name": "deepseek-authentication-without-generation",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:18:49.327Z",
+      "fact": {
+        "httpStatus": 200,
+        "selectedModelPresent": true,
+        "generations": 0
+      },
+      "finishedAt": "2026-11-06T08:18:49.435Z"
+    },
+    {
+      "name": "install-and-start-school",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:18:52.355Z",
+      "fact": {
+        "state": "ready",
+        "profile": "local"
+      },
+      "finishedAt": "2026-11-06T08:18:56.717Z"
+    },
+    {
+      "name": "real-deepseek-selection",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:18:56.803Z",
+      "fact": {
+        "modelConnectionId": "3ea39bb4-1959-4b15-92f6-6ace1b4f054b",
+        "grantId": "4fddda95-b9c7-4361-8e80-5f0688ed5ca5",
+        "model": "deepseek-flash",
+        "modelLocation": "Mac"
+      },
+      "finishedAt": "2026-11-06T08:18:56.832Z"
+    },
+    {
+      "name": "durable-wait-before-browser-execution",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:18:57.114Z",
+      "fact": {
+        "elapsedMs": 2185,
+        "waits": [
+          {
+            "waitId": "7f1fe2f3-8af2-41f1-9f1e-b25b337e5307",
+            "runId": "41f95a8f-6f76-483b-8165-69fc0abddc8e",
+            "stepId": "8a2992c3-2629-47ee-800f-6f2d214e2b3e",
+            "commandId": "9542ba05-61ab-4b18-903b-819d1ea3ccc4",
+            "state": "pending",
+            "reason": "browser",
+            "deadline": "2026-11-07T08:18:58.833Z",
+            "nextCheckAt": "2026-11-06T08:18:59.833Z",
+            "consumedAt": null
+          }
+        ],
+        "tools": [
+          {
+            "commandId": "9542ba05-61ab-4b18-903b-819d1ea3ccc4",
+            "name": "course_operation",
+            "location": "browser"
+          }
+        ]
+      },
+      "finishedAt": "2026-11-06T08:18:59.225Z"
+    },
+    {
+      "name": "chrome-real-course-result-and-model-explanation",
+      "status": "failed",
+      "startedAt": "2026-11-06T08:19:00.892Z",
+      "error": "no-completed-course-tool",
+      "finishedAt": "2026-11-06T08:19:06.741Z"
+    }
+  ],
+  "engineering": "owned-by-mainline",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "source": {
+    "commit": "0db776529d9d72756ca9385e42533f1df41b4156",
+    "trackedDiffSha256": "c649d2b6fea204f75d6e03ca0e00665ab624462112af658c52ca7c0662a4b9e0",
+    "probeSha256": "69fb481200c999ba582cef6dbd2f2f22b6ffd84f6a0160e5877e44fe6df3020e"
+  },
+  "budget": {
+    "usedBefore": 0,
+    "available": 24,
+    "limit": 24,
+    "usedAfter": 2
+  },
+  "package": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-06T08:17:01.122Z",
+    "distributionSha256": "6c67b6ea54cec50608482d0d5e71d40ca302621660fd1003a3547bc827edd503",
+    "applicationSha256": "d4e55eef4253deb0c27da8f1c81ddfbcd048a1feac4ff40c3052eac20f11e17f",
+    "nodeVersion": "v24.21.0",
+    "postgresVersion": "postgres (PostgreSQL) 18.6"
+  },
+  "temporaryRoot": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-b7Pu3Q",
+  "school": {
+    "formatVersion": 1,
+    "environmentId": "4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+    "installationId": "d65700e2-aea9-4add-b51e-569746f29163",
+    "clientNamespace": "xunjie.v1.4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+    "profile": "local",
+    "services": [
+      {
+        "environmentId": "4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+        "serviceId": "e496b3a0-11fd-4013-8a7e-5928d58c3925",
+        "unit": "client",
+        "endpoint": "http://127.0.0.1:56982",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status",
+          "learning.authority"
+        ]
+      },
+      {
+        "environmentId": "4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+        "serviceId": "31da057f-0bbe-486d-85c9-6d7573f54e2a",
+        "unit": "space-course",
+        "endpoint": "http://127.0.0.1:56982",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      },
+      {
+        "environmentId": "4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+        "serviceId": "9f57b714-a818-4721-b9c4-eefe9a3eae2b",
+        "unit": "learning-data",
+        "endpoint": "http://127.0.0.1:56982",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status",
+          "teaching.dependencies"
+        ]
+      },
+      {
+        "environmentId": "4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+        "serviceId": "37cffd5e-7893-47db-84f0-f5c799abbce3",
+        "unit": "model-connection",
+        "endpoint": "http://127.0.0.1:56982",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      },
+      {
+        "environmentId": "4ff2cf1b-505f-4d94-a3c4-7841b1c6e4ce",
+        "serviceId": "0f545e7c-973e-4e6f-8f3b-c77205634318",
+        "unit": "teaching-agent",
+        "endpoint": "http://127.0.0.1:56982",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      }
+    ]
+  },
+  "activityId": "60985dc4-3d19-4b49-af82-4c3ad60a35f7",
+  "requestId": "496a93a6-4611-41e5-a61f-79ec0cf4704a",
+  "runId": "41f95a8f-6f76-483b-8165-69fc0abddc8e",
+  "failure": {
+    "code": "no-completed-course-tool"
+  },
+  "cleanup": [
+    {
+      "owner": "school",
+      "stopped": true,
+      "deleted": true
+    }
+  ],
+  "providerRequests": [
+    {
+      "index": 1,
+      "path": "/v1/chat/completions",
+      "startedAt": "2026-11-06T08:18:57.362Z",
+      "status": 200,
+      "elapsedMs": 1047
+    },
+    {
+      "index": 2,
+      "path": "/v1/chat/completions",
+      "startedAt": "2026-11-06T08:19:01.969Z",
+      "status": 200,
+      "elapsedMs": 4182
+    }
+  ],
+  "finishedAt": "2026-11-06T08:19:07.407Z"
+}

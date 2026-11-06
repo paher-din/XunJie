@@ -8,7 +8,7 @@ import type { ActionInput, ActionReceipt, ActionReceiver } from '@xunjie/contrac
 import type { ModelUsage } from '@xunjie/contracts/model-connections';
 import {
   teachingAgentReceiverId, teachingContinueInputSchema, teachingConversationSchema, teachingEventSchema,
-  teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema,
+  teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingDispatchAuthoritySchema,
 } from '@xunjie/contracts/teaching-agent';
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot,
@@ -16,11 +16,13 @@ import type {
 import type { ContextMessage } from './context.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
+import { teachingDeploymentMigration, validateTeachingDependencyBindings, type TeachingDispatchAuthority } from './remote-state.js';
+import { chunkChannelMigrationSql, createChunkChannel } from './chunk-channel.js';
 import { createTeachingRunDriver, type TeachingRunLimits } from './driver.js';
 import type { TeachingToolHost } from './tool-types.js';
 import type { ModelTool } from '@xunjie/contracts/model-connections';
 import { modelLearningInputSchema, modelToolResultSchema } from '@xunjie/contracts/model-connections';
-import type { createModelGateway } from '../model-connections/index.js';
+import type { LearningModelPort } from '../model-connections/service.js';
 
 const reasonText = (reason: unknown) => {
   switch (typeof reason === 'string' ? reason : '') {
@@ -60,7 +62,8 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     attempt_id uuid NOT NULL,segment_id uuid NOT NULL,body jsonb NOT NULL,resource_id uuid NOT NULL,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX teaching_snapshots_run ON teaching_snapshots(run_id);
-` }, teachingToolMigration];
+` }, teachingToolMigration, teachingDeploymentMigration,
+{ version: 4, name: 'agent-owned-chunk-channel', sql: chunkChannelMigrationSql }];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -72,7 +75,7 @@ export interface TeachingAgentOptions {
   authorize(identity: SpaceIdentity): Promise<void>;
   identityFor(scope: { environmentId: string; spaceId: string; principalId: string }): Promise<SpaceIdentity>;
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
-  models: Awaited<ReturnType<typeof createModelGateway>>;
+  models: LearningModelPort;
   tools?: TeachingToolHost;
   limits?: Partial<TeachingRunLimits>;
   leaseMs?: number;
@@ -80,6 +83,7 @@ export interface TeachingAgentOptions {
   /** Durable authority identity; separate process namespaces must differ even when they share storage in tests. */
   driverId?: string;
   start?: boolean;
+  withAuthority?<T>(authority: TeachingDispatchAuthority, work: () => Promise<T>): Promise<T>;
 }
 
 export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgentOptions) {
@@ -135,6 +139,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
 
   async function accept(input: ActionInput, inputDigest: string): Promise<ActionReceipt> {
     if (writesClosed) throw new StorageError('maintenance');
+    input = actionInputSchema.parse(input);
+    if (digest(input) !== inputDigest) throw new StorageError('invalid');
     if (input.receiver.receiverId !== receiverId) throw new StorageError('forbidden');
     const identity = await options.identityFor(input.scope);
     if (identity.environmentId !== input.scope.environmentId) throw new StorageError('forbidden');
@@ -231,8 +237,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       if (!row) return null;
       const run = toRun(row);
       if (terminal(run.state)) return null;
-      if (active.has(runId) && row.lease_owner === ownerId) return null;
-      if (row.lease_owner && row.lease_owner !== ownerId && row.lease_live) return null;
+      // kick() already excludes active work in this process. A retry must be able to reclaim
+      // its own expired lease after a lost dependency reply, while every live lease stays held.
+      if (row.lease_owner && row.lease_live) return null;
       const generation = Number(row.generation) + 1;
       const { rows: [claimed] } = await tx.query(`UPDATE teaching_runs SET lease_owner=$2,
         lease_expires_at=clock_timestamp()+($3 || ' milliseconds')::interval,generation=$4,
@@ -376,7 +383,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       }
     }
     await publishProgress();
-    while (!fact.physicalRequestEnded) {
+    // A remote owner may have acknowledged dispatch while its durable attempt is still
+    // accepted. That means no physical request has started, not that the answer has ended.
+    while (fact.state === 'accepted' || !fact.physicalRequestEnded) {
       const stored = toRun(await runRow(run.runId));
       if (stored.stopRequested && !fact.cancelRequested) await options.models.checks.cancel(identity, attemptId);
       if (Date.now() - lastHeartbeat > leaseMs / 2) { await heartbeat(run.runId, generation); lastHeartbeat = Date.now(); }
@@ -389,7 +398,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     return fact;
   }
   const driver = createTeachingRunDriver(storage, {
-    ...options, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
+    ...options, driverId: ownerId, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
     assertAuthority, appendEvent, historyBefore, ensureSegment, awaitAttempt, finish,
   });
 
@@ -401,8 +410,14 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       const claimed = await claim(runId);
       if (!claimed) return;
       const { run, generation } = claimed;
-      try { await driver.execute(run, generation); }
-      catch (error) {
+      const renewal = setInterval(() => {
+        if (!dispatchClosed && !writesClosed) void heartbeat(runId, generation).catch(() => {});
+      }, Math.max(1, Math.floor(leaseMs / 3)));
+      renewal.unref();
+      try {
+        if (options.withAuthority) await options.withAuthority({ runId, activityId: run.activityId, driverId: ownerId, generation }, () => driver.execute(run, generation));
+        else await driver.execute(run, generation);
+      } catch (error) {
         // A failed owner commit or lost lease never proves an external operation failed. Keep
         // the original step/attempt/command and let recovery query those identities.
         const reason = error instanceof z.ZodError ? 'corrupt' : error instanceof StorageError ? error.code
@@ -413,7 +428,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
             (row.usage as ModelUsage) ?? { state: 'unknown' }, (row.model as TeachingRun['model']) ?? null,
             { kind: 'system-notice', body: { runId, reason } }).catch(() => {});
         }
-      }
+      } finally { clearInterval(renewal); }
     })().finally(() => { starting.delete(runId); active.delete(runId) });
     active.set(runId, task);
     void task.catch(() => {});
@@ -611,28 +626,58 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       return { receiver: identity, modelAvailable: false, modelUnavailableReason: error.code };
     }
   }
-  /** The original browser may deliver an already permitted command while its Run sleeps. */
+  /** New Driver dispatch requires a live lease; an owner-held accepted command may be claimed while its Run sleeps. */
   async function assertCommandDispatch(identity: SpaceIdentity, activityId: string,
-    association: { runId: string; stepId: string; snapshotId: string; commandId: string }) {
+    association: { runId: string; stepId: string; snapshotId: string; commandId: string; authority?: TeachingDispatchAuthority }) {
     if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
-    await options.activity(identity, activityId);
+    await options.authorize(identity);
+    if ((await options.activity(identity, activityId)).status !== 'open') throw new StorageError('forbidden');
     await storage.pendingIntents();
-    const { rows: [row] } = await storage.read(`SELECT r.state,r.stop_requested,c.state AS command_state,s.snapshot_id
-      FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id JOIN teaching_steps s ON s.step_id=c.step_id
-      WHERE c.command_id=$1 AND c.run_id=$2 AND c.step_id=$3 AND r.activity_id=$4`,
-      [association.commandId, association.runId, association.stepId, activityId]);
-    if (!row || row.snapshot_id !== association.snapshotId || row.stop_requested || terminal(row.state as TeachingRun['state'])
-      || !['dispatching', 'waiting'].includes(String(row.command_state))) throw new StorageError('forbidden');
+    const authority = association.authority ? teachingDispatchAuthoritySchema.parse(association.authority) : undefined;
+    if (authority && (authority.runId !== association.runId || authority.activityId !== activityId)) throw new StorageError('forbidden');
+    await storage.request({ requestId: 'teaching-verify-command:'+randomUUID(), fingerprint: association.commandId }, async tx => {
+      const { rows: [row] } = await tx.query(`SELECT r.*,c.state AS command_state,c.generation AS command_generation,s.snapshot_id,
+          r.lease_expires_at>=clock_timestamp() AS live
+        FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id JOIN teaching_steps s ON s.step_id=c.step_id
+        WHERE c.command_id=$1 AND c.run_id=$2 AND c.step_id=$3 AND r.activity_id=$4 FOR UPDATE OF r,c`,
+        [association.commandId, association.runId, association.stepId, activityId]);
+      if (dispatchClosed || writesClosed || !row || JSON.stringify(runIdentity(row)) !== JSON.stringify(identity)
+        || row.snapshot_id !== association.snapshotId || row.stop_requested || terminal(row.state as TeachingRun['state'])
+        || !['dispatching', 'waiting'].includes(String(row.command_state))
+        || authority && (row.generation !== authority.generation || row.command_generation !== authority.generation
+          || row.lease_owner !== authority.driverId || !row.live)) throw new StorageError('forbidden');
+      return null;
+    });
   }
   async function validate() {
     await validateTeachingAgent(storage);
+  }
+
+  async function assertModelDispatch(identity: SpaceIdentity, activityId: string,
+    value: TeachingDispatchAuthority & { attemptId: string; dispatch: boolean }) {
+    if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
+    await options.authorize(identity);
+    if (value.activityId !== activityId || (await options.activity(identity, activityId)).status !== 'open') throw new StorageError('forbidden');
+    const { rows: [row] } = await storage.read(`SELECT r.*,s.dispatch_permitted,s.dispatch_generation FROM teaching_steps s
+      JOIN teaching_runs r USING(run_id) WHERE s.attempt_id=$1 AND r.run_id=$2 AND r.activity_id=$3`,
+      [value.attemptId, value.runId, activityId]);
+    if (!row || JSON.stringify(runIdentity(row)) !== JSON.stringify(identity) || row.stop_requested || terminal(row.state as TeachingRun['state'])
+      || row.generation !== value.generation || value.dispatch && (!row.dispatch_permitted || row.dispatch_generation !== value.generation))
+      throw new StorageError('forbidden');
+    await storage.request({ requestId: 'teaching-verify-permit:'+randomUUID(), fingerprint: value.attemptId }, async tx => {
+      const { rows: [current] } = await tx.query(`SELECT state,stop_requested,generation,lease_owner,lease_expires_at>=clock_timestamp() AS live
+        FROM teaching_runs WHERE run_id=$1 FOR UPDATE`, [value.runId]);
+      if (dispatchClosed || writesClosed || !current || current.stop_requested || terminal(current.state as TeachingRun['state'])
+        || current.generation !== value.generation || current.lease_owner !== value.driverId || !current.live) throw new StorageError('forbidden');
+      return null;
+    });
   }
 
   const receiver: ActionReceiver = { identity, accept, query, cancel };
   if (options.start !== false) startTicker();
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
-    run, conversation, events, snapshot, request, stop, continueRun, capabilities, assertCommandDispatch, validate,
+    run, conversation, events, snapshot, request, stop, continueRun, capabilities, assertCommandDispatch, assertModelDispatch, validate,
     closeWrites() { writesClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     closeDispatch() { dispatchClosed = true; if (ticker) clearInterval(ticker); ticker = undefined; },
     async drain() {
@@ -649,11 +694,13 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
 
 /** Recovery validation reads only this owner's durable facts; it never triggers a model call. */
 export async function validateTeachingAgent(storage: OwnedStorage) {
+  await createChunkChannel(storage).validate();
+  await validateTeachingDependencyBindings(storage);
   const { rows: requests } = await storage.read('SELECT * FROM teaching_requests');
   for (const row of requests) {
     const saved = actionReceiptSchema.parse(row.receipt);
     if (saved.requestId !== row.request_id || saved.inputDigest !== row.input_digest) throw new StorageError('corrupt');
-    if (row.body) actionInputSchema.parse(row.body);
+    if (row.body && digest(actionInputSchema.parse(row.body)) !== row.input_digest) throw new StorageError('corrupt');
     if (row.run_id) {
       const { rows: [run] } = await storage.read('SELECT activity_id FROM teaching_runs WHERE run_id=$1', [row.run_id]);
       if (!run || run.activity_id !== row.activity_id) throw new StorageError('corrupt');

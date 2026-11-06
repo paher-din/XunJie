@@ -1,11 +1,12 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
+import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { canonicalValue, executionActionSchema, executionAcceptanceSchema, executionControlSchema, executionStopSchema,
   agentExecutionAssociationSchema as associationSchema, agentBrowserIdSchema, agentBrowserCommandSchema,
-  agentBrowserPendingSchema, agentBrowserStopsSchema,
+  agentBrowserPendingSchema, agentBrowserStopsSchema, isTerminalExecutionState, executionQuerySchema,
   type AgentExecutionAssociation, type ExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
 
@@ -16,9 +17,23 @@ export const agentExecutionMigration: Migration = { version: 17, name: 'trusted-
     cancelled boolean NOT NULL DEFAULT false,claimed boolean NOT NULL DEFAULT false,browser_id uuid,stop_body jsonb,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX agent_execution_requests ON agent_execution_commands(activity_id,request_id);
 ` };
+export const agentExecutionOriginMigration: Migration = { version: 20, name: 'agent-execution-owner-cleanup-origins', sql: `
+  CREATE TABLE agent_execution_origins(command_id uuid PRIMARY KEY REFERENCES agent_execution_commands(command_id),
+    identity jsonb NOT NULL,source jsonb,cleanup_state text NOT NULL DEFAULT 'none' CHECK(cleanup_state IN ('none','pending','confirmed','ended')),
+    cleanup_query jsonb,next_check_at timestamptz NOT NULL DEFAULT clock_timestamp());
+  CREATE INDEX agent_execution_origins_due ON agent_execution_origins(next_check_at,command_id) WHERE cleanup_state IN ('none','pending');
+  INSERT INTO agent_execution_origins(command_id,identity)
+    SELECT c.command_id,a.body->'identity' FROM agent_execution_commands c JOIN activities a ON a.id=c.activity_id WHERE c.kind='submit';
+` };
+const originSchema = z.object({ sourceEnvironmentId: z.uuid(), sourceServiceId: z.uuid(),
+  sourceInstallationId: z.uuid(), grantId: z.uuid() }).strict();
+export type AgentExecutionOrigin = z.infer<typeof originSchema>;
+
 /** Only server code constructs this context. The callback is reconstructed from the durable Run permit. */
 export interface AgentExecutionContext extends AgentExecutionAssociation {
   assertDispatch(): Promise<void>;
+  /** Set by the trusted service host, never taken from a student or model payload. */
+  origin?: AgentExecutionOrigin;
 }
 const association = ({ runId, stepId, commandId, snapshotId }: AgentExecutionContext) =>
   associationSchema.parse({ runId, stepId, commandId, snapshotId });
@@ -26,6 +41,16 @@ const actionScope = (identity: SpaceIdentity, activityId: string) => ({ environm
   spaceId: identity.spaceId, principalId: identity.principalId, activityId });
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'invalid' | 'identity-conflict' | 'missing' | 'corrupt'): never { throw new StorageError(code); }
+
+/** Read persisted owner facts only. A monitor must never reconcile a supervisor through a different host handle. */
+async function terminalFact(storage: OwnedStorage, activityId: string, requestId: string): Promise<boolean> {
+  const { rows } = await storage.read(`SELECT state,status_knowledge FROM native_sessions WHERE activity_id=$1 AND request_id=$2
+    UNION ALL SELECT state,status_knowledge FROM execution_commands WHERE activity_id=$1 AND request_id=$2
+    UNION ALL SELECT execution->>'state' AS state,execution->>'statusKnowledge' AS status_knowledge
+      FROM channel_executions WHERE activity_id=$1 AND request_id=$2`, [activityId, requestId]);
+  return rows.length > 0 && rows.every(row => row.status_knowledge === 'confirmed'
+    && ['succeeded', 'failed', 'cancelled'].includes(String(row.state)));
+}
 
 export function createAgentExecutions(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
@@ -52,13 +77,20 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
   async function register(identity: SpaceIdentity, activityId: string, context: AgentExecutionContext,
     requestId: string, kind: 'submit' | 'control', body: unknown) {
     const fixed = association(context), inputDigest = hash(body);
-    await storage.request({ requestId: `agent-execution:${context.commandId}`, fingerprint: hash({ identity, activityId, fixed, body, kind, requestId }) }, async tx => {
+    await storage.request({ requestId: `agent-execution:${context.commandId}`, fingerprint: hash({ identity, activityId, fixed, body, kind, requestId, ...(context.origin ? { origin: originSchema.parse(context.origin) } : {}) }) }, async tx => {
       await tx.query(`INSERT INTO agent_execution_commands(command_id,request_id,activity_id,association,body_text,input_digest,kind)
         VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(command_id) DO NOTHING`, [fixed.commandId, requestId, activityId,
         JSON.stringify(fixed), JSON.stringify(body), inputDigest, kind]);
       const { rows: [saved] } = await tx.query('SELECT * FROM agent_execution_commands WHERE command_id=$1 FOR UPDATE', [fixed.commandId]);
       if (!saved || saved.activity_id !== activityId || saved.request_id !== requestId || saved.kind !== kind
         || saved.input_digest !== inputDigest || hash(saved.association) !== hash(fixed)) fail('identity-conflict');
+      if (kind === 'submit') {
+        const source = context.origin ? originSchema.parse(context.origin) : null;
+        await tx.query('INSERT INTO agent_execution_origins(command_id,identity,source) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
+          [fixed.commandId, spaceIdentitySchema.parse(identity), source]);
+        const { rows: [origin] } = await tx.query('SELECT identity,source FROM agent_execution_origins WHERE command_id=$1', [fixed.commandId]);
+        if (!origin || hash(origin.identity) !== hash(identity) || hash(origin.source) !== hash(source)) fail('identity-conflict');
+      }
       if (kind === 'submit') for (const file of executionActionSchema.parse(body).execution.basis.works)
         await tx.reference(`agent-execution/${fixed.commandId}/work/${file.contentId}`, file.contentId);
       return null;
@@ -123,13 +155,76 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
         [activityId, requestId, JSON.stringify(input)]);
       return null;
     });
-    try {
-      const current = await options.read(identity, activityId, requestId);
-      return current ? await options.stop(identity, activityId, requestId, input) : null;
-    } catch (error) {
-      if (!(error instanceof StorageError) || !['forbidden', 'identity-conflict'].includes(error.code)) throw error;
-      return options.reclaim(original.action, input);
+    // Reclaim validates the persisted original instance/claim and does not repair a
+    // different live host through the normal read/ensureReady path.
+    return options.reclaim(original.action, input);
+  }
+  /** Owner-only reconciliation. Original facts select cleanup targets; callers cannot inject a source or new effect. */
+  async function reconcileAuthorization(authorize: (identity: SpaceIdentity, activityId: string, origin?: AgentExecutionOrigin) => Promise<void>,
+    isOpen: () => boolean = () => true) {
+    if (!isOpen()) return [];
+    const due = await storage.read(`SELECT command_id FROM agent_execution_origins
+      WHERE cleanup_state IN ('none','pending') AND next_check_at<=clock_timestamp() ORDER BY next_check_at,command_id LIMIT 1`);
+    if (!due.rows.length) return [];
+    const claimed = await storage.request({ requestId: `agent-origin-check:${randomUUID()}`, fingerprint: 'agent-origin-check' }, async tx => {
+      const { rows } = await tx.query(`WITH due AS (
+        SELECT command_id FROM agent_execution_origins WHERE cleanup_state IN ('none','pending') AND next_check_at<=clock_timestamp()
+        ORDER BY next_check_at,command_id LIMIT 20 FOR UPDATE SKIP LOCKED)
+        UPDATE agent_execution_origins o SET next_check_at=clock_timestamp()+interval '1 second'
+        FROM due WHERE o.command_id=due.command_id RETURNING o.command_id`);
+      return rows.map(row => String(row.command_id));
+    });
+    const commandIds = z.array(z.uuid()).parse(claimed.result);
+    if (!commandIds.length) return [];
+    const { rows } = await storage.read(`SELECT c.*,o.identity,o.source,o.cleanup_state FROM agent_execution_origins o
+      JOIN agent_execution_commands c USING(command_id) WHERE c.command_id=ANY($1::uuid[]) ORDER BY c.command_id`, [commandIds]);
+    const results: { requestId: string; state: 'pending' | 'confirmed'; query: ExecutionQuery | null }[] = [];
+    for (const row of rows) {
+      if (!isOpen()) break;
+      const identity = spaceIdentitySchema.parse(row.identity), activityId = String(row.activity_id);
+      const origin = row.source === null ? undefined : originSchema.parse(row.source);
+      if (row.cleanup_state === 'none') {
+        try {
+          await authorize(identity, activityId, origin);
+          if (await terminalFact(storage, activityId, String(row.request_id))) {
+            await storage.request({ requestId: `agent-origin-ended:${row.command_id}`, fingerprint: String(row.input_digest) }, async tx => {
+              await tx.query("UPDATE agent_execution_origins SET cleanup_state='ended' WHERE command_id=$1 AND cleanup_state='none'", [row.command_id]);
+              return null;
+            });
+          }
+          continue;
+        }
+        catch (error) {
+          if (!(error instanceof StorageError) || !['forbidden', 'missing', 'identity-conflict'].includes(error.code)) continue;
+        }
+      }
+      const context: AgentExecutionContext = { ...associationSchema.parse(row.association),
+        assertDispatch: async () => fail('forbidden') };
+      // Re-read and verify original scope/digest before recording or touching any physical owner.
+      const original = await root(identity, activityId, context, String(row.request_id), false);
+      if (!original) fail('corrupt');
+      await storage.request({ requestId: `agent-origin-cleanup:${row.command_id}`, fingerprint: String(row.input_digest) }, async tx => {
+        await tx.query("UPDATE agent_execution_origins SET cleanup_state='pending' WHERE command_id=$1 AND cleanup_state='none'", [row.command_id]);
+        return null;
+      });
+      const digest = createHash('sha256').update('agent-stop:' + row.command_id).digest('hex');
+      const stopId = `${digest.slice(0,8)}-${digest.slice(8,12)}-4${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;
+      let query: ExecutionQuery | null;
+      try { query = await cleanup(identity, activityId, context, String(row.request_id), { stopId, reason: '' }); }
+      catch (error) {
+        if (error instanceof StorageError && ['maintenance', 'unavailable', 'resource-busy'].includes(error.code)) continue;
+        throw error;
+      }
+      const confirmed = query ? query.statusKnowledge === 'confirmed' && isTerminalExecutionState(query.state)
+        : original.action.execution.plan.location === 'browser' && !original.row.claimed;
+      const state = confirmed ? 'confirmed' as const : 'pending' as const;
+      await storage.request({ requestId: `agent-origin-cleanup-result:${row.command_id}:${hash([state, query])}`, fingerprint: hash([state, query]) }, async tx => {
+        await tx.query('UPDATE agent_execution_origins SET cleanup_state=$2,cleanup_query=$3 WHERE command_id=$1 AND cleanup_state IN (\'none\',\'pending\')', [row.command_id, state, query]);
+        return null;
+      });
+      results.push({ requestId: String(row.request_id), state, query });
     }
+    return results;
   }
   async function pendingBrowser(identity: SpaceIdentity, activityId: string) {
     await options.activity(identity, activityId);
@@ -193,7 +288,7 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
   }
   const validate = () => validateAgentExecutionCommands(storage);
 
-  return { dispatch, read, control, stop, cleanup, pendingBrowser, claimBrowser, acceptBrowser, browserStops, validate,
+  return { dispatch, read, control, stop, cleanup, reconcileAuthorization, pendingBrowser, claimBrowser, acceptBrowser, browserStops, validate,
     status: async (identity: SpaceIdentity, activityId: string, context: AgentExecutionContext, requestId: string) => {
       const found = await root(identity, activityId, context, requestId);
       return found ? { cancelled: Boolean(found.row.cancelled), claimed: Boolean(found.row.claimed),
@@ -238,6 +333,21 @@ export async function validateAgentExecutionCommands(storage: OwnedStorage) {
         [`agent-execution/${row.command_id}/work/${file.contentId}`]);
       if (refs.length !== 1 || refs[0]!.resource_id !== file.contentId) fail('corrupt');
     }
+  }
+  const { rows: origins } = await storage.read(`SELECT o.*,c.body_text,c.activity_id,c.kind FROM agent_execution_origins o
+    JOIN agent_execution_commands c USING(command_id)`);
+  for (const row of origins) {
+    const identity = spaceIdentitySchema.parse(row.identity);
+    const action = executionActionSchema.parse(JSON.parse(String(row.body_text)));
+    if (row.kind !== 'submit' || hash(action.scope) !== hash(actionScope(identity, String(row.activity_id)))) fail('corrupt');
+    if (row.source !== null) originSchema.parse(row.source);
+    if (row.cleanup_query !== null) {
+      const query = executionQuerySchema.parse(row.cleanup_query);
+      if (query.requestId !== action.requestId || hash(query.scope) !== hash(action.scope)) fail('corrupt');
+      if (['confirmed', 'ended'].includes(String(row.cleanup_state)) && (query.statusKnowledge !== 'confirmed' || !isTerminalExecutionState(query.state))) fail('corrupt');
+    } else if (row.cleanup_state === 'ended') {
+      if (!await terminalFact(storage, String(row.activity_id), action.requestId)) fail('corrupt');
+    } else if (row.cleanup_state === 'confirmed' && action.execution.plan.location !== 'browser') fail('corrupt');
   }
 }
 

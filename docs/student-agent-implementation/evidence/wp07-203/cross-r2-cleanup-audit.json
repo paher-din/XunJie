@@ -1,0 +1,11 @@
+{
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp07-203-model-22PGL5",
+  "rootExists": true,
+  "processes": [],
+  "listeners": [],
+  "children": [
+    ".locks",
+    "native-sessions",
+    ".xunjie-root"
+  ]
+}

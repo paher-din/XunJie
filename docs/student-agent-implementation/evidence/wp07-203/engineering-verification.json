@@ -1,0 +1,242 @@
+{
+  "issue": 203,
+  "recordedAt": "2026-11-06T11:03:22.545432+00:00",
+  "status": "passed",
+  "baseCommit": "0db7765",
+  "native": {
+    "command": "node --test --test-concurrency=1 [22 affected runtime test files]",
+    "tests": 196,
+    "pass": 191,
+    "fail": 5,
+    "failedTests": [
+      "tool RPC fences a delayed Driver while an unaccepted native command cannot start",
+      "tool RPC fences a delayed Driver while an accepted browser command remains claimable",
+      "tool RPC fences a delayed Driver while an accepted native outbox command remains claimable",
+      "tool RPC fences a delayed Driver while an accepted native outbox command remains claimable after an interrupted enqueue",
+      "closed activity rejects fresh model dispatch authority without changing the original attempt",
+      "failing tests:"
+    ],
+    "failure": "All five product runtimes exited during fixture startup; building shared dist overlapped this run. The runtime logs were removed by fixture cleanup, so that cause is not directly proven.",
+    "recheck": {
+      "file": "apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs",
+      "tests": 17,
+      "pass": 16,
+      "fail": 1,
+      "failedTest": "pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run",
+      "status": "resolved"
+    },
+    "log": "engineering-native-initial.log",
+    "finalRecoveryRecheck": {
+      "log": "engineering-native-recovery.log",
+      "tests": 17,
+      "pass": 17,
+      "fail": 0,
+      "fix": "Three Run reads inside cleanup/result transactions use the existing transaction connection. A real PostgreSQL barrier with eight concurrent stops reproduced pool starvation before the fix and passes after it.",
+      "historicalFailureAttribution": "The earlier timeout had no attempt or lease snapshot; the newly deterministic same-path pool race does not uniquely establish its historical cause."
+    },
+    "finalCoreRecheck": {
+      "log": "engineering-native-final.log",
+      "tests": 24,
+      "pass": 24,
+      "fail": 0,
+      "testFiles": [
+        "apps/server/tests/teaching-agent.runtime.test.mjs",
+        "apps/server/tests/teaching-agent.tools.runtime.test.mjs",
+        "apps/server/tests/teaching-agent.driver.runtime.test.mjs",
+        "apps/server/tests/learning-model-school-tasks.runtime.test.mjs",
+        "apps/server/tests/paired-model-grants.runtime.test.mjs"
+      ]
+    }
+  },
+  "grantTaskRecovery": {
+    "tests": 2,
+    "pass": 2,
+    "fail": 0,
+    "cases": [
+      "original grant creation reconciles a committed write with unknown acknowledgement",
+      "original grant revocation reconciles a committed write with resource busy",
+      "a busy grant at the queue head leaves later query and cancellation reachable with one actual SDK request"
+    ]
+  },
+  "chrome": {
+    "channel": "chrome",
+    "headed": true,
+    "tests": 16,
+    "pass": 15,
+    "skipped": 1,
+    "skipReason": "prior UI baseline capture only",
+    "specs": [
+      "personalModelSettings.spec.ts",
+      "teachingConversation.spec.ts",
+      "teachingTools.spec.ts"
+    ],
+    "log": "engineering-chrome.log",
+    "afterFinalRecoveryFix": {
+      "log": "engineering-chrome-final.log",
+      "pass": 6,
+      "skipped": 1,
+      "specs": [
+        "teachingConversation.spec.ts",
+        "teachingTools.spec.ts"
+      ],
+      "skipReason": "prior UI baseline capture only"
+    }
+  },
+  "teachingEffect": "not-evaluated",
+  "logs": {
+    ".verification/wp07-203-accepted-verify-console.log": {
+      "sha256": "ac8037033a7fe6931970623f390e134ff9aabd969df3d11033e78af86ba1f20a",
+      "bytes": 6160
+    },
+    ".verification/wp07-203-accepted-native.log": {
+      "sha256": "fda335a3e336f3d6c997e1dd71e1eb26c522e7ca3138b410a535e58ab8d3d4e0",
+      "bytes": 26917
+    },
+    ".verification/wp07-203-tools-recovery-recheck.log": {
+      "sha256": "3fba54c6a8ac14f7fb9312c2ed31adb701bdf92ab9f37564e64a3de27fd0597c",
+      "bytes": 73296
+    },
+    ".verification/wp07-203-grant-task-recovery.log": {
+      "sha256": "cb1d8100d10fad5231ade12463756b12ec119081e8924f5b9d891848b2daaac7",
+      "bytes": 325
+    },
+    ".verification/wp07-203-accepted-chrome.log": {
+      "sha256": "73f182a167c3fa6dc6dc156f7334c0d4c8ac86baeacdef701f7cf5602e74cfa9",
+      "bytes": 2818
+    },
+    ".verification/wp07-203-queue-typecheck.log": {
+      "sha256": "6674143e0057d58e61fa52ab347a1bc816a86d7a537a23bb992efe2ba44a2eb9",
+      "bytes": 439
+    }
+  },
+  "fullVerificationBeforeFinalFix": {
+    "status": "passed",
+    "nodeVersion": "v24.21.0",
+    "startedAt": "2026-11-06T10:28:44.322Z",
+    "finishedAt": "2026-11-06T10:33:27.345Z",
+    "command": "npm run verify -- --jobs 3",
+    "jobs": 3,
+    "testsCached": false,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4,
+        "durationMs": 22221
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1,
+        "durationMs": 533
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": 28,
+        "durationMs": 260260
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": 88,
+        "durationMs": 257092
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": 45,
+        "durationMs": 168980
+      }
+    ],
+    "log": "engineering-verify-before-final.log"
+  },
+  "fullVerification": {
+    "status": "passed",
+    "nodeVersion": "v24.21.0",
+    "startedAt": "2026-11-06T10:57:36.859Z",
+    "finishedAt": "2026-11-06T11:01:53.607Z",
+    "command": "npm run verify -- --jobs 3",
+    "jobs": 3,
+    "testsCached": false,
+    "log": "engineering-verify.log",
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4,
+        "durationMs": 16539
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1,
+        "durationMs": 505
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": 28,
+        "durationMs": 239697
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": 88,
+        "durationMs": 236576
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": 45,
+        "durationMs": 151078
+      }
+    ]
+  },
+  "remainingEngineeringBlockers": [],
+  "sourceSha256": {
+    "packages/learning-space/src/teaching-agent/driver.ts": "290ad2c3a3fdc2cec91ab12f4792755251317d15f15f679a13a10ea7c264a98a",
+    "packages/product-runtime/src/school-client.ts": "12001905b93c43e67953105d8a7ef5ae88edcfb874892231b546b28e4778ecba",
+    "packages/learning-space/src/model-connections/paired-learning.ts": "f633f92860abba210873129e360581a3c284d2f4e1ed032d9a8c31533c6398cd",
+    "packages/learning-space/src/model-connections/paired-grants.ts": "68881e9bcf0d201a2eb5c1225cc8dc9f4c34131f2af44ab669b6ef2b86644d66"
+  },
+  "permanentLogs": {
+    "engineering-verify-before-final.log": {
+      "sha256": "ac8037033a7fe6931970623f390e134ff9aabd969df3d11033e78af86ba1f20a",
+      "bytes": 6160
+    },
+    "engineering-native-recovery.log": {
+      "sha256": "28e2c9f4a3f233b6f4a9689822e5ce5133508601d72f21c56fd0a5cfce6b9638",
+      "bytes": 2360
+    },
+    "engineering-verify.log": {
+      "sha256": "1ad6404fdc85f85ec380eabb061f43c13f20ffd8e58e2f746457a90879959846",
+      "bytes": 5842
+    },
+    "engineering-chrome-final.log": {
+      "sha256": "9b7f4cbd0c73c9bbb3355405bf2933d3fd9bef366e84e28b4b22f13844e4d48b",
+      "bytes": 1335
+    },
+    "engineering-native-initial.log": {
+      "sha256": "fda335a3e336f3d6c997e1dd71e1eb26c522e7ca3138b410a535e58ab8d3d4e0",
+      "bytes": 26917
+    },
+    "engineering-native-final.log": {
+      "sha256": "60a5eef4f77b3cddced21feb1545c6112e9ac4ee0f8d374d19a1e1759f143bb9",
+      "bytes": 2510
+    },
+    "engineering-chrome.log": {
+      "sha256": "73f182a167c3fa6dc6dc156f7334c0d4c8ac86baeacdef701f7cf5602e74cfa9",
+      "bytes": 2818
+    }
+  },
+  "finalPackageSourceAudit": {
+    "record": "final-r4-source.json",
+    "checkedAt": "2026-11-06T11:20:17.808221+00:00",
+    "sourceFiles": 588,
+    "criticalSourceFiles": 19,
+    "componentSourceFiles": 23,
+    "mismatches": [],
+    "probeMatches": true
+  }
+}

@@ -45,7 +45,9 @@ xunjie database
 xunjie stop
 ```
 
-`install` 默认 `profile=local`；`--profile local|school|remote` 覆盖配置中的 profile。`--config` 读取维护者提供的 JSON `InstallOptions` 对象，支持 `database`、`host`、`port`、`publicEndpoint`、`tls: {certificateFile,keyFile}`、`requiredServiceIds`。它不是 shell 脚本，不接收密码参数。TLS 文件路径建议使用绝对路径。
+`install` 默认 `profile=local`；`--profile local|school|remote|model|agent` 覆盖配置中的 profile。`--config` 读取维护者提供的 JSON `InstallOptions` 对象，支持 `database`、`host`、`port`、`publicEndpoint`、`tls: {certificateFile,keyFile}`、`requiredServiceIds` 和 `agent: {dependencyConnectionId}`。TLS 文件路径使用绝对路径。
+
+`agent` 安装独立 teaching-agent owner，使用 PostgreSQL，启停、状态和维护复用同一组命令。维护者配置依赖连接及双向服务授权后，通过 `agent-binding` 为成员指定 Agent；学生仍从原活动界面提问。`school` 与 `agent` 可以使用共享 HTTPS，设备组合保持 loopback 监听。
 
 安装默认读取入口相对路径 `../resources.json`：候选包为 `app/cli.js` 上一级的 `resources.json`，源码编译入口则为 `apps/local-runtime/resources.json`。也可显式指定 `--resources`。文件缺失或不可读时明确失败，不回退开发机 Node 或猜测系统 PostgreSQL。示例清单：
 
@@ -126,6 +128,7 @@ xunjie delete --root /private/environment --environment-id <environmentId>
 
 ```sh
 xunjie authorize --root /private/target --file /private/authorization.json --out /private/grant.json
+xunjie authorize --root /private/target --service-id <实际目标serviceId> --file /private/authorization.json --out /private/grant.json
 xunjie revoke --root /private/target --grant-id <grantId>
 ```
 
@@ -140,6 +143,10 @@ xunjie connect --root /private/source --file /private/connection.json
 ```
 
 token 只从文件读取，交给库持久化与连接，不在 stdout 回显。`connect` 成功仅返回 `{ "registered": true }`，表示连接配置已登记，不宣称远端握手或能力调用已通过。连接及授权不构成课程/Agent 功能交付；能力是否可用以目标实际公开的服务、授权与运行库检查为准。
+
+`authorize --service-id` 将授权发给实际业务服务；省略时使用运行环境首服务。独立 Agent 的 `teaching.agent` 授权指向 Agent service，`teaching.dependencies` 授权指向学习数据 service。`agent-binding --file` 接收 `{requestId,identity,connectionId,target,installationId}`，目标来自实际 Agent 描述；已有活动保留首次固定的 Agent owner。
+
+个人模型与学习数据可分别归属不同设备。学校侧 `model-device-binding --file` 接收 `{identity,binding:{requestId,expectedVersion,owner,installationId,grantId,connectionId}}`；设备侧 `model-binding --file` 接收 `{connectionId,runtimeConnectionId,target}`。`connectionId` 是已批准成员连接，`runtimeConnectionId` 是 WP01 的 `learning.authority` 连接，`owner/target` 为实际模型 owner。此绑定保留原学习数据目标，设备主动领取自己的模型任务，学校页无需安装本机数据库。
 
 ## 维护、备份与恢复（#145）
 

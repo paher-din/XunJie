@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp07-203-model-22PGL5",
+  "rootRemoved": true,
+  "ownedProcesses": 0,
+  "listeners": 0,
+  "retainedBeforePurge": [
+    ".locks",
+    "native-sessions",
+    ".xunjie-root"
+  ],
+  "retries": 1,
+  "noGeneration": true,
+  "measuredAt": "2026-11-06T09:20:34.375913+00:00",
+  "actualModelRequests": 2,
+  "supersedesCleanupFailureOnly": "final-cross-chat-r2.json"
+}

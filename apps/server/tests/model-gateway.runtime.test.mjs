@@ -125,10 +125,14 @@ test('a saved connection check uses the actual SDK once and persists a rejected 
       const key = randomBytes(32);
       await runtime.setCredential('model-backup-test', key.toString('base64'));
       const backup = await runtime.recovery.backup({ directory: await mkdtemp(join(tmpdir(), 'xj-model-backups-')), recoveryKeyRef: 'model-backup-test' });
-      assert.equal(backup.services.length, 4, 'model facts and native resources participate in the product backup');
+      const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
+      for (const unit of ['model-connection', 'teaching-agent']) {
+        const owner = environment.services.find(service => service.unit === unit);
+        assert.ok(owner, unit + ' is installed');
+        assert.ok(backup.services.some(service => service.serviceId === owner.serviceId), unit + ' participates in the product backup');
+      }
       assert.equal((await api(`checks/${check.attemptId}`)).value.resultRef, result.value.resultRef);
       // Fault at the real owned resource boundary, not in a mocked repository.
-      const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
       const service = environment.services.find(service => service.unit === 'model-connection');
       const resourcePath = join(root, 'learning-resources', 'model-connection', environment.environmentId, service.serviceId, result.value.resultRef);
       const stored = await readFile(resourcePath);

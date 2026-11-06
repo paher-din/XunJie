@@ -16,6 +16,7 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
 import { spaceMigrations } from '../spaces/index.js';
+import { memberAgentBindingMigration } from '../spaces/agent-bindings.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
 import type { ComponentBinding } from '@xunjie/contracts/components';
@@ -50,7 +51,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration, memberAgentBindingMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();

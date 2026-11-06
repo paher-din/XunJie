@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-11-06T09:23:23.898179+00:00",
+  "status": "passed",
+  "exitCode": 0,
+  "startState": "ready",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp07-203-model-RRHAWU",
+  "cleanup": {
+    "stopped": true,
+    "environmentDeleted": true,
+    "rootRemoved": true,
+    "witness": {
+      "platform": "win32",
+      "host": "LAPTOP-S7A4IQFU",
+      "requests": [],
+      "providerRelayClosed": true
+    }
+  },
+  "generationLimit": 0
+}

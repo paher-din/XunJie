@@ -1,0 +1,21 @@
+{
+  "sourceRecord": "final-r4-source.json",
+  "sourceTreeSha256": "1c6b24ab81f74bcd02684194daf5032a979849c72c65eb1b113bbc781395effa",
+  "sharedDistBuild": false,
+  "packages": [
+    {
+      "path": "dist/product-darwin-arm64-wp07-203-final-r4",
+      "platform": "darwin-arm64",
+      "createdAt": "2026-11-06T11:02:14.355Z",
+      "distributionSha256": "a7f30aac8a31067300135c9e1c6151ea4e1eb80118c1d1fb5f404818fa287ae4",
+      "applicationSha256": "3b7ec1095c04c2e891f87968c8e71d269cb798158246fc4e1d26f5b820bfb73c"
+    },
+    {
+      "path": "dist/product-win32-x64-wp07-203-final-r4",
+      "platform": "win32-x64",
+      "createdAt": "2026-11-06T11:02:18.542Z",
+      "distributionSha256": "ebc6aeb98069f05a3ee82235eacfdd2fc4cc9f38e6dc5ff4a98250c80b5e50c5",
+      "applicationSha256": "3b7ec1095c04c2e891f87968c8e71d269cb798158246fc4e1d26f5b820bfb73c"
+    }
+  ]
+}

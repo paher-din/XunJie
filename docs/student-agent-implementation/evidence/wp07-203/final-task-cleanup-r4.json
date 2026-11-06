@@ -1,0 +1,60 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T11:19:33.579672+00:00",
+  "status": "passed",
+  "generationsDuringCleanup": 0,
+  "windows": {
+    "removed": [
+      "product-final-r1",
+      "product-final-r2",
+      "product-final-r3",
+      "browser",
+      "ca.pem",
+      "probe-agent-deployment.mjs"
+    ],
+    "applicationSha256": "3b7ec1095c04c2e891f87968c8e71d269cb798158246fc4e1d26f5b820bfb73c",
+    "distributionSha256": "ebc6aeb98069f05a3ee82235eacfdd2fc4cc9f38e6dc5ff4a98250c80b5e50c5",
+    "temporaryRoots": [],
+    "scheduledTasks": [],
+    "processes": [],
+    "remaining": [
+      "product-final-r4"
+    ]
+  },
+  "mac": {
+    "removedOldCandidates": [
+      "dist/product-darwin-arm64-wp07-203",
+      "dist/product-darwin-arm64-wp07-203-final-r1",
+      "dist/product-darwin-arm64-wp07-203-final-r2",
+      "dist/product-darwin-arm64-wp07-203-final-r3",
+      "dist/product-darwin-arm64-wp07-203-r2",
+      "dist/product-win32-x64-wp07-203-final-r1",
+      "dist/product-win32-x64-wp07-203-final-r2",
+      "dist/product-win32-x64-wp07-203-final-r3"
+    ],
+    "removedPrivateTemporaryDirectories": [
+      "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-r4-build-524tuk6m",
+      "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-tls-hw6cp8us"
+    ],
+    "remainingCandidates": [
+      "dist/product-darwin-arm64-wp07-203-final-r4",
+      "dist/product-win32-x64-wp07-203-final-r4"
+    ],
+    "temporaryRootsRemaining": [],
+    "acceptedRuntimeRootsAbsent": true,
+    "taskProcessesBeforeCleanup": []
+  },
+  "sharedDeploymentsModified": false,
+  "verificationDirectoryTouched": false,
+  "mainOwnedEngineeringFileHashesAtCleanup": {
+    "engineering-verify-before-final.log": "ac8037033a7fe6931970623f390e134ff9aabd969df3d11033e78af86ba1f20a",
+    "engineering-native-recovery.log": "28e2c9f4a3f233b6f4a9689822e5ce5133508601d72f21c56fd0a5cfce6b9638",
+    "engineering-verify.log": "1ad6404fdc85f85ec380eabb061f43c13f20ffd8e58e2f746457a90879959846",
+    "engineering-chrome-final.log": "9b7f4cbd0c73c9bbb3355405bf2933d3fd9bef366e84e28b4b22f13844e4d48b",
+    "engineering-native-initial.log": "fda335a3e336f3d6c997e1dd71e1eb26c522e7ca3138b410a535e58ab8d3d4e0",
+    "engineering-native-final.log": "60a5eef4f77b3cddced21feb1545c6112e9ac4ee0f8d374d19a1e1759f143bb9",
+    "engineering-chrome.log": "73f182a167c3fa6dc6dc156f7334c0d4c8ac86baeacdef701f7cf5602e74cfa9",
+    "engineering-verification.json": "bbc162cffe1359e2bb94b7c123bb80717ed01dab6c3fb76e71bac10ab3814007"
+  },
+  "engineeringReportSubsequentlyFinalizedByMainline": true
+}

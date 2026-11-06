@@ -10,7 +10,9 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { openStorage, provisionStorage, createFileBackend } from '@xunjie/storage';
 import { createSpaces, createCourses, createLearningData, createModelGateway, createTeachingAgent,
   createTeachingTools, spaceCourseMigrations, learningMigrations, modelMigrations,
-  teachingAgentMigrations, SupervisedSession } from '@xunjie/learning-space';
+  teachingAgentMigrations, SupervisedSession, createTeachingDependencyClient, createTeachingDependencyService,
+  createTeachingAgentClient, createTeachingAgentService, createNativeChannel } from '@xunjie/learning-space';
+import { createExecutions } from '../../../packages/learning-space/dist/learning-data/executions.js';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { executionActionSchema } from '@xunjie/contracts/execution';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
@@ -146,14 +148,15 @@ async function fixture(answer, { course = false } = {}) {
     storages.push(storage);
     const host = createTeachingTools({ learning: () => learning, courses });
     const makeAgent = (overrides = {}) => {
-      const agent = createTeachingAgent(storage, { authorize: who => spaces.authorize(who),
+      const { ownedStorage = storage, ...driverOptions } = overrides;
+      const agent = createTeachingAgent(ownedStorage, { authorize: who => spaces.authorize(who),
         identityFor: scope => spaces.lookup(scope.spaceId, scope.principalId),
         activity: (who, id) => learning.open(who, id), models, tools: host,
-        start: false, driverId: randomUUID(), leaseMs: 1500, scanIntervalMs: 40, ...overrides });
+        start: false, driverId: randomUUID(), leaseMs: 1500, scanIntervalMs: 40, ...driverOptions });
       agents.push(agent);
       return agent;
     };
-    return { root, activity, identity, models, learning, host, storage, payloads, makeAgent, close,
+    return { root, activity, identity, models, learning, host, storage, agentBinding: binding, courses, learningStorage: storages[1], payloads, makeAgent, close,
       async send(agent, works = []) {
         if (works.length) await learning.works.sync(identity, activity.activityId,
           { requestId: randomUUID(), baseRevision: 0, files: works });
@@ -397,6 +400,9 @@ test('two real driver generations share the saved attempt and only the winner re
       const first = f.makeAgent({ tools: host, driverId: 'real-driver-a' });
       const runId = await f.send(first, [work]);
       await until(() => entered, 'first generation did not reach the real prepare boundary');
+      // A healthy driver renews through a slow prepare RPC. Simulate the original node
+      // losing dispatch authority before expecting a successor to claim its expired lease.
+      first.closeDispatch();
       const second = f.makeAgent({ tools: host, driverId: 'real-driver-b' }); second.resume();
       const result = await f.completed(second, runId);
       gate.resolve(); await first.drain();
@@ -524,7 +530,8 @@ test('stopping a later model step stops the Agent ongoing native session and pre
 
 test('pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run',
   { timeout: 180000 }, async t => {
-    const gate = deferred(), children = [];
+    const gate = deferred(), children = [], cleanupEntered = deferred(), releaseCleanup = deferred();
+    let holdCleanup = false, heldCleanup = false, observer;
     const originalCreate = SupervisedSession.create;
     t.mock.method(SupervisedSession, 'create', async function (...args) {
       const child = await originalCreate.apply(this, args);
@@ -550,7 +557,15 @@ test('pending cleanup of completed native inputs survives Agent restart without 
       }
     }, { course: true });
     try {
-      const agent = f.makeAgent({ leaseMs: 10_000 }); agent.resume();
+      const ownedStorage = { ...f.storage, request(input, effect) {
+        return f.storage.request(input, async tx => {
+          if (holdCleanup && !heldCleanup && input.requestId.startsWith('teaching-tool-cleanup:')) {
+            heldCleanup = true; cleanupEntered.resolve(); await releaseCleanup.promise;
+          }
+          return effect(tx);
+        });
+      } };
+      const agent = f.makeAgent({ ownedStorage, leaseMs: 10_000 }); agent.resume();
       const runId = await f.send(agent);
       await until(() => explaining, 'did not reach the later model step after completed native input');
       const before = await f.conversation(agent);
@@ -569,11 +584,38 @@ test('pending cleanup of completed native inputs survives Agent restart without 
       assert.ok(independentChild);
       assert.equal(independent.state, 'running');
 
-      await agent.stop(f.identity, f.activity.activityId, runId, { requestId: randomUUID() });
+      observer = await openStorage({ binding: f.agentBinding, migrations: teachingAgentMigrations,
+        backend: createFileBackend({ id: 'regression-agent', root: join(f.root, 'regression-agent-resources') }) });
+      // Hold one real cleanup transaction while concurrent public stop requests
+      // wait for that same durable receipt. This is a storage scheduling barrier, not a fake result.
+      holdCleanup = true;
+      const stops = Promise.allSettled(Array.from({ length: 8 }, () => agent.stop(f.identity, f.activity.activityId, runId, { requestId: randomUUID() })));
+      await cleanupEntered.promise;
+      await until(async () => {
+        const { rows: [row] } = await observer.read(`SELECT count(*)::integer AS blocked FROM pg_stat_activity
+          WHERE usename=current_user AND wait_event_type='Lock' AND query LIKE '%_storage_requests%'`);
+        return row.blocked >= 7;
+      }, 'concurrent original cleanup writes did not reach the transaction barrier');
+      const leaseDuringCleanup = (await observer.read(`SELECT state,stop_requested,generation,lease_owner,
+        lease_expires_at,lease_expires_at>=clock_timestamp() AS lease_live FROM teaching_runs WHERE run_id=$1`, [runId])).rows[0];
+      releaseCleanup.resolve();
+      const stopResults = await stops;
+      const physical = await f.models.checks.read(f.identity, before.runs[0].attemptId);
+      assert.equal(physical.physicalRequestEnded, true, 'the original model request has actually ended before cleanup assertions');
+      assert.deepEqual(stopResults.filter(result => result.status === 'rejected').map(result => result.reason.code), [],
+        'parallel cleanup of an already stopped model must not exhaust the Agent storage pool: '+JSON.stringify(leaseDuringCleanup));
       gate.resolve();
       await until(async () => (await agent.run(f.identity, f.activity.activityId, runId)).state === 'stopped',
         'the later model step did not stop').catch(async error => {
-        throw new Error(error.message + '\n' + JSON.stringify({ conversation: await f.conversation(agent), events: await f.events(agent) }));
+        const current = await agent.run(f.identity, f.activity.activityId, runId);
+        const diagnostics = await Promise.allSettled([
+          current.attemptId ? f.models.checks.read(f.identity, current.attemptId) : null,
+          f.storage.read(`SELECT state,stop_requested,generation,lease_owner,lease_expires_at,
+            lease_expires_at>=clock_timestamp() AS lease_live FROM teaching_runs WHERE run_id=$1`, [runId]),
+          f.storage.read(`SELECT pid,state,wait_event_type,wait_event,pg_blocking_pids(pid) AS blockers,query
+            FROM pg_stat_activity WHERE usename=current_user AND pid<>pg_backend_pid()`),
+        ]);
+        throw new Error(error.message + '\n' + JSON.stringify({ conversation: await f.conversation(agent), events: await f.events(agent), diagnostics }));
       });
       await agent.drain();
       agent.close();
@@ -647,7 +689,8 @@ test('pending cleanup of completed native inputs survives Agent restart without 
       assert.equal(f.payloads.length, 3);
       await again.validate();
     } finally {
-      holdStop = false; gate.resolve();
+      holdStop = false; gate.resolve(); releaseCleanup.resolve();
+      await observer?.close();
       await Promise.allSettled(children.map(child => child.dispose()));
       await f.close();
     }
@@ -866,3 +909,126 @@ test('a real Wasm result arriving after stopped terminal is archived and consume
       await recovered.validate();
     } finally { await f.close(); }
   });
+
+for (const route of ['unaccepted-native', 'accepted-browser', 'accepted-native-outbox', 'accepted-native-outbox-before-enqueue']) test(`tool RPC fences a delayed Driver while ${route === 'accepted-browser' ? 'an accepted browser command remains claimable' : route.startsWith('accepted-native-outbox') ? `an accepted native outbox command remains claimable${route.endsWith('before-enqueue') ? ' after an interrupted enqueue' : ''}` : 'an unaccepted native command cannot start'}`,
+  { timeout: 180000 }, async () => {
+    const accepted = route !== 'unaccepted-native', browser = route === 'accepted-browser';
+    const gate = deferred(); let pending, authority, agent, second, admitted = false, executions, channel, node;
+    const f = await fixture((_payload, response, index) => {
+      assert.equal(index, 1, 'no second model dispatch belongs to this test');
+      reply(response, { call: { id: 'cross-rpc-permit', name: 'course_operation', arguments: browser
+        ? { componentKey: 'table', operationId: 'aggregate', parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } }
+        : { componentKey: 'counter', operationId: 'start_session', parameters: {} } } });
+    }, { course: browser ? 'browser' : true });
+    try {
+      const realAgent = value => createTeachingAgentService(second, async (who, id) => { await f.learning.open(who, id); })(value);
+      const remote = createTeachingAgentClient(f.storage.owner.serviceId, f.identity, f.activity.activityId, realAgent);
+      let host = f.host;
+      if (route.startsWith('accepted-native-outbox')) {
+        const session = f.activity.course.components[0].definition.manifest.session;
+        node = { connectionId: randomUUID(), nodeId: 'original-outbox-device', installationId: randomUUID(),
+          platform: process.platform === 'darwin' ? 'macos-arm64' : 'windows-x64', supervisorEpoch: randomUUID(),
+          adapters: [{ adapterId: session.adapterId, adapterVersion: session.adapterVersion }] };
+        channel = createNativeChannel(f.learningStorage, { authenticate: async () => f.identity,
+          authorize: (who, id) => f.learning.open(who, id), authorizeConnection: async () => {},
+          assertAgentDispatch: (who, id, original) => remote.assertCommandDispatch(who, id, original) });
+        await channel.register('fixture', node); await channel.heartbeat('fixture', node);
+        let interrupted = false;
+        const sender = { ...channel, async enqueue(...args) {
+          if (route.endsWith('before-enqueue') && !interrupted) {
+            interrupted = true;
+            throw Object.assign(new Error('Injected: original owner committed; enqueue interrupted'), { code: 'unavailable' });
+          }
+          return channel.enqueue(...args);
+        } };
+        executions = createExecutions(f.learningStorage, { activity: (who, id) => f.learning.open(who, id), works: f.learning.works, channel: sender });
+        host = createTeachingTools({ learning: () => ({ ...f.learning, executions }), courses: f.courses,
+          authorizeDispatch: (scope, command) => remote.assertCommandDispatch(scope.identity, scope.activity.activityId,
+            { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId: command.commandId,
+              ...(scope.authority ? { authority: scope.authority } : {}) }) });
+      }
+      const service = createTeachingDependencyService({ authorize: async () => {}, identityFor: async () => f.identity,
+        activity: (who, id) => f.learning.open(who, id), models: f.models,
+        tools: { ...host, dispatch: (scope, command) => host.dispatch({ ...scope,
+          assertDispatch: () => remote.assertCommandDispatch(scope.identity, scope.activity.activityId,
+            { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId: command.commandId,
+              ...(scope.authority ? { authority: scope.authority } : {}) }) }, command) } });
+      const client = createTeachingDependencyClient(async input => {
+        // JSON serialization is the actual remote seam: local assertDispatch cannot survive it.
+        const wire = JSON.parse(JSON.stringify(input));
+        if (wire.operation !== 'tool.dispatch') return service(wire);
+        pending = wire;
+        let outcome, lostReply;
+        try { outcome = accepted ? await service(wire) : undefined; }
+        catch (error) {
+          if (!route.endsWith('before-enqueue') || error.code !== 'unavailable') throw error;
+          lostReply = error;
+        }
+        admitted = true;
+        await gate.promise;
+        if (lostReply) throw lostReply;
+        return accepted ? outcome : service(wire);
+      });
+      agent = f.makeAgent({ tools: client.tools, driverId: 'old-rpc-driver', leaseMs: 300 });
+      second = f.makeAgent({ tools: client.tools, driverId: 'new-rpc-driver', leaseMs: 300,
+        withAuthority: (value, work) => { authority = value; return work(); } });
+      const binding = f.activity.course.components[0], manifest = binding.definition.manifest;
+      const works = browser ? [{ objectId: randomUUID(), contentId: randomUUID(), name: 'components/table.json', kind: 'state',
+        encoding: 'json', mediaType: 'application/vnd.xunjie.component-state+json', value: JSON.stringify({
+          formatVersion: 1, instanceId: f.activity.activityId + ':table', componentId: manifest.componentId,
+          version: manifest.version, definitionDigest: binding.definition.digest, stateVersion: 1,
+          operationId: randomUUID(), content: manifest.initialState }) }] : [];
+      const runId = await f.send(agent, works);
+      await until(() => pending && (!accepted || admitted), 'tool RPC did not reach acceptance');
+      assert.equal(pending.authority?.driverId, 'old-rpc-driver', 'the original dispatch authority must cross RPC');
+      assert.equal(pending.authority.runId, runId);
+      const permitted = (await f.events(agent)).find(event => event.kind === 'tool-permitted');
+      assert.deepEqual(permitted.body.authority, pending.authority, 'the original authority is persisted before the RPC');
+      const scope = pending.args[0], command = pending.args[1];
+      const association = { runId, stepId: scope.stepId, snapshotId: scope.snapshotId, commandId: command.commandId };
+      await remote.assertCommandDispatch(f.identity, f.activity.activityId, { ...association, authority: pending.authority });
+      agent.closeDispatch();
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await assert.rejects(remote.assertCommandDispatch(f.identity, f.activity.activityId,
+        { ...association, authority: pending.authority }), { code: 'forbidden' });
+      second.resume();
+      await until(() => authority?.generation >= 2, 'replacement Driver did not take the expired lease');
+      await assert.rejects(remote.assertCommandDispatch(f.identity, f.activity.activityId,
+        { ...association, authority: pending.authority }), { code: 'forbidden' });
+      if (route.startsWith('accepted-native-outbox')) {
+        const claimed = await until(async () => {
+          const result = await channel.claim('fixture', node);
+          return result.command ? result : null;
+        }, 'replacement Driver did not recover the original accepted outbox');
+        assert.equal(claimed.command.commandId, command.commandId, 'formal native outbox must deliver its original accepted command');
+        assert.equal(claimed.command.payload.action.requestId, command.commandId);
+        assert.deepEqual(claimed.command.node, node, 'lease handover cannot reassign the original execution node');
+        assert.equal((await channel.claim('fixture', node)).command, null, 'the accepted command cannot be dispatched twice');
+      } else if (browser) {
+        const browser = await f.learning.executions.agent.claimBrowser(f.identity, f.activity.activityId, command.commandId, randomUUID(),
+          original => remote.assertCommandDispatch(f.identity, f.activity.activityId, original));
+        assert.equal(browser.action.requestId, command.commandId, 'already accepted original command survives lease handover');
+      } else {
+        await assert.rejects(service({ ...pending, authority: undefined }), { code: 'forbidden' });
+      }
+      gate.resolve(); await agent.drain();
+      if (!accepted) assert.equal((await f.learning.executions.sessions(f.identity, f.activity.activityId)).length, 0,
+        'a stale RPC cannot create a physical execution');
+    } finally { gate.resolve(); agent?.close(); second?.close(); await executions?.shutdown(); await f.close(); }
+  });
+
+test('closed activity rejects fresh model dispatch authority without changing the original attempt', { timeout: 180000 }, async () => {
+  const gate = deferred(); let authority;
+  const f = await fixture(async (_payload, response) => { await gate.promise; reply(response, { text: '原请求结果' }); });
+  try {
+    const agent = f.makeAgent({ withAuthority: (value, work) => { authority = value; return work(); } });
+    const runId = await f.send(agent);
+    await until(() => f.payloads.length, 'original SDK request never started');
+    const run = await agent.run(f.identity, f.activity.activityId, runId);
+    await agent.assertModelDispatch(f.identity, f.activity.activityId, { ...authority, attemptId: run.attemptId, dispatch: false });
+    await f.learning.setStatus(f.identity, { requestId: randomUUID(), activityId: f.activity.activityId, status: 'closed' });
+    await assert.rejects(agent.assertModelDispatch(f.identity, f.activity.activityId,
+      { ...authority, attemptId: run.attemptId, dispatch: false }), { code: 'forbidden' });
+    assert.equal((await agent.run(f.identity, f.activity.activityId, runId)).attemptId, run.attemptId);
+  } finally { gate.resolve(); await f.close(); }
+});

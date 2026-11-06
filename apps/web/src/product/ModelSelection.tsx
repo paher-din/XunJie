@@ -98,7 +98,7 @@ export function ModelSelection({ controller, onCheck }: { controller: ModelSelec
       return <ModelProviderCard key={choiceKey(choice)} name={choice.connection.name} address={choice.connection.baseUrl}
         actions={<button type="button" className="outline st-xs" disabled={busy || stale || active || !usable}
           onClick={() => void choose(choice)}>{active ? '当前选用' : choice.kind === 'school' || choice.grantId ? '选用' : '授权并选用'}</button>}>
-        <p className="detail">{choice.kind === 'school' ? '学校提供' : choice.origin === 'device' ? '本机持有的个人连接' : '个人连接'} · {choice.connection.modelId}</p>
+        <p className="detail">{choice.kind === 'school' ? '学校提供' : choice.origin === 'device' ? '设备持有的个人连接' : '个人连接'} · {choice.connection.modelId}</p>
         <p className="detail">文字：{capabilities[choice.connection.capabilities.text]} · 图片：{capabilities[choice.connection.capabilities.images]} · 工具：{capabilities[choice.connection.capabilities.tools]}</p>
         <details><summary>能力验证范围</summary>
           <p className="detail">JSON 模式：{capabilities[choice.connection.capabilities.jsonMode ?? 'unknown']} · 应用校验：{capabilities[choice.connection.capabilities.applicationSchema ?? 'unknown']} · 原生 strict：{capabilities[choice.connection.capabilities.strictSchema]} · 原生续接：{capabilities[choice.connection.capabilities.nativeReplay ?? 'unknown']}</p>

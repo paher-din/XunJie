@@ -1,0 +1,9 @@
+{
+  "id": "final-worker-bootstrap",
+  "ok": true,
+  "result": {
+    "platform": "win32",
+    "host": "LAPTOP-S7A4IQFU",
+    "requests": []
+  }
+}

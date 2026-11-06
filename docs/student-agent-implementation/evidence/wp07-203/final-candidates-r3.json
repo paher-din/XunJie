@@ -1,0 +1,26 @@
+{
+  "sourceRecord": "final-r3-source.json",
+  "sourceTreeSha256": "014c97ae7619c09911782d19981e2e4d6857fd77944494fad2af59e1190ef97e",
+  "codeUnchangedDuringPackaging": true,
+  "packages": [
+    {
+      "path": "dist/product-darwin-arm64-wp07-203-final-r3",
+      "platform": "darwin-arm64",
+      "createdAt": "2026-11-06T10:29:35.770Z",
+      "distributionSha256": "e9715c2ea8f1c8b2974705200f2ff76358810eff25fd07d1eeed6831e71f4d5c",
+      "applicationSha256": "7dbafc183c99a7df662026b0f46a8369c8d57d17f7c0236ed99559b211746ecc",
+      "modelMigration15CodePresent": true
+    },
+    {
+      "path": "dist/product-win32-x64-wp07-203-final-r3",
+      "platform": "win32-x64",
+      "createdAt": "2026-11-06T10:29:31.169Z",
+      "distributionSha256": "57fa92367f7c2dfcf18f81cc636f8b49fe9e87f1ee58f507800a8ef354b7afb1",
+      "applicationSha256": "7dbafc183c99a7df662026b0f46a8369c8d57d17f7c0236ed99559b211746ecc",
+      "modelMigration15CodePresent": true
+    }
+  ],
+  "paidMatrix": "not-run",
+  "candidateStatus": "superseded-for-final-acceptance-awaiting-final-r4",
+  "supersededReason": "school-client same-connection bounded batch must allow cancel past transient busy task"
+}

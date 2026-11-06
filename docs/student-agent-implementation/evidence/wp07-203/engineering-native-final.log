@@ -1,0 +1,33 @@
+✔ paired learning tasks receive, claim, query and stop through legacy localBinding (3920.921958ms)
+✔ paired learning tasks receive, claim, query and stop through independent modelBinding (19669.050125ms)
+✔ Root settings discovers raw local-self and personal-device choices without an Agent, grants at the real owner, and selects immediately (1954.256916ms)
+✔ Root revoke denies existing segments and stops the in-flight SDK before an unknown ACK, then confirms the actual owner grant (2762.337416ms)
+✔ two drivers racing on one run keep one effective dispatch through generation fencing (2882.3915ms)
+✔ the same driver reconciles a lost model acceptance reply without a second attempt or dispatch (1037.314083ms)
+✔ stop committed while a remote model permit waits for its transaction prevents the permit (696.766875ms)
+✔ a learning conversation persists across runs, restart, stop and transport reconstruction (3932.4435ms)
+✔ long histories, large inputs and saved 1M windows are used without probe limits (6036.822625ms)
+▶ learning text Q&A runs through all three native protocols with reconstructable snapshots
+  ✔ chat-completions (2258.26025ms)
+  ✔ responses (2689.551542ms)
+  ✔ messages (2096.025292ms)
+✔ learning text Q&A runs through all three native protocols with reconstructable snapshots (7044.505666ms)
+✔ a course release fixes its help policy and a disabled policy refuses without a model call (2605.472792ms)
+✔ a teaching conversation, event log and snapshot survive real backup, isolated restore and takeover (8009.946708ms)
+✔ incremental answer text is published after gateway persistence and settles into one message (3614.993375ms)
+✔ Agent reads the granted immutable work through a real tool and continues the native call pair (7689.33375ms)
+✔ responses continues the same native tool pair with the real fixed source (3200.312ms)
+✔ messages continues the same native tool pair with the real fixed source (2597.119083ms)
+✔ truncated model output cannot dispatch a tool (2516.563958ms)
+✔ invalid-arguments model output cannot dispatch a tool (2083.503666ms)
+✔ missing-terminal model output cannot dispatch a tool (2238.932875ms)
+✔ a valid native call cannot read an unapproved work from another activity (2746.746334ms)
+✔ an unsupported fixed binary source reports unavailable without an unknown-effect Wait (3076.123958ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91944.405417

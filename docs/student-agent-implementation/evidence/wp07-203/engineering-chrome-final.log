@@ -1,0 +1,15 @@
+
+Running 7 tests using 1 worker
+
+(node:43283) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › e2e/teachingConversation.spec.ts:75:1 › a missing model keeps the activity and first question and offers the real settings entry (3.7s)
+  ✓  2 [chromium] › e2e/teachingConversation.spec.ts:94:1 › the formal home and activity conversation persist a first question, a follow-up, reload and stop (7.7s)
+  ✓  3 [chromium] › e2e/teachingConversation.spec.ts:147:1 › a course activity asks through the fixed help policy in the formal conversation UI (2.7s)
+  ✓  4 [chromium] › e2e/teachingConversation.spec.ts:181:1 › a product process restart reopens the persisted conversation in the same Chrome session (2.8s)
+  ✓  5 [chromium] › e2e/teachingTools.spec.ts:123:1 › the formal conversation shows the real fixed work read and retains it after editing and reload (3.2s)
+  -  6 [chromium] › e2e/teachingTools.spec.ts:184:1 › capture the existing formal conversation baseline before UI changes
+  ✓  7 [chromium] › e2e/teachingTools.spec.ts:195:1 › real native and browser operations retain results; a disconnected browser waits and can be stopped (22.6s)
+
+  1 skipped
+  6 passed (47.3s)
