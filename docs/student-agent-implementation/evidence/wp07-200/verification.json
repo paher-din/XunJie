@@ -1,0 +1,313 @@
+{
+  "formatVersion": 1,
+  "issue": 200,
+  "branch": "wp07",
+  "sources": {
+    "fullVerification": "343d41a17809369f65c5b696408f4a137887a5d5",
+    "chromeAfterRemoteIntegration": "0f55e67f643e68e097d249acd84895fb1a244e5a"
+  },
+  "engineering": {
+    "defaultFullVerification": {
+      "trackedSourcesUnchangedAfterRun": true,
+      "command": "node scripts/verify.mjs --jobs 2",
+      "status": "failed",
+      "exitCode": 1,
+      "startedAt": "2026-11-06T16:25:44.995Z",
+      "finishedAt": "2026-11-06T18:30:44.775Z",
+      "isolatedNpmCi": true,
+      "testsCached": false,
+      "externalRuntimeTestsIncluded": false,
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "passed",
+          "tasks": 4,
+          "passed": 4,
+          "failed": 0,
+          "unfinished": 0
+        },
+        {
+          "name": "build:test",
+          "status": "passed",
+          "tasks": 1,
+          "passed": 1,
+          "failed": 0,
+          "unfinished": 0
+        },
+        {
+          "name": "unit",
+          "status": "failed",
+          "tasks": 28,
+          "passed": 23,
+          "failed": 5,
+          "unfinished": 0
+        },
+        {
+          "name": "server",
+          "status": "failed",
+          "tasks": 88,
+          "passed": 86,
+          "failed": 2,
+          "unfinished": 0
+        },
+        {
+          "name": "tools",
+          "status": "failed",
+          "tasks": 45,
+          "passed": 35,
+          "failed": 10,
+          "unfinished": 0
+        }
+      ],
+      "failures": [
+        {
+          "group": "unit",
+          "name": "scripts/build.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "unit",
+          "name": "web",
+          "testFileUnchangedSinceBase": false,
+          "subsequentlyPassed": true
+        },
+        {
+          "group": "unit",
+          "name": "packages/product-runtime/test/recovery-files.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "unit",
+          "name": "packages/product-runtime/test/recovery.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "unit",
+          "name": "packages/storage/test/blobs.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "server",
+          "name": "apps/server/tests/account-control.test.ts",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "server",
+          "name": "apps/server/tests/application-database.test.ts",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/i0-cloud/backup-retained.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/i0-cloud/deploy-artifact.test.py",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/xj-dev-access/package-service.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/xj-dev-access/server.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        },
+        {
+          "group": "tools",
+          "name": "tools/xj-dev/tests/repro.test.mjs",
+          "testFileUnchangedSinceBase": true,
+          "subsequentlyPassed": false
+        }
+      ]
+    },
+    "inputControlInitialNativeFile": {
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "inputControlAfterReviewTargeted": {
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "overlapsInitialCases": true
+    },
+    "studentResponseNativeRegression": {
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    "schoolToIndependentAgentSameHost": {
+      "passed": 1,
+      "installations": 3,
+      "countsAsRealCrossMachine": false
+    },
+    "webUnitAfterFixtureCorrection": {
+      "files": 72,
+      "passed": 879,
+      "failed": 0
+    },
+    "webAfterRemoteIntegration": {
+      "sourceTypecheck": "passed",
+      "nodeAndBrowserConfigurationTypecheck": "passed",
+      "productionBuild": "passed"
+    },
+    "legacyTransferProtocol": {
+      "tests": 29,
+      "pass": 27,
+      "fail": 0,
+      "skipped": 2,
+      "cancelled": 0
+    },
+    "unrelatedFailureRetests": {
+      "backupRetentionCase": {
+        "status": "passed",
+        "tests": 1,
+        "sameWindowsPermissionEnvironmentAsFullRun": true,
+        "originalFailure": "ENOTEMPTY during temporary directory cleanup",
+        "restrictedProcessAttempt": "failed before this rerun; not counted as a pass"
+      },
+      "buildLockCase": {
+        "status": "failed",
+        "tests": 1,
+        "error": "EPERM during lock ticket rename",
+        "sameWindowsPermissionEnvironmentAsFullRun": true
+      },
+      "releasePublicationCaseWithGitBashOnPath": {
+        "status": "failed",
+        "tests": 1,
+        "error": "Windows/Unix command and path handling still fails"
+      }
+    },
+    "documentLinks": {
+      "isolatedTrackedTree": {
+        "files": 225,
+        "targets": 2047,
+        "failures": 0
+      },
+      "changedTaskDocuments": {
+        "files": 7,
+        "targets": 171,
+        "failures": 0
+      },
+      "originalWorkspaceIncludingUntrackedMaterials": {
+        "files": 1126,
+        "targets": 9764,
+        "failures": 252,
+        "status": "failed",
+        "originalUntrackedMaterialsRetained": true
+      }
+    },
+    "independentReview": {
+      "standardsInitial": 2,
+      "specInitial": 4,
+      "standardsRemaining": 0,
+      "specRemaining": 0
+    },
+    "realModel": {
+      "provider": "DeepSeek official",
+      "protocols": 3,
+      "generationsPerProtocol": 4,
+      "totalHttp200": 12,
+      "automaticRetries": 0,
+      "report": "real-model-input-control.json"
+    }
+  },
+  "browserAndDeployment": {
+    "windows": {
+      "os": "Windows 11 x64 10.0.26200",
+      "chrome": "157.0.8103.38",
+      "node": "24.21.0",
+      "postgres": "18.6",
+      "ordinaryWebAfterRemoteIntegration": {
+        "passed": 5,
+        "browser": "installed desktop Chrome",
+        "headed": true
+      },
+      "independentFullPackageAfterReview": {
+        "passed": 5,
+        "browser": "installed desktop Chrome",
+        "headed": true,
+        "platform": "win32-x64",
+        "profile": "full",
+        "lifecycle": "bundled CLI install/start/stop",
+        "stopped": true
+      },
+      "originalConversationAndStudentResponseRegression": {
+        "passed": 8,
+        "browser": "installed desktop Chrome",
+        "headed": true
+      },
+      "systemImeCandidateWindow": {
+        "status": "not-executed",
+        "nativeInputActions": 0,
+        "reason": "Desktop tool required stopping because it could not reliably identify the current browser URL."
+      }
+    },
+    "mac": {
+      "status": "not-executed",
+      "ticket": "https://github.com/paher-din/XunJie/issues/210",
+      "requiresExistingQualifiedEnvironment": true
+    },
+    "realCrossMachine": {
+      "status": "not-executed",
+      "ticket": "https://github.com/paher-din/XunJie/issues/210"
+    }
+  },
+  "teachingEffect": {
+    "status": "not-assessed",
+    "engineeringResultsAreNotLearningOutcomeEvidence": true
+  },
+  "cleanup": {
+    "independentPackagesAndStoppedInstancesRemoved": true,
+    "disposableVerificationCheckoutRemoved": true,
+    "rawFullRunLogsArchivedAndHashVerified": true,
+    "originalResourcesAndUnrelatedChangesRetained": true
+  }
+}
