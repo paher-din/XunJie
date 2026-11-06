@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import 'fake-indexeddb/auto'
 import { createRequire } from 'node:module'
 import { act, createElement } from 'react'
 import type { Root } from 'react-dom/client'
@@ -64,6 +65,7 @@ beforeEach(async () => {
   vi.mocked(selection.reload).mockReset().mockResolvedValue(undefined)
   vi.stubGlobal('fetch', vi.fn(async (input: string, options: RequestInit = {}) => {
     const path = input.split('/models/')[1], method = options.method ?? 'GET'
+    if (input === '/api/learning/agent-settings' && method === 'GET') return response({ version: 0, busyInputMode: 'steering' })
     if (method === 'GET') {
       const value = path === 'connections' ? [structuredClone(server)] : structuredClone(checks)
       await holdRead
