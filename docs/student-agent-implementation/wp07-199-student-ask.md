@@ -1,6 +1,6 @@
 # #199：Agent 提问与学生明确回应
 
-需求来自 [#199](https://github.com/paher-din/XunJie/issues/199)，沿用同一 `wp07` 分支。实施基线 `0db7765`，产品功能 `5e9cf4ad`，审查修复 `e0e2fcdb`。实施选择见[固定提问与回应](specs/wp07-student-ask.md)，[双轴审查](wp07-199-code-review.md)分别记录 Standards 与 Spec。此交付不自动合并 PR 或关闭仍有 Mac 待验项的 #199。
+需求来自 [#199](https://github.com/paher-din/XunJie/issues/199)，沿用同一 `wp07` 分支。实施基线 `0db7765`，产品功能 `5e9cf4ad`，审查修复 `e0e2fcdb`。实施选择见[固定提问与回应](specs/wp07-student-ask.md)，[双轴审查](wp07-199-code-review.md)分别记录 Standards 与 Spec。此交付不自动合并 PR 或关闭 #199；Mac 平台验收已由 #209 完成并回填，见 [Mac 平台验收](wp07-199-mac-acceptance.md)。
 
 ## 产品变化及影响
 
@@ -40,8 +40,8 @@ Windows 11 x64 10.0.26200，Intel Core Ultra 9 275HX，安装版 Google Chrome `
 | 完整 Windows 产品包的桌面 Chrome | 正式 CLI `install/start/stop` 成功，4/4、0 跳过。 |
 | DeepSeek `deepseek-flash` 三协议真实用途 | 最终产品代码三条路线均成功，快照核对 `responseAdopted=true`；网络失败和有限补验分别保留。 |
 | 本机完整测试与依赖恢复后补验 | 完整轮本地文件任务 82/160，通过 prepare 4/4 与 build:test 1/1；受依赖中断影响。恢复后 unit/server 为 108/115，之后产物归档和核验器 2 文件补验通过（38 测试通过、2 平台跳过），按文件收敛为 110/115，仍有下述 5 个失败文件。 |
-| Apple Silicon Mac | 未验；由已有合格 Mac 环境的接手者在 [Mac 明确回应平台验收（#209）](https://github.com/paher-din/XunJie/issues/209) 直接验收交付，原 [Mac 汇总（#178）](https://github.com/paher-din/XunJie/issues/178) 保留索引。 |
-| 系统物理中文输入法 | 未验。Chrome 受控中文原文、换行、焦点和键盘已覆盖，未冒称物理候选窗通过。 |
+| Apple Silicon Mac | 通过（#209）：Apple M5 / macOS 27.2，完整 `darwin-arm64/full` 包与正式 CLI 生命周期、普通正式 Web 与包入口 Chrome 均通过；见 [Mac 平台验收](wp07-199-mac-acceptance.md)。 |
+| 系统物理中文输入法 | 通过（#209）：豆包拼音候选窗、空格/数字候选提交、Enter 组合与提交区分、换行、Tab/Shift+Tab、Escape、Command+A、滚动、关页重开保留和明确提交均通过；见 [Mac 平台验收](wp07-199-mac-acceptance.md#macos-系统物理中文输入法)。 |
 | 教学效果 | 未评估；工程与模型成功不证明学生理解或学习收益。 |
 
 ### 故障、修复及证据口径
