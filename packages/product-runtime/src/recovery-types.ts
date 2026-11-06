@@ -58,6 +58,8 @@ export interface RecoveryOwner {
    * owner has drained; a missing method means the owner cannot support #176 maintenance at all.
    */
   material(input: { backupId: string; boundaryAt: string; signal: AbortSignal }): Promise<OwnerBoundaryMaterial>;
+  /** The owner may distinguish dormant logical records from unresolved effects at a receiver fence. */
+  receiverMaterial?(input: { backupId: string; boundaryAt: string; signal: AbortSignal }): Promise<OwnerBoundaryMaterial>;
   /** Idempotent, including unknown IDs; failed/interrupted releases are retried after directory retirement. */
   release(backupId: string): Promise<void>;
   close?(): Promise<void>;

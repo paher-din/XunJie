@@ -115,7 +115,8 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       const spaceStorage = await reopen('space-course', spaceCourseMigrations);
       const spaces = createSpaces(spaceStorage), courses = createCourses(spaceStorage, spaces);
       const learning = createLearningData(await reopen('learning-data', learningMigrations), spaces, courses, {});
-      const models = await createModelGateway(await reopen('model-connection', modelMigrations),
+      const modelStorage = await reopen('model-connection', modelMigrations);
+      const models = await createModelGateway(modelStorage,
         { authorize: who => spaces.authorize(who), holder: 'device' });
       ownedServices.push({ learning, models });
       const identity = activity.identity, connectionId = randomUUID(), grantId = randomUUID();
@@ -141,7 +142,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         ownedAgents.push(agent); return agent;
       };
       const agent = makeAgent();
-      return { agent, makeAgent, models, learning, tools, storage, identity,
+      return { agent, makeAgent, models, modelStorage, learning, tools, storage, identity,
         async send(question, delivery, works = [], target = agent) {
           const input = actionInputSchema.parse({ requestId: randomUUID(), scope: { environmentId: identity.environmentId,
             spaceId: identity.spaceId, principalId: identity.principalId, activityId: activity.activityId },

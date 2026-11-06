@@ -29,6 +29,11 @@ const originSchema = z.object({ sourceEnvironmentId: z.uuid(), sourceServiceId: 
   sourceInstallationId: z.uuid(), grantId: z.uuid() }).strict();
 export type AgentExecutionOrigin = z.infer<typeof originSchema>;
 
+export const agentExecutionAuthorityMigration: Migration = { version: 22, name: 'agent-execution-recovery-authorities', sql: `
+  CREATE TABLE agent_execution_authorities(command_id uuid PRIMARY KEY REFERENCES agent_execution_commands(command_id),
+    source jsonb NOT NULL,history jsonb NOT NULL);
+` };
+
 /** Only server code constructs this context. The callback is reconstructed from the durable Run permit. */
 export interface AgentExecutionContext extends AgentExecutionAssociation {
   assertDispatch(): Promise<void>;
@@ -77,6 +82,17 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
   async function register(identity: SpaceIdentity, activityId: string, context: AgentExecutionContext,
     requestId: string, kind: 'submit' | 'control', body: unknown) {
     const fixed = association(context), inputDigest = hash(body);
+    if (context.origin) {
+      const { rows: [saved] } = await storage.read(`SELECT c.*,COALESCE(a.source,o.source) AS current_source
+        FROM agent_execution_commands c LEFT JOIN agent_execution_origins o ON o.command_id=$2
+        LEFT JOIN agent_execution_authorities a ON a.command_id=$2 WHERE c.command_id=$1`, [fixed.commandId, requestId]);
+      if (saved) {
+        if (saved.activity_id !== activityId || saved.request_id !== requestId || saved.kind !== kind
+          || saved.input_digest !== inputDigest || hash(saved.association) !== hash(fixed)
+          || hash(saved.current_source) !== hash(originSchema.parse(context.origin))) fail('identity-conflict');
+        return; // The immutable original receipt is already present; never replay a different fingerprint.
+      }
+    }
     await storage.request({ requestId: `agent-execution:${context.commandId}`, fingerprint: hash({ identity, activityId, fixed, body, kind, requestId, ...(context.origin ? { origin: originSchema.parse(context.origin) } : {}) }) }, async tx => {
       await tx.query(`INSERT INTO agent_execution_commands(command_id,request_id,activity_id,association,body_text,input_digest,kind)
         VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(command_id) DO NOTHING`, [fixed.commandId, requestId, activityId,
@@ -176,8 +192,9 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
     });
     const commandIds = z.array(z.uuid()).parse(claimed.result);
     if (!commandIds.length) return [];
-    const { rows } = await storage.read(`SELECT c.*,o.identity,o.source,o.cleanup_state FROM agent_execution_origins o
-      JOIN agent_execution_commands c USING(command_id) WHERE c.command_id=ANY($1::uuid[]) ORDER BY c.command_id`, [commandIds]);
+    const { rows } = await storage.read(`SELECT c.*,o.identity,COALESCE(a.source,o.source) AS source,o.cleanup_state FROM agent_execution_origins o
+      JOIN agent_execution_commands c USING(command_id) LEFT JOIN agent_execution_authorities a USING(command_id)
+      WHERE c.command_id=ANY($1::uuid[]) ORDER BY c.command_id`, [commandIds]);
     const results: { requestId: string; state: 'pending' | 'confirmed'; query: ExecutionQuery | null }[] = [];
     for (const row of rows) {
       if (!isOpen()) break;
@@ -225,6 +242,39 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
       results.push({ requestId: String(row.request_id), state, query });
     }
     return results;
+  }
+  async function adoptAuthorization(value: unknown, successor: (from: AgentExecutionOrigin, to: AgentExecutionOrigin) => Promise<boolean>) {
+    const source = originSchema.parse(value);
+    const { rows } = await storage.read(`SELECT o.command_id,o.identity,c.activity_id,COALESCE(a.source,o.source) AS source,
+      a.command_id IS NOT NULL AS transferred FROM agent_execution_origins o JOIN agent_execution_commands c USING(command_id)
+      LEFT JOIN agent_execution_authorities a USING(command_id) WHERE o.cleanup_state='none' AND c.cancelled=false AND o.source IS NOT NULL`);
+    const transfers: { commandId: string; from: AgentExecutionOrigin }[] = [];
+    for (const row of rows) {
+      const from = originSchema.parse(row.source);
+      if (from.sourceEnvironmentId !== source.sourceEnvironmentId || from.sourceServiceId !== source.sourceServiceId
+        || from.grantId === source.grantId || from.sourceInstallationId === source.sourceInstallationId && !row.transferred) continue;
+      const activity = await options.activity(spaceIdentitySchema.parse(row.identity), String(row.activity_id));
+      if (activity.status !== 'open' || !await successor(from, source)) continue;
+      transfers.push({ commandId: String(row.command_id), from });
+    }
+    const operation = { requestId: 'agent-recovery-authority:' + source.grantId, fingerprint: hash(source) };
+    const save = () => storage.request(operation, async tx => {
+      for (const transfer of transfers) {
+        const { rows: [current] } = await tx.query(`SELECT o.cleanup_state,c.cancelled,COALESCE(a.source,o.source) AS source
+          FROM agent_execution_origins o JOIN agent_execution_commands c USING(command_id)
+          LEFT JOIN agent_execution_authorities a USING(command_id) WHERE o.command_id=$1 FOR UPDATE OF o,c`, [transfer.commandId]);
+        if (!current || current.cleanup_state !== 'none' || current.cancelled || hash(current.source) !== hash(transfer.from)) continue;
+        await tx.query(`INSERT INTO agent_execution_authorities VALUES($1,$2,$3)
+          ON CONFLICT(command_id) DO UPDATE SET source=EXCLUDED.source,
+          history=agent_execution_authorities.history||EXCLUDED.history`,
+        [transfer.commandId, source, JSON.stringify([{ from: transfer.from, to: source }])]);
+      }
+      return null;
+    });
+    try { await save(); } catch (error) {
+      if (!(error instanceof StorageError) || error.code !== 'commit-unknown') throw error;
+      await save(); // One owner transaction and its original receipt, not an external operation.
+    }
   }
   async function pendingBrowser(identity: SpaceIdentity, activityId: string) {
     await options.activity(identity, activityId);
@@ -288,7 +338,7 @@ export function createAgentExecutions(storage: OwnedStorage, options: {
   }
   const validate = () => validateAgentExecutionCommands(storage);
 
-  return { dispatch, read, control, stop, cleanup, reconcileAuthorization, pendingBrowser, claimBrowser, acceptBrowser, browserStops, validate,
+  return { dispatch, read, control, stop, cleanup, reconcileAuthorization, adoptAuthorization, pendingBrowser, claimBrowser, acceptBrowser, browserStops, validate,
     status: async (identity: SpaceIdentity, activityId: string, context: AgentExecutionContext, requestId: string) => {
       const found = await root(identity, activityId, context, requestId);
       return found ? { cancelled: Boolean(found.row.cancelled), claimed: Boolean(found.row.claimed),
@@ -348,6 +398,18 @@ export async function validateAgentExecutionCommands(storage: OwnedStorage) {
     } else if (row.cleanup_state === 'ended') {
       if (!await terminalFact(storage, String(row.activity_id), action.requestId)) fail('corrupt');
     } else if (row.cleanup_state === 'confirmed' && action.execution.plan.location !== 'browser') fail('corrupt');
+  }
+  const { rows: authorities } = await storage.read(`SELECT a.*,o.source AS original_source FROM agent_execution_authorities a
+    JOIN agent_execution_origins o USING(command_id)`);
+  for (const row of authorities) {
+    let source = originSchema.parse(row.original_source);
+    const history = z.array(z.object({ from: originSchema, to: originSchema }).strict()).min(1).parse(row.history);
+    for (const transfer of history) {
+      if (hash(transfer.from) !== hash(source) || transfer.to.sourceEnvironmentId !== source.sourceEnvironmentId
+        || transfer.to.sourceServiceId !== source.sourceServiceId) fail('corrupt');
+      source = transfer.to;
+    }
+    if (hash(source) !== hash(originSchema.parse(row.source))) fail('corrupt');
   }
 }
 

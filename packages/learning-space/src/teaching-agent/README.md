@@ -63,11 +63,15 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 `chunk-channel.ts` 在有界 WP01 JSON 通道上传递较大的固定输入、快照和工具结果，分片及回复由实际 owner 持久保留并校验资源引用。未知回包按原业务身份查询，分片通道不会重放未知外部效果；维护和恢复同样验证这些资源。
 
+固定依赖描述允许仅轮换 `credentialRef`；持久原描述和 owner、能力及传输地址继续核对。正式跨安装恢复由 WP01 接管证明确认安装继任，新安装仍须重新取得真实授权，不能凭继任记录重用源 token。
+
 ## 跨安装维护与恢复
 
 `collectTeachingBoundary(storage)` 在关闸、排空后读取本 owner 的完整记录及引用资源，返回版本化的 `xunjie.teaching-agent.boundary`：各表数量与内容摘要、原 Run/请求身份、未结与停止待确认状态、资源原字节摘要，以及待处理输入、命令和学生问题数量。物理模型调用和执行的安全边界仍由模型与执行 owner 分别确认；Agent idle 不构成备份许可。
 
 `validateTeachingBoundary` 在独立目标重新导出相同事实后核对清单。受支持的旧通用清单仍走原服务/资源校验；未知必需清单版本拒绝恢复。日志外壳仍为 v1，可忽略扩展使用 `kind: extension` 和显式 `ignorable: true` 的版本化正文，查询保留原件，推进不解释其语义。未知必需事件及外壳版本拒绝推进，已发布迁移保持不变。
+
+接收端撤权使用同一 owner 的 `collectTeachingReceiverBoundary`：休眠的已确认逻辑 Wait 可保留，未知派发和停止待确认仍阻断；真实模型/执行 owner 仍须各自确认物理边界。完整备份始终保存全部逻辑未结项，不因接收端投影而丢失等待记录。
 
 完整流程及实际平台范围见 [#204 交付](../../../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)；Mac 与真实跨机交接见 [#212](https://github.com/paher-din/XunJie/issues/212)。隔离副本只读，维护者通过正式 CLI 接管；恢复不重置原预算、Wait 或命令，不重放未知效果。
 

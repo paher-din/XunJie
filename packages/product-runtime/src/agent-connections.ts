@@ -1,5 +1,6 @@
 import { StorageError } from '@xunjie/storage';
 import type { RuntimeConnection, RuntimeService } from '@xunjie/contracts/product-runtime';
+import { fixedRuntimeConnectionDescriptor } from '@xunjie/contracts/product-runtime';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import { z } from 'zod';
 import { join } from 'node:path';
@@ -19,10 +20,10 @@ export function createAgentConnection(root: string, connectionId: string, capabi
     const connection = config.connections.find(item => item.connectionId === connectionId);
     if (!connection || !connection.requiredCapabilities.includes(capability)) throw new StorageError('unavailable');
     if (expected && (connection.target.environmentId !== expected.environmentId || connection.target.serviceId !== expected.serviceId)
-      || original && JSON.stringify(original) !== JSON.stringify(connection)) throw new StorageError('identity-conflict');
+      || original && JSON.stringify(fixedRuntimeConnectionDescriptor(original)) !== JSON.stringify(fixedRuntimeConnectionDescriptor(connection))) throw new StorageError('identity-conflict');
     original ??= structuredClone(connection);
     try {
-      const result = await createOutboundConnection({ connection: original, credential: () => resolveCredential(root, original!.credentialRef),
+      const result = await createOutboundConnection({ connection: original, credential: () => resolveCredential(root, connection.credentialRef),
         allowInsecureLoopback: true, timeoutMs: 15000 }).request(capability, payload);
       const error = failure.safeParse(result);
       if (error.success) throw new StorageError(error.data.error);

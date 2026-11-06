@@ -29,6 +29,7 @@ const commands: Record<string, readonly string[]> = {
   authorize: ['file', 'out', 'resources', 'service-id'],
   revoke: ['grant-id', 'resources'],
   connect: ['file', 'resources'],
+  reconnect: ['file', 'resources'],
   'recovery-key': ['out'],
   'backup-policy': ['file', 'resources'],
   backup: ['file', 'resources'],
@@ -249,9 +250,11 @@ async function main(): Promise<void> {
         && (typeof input.sourceInstallationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId))) throw new Error('接收方核验输入无效');
       const current = (await runtime.status()).environment;
       if (!current.services.some(service => `${current.environmentId}/${service.serviceId}` === input.expectedReceiver)) throw new Error('receiver-identity-conflict');
-      let execution;
-      for (const serviceId of input.sourceServiceIds as string[]) execution = (await runtime.recovery.fenceSource({
-        sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: serviceId,
+      const execution = (await runtime.recovery.fenceSource({
+        sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: input.sourceServiceIds[0] as string,
+        sourceServiceIds: input.sourceServiceIds as string[],
+        ...(input.backupId === undefined ? {} : { backupId: input.backupId as string }),
+        ...(input.targetInstallationId === undefined ? {} : { targetInstallationId: input.targetInstallationId as string }),
         ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }) })).execution;
       output({ fenced: true, receiverId: input.expectedReceiver, sourceEnvironmentId: input.sourceEnvironmentId,
         ...(input.backupId === undefined ? {} : { backupId: input.backupId }),
@@ -513,14 +516,14 @@ async function main(): Promise<void> {
       output({ saved: true });
       break;
     }
-    case 'connect': {
+    case 'connect': case 'reconnect': {
       const input = await jsonFile(required('file'), '连接');
       if (typeof input.token !== 'string' || !input.token) throw new Error('连接文件需要非空 token');
       rememberSecret(input.token);
       const connection = object(input.connection, 'connection') as unknown as Connection;
       // The library owns validation, credential persistence and transport.
       const token = input.token;
-      await run(() => runtime.connect(connection, token));
+      await run(() => command === 'reconnect' ? runtime.reconnect(connection, token) : runtime.connect(connection, token));
       output({ registered: true });
       break;
     }

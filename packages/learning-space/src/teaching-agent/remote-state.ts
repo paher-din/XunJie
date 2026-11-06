@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
-import { runtimeConnectionSchema } from '@xunjie/contracts/product-runtime';
+import { runtimeConnectionSchema, fixedRuntimeConnectionDescriptor } from '@xunjie/contracts/product-runtime';
 import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
 import type { z } from 'zod';
 export { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
@@ -16,10 +16,8 @@ export function createTeachingDependencyBinding(storage: OwnedStorage) {
     const connection = runtimeConnectionSchema.parse(value);
     const { rows: [row] } = await storage.read("SELECT body FROM teaching_dependency_bindings WHERE name='dependencies'");
     if (row) {
-      if (JSON.stringify(row.body) !== JSON.stringify(connection)) {
-        // PostgreSQL jsonb key order differs; compare the schema's stable field order.
-        if (JSON.stringify(runtimeConnectionSchema.parse(row.body)) !== JSON.stringify(connection)) throw new StorageError('identity-conflict');
-      }
+      if (JSON.stringify(fixedRuntimeConnectionDescriptor(runtimeConnectionSchema.parse(row.body)))
+        !== JSON.stringify(fixedRuntimeConnectionDescriptor(connection))) throw new StorageError('identity-conflict');
       return connection;
     }
     await storage.request({ requestId: 'teaching-dependency-binding',

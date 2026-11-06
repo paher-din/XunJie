@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { createExecutions, executionMigration, executionActionTextMigration } from '../../../packages/learning-space/dist/learning-data/executions.js';
-import { agentExecutionMigration, agentExecutionOriginMigration } from '../../../packages/learning-space/dist/learning-data/agent-executions.js';
+import { agentExecutionMigration, agentExecutionOriginMigration, agentExecutionAuthorityMigration } from '../../../packages/learning-space/dist/learning-data/agent-executions.js';
 import { channelExecutionMigration, channelCheckpointMigration } from '../../../packages/learning-space/dist/learning-data/channel-executions.js';
 import { collectExecutionBoundary, validateExecutionBoundary } from '../../../packages/learning-space/dist/learning-data/maintenance.js';
 import { createNativeChannel, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration } from '../../../packages/learning-space/dist/learning-data/native-channel.js';
@@ -19,7 +19,7 @@ const hash = value => createHash('sha256').update(JSON.stringify(canonicalValue(
 async function fixture() {
   const pg = await nativeFixture();
   const migrations = [{ version: 1, name: 'activities', sql: 'CREATE TABLE activities(id uuid PRIMARY KEY,body jsonb NOT NULL);' },
-    workMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, executionActionTextMigration, channelExecutionMigration, channelCheckpointMigration, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, agentExecutionMigration, agentExecutionOriginMigration].map((m, i) => ({ ...m, version: i + 1 }));
+    workMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, executionActionTextMigration, channelExecutionMigration, channelCheckpointMigration, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, agentExecutionMigration, agentExecutionOriginMigration, agentExecutionAuthorityMigration].map((m, i) => ({ ...m, version: i + 1 }));
   const binding = await provisionStorage({ admin: pg.admin,
     owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID(), migrations }).catch(async error => { await pg.close(); throw error; });
   const storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: 'files', root: pg.root + '/objects' }) });

@@ -5,9 +5,9 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runtimeConnectionSchema, runtimeEnvironmentSchema } from '@xunjie/contracts/product-runtime';
+import { runtimeConnectionSchema, runtimeEnvironmentSchema, fixedRuntimeConnectionDescriptor } from '@xunjie/contracts/product-runtime';
 import type { RuntimeConnection, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
-import { createConnectionAuthority } from './connections.js';
+import { createConnectionAuthority, createOutboundConnection } from './connections.js';
 import type { ConnectionAuthorization } from './connections.js';
 import { acquireLock, assertRoot, atomicJson, exists, initializeRoot, ownsProcess, processIdentity, readJson, removeOwned, withLock } from './io.js';
 import type { ProcessOwner } from './io.js';
@@ -177,6 +177,41 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     return stopped;
   }
 
+  async function configureConnection(connection: RuntimeConnection, credential: string, replacing = false): Promise<void> {
+    await assertRoot(root);
+    const release = await acquireLock(root, 'recovery');
+    try { return await withLock(root, async () => {
+      if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
+      const boundary = await exists(join(root, 'maintenance.json')) ? await readJson<{ phase: string; reason?: string }>(join(root, 'maintenance.json')) : undefined;
+      if (boundary && boundary.phase !== 'open' && boundary.reason !== 'stop') throw new RecoveryError('configuration-in-maintenance');
+      if (await exists(join(root, 'recovery-state.json')) && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active')
+        throw new RecoveryError('target-isolated');
+      const parsed = runtimeConnectionSchema.parse(connection), descriptor = await environment();
+      if (parsed.sourceEnvironmentId !== descriptor.environmentId || !descriptor.services.some(service => service.serviceId === parsed.sourceServiceId))
+        throw new Error('Connection source identity mismatch.');
+      const config = await configuration(), prior = config.connections.find(value => value.connectionId === parsed.connectionId);
+      if (!replacing && prior) throw new Error('Connection already registered.');
+      if (replacing) {
+        if (!prior) throw new Error('Connection is not registered.');
+        const priorRef = prior.credentialRef, nextRef = parsed.credentialRef;
+        if (JSON.stringify(fixedRuntimeConnectionDescriptor(prior)) !== JSON.stringify(fixedRuntimeConnectionDescriptor(parsed)))
+          throw new Error('Reconnection cannot change the fixed owner or transport descriptor.');
+        if (priorRef === nextRef) {
+          if (await resolveCredential(root, nextRef) === credential) return;
+          throw new Error('Reconnection requires a new private credential reference.');
+        }
+        const checked = await createOutboundConnection({ connection: parsed, credential: async () => credential, allowInsecureLoopback: true }).check();
+        if (checked.state === 'unavailable') throw new Error('Reconnection authorization was not confirmed.');
+      }
+      let stored: string | undefined;
+      if (replacing) try { stored = await resolveCredential(root, parsed.credentialRef); }
+      catch (error) { if ((error as { code?: string }).code !== 'ENOENT') throw error; }
+      if (stored !== undefined && stored !== credential) throw new Error('Private credential reference is already in use.');
+      if (stored === undefined) await storeCredential(root, parsed.credentialRef, credential);
+      await atomicJson(configPath, { ...config, connections: [...config.connections.filter(value => value.connectionId !== parsed.connectionId), parsed] });
+    }); } finally { await release(); }
+  }
+
   return {
     modelTask: (input: unknown) => recoveryControl<unknown>('model-task', input),
     prepare: (input?: InstallOptions) => prepare(input),
@@ -296,7 +331,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         return recoveryControl<RetirementProof>('retire', input);
       },
       fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; timeoutMs?: number;
-        backupId?: string; targetInstallationId?: string }) =>
+        backupId?: string; targetInstallationId?: string; sourceServiceIds?: readonly string[] }) =>
         recoveryControl<import('./connections.js').SourceFenceProof & { execution: import('./recovery-types.js').ReceiverExecutionBoundary }>('fence-source', input),
       takeover: (input: { sourceRoot: string; receivers: ({ id: string; root: string } | import('./ssh-recovery.js').SshRecoveryReceiver)[] }) => recoveryControl('takeover', input),
     },
@@ -341,25 +376,8 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       await initializeRoot(root);
       return withLock(root, () => storeCredential(root, ref, value));
     },
-    async connect(connection: RuntimeConnection, credential: string): Promise<void> {
-      await assertRoot(root);
-      const release = await acquireLock(root, 'recovery');
-      try { return await withLock(root, async () => {
-        if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
-        const boundary = await exists(join(root, 'maintenance.json'))
-          ? await readJson<{ phase: string; reason?: string }>(join(root, 'maintenance.json')) : undefined;
-        if (boundary && boundary.phase !== 'open' && boundary.reason !== 'stop') throw new RecoveryError('configuration-in-maintenance');
-        if (await exists(join(root, 'recovery-state.json'))
-          && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active') throw new RecoveryError('target-isolated');
-        const parsed = runtimeConnectionSchema.parse(connection);
-        const descriptor = await environment();
-        if (parsed.sourceEnvironmentId !== descriptor.environmentId || !descriptor.services.some(service => service.serviceId === parsed.sourceServiceId)) throw new Error('Connection source identity mismatch.');
-        const config = await configuration();
-        if (config.connections.some(value => value.connectionId === parsed.connectionId)) throw new Error('Connection already registered.');
-        await storeCredential(root, parsed.credentialRef, credential);
-        await atomicJson(configPath, { ...config, connections: [...config.connections, parsed] });
-      }); } finally { await release(); }
-    },
+    connect: (connection: RuntimeConnection, credential: string) => configureConnection(connection, credential),
+    reconnect: (connection: RuntimeConnection, credential: string) => configureConnection(connection, credential, true),
     async authorize(input: ConnectionAuthorization, targetServiceId?: string) {
       await assertRoot(root);
       const descriptor = await environment();

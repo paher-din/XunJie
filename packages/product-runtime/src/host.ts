@@ -7,7 +7,7 @@ import { extname, join, resolve, sep } from 'node:path';
 import type { RuntimeDependencyStatus, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority, createOutboundConnection } from './connections.js';
 import type { CapabilityHandler, SourceFenceProof } from './connections.js';
-import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson } from './io.js';
+import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson, withLock } from './io.js';
 import { createMaintenanceCoordinator } from './maintenance.js';
 import type { MaintenanceParticipant } from './maintenance.js';
 import { inspectDatabase, resolveCredential, startDatabase, stopDatabase } from './postgres.js';
@@ -15,6 +15,7 @@ import type { InstalledConfiguration } from './runtime.js';
 import { openProductRuntime } from './runtime.js';
 import { createRecoveryManager, RecoveryError } from './recovery.js';
 import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
+import { recordRecoverySuccession } from './recovery-successions.js';
 import { createSshRecoveryReceiver } from './ssh-recovery.js';
 import type { SshRecoveryReceiver } from './ssh-recovery.js';
 import type { BackupPolicy, ReceiverExecutionBoundary, RecoveryOwner } from './recovery-types.js';
@@ -37,6 +38,7 @@ export interface ProductHostOptions {
     lifecycle?: { pause(): Promise<void>; resume(): Promise<void>; close(): Promise<void> };
     poll?(isOpen: () => boolean): Promise<void>;
     modelTask?(input: unknown): Promise<unknown>;
+    authorizedSource?(targetServiceId: string, source: Omit<import('./connections.js').ConnectionGrant, 'token'>): Promise<void>;
     handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
   } | undefined>;
 }
@@ -134,6 +136,12 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       .map(item => `${item.target.environmentId}/${item.target.serviceId}`),
     owners: [createRuntimeRecoveryOwner({ root, participant: runtimeParticipant,
       requiredServiceIds: maintenance.status().participants.map(item => item.serviceId) }), ...suppliedOwners],
+    prepareActivation: receiverIds => withLock(root, async () => {
+      const fenced = new Set(receiverIds);
+      const installed = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+      await atomicJson(join(root, 'installation.json'), { ...installed,
+        connections: installed.connections.filter(item => !fenced.has(`${item.target.environmentId}/${item.target.serviceId}`)) });
+    }),
   });
   let scheduler: ReturnType<typeof setInterval> | undefined;
   let applicationPoll: ReturnType<typeof setInterval> | undefined;
@@ -290,7 +298,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           if (await authorityClosed()) throw new RecoveryError('maintenance');
           const target = authorities.get(input.targetServiceId);
           if (!target) throw new RecoveryError('target-identity-mismatch');
-          result = await target.authorize(input.authorization);
+          const grant = await target.authorize(input.authorization);
+          const { token, ...source } = grant;
+          try { await application?.authorizedSource?.(input.targetServiceId, source); }
+          catch (error) { await target.revoke(grant.grantId); throw error; }
+          result = grant;
         }
         else if (action === 'model-task') {
           if (await authorityClosed() || !application?.modelTask) throw new RecoveryError('maintenance');
@@ -316,18 +328,33 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         } else if (action === 'resume') result = await recovery.resume();
         else if (action === 'retire') result = await recovery.retire(input);
         else if (action === 'fence-source') {
+          const validId = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
+          const sourceServiceIds = input.sourceServiceIds ?? [input.sourceServiceId];
+          if (!validId(input.sourceEnvironmentId) || !validId(input.sourceServiceId)
+            || input.sourceInstallationId !== undefined && !validId(input.sourceInstallationId)
+            || !Array.isArray(sourceServiceIds) || !sourceServiceIds.length || sourceServiceIds.length > 100
+            || !sourceServiceIds.includes(input.sourceServiceId) || sourceServiceIds.some(id => !validId(id)))
+            throw new RecoveryError('invalid-source-services');
+          if ((input.backupId !== undefined || input.targetInstallationId !== undefined)
+            && (!validId(input.backupId) || !validId(input.targetInstallationId) || !validId(input.sourceInstallationId)))
+            throw new RecoveryError('invalid-identity');
           // Fence admission first. Closing this receiver's actual owners then waits for the
           // asynchronous effects that outlive a capability handler. On failure remain closed;
           // never turn a handler-only acknowledgement into an execution-safety proof.
-          let proof: SourceFenceProof | undefined;
-          for (const target of authorities.values()) proof = await target.fenceSource(input);
-          const reopen = maintenance.status().phase === 'open';
+          const reopen = maintenance.status().phase === 'open' || maintenance.status().reason === 'receiver-fence';
+          gatesClosed = true;
           if (reopen || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
           await maintenance.validate();
+          let proof: SourceFenceProof | undefined;
+          for (const serviceId of new Set<string>(sourceServiceIds)) for (const target of authorities.values()) {
+            const confirmed = await target.fenceSource({ ...input, sourceServiceId: serviceId });
+            if (serviceId === input.sourceServiceId) proof = confirmed;
+          }
           const boundaryAt = new Date().toISOString();
           const services: ReceiverExecutionBoundary['services'] = [];
           for (const owner of suppliedOwners) {
-            const material = await owner.material({ backupId: input.backupId ?? input.sourceInstallationId ?? input.sourceEnvironmentId,
+            const readMaterial = owner.receiverMaterial ?? owner.material;
+            const material = await readMaterial.call(owner, { backupId: input.backupId ?? input.sourceInstallationId ?? input.sourceEnvironmentId,
               boundaryAt, signal: AbortSignal.timeout(30000) });
             if (material.serviceId !== owner.participant.descriptor.serviceId || material.boundaryAt !== boundaryAt
               || material.source.environmentId !== environment.environmentId
@@ -341,6 +368,10 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           if (JSON.stringify(services.map(item => item.serviceId).sort()) !== JSON.stringify(expectedOwners))
             throw new RecoveryError('missing-receiver-boundary-owner');
           const execution: ReceiverExecutionBoundary = { formatVersion: 1, boundaryAt, services, unresolved: 0, blocking: 0 };
+          if (input.backupId && input.sourceInstallationId && input.targetInstallationId) for (const serviceId of new Set<string>(sourceServiceIds)) {
+            await recordRecoverySuccession(root, { formatVersion: 1, backupId: input.backupId, sourceEnvironmentId: input.sourceEnvironmentId,
+              sourceServiceId: serviceId, sourceInstallationId: input.sourceInstallationId, targetInstallationId: input.targetInstallationId });
+          }
           if (reopen) await maintenance.resume();
           result = { ...proof, execution };
         }
@@ -355,10 +386,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
               // Every source service identity is fenced at each receiving authority. The retired
               // installation is fenced, not the whole environment, so a successor installation can
               // still be authorized and connected.
-              let execution: ReceiverExecutionBoundary | undefined;
-              for (const serviceId of sourceServiceIds) execution = (await receiverRuntime.recovery.fenceSource({
-                sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: serviceId,
-                sourceInstallationId: sourceEnvironment.installationId, ...binding,
+              const execution = (await receiverRuntime.recovery.fenceSource({
+                sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: sourceServiceIds[0]!,
+                sourceInstallationId: sourceEnvironment.installationId, sourceServiceIds, ...binding,
               })).execution;
               // The proof names the installation that was really fenced, so the takeover cannot
               // accept an acknowledgement for a different source or a partial service set.
@@ -368,20 +398,6 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
                 sourceServiceIds: [...sourceServiceIds], execution };
             } })),
           });
-          // The grants held by this installation were retired together with the source instance, so
-          // connections to those receivers are void. Keeping them would make readiness report a
-          // dependency that can never return without a fresh authorization for this installation.
-          const fencedReceivers = new Set(receivers.map(receiver => receiver.id));
-          const installed = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
-          const dropped = installed.connections.filter(item => fencedReceivers.has(`${item.target.environmentId}/${item.target.serviceId}`));
-          if (dropped.length) {
-            const droppedIds = new Set(dropped.map(item => item.connectionId));
-            // The credential reference is retained for audit; only the void connection is removed.
-            await atomicJson(join(root, 'installation.json'), { ...installed,
-              connections: installed.connections.filter(item => !droppedIds.has(item.connectionId)) });
-            const state = await readJson<Record<string, unknown>>(join(root, 'recovery-state.json'));
-            await atomicJson(join(root, 'recovery-state.json'), { ...state, fencedConnections: [...droppedIds] });
-          }
         } else throw new RecoveryError('unknown-action');
         send(response, 200, result); return;
       } catch (error) {

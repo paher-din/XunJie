@@ -26,6 +26,7 @@ import { createSchoolClient } from './school-client.js';
 import { verifyWindowsSessionHelper } from './prerequisites.js';
 import { createNativeChannelClients } from './native-channel-clients.js';
 import { isInstallationRetired } from './retired-installations.js';
+import { isRecoverySuccessor, hasRecoverySuccession } from './recovery-successions.js';
 import { createStandaloneAgentApplication } from './agent-application.js';
 import { createAgentConnection } from './agent-connections.js';
 import type { CapabilityHandler } from './connections.js';
@@ -36,7 +37,7 @@ import { createMemberAgentBindings, createActivityAgentRoutes, createTeachingAge
 import type { PairedModelOrigin } from '@xunjie/learning-space';
 import type { TeachingAgentPort } from '@xunjie/learning-space';
 import { teachingAgentBindingInputSchema, teachingAgentReceiverId } from '@xunjie/contracts/teaching-agent';
-import { collectTeachingBoundary, validateTeachingBoundary } from '@xunjie/learning-space';
+import { collectTeachingBoundary, collectTeachingReceiverBoundary, validateTeachingBoundary } from '@xunjie/learning-space';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 const agentDependencyAuthorization = new AsyncLocalStorage<(identity: SpaceIdentity) => Promise<void>>();
@@ -66,6 +67,9 @@ export async function createProductLearningApplication(context: {
   readOnly?: () => Promise<boolean>;
 }, actions: ActionIntentOptions = {}) {
   const { root, environment, configuration } = context;
+  const matchesInstallation = (binding: { installationId: string; target: { environmentId: string; serviceId: string } }, installationId?: string) =>
+    installationId ? isRecoverySuccessor(root, { sourceEnvironmentId: binding.target.environmentId,
+      sourceServiceId: binding.target.serviceId, sourceInstallationId: binding.installationId }, installationId) : Promise.resolve(false);
   const readOnly = context.readOnly ?? (async () => await exists(join(root, 'recovery-state.json'))
     && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active');
   const isolatedAtStartup = await readOnly();
@@ -269,7 +273,7 @@ export async function createProductLearningApplication(context: {
         const activityId = origin.authority?.activityId ?? origin.activityId;
         const fixed = activityId ? await routes?.read(identity, activityId) : null;
         if (!fixed || fixed.target.environmentId !== origin.service.environmentId || fixed.target.serviceId !== origin.service.serviceId
-          || fixed.installationId !== origin.installationId) throw new StorageError('forbidden');
+          || !await matchesInstallation(fixed, origin.installationId)) throw new StorageError('forbidden');
         if (request.operation === 'checks.receive' || request.operation === 'checks.dispatch') {
           if (!origin.authority) throw new StorageError('forbidden');
           const attemptId = request.operation === 'checks.receive' ? (request.args[0] as { attemptId: string }).attemptId : String(request.args[0]);
@@ -337,7 +341,7 @@ export async function createProductLearningApplication(context: {
               ...(command.node?.executorInstanceId ? { executorInstanceId: command.node.executorInstanceId } : {}) })),
             blocking: boundary.blocking, retained: { resources: 0, checkpoints: boundary.checkpoints },
             evidence: boundary };
-        } } : module === agent ? { boundary: collectTeachingBoundary } : {}),
+        } } : module === agent ? { boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary } : {}),
         validateService: validate });
       const participant = recoveryOwner.participant;
       let dispatchClosing: Promise<void> | undefined;
@@ -446,8 +450,12 @@ export async function createProductLearningApplication(context: {
           const pinned = activityIds[0] ? await routes?.read(identity, activityIds[0]) : null;
           if (pinned) {
             if (pinned.target.environmentId !== source.sourceEnvironmentId || pinned.target.serviceId !== source.sourceServiceId
-              || pinned.installationId !== source.sourceInstallationId) throw new StorageError('forbidden');
-          } else await agentBindings.authorizeSource(identity, source);
+              || !await matchesInstallation(pinned, source.sourceInstallationId)) throw new StorageError('forbidden');
+          } else {
+            const member = await agentBindings.read(identity);
+            if (!member || member.target.environmentId !== source.sourceEnvironmentId || member.target.serviceId !== source.sourceServiceId
+              || !await matchesInstallation(member, source.sourceInstallationId)) throw new StorageError('forbidden');
+          }
           if (input.operation === 'model') {
             const model = learningModelRequestSchema.parse(input.args[0]);
             if (model.operation === 'checks.receive' || model.operation === 'checks.dispatch') {
@@ -483,6 +491,11 @@ export async function createProductLearningApplication(context: {
       } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
     };
     return { owners, isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}),
+      async authorizedSource(targetServiceId: string, source: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; grantId: string; capabilities: readonly string[] }) {
+        if (!learning || targetServiceId !== dataDescriptor?.serviceId || !source.sourceInstallationId || !source.capabilities.includes('teaching.dependencies')) return;
+        await learning.executions.agent.adoptAuthorization({ sourceEnvironmentId: source.sourceEnvironmentId, sourceServiceId: source.sourceServiceId,
+          sourceInstallationId: source.sourceInstallationId, grantId: source.grantId }, (from, to) => isRecoverySuccessor(root, from, to.sourceInstallationId));
+      },
       ...(data && dependencyService ? { serviceCapabilities: { [data.storage.owner.serviceId]: {
         'teaching.dependencies': dependencyCapability,
       } } } : {}),
@@ -500,12 +513,15 @@ export async function createProductLearningApplication(context: {
           if (!sourceAuthority) throw new StorageError('unavailable');
           try { await sourceAuthority.assertSourceAuthorized(origin, 'teaching.dependencies'); }
           catch (error) {
-            if (error instanceof RuntimeConnectionError && error.code === 'unauthorized') throw new StorageError('forbidden');
+            if (error instanceof RuntimeConnectionError && error.code === 'unauthorized') {
+              if (await hasRecoverySuccession(root, origin)) throw new StorageError('unavailable');
+              throw new StorageError('forbidden');
+            }
             throw error;
           }
           const pinned = await routes?.read(identity, activityId);
           if (!pinned || pinned.target.environmentId !== origin.sourceEnvironmentId
-            || pinned.target.serviceId !== origin.sourceServiceId || pinned.installationId !== origin.sourceInstallationId)
+            || pinned.target.serviceId !== origin.sourceServiceId || !await matchesInstallation(pinned, origin.sourceInstallationId))
             throw new StorageError('forbidden');
         }, isOpen);
         if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
@@ -572,7 +588,7 @@ export function createLearningRecoveryTargets(options: {
         : unit === 'teaching-agent' ? teachingAgentMigrations : learningMigrations,
       ...(unit === 'learning-data' ? { validateMaterial: async (storage: OwnedStorage, material: OwnerBoundaryMaterial) =>
         validateExecutionBoundary(storage, material.evidence) } : unit === 'teaching-agent' ? {
-          boundary: collectTeachingBoundary, validateMaterial: validateTeachingBoundary,
+          boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary, validateMaterial: validateTeachingBoundary,
         } : {}),
       validateService: async storage => {
         if (unit === 'learning-data') return validateLearningData(storage);

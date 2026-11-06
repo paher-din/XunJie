@@ -24,7 +24,7 @@ const hash = value => createHash('sha256').update(JSON.stringify(canonicalValue(
 async function fixture() {
   const pg = await nativeFixture();
   const migrations = [{ version: 1, name: 'activities', sql: 'CREATE TABLE activities(id uuid PRIMARY KEY,body jsonb NOT NULL);' },
-    workMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, executionActionTextMigration, channelExecutionMigration, channelCheckpointMigration, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, agentExecutionMigration, agentExecution.agentExecutionOriginMigration, ...teachingAgentMigrations].filter(Boolean).map((m, i) => ({ ...m, version: i + 1 }));
+    workMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, executionActionTextMigration, channelExecutionMigration, channelCheckpointMigration, nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, agentExecutionMigration, agentExecution.agentExecutionOriginMigration, agentExecution.agentExecutionAuthorityMigration, ...teachingAgentMigrations].filter(Boolean).map((m, i) => ({ ...m, version: i + 1 }));
   const binding = await provisionStorage({ admin: pg.admin,
     owner: { environmentId: randomUUID(), serviceId: randomUUID() }, password: randomUUID(), migrations }).catch(async error => { await pg.close(); throw error; });
   const storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: 'files', root: pg.root + '/objects' }) });
@@ -126,7 +126,7 @@ test('Driver cleanup reconstructs the original stored scope after activity revoc
     await f.storage.request({ requestId: randomUUID(), fingerprint: 'original-driver-fault-state' }, async tx => {
       await tx.query("INSERT INTO teaching_runs(run_id,activity_id,request_id,input_id,identity,state,usage) VALUES($1,$2,$3,$4,$5,'waiting',$6)",
         [run.runId, run.activityId, requestId, run.inputId, f.identity, {state:'unknown'}]);
-      await tx.query("INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved) VALUES($1,$2,0,$3,$4,$5,'waiting',$6,0)",
+      await tx.query("INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved) VALUES($1,$2,0,$3,$4,$5,'waiting',$6,0,0)",
         [f.context.stepId, run.runId, randomUUID(), segmentId, f.context.snapshotId, {}]);
       await tx.query("INSERT INTO teaching_commands(command_id,run_id,step_id,call_id,ordinal,command,state) VALUES($1,$2,$3,'original-call',0,$4,'dispatching')",
         [command.commandId, run.runId, f.context.stepId, command]);

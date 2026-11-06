@@ -4,11 +4,13 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
 import { test } from 'node:test';
-import { openProductRuntime, restoreProductRecovery } from '@xunjie/product-runtime';
-import { collectTeachingBoundary, validateTeachingBoundary } from '@xunjie/learning-space';
+import { createProductRuntimeHost, createProductLearningApplication, openProductRuntime, openRecoveredStorage, restoreProductRecovery } from '@xunjie/product-runtime';
+import { collectTeachingBoundary, validateTeachingBoundary, createModelGateway, createSpaces, createCourses, createLearningData,
+  spaceCourseMigrations, learningMigrations, modelMigrations, teachingAgentMigrations } from '@xunjie/learning-space';
+import { createFileBackend } from '@xunjie/storage';
 import { executionActionSchema } from '@xunjie/contracts/execution';
-import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
 import { fixture, reply, until } from './support/teaching-input-control.mjs';
+import { runPublishedAggregation } from './support/teaching-recovery.mjs';
 
 test('formal backup accounts for a student Wait and revised queue, then re-derives the same owner facts in isolation', { timeout: 300000 }, async () => {
   const f = await fixture((_payload, response, index) => index === 1 ? reply(response, { calls: [{ id: 'recovery-question', name: 'student_ask',
@@ -93,6 +95,132 @@ test('formal backup accounts for a student Wait and revised queue, then re-deriv
   }
 });
 
+test('a paused Run with an unconfirmed real physical model call remains unknown in owner maintenance', { timeout: 180000 }, async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = await fixture(async (_payload, response) => { await gate; reply(response, { text: '原调用的真实结果。' }); });
+  let observer;
+  try {
+    const activity = await f.activity(), c = await f.controlled(activity);
+    // A separate real Gateway handle has no process-local dispatch confirmation. It does not fabricate a fact.
+    observer = await createModelGateway(c.modelStorage, { authorize: async () => {} });
+    const agent = c.makeAgent({ models: { ...c.models, checks: { ...c.models.checks, read: observer.checks.read } } });
+    agent.resume();
+    const first = await c.send('保留尚未确认结束的原调用。', undefined, [], agent);
+    const paused = await until(async () => { const value = await agent.run(c.identity, activity.activityId, first.runId);
+      return value.state === 'paused' && value.reason === 'result-unknown' ? value : null;
+    }, 'The real unconfirmed dispatcher observation pauses the original Run.');
+    assert.equal(f.payloads.length, 1);
+    agent.closeWrites(); agent.closeDispatch(); await agent.drain();
+    const participant = c.storage.participant(); await participant.closeDispatch(); await participant.closeWrites(); await participant.drain();
+    const boundary = await collectTeachingBoundary(c.storage), pending = boundary.unresolved.find(item => item.executionRef === paused.runId);
+    assert.equal(pending.statusKnowledge, 'unknown'); assert.equal(pending.disposition, 'unknown');
+  } finally { release(); observer?.closeWrites(); await f.close(); }
+});
+
+test('a complete native result before Agent association survives formal restore and seals its original segment', { timeout: 300000 }, async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'fixed.txt', kind: 'text', encoding: 'utf8',
+    mediaType: 'text/plain', value: '原始测量是 37 和 46。' };
+  const f = await fixture(async (_payload, response, index) => {
+    if (index === 1) { await gate; reply(response, { calls: [{ id: 'fixed-original', name: 'read_work', arguments: { objectId: work.objectId, contentId: work.contentId } }] }); }
+    else reply(response, { text: '固定测量仍是 37 和 46。' });
+  });
+  const directory = await mkdtemp(join(tmpdir(), 'xj-conversation-recovery-'));
+  const handles = [];
+  let target, restored, sourceHost, sourceApplication, failure, stage = 'source';
+  async function openOwner(root, unit, migrations) {
+    const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
+    const service = environment.services.find(item => item.unit === unit);
+    const storage = await openRecoveredStorage({ root, serviceId: service.serviceId, migrations,
+      backend: createFileBackend({ id: unit, root: join(root, 'learning-resources', unit) }) });
+    handles.push(storage); return storage;
+  }
+  try {
+    await f.runtime.stop();
+    sourceHost = await createProductRuntimeHost({ root: f.root, createApplication: async context => {
+      sourceApplication = await createProductLearningApplication(context); return sourceApplication;
+    } });
+    await f.configure();
+    const activity = await f.activity(), base = `agent/${activity.activityId}`;
+    await f.api(`workspaces/${activity.activityId}`, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    const first = await f.send(activity, '读取这次固定的原始测量。', undefined, [work]);
+    await until(() => f.payloads.length === 1, 'The actual upstream call starts.');
+    const events = await f.api(base + '/events'), snapshotEvent = events.find(event => event.kind === 'context-assembled');
+    const environment = JSON.parse(await readFile(join(f.root, 'environment.json'), 'utf8'));
+    const agentId = environment.services.find(item => item.unit === 'teaching-agent').serviceId;
+    const sourceAgent = sourceApplication.owners.find(owner => owner.participant.descriptor.serviceId === agentId);
+    stage = 'gate';
+    // Public owner maintenance gate faults only association timing; the real model owner completes normally.
+    await sourceAgent.participant.closeWrites(); await sourceAgent.participant.closeDispatch();
+    const modelStorage = await openOwner(f.root, 'model-connection', modelMigrations);
+    const model = await createModelGateway(modelStorage, { authorize: async () => {} });
+    stage = 'native-result';
+    release();
+    const native = await until(async () => { const fact = await model.checks.read(activity.identity, snapshotEvent.body.attemptId);
+      return fact.state === 'completed' && fact.physicalRequestEnded && fact.resultRef ? fact : null;
+    }, 'The real native result is saved before Agent association.');
+    assert.equal((await f.api(base + '/events')).filter(event => event.kind === 'tool-intent').length, 0);
+    await f.api(`workspaces/${activity.activityId}`, { requestId: randomUUID(), baseRevision: 1,
+      files: [{ ...work, contentId: randomUUID(), value: '最新作品变成了 999。' }] });
+    const key = randomBytes(32);
+    stage = 'backup';
+    const backup = await sourceHost.recovery.backup({ directory, key, leaveClosed: true });
+    restored = await restoreProductRecovery({ root: join(directory, 'target'), resources: f.resources,
+      backupDirectory: join(directory, backup.backupId), key });
+    for (const owner of restored.owners) await owner.close?.(); restored = undefined;
+    target = openProductRuntime({ root: join(directory, 'target'), resources: f.resources });
+    stage = 'isolated';
+    const state = await target.start();
+    const restoredModel = await createModelGateway(await openOwner(join(directory, 'target'), 'model-connection', modelMigrations), { authorize: async () => {} });
+    const isolatedFact = await restoredModel.checks.read(activity.identity, native.attemptId);
+    assert.equal(isolatedFact.resultRef, native.resultRef); assert.equal(isolatedFact.requestRef, native.requestRef);
+    const api = async (route, body) => { const context = await fetch(state.endpoint + '/api/learning/context', { headers: { 'x-xj-space': 'personal' } }).then(response => response.json());
+      const response = await fetch(state.endpoint + '/api/learning/' + route, { headers: { 'x-xj-space': 'personal', 'content-type': 'application/json', 'x-xj-namespace': context.clientNamespace },
+        ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+      const value = await response.json(); assert.equal(response.status, 200, route + ': ' + JSON.stringify(value)); return value;
+    };
+    assert.equal((await api(base + '/conversation')).tools.length, 0); assert.equal(f.payloads.length, 1);
+    await target.recovery.takeover({ sourceRoot: f.root, receivers: [] });
+    stage = 'active';
+    const final = await until(async () => { const value = await api(base + '/conversation'); return value.runs[0]?.state === 'completed' ? value : null;
+    }, 'The saved original attempt is associated and its real tool result continues.', 60000);
+    const intent = (await api(base + '/events')).find(event => event.kind === 'tool-intent');
+    assert.equal(intent.body.attemptId, native.attemptId); assert.equal(intent.body.resultRef, native.resultRef);
+    assert.equal(final.tools[0].result.file.value, work.value); assert.equal(final.runs[0].runId, first.runId);
+    assert.equal(f.payloads.length, 2); assert.deepEqual(final.runs[0].usage, { state: 'final', inputTokens: 40, outputTokens: 20, totalTokens: 60 });
+    const selection = await api('models/selection');
+    const switched = await api(base + '/model-switches', { requestId: randomUUID(), selectionVersion: selection.version });
+    assert.equal(switched.state, 'completed');
+    assert.notEqual(switched.toSegmentId, native.segment.segmentId);
+    const closedSegment = await restoredModel.segments.read(activity.identity, native.segment.segmentId);
+    const newSegment = await restoredModel.segments.read(activity.identity, switched.toSegmentId);
+    assert.equal(closedSegment.closed, true); assert.equal(newSegment.closed, false);
+    // A second formal restore must retain both sealed and newly created native segments without a call.
+    await target.setCredential('sealed-segment-recovery', key.toString('base64'));
+    stage = 'second-backup';
+    const second = await target.recovery.backup({ directory: join(directory, 'second'), recoveryKeyRef: 'sealed-segment-recovery', leaveClosed: true });
+    restored = await restoreProductRecovery({ root: join(directory, 'second-target'), resources: f.resources,
+      backupDirectory: join(directory, 'second', second.backupId), key });
+    const finalModel = await createModelGateway(await openOwner(join(directory, 'second-target'), 'model-connection', modelMigrations), { authorize: async () => {} });
+    assert.deepEqual(await finalModel.segments.read(activity.identity, native.segment.segmentId), closedSegment);
+    assert.deepEqual(await finalModel.segments.read(activity.identity, switched.toSegmentId), newSegment);
+    assert.equal(f.payloads.length, 2);
+  } catch (error) { failure = error; throw new Error(stage + ': ' + (error.code ?? '') + ' ' + error.message, { cause: error }); }
+  finally {
+    release(); for (const owner of restored?.owners ?? []) await owner.close?.();
+    for (const handle of handles) await handle.close();
+    try { await target?.stop(); await sourceHost?.stop(); await f.close(); }
+    catch (error) { if (!failure) throw error; console.error('native-result cleanup: ' + error.message); }
+    // The second independent target was validated but never launched.
+    const secondTarget = openProductRuntime({ root: join(directory, 'second-target'), resources: f.resources });
+    await secondTarget.stop().catch(() => {});
+    if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('xj-conversation-recovery-')) throw new Error('Unexpected cleanup target');
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+});
+
 test('the closed owner rejects a mismatched inventory and unsupported mandatory evidence version', { timeout: 180000 }, async () => {
   const f = await fixture();
   try {
@@ -123,7 +251,8 @@ test('an unclaimed real WP03 command survives independent restore; an unconfirme
     arguments: { componentKey: 'table', operationId: 'aggregate', parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } } }] })
     : reply(response, { text: '原计算的真实均值是 83.33333333333333。' }));
   const directory = await mkdtemp(join(tmpdir(), 'xj-conversation-recovery-'));
-  let target, restored, acceptedCommand, finalReport;
+  let target, restored, settleEffect, finalReport, failure, stage = 'source';
+  const handles = [];
   try {
     const session = await f.browserCourse({ withSession: true });
     const { activity, headers } = session, base = `agent/${activity.activityId}`;
@@ -152,12 +281,17 @@ test('an unclaimed real WP03 command survives independent restore; an unconfirme
         ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
       const value = await response.json(); assert.equal(response.status, 200, route + ': ' + JSON.stringify(value)); return value;
     };
+    const login = async () => {
+      const response = await fetch(state.endpoint + '/api/learning/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(session.login) });
+      assert.equal(response.status, 200); studentHeaders = { cookie: response.headers.get('set-cookie').split(';')[0] };
+    };
+    await login(); // Isolation creates only an in-memory read session; source cookies are not restored.
     const isolated = await api(base + '/conversation');
     assert.deepEqual(isolated.tools, before.tools); assert.deepEqual(isolated.waits, before.waits);
     assert.equal(f.payloads.length, 1);
     await target.recovery.takeover({ sourceRoot: f.root, receivers: [] });
-    const login = await fetch(state.endpoint + '/api/learning/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(session.login) });
-    assert.equal(login.status, 200); studentHeaders = { cookie: login.headers.get('set-cookie').split(';')[0] };
+    await login();
+    studentHeaders['x-xj-namespace'] = (await api('context')).clientNamespace;
     const browserId = randomUUID(), executionBase = `executions/${activity.activityId}`;
     const claimed = await api(`${executionBase}/agent/${commandId}/claim`, { browserId });
     assert.equal(claimed.association.commandId, commandId);
@@ -165,27 +299,30 @@ test('an unclaimed real WP03 command survives independent restore; an unconfirme
       inputDigest: createHash('sha256').update(JSON.stringify(executionActionSchema.parse(action))).digest('hex'), receiptId: 'restore:' + commandId, detail: '' },
       execution: { executionRef: randomUUID(), acceptedSeq: 1 } };
     const accepted = await api(`${executionBase}/agent/${commandId}/accept`, { browserId, acceptance });
-    const ts = await import('../../../packages/learning-space/node_modules/typescript/lib/typescript.js');
-    const source = await readFile(new URL('../../web/src/tool-execution/algorithm.ts', import.meta.url), 'utf8');
-    const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-    const algorithm = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-    const published = await aggregationPackage();
-    const computed = algorithm.runAggregation({ ...algorithm.jobFromAction(action, action.execution.limits),
-      bytes: Buffer.from(published.algorithmBase64, 'base64'), memoryPages: manifest.algorithm.memoryPages, entry: manifest.algorithm.entry });
+    stage = 'compute';
+    const { computed, resultInput } = await runPublishedAggregation(action, manifest);
     assert.equal(computed.result.value, 83.33333333333333);
-    const bytes = Buffer.from(computed.artifact.text);
-    const resultInput = { contentId: randomUUID(), output: computed.result, text: computed.artifact.text,
-      name: computed.artifact.name, mediaType: computed.artifact.mediaType,
-      sha256: createHash('sha256').update(bytes).digest('hex'), byteLength: bytes.length };
-    acceptedCommand = { api, route: `${executionBase}/${commandId}`, resultInput };
+    const environment = JSON.parse(await readFile(join(directory, 'target', 'environment.json'), 'utf8'));
+    const open = async (unit, migrations) => {
+      const storage = await openRecoveredStorage({ root: join(directory, 'target'),
+        serviceId: environment.services.find(service => service.unit === unit).serviceId, migrations,
+        backend: createFileBackend({ id: unit, root: join(directory, 'target', 'learning-resources', unit) }) });
+      handles.push(storage); return storage;
+    };
+    const space = await open('space-course', spaceCourseMigrations), spaces = createSpaces(space);
+    const learning = createLearningData(await open('learning-data', learningMigrations), spaces, createCourses(space, spaces), {});
+    settleEffect = async () => {
+      const result = await learning.executions.result(activity.identity, activity.activityId, commandId, resultInput);
+      finalReport = { ...result, state: 'succeeded', confirmedSeq: 3 };
+      await learning.executions.report(activity.identity, activity.activityId, commandId, finalReport);
+    };
     await target.setCredential('live-tool', key.toString('base64'));
+    stage = 'unsafe-backup';
     await assert.rejects(target.recovery.backup({ directory: join(directory, 'unsafe'), recoveryKeyRef: 'live-tool' }),
-      error => error.code === 'unconfirmed-execution-boundary');
-    await target.recovery.resume();
+      error => error.code === 'unavailable'); // The execution owner's shutdown refuses an unconfirmed browser Worker before export.
+    stage = 'archive-original-result'; await settleEffect();
+    stage = 'resume'; await target.recovery.resume();
     assert.equal((await api(`${executionBase}/${commandId}`)).executionRef, accepted.executionRef);
-    const result = await api(`${executionBase}/${commandId}/result`, resultInput);
-    finalReport = { ...result, state: 'succeeded', confirmedSeq: 3 };
-    await api(`${executionBase}/${commandId}/report`, finalReport);
     const final = await until(async () => { const value = await api(base + '/conversation'); return value.runs[0]?.state === 'completed' ? value : null;
     }, 'The restored original command settles from its real result, without replay.', 60000);
     assert.equal(final.runs[0].runId, first.runId); assert.equal(final.tools[0].commandId, commandId);
@@ -194,17 +331,19 @@ test('an unclaimed real WP03 command survives independent restore; an unconfirme
     await api(`${executionBase}/${commandId}/report`, finalReport);
     assert.equal(f.payloads.length, 2);
     assert.deepEqual(final.runs[0].usage, { state: 'final', inputTokens: 40, outputTokens: 20, totalTokens: 60 });
-  } finally {
+  } catch (error) { failure = error; throw new Error(stage + ': ' + (error.code ?? '') + ' ' + error.message, { cause: error }); }
+  finally {
     // Close the real effect even if an assertion fails after its acceptance.
-    if (acceptedCommand) try {
+    if (settleEffect) try {
+      await settleEffect();
       await target.recovery.resume().catch(() => {});
-      const { api, route, resultInput } = acceptedCommand;
-      const result = await api(route + '/result', resultInput);
-      await api(route + '/report', finalReport ?? { ...result, state: 'succeeded', confirmedSeq: 3 });
     } catch { /* The production stop below remains responsible for cleanup. */ }
     for (const owner of restored?.owners ?? []) await owner.close?.();
-    await target?.stop(); await f.close();
+    for (const handle of handles) await handle.close();
+    let stopped = false;
+    try { await target?.stop(); stopped = true; } catch (error) { if (!failure) throw error; console.error('WP03 target cleanup: ' + error.message); }
+    try { await f.close(); } catch (error) { if (!failure) throw error; console.error('WP03 source cleanup: ' + error.message); }
     if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('xj-conversation-recovery-')) throw new Error('Unexpected cleanup target');
-    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    if (stopped) await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });

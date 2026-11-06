@@ -32,7 +32,11 @@ export async function collectTeachingBoundary(storage: OwnedStorage) {
     || commands.some(command => command.run_id === run.run_id) || waits.some(wait => wait.run_id === run.run_id)).map(run => {
     const request = rows('teaching_requests').find(request => request.request_id === run.request_id);
     if (!request) throw new StorageError('corrupt');
-    const unknown = run.state === 'dispatching' || waits.some(wait => wait.run_id === run.run_id && wait.reason === 'unknown');
+    const unknown = run.state === 'dispatching' || run.reason === 'result-unknown'
+      || rows('teaching_steps').some(step => step.run_id === run.run_id && step.dispatch_permitted === true && step.call_settled_ms == null)
+      || commands.some(command => command.run_id === run.run_id
+        && (command.state === 'dispatching' || (command.outcome as { state?: unknown } | null)?.state === 'unknown'))
+      || waits.some(wait => wait.run_id === run.run_id && wait.reason === 'unknown');
     return { requestId: String(run.request_id), inputDigest: String(request.input_digest), executionRef: String(run.run_id),
       activityId: String(run.activity_id), location: 'teaching-agent', state: String(run.state),
       statusKnowledge: unknown ? 'unknown' as const : 'confirmed' as const, stopRequested: run.stop_requested === true,
@@ -56,6 +60,14 @@ export async function collectTeachingBoundary(storage: OwnedStorage) {
       pending: { commands: commands.length, waits: waits.length,
         inputs: rows('teaching_inputs').filter(row => ['pending', 'paused'].includes(String(row.state))).length,
         studentQuestions: rows('teaching_student_questions').filter(row => row.state === 'pending').length } } };
+}
+
+/** Dormant logical Waits may remain; uncertain dispatches and stop confirmations still block fencing. */
+export async function collectTeachingReceiverBoundary(storage: OwnedStorage) {
+  const boundary = await collectTeachingBoundary(storage);
+  return { ...boundary, kind: 'xunjie.teaching-agent.receiver-boundary',
+    unresolved: boundary.unresolved.filter(run => run.statusKnowledge === 'unknown' || run.stopRequested),
+    evidence: { ...boundary.evidence, dormantRuns: boundary.unresolved.filter(run => run.statusKnowledge === 'confirmed' && !run.stopRequested).length } };
 }
 
 /** Re-derive restored facts, including resource bytes, rather than trusting the encrypted inventory. */

@@ -35,6 +35,12 @@ export const runtimeConnectionSchema = z.object({
 });
 export type RuntimeConnection = z.infer<typeof runtimeConnectionSchema>;
 
+/** Private credential references rotate without changing the fixed owner or transport. */
+export function fixedRuntimeConnectionDescriptor(value: RuntimeConnection) {
+  const { credentialRef, ...descriptor } = runtimeConnectionSchema.parse(value);
+  return descriptor;
+}
+
 export interface RuntimeDependencyStatus {
   name: string;
   required: boolean;
