@@ -540,10 +540,17 @@ function LearningView() {
   const greeting = now.getHours() < 12 ? '上午好' : now.getHours() < 18 ? '下午好' : '晚上好'
   const openModels = () => void action(async () => {
     await workspace.current?.leave()
-    const params = new URLSearchParams(currentSearch.current); params.delete('activity'); params.delete('course'); params.set('settings', 'models')
+    const params = new URLSearchParams(currentSearch.current); params.set('settings', 'models')
     navigate({ pathname: route.pathname, search: params.toString() })
   })
-  const closeModels = () => { const params = new URLSearchParams(currentSearch.current); params.delete('settings'); navigate({ pathname: route.pathname, search: params.toString() }) }
+  const closeModels = () => {
+    const params = new URLSearchParams(currentSearch.current); params.delete('settings')
+    const search = params.toString()
+    // The activity workspace was already protected before settings opened and is
+    // unmounted here, so approve this exact return route instead of protecting it twice.
+    approvedSearch.current = search ? '?' + search : ''
+    navigate({ pathname: route.pathname, search })
+  }
   return <ProductShell immersive={!!opened && !modelsOpen} identityName={identity?.name ?? '学习空间'}
     spaces={context?.identities.map(item => ({ key: item.key, label: item.identity.kind === 'personal' ? '个人空间'
       : context.identities.filter(other => other.identity.kind === 'school').length > 1 ? `学校空间 · ${item.identity.name}` : '学校空间' })) ?? []}
@@ -551,7 +558,8 @@ function LearningView() {
     modelName={modelSelection.selection?.selected?.connection.name ?? '未选用模型'}
     onConnections={() => { closeModels(); goHome(); setConnectionsOpen(true) }}>
     {modelsOpen && context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
-      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection} />
+      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
+      activityId={opened?.activityId} />
     : context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}

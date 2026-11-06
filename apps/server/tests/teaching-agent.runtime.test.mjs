@@ -139,10 +139,33 @@ test('a learning conversation persists across runs, restart, stop and transport 
     assert.ok(received[1].messages.some(message => message.role === 'assistant' && message.content === '回答1'),
       'the next run continues the native model context across runs');
 
+    const switchedConnectionId = randomUUID(), switchedGrantId = randomUUID();
+    assert.equal((await api('models/connections', { requestId: randomUUID(), connectionId: switchedConnectionId, expectedVersion: 0,
+      name: '学习对话切换目标', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
+      path: '/chat/completions', modelId: 'fixture-learning-switched', dialect: 'standard', parameterMode: 'plain', enabled: true,
+      contextWindow: 262144, maxOutputTokens: 8192, credential: { action: 'replace', value: 'synthetic-switched-key' } })).status, 200);
+    assert.equal((await api('models/grants', { requestId: randomUUID(), grantId: switchedGrantId,
+      connectionId: switchedConnectionId, owner: 'self' })).status, 200);
+    const selected = await api('models/selection', { requestId: randomUUID(), expectedVersion: 1,
+      source: { kind: 'personal', connectionId: switchedConnectionId, grantId: switchedGrantId } });
+    assert.equal(selected.status, 200);
+    const switchRequestId = randomUUID();
+    const switched = await api('agent/' + activity.activityId + '/model-switches', {
+      requestId: switchRequestId, selectionVersion: selected.value.version });
+    assert.equal(switched.status, 200, JSON.stringify(switched.value));
+    assert.equal(switched.value.state, 'completed');
+    assert.equal(switched.value.model.modelId, 'fixture-learning-switched');
+    assert.notEqual(switched.value.fromSegmentId, switched.value.toSegmentId);
+    const repeatedSwitch = await api('agent/' + activity.activityId + '/model-switches', {
+      requestId: switchRequestId, selectionVersion: selected.value.version });
+    assert.deepEqual(repeatedSwitch.value, switched.value, 'a lost switch reply is recovered by the stable request identity');
+    const switchedConversation = (await api('agent/' + activity.activityId + '/conversation')).value;
+    assert.ok(switchedConversation.messages.some(message => message.role === 'system' && message.text.includes('已切换到个人模型')));
+
     await runtime.stop();
     ({ endpoint } = await runtime.start());
     const restarted = (await api('agent/' + activity.activityId + '/conversation')).value;
-    assert.deepEqual(restarted.messages, continued.messages);
+    assert.deepEqual(restarted.messages, switchedConversation.messages);
     assert.equal(received.length, 2, 'reading a conversation never calls the model');
 
     const third = action('如果我要停止一个很慢的回答呢？');
@@ -151,6 +174,26 @@ test('a learning conversation persists across runs, restart, stop and transport 
     assert.equal(thirdAccepted.status, 200);
     const runId = JSON.parse(thirdAccepted.value.receipt.detail).runId;
     await waitFor(async () => received.length === 3, 'The third call was not sent.');
+    const deferredConnectionId = randomUUID(), deferredGrantId = randomUUID();
+    assert.equal((await api('models/connections', { requestId: randomUUID(), connectionId: deferredConnectionId, expectedVersion: 0,
+      name: '在途切换目标', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
+      path: '/chat/completions', modelId: 'fixture-learning-deferred', dialect: 'standard', parameterMode: 'plain', enabled: true,
+      contextWindow: 262144, maxOutputTokens: 8192, credential: { action: 'replace', value: 'synthetic-deferred-key' } })).status, 200);
+    assert.equal((await api('models/grants', { requestId: randomUUID(), grantId: deferredGrantId,
+      connectionId: deferredConnectionId, owner: 'self' })).status, 200);
+    const deferredSelection = await api('models/selection', { requestId: randomUUID(), expectedVersion: 2,
+      source: { kind: 'personal', connectionId: deferredConnectionId, grantId: deferredGrantId } });
+    assert.equal(deferredSelection.status, 200);
+    const deferredSwitchInput = { requestId: randomUUID(), selectionVersion: deferredSelection.value.version };
+    const deferredSwitch = await api('agent/' + activity.activityId + '/model-switches', deferredSwitchInput);
+    assert.equal(deferredSwitch.value.state, 'paused');
+    assert.equal(deferredSwitch.value.reason, 'segment-busy', 'an in-flight physical request keeps its fixed route');
+    const competing = await api('agent/' + activity.activityId + '/model-switches', {
+      requestId: randomUUID(), selectionVersion: deferredSelection.value.version });
+    assert.equal(competing.status, 409, 'a second switch cannot fork the pending boundary');
+    const changedAgain = await api('models/selection', { requestId: randomUUID(), expectedVersion: deferredSelection.value.version,
+      source: { kind: 'personal', connectionId: switchedConnectionId, grantId: switchedGrantId } });
+    assert.equal(changedAgain.status, 200, 'a later space selection must not rewrite the pending target');
     await new Promise(resolve => setTimeout(resolve, 300));
     const stop = await api('agent/' + activity.activityId + '/runs/' + runId + '/stop', { requestId: randomUUID() });
     assert.equal(stop.status, 200);
@@ -162,6 +205,18 @@ test('a learning conversation persists across runs, restart, stop and transport 
     const afterStop = (await api('agent/' + activity.activityId + '/events')).value;
     assert.ok(afterStop.some(event => event.kind === 'stop-requested'));
     assert.ok(afterStop.some(event => event.kind === 'run-stopped'));
+    await waitFor(async () => (await api('agent/' + activity.activityId + '/events')).value
+      .some(event => event.kind === 'model-switch-completed' && event.body.requestId === deferredSwitchInput.requestId),
+    'The pending switch did not resume automatically.');
+    const resumedSwitch = await api('agent/' + activity.activityId + '/model-switches', deferredSwitchInput);
+    assert.equal(resumedSwitch.value.state, 'completed');
+    assert.equal(resumedSwitch.value.model.modelId, 'fixture-learning-deferred');
+    const callsBeforeRevoke = received.length;
+    const revoked = await api('models/grants/' + deferredGrantId + '/revoke', { requestId: randomUUID(), expectedVersion: 1 });
+    assert.equal(revoked.status, 200);
+    const revokedRetry = await api('agent/' + activity.activityId + '/model-switches', deferredSwitchInput);
+    assert.equal(revokedRetry.status, 403, 'a fixed target does not bypass live grant revocation');
+    assert.equal(received.length, callsBeforeRevoke, 'revoked recovery never starts another paid generation');
     const stoppedConversation = (await api('agent/' + activity.activityId + '/conversation')).value;
     assert.equal(stoppedConversation.messages.filter(message => message.role === 'student').length, 3);
   } catch (error) { failure = error; }

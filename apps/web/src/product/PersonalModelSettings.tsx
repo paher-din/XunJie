@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { modelAttemptSchema, modelConnectionSchema, type ModelAttempt, type ModelConnection, type ModelCheckInput, type SaveModelConnection } from '@xunjie/contracts/model-connections'
+import { teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelConnectionDialog } from '../components/settings/ModelConnectionDialog'
 import { z } from 'zod'
@@ -11,17 +12,20 @@ const failures: Record<string, string> = { conflict: '配置已被更新，当�
   unavailable: '连接或相应适配器不可用，请检查配置。', invalid: '请检查地址、协议、模型及密钥填写。', maintenance: '模型服务正在维护，请稍后重试。' }
 type PersonalModelSettingsProps = {
   identity: SpaceIdentity; spaceKey: string; namespace: string; onBack(): void; selection: ModelSelectionController
+  activityId?: string
 }
 export function PersonalModelSettings(props: PersonalModelSettingsProps) {
   const { identity, namespace, spaceKey } = props
   // A subject change must discard old drafts, errors and late async responses together.
   return <PersonalModelSettingsBody key={JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])} {...props} />
 }
-function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection }: PersonalModelSettingsProps) {
+function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId }: PersonalModelSettingsProps) {
   const [connections, setConnections] = useState<ModelConnection[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
   const [dialog, setDialog] = useState<{ connection: ModelConnection | null } | null>(null)
   const [loading, setLoading] = useState(false), [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState<{ key: string; message: string } | null>(null)
+  const [switchStatus, setSwitchStatus] = useState('')
+  const [switchFailed, setSwitchFailed] = useState(false)
   const actions = useRef(new Map<string, number>())
   const reads = useRef(0)
   // Pending polls must not prevent a completed read from publishing.
@@ -29,7 +33,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   const live = useRef(true)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const request = useCallback(async (route: string, body?: unknown) => {
-    const response = await fetch('/api/learning/models/' + route, { method: body === undefined ? 'GET' : 'POST',
+    const path = route.startsWith('../') ? '/api/learning/' + route.slice(3) : '/api/learning/models/' + route
+    const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST',
       credentials: 'same-origin', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(35000),
       headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
         'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
@@ -99,9 +104,30 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     }
     return saved
   }
+  const switchConversation = async (selectionVersion: number) => {
+    if (!activityId) return
+    setSwitchFailed(false)
+    setSwitchStatus('正在核对原回答与工具边界…')
+    try {
+      const result = teachingModelSwitchSchema.parse(await request(`../agent/${activityId}/model-switches`, {
+        requestId: crypto.randomUUID(), selectionVersion }))
+      setSwitchFailed(result.state !== 'completed' && result.reason !== 'segment-busy')
+      setSwitchStatus(result.state === 'completed'
+        ? `已为当前学习活动切换到「${result.model.modelId}」。已有消息和结果保留原出处。`
+        : result.reason === 'segment-busy'
+          ? '当前回答或工具仍在收尾；切换请求已保留，完成后将继续核对。'
+          : '切换尚未完成；原模型边界和草稿已保留，没有自动回退到其他模型。')
+    } catch (error) {
+      setSwitchFailed(true)
+      setSwitchStatus(error instanceof Error ? `切换结果尚未确认：${error.message}` : '切换结果尚未确认；请重新读取后重试。')
+    }
+  }
   return <div className="content product-model-settings">
     <div className="sectionhead"><h1>个人模型设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
-    <div className="st-body-in"><ModelSelection controller={selection} onCheck={() => void act('selected', '检查当前模型', () => check({ selected: true, selectionVersion: selection.selection!.version }))} />
+    <div className="st-body-in"><ModelSelection controller={selection}
+      onSelected={saved => switchConversation(saved.version)}
+      onCheck={() => void act('selected', '检查当前模型', () => check({ selected: true, selectionVersion: selection.selection!.version }))} />
+      {activityId && <p role={switchFailed ? 'alert' : 'status'} className={switchFailed ? 'learning-error' : 'detail'}>{switchStatus || '从当前学习活动进入设置；新选用会在原调用和工具结清后继续此活动。'}</p>}
       <div role="region" aria-label="个人连接配置"><ModelTab connections={connections} attempts={attempts} loading={loading} error={[loadError, actionError?.message].filter(Boolean).join('；')}
       onReload={() => void reload(true)} onNew={() => setDialog({ connection: null })} onEdit={connection => setDialog({ connection })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}

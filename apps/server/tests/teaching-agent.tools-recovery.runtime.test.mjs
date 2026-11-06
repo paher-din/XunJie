@@ -33,16 +33,34 @@ async function until(check, description, timeout = 15000) {
   }
   throw new Error(description);
 }
-function reply(response, { call, text = '' }) {
+function reply(response, { call, text = '', unknownUsage = false }) {
   response.writeHead(200, { 'content-type': 'text/event-stream' });
   for (const value of [
     { id: 'recovery-sdk', choices: [{ index: 0, delta: { role: 'assistant', content: text,
       ...(call ? { tool_calls: [{ index: 0, id: call.id, type: 'function',
         function: { name: call.name, arguments: JSON.stringify(call.arguments) } }] } : {}) }, finish_reason: null }] },
     { id: 'recovery-sdk', choices: [{ index: 0, delta: {}, finish_reason: call ? 'tool_calls' : 'stop' }] },
-    { choices: [], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } },
+    ...(unknownUsage ? [] : [{ choices: [], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } }]),
   ]) response.write('data: ' + JSON.stringify(value) + '\n\n');
   response.end('data: [DONE]\n\n');
+}
+function protocolReply(response, protocol, text) {
+  if (protocol === 'chat-completions') return reply(response, { text });
+  response.writeHead(200, { 'content-type': 'text/event-stream' });
+  const send = event => response.write('event: ' + event.type + '\ndata: ' + JSON.stringify(event) + '\n\n');
+  if (protocol === 'responses') send({ type: 'response.completed', response: { id: 'resp-switched', object: 'response', status: 'completed',
+    output: [{ id: 'msg-switched', type: 'message', role: 'assistant', status: 'completed',
+      content: [{ type: 'output_text', text, annotations: [] }] }], usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 } } });
+  else {
+    send({ type: 'message_start', message: { id: 'msg-switched', type: 'message', role: 'assistant', model: 'next-step-model',
+      content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 20, output_tokens: 0 } } });
+    send({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } });
+    send({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } });
+    send({ type: 'content_block_stop', index: 0 });
+    send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { input_tokens: 20, output_tokens: 10 } });
+    send({ type: 'message_stop' });
+  }
+  response.end();
 }
 
 /** Real product provisioning and resources; only the named public owner boundary is faulted.
@@ -196,6 +214,223 @@ function assertUniqueRunFacts(events, { steps, tools }) {
   assert.equal(new Set(settlements.map(event => event.body.stepId)).size, steps);
   assert.equal(events.filter(event => event.kind === 'run-completed').length, 1);
 }
+
+test('model switching recovers lost owner replies across driver instances without repeating effects', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response) => reply(response, { text: '保留原回答与预算' }));
+  try {
+    const original = f.makeAgent();
+    const runId = await f.send(original); original.resume();
+    await f.completed(original, runId); original.close();
+    const runBefore = await original.run(f.identity, f.activity.activityId, runId);
+    const prior = await f.models.selection.snapshot(f.identity, 1);
+    const connectionId = randomUUID(), grantId = randomUUID();
+    await f.models.save(f.identity, { requestId: randomUUID(), connectionId, expectedVersion: 0,
+      name: 'Fixed switch destination', protocol: 'chat-completions', baseUrl: prior.choice.connection.baseUrl,
+      path: '/chat/completions', modelId: 'fixed-switch-target', dialect: 'standard', parameterMode: 'plain', enabled: true,
+      contextWindow: 262144, maxOutputTokens: 1024, credential: { action: 'replace', value: 'synthetic-switch-key' } });
+    await f.models.selection.createGrant(f.identity, f.identity, { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
+    await f.models.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: 1,
+      source: { kind: 'personal', grantId, connectionId } });
+    const input = { requestId: randomUUID(), selectionVersion: 2 };
+    let closeEffects = 0, createEffects = 0;
+    const enteredCreate = deferred(), releaseCreate = deferred();
+    const faulted = { ...f.models, segments: { ...f.models.segments,
+      async close(...args) {
+        const result = await f.models.segments.close(...args);
+        closeEffects++;
+        if (closeEffects === 1) throw new Error('injected lost close reply');
+        return result;
+      },
+      async create(...args) {
+        enteredCreate.resolve(); await releaseCreate.promise;
+        const result = await f.models.segments.create(...args); createEffects++;
+        if (createEffects === 1) throw new Error('injected lost create reply');
+        return result;
+      } } };
+    const first = f.makeAgent({ models: faulted });
+    assert.equal((await first.switchModel(f.identity, f.activity.activityId, input)).state, 'paused');
+    const second = f.makeAgent({ models: faulted });
+    const pending = second.switchModel(f.identity, f.activity.activityId, input);
+    await enteredCreate.promise;
+    const contender = f.makeAgent({ models: faulted });
+    assert.notEqual((await contender.switchModel(f.identity, f.activity.activityId, input)).state, 'completed');
+    assert.equal(createEffects, 0, 'contender did not enter the remote effect');
+    releaseCreate.resolve();
+    assert.equal((await pending).state, 'paused');
+    const recovered = f.makeAgent();
+    const done = await recovered.switchModel(f.identity, f.activity.activityId, input);
+    assert.equal(done.state, 'completed');
+    assert.equal(done.model.modelId, 'fixed-switch-target');
+    assert.equal(closeEffects, 1, 'closed original boundary is queried, never closed again');
+    assert.equal(createEffects, 1, 'lost creation acknowledgement is recovered from the owner receipt');
+    assert.equal((await f.events(recovered)).filter(event => event.kind === 'model-switch-completed').length, 1);
+    const runAfter = await recovered.run(f.identity, f.activity.activityId, runId);
+    assert.deepEqual(runAfter.usage, runBefore.usage);
+    assert.equal(f.payloads.length, 1, 'switch recovery never pays for another model generation');
+    await f.models.selection.revoke(f.identity, grantId, { requestId: randomUUID(), expectedVersion: 1 });
+    await assert.rejects(() => recovered.switchModel(f.identity, f.activity.activityId, input), /forbidden/);
+    await recovered.validate();
+  } finally { await f.close(); }
+});
+
+test('an expired switch lease is taken over and a late old driver cannot overwrite completion', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response) => reply(response, { text: '原结果' }));
+  const entered = deferred(), release = deferred();
+  let pending;
+  try {
+    const original = f.makeAgent(); const runId = await f.send(original); original.resume();
+    await f.completed(original, runId); original.close();
+    const delayed = { ...f.models, segments: { ...f.models.segments, async create(...args) {
+      entered.resolve(); await release.promise; return f.models.segments.create(...args);
+    } } };
+    const first = f.makeAgent({ models: delayed, leaseMs: 60_000 });
+    const input = { requestId: randomUUID(), selectionVersion: 1 };
+    pending = first.switchModel(f.identity, f.activity.activityId, input);
+    await entered.promise;
+    // Fault injection at the owner-coordination boundary: the original process
+    // stopped renewing its persisted lease. The real owner operations stay intact.
+    await f.storage.request({ requestId: randomUUID(), fingerprint: input.requestId }, async tx => {
+      await tx.query("UPDATE teaching_model_switches SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE request_id=$1", [input.requestId]);
+      return null;
+    });
+    const successor = f.makeAgent();
+    const completed = await successor.switchModel(f.identity, f.activity.activityId, input);
+    assert.equal(completed.state, 'completed');
+    release.resolve();
+    assert.deepEqual(await pending, completed, 'late driver only observes the successor completion');
+    assert.equal((await f.events(successor)).filter(event => event.kind === 'model-switch-completed').length, 1);
+    assert.equal(f.payloads.length, 1);
+    await successor.validate();
+  } finally { release.resolve(); await pending?.catch(() => {}); await f.close(); }
+});
+
+test('an accepted unsent model attempt is cancelled at the fixed Run deadline without leaving a native slot', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response) => reply(response, { text: 'must not be called' }));
+  const entered = deferred(), release = deferred();
+  try {
+    let attempt;
+    const models = { ...f.models, checks: { ...f.models.checks, async receive(...args) {
+      attempt = await f.models.checks.receive(...args); entered.resolve(); await release.promise; return attempt;
+    } } };
+    const agent = f.makeAgent({ models, limits: { hardDeadlineMs: 2000 } });
+    const runId = await f.send(agent); agent.resume(); await entered.promise;
+    await new Promise(resolve => setTimeout(resolve, 2100)); release.resolve();
+    await until(async () => (await agent.run(f.identity, f.activity.activityId, runId)).state === 'paused', 'expired admission did not pause');
+    assert.equal((await agent.run(f.identity, f.activity.activityId, runId)).reason, 'run-deadline-exceeded');
+    assert.equal(f.payloads.length, 0);
+    const original = await f.models.checks.read(f.identity, attempt.attemptId);
+    assert.equal(original.state, 'cancelled'); assert.equal(original.physicalRequestEnded, true);
+    assert.equal((await f.models.segments.read(f.identity, original.segment.segmentId)).pending, false);
+    await agent.validate();
+  } finally { release.resolve(); await f.close(); }
+});
+
+test('a completed model result observed after the deadline retains its original Run reference', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response) => reply(response, { text: '原回答保留来源' }));
+  const entered = deferred(), release = deferred(), retained = [];
+  try {
+    let original;
+    const models = { ...f.models, checks: { ...f.models.checks, async read(...args) {
+      const fact = await f.models.checks.read(...args);
+      if (fact.physicalRequestEnded && fact.resultRef) { original = fact; entered.resolve(); await release.promise; }
+      return fact;
+    } }, results: { ...f.models.results, async retain(...args) { retained.push(args[1]); return f.models.results.retain(...args); } } };
+    const agent = f.makeAgent({ models, limits: { hardDeadlineMs: 2000 } });
+    const runId = await f.send(agent); agent.resume(); await entered.promise;
+    await new Promise(resolve => setTimeout(resolve, 2100)); release.resolve();
+    await until(async () => (await agent.run(f.identity, f.activity.activityId, runId)).state === 'paused', 'late model result did not pause');
+    assert.equal((await agent.run(f.identity, f.activity.activityId, runId)).reason, 'run-deadline-exceeded');
+    assert.equal(f.payloads.length, 1); assert.equal(retained.length, 1);
+    assert.equal(retained[0].resultRef, original.resultRef); assert.equal(retained[0].consumerId, runId);
+    assert.equal((await f.models.results.read(f.identity, original.resultRef)).text, original.text);
+    await agent.validate();
+  } finally { release.resolve(); await f.close(); }
+});
+
+test('switching at a paired tool boundary keeps the same Run and its cumulative budgets', { timeout: 600000 }, async () => {
+  const cases = [
+    { limits: { maxModelSteps: 2 }, reason: '', protocol: 'responses' },
+    { limits: { maxModelSteps: 2 }, reason: '', protocol: 'messages' },
+    { limits: { maxModelSteps: 2 }, reason: '', school: 'initial' },
+    { limits: { maxModelSteps: 2 }, reason: '', school: 'target', protocol: 'responses' },
+    { limits: { maxModelSteps: 1 }, reason: 'model-step-budget-exhausted' },
+    { limits: { maxModelSteps: 2 }, reason: '' },
+    { limits: { maxInputTokens: 262163 }, reason: 'input-token-budget-exhausted' },
+    { limits: { maxOutputTokens: 10 }, reason: 'output-token-budget-exhausted' },
+    { limits: { maxCallMs: 1000 }, reason: 'model-call-budget-exhausted', delay: 780 },
+    { limits: { hardDeadlineMs: 2000 }, reason: 'run-deadline-exceeded', wait: 2100 },
+    { limits: { maxInputTokens: 262144 }, reason: 'input-token-budget-exhausted', unknownUsage: true },
+    { limits: { maxOutputTokens: 1024 }, reason: 'output-token-budget-exhausted', unknownUsage: true },
+  ];
+  for (const scenario of cases) {
+    const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'switch-budget.txt', kind: 'text', encoding: 'utf8',
+      mediaType: 'text/plain', value: '原命令结果保留来源，不重新读取。' };
+    const f = await fixture(async (payload, response, index) => {
+      if (scenario.delay) await new Promise(resolve => setTimeout(resolve, scenario.delay));
+      if (index === 1) reply(response, { unknownUsage: scenario.unknownUsage, call: { id: 'switch-read', name: 'read_work', arguments: { objectId: work.objectId, contentId: work.contentId } } });
+      else {
+        assert.equal(payload.model, 'next-step-model');
+        assert.equal(JSON.stringify(payload).includes('switch-read'), false, 'old native tool IDs cannot cross the switch boundary');
+        protocolReply(response, scenario.protocol ?? 'chat-completions', '沿用已完成的工具结果');
+      }
+    }, { course: !!scenario.school });
+    const entered = deferred(), release = deferred();
+    try {
+      let reads = 0;
+      const tools = { ...f.host, async dispatch(...args) { entered.resolve(); await release.promise; reads++; return f.host.dispatch(...args); } };
+      if (scenario.school === 'initial') {
+        const original = await f.models.selection.snapshot(f.identity, 1), connectionId = randomUUID();
+        await f.models.school.save(f.identity.spaceId, { requestId: randomUUID(), connectionId, expectedVersion: 0, name: 'Initial school model',
+          protocol: 'chat-completions', baseUrl: original.choice.connection.baseUrl, path: '/chat/completions', modelId: 'recovery-sdk',
+          dialect: 'standard', parameterMode: 'plain', enabled: true, contextWindow: 262144, maxOutputTokens: 1024,
+          credential: { action: 'replace', value: 'synthetic-school-key' },
+          policy: { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 1024, timeoutMs: 30000 } });
+        await f.models.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: 1, source: { kind: 'school', connectionId } });
+      }
+      const agent = f.makeAgent({ tools, limits: scenario.limits });
+      const runId = await f.send(agent, [work]); agent.resume(); await entered.promise;
+      const selected = await f.models.selection.read(f.identity), selectionVersion = selected.version + 1;
+      const old = await f.models.selection.snapshot(f.identity, selected.version), connectionId = randomUUID(), grantId = randomUUID();
+      const protocol = scenario.protocol ?? 'chat-completions';
+      const config = { requestId: randomUUID(), connectionId, expectedVersion: 0, name: 'Next step',
+        protocol, baseUrl: old.choice.connection.baseUrl.replace(/\/v1$/, '') + (protocol === 'messages' ? '/anthropic' : '/v1'),
+        path: protocol === 'messages' ? '/v1/messages' : protocol === 'responses' ? '/responses' : '/chat/completions', modelId: 'next-step-model',
+        dialect: 'standard', parameterMode: 'plain', enabled: true, contextWindow: 262144, maxOutputTokens: 1024,
+        credential: { action: 'replace', value: 'synthetic-next-step' } };
+      if (scenario.school === 'target') await f.models.school.save(f.identity.spaceId, { ...config,
+        policy: { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 1024, timeoutMs: 30000 } });
+      else {
+        await f.models.save(f.identity, config);
+        await f.models.selection.createGrant(f.identity, f.identity, { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
+      }
+      await f.models.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: selected.version,
+        source: scenario.school === 'target' ? { kind: 'school', connectionId } : { kind: 'personal', connectionId, grantId } });
+      const input = { requestId: randomUUID(), selectionVersion };
+      assert.equal((await agent.switchModel(f.identity, f.activity.activityId, input)).state, 'paused');
+      if (scenario.wait) await new Promise(resolve => setTimeout(resolve, scenario.wait));
+      release.resolve();
+      await until(async () => (await f.events(agent)).some(event => event.kind === 'model-switch-completed'), 'switch never reached its paired boundary');
+      await until(async () => ['completed', 'paused'].includes((await agent.run(f.identity, f.activity.activityId, runId)).state), 'original Run did not continue');
+      const run = await agent.run(f.identity, f.activity.activityId, runId);
+      assert.equal(run.state, scenario.reason ? 'paused' : 'completed');
+      if (scenario.reason) assert.equal(run.reason, scenario.reason);
+      const expectedCalls = scenario.reason ? 1 : 2;
+      assert.equal(f.payloads.length, expectedCalls);
+      assert.equal(reads, 1);
+      if (scenario.school) assert.deepEqual((await f.storage.read('SELECT plan FROM teaching_steps WHERE run_id=$1 ORDER BY step_no', [runId]))
+        .rows.map(row => row.plan.modelSource), scenario.school === 'initial' ? ['school', 'personal'] : ['personal', 'school']);
+      const { rows: budgets } = await f.storage.read('SELECT * FROM teaching_budgets WHERE run_id=$1', [runId]);
+      assert.equal(budgets.length, 1); assert.equal(budgets[0].max_model_steps, scenario.limits.maxModelSteps ?? 16);
+      for (const [key, column] of [['maxInputTokens','max_input_tokens'],['maxOutputTokens','max_output_tokens'],['maxCallMs','max_call_ms']])
+        if (scenario.limits[key]) assert.equal(Number(budgets[0][column]), scenario.limits[key]);
+      agent.close(); const recovered = f.makeAgent({ limits: { maxModelSteps: 100, maxInputTokens: 9999999,
+        maxOutputTokens: 999999, maxCallMs: 9999999, hardDeadlineMs: 999999999 } }); recovered.resume(); await recovered.drain();
+      assert.equal(f.payloads.length, expectedCalls, 'restart cannot reset the logical Run budget');
+      assert.deepEqual((await f.storage.read('SELECT * FROM teaching_budgets WHERE run_id=$1', [runId])).rows, budgets);
+      await recovered.validate();
+    } finally { release.resolve(); await f.close(); }
+  }
+});
 
 test('a reserved model-step budget survives restart and prevents another paid continuation', { timeout: 180000 }, async () => {
   const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'budget.txt', kind: 'text', encoding: 'utf8',

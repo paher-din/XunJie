@@ -216,6 +216,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return routeBound('attemptId' in input ? 'attempt' : 'segment', 'attemptId' in input ? input.attemptId : input.segmentId, input, async () => {
         if ('school' in input.source) return { destination: 'school', schoolSource: input.source };
         if ('selected' in input.source) {
+          if (input.source.pinId) {
+            const fixed = await models.selection.pinned(identity, input.source.pinId, input.source.selectionVersion);
+            return fixed.source.kind === 'school' ? { destination: 'school', schoolSource: { school: {
+              connectionId: fixed.choice.connection.connectionId, version: fixed.choice.connection.version } } } : { destination: 'local' };
+          }
           const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
           if (selected.version !== input.source.selectionVersion) throw new StorageError('conflict');
           if (selected.selected?.kind === 'school') return { destination: 'school', schoolSource: { school: {
@@ -433,7 +438,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
       `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
-      `|agent/${id}(?:/(?:conversation|events|capabilities|requests/${id}|snapshots/${id}|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
+      `|agent/${id}(?:/(?:conversation|events|capabilities|model-switches|requests/${id}|snapshots/${id}|responses/${id}|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);

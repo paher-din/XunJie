@@ -37,6 +37,9 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
 ` }, modelDeviceTaskMigration, { version: 11, name: 'learning-attempt-progress', sql: `
   CREATE TABLE model_attempt_progress(attempt_id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
+` }, { version: 12, name: 'fixed-authorized-model-selection-pins', sql: `
+  CREATE TABLE model_selection_pins(id uuid PRIMARY KEY,scope text NOT NULL,selection_version integer NOT NULL,
+    source jsonb NOT NULL,body jsonb NOT NULL);
 ` }];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -159,7 +162,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         source: { kind: 'school', ownerScope: schoolScope(identity.spaceId), feeSource: schoolScope(identity.spaceId) } };
     }
     if ('selected' in source) {
-      const chosen = await selection.snapshot(identity, source.selectionVersion);
+      const chosen = source.pinId ? await selection.pinned(identity, source.pinId, source.selectionVersion)
+        : await selection.snapshot(identity, source.selectionVersion);
       if (!learning && !chosen.choice.policy.checksAllowed) throw new StorageError('unavailable');
       const ownerScope = chosen.source.ownerScope;
       const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [ownerScope, chosen.choice.connection.connectionId]);

@@ -58,7 +58,7 @@ export type ModelCheckPolicy = z.infer<typeof modelCheckPolicySchema>;
 export const modelCheckInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
   source: z.union([
     z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
-    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
+    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative(), pinId: z.uuid().optional() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
     z.object({ draft: modelConfigurationSchema, credential: modelCredentialChangeSchema,
       savedCredential: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional() }).strict(),
@@ -96,7 +96,7 @@ export const modelChatOptionsSchema = z.object({
 export const modelCapabilityInputSchema = z.object({
   source: z.union([
     z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
-    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
+    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative(), pinId: z.uuid().optional() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
   ]),
   prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),

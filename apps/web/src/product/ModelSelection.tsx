@@ -42,15 +42,15 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
     void reload(); const focus = () => void reload(); window.addEventListener('focus', focus)
     return () => { ++epoch.current; window.removeEventListener('focus', focus) }
   }, [reload])
-  async function act(operation: () => Promise<void>) {
+  async function act<T>(operation: () => Promise<T>): Promise<T | undefined> {
     if (!scope || current.current !== scope || state.scope !== scope || state.busy || state.stale || !state.selection) return
     ++epoch.current
     setState(previous => ({ ...previous, busy: true, error: '' }))
-    try { await operation(); if (current.current === scope) await reload() }
+    try { const result = await operation(); if (current.current === scope) await reload(); return result }
     catch (error) { if (current.current === scope) setState(previous => ({ ...previous, error: failure(error) })) }
     finally { if (current.current === scope) setState(previous => ({ ...previous, busy: false })) }
   }
-  const choose = (choice: Choice) => act(async () => {
+  const choose = async (choice: Choice, onSaved?: (selection: Selection) => void | Promise<void>) => { await act(async () => {
     const operationKey = scope + ':' + choiceKey(choice), operation = pending.current.get(operationKey) ?? {}
     pending.current.set(operationKey, operation)
     let grantId = choice.kind === 'personal' ? choice.grantId : undefined
@@ -60,7 +60,8 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
     }
     operation.select ??= { requestId: crypto.randomUUID(), expectedVersion: state.selection!.version, source: choice.kind === 'school'
       ? { kind: 'school', connectionId: choice.connection.connectionId } : { kind: 'personal', connectionId: choice.connection.connectionId, grantId: grantId! } }
-    try { await request('selection', operation.select) }
+    let saved: Selection
+    try { saved = modelSelectionSchema.parse(await request('selection', operation.select)) }
     catch (error) {
       const code = error instanceof Error && 'code' in error ? error.code : undefined
       if (code === 'conflict' || code === 'identity-conflict') delete operation.select
@@ -68,7 +69,8 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
       throw error
     }
     pending.current.delete(operationKey)
-  })
+    await onSaved?.(saved)
+  }) }
   const revoke = (choice: Choice) => act(async () => {
     if (choice.kind !== 'personal' || !choice.grantId) return
     await request('grants/' + choice.grantId + '/revoke', { requestId: crypto.randomUUID(), expectedVersion: 1 })
@@ -77,7 +79,9 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
     busy: state.scope === scope && state.busy, stale: state.scope === scope && state.stale, reload, choose, revoke }
 }
 export type ModelSelectionController = ReturnType<typeof useModelSelection>
-export function ModelSelection({ controller, onCheck }: { controller: ModelSelectionController; onCheck(): void }) {
+export function ModelSelection({ controller, onCheck, onSelected }: {
+  controller: ModelSelectionController; onCheck(): void; onSelected?(selection: Selection): void | Promise<void>
+}) {
   const { selection, error, busy, stale, choose, revoke } = controller
   const options = new Map<string, Choice>()
   for (const option of selection?.options ?? []) {
@@ -97,7 +101,7 @@ export function ModelSelection({ controller, onCheck }: { controller: ModelSelec
       const usable = choice.connection.enabled && choice.connection.hasCredential && choice.connection.adapterState === 'ready'
       return <ModelProviderCard key={choiceKey(choice)} name={choice.connection.name} address={choice.connection.baseUrl}
         actions={<button type="button" className="outline st-xs" disabled={busy || stale || active || !usable}
-          onClick={() => void choose(choice)}>{active ? '当前选用' : choice.kind === 'school' || choice.grantId ? '选用' : '授权并选用'}</button>}>
+          onClick={() => void choose(choice, onSelected)}>{active ? '当前选用' : choice.kind === 'school' || choice.grantId ? '选用' : '授权并选用'}</button>}>
         <p className="detail">{choice.kind === 'school' ? '学校提供' : choice.origin === 'device' ? '本机持有的个人连接' : '个人连接'} · {choice.connection.modelId}</p>
         <p className="detail">文字：{capabilities[choice.connection.capabilities.text]} · 图片：{capabilities[choice.connection.capabilities.images]} · 工具：{capabilities[choice.connection.capabilities.tools]}</p>
         <details><summary>能力验证范围</summary>

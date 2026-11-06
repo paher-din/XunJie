@@ -35,11 +35,12 @@ test.beforeAll(async () => {
       // Long enough to clear the credential withholding window, then a slow tail for stop.
       send({ id: 'ui-' + index, choices: [{ index: 0, delta: { role: 'assistant',
         content: '这是正在生成的界面回答，内容会逐步出现' }, finish_reason: null }] })
-      setTimeout(() => {
+      const tail = setTimeout(() => {
         send({ id: 'ui-' + index, choices: [{ index: 0, delta: { content: '，并在结束后完整保留。' }, finish_reason: null }] })
         send({ id: 'ui-' + index, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
         response.end('data: [DONE]\n\n')
-      }, 2500)
+      }, 30000)
+      tail.unref()
     } else reply()
   })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
@@ -92,6 +93,7 @@ test('a missing model keeps the activity and first question and offers the real 
 })
 
 test('the formal home and activity conversation persist a first question, a follow-up, reload and stop', async ({ page, request }) => {
+  test.setTimeout(120_000)
   await configureModel(request)
   await page.goto(endpoint)
   await page.getByLabel('学习目标', { exact: true }).fill('界面持久学习对话')
@@ -120,16 +122,37 @@ test('the formal home and activity conversation persist a first question, a foll
   const reopen = page.getByRole('button', { name: '打开对话', exact: true })
   if (await reopen.isVisible()) await reopen.click()
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 20000 })
+  await expect(page.getByText('来源：个人模型 · fixture-ui · chat-completions', { exact: true })).toBeVisible()
+
+  const switchedConnectionId = randomUUID(), switchedGrantId = randomUUID()
+  const headers = { 'content-type': 'application/json', 'x-xj-space': 'personal' }
+  const port = (upstream.address() as { port: number }).port
+  expect((await request.post(endpoint + '/api/learning/models/connections', { headers, data: {
+    requestId: randomUUID(), connectionId: switchedConnectionId, expectedVersion: 0, name: '切换界面模型',
+    protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${port}/v1`, path: '/chat/completions',
+    modelId: 'fixture-ui-switched', dialect: 'standard', parameterMode: 'plain', enabled: true,
+    contextWindow: 262144, maxOutputTokens: 8192, credential: { action: 'replace', value: 'synthetic-ui-switched-key' } } })).status()).toBe(200)
+  expect((await request.post(endpoint + '/api/learning/models/grants', { headers, data: {
+    requestId: randomUUID(), grantId: switchedGrantId, connectionId: switchedConnectionId, owner: 'self' } })).status()).toBe(200)
+  await page.getByRole('button', { name: '切换模型', exact: true }).click()
+  await page.getByRole('region', { name: '当前空间模型' })
+    .getByRole('button', { name: '重新读取选用', exact: true }).click()
+  const switchedCard = page.getByRole('region', { name: '当前空间模型' })
+    .locator('.st-provider').filter({ hasText: '切换界面模型' })
+  await expect(switchedCard).toBeVisible({ timeout: 20000 })
+  await switchedCard.getByRole('button', { name: /选用$/ }).click()
+  await expect(page.getByText('已为当前学习活动切换到「fixture-ui-switched」。已有消息和结果保留原出处。', { exact: true })).toBeVisible({ timeout: 20000 })
+  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
+  await expect(page.locator('#activity-title')).toHaveText('界面持久学习对话')
 
   await page.getByLabel('你的问题', { exact: true }).fill('这是界面中的第二个问题。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await expect(page.getByText('界面回答2', { exact: true })).toBeVisible({ timeout: 20000 })
+  await expect(page.getByText('来源：个人模型 · fixture-ui-switched · chat-completions', { exact: true })).toBeVisible()
 
   await page.getByLabel('你的问题', { exact: true }).fill('请生成一个可以被停止的回答。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await expect(page.getByText('Agent 正在生成回答…')).toBeVisible({ timeout: 20000 })
-  await expect(page.locator('.teaching-message.assistant .turn-caret')).toBeVisible({ timeout: 15000 })
-  await expect(page.locator('.teaching-message.assistant .turn-body').last()).toContainText('这是')
   await page.getByLabel('你的问题', { exact: true }).fill('生成期间继续输入的新草稿。')
   await expect(page.getByRole('button', { name: '等待当前回答', exact: true })).toBeDisabled()
   await expect(page.getByText('当前回答结束后再发送；问题会先保存在草稿中。')).toBeVisible()

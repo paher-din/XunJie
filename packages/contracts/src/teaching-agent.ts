@@ -30,6 +30,17 @@ export const teachingRunSchema = z.object({
 }).strict();
 export type TeachingRun = z.infer<typeof teachingRunSchema>;
 
+export const teachingModelSwitchStateSchema = z.enum(['accepted', 'completed', 'paused']);
+export const teachingModelSwitchSchema = z.object({
+  requestId: z.uuid(), activityId: z.uuid(), selectionVersion: z.number().int().nonnegative(),
+  state: teachingModelSwitchStateSchema, reason: z.string().max(200),
+  fromSegmentId: z.uuid().nullable(), toSegmentId: z.uuid(),
+  model: teachingModelFactSchema,
+  source: z.object({ kind: z.enum(['school', 'personal']), feeSource: z.string().min(1).max(500) }).strict(),
+  createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),
+}).strict();
+export type TeachingModelSwitch = z.infer<typeof teachingModelSwitchSchema>;
+
 export const teachingEventKindSchema = z.enum([
   'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'assistant',
   'run-completed', 'run-failed', 'run-stopped', 'stop-requested', 'run-continued',
@@ -38,6 +49,7 @@ export const teachingEventKindSchema = z.enum([
   'wait-created', 'wait-consumed', 'wait-expired', 'budget-reserved', 'budget-settled',
   'native-summary',
   'question-created', 'question-presented', 'student-response', 'question-expired', 'question-cancelled',
+  'model-switch-requested', 'model-switch-completed', 'model-switch-paused',
 ]);
 
 export type TeachingEventKind = z.infer<typeof teachingEventKindSchema>;
@@ -56,6 +68,8 @@ export const teachingMessageSchema = z.object({
   state: z.enum(['streaming', 'settled', 'stopped', 'failed', 'unknown']).optional(),
   kind: z.enum(['native-summary', 'student-response']).optional(),
   summaryTruncated: z.boolean().optional(),
+  model: teachingModelFactSchema.optional(),
+  modelSource: z.enum(['school', 'personal']).optional(),
   createdAt: z.iso.datetime(),
 }).strict();
 export type TeachingMessage = z.infer<typeof teachingMessageSchema>;
@@ -106,6 +120,9 @@ export type TeachingSnapshot = z.infer<typeof teachingSnapshotSchema>;
 
 export const teachingStopInputSchema = z.object({ requestId: z.uuid() }).strict();
 export const teachingContinueInputSchema = z.object({ requestId: z.uuid() }).strict();
+export const teachingModelSwitchInputSchema = z.object({
+  requestId: z.uuid(), selectionVersion: z.number().int().nonnegative(),
+}).strict();
 
 export const teachingAgentCapabilitiesSchema = z.object({
   receiver: z.object({ receiverId: z.string(), location: z.literal('remote'), kind: z.literal('question') }).strict(),

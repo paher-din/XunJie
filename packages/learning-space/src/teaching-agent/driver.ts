@@ -17,15 +17,22 @@ type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
 type Model = NonNullable<TeachingRun['model']>;
 interface Plan {
-  input: ModelLearningInput; model: Model; sources: TeachingSnapshot['sources']; createdAt: string;
+  input: ModelLearningInput; model: Model; modelSource?: 'school' | 'personal';
+  sources: TeachingSnapshot['sources']; createdAt: string;
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
   maxToolCommands: number;
   maxParallelTools: number;
   waitMs: number;
+  maxInputTokens: number;
+  maxOutputTokens: number;
+  maxCallMs: number;
+  hardDeadlineMs: number;
 }
-const defaultLimits: TeachingRunLimits = { maxModelSteps: 16, maxToolCommands: 64, maxParallelTools: 1, waitMs: 86_400_000 };
+const defaultLimits: TeachingRunLimits = { maxModelSteps: 16, maxToolCommands: 64, maxParallelTools: 1, waitMs: 86_400_000,
+  maxInputTokens: 1_048_576, maxOutputTokens: 65_536, maxCallMs: 600_000, hardDeadlineMs: 86_400_000 };
+export class TeachingBudgetError extends Error {}
 const terminal = (state: unknown) => ['completed', 'failed', 'stopped', 'paused'].includes(String(state));
 const pending = (outcome: TeachingToolOutcome) => outcome.state === 'accepted' || outcome.state === 'unknown';
 const unsent = (reason: string): TeachingToolOutcome => ({ state: 'not-dispatched',
@@ -68,6 +75,17 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   const limits = { ...defaultLimits, ...owner.limits };
   for (const value of Object.values(limits)) if (!Number.isSafeInteger(value) || value < 1) throw new StorageError('invalid');
   const event = owner.appendEvent;
+  async function freezeBudget(tx: OwnedTransaction, runId: string) {
+    await tx.query(`INSERT INTO teaching_budgets(run_id,max_model_steps,max_tool_commands,max_parallel_tools,wait_ms,
+      max_input_tokens,max_output_tokens,max_call_ms,deadline)
+      SELECT run_id,$2,$3,$4,$5,$6,$7,$8,created_at+($9::text || ' milliseconds')::interval FROM teaching_runs WHERE run_id=$1
+      ON CONFLICT DO NOTHING`, [runId, limits.maxModelSteps, limits.maxToolCommands, limits.maxParallelTools, limits.waitMs,
+      limits.maxInputTokens, limits.maxOutputTokens, limits.maxCallMs, limits.hardDeadlineMs]);
+  }
+  async function expired(runId: string) {
+    const { rows: [row] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [runId]);
+    return row?.expired === true;
+  }
   async function transaction(run: TeachingRun, generation: number, effect: (tx: OwnedTransaction) => Promise<void>) {
     await storage.request({ requestId: 'teaching-driver:' + randomUUID(), fingerprint: run.runId }, async tx => {
       await owner.assertAuthority(tx, run.runId, generation);
@@ -76,6 +94,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     });
   }
   async function assertDispatch(run: TeachingRun, generation: number) {
+    if (await expired(run.runId)) throw new TeachingBudgetError('run-deadline-exceeded');
     if (owner.dispatchClosed()) throw new StorageError('maintenance');
     await owner.authorize(owner.identity(await owner.runRow(run.runId)));
     const { rows: log } = await storage.read(`SELECT s.next_seq,e.seq,e.kind,e.event_version FROM teaching_sessions s
@@ -118,7 +137,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     let plan: Plan;
     if (previous) {
       const priorPlan = previous.plan as unknown as Plan;
-      const native = await owner.models.segments.read(scope.identity, String(previous.segment_id));
+      const { rows: [session] } = await storage.read('SELECT segment_id FROM teaching_sessions WHERE activity_id=$1', [run.activityId]);
+      const segmentId = String(session?.segment_id ?? previous.segment_id);
+      const native = await owner.models.segments.read(scope.identity, segmentId);
       if (native.pending || native.pendingTools?.length) throw new StorageError('resource-busy');
       const rows = await commands(String(previous.step_id));
       const observations = rows.filter(row => (row.initial_outcome as TeachingToolOutcome | null)?.state === 'accepted'
@@ -137,8 +158,15 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         return command.name === studentAskDefinition.name && typeof outcome.result.responseId === 'string'
           ? [{ kind: 'student-response' as const, id: outcome.result.responseId, label: '学生对当前提问的明确回应' }] : [];
       });
-      plan = { input: { ...priorPlan.input, expectedSequence: native.sequence,
-        input: { text: '', images: [], toolResults: [], observations } }, model: priorPlan.model,
+      const { rows: [switched] } = segmentId !== previous.segment_id ? await storage.read(`SELECT target FROM teaching_model_switches
+        WHERE activity_id=$1 AND to_segment_id=$2 AND state='completed'`, [run.activityId, segmentId]) : { rows: [] };
+      const target = switched?.target as { model: Model; source: { kind: 'school' | 'personal' } } | undefined;
+      if (segmentId !== previous.segment_id && !target) throw new StorageError('conflict');
+      if (target && !target.model.maxOutputTokens) { await pause(run, generation, 'max-output-missing', target.model); return null; }
+      plan = { input: { ...priorPlan.input, segmentId, expectedSequence: native.sequence,
+        ...(target?.model.maxOutputTokens ? { limits: { maxOutputTokens: target.model.maxOutputTokens } } : {}),
+        input: { text: '', images: [], toolResults: [], observations } }, model: target?.model ?? priorPlan.model,
+        ...((target?.source.kind ?? priorPlan.modelSource) ? { modelSource: (target?.source.kind ?? priorPlan.modelSource)! } : {}),
         sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString() };
     } else {
       const selection = await owner.models.selection.read(scope.identity);
@@ -158,32 +186,65 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         context.system, history, generation, tools);
       plan = { input: { attemptId: run.runId, purpose: 'learning', segmentId: native.segmentId, expectedSequence: native.sequence,
         input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
-        model: native.model, sources: context.sources, createdAt: new Date().toISOString() };
+        model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString() };
     }
     const number = previous ? Number(previous.step_no) + 1 : 0;
     const stepId = operationId(`step:${run.runId}:${number}`), attemptId = operationId('model-attempt:' + stepId);
     plan.input.attemptId = attemptId;
     const snapshotId = operationId('model-snapshot:' + stepId);
     await assertDispatch(run, generation);
-    let exhausted = false;
+    let exhausted = '';
     await transaction(run, generation, async tx => {
       const { rows: [current] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
       if (current?.stop_requested) throw new StorageError('conflict');
-      await tx.query(`INSERT INTO teaching_budgets VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-        [run.runId, limits.maxModelSteps, limits.maxToolCommands, limits.maxParallelTools, limits.waitMs]);
-      const { rows: [budget] } = await tx.query('SELECT * FROM teaching_budgets WHERE run_id=$1 FOR UPDATE', [run.runId]);
+      const { rows: [session] } = await tx.query('SELECT activity_id,segment_id FROM teaching_sessions WHERE activity_id=$1 FOR UPDATE', [run.activityId]);
+      if (previous && session?.segment_id !== plan.input.segmentId) {
+        // A switch completed after the optimistic plan read. Replan against its new
+        // segment on the next scan; never reserve an attempt against the closed one.
+        await tx.query(`UPDATE teaching_runs SET state='received',lease_owner=NULL,lease_expires_at=NULL WHERE run_id=$1`, [run.runId]);
+        return;
+      }
+      const { rows: switching } = await tx.query(`SELECT request_id FROM teaching_model_switches
+        WHERE activity_id=$1 AND state IN ('accepted','paused') LIMIT 1`, [run.activityId]);
+      if (previous && switching.length) {
+        await tx.query(`UPDATE teaching_runs SET state='waiting',reason='model-switch-boundary',lease_owner=NULL,lease_expires_at=NULL
+          WHERE run_id=$1`, [run.runId]);
+        return;
+      }
+      await freezeBudget(tx, run.runId);
+      const { rows: [budget] } = await tx.query(`SELECT *,EXTRACT(EPOCH FROM (deadline-clock_timestamp()))*1000 AS remaining_ms
+        FROM teaching_budgets WHERE run_id=$1 FOR UPDATE`, [run.runId]);
       const { rows: [count] } = await tx.query('SELECT count(*)::integer AS total FROM teaching_steps WHERE run_id=$1', [run.runId]);
-      if (Number(count?.total) >= Number(budget!.max_model_steps)) { exhausted = true; return; }
-      await tx.query(`INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved)
-        VALUES($1,$2,$3,$4,$5,$6,'planned',$7,$8)`, [stepId, run.runId, number, attemptId,
-        plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens]);
+      if (Number(count?.total) >= Number(budget!.max_model_steps)) { exhausted = 'model-step-budget-exhausted'; return; }
+      const { rows: [used] } = await tx.query(`SELECT
+        COALESCE(sum(CASE WHEN usage->>'state'='final' AND usage ? 'inputTokens' THEN (usage->>'inputTokens')::bigint ELSE
+          GREATEST(input_reserved,COALESCE((usage->>'inputTokens')::bigint,0)) END),0) AS input,
+        COALESCE(sum(CASE WHEN usage->>'state'='final' AND usage ? 'outputTokens' THEN (usage->>'outputTokens')::bigint ELSE
+          GREATEST(output_reserved,COALESCE((usage->>'outputTokens')::bigint,0)) END),0) AS output,
+        COALESCE(sum(COALESCE(call_settled_ms,call_reserved_ms)),0) AS call_ms
+        FROM teaching_steps WHERE run_id=$1`, [run.runId]);
+      // The configured context window is a conservative input upper bound, not a tokenizer estimate.
+      const inputReserve = plan.model.contextWindow;
+      if (!inputReserve) { exhausted = 'input-budget-bound-unavailable'; return; }
+      if (Number(used!.input) + inputReserve > Number(budget!.max_input_tokens)) { exhausted = 'input-token-budget-exhausted'; return; }
+      const outputRemaining = Number(budget!.max_output_tokens) - Number(used!.output);
+      if (outputRemaining < 1) { exhausted = 'output-token-budget-exhausted'; return; }
+      const callRemaining = Math.floor(Math.min(Number(budget!.max_call_ms) - Number(used!.call_ms), Number(budget!.remaining_ms)));
+      if (callRemaining < 250) { exhausted = Number(budget!.remaining_ms) < 250 ? 'run-deadline-exceeded' : 'model-call-budget-exhausted'; return; }
+      plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, outputRemaining);
+      plan.input.limits.timeoutMs = Math.min(plan.input.limits.timeoutMs ?? callRemaining, callRemaining, 2_147_483_647);
+      await tx.query(`INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved,call_reserved_ms)
+        VALUES($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10)`, [stepId, run.runId, number, attemptId,
+        plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens, inputReserve, plan.input.limits.timeoutMs]);
       await tx.query(`UPDATE teaching_runs SET attempt_id=$2,segment_id=$3,model=$4,state='running',updated_at=clock_timestamp()
         WHERE run_id=$1`, [run.runId, attemptId, plan.input.segmentId, JSON.stringify(plan.model)]);
       await event(tx, run.activityId, 'budget-reserved', { runId: run.runId, stepId, attemptId,
-        modelSteps: 1, outputTokens: plan.input.limits.maxOutputTokens, inputTokens: 'unknown' });
+        modelSteps: 1, outputTokens: plan.input.limits.maxOutputTokens, inputTokens: 'unknown', inputReserve,
+        callReserveMs: plan.input.limits.timeoutMs, deadline: new Date(budget!.deadline as string).toISOString() });
     });
-    if (exhausted) { await pause(run, generation, 'model-step-budget-exhausted'); return null; }
-    return (await step(run.runId))!;
+    if (exhausted) { await pause(run, generation, exhausted); return null; }
+    const planned = await step(run.runId);
+    return planned?.step_id === stepId ? planned : null;
   }
   async function receiveModel(run: TeachingRun, generation: number, saved: Row, scope: TeachingToolScope) {
     const plan = saved.plan as unknown as Plan;
@@ -213,23 +274,44 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     let fact = await owner.models.checks.read(scope.identity, String(saved.attempt_id));
     if (fact.state === 'accepted') {
       const current = owner.toRun(await owner.runRow(run.runId));
-      if (current.stopRequested) fact = await owner.models.checks.cancel(scope.identity, fact.attemptId);
+      if (current.stopRequested || await expired(run.runId)) fact = await owner.models.checks.cancel(scope.identity, fact.attemptId);
       else {
-        await assertDispatch(run, generation);
-        await transaction(run, generation, async tx => {
-          const { rows: [row] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
-          if (row?.stop_requested) throw new StorageError('conflict');
-          await tx.query('UPDATE teaching_steps SET dispatch_permitted=true WHERE step_id=$1', [saved.step_id]);
-          await tx.query("UPDATE teaching_runs SET state='dispatching',updated_at=clock_timestamp() WHERE run_id=$1", [run.runId]);
-          await event(tx, run.activityId, 'attempt-dispatched', { runId: run.runId, stepId: saved.step_id,
-            attemptId: fact.attemptId, segmentId: saved.segment_id, expectedSequence: (saved.plan as unknown as Plan).input.expectedSequence });
-        });
-        await assertDispatch(run, generation);
-        fact = await owner.models.checks.dispatch(scope.identity, fact.attemptId);
+        try {
+          await assertDispatch(run, generation);
+          await transaction(run, generation, async tx => {
+            const { rows: [row] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
+            if (row?.stop_requested) throw new StorageError('conflict');
+            await tx.query('UPDATE teaching_steps SET dispatch_permitted=true,call_started_at=COALESCE(call_started_at,clock_timestamp()) WHERE step_id=$1', [saved.step_id]);
+            await tx.query("UPDATE teaching_runs SET state='dispatching',updated_at=clock_timestamp() WHERE run_id=$1", [run.runId]);
+            await event(tx, run.activityId, 'attempt-dispatched', { runId: run.runId, stepId: saved.step_id,
+              attemptId: fact.attemptId, segmentId: saved.segment_id, expectedSequence: (saved.plan as unknown as Plan).input.expectedSequence });
+          });
+          await assertDispatch(run, generation);
+          fact = await owner.models.checks.dispatch(scope.identity, fact.attemptId);
+        } catch (error) {
+          if (!(error instanceof TeachingBudgetError)) throw error;
+          fact = await owner.models.checks.cancel(scope.identity, fact.attemptId);
+        }
       }
     }
     fact = await owner.awaitAttempt(scope.identity, run, generation, String(saved.attempt_id), String(saved.segment_id), fact);
     if (!fact.physicalRequestEnded) { await pause(run, generation, 'result-unknown'); return false; }
+    // Includes dispatch acknowledgement/polling and process downtime conservatively. Unknown physical completion retains its full reservation.
+    await transaction(run, generation, async tx => {
+      await tx.query(`UPDATE teaching_steps SET call_settled_ms=CASE WHEN NOT dispatch_permitted THEN 0
+        WHEN call_started_at IS NOT NULL THEN GREATEST(0,CEIL(EXTRACT(EPOCH FROM (clock_timestamp()-call_started_at))*1000))
+        ELSE call_reserved_ms END WHERE step_id=$1 AND call_settled_ms IS NULL`, [saved.step_id]);
+    });
+    if (await expired(run.runId)) {
+      if (fact.resultRef) await owner.models.results?.retain(scope.identity, {
+        requestId: operationId('retain-model:' + run.runId + ':' + fact.resultRef), resultRef: fact.resultRef,
+        consumer: 'run', consumerId: run.runId });
+      if (fact.toolIntents?.length) await owner.models.segments.settle(scope.identity, String(saved.segment_id), {
+        requestId: operationId('teaching-deadline-pair:' + saved.step_id), expectedSequence: (saved.plan as unknown as Plan).input.expectedSequence + 1,
+        results: fact.toolIntents.map(intent => ({ callId: intent.callId, ...unsent('run-deadline-exceeded').feedback })),
+      });
+      await settleUsage(run, generation, saved, fact, 'final'); await pause(run, generation, 'run-deadline-exceeded'); return false;
+    }
     if (fact.state === 'completed' && !fact.resultRef) {
       await pause(run, generation, 'native-result-unavailable'); return false;
     }
@@ -244,7 +326,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         resultRef: fact.resultRef, ...summary } });
       if (fact.text) extras.push({ kind: 'assistant', body: { runId: run.runId, attemptId: saved.attempt_id,
         segmentId: saved.segment_id, resultRef: fact.resultRef, text: fact.text, usage: fact.usage,
-        model: (saved.plan as unknown as Plan).model, state: state === 'completed' ? 'settled' : state === 'stopped' ? 'stopped' : 'failed' } });
+        model: (saved.plan as unknown as Plan).model, modelSource: fact.source?.kind ?? (saved.plan as unknown as Plan).modelSource,
+        state: state === 'completed' ? 'settled' : state === 'stopped' ? 'stopped' : 'failed' } });
       extras.push({ kind: state === 'completed' ? 'run-completed' : state === 'stopped' ? 'run-stopped' : 'run-failed',
         body: { runId: run.runId, attemptId: saved.attempt_id, reason: fact.reason, usage: fact.usage } });
       if (fact.state === 'completed' && fact.resultRef) await owner.models.results?.retain(scope.identity, {
@@ -296,7 +379,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       await event(tx, run.activityId, 'step-completed', { runId: run.runId, stepId: saved.step_id,
         attemptId: saved.attempt_id, resultRef: fact.resultRef, toolCommands: prepared.map(item => item.command.commandId) });
       await event(tx, run.activityId, 'budget-settled', { runId: run.runId, stepId: saved.step_id, usage: fact.usage,
-        unknownReservationHeld: fact.usage.outputTokens === undefined });
+        unknownReservationHeld: fact.usage.state !== 'final' || fact.usage.outputTokens === undefined || fact.usage.inputTokens === undefined });
       const { rows: usages } = await tx.query('SELECT usage FROM teaching_steps WHERE run_id=$1 ORDER BY step_no', [run.runId]);
       await tx.query('UPDATE teaching_runs SET usage=$2 WHERE run_id=$1',
         [run.runId, JSON.stringify(combinedUsage(usages.map(row => row.usage as ModelUsage ?? { state: 'unknown' })))]);
@@ -308,7 +391,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const { rows: updated } = await tx.query('UPDATE teaching_steps SET phase=$2,result_ref=$3,usage=$4,output_settled=$5 WHERE step_id=$1 AND usage IS NULL RETURNING step_id',
         [saved.step_id, phase, fact.resultRef, JSON.stringify(fact.usage), fact.usage.outputTokens ?? null]);
       if (updated.length) await event(tx, run.activityId, 'budget-settled', { runId: run.runId, stepId: saved.step_id, usage: fact.usage,
-        unknownReservationHeld: fact.usage.outputTokens === undefined });
+        unknownReservationHeld: fact.usage.state !== 'final' || fact.usage.outputTokens === undefined || fact.usage.inputTokens === undefined });
       const { rows: usages } = await tx.query('SELECT usage FROM teaching_steps WHERE run_id=$1 ORDER BY step_no', [run.runId]);
       await tx.query('UPDATE teaching_runs SET usage=$2 WHERE run_id=$1',
         [run.runId, JSON.stringify(combinedUsage(usages.map(row => row.usage as ModelUsage ?? { state: 'unknown' })))]);
@@ -321,8 +404,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     const { rows: [budget] } = await tx.query('SELECT wait_ms FROM teaching_budgets WHERE run_id=$1', [run.runId]);
     const { rows: waits } = await tx.query(`INSERT INTO teaching_waits(wait_id,run_id,step_id,command_id,purpose,state,reason,
       identity,command_digest,deadline,next_check_at) VALUES($1,$2,$3,$4,$5,'pending',$6,$7,$8,
-      COALESCE((SELECT deadline FROM teaching_waits WHERE command_id=$4 AND purpose='result'),
-        clock_timestamp()+($9 || ' milliseconds')::interval),clock_timestamp()+interval '1 second')
+      LEAST((SELECT deadline FROM teaching_budgets WHERE run_id=$2),
+        COALESCE((SELECT deadline FROM teaching_waits WHERE command_id=$4 AND purpose='result'),
+        clock_timestamp()+($9 || ' milliseconds')::interval)),clock_timestamp()+interval '1 second')
       ON CONFLICT(command_id,purpose) DO NOTHING RETURNING wait_id`, [waitId, run.runId, saved.step_id, command.commandId, purpose,
       purpose === 'cleanup' ? 'cleanup' : outcome.state === 'unknown' ? 'unknown' : command.location === 'browser' ? 'browser' : 'execution',
       JSON.stringify(owner.identity(await owner.runRow(run.runId))), canonicalDigest(command), String(budget?.wait_ms ?? limits.waitMs)]);
@@ -511,6 +595,20 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const current = await owner.runRow(run.runId);
       run = owner.toRun(current);
       if (terminal(run.state)) return;
+      if (await expired(run.runId)) {
+        const saved = await step(run.runId);
+        if (saved?.phase !== 'model' && saved?.phase !== 'final') {
+          if (saved) {
+            for (const row of await commands(String(saved.step_id))) if (row.state === 'prepared')
+              await saveOutcome(run, saved, row, unsent('run-deadline-exceeded'), generation);
+            const known = await commands(String(saved.step_id));
+            if (known.length && known.every(row => row.initial_outcome))
+              await pairTools(run, generation, saved, owner.identity(current), known);
+          }
+          await pause(run, generation, 'run-deadline-exceeded');
+          await stopTools(owner.toRun(await owner.runRow(run.runId))); return;
+        }
+      }
       if (run.stopRequested) await stopTools(run);
       if (run.reason === 'student-response-expired') { await finishExpiredQuestionRun(run, generation); return; }
       const identity = owner.identity(current);
@@ -665,5 +763,5 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       commandId: row.command_id, state: row.state, reason: row.reason, deadline: new Date(row.deadline as string).toISOString(),
       nextCheckAt: new Date(row.next_check_at as string).toISOString(), consumedAt: row.consumed_at ? new Date(row.consumed_at as string).toISOString() : null }));
   }
-  return { execute, pollWaits, records, waits, stopTools };
+  return { execute, pollWaits, records, waits, stopTools, freezeBudget };
 }
