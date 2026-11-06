@@ -66,7 +66,7 @@
 
 - 返回与刷新：场景 1 和场景 3 均通过返回活动、刷新和重新打开后的记录保留。
 - 停止与草稿：“stopping an answer keeps the stopped state and the unsent draft” 通过。慢速回答期间输入未发送草稿，停止按钮可用；点击停止后显示“回答已停止，已发生的内容仍保留。”，草稿值保留；刷新并重新打开活动后草稿仍为 `生成期间继续输入的新草稿。`。
-- 预算累计：浏览器场景只核对 `teaching_model_switches` 和回答来源，不把模型用量 UI 作为单独通过项；预算累计的结构性覆盖见 #201 合并前已通过的 `teaching-agent.tools-recovery.runtime.test.mjs` 中“switching at a paired tool boundary keeps the same Run and its cumulative budgets”矩阵（本轮未把它算作新的浏览器通过项）。本轮未观察到预算 UI 丢失或重置。
+- 预算累计：浏览器场景只核对 `teaching_model_switches` 和回答来源，不把模型用量 UI 作为单独通过项；本轮针对 `teaching-agent.tools-recovery.runtime.test.mjs` 的“switching at a paired tool boundary keeps the same Run and its cumulative budgets”矩阵单独运行，1/1 通过（30.8 s，0 fail/0 skip），日志 `.verification/wp07-208-mac/tools-recovery-switch.tap`。本轮未观察到预算 UI 丢失或重置。
 - 并发/重复：场景 2 的重复身份与竞争请求均按契约处理。
 
 ### 场景 5：桌面 Chrome + 系统中文输入法

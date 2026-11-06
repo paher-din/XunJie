@@ -45,6 +45,17 @@
    "localTargets": 2038,
    "failures": 0,
    "log": ".verification/wp07-208-mac/check-docs-final.log"
+  },
+  "runtimeSwitchBudget": {
+   "status": "passed",
+   "file": "apps/server/tests/teaching-agent.tools-recovery.runtime.test.mjs",
+   "test": "switching at a paired tool boundary keeps the same Run and its cumulative budgets",
+   "total": 1,
+   "pass": 1,
+   "fail": 0,
+   "skipped": 0,
+   "durationMs": 30384,
+   "tap": ".verification/wp07-208-mac/tools-recovery-switch.tap"
   }
  },
  "connections": [
