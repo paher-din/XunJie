@@ -1,10 +1,10 @@
+import { z } from 'zod';
+import { modelDeviceBindingSchema, deviceModelChoiceSchema, deviceRawChoiceSchema } from './device-choices.js';
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelGrantInputSchema, modelGrantSchema, revokeModelGrantSchema, selectModelSchema,
-  modelSelectionSchema, modelAttemptSchema } from '@xunjie/contracts/model-connections';
+import { modelGrantInputSchema, modelGrantSchema, revokeModelGrantSchema, selectModelSchema, modelSelectionSchema, modelSelectionSourceSchema, modelAttemptSchema } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
-import type { z } from 'zod';
 
 export const selectionMigrations = [{ version: 5, name: 'explicit-model-use-and-selection', sql: `
   CREATE TABLE model_use_grants(id uuid PRIMARY KEY,owner_scope text NOT NULL,recipient_scope text NOT NULL,body jsonb NOT NULL);
@@ -15,8 +15,10 @@ export const modelScopeOf = (identity: SpaceIdentity) => [identity.environmentId
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const personalPolicy: ModelCheckPolicy = { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 2048, timeoutMs: 30000 };
 type School = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy };
-type Personal = { kind: 'personal'; connection: ModelConnection; policy: ModelCheckPolicy; origin: 'self' | 'device' | 'grant'; grantId?: string };
+type Personal = { kind: 'personal'; connection: ModelConnection; policy: ModelCheckPolicy; origin: 'self' | 'device' | 'grant'; grantId?: string | undefined };
 type Source = z.infer<typeof selectModelSchema>['source'];
+const savedSelectionSchema = selectModelSchema.omit({ requestId: true, expectedVersion: true }).extend({
+  version: z.number().int().nonnegative(), device: modelDeviceBindingSchema.optional() });
 export function createModelSelections(storage: OwnedStorage, owner: {
   authorize(identity: SpaceIdentity): Promise<void>;
   school(identity: SpaceIdentity): Promise<School | null>;
@@ -24,6 +26,8 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   list(identity: SpaceIdentity): Promise<ModelConnection[]>;
   assertWritable(): void;
 }) {
+  let deviceRevoker: ((identity: SpaceIdentity, id: string, value: unknown) => Promise<unknown>) | undefined;
+  let deviceGranter: ((identity: SpaceIdentity, value: unknown) => Promise<unknown>) | undefined;
   async function grant(id: string) {
     const { rows: [row] } = await storage.read('SELECT body FROM model_use_grants WHERE id=$1', [id]);
     if (!row) throw new StorageError('forbidden');
@@ -47,7 +51,57 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   }
   async function current(identity: SpaceIdentity) {
     const { rows: [row] } = await storage.read('SELECT body FROM model_selections WHERE scope=$1', [modelScopeOf(identity)]);
-    return row?.body as { version: number; source: Source } | undefined;
+    return row ? savedSelectionSchema.parse(row.body) : undefined;
+  }
+  async function deviceChoice(identity: SpaceIdentity, source: Source, binding: z.infer<typeof modelDeviceBindingSchema>) {
+    if (source.kind !== 'personal') throw new StorageError('corrupt');
+    const { rows: [row] } = await storage.read('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3',
+      [modelScopeOf(identity), source.grantId, binding.version]);
+    if (!row) throw new StorageError('forbidden');
+    const item = deviceModelChoiceSchema.parse(row.body);
+    await assertDeviceGrantActive(identity, source.grantId);
+    if (fingerprint(item.binding) !== fingerprint(binding) || !item.active || item.choice.connection.connectionId !== source.connectionId) throw new StorageError('forbidden');
+    return item.choice;
+  }
+  /** Trusted owner receipt import. Metadata never grants local SDK access or changes the Root pointer. */
+  async function importDeviceChoices(identity: SpaceIdentity, value: z.infer<typeof modelDeviceBindingSchema>, projection: unknown, operationId: string) {
+    owner.assertWritable(); await owner.authorize(identity);
+    const binding = modelDeviceBindingSchema.parse(value), selection = modelSelectionSchema.parse(projection), scope = modelScopeOf(identity);
+    const { rows: [record] } = await storage.read('SELECT body FROM model_member_devices WHERE scope=$1 AND version=$2', [scope, binding.version]);
+    if (!record || fingerprint(modelDeviceBindingSchema.parse(record.body)) !== fingerprint(binding)) throw new StorageError('forbidden');
+    const { rows: [refresh] } = await storage.read('SELECT ordinal FROM model_paired_requests WHERE scope=$1 AND id=$2', [scope, z.uuid().parse(operationId)]);
+    if (!refresh) throw new StorageError('missing');
+    const choices = selection.options.filter((item): item is Personal & { grantId: string } => item.kind === 'personal' && !!item.grantId);
+    if (new Set(choices.map(choice => choice.grantId)).size !== choices.length) throw new StorageError('identity-conflict');
+    await storage.request({ requestId: 'device-choices:' + operationId, fingerprint: fingerprint([scope, binding, selection]) }, async tx => {
+      owner.assertWritable();
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['device-choices:' + scope]);
+      const { rows: [head] } = await tx.query('SELECT ordinal FROM model_device_choice_heads WHERE scope=$1 AND binding_version=$2', [scope, binding.version]);
+      if (head && BigInt(String(head.ordinal)) > BigInt(String(refresh.ordinal))) return null;
+      for (const choice of [...choices].sort((a, b) => a.grantId.localeCompare(b.grantId))) {
+        await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-choice-grant:' + choice.grantId]);
+        const { rows } = await tx.query('SELECT id FROM model_use_grants WHERE id=$1', [choice.grantId]);
+        if (rows.length) throw new StorageError('identity-conflict');
+        const { rows: previous } = await tx.query('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2', [scope, choice.grantId]);
+        for (const row of previous) if (fingerprint(deviceModelChoiceSchema.parse(row.body).binding.owner) !== fingerprint(binding.owner)) throw new StorageError('identity-conflict');
+        const { rows: [old] } = await tx.query('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3',
+          [scope, choice.grantId, binding.version]);
+        if (old && deviceModelChoiceSchema.parse(old.body).choice.connection.connectionId !== choice.connection.connectionId)
+          throw new StorageError('identity-conflict');
+      }
+      await tx.query("UPDATE model_device_connection_choices SET body=jsonb_set(body,'{active}','false') WHERE scope=$1 AND binding_version=$2", [scope, binding.version]);
+      for (const choice of selection.options) if (choice.kind === 'personal' && !choice.grantId && ['self', 'device'].includes(choice.origin)) {
+        await tx.query(`INSERT INTO model_device_connection_choices VALUES($1,$2,$3,$4) ON CONFLICT(scope,binding_version,connection_id) DO UPDATE SET body=EXCLUDED.body`,
+          [scope, binding.version, choice.connection.connectionId, { binding, ownerKind: choice.origin, choice: { ...choice, origin: 'device' }, active: true }]);
+      }
+      await tx.query("UPDATE model_device_choices SET body=jsonb_set(body,'{active}','false') WHERE scope=$1 AND binding_version=$2", [scope, binding.version]);
+      for (const choice of choices) await tx.query(`INSERT INTO model_device_choices VALUES($1,$2,$3,$4)
+        ON CONFLICT(scope,grant_id,binding_version) DO UPDATE SET body=EXCLUDED.body`,
+        [scope, choice.grantId, binding.version, { binding, choice: { ...choice, origin: 'device' }, active: true }]);
+      await tx.query(`INSERT INTO model_device_choice_heads VALUES($1,$2,$3) ON CONFLICT(scope,binding_version) DO UPDATE SET ordinal=EXCLUDED.ordinal`,
+        [scope, binding.version, refresh.ordinal]);
+      return null;
+    });
   }
   async function read(identity: SpaceIdentity, deviceOwner?: SpaceIdentity) {
     await owner.authorize(identity);
@@ -65,8 +119,15 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       try { const value = await resolve(identity, { kind: 'personal', grantId: item.grantId, connectionId: item.connectionId }); if (value) options.push(value.choice); }
       catch (error) { if (!(error instanceof StorageError) || !['forbidden', 'missing'].includes(error.code)) throw error; }
     }
+    const { rows: devices } = await storage.read(`SELECT body FROM model_device_choices c WHERE scope=$1 AND NOT EXISTS
+      (SELECT 1 FROM model_device_grant_revocations r WHERE r.scope=c.scope AND r.grant_id=c.grant_id) AND binding_version=
+      (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [modelScopeOf(identity)]);
+    const { rows: raw } = await storage.read(`SELECT body FROM model_device_connection_choices WHERE scope=$1 AND binding_version=
+      (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [modelScopeOf(identity)]);
+    for (const row of raw) { const item = deviceRawChoiceSchema.parse(row.body); if (item.active) options.push(item.choice); }
+    for (const row of devices) { const item = deviceModelChoiceSchema.parse(row.body); if (item.active) options.push(item.choice); }
     try {
-      const resolved = await resolve(identity, saved?.source);
+      const resolved = saved?.device ? { choice: await deviceChoice(identity, saved.source, saved.device) } : await resolve(identity, saved?.source);
       return { version: saved?.version ?? 0, selected: resolved?.choice ?? null, options };
     } catch (error) {
       if (!(error instanceof StorageError) || !['forbidden', 'missing'].includes(error.code)) throw error;
@@ -77,14 +138,21 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     owner.assertWritable(); await owner.authorize(identity);
     const input = selectModelSchema.parse(value), scope = modelScopeOf(identity), hash = fingerprint({ scope, input });
     const prior = await storage.receipt('model-selection:' + input.requestId, hash); if (prior) return prior.result;
-    const resolved = await resolve(identity, input.source); if (!resolved) throw new StorageError('unavailable');
+    let device: z.infer<typeof modelDeviceBindingSchema> | undefined;
+    if (input.source.kind === 'personal') {
+      const { rows: [row] } = await storage.read(`SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=
+        (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [scope, input.source.grantId]);
+      if (row) device = deviceModelChoiceSchema.parse(row.body).binding;
+    }
+    const resolved = device ? { choice: await deviceChoice(identity, input.source, device) } : await resolve(identity, input.source);
+    if (!resolved) throw new StorageError('unavailable');
     const projection = await read(identity);
     return (await storage.request({ requestId: 'model-selection:' + input.requestId, fingerprint: hash }, async tx => {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-selection:' + scope]);
       const { rows: [row] } = await tx.query('SELECT body FROM model_selections WHERE scope=$1 FOR UPDATE', [scope]);
       const old = row?.body as { version: number } | undefined;
       if ((old?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
-      const saved = { version: input.expectedVersion + 1, source: input.source };
+      const saved = { version: input.expectedVersion + 1, source: input.source, ...(device ? { device } : {}) };
       await tx.query('INSERT INTO model_selections VALUES($1,$2) ON CONFLICT(scope) DO UPDATE SET body=EXCLUDED.body', [scope, saved]);
       return { ...projection, version: saved.version, selected: resolved.choice };
     })).result;
@@ -95,12 +163,23 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     await owner.connection(ownerScope, input.connectionId);
     const saved = modelGrantSchema.parse({ grantId: input.grantId, connectionId: input.connectionId, owner: grantOwner, recipient: identity, version: 1, active: true });
     return (await storage.request({ requestId: 'model-grant:' + input.requestId, fingerprint: fingerprint({ ownerScope, recipientScope, input }) }, async tx => {
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-choice-grant:' + input.grantId]);
+      const { rows: existing } = await tx.query('SELECT 1 FROM model_device_choices WHERE grant_id=$1 UNION ALL SELECT 1 FROM model_device_grant_creations WHERE grant_id=$1 LIMIT 1', [input.grantId]);
+      if (existing.length) throw new StorageError('identity-conflict');
       await tx.query('INSERT INTO model_use_grants VALUES($1,$2,$3,$4)', [input.grantId, ownerScope, recipientScope, saved]); return saved;
     })).result;
   }
   async function revoke(identity: SpaceIdentity, id: string, value: unknown) {
     owner.assertWritable(); await owner.authorize(identity);
-    const input = revokeModelGrantSchema.parse(value), authorization = await grant(id), scope = modelScopeOf(identity);
+    const input = revokeModelGrantSchema.parse(value), scope = modelScopeOf(identity);
+    const { rows: [local] } = await storage.read('SELECT body FROM model_use_grants WHERE id=$1', [z.uuid().parse(id)]);
+    if (!local) {
+      const { rows } = await storage.read('SELECT 1 FROM model_device_choices WHERE scope=$1 AND grant_id=$2 LIMIT 1', [scope, id]);
+      if (!rows.length) throw new StorageError('forbidden');
+      if (!deviceRevoker) throw new StorageError('unavailable');
+      return deviceRevoker(identity, id, input);
+    }
+    const authorization = modelGrantSchema.parse(local.body);
     if (![modelScopeOf(authorization.owner), modelScopeOf(authorization.recipient)].includes(scope)) throw new StorageError('forbidden');
     return (await storage.request({ requestId: 'model-grant-revoke:' + input.requestId, fingerprint: fingerprint({ scope, id, input }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT body FROM model_use_grants WHERE id=$1 FOR UPDATE', [id]);
@@ -110,10 +189,28 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       await tx.query('UPDATE model_use_grants SET body=$2 WHERE id=$1', [id, next]); return next;
     })).result;
   }
+  async function readGrant(identity: SpaceIdentity, id: string) {
+    await owner.authorize(identity);
+    const value = await grant(z.uuid().parse(id)), scope = modelScopeOf(identity);
+    if (![modelScopeOf(value.owner), modelScopeOf(value.recipient)].includes(scope)) throw new StorageError('forbidden');
+    return value;
+  }
+  /** Trusted checks for an original task, independent of the current selection pointer. */
+  async function assertDeviceGrantActive(identity: SpaceIdentity, id: string) {
+    const { rows } = await storage.read('SELECT 1 FROM model_device_grant_revocations WHERE scope=$1 AND grant_id=$2', [modelScopeOf(identity), z.uuid().parse(id)]);
+    if (rows.length) throw new StorageError('forbidden');
+  }
+  async function schoolSnapshot(identity: SpaceIdentity) {
+    await owner.authorize(identity);
+    const fixed = await resolve(identity);
+    if (!fixed) throw new StorageError('unavailable');
+    return fixed;
+  }
   async function snapshot(identity: SpaceIdentity, expectedVersion: number) {
     await owner.authorize(identity);
     const saved = await current(identity);
     if ((saved?.version ?? 0) !== expectedVersion) throw new StorageError('conflict');
+    if (saved?.device) throw new StorageError('unavailable'); // The paired adapter resolves at the actual credential owner.
     const result = await resolve(identity, saved?.source);
     if (!result) throw new StorageError('unavailable'); return result;
   }
@@ -127,10 +224,25 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     }
     const selected = await current(identity);
     if ((selected?.version ?? 0) !== expectedVersion) throw new StorageError('conflict');
-    const fixed = await snapshot(identity, expectedVersion);
+    if (selected?.device) throw new StorageError('unavailable');
+    const source = selected?.source ?? { kind: 'school' as const, connectionId: (await snapshot(identity, expectedVersion)).choice.connection.connectionId };
+    return pinSource(identity, pinId, expectedVersion, source);
+  }
+  /** The authenticated paired adapter supplies a fixed Root source, never the device's current pointer. */
+  async function pinSource(identity: SpaceIdentity, pinId: string, expectedVersion: number, value: unknown) {
+    owner.assertWritable(); await owner.authorize(identity);
+    z.uuid().parse(pinId); z.number().int().nonnegative().parse(expectedVersion);
+    const scope = modelScopeOf(identity), source = modelSelectionSourceSchema.parse(value);
+    const { rows: [prior] } = await storage.read('SELECT * FROM model_selection_pins WHERE id=$1 AND scope=$2', [pinId, scope]);
+    if (prior) {
+      if (Number(prior.selection_version) !== expectedVersion || fingerprint(modelSelectionSourceSchema.parse(prior.source)) !== fingerprint(source))
+        throw new StorageError('identity-conflict');
+      return pinned(identity, pinId, expectedVersion);
+    }
+    const fixed = await resolveChoice(identity, source);
     await storage.request({ requestId: 'model-selection-pin:' + pinId, fingerprint: fingerprint([scope, pinId, expectedVersion]) }, async tx => {
       await tx.query('INSERT INTO model_selection_pins(id,scope,selection_version,source,body) VALUES($1,$2,$3,$4,$5)',
-        [pinId, scope, expectedVersion, selected?.source ?? { kind: 'school', connectionId: fixed.choice.connection.connectionId }, fixed]);
+        [pinId, scope, expectedVersion, source, fixed]);
       return null;
     });
     return pinned(identity, pinId, expectedVersion);
@@ -150,6 +262,19 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       || live.choice.connection.routeId !== fixed.choice.connection.routeId) throw new StorageError('conflict');
     return fixed;
   }
+  async function destination(identity: SpaceIdentity, expectedVersion?: number) {
+    await owner.authorize(identity);
+    const saved = await current(identity);
+    if (expectedVersion !== undefined && (saved?.version ?? 0) !== expectedVersion) throw new StorageError('conflict');
+    if (saved?.device) { await deviceChoice(identity, saved.source, saved.device); return { binding: saved.device, source: saved.source }; }
+    return null;
+  }
+  async function resolveChoice(identity: SpaceIdentity, value: unknown) {
+    await owner.authorize(identity);
+    const fixed = await resolve(identity, modelSelectionSourceSchema.parse(value));
+    if (!fixed) throw new StorageError('unavailable');
+    return fixed;
+  }
   async function authorizeAttempt(identity: SpaceIdentity, source: ModelAttempt['source'], connectionId: string) {
     if (!source?.grantId) return;
     const authorization = await grant(source.grantId);
@@ -166,7 +291,14 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     }
     const { rows: selections } = await storage.read('SELECT * FROM model_selections');
     for (const row of selections) {
-      const item = selectModelSchema.omit({ requestId: true, expectedVersion: true }).extend({ version: selectModelSchema.shape.expectedVersion }).parse(row.body);
+      const item = savedSelectionSchema.parse(row.body);
+      if (item.device) {
+        if (item.source.kind !== 'personal') throw new StorageError('corrupt');
+        const { rows: [choice] } = await storage.read('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3', [row.scope, item.source.grantId, item.device.version]);
+        if (!choice || fingerprint(deviceModelChoiceSchema.parse(choice.body).binding) !== fingerprint(item.device)
+          || deviceModelChoiceSchema.parse(choice.body).choice.connection.connectionId !== item.source.connectionId) throw new StorageError('corrupt');
+        continue;
+      }
       if (item.source.kind === 'personal') {
         const authorization = await grant(item.source.grantId);
         if (authorization.connectionId !== item.source.connectionId || modelScopeOf(authorization.recipient) !== row.scope) throw new StorageError('corrupt');
@@ -185,6 +317,29 @@ export function createModelSelections(storage: OwnedStorage, owner: {
           || source.grantId !== original.grantId || source.ownerScope !== modelScopeOf(authorization.owner)) throw new StorageError('corrupt');
       }
     }
+    const { rows: heads } = await storage.read(`SELECT h.scope,h.binding_version,r.body FROM model_device_choice_heads h
+      LEFT JOIN model_paired_requests r ON r.ordinal=h.ordinal AND r.scope=h.scope`);
+    for (const head of heads) {
+      const value = z.object({ request: z.object({ operation: z.literal('selection.read') }), destination: z.object({ kind: z.literal('device'), binding: modelDeviceBindingSchema }) }).safeParse(head.body);
+      if (!value.success || value.data.destination.binding.version !== head.binding_version) throw new StorageError('corrupt');
+    }
+    const { rows: raw } = await storage.read('SELECT scope,binding_version,connection_id,body FROM model_device_connection_choices');
+    for (const row of raw) {
+      const item = deviceRawChoiceSchema.parse(row.body);
+      const { rows: [binding] } = await storage.read('SELECT body FROM model_member_devices WHERE scope=$1 AND version=$2', [row.scope, row.binding_version]);
+      if (item.choice.connection.connectionId !== row.connection_id || item.choice.grantId || item.binding.version !== row.binding_version
+        || !binding || fingerprint(modelDeviceBindingSchema.parse(binding.body)) !== fingerprint(item.binding)) throw new StorageError('corrupt');
+    }
+    const { rows: choices } = await storage.read('SELECT scope,grant_id,binding_version,body FROM model_device_choices');
+    for (const row of choices) {
+      const item = deviceModelChoiceSchema.parse(row.body);
+      const { rows: [binding] } = await storage.read('SELECT body FROM model_member_devices WHERE scope=$1 AND version=$2', [row.scope, row.binding_version]);
+      if (item.choice.grantId !== row.grant_id || item.binding.version !== row.binding_version || !binding
+        || fingerprint(modelDeviceBindingSchema.parse(binding.body)) !== fingerprint(item.binding)) throw new StorageError('corrupt');
+    }
   }
-  return { read, save, createGrant, revoke, snapshot, pin, pinned, authorizeAttempt, validate };
+  return { read, save, createGrant, revoke, readGrant, assertDeviceGrantActive,
+    createDeviceGrant(identity: SpaceIdentity, value: unknown) { if (!deviceGranter) throw new StorageError('unavailable'); return deviceGranter(identity, value); },
+    onDeviceGrant(handler: NonNullable<typeof deviceGranter>) { deviceGranter = handler; },
+    onDeviceRevoke(handler: NonNullable<typeof deviceRevoker>) { deviceRevoker = handler; }, snapshot, pin, pinSource, pinned, schoolSnapshot, resolveChoice, destination, importDeviceChoices, authorizeAttempt, validate };
 }

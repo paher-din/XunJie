@@ -1,0 +1,48 @@
+
+> @xunjie/workspace@0.0.0 verify
+> node apps/server/tools/check-runtime.mjs && node scripts/verify.mjs --jobs 3
+
+[verify] Raw log: /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/verify.log; tests are never cached; jobs=3
+[verify] START prepare
+[verify] PASSED prepare (16.5s, exit 0)
+[verify] START build:test
+[verify] PASSED build:test (0.5s, exit 0)
+[verify] START unit
+[verify] START server
+[verify] START tools
+[verify] unit: 5/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 6/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 5/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 13/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 14/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 14/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 19/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 18/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 19/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 25/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 26/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 24/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 32/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 31/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 36/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 34/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 40/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 39/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 42/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] tools: 40/45 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/05-tools.log
+[verify] PASSED tools (151.1s, exit 0)
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 50/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 60/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 75/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] unit: 27/28 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/03-unit.log
+[verify] server: 87/88 passed; /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/04-server.log
+[verify] PASSED server (236.6s, exit 0)
+[verify] PASSED unit (239.7s, exit 0)
+[verify] PASSED; summary: /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-06T10-57-36-858Z-KTuHMF/summary.json

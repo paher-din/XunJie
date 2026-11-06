@@ -6,7 +6,7 @@ import type { Socket } from 'node:net';
 import { extname, join, resolve, sep } from 'node:path';
 import type { RuntimeDependencyStatus, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority, createOutboundConnection } from './connections.js';
-import type { CapabilityHandler } from './connections.js';
+import type { CapabilityHandler, SourceFenceProof } from './connections.js';
 import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson } from './io.js';
 import { createMaintenanceCoordinator } from './maintenance.js';
 import type { MaintenanceParticipant } from './maintenance.js';
@@ -31,6 +31,7 @@ export interface ProductHostOptions {
     /** Explicit opt-in: the application enforces isolated reads at its own domain boundary. */
     isolatedReads?: true;
     capabilities?: Readonly<Record<string, CapabilityHandler>>;
+    serviceCapabilities?: Readonly<Record<string, Readonly<Record<string, CapabilityHandler>>>>;
     /** Host facts an operator must be able to read before asking this node to run anything. */
     facts?: () => Promise<readonly RuntimeDependencyStatus[]>;
     lifecycle?: { pause(): Promise<void>; resume(): Promise<void>; close(): Promise<void> };
@@ -73,8 +74,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
   const isolatedMode = async () => await exists(join(root, 'recovery-state.json'))
     && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
-  if (environment.profile !== 'school' && (!['127.0.0.1', '::1'].includes(config.host)
+  if (!['school', 'agent'].includes(environment.profile) && (!['127.0.0.1', '::1'].includes(config.host)
     || !['127.0.0.1', '[::1]', 'localhost'].includes(new URL(environment.services[0]!.endpoint).hostname))) throw new Error('Device profiles require a loopback listener and endpoint.');
+  if (!['127.0.0.1', '::1'].includes(config.host)
+    && (!config.tls || new URL(environment.services[0]!.endpoint).protocol !== 'https:')) throw new Error('A shared listener requires HTTPS.');
+  if (environment.profile === 'agent' && config.database.mode === 'none') throw new Error('The agent profile requires PostgreSQL.');
   if (!config.installed) { await releaseOnce(); throw new Error('Product is uninstalled.'); }
   const service = environment.services[0]!;
   const endpoint = service.endpoint;
@@ -191,18 +195,23 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     return { state, environment, endpoint, dependencies, ...(startupFailure ? { reason: startupFailure } : {}) };
   }
 
-  const applicationCapabilities = Object.keys(application?.capabilities ?? {});
-  service.capabilities = ['runtime.status', ...applicationCapabilities];
+  const authorities = new Map<string, ReturnType<typeof createConnectionAuthority>>();
+  for (const target of environment.services) {
+    const handlers = { ...(target.serviceId === service.serviceId ? application?.capabilities : {}),
+      ...application?.serviceCapabilities?.[target.serviceId] };
+    const applicationHandlers = Object.fromEntries(Object.entries(handlers).filter(([name]) => name !== 'runtime.status')
+      .map(([name, handler]) => [name, async (...args: Parameters<CapabilityHandler>) => {
+        activeApplicationRequests++;
+        try {
+          if (stopping || await authorityClosed()) throw new RecoveryError('maintenance');
+          return await handler(...args);
+        } finally { activeApplicationRequests--; }
+      }]));
+    target.capabilities = ['runtime.status', ...Object.keys(applicationHandlers)];
+    authorities.set(target.serviceId, createConnectionAuthority({ root, service: target,
+      handlers: { ...applicationHandlers, 'runtime.status': () => status() } }));
+  }
   await atomicJson(join(root, 'environment.json'), environment);
-  const applicationHandlers = Object.fromEntries(Object.entries(application?.capabilities ?? {}).map(([name, handler]) =>
-    [name, async (...args: Parameters<CapabilityHandler>) => {
-      activeApplicationRequests++;
-      try {
-        if (stopping || await authorityClosed()) throw new RecoveryError('maintenance');
-        return await handler(...args);
-      } finally { activeApplicationRequests--; }
-    }]));
-  const authority = createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status(), ...applicationHandlers } });
   async function publicRequest(request: IncomingMessage, response: ServerResponse) {
     const pathname = new URL(request.url ?? '/', 'http://runtime.invalid').pathname;
     if (request.method === 'GET' && pathname === '/runtime/environment') { send(response, 200, environment); return; }
@@ -230,7 +239,12 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     if (await authorityClosed() && (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/'))) {
       send(response, 503, { error: 'maintenance' }); return;
     }
-    if (await authority.handle(request, response)) return;
+    if (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/')) {
+      const targetId = request.headers['x-runtime-target-service-id'];
+      const target = typeof targetId === 'string' ? authorities.get(targetId) : undefined;
+      if (!target) { send(response, 409, { error: 'target_identity_mismatch' }); return; }
+      if (await target.handle(request, response)) return;
+    }
     if (!['GET', 'HEAD'].includes(request.method ?? '') || pathname.startsWith('/runtime/')) { send(response, 404, { error: 'not_found' }); return; }
     const relative = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).slice(1);
     const webRoot = await realpath(config.resources.webRoot);
@@ -274,7 +288,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         let result: unknown;
         if (action === 'authorize-capability') {
           if (await authorityClosed()) throw new RecoveryError('maintenance');
-          result = await authority.authorize(input);
+          const target = authorities.get(input.targetServiceId);
+          if (!target) throw new RecoveryError('target-identity-mismatch');
+          result = await target.authorize(input.authorization);
         }
         else if (action === 'model-task') {
           if (await authorityClosed() || !application?.modelTask) throw new RecoveryError('maintenance');
@@ -303,7 +319,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           // Fence admission first. Closing this receiver's actual owners then waits for the
           // asynchronous effects that outlive a capability handler. On failure remain closed;
           // never turn a handler-only acknowledgement into an execution-safety proof.
-          const proof = await authority.fenceSource(input);
+          let proof: SourceFenceProof | undefined;
+          for (const target of authorities.values()) proof = await target.fenceSource(input);
           const reopen = maintenance.status().phase === 'open';
           if (reopen || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
           await maintenance.validate();
@@ -463,7 +480,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           activeApplicationRequests--;
           polling = false;
         });
-      }, 10_000);
+      }, 250);
       applicationPoll.unref();
     }
     return { status, stop, maintenance, recovery, environment, endpoint };

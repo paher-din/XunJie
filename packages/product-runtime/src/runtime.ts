@@ -27,6 +27,7 @@ export interface InstallOptions {
   publicEndpoint?: string;
   tls?: { certificateFile: string; keyFile: string };
   requiredServiceIds?: string[];
+  agent?: { dependencyConnectionId: string };
 }
 export interface InstalledConfiguration {
   installed: boolean;
@@ -37,6 +38,7 @@ export interface InstalledConfiguration {
   tls?: { certificateFile: string; keyFile: string };
   requiredServiceIds: string[];
   connections: RuntimeConnection[];
+  agent?: { dependencyConnectionId: string };
 }
 export interface RunningInstance extends ProcessOwner { endpoint: string }
 
@@ -47,7 +49,7 @@ const ownedEnvironmentEntries = new Set([
   'credentials', 'private', 'logs', 'status.json', 'instance.json', 'launch.json', 'maintenance.json',
   'postgres.log', 'installation.json', 'environment.json', 'backup-policy.json', 'last-backup-settings.json',
   'recovery-boundary.json', 'recovery-state.json', 'recovery-operations', 'retired.json',
-  'learning-resources',
+  'learning-resources', 'native-channel',
 ]);
 const operationIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const generatedEnvironmentEntry = new RegExp(`^(?:(?:initializing-|\\.restore-)${operationIdPattern}|upgrade-${operationIdPattern}\\.json|\\.xj-recovery-[a-z0-9]{6})$`, 'i');
@@ -83,7 +85,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
 
   async function prepare(input?: InstallOptions, reinstall = false): Promise<ProductPrerequisiteResult> {
     if (input) runtimeEnvironmentSchema.shape.profile.parse(input.profile);
-    if (input?.profile === 'model' && input.database?.mode === 'none') throw new Error('The model profile requires PostgreSQL.');
+    if (input && ['model', 'agent'].includes(input.profile) && input.database?.mode === 'none') throw new Error(`The ${input.profile} profile requires PostgreSQL.`);
     let resources: RuntimeResources;
     let database: DatabaseConfiguration;
     if (await exists(configPath)) {
@@ -109,6 +111,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       database = input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' };
     }
     if (!database || !['managed', 'external', 'none'].includes(database.mode)) throw new Error('Invalid database mode in product installation.');
+    if ((input?.profile ?? (await environment()).profile) === 'agent' && database.mode === 'none') throw new Error('The agent profile requires PostgreSQL.');
     if (!resources || typeof resources.nodePath !== 'string' || typeof resources.webRoot !== 'string') throw new Error('Invalid resources in product installation.');
     // A new product may supply its helper for old metadata. Saved Node/PG/data
     // resources are never replaced, including during a reinstall.
@@ -197,14 +200,14 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (!await exists(join(resources.webRoot, 'index.html'))) throw new Error('Product web entry is missing.');
         const database = input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' };
         const host = input.host === 'localhost' ? '127.0.0.1' : input.host ?? '127.0.0.1';
-        if (input.profile !== 'school' && !['127.0.0.1', '::1'].includes(host)) throw new Error('Device profiles require a loopback listener.');
+        if (!['school', 'agent'].includes(input.profile) && !['127.0.0.1', '::1'].includes(host)) throw new Error('Device profiles require a loopback listener.');
         if (!['127.0.0.1', '::1', 'localhost'].includes(host) && !input.tls) throw new Error('A shared listener requires a TLS certificate and private key.');
         if (!['127.0.0.1', '::1'].includes(host) && !input.publicEndpoint) throw new Error('A shared listener requires its public HTTPS endpoint.');
         const port = input.port ?? await freePort();
         if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('Invalid listener port.');
         const endpoint = input.publicEndpoint ?? `${input.tls ? 'https' : 'http'}://${host === '::1' ? '[::1]' : '127.0.0.1'}:${port}`;
         const target = new URL(endpoint);
-        if (input.profile !== 'school' && !['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname)) throw new Error('Device profiles require a loopback endpoint.');
+        if (!['school', 'agent'].includes(input.profile) && !['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname)) throw new Error('Device profiles require a loopback endpoint.');
         if (target.username || target.password || target.search || target.hash || target.pathname !== '/'
           || !['https:', 'http:'].includes(target.protocol)
           || (!['127.0.0.1', '::1'].includes(host) && target.protocol !== 'https:')) throw new Error('Invalid public endpoint.');
@@ -225,7 +228,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (database.mode === 'external') await inspectDatabase(root, database, true, true);
         await atomicJson(configPath, {
           installed: true, resources, database, host, port: input.publicEndpoint ? port : Number(new URL(existing.services[0]!.endpoint).port || port),
-          ...(input.tls ? { tls: input.tls } : {}), requiredServiceIds: input.requiredServiceIds ?? [], connections: [],
+          ...(input.tls ? { tls: input.tls } : {}), ...(input.agent ? { agent: input.agent } : {}), requiredServiceIds: input.requiredServiceIds ?? [], connections: [],
         } satisfies InstalledConfiguration);
         const installed: RuntimeStatus = { state: 'installed', environment: existing, dependencies: [] };
         await atomicJson(join(root, 'status.json'), installed);
@@ -357,16 +360,23 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         await atomicJson(configPath, { ...config, connections: [...config.connections, parsed] });
       }); } finally { await release(); }
     },
-    async authorize(input: ConnectionAuthorization) {
+    async authorize(input: ConnectionAuthorization, targetServiceId?: string) {
       await assertRoot(root);
-      if (input.capabilities.includes('learning.authority')) return recoveryControl<import('./connections.js').ConnectionGrant>('authorize-capability', input);
-      const service = (await environment()).services[0]!;
+      const descriptor = await environment();
+      const service = targetServiceId === undefined ? descriptor.services[0]!
+        : descriptor.services.find(item => item.serviceId === targetServiceId);
+      if (!service) throw new Error('Unknown target service identity.');
+      if (input.capabilities.some(capability => capability !== 'runtime.status'))
+        return recoveryControl<import('./connections.js').ConnectionGrant>('authorize-capability', { authorization: input, targetServiceId: service.serviceId });
       return createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).authorize(input);
     },
     async revoke(grantId: string) {
       await assertRoot(root);
-      const service = (await environment()).services[0]!;
-      return createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).revoke(grantId);
+      let revoked = false;
+      for (const service of (await environment()).services) {
+        if (await createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).revoke(grantId)) revoked = true;
+      }
+      return revoked;
     },
   };
 }

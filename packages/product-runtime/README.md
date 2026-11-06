@@ -32,9 +32,11 @@ import {
 
 ## owner 与维护装配
 
-默认 daemon 在有数据库的产品组合中自动注册 runtime、空间身份和学习数据 owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。课程发布、作品和 Agent 仍按后续子票接入。生产依赖不得导入 `scripts/probe-recovery.mjs`、其验收 owner 或测试宿主。
+默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
 
-`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据和模型连接 owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。新增模型 owner 后，完整默认组合共四个 owner（含 runtime）。
+独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据服务调用 `teaching.dependencies`；学习数据服务通过 `teaching.agent` 调用实际 Agent。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型设备绑定，学生继续使用原活动界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
+
+`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。完整默认组合共五个 owner（含 runtime），独立 Agent 组合共两个。
 
 恢复 WP06 之前的三 owner 备份时，隔离目标保留原 owner 集合，通过原有精确版本校验完成接管；接管后正常停止并启动一次，才初始化空的模型 owner。新模型配置不会从 legacy 或其他空间自动导入。新的四 owner 备份已包含模型配置、加密凭据和原生检查资源，按正常流程完整恢复。
 

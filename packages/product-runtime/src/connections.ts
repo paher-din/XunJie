@@ -39,7 +39,10 @@ export interface SourceFenceProof extends ConnectionSource {
 
 export type CapabilityHandler = (
   payload: unknown,
-  source: Readonly<ConnectionSource & { grantId: string }>,
+  source: Readonly<ConnectionSource & { grantId: string;
+    /** Node-only live check before external effects; never serialized onto the wire. */
+    assertAuthorized?(): Promise<void>;
+  }>,
 ) => unknown | Promise<unknown>;
 
 export interface ConnectionAuthorization extends ConnectionSource {
@@ -334,14 +337,8 @@ export function createConnectionAuthority(options: {
     }
   }
 
-  async function authenticate(request: IncomingMessage): Promise<StoredGrant | undefined> {
-    const authorization = request.headers.authorization;
-    if (!authorization?.startsWith('Bearer ')) return undefined;
-    const token = authorization.slice(7);
-    const parts = token.split('.');
-    const grantId = parts[0];
-    if (parts.length !== 2 || !grantId || !uuid.test(grantId)
-      || !/^[0-9a-f]{64}$/.test(parts[1] ?? '')) return undefined;
+  async function readCurrentGrant(grantId: string): Promise<StoredGrant | undefined> {
+    if (!uuid.test(grantId)) return undefined;
     let value: unknown;
     try {
       value = JSON.parse(await readFile(grantPath(grantId), 'utf8')) as unknown;
@@ -360,10 +357,7 @@ export function createConnectionAuthority(options: {
       || (value.installationGeneration !== undefined
         && (!Number.isSafeInteger(value.installationGeneration) || (value.installationGeneration as number) < 0))
       || value.targetEnvironmentId !== service.environmentId || value.targetServiceId !== service.serviceId
-      || value.protocolVersion !== service.protocolVersion
-      || !timingSafeEqual(Buffer.from(value.tokenHash, 'hex'), Buffer.from(digest(token), 'hex'))
-      || request.headers['x-runtime-source-environment-id'] !== value.sourceEnvironmentId
-      || request.headers['x-runtime-source-service-id'] !== value.sourceServiceId) return undefined;
+      || value.protocolVersion !== service.protocolVersion) return undefined;
     if ((value.generation ?? 0) !== await generation(value as unknown as ConnectionSource)) return undefined;
     if (value.sourceInstallationId === undefined
       && await readGeneration(unattributedFencePath(value as unknown as ConnectionSource)) !== 0) return undefined;
@@ -373,6 +367,31 @@ export function createConnectionAuthority(options: {
       && (value.installationGeneration ?? 0) !== await installationGeneration(value as unknown as ConnectionSource, value.sourceInstallationId)) return undefined;
     if (value.sourceInstallationId !== undefined && await isInstallationRetired(options.root, value.sourceInstallationId)) return undefined;
     return value as unknown as StoredGrant;
+  }
+
+  async function authenticate(request: IncomingMessage): Promise<StoredGrant | undefined> {
+    const authorization = request.headers.authorization;
+    if (!authorization?.startsWith('Bearer ')) return undefined;
+    const token = authorization.slice(7);
+    const parts = token.split('.');
+    const grantId = parts[0];
+    if (parts.length !== 2 || !grantId || !uuid.test(grantId)
+      || !/^[0-9a-f]{64}$/.test(parts[1] ?? '')) return undefined;
+    const grant = await readCurrentGrant(grantId);
+    if (!grant || !timingSafeEqual(Buffer.from(grant.tokenHash, 'hex'), Buffer.from(digest(token), 'hex'))
+      || request.headers['x-runtime-source-environment-id'] !== grant.sourceEnvironmentId
+      || request.headers['x-runtime-source-service-id'] !== grant.sourceServiceId) return undefined;
+    return grant;
+  }
+
+  /** Trusted Node owners may recheck saved facts; this never substitutes for HTTP bearer authentication. */
+  async function assertSourceAuthorized(source: ConnectionSource & { grantId: string }, capability: string): Promise<void> {
+    const grant = await readCurrentGrant(source.grantId);
+    if (!grant || grant.sourceEnvironmentId !== source.sourceEnvironmentId
+      || grant.sourceServiceId !== source.sourceServiceId
+      || grant.sourceInstallationId !== source.sourceInstallationId
+      || !service.capabilities.includes(capability) || !grant.capabilities.includes(capability))
+      throw new RuntimeConnectionError('unauthorized');
   }
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<boolean> {
@@ -430,7 +449,7 @@ export function createConnectionAuthority(options: {
       let owner: StoredExecution;
       try {
         grant = await authenticate(request);
-        if (!grant) {
+        if (!grant || !grant.capabilities.includes(capability)) {
           send(response, 401, { error: 'unauthorized' });
           return true;
         }
@@ -455,12 +474,25 @@ export function createConnectionAuthority(options: {
       let result: unknown;
       try {
         if (response.destroyed) throw new RuntimeConnectionError('connection_unavailable');
-        result = await handler(payload, Object.freeze({
-          grantId: grant.grantId,
-          sourceEnvironmentId: grant.sourceEnvironmentId,
-          sourceServiceId: grant.sourceServiceId,
-          ...(grant.sourceInstallationId ? { sourceInstallationId: grant.sourceInstallationId } : {}),
-        }));
+        const admittedGrant = grant;
+        const handlerSource = {
+          grantId: admittedGrant.grantId,
+          sourceEnvironmentId: admittedGrant.sourceEnvironmentId,
+          sourceServiceId: admittedGrant.sourceServiceId,
+          ...(admittedGrant.sourceInstallationId ? { sourceInstallationId: admittedGrant.sourceInstallationId } : {}),
+        };
+        Object.defineProperty(handlerSource, 'assertAuthorized', {
+          enumerable: false,
+          value: async () => {
+            const current = await authenticate(request);
+            if (!current || current.grantId !== admittedGrant.grantId
+              || current.sourceEnvironmentId !== admittedGrant.sourceEnvironmentId
+              || current.sourceServiceId !== admittedGrant.sourceServiceId
+              || current.sourceInstallationId !== admittedGrant.sourceInstallationId
+              || !current.capabilities.includes(capability)) throw new RuntimeConnectionError('unauthorized');
+          },
+        });
+        result = await handler(payload, Object.freeze(handlerSource));
       } finally {
         response.off('close', disconnected);
         await disconnectWrite;
@@ -471,13 +503,13 @@ export function createConnectionAuthority(options: {
       send(response, 200, { service: available(), result: result ?? null });
     } catch (error) {
       const code = error instanceof RuntimeConnectionError ? error.code : 'request_failed';
-      const status = code === 'payload_too_large' ? 413 : code === 'invalid_json' ? 400 : 500;
+      const status = code === 'unauthorized' ? 401 : code === 'payload_too_large' ? 413 : code === 'invalid_json' ? 400 : 500;
       if (!response.headersSent && !response.destroyed) send(response, status, { error: code });
       else response.destroy();
     }
     return true;
   }
-  return { authorize, revoke, fenceSource, handle };
+  return { authorize, revoke, fenceSource, assertSourceAuthorized, handle };
 }
 
 export interface ConnectionCheck {

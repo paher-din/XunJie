@@ -1,0 +1,100 @@
+✔ two drivers racing on one run keep one effective dispatch through generation fencing (2521.591583ms)
+✔ the same driver reconciles a lost model acceptance reply without a second attempt or dispatch (938.897292ms)
+✔ stop committed while a remote model permit waits for its transaction prevents the permit (626.904083ms)
+✔ student.ask persists an unanswered question across restart and consumes an explicit choice only once (3778.66775ms)
+✔ display acknowledgement never answers a question and response identities keep their original version and content (2220.627708ms)
+✔ stopping a waiting Run retires its question and records a late response without reviving it (2704.522625ms)
+✔ student waiting expires independently of generation and a late text response cannot restart it (2899.79ms)
+✔ free text preserves the exact Chinese input and skip is a distinct explicit response (2877.951792ms)
+✔ a response addressed to another activity keeps its rejection without consuming the original question (1840.961792ms)
+✔ an explicit response retains the remaining computation budget and reports its actual exhaustion (1919.505375ms)
+✔ a Run admits questions serially and competing explicit responses consume each Wait once (2798.447417ms)
+✔ a pending question survives real backup, isolated read-only restore and takeover without regenerating (6090.373833ms)
+✔ a new model configuration reconstructs the question behind a prior explicit answer (6988.739083ms)
+✔ expiry closes an unpresented native question call before another request in the same activity (3344.317208ms)
+✔ the model receives the complete legal 4000-unit response with quotes, newlines and Unicode (3785.648792ms)
+✔ a reserved model-step budget survives restart and prevents another paid continuation (2248.436167ms)
+✔ exhausting the reserved tool budget pairs not-executed and pauses before another model step (2454.584208ms)
+✔ saved native result survives loss before association, rereads the original attempt and reads the immutable real work (3807.171333ms)
+✔ lost real native-input receipt reconciles the original command exactly once before the next stateful input (4766.393833ms)
+✔ two real driver generations share the saved attempt and only the winner reads and settles its native call (3676.465833ms)
+✔ stop after a persisted tool permit prevents the true native host from creating any execution (2321.2325ms)
+✔ stopping a later model step stops the Agent ongoing native session and preserves a student independent session (3312.062584ms)
+✔ pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run (4067.499ms)
+▶ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+  ✔ paused (4266.041459ms)
+  ✔ stopped (4091.618333ms)
+✔ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane (8358.14675ms)
+(node:57004) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run (3317.932542ms)
+✔ tool RPC fences a delayed Driver while an unaccepted native command cannot start (2878.164667ms)
+✔ tool RPC fences a delayed Driver while an accepted browser command remains claimable (2983.67725ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable (2631.989209ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable after an interrupted enqueue (2613.105458ms)
+✔ closed activity rejects fresh model dispatch authority without changing the original attempt (1799.116833ms)
+✔ Agent reads the granted immutable work through a real tool and continues the native call pair (6034.735708ms)
+✔ responses continues the same native tool pair with the real fixed source (2310.122667ms)
+✔ messages continues the same native tool pair with the real fixed source (2269.626041ms)
+✔ truncated model output cannot dispatch a tool (1864.1875ms)
+✔ invalid-arguments model output cannot dispatch a tool (1787.263166ms)
+✔ missing-terminal model output cannot dispatch a tool (1862.476709ms)
+✔ a valid native call cannot read an unapproved work from another activity (2214.031708ms)
+✔ an unsupported fixed binary source reports unavailable without an unknown-effect Wait (2177.310292ms)
+✖ an independently installed Agent answers the original activity and survives an Agent restart (2451.464291ms)
+✔ agent restore preserves profile and dependency reference without restoring connection secrets (runtime only) (2022.641625ms)
+✔ agent restore preserves profile and dependency reference without restoring connection secrets (production owners) (2219.811ms)
+✔ independent Agent student.ask reaches the browser API and resumes its original Run exactly once (23546.671708ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 43
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148693.684417
+
+✖ failing tests:
+
+test at packages/product-runtime/test/agent-deployment.runtime.test.mjs:19:1
+✖ an independently installed Agent answers the original activity and survives an Agent restart (2451.464291ms)
+  AssertionError [ERR_ASSERTION]: A new remote binding cannot hide local facts that predate the deployment route table.
+  + actual - expected
+  ... Skipped lines
+
+    {
+      activityId: '1c10eef5-d4c3-4608-880f-24d514268cde',
+  +   cursor: 4,
+  -   cursor: 3,
+      messages: [
+        {
+          createdAt: '2026-11-06T11:49:14.110Z',
+          eventId: '4f5f00ac-ae0e-450f-9103-0c955c73c603',
+          role: 'student',
+  ...
+        },
+  +     {
+  +       createdAt: '2026-11-06T11:49:14.120Z',
+  +       eventId: '3f0efffe-03ec-4c52-b09a-0476109a250d',
+  +       role: 'system',
+  +       runId: 'fe0516de-5c29-4436-ba4f-ee91ce32abff',
+  +       seq: 4,
+  +       text: '暂时无法继续：尚未选择模型。请到模型设置检查连接后重试。'
+  +     }
+      ],
+      questions: [],
+      runs: [
+        {
+          activityId: '1c10eef5-d4c3-4608-880f-24d514268cde',
+
+      at TestContext.<anonymous> (file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie/packages/product-runtime/test/agent-deployment.runtime.test.mjs:94:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: { activityId: '1c10eef5-d4c3-4608-880f-24d514268cde', cursor: 4, messages: [ [Object], [Object] ], runs: [ [Object] ], tools: [], waits: [], questions: [] },
+    expected: { activityId: '1c10eef5-d4c3-4608-880f-24d514268cde', cursor: 3, messages: [ [Object] ], runs: [ [Object] ], tools: [], waits: [], questions: [] },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

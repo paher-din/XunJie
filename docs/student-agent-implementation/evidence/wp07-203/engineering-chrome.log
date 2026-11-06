@@ -1,0 +1,24 @@
+
+Running 16 tests using 1 worker
+
+(node:47646) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › e2e/personalModelSettings.spec.ts:56:1 › formal model settings save and reopen a personal connection without a legacy session (2.7s)
+  ✓   2 [chromium] › e2e/personalModelSettings.spec.ts:88:1 › a delayed save confirmation preserves later form input and its next versioned save (670ms)
+  ✓   3 [chromium] › e2e/personalModelSettings.spec.ts:118:1 › dialog keyboard focus, Chinese composition, blank-key reuse and ordinary navigation remain usable (1.7s)
+  ✓   4 [chromium] › e2e/personalModelSettings.spec.ts:147:1 › Responses settings check drafts, save, reopen and cancel through the formal owner (3.5s)
+  ✓   5 [chromium] › e2e/personalModelSettings.spec.ts:195:1 › rejected connection actions remain visible across successful polls until that action succeeds (2.8s)
+  ✓   6 [chromium] › e2e/personalModelSettings.spec.ts:224:3 › two tabs explicitly reconcile CAS while preserving the draft and keep credential intent (1.6s)
+  ✓   7 [chromium] › e2e/personalModelSettings.spec.ts:224:3 › two tabs explicitly reconcile CAS while preserving the draft and replace credential intent (1.6s)
+  ✓   8 [chromium] › e2e/personalModelSettings.spec.ts:224:3 › two tabs explicitly reconcile CAS while preserving the draft and clear credential intent (2.7s)
+  ✓   9 [chromium] › e2e/personalModelSettings.spec.ts:275:1 › a lost save ACK is reconciled by the identical POST before submitting later edits (1.3s)
+  ✓  10 [chromium] › e2e/teachingConversation.spec.ts:75:1 › a missing model keeps the activity and first question and offers the real settings entry (2.9s)
+  ✓  11 [chromium] › e2e/teachingConversation.spec.ts:94:1 › the formal home and activity conversation persist a first question, a follow-up, reload and stop (7.4s)
+  ✓  12 [chromium] › e2e/teachingConversation.spec.ts:147:1 › a course activity asks through the fixed help policy in the formal conversation UI (2.7s)
+  ✓  13 [chromium] › e2e/teachingConversation.spec.ts:181:1 › a product process restart reopens the persisted conversation in the same Chrome session (2.7s)
+  ✓  14 [chromium] › e2e/teachingTools.spec.ts:123:1 › the formal conversation shows the real fixed work read and retains it after editing and reload (3.0s)
+  -  15 [chromium] › e2e/teachingTools.spec.ts:184:1 › capture the existing formal conversation baseline before UI changes
+  ✓  16 [chromium] › e2e/teachingTools.spec.ts:195:1 › real native and browser operations retain results; a disconnected browser waits and can be stopped (22.6s)
+
+  1 skipped
+  15 passed (1.1m)

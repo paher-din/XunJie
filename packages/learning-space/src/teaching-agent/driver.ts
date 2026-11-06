@@ -6,7 +6,8 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import type { ModelAttempt, ModelLearningInput, ModelTool, ModelUsage } from '@xunjie/contracts/model-connections';
 import { teachingEventKindSchema, teachingSnapshotSchema, teachingToolRecordSchema, teachingWaitSchema,
   type TeachingRun, type TeachingEventKind, type TeachingSnapshot } from '@xunjie/contracts/teaching-agent';
-import type { createModelGateway } from '../model-connections/index.js';
+import type { LearningModelPort } from '../model-connections/service.js';
+import { cleanupScopeFor } from './tools-execution.js';
 import { buildContext, type ContextMessage } from './context.js';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
@@ -49,7 +50,8 @@ function combinedUsage(facts: ModelUsage[]): ModelUsage {
 
 /** One driver uses these records for both model calls and tool effects. Reads never replay them. */
 export function createTeachingRunDriver(storage: OwnedStorage, owner: {
-  models: Awaited<ReturnType<typeof createModelGateway>>;
+  driverId: string;
+  models: LearningModelPort;
   tools?: TeachingToolHost;
   studentQuestions: ReturnType<typeof createStudentQuestions>;
   limits?: Partial<TeachingRunLimits>;
@@ -64,7 +66,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   appendEvent(tx: OwnedTransaction, activityId: string, kind: TeachingEventKind, body: Record<string, unknown>): Promise<unknown>;
   historyBefore(activityId: string, runId: string): Promise<ContextMessage[]>;
   ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
-    choice: Awaited<ReturnType<Awaited<ReturnType<typeof createModelGateway>>['selection']['snapshot']>>,
+    choice: Awaited<ReturnType<LearningModelPort['selection']['snapshot']>>,
     selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[]):
     Promise<{ segmentId: string; sequence: number; model: Model }>;
   awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
@@ -92,6 +94,13 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       await effect(tx);
       return null;
     });
+  }
+  async function runInTransaction(tx: OwnedTransaction, runId: string): Promise<Row> {
+    // Cleanup can race a stop request and the Wait scanner. Never borrow another
+    // pool connection while this transaction holds their original command lock.
+    const { rows: [row] } = await tx.query('SELECT * FROM teaching_runs WHERE run_id=$1', [runId]);
+    if (!row) throw new StorageError('missing');
+    return row;
   }
   async function assertDispatch(run: TeachingRun, generation: number) {
     if (await expired(run.runId)) throw new TeachingBudgetError('run-deadline-exceeded');
@@ -122,7 +131,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     return { identity, activity: await owner.activity(identity, run.activityId), input: actionInputSchema.parse(request.body),
       runId: run.runId, stepId: String(saved.step_id), snapshotId: String(saved.snapshot_id),
       ...(typeof saved.segment_id === 'string' ? { segmentId: saved.segment_id } : {}),
-      ...(generation === undefined ? {} : { assertDispatch: () => assertDispatch(run, generation) }) };
+      ...(generation === undefined ? {} : { authority: { runId: run.runId, activityId: run.activityId,
+        driverId: owner.driverId, generation }, assertDispatch: () => assertDispatch(run, generation) }) };
   }
   async function pause(run: TeachingRun, generation: number, reason: string, model = run.model) {
     const current = owner.toRun(await owner.runRow(run.runId));
@@ -281,7 +291,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           await transaction(run, generation, async tx => {
             const { rows: [row] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
             if (row?.stop_requested) throw new StorageError('conflict');
-            await tx.query('UPDATE teaching_steps SET dispatch_permitted=true,call_started_at=COALESCE(call_started_at,clock_timestamp()) WHERE step_id=$1', [saved.step_id]);
+            await tx.query('UPDATE teaching_steps SET dispatch_permitted=true,dispatch_generation=$2,call_started_at=COALESCE(call_started_at,clock_timestamp()) WHERE step_id=$1', [saved.step_id, generation]);
             await tx.query("UPDATE teaching_runs SET state='dispatching',updated_at=clock_timestamp() WHERE run_id=$1", [run.runId]);
             await event(tx, run.activityId, 'attempt-dispatched', { runId: run.runId, stepId: saved.step_id,
               attemptId: fact.attemptId, segmentId: saved.segment_id, expectedSequence: (saved.plan as unknown as Plan).input.expectedSequence });
@@ -409,7 +419,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         clock_timestamp()+($9 || ' milliseconds')::interval)),clock_timestamp()+interval '1 second')
       ON CONFLICT(command_id,purpose) DO NOTHING RETURNING wait_id`, [waitId, run.runId, saved.step_id, command.commandId, purpose,
       purpose === 'cleanup' ? 'cleanup' : outcome.state === 'unknown' ? 'unknown' : command.location === 'browser' ? 'browser' : 'execution',
-      JSON.stringify(owner.identity(await owner.runRow(run.runId))), canonicalDigest(command), String(budget?.wait_ms ?? limits.waitMs)]);
+      JSON.stringify(owner.identity(await runInTransaction(tx, run.runId))), canonicalDigest(command), String(budget?.wait_ms ?? limits.waitMs)]);
     if (waits.length) await event(tx, run.activityId, 'wait-created', { runId: run.runId, stepId: saved.step_id,
       commandId: command.commandId, waitId, purpose, execution: outcome.execution ?? null });
   }
@@ -436,7 +446,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         const { rows: consumed } = await tx.query(`UPDATE teaching_waits SET state='consumed',consumed_at=clock_timestamp()
           WHERE command_id=$1 AND purpose='result' AND state IN ('pending','expired') RETURNING wait_id`, [command.commandId]);
         if (consumed.length) await event(tx, run.activityId, 'wait-consumed', { runId: run.runId, stepId: saved.step_id,
-          commandId: command.commandId, waitId: consumed[0]!.wait_id, terminalRun: terminal((await owner.runRow(run.runId)).state) });
+          commandId: command.commandId, waitId: consumed[0]!.wait_id, terminalRun: terminal((await runInTransaction(tx, run.runId)).state) });
       }
       return null;
     });
@@ -502,7 +512,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           if (!updated.length) return;
           permitted = true;
           await event(tx, run.activityId, 'tool-permitted', { runId: run.runId, stepId: saved.step_id,
-            commandId: command.commandId, generation, effect: command.effect, location: command.location });
+            commandId: command.commandId, generation, authority: scope.authority, effect: command.effect, location: command.location });
         });
         if (!permitted) continue;
         await assertDispatch(run, generation);
@@ -679,7 +689,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           WHERE command_id=$1 AND purpose='cleanup' AND state IN ('pending','expired') RETURNING wait_id`, [command.commandId]);
         if (consumed.length) await event(tx, run.activityId, 'wait-consumed', { runId: run.runId, stepId: row.step_id,
           commandId: command.commandId, waitId: consumed[0]!.wait_id, purpose: 'cleanup',
-          terminalRun: terminal((await owner.runRow(run.runId)).state) });
+          terminalRun: terminal((await runInTransaction(tx, run.runId)).state) });
       }
       return null;
     });
@@ -691,7 +701,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       JOIN teaching_steps s USING(step_id) WHERE c.run_id=$1 AND c.command->>'effect' IN ('execute','input') ORDER BY c.created_at`, [run.runId]);
     for (const row of rows) {
       if (row.state === 'prepared') continue;
-      const scope = await scopeFor(run, { ...row, step_id: row.step_id });
+      const scope = cleanupScopeFor(run, row);
       const command = row.command as unknown as TeachingPreparedTool;
       const stopped = await owner.tools.stop(scope, command);
       if (!stopped) continue;
@@ -714,9 +724,16 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const command = row.command as unknown as TeachingPreparedTool;
       if (canonicalDigest(command) !== wait.command_digest) throw new StorageError('corrupt');
       try {
-        const scope = await scopeFor(run, saved);
         const cleanup = wait.purpose === 'cleanup';
-        const outcome = cleanup || run.stopRequested ? await owner.tools?.stop(scope, command) : await owner.tools?.reconcile(scope, command);
+        let outcome: TeachingToolOutcome | null | undefined;
+        if (cleanup || run.stopRequested) outcome = await owner.tools?.stop(cleanupScopeFor(run, { ...row, snapshot_id: saved.snapshot_id, segment_id: saved.segment_id }), command);
+        else {
+          try { outcome = await owner.tools?.reconcile(await scopeFor(run, saved), command); }
+          catch (error) {
+            if (!(error instanceof StorageError) || !['forbidden', 'missing'].includes(error.code)) throw error;
+            outcome = await owner.tools?.stop(cleanupScopeFor(run, { ...row, snapshot_id: saved.snapshot_id, segment_id: saved.segment_id }), command);
+          }
+        }
         if (cleanup && outcome) await saveCleanup(run, row, outcome);
         if (outcome && !pending(outcome)) {
           if (!cleanup) {

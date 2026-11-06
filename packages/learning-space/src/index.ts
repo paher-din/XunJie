@@ -1,4 +1,15 @@
 export * from './spaces/index.js';
+export { createMemberAgentBindings } from './spaces/agent-bindings.js';
+export { createActivityAgentRoutes } from './learning-data/agent-routes.js';
+export { createTeachingAgentService, createTeachingAgentClient } from './teaching-agent/service.js';
+export type { TeachingAgentPort, TeachingAgentCall } from './teaching-agent/service.js';
+export { createTeachingDependencyClient, createTeachingDependencyService, teachingDependencyCallSchema } from './teaching-agent/dependencies.js';
+export { createLearningModelService, createLearningModelClient } from './model-connections/service.js';
+export type { LearningModelPort } from './model-connections/service.js';
+export { learningModelRequestSchema } from './model-connections/service.js';
+export { createTeachingDependencyBinding } from './teaching-agent/remote-state.js';
+export type { TeachingDispatchAuthority } from './teaching-agent/remote-state.js';
+export { createChunkChannel, createChunkClient } from './teaching-agent/chunk-channel.js';
 export * from './model-connections/index.js';
 export { routeModels } from './model-connections/wire.js';
 export { modelDeviceTaskSchema } from './model-connections/device-tasks.js';

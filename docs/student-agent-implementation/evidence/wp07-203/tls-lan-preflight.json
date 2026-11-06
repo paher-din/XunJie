@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-11-06T08:28:27.857943+00:00",
+  "status": "passed",
+  "scope": "direct LAN certificate trust only; not product or Agent acceptance",
+  "endpoint": "https://192.168.3.39:64401/probe-wp07-203-tls-only",
+  "tlsCertificateVerification": true,
+  "ssh": "control-only-no-tunnel",
+  "windows": {
+    "status": 200,
+    "value": {
+      "probe": "wp07-203-tls-only"
+    },
+    "platform": "win32",
+    "node": "v24.21.0"
+  },
+  "modelRequests": 0
+}

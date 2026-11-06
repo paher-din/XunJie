@@ -1,0 +1,89 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T08:04:22.420Z",
+  "mode": "preflight",
+  "protocol": "chat-completions",
+  "status": "prepared",
+  "host": {
+    "name": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0"
+  },
+  "limits": {
+    "maxGenerations": 24,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "stages": [
+    {
+      "name": "private-provider-configured",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:04:22.448Z",
+      "fact": {
+        "configured": true,
+        "secretRecorded": false
+      },
+      "finishedAt": "2026-11-06T08:04:22.452Z"
+    },
+    {
+      "name": "deepseek-authentication-without-generation",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:04:22.459Z",
+      "fact": {
+        "httpStatus": 200,
+        "selectedModelPresent": true,
+        "generations": 0
+      },
+      "finishedAt": "2026-11-06T08:04:22.582Z"
+    },
+    {
+      "name": "windows-ssh",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:04:22.583Z",
+      "fact": {
+        "platform": "win32",
+        "computer": "LAPTOP-S7A4IQFU",
+        "desktopUser": "LAPTOP-S7A4IQFU\\h",
+        "session": 0,
+        "node": "v24.15.0"
+      },
+      "finishedAt": "2026-11-06T08:04:23.733Z"
+    },
+    {
+      "name": "candidate-package",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:04:23.737Z",
+      "fact": {
+        "platform": "darwin-arm64",
+        "profile": "full",
+        "createdAt": "2026-11-06T07:57:45.454Z",
+        "distributionSha256": "924ce5d0b23a583f77107175683ace912f40c8db83656568efbe793ae83f3195",
+        "applicationSha256": "0fc27939fb2f85b7afece18a203da0f9d26b6020cbdea7e8dce267f92c5eb6b2",
+        "nodeVersion": "v24.21.0",
+        "postgresVersion": "postgres (PostgreSQL) 18.6"
+      },
+      "finishedAt": "2026-11-06T08:04:23.900Z"
+    }
+  ],
+  "engineering": "owned-by-mainline",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "source": {
+    "commit": "0db776529d9d72756ca9385e42533f1df41b4156",
+    "trackedDiffSha256": "aa53fce23b32182ab505d027f0bf4c46067ac7893a749095bcf07a136dba3c64",
+    "probeSha256": "bef65003aee5720e4eee2b537b4e3e17d948aeeb18f44d7b51fb2019cbd02c1e"
+  },
+  "package": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-06T07:57:45.454Z",
+    "distributionSha256": "924ce5d0b23a583f77107175683ace912f40c8db83656568efbe793ae83f3195",
+    "applicationSha256": "0fc27939fb2f85b7afece18a203da0f9d26b6020cbdea7e8dce267f92c5eb6b2",
+    "nodeVersion": "v24.21.0",
+    "postgresVersion": "postgres (PostgreSQL) 18.6"
+  },
+  "cleanup": [],
+  "finishedAt": "2026-11-06T08:04:23.900Z"
+}

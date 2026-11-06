@@ -1,0 +1,146 @@
+{
+  "limit": 40,
+  "used": 28,
+  "runs": [
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/local-chat.json",
+      "mode": "local",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "failed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/local-chat-r2.json",
+      "mode": "local",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/school-diagnostic-r2.json",
+      "mode": "school",
+      "generations": 0,
+      "uncertaintyCharged": false,
+      "status": "failed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/school-diagnostic-r2b.json",
+      "mode": "school",
+      "generations": 0,
+      "uncertaintyCharged": false,
+      "status": "failed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/school-diagnostic-r2c.json",
+      "mode": "school",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/agent-diagnostic-r2.json",
+      "mode": "agent",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/final-local-chat.json",
+      "mode": "local",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/final-school-chat.json",
+      "mode": "school",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/final-agent-chat.json",
+      "mode": "agent",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/final-cross-chat-r2.json",
+      "mode": "cross",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "status": "failed",
+      "originalConservativeCharge": 10,
+      "reconciledBy": "cross-r2-cleanup-retry.json"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/accepted-local-chat-r4.json",
+      "mode": "local",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "witnessFinal": true,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/accepted-school-chat-r4.json",
+      "mode": "school",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "witnessFinal": true,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/accepted-agent-chat-r4.json",
+      "mode": "agent",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "witnessFinal": true,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/accepted-cross-chat-r4.json",
+      "mode": "cross",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "witnessFinal": true,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/accepted-cross-responses-r4.json",
+      "mode": "cross",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "witnessFinal": true,
+      "status": "passed"
+    },
+    {
+      "output": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp07-203/accepted-cross-messages-r4.json",
+      "mode": "cross",
+      "generations": 2,
+      "uncertaintyCharged": false,
+      "witnessFinal": true,
+      "status": "passed"
+    }
+  ],
+  "reconciliations": [
+    {
+      "output": "final-cross-chat-r2.json",
+      "previousCharge": 10,
+      "actualGenerations": 2,
+      "releasedReservation": 8,
+      "proof": [
+        "cross-r2-cleanup-audit.json",
+        "cross-r2-cleanup-retry.json"
+      ]
+    }
+  ],
+  "limitChanges": [
+    {
+      "from": 24,
+      "to": 40,
+      "reason": "mainline-explicit-final-scope-four-chat-plus-cross-responses-messages",
+      "measuredAt": "2026-11-06T09:26:38.452372+00:00"
+    }
+  ]
+}

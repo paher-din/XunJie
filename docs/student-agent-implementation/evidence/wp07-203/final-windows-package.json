@@ -1,0 +1,9 @@
+{
+  "distributionSha256": "5e7c2207973465a4a7f82eb7ece1e77ff0923a7e98678cf5af0a239cca0d0f31",
+  "applicationSha256": "6c88621910145b85e1e93944c5efed33507d0f861f1af32742f698267950893c",
+  "node": "v24.21.0",
+  "postgres": "postgres (PostgreSQL) 18.6",
+  "status": "transferred-and-hashes-matched",
+  "remoteProduct": "D:/XunJie-acceptance/wp07-203/product-final-r1",
+  "platform": "win32-x64"
+}

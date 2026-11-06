@@ -1,0 +1,880 @@
+{
+  "issue": 203,
+  "status": "passed",
+  "recordedAt": "2026-11-06T11:22:42.857116+00:00",
+  "candidate": "final-r4",
+  "sourceRecord": "final-r4-source.json",
+  "sourceTreeSha256": "1c6b24ab81f74bcd02684194daf5032a979849c72c65eb1b113bbc781395effa",
+  "criticalSourceHashesVerified": 19,
+  "sourceFilesVerified": 588,
+  "sourceChangesSinceCapture": [],
+  "probeSha256": "55fb154655ed90889ac74eebfd7fa56e202611f4c11545fb00ca98eede00a684",
+  "packageRecord": "final-candidates-r4.json",
+  "packages": [
+    {
+      "path": "dist/product-darwin-arm64-wp07-203-final-r4",
+      "platform": "darwin-arm64",
+      "createdAt": "2026-11-06T11:02:14.355Z",
+      "distributionSha256": "a7f30aac8a31067300135c9e1c6151ea4e1eb80118c1d1fb5f404818fa287ae4",
+      "applicationSha256": "3b7ec1095c04c2e891f87968c8e71d269cb798158246fc4e1d26f5b820bfb73c"
+    },
+    {
+      "path": "dist/product-win32-x64-wp07-203-final-r4",
+      "platform": "win32-x64",
+      "createdAt": "2026-11-06T11:02:18.542Z",
+      "distributionSha256": "ebc6aeb98069f05a3ee82235eacfdd2fc4cc9f38e6dc5ff4a98250c80b5e50c5",
+      "applicationSha256": "3b7ec1095c04c2e891f87968c8e71d269cb798158246fc4e1d26f5b820bfb73c"
+    }
+  ],
+  "windowsTransferRecord": "final-windows-package-r4.json",
+  "cases": [
+    {
+      "case": "local-chat",
+      "status": "passed",
+      "report": "accepted-local-chat-r4.json",
+      "reportSha256": "45f9db76671d8d652bba6880d2250d2fe0118b179c7c989883b18eecf2b52254",
+      "screenshot": "accepted-local-chat-r4-chrome.png",
+      "host": {
+        "name": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "osRelease": "27.2.0",
+        "node": "v24.21.0"
+      },
+      "browserVersion": "156.0.8078.80",
+      "desktopSessionId": null,
+      "authorization": {
+        "agentEnvironment": null,
+        "capabilityBinding": null,
+        "modelSelection": {
+          "modelConnectionId": "94ca1492-c72d-49f3-96a8-35906a1f69e0",
+          "grantId": "2b20d92d-37b7-411c-a00d-257f886111a9",
+          "model": "deepseek-flash",
+          "modelLocation": "Mac"
+        },
+        "deviceRuntimeGrantId": null
+      },
+      "runId": "7172746a-dfcc-40fb-a9ab-a78906221d6d",
+      "model": {
+        "connectionId": "94ca1492-c72d-49f3-96a8-35906a1f69e0",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 6300,
+        "outputTokens": 1048,
+        "totalTokens": 7348,
+        "cachedTokens": 2944,
+        "reasoningTokens": 351
+      },
+      "requests": [
+        {
+          "index": 1,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:04:10.958Z",
+          "status": 200,
+          "senderPlatform": "darwin",
+          "senderHost": "Robert-Wu-MacBook-Air.local",
+          "firstProviderChunkMs": 127,
+          "firstToolDeltaMs": 1082,
+          "elapsedMs": 1291,
+          "streamEndObserved": true,
+          "connectionClosedMs": 1291
+        },
+        {
+          "index": 2,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:04:15.537Z",
+          "status": 200,
+          "senderPlatform": "darwin",
+          "senderHost": "Robert-Wu-MacBook-Air.local",
+          "firstProviderChunkMs": 88,
+          "firstTextDeltaMs": 1892,
+          "connectionClosedMs": 5255,
+          "streamEndObserved": false
+        }
+      ],
+      "requestAccounting": {
+        "observedExternalAttempts": 2,
+        "httpSuccess": 2,
+        "httpFailure": 0,
+        "responseUnconfirmed": 0,
+        "witnessFinal": true
+      },
+      "metricsMs": {
+        "firstProviderChunks": [
+          127,
+          88
+        ],
+        "firstToolDelta": 1082,
+        "firstAnswerDelta": 1892,
+        "toolIncludingWait": 3022,
+        "questionThroughBrowserResult": 10384,
+        "reloadAndRestart": 1875
+      },
+      "waitConsumed": true,
+      "originalRequestPreservedWithoutGeneration": true,
+      "cleanup": "passed"
+    },
+    {
+      "case": "school-chat",
+      "status": "passed",
+      "report": "accepted-school-chat-r4.json",
+      "reportSha256": "fff837ee8d2532297b779dc128dcbe534db2f0649cf1d34dc032cd75ac67ae81",
+      "screenshot": "accepted-school-chat-r4-chrome.png",
+      "host": {
+        "name": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "osRelease": "27.2.0",
+        "node": "v24.21.0"
+      },
+      "browserVersion": "156.0.8078.80",
+      "desktopSessionId": null,
+      "authorization": {
+        "agentEnvironment": null,
+        "capabilityBinding": null,
+        "modelSelection": {
+          "modelConnectionId": "06a40bb9-37a2-4901-8a0f-e6d678ca570d",
+          "model": "deepseek-flash",
+          "modelLocation": "school-owner-on-Mac",
+          "selection": "school-default"
+        },
+        "deviceRuntimeGrantId": null
+      },
+      "runId": "dffb4c18-6feb-4d4a-99d5-435da28e14ef",
+      "model": {
+        "connectionId": "06a40bb9-37a2-4901-8a0f-e6d678ca570d",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 6290,
+        "outputTokens": 703,
+        "totalTokens": 6993,
+        "cachedTokens": 2944,
+        "reasoningTokens": 268
+      },
+      "requests": [
+        {
+          "index": 1,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:05:35.215Z",
+          "status": 200,
+          "senderPlatform": "darwin",
+          "senderHost": "Robert-Wu-MacBook-Air.local",
+          "firstProviderChunkMs": 103,
+          "firstToolDeltaMs": 1093,
+          "elapsedMs": 1298,
+          "streamEndObserved": true,
+          "connectionClosedMs": 1299
+        },
+        {
+          "index": 2,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:05:39.857Z",
+          "status": 200,
+          "senderPlatform": "darwin",
+          "senderHost": "Robert-Wu-MacBook-Air.local",
+          "firstProviderChunkMs": 121,
+          "firstTextDeltaMs": 1753,
+          "elapsedMs": 3396,
+          "streamEndObserved": true,
+          "connectionClosedMs": 3396
+        }
+      ],
+      "requestAccounting": {
+        "observedExternalAttempts": 2,
+        "httpSuccess": 2,
+        "httpFailure": 0,
+        "responseUnconfirmed": 0,
+        "witnessFinal": true
+      },
+      "metricsMs": {
+        "firstProviderChunks": [
+          103,
+          121
+        ],
+        "firstToolDelta": 1093,
+        "firstAnswerDelta": 1753,
+        "toolIncludingWait": 3057,
+        "questionThroughBrowserResult": 8806,
+        "reloadAndRestart": 1877
+      },
+      "waitConsumed": true,
+      "originalRequestPreservedWithoutGeneration": true,
+      "cleanup": "passed"
+    },
+    {
+      "case": "agent-chat",
+      "status": "passed",
+      "report": "accepted-agent-chat-r4.json",
+      "reportSha256": "e41d2facd22d775eaf0dae2768a9e0aeaa3ec95c39932575a564a3eeeb8eaac4",
+      "screenshot": "accepted-agent-chat-r4-chrome.png",
+      "host": {
+        "name": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "osRelease": "27.2.0",
+        "node": "v24.21.0"
+      },
+      "browserVersion": "156.0.8078.80",
+      "desktopSessionId": null,
+      "authorization": {
+        "agentEnvironment": "eb783514-1659-43ef-994f-be08cad96455",
+        "capabilityBinding": {
+          "agent": {
+            "environmentId": "eb783514-1659-43ef-994f-be08cad96455",
+            "serviceId": "bf7daef0-5a88-463f-8fab-8edc02fe667e",
+            "unit": "teaching-agent",
+            "endpoint": "http://127.0.0.1:61784",
+            "protocolVersion": 1,
+            "capabilities": [
+              "runtime.status",
+              "teaching.agent"
+            ]
+          },
+          "dependencyGrantId": "8da749b0-6373-47e8-906e-d8cdcb239341",
+          "acceptGrantId": "ea3ea1d9-baf9-4458-b7fe-2ad8cd126613",
+          "placement": "same-mac-as-school"
+        },
+        "modelSelection": {
+          "modelConnectionId": "93215999-f37d-4057-80fd-911285e8982e",
+          "model": "deepseek-flash",
+          "modelLocation": "school-owner-on-Mac",
+          "selection": "school-default"
+        },
+        "deviceRuntimeGrantId": null
+      },
+      "runId": "eeb293ec-45d5-4bd5-91c0-25e92f2dd820",
+      "model": {
+        "connectionId": "93215999-f37d-4057-80fd-911285e8982e",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 6271,
+        "outputTokens": 1146,
+        "totalTokens": 7417,
+        "cachedTokens": 2944,
+        "reasoningTokens": 424
+      },
+      "requests": [
+        {
+          "index": 1,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:06:47.619Z",
+          "status": 200,
+          "senderPlatform": "darwin",
+          "senderHost": "Robert-Wu-MacBook-Air.local",
+          "firstProviderChunkMs": 107,
+          "firstToolDeltaMs": 977,
+          "elapsedMs": 1183,
+          "streamEndObserved": true,
+          "connectionClosedMs": 1184
+        },
+        {
+          "index": 2,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:07:08.212Z",
+          "status": 200,
+          "senderPlatform": "darwin",
+          "senderHost": "Robert-Wu-MacBook-Air.local",
+          "firstProviderChunkMs": 589,
+          "firstTextDeltaMs": 3019,
+          "elapsedMs": 6604,
+          "streamEndObserved": true,
+          "connectionClosedMs": 6604
+        }
+      ],
+      "requestAccounting": {
+        "observedExternalAttempts": 2,
+        "httpSuccess": 2,
+        "httpFailure": 0,
+        "responseUnconfirmed": 0,
+        "witnessFinal": true
+      },
+      "metricsMs": {
+        "firstProviderChunks": [
+          107,
+          589
+        ],
+        "firstToolDelta": 977,
+        "firstAnswerDelta": 3019,
+        "toolIncludingWait": 10286,
+        "questionThroughBrowserResult": 36449,
+        "reloadAndRestart": 2593
+      },
+      "waitConsumed": true,
+      "originalRequestPreservedWithoutGeneration": true,
+      "cleanup": "passed"
+    },
+    {
+      "case": "cross-chat",
+      "status": "passed",
+      "report": "accepted-cross-chat-r4.json",
+      "reportSha256": "0c0064a2bee8198a8de8bee758db9f9797534f608b42fcf0b43843d69d6cd2fc",
+      "screenshot": "accepted-cross-chat-r4-windows-chrome.png",
+      "host": {
+        "name": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "osRelease": "27.2.0",
+        "node": "v24.21.0"
+      },
+      "browserVersion": "156.0.8078.80",
+      "desktopSessionId": 1,
+      "authorization": {
+        "agentEnvironment": "e6374e64-a79d-4231-be6a-0513aecaea4e",
+        "capabilityBinding": {
+          "agent": {
+            "environmentId": "e6374e64-a79d-4231-be6a-0513aecaea4e",
+            "serviceId": "f47ff738-8f42-4f3b-a8cc-40af1e2a5a5d",
+            "unit": "teaching-agent",
+            "endpoint": "http://127.0.0.1:63013",
+            "protocolVersion": 1,
+            "capabilities": [
+              "runtime.status",
+              "teaching.agent"
+            ]
+          },
+          "dependencyGrantId": "11fc8830-8843-4804-a5cc-483b4310785c",
+          "acceptGrantId": "4f80c380-e62b-469b-80b8-dee64dabf240",
+          "placement": "same-mac-as-school"
+        },
+        "modelSelection": {
+          "modelConnectionId": "c897a286-dcb5-49c5-b0ce-cfacca546283",
+          "grantId": "085f5034-71f7-47e1-ab63-a9710470aef4",
+          "model": "deepseek-flash",
+          "modelLocation": "Windows",
+          "rootChoiceDiscovery": {
+            "endpoint": "/api/learning/models/selection",
+            "elapsedMs": 9,
+            "rootVersion": 0,
+            "connectionId": "c897a286-dcb5-49c5-b0ce-cfacca546283",
+            "grantId": "085f5034-71f7-47e1-ab63-a9710470aef4",
+            "origin": "device",
+            "pointerPreserved": true,
+            "activePublicationOnly": true
+          },
+          "rootSelection": {
+            "version": 1,
+            "connectionId": "c897a286-dcb5-49c5-b0ce-cfacca546283",
+            "grantId": "085f5034-71f7-47e1-ab63-a9710470aef4"
+          }
+        },
+        "deviceRuntimeGrantId": "90d94f57-b462-4a3e-9a10-39c25279ed74"
+      },
+      "runId": "9a118b3d-b267-4e34-8910-868896fff94c",
+      "model": {
+        "connectionId": "c897a286-dcb5-49c5-b0ce-cfacca546283",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 6473,
+        "outputTokens": 1258,
+        "totalTokens": 7731,
+        "cachedTokens": 3200,
+        "reasoningTokens": 505
+      },
+      "requests": [
+        {
+          "index": 1,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:08:36.136Z",
+          "status": 200,
+          "senderPlatform": "win32",
+          "senderHost": "LAPTOP-S7A4IQFU",
+          "firstProviderChunkMs": 163,
+          "firstToolDeltaMs": 2723,
+          "elapsedMs": 2937,
+          "streamEndObserved": true,
+          "connectionClosedMs": 2937
+        },
+        {
+          "index": 2,
+          "path": "/v1/chat/completions",
+          "startedAt": "2026-11-06T11:09:14.051Z",
+          "status": 200,
+          "senderPlatform": "win32",
+          "senderHost": "LAPTOP-S7A4IQFU",
+          "firstProviderChunkMs": 117,
+          "firstTextDeltaMs": 1868,
+          "elapsedMs": 5555,
+          "streamEndObserved": true,
+          "connectionClosedMs": 5555
+        }
+      ],
+      "requestAccounting": {
+        "observedExternalAttempts": 2,
+        "httpSuccess": 2,
+        "httpFailure": 0,
+        "responseUnconfirmed": 0,
+        "witnessFinal": true
+      },
+      "metricsMs": {
+        "firstProviderChunks": [
+          163,
+          117
+        ],
+        "firstToolDelta": 2723,
+        "firstAnswerDelta": 1868,
+        "toolIncludingWait": 12050,
+        "questionThroughBrowserResult": 70827,
+        "reloadAndRestart": 2683
+      },
+      "waitConsumed": true,
+      "originalRequestPreservedWithoutGeneration": true,
+      "cleanup": "passed"
+    },
+    {
+      "case": "cross-responses",
+      "status": "passed",
+      "report": "accepted-cross-responses-r4.json",
+      "reportSha256": "2cd2759aa388ce20bb626ebf97aad7177aad29262f545275c3116a0181a6c6cc",
+      "screenshot": "accepted-cross-responses-r4-windows-chrome.png",
+      "host": {
+        "name": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "osRelease": "27.2.0",
+        "node": "v24.21.0"
+      },
+      "browserVersion": "156.0.8078.80",
+      "desktopSessionId": 1,
+      "authorization": {
+        "agentEnvironment": "120c5165-4bdc-44b2-aa8d-a0a04b87bab7",
+        "capabilityBinding": {
+          "agent": {
+            "environmentId": "120c5165-4bdc-44b2-aa8d-a0a04b87bab7",
+            "serviceId": "bc57997c-2215-4262-8e92-f6c649a9a1af",
+            "unit": "teaching-agent",
+            "endpoint": "http://127.0.0.1:64922",
+            "protocolVersion": 1,
+            "capabilities": [
+              "runtime.status",
+              "teaching.agent"
+            ]
+          },
+          "dependencyGrantId": "7035e85c-710d-4367-b4e2-1a79e1cb7c39",
+          "acceptGrantId": "0c4c12c3-439f-465f-a56f-0f8c6b2c4456",
+          "placement": "same-mac-as-school"
+        },
+        "modelSelection": {
+          "modelConnectionId": "db18afb6-e267-4255-8f95-a5d52479eb99",
+          "grantId": "17334536-fd4b-4af9-9a9a-37ee260c2d95",
+          "model": "deepseek-flash",
+          "modelLocation": "Windows",
+          "rootChoiceDiscovery": {
+            "endpoint": "/api/learning/models/selection",
+            "elapsedMs": 9,
+            "rootVersion": 0,
+            "connectionId": "db18afb6-e267-4255-8f95-a5d52479eb99",
+            "grantId": "17334536-fd4b-4af9-9a9a-37ee260c2d95",
+            "origin": "device",
+            "pointerPreserved": true,
+            "activePublicationOnly": true
+          },
+          "rootSelection": {
+            "version": 1,
+            "connectionId": "db18afb6-e267-4255-8f95-a5d52479eb99",
+            "grantId": "17334536-fd4b-4af9-9a9a-37ee260c2d95"
+          }
+        },
+        "deviceRuntimeGrantId": "240f4971-5082-4c18-8be6-2fc394274c47"
+      },
+      "runId": "480776a2-011d-40e4-8c6d-f12208048658",
+      "model": {
+        "connectionId": "db18afb6-e267-4255-8f95-a5d52479eb99",
+        "version": 1,
+        "protocol": "responses",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 6292,
+        "outputTokens": 976,
+        "totalTokens": 7268,
+        "cachedTokens": 2944,
+        "reasoningTokens": 279
+      },
+      "requests": [
+        {
+          "index": 1,
+          "path": "/v1/responses",
+          "startedAt": "2026-11-06T11:10:36.971Z",
+          "status": 200,
+          "senderPlatform": "win32",
+          "senderHost": "LAPTOP-S7A4IQFU",
+          "firstProviderChunkMs": 450,
+          "firstToolDeltaMs": 1829,
+          "elapsedMs": 2046,
+          "streamEndObserved": true,
+          "connectionClosedMs": 2046
+        },
+        {
+          "index": 2,
+          "path": "/v1/responses",
+          "startedAt": "2026-11-06T11:11:12.818Z",
+          "status": 200,
+          "senderPlatform": "win32",
+          "senderHost": "LAPTOP-S7A4IQFU",
+          "firstProviderChunkMs": 634,
+          "firstTextDeltaMs": 2018,
+          "elapsedMs": 5336,
+          "streamEndObserved": true,
+          "connectionClosedMs": 5336
+        }
+      ],
+      "requestAccounting": {
+        "observedExternalAttempts": 2,
+        "httpSuccess": 2,
+        "httpFailure": 0,
+        "responseUnconfirmed": 0,
+        "witnessFinal": true
+      },
+      "metricsMs": {
+        "firstProviderChunks": [
+          450,
+          634
+        ],
+        "firstToolDelta": 1829,
+        "firstAnswerDelta": 2018,
+        "toolIncludingWait": 9441,
+        "questionThroughBrowserResult": 70493,
+        "reloadAndRestart": 2709
+      },
+      "waitConsumed": true,
+      "originalRequestPreservedWithoutGeneration": true,
+      "cleanup": "passed"
+    },
+    {
+      "case": "cross-messages",
+      "status": "passed",
+      "report": "accepted-cross-messages-r4.json",
+      "reportSha256": "40f087808a857a9b0cb0f026c47465bafb675cdf563a2f790d20b479ef0aaa48",
+      "screenshot": "accepted-cross-messages-r4-windows-chrome.png",
+      "host": {
+        "name": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "arch": "arm64",
+        "osRelease": "27.2.0",
+        "node": "v24.21.0"
+      },
+      "browserVersion": "156.0.8078.80",
+      "desktopSessionId": 1,
+      "authorization": {
+        "agentEnvironment": "976f7233-19bc-4440-9dcc-b5388bd1b487",
+        "capabilityBinding": {
+          "agent": {
+            "environmentId": "976f7233-19bc-4440-9dcc-b5388bd1b487",
+            "serviceId": "f7274205-dc2a-4520-a483-5760b8b2a56f",
+            "unit": "teaching-agent",
+            "endpoint": "http://127.0.0.1:50474",
+            "protocolVersion": 1,
+            "capabilities": [
+              "runtime.status",
+              "teaching.agent"
+            ]
+          },
+          "dependencyGrantId": "a957caff-b113-4cf8-8ce0-5e436e8ad36f",
+          "acceptGrantId": "195a9615-241a-4fd5-9f95-a1a0887deb14",
+          "placement": "same-mac-as-school"
+        },
+        "modelSelection": {
+          "modelConnectionId": "1b244376-ff39-4e79-b4cc-99d64b08f172",
+          "grantId": "1c0cf895-89d4-4a51-ab28-9fd1bec2a1d8",
+          "model": "deepseek-flash",
+          "modelLocation": "Windows",
+          "rootChoiceDiscovery": {
+            "endpoint": "/api/learning/models/selection",
+            "elapsedMs": 6,
+            "rootVersion": 0,
+            "connectionId": "1b244376-ff39-4e79-b4cc-99d64b08f172",
+            "grantId": "1c0cf895-89d4-4a51-ab28-9fd1bec2a1d8",
+            "origin": "device",
+            "pointerPreserved": true,
+            "activePublicationOnly": true
+          },
+          "rootSelection": {
+            "version": 1,
+            "connectionId": "1b244376-ff39-4e79-b4cc-99d64b08f172",
+            "grantId": "1c0cf895-89d4-4a51-ab28-9fd1bec2a1d8"
+          }
+        },
+        "deviceRuntimeGrantId": "a17cc826-0180-4af9-b697-2e19c7a42bdf"
+      },
+      "runId": "c91b29ce-c0b7-40da-98cd-ce2dc6a14ba2",
+      "model": {
+        "connectionId": "1b244376-ff39-4e79-b4cc-99d64b08f172",
+        "version": 1,
+        "protocol": "messages",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 3375,
+        "outputTokens": 1083,
+        "cachedTokens": 2944
+      },
+      "requests": [
+        {
+          "index": 1,
+          "path": "/anthropic/v1/messages",
+          "startedAt": "2026-11-06T11:13:28.768Z",
+          "status": 200,
+          "senderPlatform": "win32",
+          "senderHost": "LAPTOP-S7A4IQFU",
+          "firstProviderChunkMs": 144,
+          "firstToolDeltaMs": 1453,
+          "elapsedMs": 1717,
+          "streamEndObserved": true,
+          "connectionClosedMs": 1718
+        },
+        {
+          "index": 2,
+          "path": "/anthropic/v1/messages",
+          "startedAt": "2026-11-06T11:14:02.132Z",
+          "status": 200,
+          "senderPlatform": "win32",
+          "senderHost": "LAPTOP-S7A4IQFU",
+          "firstProviderChunkMs": 478,
+          "firstTextDeltaMs": 2554,
+          "elapsedMs": 6377,
+          "streamEndObserved": true,
+          "connectionClosedMs": 6377
+        }
+      ],
+      "requestAccounting": {
+        "observedExternalAttempts": 2,
+        "httpSuccess": 2,
+        "httpFailure": 0,
+        "responseUnconfirmed": 0,
+        "witnessFinal": true
+      },
+      "metricsMs": {
+        "firstProviderChunks": [
+          144,
+          478
+        ],
+        "firstToolDelta": 1453,
+        "firstAnswerDelta": 2554,
+        "toolIncludingWait": 8464,
+        "questionThroughBrowserResult": 66787,
+        "reloadAndRestart": 2786
+      },
+      "waitConsumed": true,
+      "originalRequestPreservedWithoutGeneration": true,
+      "cleanup": "passed"
+    }
+  ],
+  "windowsAgentZeroGeneration": {
+    "report": "accepted-windows-agent-profile-r4.json",
+    "status": "passed",
+    "generations": 0,
+    "units": [
+      "client",
+      "teaching-agent"
+    ],
+    "degradedWithoutDependencies": true,
+    "proof": {
+      "managedPostgres": true,
+      "databasePort": 64020,
+      "ownerSchemas": [
+        {
+          "serviceId": "b411e7a6-2290-44a4-b42d-ededffcb2028",
+          "schemaVersion": "1"
+        },
+        {
+          "serviceId": "93d6ea03-473b-4ff9-b032-ea385c626ab8",
+          "schemaVersion": "storage/1;owner/4"
+        }
+      ],
+      "backupId": "9f47f643-339d-46e8-a592-97326ef9c335",
+      "configuredDependency": false,
+      "afterProofState": "degraded"
+    },
+    "cleanup": "passed"
+  },
+  "generationAccounting": {
+    "budgetFile": "generation-budget.json",
+    "limit": 40,
+    "actualTotal": 28,
+    "historical": 16,
+    "finalR4": 12,
+    "httpSuccess": 28,
+    "httpFailure": 0,
+    "responseUnconfirmed": 0,
+    "reservationOutstanding": false,
+    "perRequestMaxOutputTokens": 2048,
+    "perRequestTimeoutMs": 60000,
+    "sdkRetries": 0,
+    "completedScopeNoFurtherGenerations": true,
+    "responseUnconfirmedDefinition": "No HTTP status observed; independent from full stream end observation"
+  },
+  "transportObservation": {
+    "localSecondReply": "HTTP 200 and persistent completed Run/answer; relay observed close at 5255ms but not HTTP stream end. Original streamEndObserved:false retained. No causal attribution claimed."
+  },
+  "historicalRuns": [
+    {
+      "report": "local-chat.json",
+      "status": "failed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": {
+        "code": "no-completed-course-tool"
+      },
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "local-chat-r2.json",
+      "status": "passed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "school-diagnostic-r2.json",
+      "status": "failed",
+      "actualRequests": 0,
+      "httpStatuses": [],
+      "failure": {
+        "code": "api-models-http-403"
+      },
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "school-diagnostic-r2b.json",
+      "status": "failed",
+      "actualRequests": 0,
+      "httpStatuses": [],
+      "failure": {
+        "code": "api-manage-http-400"
+      },
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "school-diagnostic-r2c.json",
+      "status": "passed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "agent-diagnostic-r2.json",
+      "status": "passed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "final-local-chat.json",
+      "status": "passed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "final-school-chat.json",
+      "status": "passed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "final-agent-chat.json",
+      "status": "passed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": false
+    },
+    {
+      "report": "final-cross-chat-r2.json",
+      "status": "failed",
+      "actualRequests": 2,
+      "httpStatuses": [
+        200,
+        200
+      ],
+      "failure": null,
+      "cleanupFailedOriginally": true
+    }
+  ],
+  "failureEvidence": [
+    "local-chat.json",
+    "school-diagnostic-r2.json",
+    "school-diagnostic-r2b.json",
+    "final-cross-chat-r2.json",
+    "cross-r2-cleanup-audit.json",
+    "cross-r2-cleanup-retry.json",
+    "accepted-windows-agent-profile-r3.json",
+    "r4-packaging-attempts.json"
+  ],
+  "cleanupRecord": "final-task-cleanup-r4.json",
+  "cleanup": "passed",
+  "engineering": {
+    "ownedBy": "mainline",
+    "record": "engineering-verification.json",
+    "status": "passed"
+  },
+  "teachingEffect": "not-assessed",
+  "sharedDistBuild": false,
+  "sharedDeploymentsModified": false,
+  "boundaries": [
+    "school and Agent colocated on Mac; Windows model owner and Windows Chrome are cross-machine",
+    "local profile exercised a school course member activity, not all personal free-activity paths",
+    "completed-run graceful restart; mainline owns crash/revocation/concurrency fault tests",
+    "Windows native isolated course-session execution not run",
+    "Linux product deployment not run",
+    "signing and notarization outside this acceptance round"
+  ],
+  "commitCreatedByDeploymentProbe": false
+}

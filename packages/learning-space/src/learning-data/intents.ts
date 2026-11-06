@@ -20,6 +20,7 @@ export const actionIntentMigration: Migration = { version: 5, name: 'durable-act
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export interface ActionIntentOptions {
   receivers?: readonly ActionReceiver[];
+  receiversFor?(identity: SpaceIdentity, activityId: string): Promise<readonly ActionReceiver[]>;
   /** The evidence owner verifies scope/version and idempotently retains it for this action identity. */
   retainEvidence?(identity: SpaceIdentity, activityId: string, evidence: ActionInput['evidence'][number], requestId: string): Promise<void>;
 }
@@ -43,6 +44,11 @@ export function createActionIntents(storage: OwnedStorage, options: {
   const receiverKey = (identity: ActionInput['receiver']) => JSON.stringify(actionReceiverSchema.parse(identity));
   const receivers = new Map((options.receivers ?? []).map(receiver => [receiverKey(receiver.identity), receiver]));
   if (receivers.size !== (options.receivers ?? []).length) throw new StorageError('identity-conflict');
+  async function available(identity: SpaceIdentity, activityId: string) {
+    const all = new Map(receivers);
+    for (const receiver of await options.receiversFor?.(identity, activityId) ?? []) all.set(receiverKey(receiver.identity), receiver);
+    return all;
+  }
   async function read(identity: SpaceIdentity, activityId: string, requestId: string) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
     const { rows: [row] } = await storage.read('SELECT * FROM action_intents WHERE activity_id=$1 AND request_id=$2', [activityId, requestId]);
@@ -114,7 +120,7 @@ export function createActionIntents(storage: OwnedStorage, options: {
       let current = await read(identity, activityId, requestId);
       if (!current) throw new StorageError('missing');
       if (!['prepared', 'dispatched'].includes(current.state)) return current;
-      const receiver = receivers.get(receiverKey(current.input.receiver));
+      const receiver = (await available(identity, activityId)).get(receiverKey(current.input.receiver));
       if (!receiver) throw new StorageError('unavailable');
       await storage.pendingIntents(); // checks the storage dispatch gate and generation
       if (dispatchLife.closed) throw new StorageError('maintenance');
@@ -149,7 +155,7 @@ export function createActionIntents(storage: OwnedStorage, options: {
       ? { ...saved, state: 'cancelled', cancelRequested: true }
       : saved.state === 'dispatched' ? { ...saved, cancelRequested: true } : saved);
     if (current.state !== 'dispatched' || dispatchLife.closed) return current;
-    const receiver = receivers.get(receiverKey(current.input.receiver));
+    const receiver = (await available(identity, activityId)).get(receiverKey(current.input.receiver));
     if (!receiver) return current;
     const key = requestId + ':cancel';
     const previous = dispatchLife.active.get(key);
@@ -172,7 +178,7 @@ export function createActionIntents(storage: OwnedStorage, options: {
     }
   }
   return { prepare, read, list, dispatch, cancel, capabilities: async (identity: SpaceIdentity, activityId: string) => {
-    await authorize(identity, activityId); return [...receivers.values()].map(receiver => actionReceiverSchema.parse(receiver.identity));
+    await authorize(identity, activityId); return [...(await available(identity, activityId)).values()].map(receiver => actionReceiverSchema.parse(receiver.identity));
   }, closeDispatch() { dispatchLife.closed = true; },
   async drain() {
     const deadline = Date.now() + 10000;

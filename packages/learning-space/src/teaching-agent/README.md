@@ -53,6 +53,14 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 明确回应使用 `agent/<activityId>/questions/<questionId>/presentations|responses` 和 `agent/<activityId>/responses/<requestId>`；呈现 POST 不消费 Wait，回应回包不明时 GET 查询原身份。对话卡片沿现有工作区 IndexedDB 的附加 v8 存储先固定输入再提交，未接受时保留原文。IP 仅定位到同一卡片，不自动作答或抢焦点；隔离还原只读展示原事实。所有新表参加相同 owner 的迁移、保留、备份、校验与接管。
 
+## 独立部署
+
+`service.ts` 将同一接收、查询、对话、事件、快照、停止和继续接口暴露给受认证的 WP01 `teaching.agent` 通道。维护者在身份 owner 保存成员的 Agent 配置，学习数据 owner 在首次解析时固定活动路由；后续配置仅影响新活动。运行层通过领域接口装配，不写 Agent 业务表。
+
+独立 Agent 使用自己的 storage、迁移与维护参与者。`dependencies.ts` 将活动、模型与固定课程工具请求送回实际所有者；双向连接分别绑定真实环境、服务、安装和授权。`remote-state.ts` 固定原依赖连接，模型接收及实际外发复核原 Run、步骤、attempt、领取者和代际。慢速 RPC 期间续租，旧处理者失去推进资格后不能取得新派发权。
+
+`chunk-channel.ts` 在有界 WP01 JSON 通道上传递较大的固定输入、快照和工具结果，分片及回复由实际 owner 持久保留并校验资源引用。未知回包按原业务身份查询，分片通道不会重放未知外部效果；维护和恢复同样验证这些资源。
+
 ## 验证
 
 - `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、增量发布、重启/停止/继续、快照重建、备份/还原/接管。

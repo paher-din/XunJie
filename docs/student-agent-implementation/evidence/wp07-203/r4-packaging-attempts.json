@@ -1,0 +1,20 @@
+{
+  "attempts": [
+    {
+      "status": "failed",
+      "reason": "private snapshot omitted components/table-aggregation imported by web typechecks",
+      "paidGenerations": 0,
+      "sharedDistModified": false
+    },
+    {
+      "status": "passed",
+      "correction": "copied components into private snapshot; pin Node24.21 on build PATH",
+      "sourceRecord": "final-r4-source.json",
+      "packageRecord": "final-candidates-r4.json",
+      "paidGenerations": 0,
+      "sharedDistModified": false
+    }
+  ],
+  "status": "passed",
+  "privateSnapshotRemoved": true
+}

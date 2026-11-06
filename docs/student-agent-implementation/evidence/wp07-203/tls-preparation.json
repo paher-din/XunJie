@@ -1,0 +1,12 @@
+{
+  "status": "prepared-not-yet-cross-machine-accepted",
+  "localDirectory": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-tls-hw6cp8us",
+  "certificate": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-tls-hw6cp8us/ca.pem",
+  "privateKey": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-tls-hw6cp8us/key.pem",
+  "subjectAltName": [
+    "192.168.3.39",
+    "localhost"
+  ],
+  "remotePublicCA": "D:/XunJie-acceptance/wp07-203/ca.pem",
+  "privateKeyExported": false
+}

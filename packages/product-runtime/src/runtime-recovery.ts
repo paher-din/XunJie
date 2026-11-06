@@ -93,6 +93,8 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
         databaseIdentity?: { systemIdentifier: string; databaseOid: string } };
       const source = runtimeEnvironmentSchema.parse(data.environment);
       if (source.services[0]?.serviceId !== options.serviceId) throw new RecoveryError('owner-identity-conflict');
+      if (source.profile === 'agent' && options.installation && options.installation.profile !== 'agent')
+        throw new RecoveryError('incompatible-deployment-profile');
       if (recovery.engineVersion && (!isSupportedPostgresVersion(recovery.engineVersion)
         || !isSupportedPostgresVersion(options.resources.postgresVersion ?? ''))) throw new RecoveryError('incompatible-engine');
       const sourceMajor = recovery.engineVersion ? Number.parseInt(recovery.engineVersion) : undefined;
@@ -104,9 +106,9 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
         if (!options.databaseCredential) throw new RecoveryError('target-database-credential-required');
         await storeCredential(options.root, databaseConfiguration.credentialRef, options.databaseCredential);
       }
-      const installed = await runtime.install({ profile: source.profile === 'model' ? 'model'
+      const installed = await runtime.install({ profile: source.profile === 'model' || source.profile === 'agent' ? source.profile
         : databaseConfiguration.mode === 'none' ? 'remote' : databaseConfiguration.mode === 'external' ? 'school' : 'local',
-        ...options.installation, database: databaseConfiguration,
+        ...options.installation, ...(data.configuration.agent ? { agent: data.configuration.agent } : {}), database: databaseConfiguration,
         requiredServiceIds: data.configuration.requiredServiceIds });
       const environment: RuntimeEnvironment = { ...source, installationId: randomUUID(),
         clientNamespace: `xunjie.v1.${source.environmentId}.recovery.${randomUUID()}`,
@@ -156,8 +158,11 @@ export async function restoreProductRecovery(options: { root: string; backupDire
   if (!runtimeId) throw new RecoveryError('runtime-participant-missing');
   // Authenticated source descriptors identify the normal product's business owners.
   // Explicit targets keep custom hosts in control of their complete owner set.
-  const targets = options.targets ?? (manifest.source.services.some(service => ['space-course', 'learning-data'].includes(service.unit))
-    ? createLearningRecoveryTargets({ root: options.root, environment: manifest.source, resources: options.resources,
+  const ownerIds = new Set(manifest.services.map(owner => owner.serviceId));
+  const ownerEnvironment = { ...manifest.source, services: manifest.source.services.filter(service => ownerIds.has(service.serviceId)) };
+  const targets = options.targets ?? (ownerEnvironment.services.some(service =>
+    ['space-course', 'learning-data', 'model-connection', 'teaching-agent'].includes(service.unit))
+    ? createLearningRecoveryTargets({ root: options.root, environment: ownerEnvironment, resources: options.resources,
       admin: () => recoveryDatabase(options.root) }) : []);
   return restoreRecoverySet({ backupDirectory: options.backupDirectory, targetRoot: options.root, key: options.key,
     ...(options.minimumFreeBytes === undefined ? {} : { minimumFreeBytes: options.minimumFreeBytes }),

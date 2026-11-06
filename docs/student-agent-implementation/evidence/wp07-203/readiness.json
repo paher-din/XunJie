@@ -1,0 +1,46 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T11:28:10.509302+00:00",
+  "status": "completed",
+  "candidate": "final-r4",
+  "sourceRecord": "final-r4-source.json",
+  "deploymentRecord": "deployment-verification.json",
+  "engineeringRecord": "engineering-verification.json",
+  "cleanupRecord": "final-task-cleanup-r4.json",
+  "checks": {
+    "finalPackages": "passed-both-platforms-source-and-transfer-hashes-matched",
+    "realDeploymentCases": "6/6 passed",
+    "windowsAgentProfile": "passed-zero-generation",
+    "windowsChrome": "passed-session-1-product-chain-three-protocols",
+    "fullEngineering": "passed",
+    "nativeAffectedRechecks": "24/24 and 17/17 passed",
+    "macChrome": "15 passed with 1 baseline skip; affected final 6 passed with 1 baseline skip",
+    "cleanup": "passed"
+  },
+  "pending": [],
+  "notRun": [
+    "Windows native isolated course-session execution",
+    "Linux product deployment",
+    "teaching-effect evaluation"
+  ],
+  "actualGenerations": 28,
+  "historicalGenerations": 16,
+  "finalR4Generations": 12,
+  "internalGenerationLimit": 40,
+  "reservationOutstanding": false,
+  "paidMatrix": "complete-no-further-generations",
+  "sharedDeploymentsModified": false,
+  "rootSelectionAdaptation": {
+    "status": "passed-on-final-r4",
+    "stage": "real-deepseek-selection",
+    "publication": "device modelChoices via existing learning.authority active channel",
+    "discovery": "school GET /api/learning/models/selection public options; bounded polling 60s",
+    "selection": "school POST selection with returned version CAS, then GET confirmation",
+    "agentCapabilitiesWarmup": false,
+    "deviceLocalPointerWrite": false,
+    "automaticRootDefault": false,
+    "pointerPreservationCheck": true,
+    "normalCapabilitiesAfterRootSelection": true
+  },
+  "historicalPreparationStatus": "r3-candidate-preserved-waiting-for-final-r4-school-client-batch-fix"
+}

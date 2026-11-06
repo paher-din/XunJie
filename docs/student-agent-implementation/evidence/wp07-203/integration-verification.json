@@ -1,0 +1,127 @@
+{
+  "recordedAt": "2026-11-06T11:58:01.307226+00:00",
+  "branch": "wp07",
+  "parents": {
+    "local203": "9cdc6e690da158285b00bfe8984f9fab5ba924f2",
+    "remote199": "6b2ef11b1b722057d15049c80ef5ee5a1effefbd"
+  },
+  "scope": "Pre-push integration of #199 explicit responses with #203 independent Agent deployment.",
+  "teachingMigrations": [
+    {
+      "version": 3,
+      "name": "explicit-student-questions-and-responses"
+    },
+    {
+      "version": 4,
+      "name": "agent-dependency-identity-and-permits"
+    },
+    {
+      "version": 5,
+      "name": "agent-owned-chunk-channel"
+    }
+  ],
+  "native": {
+    "initial": {
+      "tests": 44,
+      "pass": 43,
+      "fail": 1,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "affectedFinal": {
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "initialFailure": "agent-deployment fixture froze a conversation event prefix before the terminal notice; the newer Run projection had already paused.",
+    "resolution": "Wait for both paused Run and its system notice before retaining the snapshot; preserve the original strict equality assertions.",
+    "independentAgentCoverage": [
+      "durable pending question",
+      "presentation is not an answer",
+      "cross-activity isolation",
+      "same Run continuation",
+      "idempotent response and lost receipt recovery",
+      "both process restarts",
+      "expired question and late response receipt",
+      "no generation for expiry or rejected response",
+      "new explicit request after expiry"
+    ],
+    "upstream": "Synthetic SDK streams; actual PostgreSQL, product child processes, authenticated service connections and HTTP routes."
+  },
+  "chrome": {
+    "browser": "Google Chrome on macOS",
+    "passed": 10,
+    "skipped": 2,
+    "failed": 0,
+    "files": [
+      "studentAsk.spec.ts",
+      "teachingConversation.spec.ts",
+      "teachingTools.spec.ts"
+    ],
+    "skippedReason": "Before-change baseline screenshot captures only."
+  },
+  "verify": {
+    "status": "passed",
+    "exitCode": 0,
+    "nodeVersion": "v24.21.0",
+    "testsCached": false,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4,
+        "passed": 4
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1,
+        "passed": 1
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": 28,
+        "passed": 28
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": 88,
+        "passed": 88
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": 45,
+        "passed": 45
+      }
+    ]
+  },
+  "review": {
+    "standards": "No new actionable finding at the integration seams.",
+    "spec": "No confirmed implementation defect; independent Agent expiry coverage added after the review recommendation."
+  },
+  "realGenerationsAdded": 0,
+  "packageEvidenceBoundary": "final-r4 packages and real cross-machine reports belong to pre-integration #203 (9cdc6e6), not a rebuilt or cross-machine retested merged candidate.",
+  "sourceSha256": {
+    "packages/contracts/src/teaching-agent.ts": "5502d612cb61bbf451b2bc274158fad052d4e7f2e9a8e3602ca0ce0b0bedde29",
+    "packages/learning-space/src/learning-entry/index.ts": "ed5fcfce86907ebee3ffe44b6b481584cf5d0584c7b9509dce9f4e801490f508",
+    "packages/learning-space/src/teaching-agent/index.ts": "1f18d8241d3f1b63b90d01f4410026d6ac64ad0801108a5937bbd162805aed09",
+    "packages/learning-space/src/teaching-agent/service.ts": "16ea993024081e07f045aadace05c694147139f3409b74adbd45db6f59898e0f",
+    "packages/learning-space/src/teaching-agent/remote-state.ts": "fb3825bc51e32d4b7151d89d18879e82f1e79e5a6a6d7ff590f45c7e364679ba",
+    "packages/learning-space/src/teaching-agent/tool-types.ts": "3a1ae5f91a7ac3402c19baff72a6882aefb0d1cc5f74ad72390737acfbb431c3",
+    "packages/learning-space/src/teaching-agent/driver.ts": "928ec87d2b726d613bb46faa1dae8679b89d91eb438f6c38a4b34a967afd32f1",
+    "packages/product-runtime/test/agent-deployment.runtime.test.mjs": "70130be599ea07efab3a72a679204e148c0b5819b272e9fb61c32b73acf7c805",
+    "packages/product-runtime/test/agent-student-ask.runtime.test.mjs": "6e87dff1fa4cadd256c75a75393baa21df51b61cfeec3a521ccee78b5469d26a"
+  },
+  "logs": [
+    "integration-native-initial.log",
+    "integration-native-final.log",
+    "integration-chrome.log",
+    "integration-verify.log"
+  ],
+  "logNormalization": "Trailing spaces on retained console-log lines removed; content and results unchanged. Original console logs remain under .verification/."
+}

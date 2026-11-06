@@ -1,0 +1,1353 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T09:03:10.968Z",
+  "mode": "local",
+  "protocol": "chat-completions",
+  "status": "passed",
+  "host": {
+    "name": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "node": "v24.21.0"
+  },
+  "limits": {
+    "maxGenerations": 24,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "stages": [
+    {
+      "name": "private-provider-configured",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:11.008Z",
+      "fact": {
+        "configured": true,
+        "secretRecorded": false
+      },
+      "finishedAt": "2026-11-06T09:03:11.011Z"
+    },
+    {
+      "name": "deepseek-authentication-without-generation",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:11.015Z",
+      "fact": {
+        "httpStatus": 200,
+        "selectedModelPresent": true,
+        "generations": 0
+      },
+      "finishedAt": "2026-11-06T09:03:11.124Z"
+    },
+    {
+      "name": "install-and-start-school",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:14.188Z",
+      "fact": {
+        "state": "ready",
+        "profile": "local"
+      },
+      "finishedAt": "2026-11-06T09:03:19.831Z"
+    },
+    {
+      "name": "real-deepseek-selection",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:19.934Z",
+      "fact": {
+        "modelConnectionId": "d71d6273-f837-483a-a98e-d62e512962e8",
+        "grantId": "edad47f2-aa42-4402-aca5-5f97f0ab0279",
+        "model": "deepseek-flash",
+        "modelLocation": "Mac"
+      },
+      "finishedAt": "2026-11-06T09:03:19.966Z"
+    },
+    {
+      "name": "durable-wait-before-browser-execution",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:20.517Z",
+      "fact": {
+        "elapsedMs": 2833,
+        "waits": [
+          {
+            "waitId": "1d4d31df-6c13-47d3-9e80-63ad434af395",
+            "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+            "stepId": "d80b4dee-0245-4fdd-bb39-2b5e1c52ebd0",
+            "commandId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "state": "pending",
+            "reason": "browser",
+            "deadline": "2026-11-07T09:03:22.991Z",
+            "nextCheckAt": "2026-11-06T09:03:23.991Z",
+            "consumedAt": null
+          }
+        ],
+        "tools": [
+          {
+            "commandId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "name": "course_operation",
+            "location": "browser"
+          }
+        ]
+      },
+      "finishedAt": "2026-11-06T09:03:23.221Z"
+    },
+    {
+      "name": "chrome-real-course-result-and-model-explanation",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:25.561Z",
+      "fact": {
+        "actualCourseTool": "course_operation",
+        "originalWaitConsumed": true,
+        "answerSha256": "f991e999eeb206d43cc1c883308efd68d923727c0e57f75a01a84c07e9372ca2",
+        "resultSha256": "e79442218098548e4ad232762f2b698f0af200d57dfd8e02d13a4c7c8b91274a",
+        "toolElapsedMs": 7134,
+        "elapsedMs": 14602
+      },
+      "finishedAt": "2026-11-06T09:03:34.990Z"
+    },
+    {
+      "name": "reload-and-restart-query-original-request",
+      "status": "passed",
+      "startedAt": "2026-11-06T09:03:34.991Z",
+      "fact": {
+        "sameConversation": true,
+        "sameRequest": true,
+        "recoveryElapsedMs": 2068,
+        "generationsBefore": 2,
+        "generationsAfter": 2,
+        "comparisonSha256": "81429ba3106edd4c455e5bbae902f45e56bb1b8401a9521ea0d841ff02b491fb"
+      },
+      "finishedAt": "2026-11-06T09:03:37.059Z"
+    }
+  ],
+  "engineering": "owned-by-mainline",
+  "browser": "passed",
+  "teachingEffect": "not-assessed",
+  "source": {
+    "commit": "0db776529d9d72756ca9385e42533f1df41b4156",
+    "trackedDiffSha256": "94d5c44c51b65e03a9e30b11e6f11bed760c7fa11a9b43d8757792b51f86b493",
+    "probeSha256": "f765bc866e47b26e0055d0d2887dc2614229e7a3e4b0121dfe595c37e3cea706"
+  },
+  "budget": {
+    "usedBefore": 8,
+    "available": 16,
+    "limit": 24,
+    "usedAfter": 10
+  },
+  "package": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-06T09:01:07.560Z",
+    "distributionSha256": "09d0f5eaf0dd1457f5e91264736d65418e997ad7fa74c994ab10e5748da986e0",
+    "applicationSha256": "6c88621910145b85e1e93944c5efed33507d0f861f1af32742f698267950893c",
+    "schemaMarkers": {
+      "model13": true,
+      "learning20": true
+    },
+    "nodeVersion": "v24.21.0",
+    "postgresVersion": "postgres (PostgreSQL) 18.6"
+  },
+  "temporaryRoot": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-HusSme",
+  "school": {
+    "formatVersion": 1,
+    "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72",
+    "installationId": "66e573cb-6b8a-4108-b3c4-cf99e83e9919",
+    "clientNamespace": "xunjie.v1.a9956d39-df6d-4a18-b083-a787ecaf3b72",
+    "profile": "local",
+    "services": [
+      {
+        "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72",
+        "serviceId": "31139cbb-cf2b-4115-8015-46312da82fd1",
+        "unit": "client",
+        "endpoint": "http://127.0.0.1:50378",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status",
+          "learning.authority"
+        ]
+      },
+      {
+        "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72",
+        "serviceId": "7d39a8b5-49e6-48c3-be8b-d22378905855",
+        "unit": "space-course",
+        "endpoint": "http://127.0.0.1:50378",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      },
+      {
+        "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72",
+        "serviceId": "8cde4c8d-dd5a-40df-839e-c1180711a47c",
+        "unit": "learning-data",
+        "endpoint": "http://127.0.0.1:50378",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status",
+          "teaching.dependencies"
+        ]
+      },
+      {
+        "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72",
+        "serviceId": "0e35a6a2-af38-44e3-b7b2-981ddbbabbeb",
+        "unit": "model-connection",
+        "endpoint": "http://127.0.0.1:50378",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      },
+      {
+        "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72",
+        "serviceId": "ca4c8333-c2c3-4bd7-91a2-50372e4be48b",
+        "unit": "teaching-agent",
+        "endpoint": "http://127.0.0.1:50378",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      }
+    ]
+  },
+  "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+  "requestId": "d8e82502-3227-422e-9ed6-3aaf01650583",
+  "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+  "lastConversation": {
+    "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+    "cursor": 32,
+    "messages": [
+      {
+        "eventId": "a7fe87a5-dfb8-46ac-9490-3227c69fb213",
+        "seq": 1,
+        "role": "student",
+        "text": "请实际调用 course_operation：componentKey=table，operationId=aggregate，parameters={\"groupColumn\":\"小组\",\"valueColumn\":\"得分\",\"aggregate\":\"mean\"}。等待真实执行结果后，用中文简要解释各组与总平均分。不要估算结果，不要调用其他工具。",
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "createdAt": "2026-11-06T09:03:20.502Z"
+      },
+      {
+        "eventId": "4a861d43-647f-4b56-acf4-e99402dde814",
+        "seq": 31,
+        "role": "assistant",
+        "text": "执行已完成，返回 `state: completed`；这是真实执行结果，并非估算。\n\n**按组平均分（聚合 mean，分组列“小组”，数值列“得分”）**\n\n| 小组 | 人数 | 合计 | 平均分 | 最低 | 最高 |\n|---|---|---|---|---|---|\n| A | 4 | 332 | 83 | 73 | 92 |\n| B | 4 | 334 | 83.5 | 75 | 90 |\n| C | 4 | 334 | 83.5 | 67 | 95 |\n\n- 全体 12 行数据都参与了计算，`rejected` 为空，没有因无法解析而被剔除的行。\n- **总平均分 = 83.33**（1000 ÷ 12）。\n\n**如何解释实际结果**\n\n1. 三组的平均分非常接近：A 组为 83，B、C 两组均为 83.5；三组内部的分数分布也更均匀。差距主要体现在分布上，而平均分几乎无差异：C 组的平均分与 B 组相同，但 C 组的两端差距最大（67、95），B 组的两端差距最小（75、90）。如果只看平均值，就会得出“三组差不多”的结论，但会完全忽略这种离散程度上的差异。\n2. 总平均分 83.33 之所以落在 83 和 83.5 之间，是因为三组人数相同（各 4 人）。在这种情况下，总平均分等于三个组平均分的简单算术平均：(83 + 83.5 + 83.5) ÷ 3 = 83.33。如果各组人数不同，就不能这样推算，必须用总合计除以总人数。\n3. 这次核对已确认表组件中参数的取值（mean / 小组 / 得分）与原始执行状态一致，输出可以直接作为“真实平均分”的核对依据。\n\n下一步建议：请从原始状态表中挑选一两个位置，手动复核合计（例如 A 组 88+92+79+73 = 332），并把“平均分相同但离散程度不同”这一点写进你的结果解释；这是本活动“解释实际结果”的关键得分点。需要继续核对其他列或聚合方式的话，告诉我具体参数即可。",
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "state": "settled",
+        "createdAt": "2026-11-06T09:03:32.071Z"
+      }
+    ],
+    "runs": [
+      {
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+        "requestId": "d8e82502-3227-422e-9ed6-3aaf01650583",
+        "inputId": "68d3d78d-6a01-4576-9afd-87dd28abc42b",
+        "state": "completed",
+        "reason": "stop",
+        "stopRequested": false,
+        "previousRunId": null,
+        "attemptId": "d73cc553-b7fd-4187-84ce-acc28458ce74",
+        "segmentId": "fcfc0605-023d-4b62-8479-310cdd567fea",
+        "model": {
+          "connectionId": "d71d6273-f837-483a-a98e-d62e512962e8",
+          "version": 1,
+          "protocol": "chat-completions",
+          "modelId": "deepseek-flash",
+          "contextWindow": 262144,
+          "maxOutputTokens": 2048
+        },
+        "usage": {
+          "state": "final",
+          "inputTokens": 6285,
+          "outputTokens": 887,
+          "totalTokens": 7172,
+          "cachedTokens": 2944,
+          "reasoningTokens": 309
+        },
+        "createdAt": "2026-11-06T09:03:20.498Z",
+        "updatedAt": "2026-11-06T09:03:34.781Z",
+        "completedAt": "2026-11-06T09:03:34.781Z"
+      }
+    ],
+    "tools": [
+      {
+        "commandId": "fec04895-ea90-4941-a958-23ef204cfa37",
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "stepId": "d80b4dee-0245-4fdd-bb39-2b5e1c52ebd0",
+        "snapshotId": "57daefad-1b9e-4c0a-8fe3-7b644be040d4",
+        "callId": "call_00_yUbK9pb5hrOrDMKJuB2G2065",
+        "name": "course_operation",
+        "version": 1,
+        "state": "settled",
+        "effect": "execute",
+        "location": "browser",
+        "arguments": {
+          "parameters": {
+            "aggregate": "mean",
+            "groupColumn": "小组",
+            "valueColumn": "得分"
+          },
+          "operationId": "aggregate",
+          "componentKey": "table"
+        },
+        "basis": {
+          "action": {
+            "kind": "execution",
+            "scope": {
+              "spaceId": "a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2",
+              "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+              "principalId": "ce1f3393-9160-4300-bbff-93f310411575",
+              "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72"
+            },
+            "receiver": {
+              "kind": "execution",
+              "location": "local",
+              "receiverId": "browser-execution"
+            },
+            "execution": {
+              "plan": {
+                "kind": "job",
+                "planId": "browser-job",
+                "location": "browser",
+                "planDigest": "2e269fa447013ed9b0701b2cf4f17f5a68bec8277c6b62861a89ea27140aa6fa",
+                "planVersion": 1
+              },
+              "basis": {
+                "state": {
+                  "name": "components/table.json",
+                  "sha256": "666165375447faec932376e8484ddae46bdee8d9ab8ffca8acdc37b432b9ad67",
+                  "contentId": "5dab03d5-7845-4903-8d55-83d19ff5e306"
+                },
+                "works": [
+                  {
+                    "kind": "state",
+                    "name": "components/table.json",
+                    "value": "{\"formatVersion\":1,\"instanceId\":\"cc36c5b8-509f-447d-9569-f6e11cb8999b:table\",\"componentId\":\"1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61\",\"version\":2,\"definitionDigest\":\"5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9\",\"stateVersion\":1,\"operationId\":\"ac7e428c-b106-4ab1-94e6-b4145cd2214f\",\"content\":{\"parameters\":{\"aggregate\":\"mean\",\"groupColumn\":\"小组\",\"valueColumn\":\"得分\"},\"table\":{\"columns\":[\"姓名\",\"小组\",\"得分\"],\"rows\":[[\"林一\",\"A\",\"88\"],[\"周舟\",\"A\",\"92\"],[\"方晓\",\"A\",\"79\"],[\"林禾\",\"A\",\"73\"],[\"许宁\",\"B\",\"75\"],[\"陈禾\",\"B\",\"81\"],[\"黎舟\",\"B\",\"88\"],[\"周宁\",\"B\",\"90\"],[\"苏远\",\"C\",\"67\"],[\"何清\",\"C\",\"95\"],[\"许多\",\"C\",\"84\"],[\"苏清\",\"C\",\"88\"]]}}}",
+                    "encoding": "json",
+                    "objectId": "2b11861d-a8ee-4c70-a22b-a857452f6661",
+                    "contentId": "5dab03d5-7845-4903-8d55-83d19ff5e306",
+                    "mediaType": "application/vnd.xunjie.component-state+json"
+                  }
+                ],
+                "expected": {
+                  "stateContentId": "5dab03d5-7845-4903-8d55-83d19ff5e306"
+                },
+                "resources": [
+                  {
+                    "kind": "entry",
+                    "sha256": "01891ccc9f4901eacc59f74d2ee0022ba508de2a9d4f1226b9d49ba093300d47",
+                    "mediaType": "text/html",
+                    "byteLength": 17203,
+                    "resourceId": "7386d1f5-af05-41a4-8250-54c34e09fa2a"
+                  },
+                  {
+                    "kind": "algorithm",
+                    "sha256": "a1bd50eb814b604018be5b6323b9fd674152aaf8fbe51422d40bc3d31e08b42d",
+                    "mediaType": "application/wasm",
+                    "byteLength": 270,
+                    "resourceId": "b07e066c-a7e9-429a-b82d-011d513ed72b"
+                  }
+                ]
+              },
+              "limits": {
+                "timeMs": 5000,
+                "inputBytes": 1048576,
+                "queuedJobs": 4,
+                "memoryPages": 256,
+                "outputBytes": 65536,
+                "concurrentJobs": 2
+              },
+              "instance": {
+                "key": "table",
+                "instanceId": "cc36c5b8-509f-447d-9569-f6e11cb8999b:table",
+                "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+                "stateVersion": 1,
+                "hostApiVersion": 1,
+                "componentVersion": 2,
+                "definitionDigest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9"
+              },
+              "initiator": {
+                "kind": "agent",
+                "principalId": "ce1f3393-9160-4300-bbff-93f310411575"
+              },
+              "operation": {
+                "effect": "execute",
+                "operationId": "aggregate"
+              },
+              "parameters": {
+                "aggregate": "mean",
+                "groupColumn": "小组",
+                "valueColumn": "得分"
+              }
+            },
+            "requestId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "protocolVersion": 2
+          },
+          "binding": {
+            "key": "table",
+            "definition": {
+              "digest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9",
+              "manifest": {
+                "entry": {
+                  "sha256": "01891ccc9f4901eacc59f74d2ee0022ba508de2a9d4f1226b9d49ba093300d47",
+                  "mediaType": "text/html",
+                  "byteLength": 17203,
+                  "resourceId": "7386d1f5-af05-41a4-8250-54c34e09fa2a"
+                },
+                "title": "表格聚合",
+                "version": 2,
+                "algorithm": {
+                  "entry": "aggregate",
+                  "resource": {
+                    "sha256": "a1bd50eb814b604018be5b6323b9fd674152aaf8fbe51422d40bc3d31e08b42d",
+                    "mediaType": "application/wasm",
+                    "byteLength": 270,
+                    "resourceId": "b07e066c-a7e9-429a-b82d-011d513ed72b"
+                  },
+                  "mediaType": "application/wasm",
+                  "memoryPages": 256
+                },
+                "operations": [
+                  {
+                    "effect": "execute",
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "rows": {
+                          "type": "number"
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "max": {
+                                "type": "number"
+                              },
+                              "min": {
+                                "type": "number"
+                              },
+                              "sum": {
+                                "type": "number"
+                              },
+                              "mean": {
+                                "type": "number"
+                              },
+                              "count": {
+                                "type": "number"
+                              },
+                              "value": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "maxItems": 200
+                        },
+                        "rejected": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "maxItems": 8
+                        },
+                        "aggregate": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "groupColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "valueColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      }
+                    },
+                    "budgets": {
+                      "timeMs": 5000,
+                      "outputBytes": 65536
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "aggregate": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "groupColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "valueColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      }
+                    },
+                    "operationId": "aggregate"
+                  }
+                ],
+                "stateShape": {
+                  "type": "object",
+                  "properties": {
+                    "table": {
+                      "type": "object",
+                      "properties": {
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            "maxItems": 12
+                          },
+                          "maxItems": 1000
+                        },
+                        "columns": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 40
+                          },
+                          "maxItems": 12
+                        }
+                      }
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "aggregate": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "groupColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "valueColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      }
+                    }
+                  }
+                },
+                "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+                "initialState": {
+                  "table": {
+                    "rows": [
+                      [
+                        "林一",
+                        "A",
+                        "88"
+                      ],
+                      [
+                        "周舟",
+                        "A",
+                        "92"
+                      ],
+                      [
+                        "方晓",
+                        "A",
+                        "79"
+                      ],
+                      [
+                        "林禾",
+                        "A",
+                        "73"
+                      ],
+                      [
+                        "许宁",
+                        "B",
+                        "75"
+                      ],
+                      [
+                        "陈禾",
+                        "B",
+                        "81"
+                      ],
+                      [
+                        "黎舟",
+                        "B",
+                        "88"
+                      ],
+                      [
+                        "周宁",
+                        "B",
+                        "90"
+                      ],
+                      [
+                        "苏远",
+                        "C",
+                        "67"
+                      ],
+                      [
+                        "何清",
+                        "C",
+                        "95"
+                      ],
+                      [
+                        "许多",
+                        "C",
+                        "84"
+                      ],
+                      [
+                        "苏清",
+                        "C",
+                        "88"
+                      ]
+                    ],
+                    "columns": [
+                      "姓名",
+                      "小组",
+                      "得分"
+                    ]
+                  },
+                  "parameters": {
+                    "aggregate": "mean",
+                    "groupColumn": "小组",
+                    "valueColumn": "得分"
+                  }
+                },
+                "stateVersion": 1,
+                "formatVersion": 1,
+                "hostApiVersion": 1,
+                "requiredCapabilities": [
+                  "workspace.read",
+                  "workspace.change",
+                  "execution.submit"
+                ]
+              }
+            },
+            "materialIds": [],
+            "configuration": {
+              "title": "真实表格聚合"
+            }
+          },
+          "requestId": "fec04895-ea90-4941-a958-23ef204cfa37"
+        },
+        "outcome": "completed",
+        "feedback": "{\"state\":\"completed\",\"query\":{\"requestId\":\"fec04895-ea90-4941-a958-23ef204cfa37\",\"inputDigest\":\"98da177b00ed555735bc3b15d5dee8451180e551ec92c76889e49a46f514475d\",\"scope\":{\"environmentId\":\"a9956d39-df6d-4a18-b083-a787ecaf3b72\",\"spaceId\":\"a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2\",\"principalId\":\"ce1f3393-9160-4300-bbff-93f310411575\",\"activityId\":\"cc36c5b8-509f-447d-9569-f6e11cb8999b\"},\"executionRef\":\"f1070455-49dc-4b1c-a505-46d7f0507e72\",\"state\":\"succeeded\",\"statusKnowledge\":\"confirmed\",\"stopRequested\":false,\"confirmedSeq\":3,\"reason\":null,\"output\":{\"contentId\":\"99b55752-070b-4b04-a913-f6c656c5e2d0\",\"output\":{\"rows\":12,\"value\":83.33333333333333,\"groups\":[{\"key\":\"A\",\"max\":92,\"min\":73,\"sum\":332,\"mean\":83,\"count\":4,\"value\":83},{\"key\":\"B\",\"max\":90,\"min\":75,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5},{\"key\":\"C\",\"max\":95,\"min\":67,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5}],\"rejected\":[],\"aggregate\":\"mean\",\"groupColumn\":\"小组\",\"valueColumn\":\"得分\"},\"artifact\":{\"name\":\"聚合结果-mean.csv\",\"mediaType\":\"text/csv;charset=utf-8\",\"byteLength\":97,\"sha256\":\"4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971\"}}},\"artifact\":{\"executionRef\":\"f1070455-49dc-4b1c-a505-46d7f0507e72\",\"requestId\":\"fec04895-ea90-4941-a958-23ef204cfa37\",\"scope\":{\"environmentId\":\"a9956d39-df6d-4a18-b083-a787ecaf3b72\",\"spaceId\":\"a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2\",\"principalId\":\"ce1f3393-9160-4300-bbff-93f310411575\",\"activityId\":\"cc36c5b8-509f-447d-9569-f6e11cb8999b\"},\"name\":\"聚合结果-mean.csv\",\"mediaType\":\"text/csv;charset=utf-8\",\"sha256\":\"4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971\",\"byteLength\":97,\"text\":\"小组,计数,求和,平均,最小,最大\\nA,4,332,83,73,92\\nB,4,334,83.5,75,90\\nC,4,334,83.5,67,95\\n\",\"output\":{\"rows\":12,\"value\":83.33333333333333,\"groups\":[{\"key\":\"A\",\"max\":92,\"min\":73,\"sum\":332,\"mean\":83,\"count\":4,\"value\":83},{\"key\":\"B\",\"max\":90,\"min\":75,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5},{\"key\":\"C\",\"max\":95,\"min\":67,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5}],\"rejected\":[],\"aggregate\":\"mean\",\"groupColumn\":\"小组\",\"valueColumn\":\"得分\"}},\"operationCompleted\":true,\"sessionOngoing\":false}",
+        "result": {
+          "query": {
+            "scope": {
+              "spaceId": "a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2",
+              "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+              "principalId": "ce1f3393-9160-4300-bbff-93f310411575",
+              "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72"
+            },
+            "state": "succeeded",
+            "output": {
+              "output": {
+                "rows": 12,
+                "value": 83.33333333333333,
+                "groups": [
+                  {
+                    "key": "A",
+                    "max": 92,
+                    "min": 73,
+                    "sum": 332,
+                    "mean": 83,
+                    "count": 4,
+                    "value": 83
+                  },
+                  {
+                    "key": "B",
+                    "max": 90,
+                    "min": 75,
+                    "sum": 334,
+                    "mean": 83.5,
+                    "count": 4,
+                    "value": 83.5
+                  },
+                  {
+                    "key": "C",
+                    "max": 95,
+                    "min": 67,
+                    "sum": 334,
+                    "mean": 83.5,
+                    "count": 4,
+                    "value": 83.5
+                  }
+                ],
+                "rejected": [],
+                "aggregate": "mean",
+                "groupColumn": "小组",
+                "valueColumn": "得分"
+              },
+              "artifact": {
+                "name": "聚合结果-mean.csv",
+                "sha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+                "mediaType": "text/csv;charset=utf-8",
+                "byteLength": 97
+              },
+              "contentId": "99b55752-070b-4b04-a913-f6c656c5e2d0"
+            },
+            "reason": null,
+            "requestId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "inputDigest": "98da177b00ed555735bc3b15d5dee8451180e551ec92c76889e49a46f514475d",
+            "confirmedSeq": 3,
+            "executionRef": "f1070455-49dc-4b1c-a505-46d7f0507e72",
+            "stopRequested": false,
+            "statusKnowledge": "confirmed"
+          },
+          "artifact": {
+            "name": "聚合结果-mean.csv",
+            "text": "小组,计数,求和,平均,最小,最大\nA,4,332,83,73,92\nB,4,334,83.5,75,90\nC,4,334,83.5,67,95\n",
+            "scope": {
+              "spaceId": "a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2",
+              "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+              "principalId": "ce1f3393-9160-4300-bbff-93f310411575",
+              "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72"
+            },
+            "output": {
+              "rows": 12,
+              "value": 83.33333333333333,
+              "groups": [
+                {
+                  "key": "A",
+                  "max": 92,
+                  "min": 73,
+                  "sum": 332,
+                  "mean": 83,
+                  "count": 4,
+                  "value": 83
+                },
+                {
+                  "key": "B",
+                  "max": 90,
+                  "min": 75,
+                  "sum": 334,
+                  "mean": 83.5,
+                  "count": 4,
+                  "value": 83.5
+                },
+                {
+                  "key": "C",
+                  "max": 95,
+                  "min": 67,
+                  "sum": 334,
+                  "mean": 83.5,
+                  "count": 4,
+                  "value": 83.5
+                }
+              ],
+              "rejected": [],
+              "aggregate": "mean",
+              "groupColumn": "小组",
+              "valueColumn": "得分"
+            },
+            "sha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+            "mediaType": "text/csv;charset=utf-8",
+            "requestId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "byteLength": 97,
+            "executionRef": "f1070455-49dc-4b1c-a505-46d7f0507e72"
+          },
+          "sessionOngoing": false,
+          "operationCompleted": true
+        },
+        "source": {
+          "label": "原执行结果",
+          "componentKey": "table",
+          "requestId": "fec04895-ea90-4941-a958-23ef204cfa37"
+        },
+        "createdAt": "2026-11-06T09:03:22.720Z",
+        "updatedAt": "2026-11-06T09:03:29.854Z"
+      }
+    ],
+    "waits": [
+      {
+        "waitId": "1d4d31df-6c13-47d3-9e80-63ad434af395",
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "stepId": "d80b4dee-0245-4fdd-bb39-2b5e1c52ebd0",
+        "commandId": "fec04895-ea90-4941-a958-23ef204cfa37",
+        "state": "consumed",
+        "reason": "browser",
+        "deadline": "2026-11-07T09:03:22.991Z",
+        "nextCheckAt": "2026-11-06T09:03:26.024Z",
+        "consumedAt": "2026-11-06T09:03:29.859Z"
+      }
+    ]
+  },
+  "browserVersion": "156.0.8078.80",
+  "completed": {
+    "run": {
+      "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+      "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+      "requestId": "d8e82502-3227-422e-9ed6-3aaf01650583",
+      "inputId": "68d3d78d-6a01-4576-9afd-87dd28abc42b",
+      "state": "completed",
+      "reason": "stop",
+      "stopRequested": false,
+      "previousRunId": null,
+      "attemptId": "d73cc553-b7fd-4187-84ce-acc28458ce74",
+      "segmentId": "fcfc0605-023d-4b62-8479-310cdd567fea",
+      "model": {
+        "connectionId": "d71d6273-f837-483a-a98e-d62e512962e8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 2048
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 6285,
+        "outputTokens": 887,
+        "totalTokens": 7172,
+        "cachedTokens": 2944,
+        "reasoningTokens": 309
+      },
+      "createdAt": "2026-11-06T09:03:20.498Z",
+      "updatedAt": "2026-11-06T09:03:34.781Z",
+      "completedAt": "2026-11-06T09:03:34.781Z"
+    },
+    "tools": [
+      {
+        "commandId": "fec04895-ea90-4941-a958-23ef204cfa37",
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "stepId": "d80b4dee-0245-4fdd-bb39-2b5e1c52ebd0",
+        "snapshotId": "57daefad-1b9e-4c0a-8fe3-7b644be040d4",
+        "callId": "call_00_yUbK9pb5hrOrDMKJuB2G2065",
+        "name": "course_operation",
+        "version": 1,
+        "state": "settled",
+        "effect": "execute",
+        "location": "browser",
+        "arguments": {
+          "parameters": {
+            "aggregate": "mean",
+            "groupColumn": "小组",
+            "valueColumn": "得分"
+          },
+          "operationId": "aggregate",
+          "componentKey": "table"
+        },
+        "basis": {
+          "action": {
+            "kind": "execution",
+            "scope": {
+              "spaceId": "a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2",
+              "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+              "principalId": "ce1f3393-9160-4300-bbff-93f310411575",
+              "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72"
+            },
+            "receiver": {
+              "kind": "execution",
+              "location": "local",
+              "receiverId": "browser-execution"
+            },
+            "execution": {
+              "plan": {
+                "kind": "job",
+                "planId": "browser-job",
+                "location": "browser",
+                "planDigest": "2e269fa447013ed9b0701b2cf4f17f5a68bec8277c6b62861a89ea27140aa6fa",
+                "planVersion": 1
+              },
+              "basis": {
+                "state": {
+                  "name": "components/table.json",
+                  "sha256": "666165375447faec932376e8484ddae46bdee8d9ab8ffca8acdc37b432b9ad67",
+                  "contentId": "5dab03d5-7845-4903-8d55-83d19ff5e306"
+                },
+                "works": [
+                  {
+                    "kind": "state",
+                    "name": "components/table.json",
+                    "value": "{\"formatVersion\":1,\"instanceId\":\"cc36c5b8-509f-447d-9569-f6e11cb8999b:table\",\"componentId\":\"1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61\",\"version\":2,\"definitionDigest\":\"5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9\",\"stateVersion\":1,\"operationId\":\"ac7e428c-b106-4ab1-94e6-b4145cd2214f\",\"content\":{\"parameters\":{\"aggregate\":\"mean\",\"groupColumn\":\"小组\",\"valueColumn\":\"得分\"},\"table\":{\"columns\":[\"姓名\",\"小组\",\"得分\"],\"rows\":[[\"林一\",\"A\",\"88\"],[\"周舟\",\"A\",\"92\"],[\"方晓\",\"A\",\"79\"],[\"林禾\",\"A\",\"73\"],[\"许宁\",\"B\",\"75\"],[\"陈禾\",\"B\",\"81\"],[\"黎舟\",\"B\",\"88\"],[\"周宁\",\"B\",\"90\"],[\"苏远\",\"C\",\"67\"],[\"何清\",\"C\",\"95\"],[\"许多\",\"C\",\"84\"],[\"苏清\",\"C\",\"88\"]]}}}",
+                    "encoding": "json",
+                    "objectId": "2b11861d-a8ee-4c70-a22b-a857452f6661",
+                    "contentId": "5dab03d5-7845-4903-8d55-83d19ff5e306",
+                    "mediaType": "application/vnd.xunjie.component-state+json"
+                  }
+                ],
+                "expected": {
+                  "stateContentId": "5dab03d5-7845-4903-8d55-83d19ff5e306"
+                },
+                "resources": [
+                  {
+                    "kind": "entry",
+                    "sha256": "01891ccc9f4901eacc59f74d2ee0022ba508de2a9d4f1226b9d49ba093300d47",
+                    "mediaType": "text/html",
+                    "byteLength": 17203,
+                    "resourceId": "7386d1f5-af05-41a4-8250-54c34e09fa2a"
+                  },
+                  {
+                    "kind": "algorithm",
+                    "sha256": "a1bd50eb814b604018be5b6323b9fd674152aaf8fbe51422d40bc3d31e08b42d",
+                    "mediaType": "application/wasm",
+                    "byteLength": 270,
+                    "resourceId": "b07e066c-a7e9-429a-b82d-011d513ed72b"
+                  }
+                ]
+              },
+              "limits": {
+                "timeMs": 5000,
+                "inputBytes": 1048576,
+                "queuedJobs": 4,
+                "memoryPages": 256,
+                "outputBytes": 65536,
+                "concurrentJobs": 2
+              },
+              "instance": {
+                "key": "table",
+                "instanceId": "cc36c5b8-509f-447d-9569-f6e11cb8999b:table",
+                "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+                "stateVersion": 1,
+                "hostApiVersion": 1,
+                "componentVersion": 2,
+                "definitionDigest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9"
+              },
+              "initiator": {
+                "kind": "agent",
+                "principalId": "ce1f3393-9160-4300-bbff-93f310411575"
+              },
+              "operation": {
+                "effect": "execute",
+                "operationId": "aggregate"
+              },
+              "parameters": {
+                "aggregate": "mean",
+                "groupColumn": "小组",
+                "valueColumn": "得分"
+              }
+            },
+            "requestId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "protocolVersion": 2
+          },
+          "binding": {
+            "key": "table",
+            "definition": {
+              "digest": "5d9b2962c59339956314a30ba4287961ef817ab9fe5bd0e9c0dc11953ec275f9",
+              "manifest": {
+                "entry": {
+                  "sha256": "01891ccc9f4901eacc59f74d2ee0022ba508de2a9d4f1226b9d49ba093300d47",
+                  "mediaType": "text/html",
+                  "byteLength": 17203,
+                  "resourceId": "7386d1f5-af05-41a4-8250-54c34e09fa2a"
+                },
+                "title": "表格聚合",
+                "version": 2,
+                "algorithm": {
+                  "entry": "aggregate",
+                  "resource": {
+                    "sha256": "a1bd50eb814b604018be5b6323b9fd674152aaf8fbe51422d40bc3d31e08b42d",
+                    "mediaType": "application/wasm",
+                    "byteLength": 270,
+                    "resourceId": "b07e066c-a7e9-429a-b82d-011d513ed72b"
+                  },
+                  "mediaType": "application/wasm",
+                  "memoryPages": 256
+                },
+                "operations": [
+                  {
+                    "effect": "execute",
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "rows": {
+                          "type": "number"
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "max": {
+                                "type": "number"
+                              },
+                              "min": {
+                                "type": "number"
+                              },
+                              "sum": {
+                                "type": "number"
+                              },
+                              "mean": {
+                                "type": "number"
+                              },
+                              "count": {
+                                "type": "number"
+                              },
+                              "value": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "maxItems": 200
+                        },
+                        "rejected": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "maxItems": 8
+                        },
+                        "aggregate": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "groupColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "valueColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      }
+                    },
+                    "budgets": {
+                      "timeMs": 5000,
+                      "outputBytes": 65536
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "aggregate": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "groupColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "valueColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      }
+                    },
+                    "operationId": "aggregate"
+                  }
+                ],
+                "stateShape": {
+                  "type": "object",
+                  "properties": {
+                    "table": {
+                      "type": "object",
+                      "properties": {
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            "maxItems": 12
+                          },
+                          "maxItems": 1000
+                        },
+                        "columns": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 40
+                          },
+                          "maxItems": 12
+                        }
+                      }
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "aggregate": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "groupColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "valueColumn": {
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      }
+                    }
+                  }
+                },
+                "componentId": "1d92f3c5-6a44-4f0a-9d2c-3b7e5a0c8f61",
+                "initialState": {
+                  "table": {
+                    "rows": [
+                      [
+                        "林一",
+                        "A",
+                        "88"
+                      ],
+                      [
+                        "周舟",
+                        "A",
+                        "92"
+                      ],
+                      [
+                        "方晓",
+                        "A",
+                        "79"
+                      ],
+                      [
+                        "林禾",
+                        "A",
+                        "73"
+                      ],
+                      [
+                        "许宁",
+                        "B",
+                        "75"
+                      ],
+                      [
+                        "陈禾",
+                        "B",
+                        "81"
+                      ],
+                      [
+                        "黎舟",
+                        "B",
+                        "88"
+                      ],
+                      [
+                        "周宁",
+                        "B",
+                        "90"
+                      ],
+                      [
+                        "苏远",
+                        "C",
+                        "67"
+                      ],
+                      [
+                        "何清",
+                        "C",
+                        "95"
+                      ],
+                      [
+                        "许多",
+                        "C",
+                        "84"
+                      ],
+                      [
+                        "苏清",
+                        "C",
+                        "88"
+                      ]
+                    ],
+                    "columns": [
+                      "姓名",
+                      "小组",
+                      "得分"
+                    ]
+                  },
+                  "parameters": {
+                    "aggregate": "mean",
+                    "groupColumn": "小组",
+                    "valueColumn": "得分"
+                  }
+                },
+                "stateVersion": 1,
+                "formatVersion": 1,
+                "hostApiVersion": 1,
+                "requiredCapabilities": [
+                  "workspace.read",
+                  "workspace.change",
+                  "execution.submit"
+                ]
+              }
+            },
+            "materialIds": [],
+            "configuration": {
+              "title": "真实表格聚合"
+            }
+          },
+          "requestId": "fec04895-ea90-4941-a958-23ef204cfa37"
+        },
+        "outcome": "completed",
+        "feedback": "{\"state\":\"completed\",\"query\":{\"requestId\":\"fec04895-ea90-4941-a958-23ef204cfa37\",\"inputDigest\":\"98da177b00ed555735bc3b15d5dee8451180e551ec92c76889e49a46f514475d\",\"scope\":{\"environmentId\":\"a9956d39-df6d-4a18-b083-a787ecaf3b72\",\"spaceId\":\"a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2\",\"principalId\":\"ce1f3393-9160-4300-bbff-93f310411575\",\"activityId\":\"cc36c5b8-509f-447d-9569-f6e11cb8999b\"},\"executionRef\":\"f1070455-49dc-4b1c-a505-46d7f0507e72\",\"state\":\"succeeded\",\"statusKnowledge\":\"confirmed\",\"stopRequested\":false,\"confirmedSeq\":3,\"reason\":null,\"output\":{\"contentId\":\"99b55752-070b-4b04-a913-f6c656c5e2d0\",\"output\":{\"rows\":12,\"value\":83.33333333333333,\"groups\":[{\"key\":\"A\",\"max\":92,\"min\":73,\"sum\":332,\"mean\":83,\"count\":4,\"value\":83},{\"key\":\"B\",\"max\":90,\"min\":75,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5},{\"key\":\"C\",\"max\":95,\"min\":67,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5}],\"rejected\":[],\"aggregate\":\"mean\",\"groupColumn\":\"小组\",\"valueColumn\":\"得分\"},\"artifact\":{\"name\":\"聚合结果-mean.csv\",\"mediaType\":\"text/csv;charset=utf-8\",\"byteLength\":97,\"sha256\":\"4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971\"}}},\"artifact\":{\"executionRef\":\"f1070455-49dc-4b1c-a505-46d7f0507e72\",\"requestId\":\"fec04895-ea90-4941-a958-23ef204cfa37\",\"scope\":{\"environmentId\":\"a9956d39-df6d-4a18-b083-a787ecaf3b72\",\"spaceId\":\"a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2\",\"principalId\":\"ce1f3393-9160-4300-bbff-93f310411575\",\"activityId\":\"cc36c5b8-509f-447d-9569-f6e11cb8999b\"},\"name\":\"聚合结果-mean.csv\",\"mediaType\":\"text/csv;charset=utf-8\",\"sha256\":\"4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971\",\"byteLength\":97,\"text\":\"小组,计数,求和,平均,最小,最大\\nA,4,332,83,73,92\\nB,4,334,83.5,75,90\\nC,4,334,83.5,67,95\\n\",\"output\":{\"rows\":12,\"value\":83.33333333333333,\"groups\":[{\"key\":\"A\",\"max\":92,\"min\":73,\"sum\":332,\"mean\":83,\"count\":4,\"value\":83},{\"key\":\"B\",\"max\":90,\"min\":75,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5},{\"key\":\"C\",\"max\":95,\"min\":67,\"sum\":334,\"mean\":83.5,\"count\":4,\"value\":83.5}],\"rejected\":[],\"aggregate\":\"mean\",\"groupColumn\":\"小组\",\"valueColumn\":\"得分\"}},\"operationCompleted\":true,\"sessionOngoing\":false}",
+        "result": {
+          "query": {
+            "scope": {
+              "spaceId": "a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2",
+              "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+              "principalId": "ce1f3393-9160-4300-bbff-93f310411575",
+              "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72"
+            },
+            "state": "succeeded",
+            "output": {
+              "output": {
+                "rows": 12,
+                "value": 83.33333333333333,
+                "groups": [
+                  {
+                    "key": "A",
+                    "max": 92,
+                    "min": 73,
+                    "sum": 332,
+                    "mean": 83,
+                    "count": 4,
+                    "value": 83
+                  },
+                  {
+                    "key": "B",
+                    "max": 90,
+                    "min": 75,
+                    "sum": 334,
+                    "mean": 83.5,
+                    "count": 4,
+                    "value": 83.5
+                  },
+                  {
+                    "key": "C",
+                    "max": 95,
+                    "min": 67,
+                    "sum": 334,
+                    "mean": 83.5,
+                    "count": 4,
+                    "value": 83.5
+                  }
+                ],
+                "rejected": [],
+                "aggregate": "mean",
+                "groupColumn": "小组",
+                "valueColumn": "得分"
+              },
+              "artifact": {
+                "name": "聚合结果-mean.csv",
+                "sha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+                "mediaType": "text/csv;charset=utf-8",
+                "byteLength": 97
+              },
+              "contentId": "99b55752-070b-4b04-a913-f6c656c5e2d0"
+            },
+            "reason": null,
+            "requestId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "inputDigest": "98da177b00ed555735bc3b15d5dee8451180e551ec92c76889e49a46f514475d",
+            "confirmedSeq": 3,
+            "executionRef": "f1070455-49dc-4b1c-a505-46d7f0507e72",
+            "stopRequested": false,
+            "statusKnowledge": "confirmed"
+          },
+          "artifact": {
+            "name": "聚合结果-mean.csv",
+            "text": "小组,计数,求和,平均,最小,最大\nA,4,332,83,73,92\nB,4,334,83.5,75,90\nC,4,334,83.5,67,95\n",
+            "scope": {
+              "spaceId": "a6f8e0cb-bcc8-444a-ad58-df0d98a3a8b2",
+              "activityId": "cc36c5b8-509f-447d-9569-f6e11cb8999b",
+              "principalId": "ce1f3393-9160-4300-bbff-93f310411575",
+              "environmentId": "a9956d39-df6d-4a18-b083-a787ecaf3b72"
+            },
+            "output": {
+              "rows": 12,
+              "value": 83.33333333333333,
+              "groups": [
+                {
+                  "key": "A",
+                  "max": 92,
+                  "min": 73,
+                  "sum": 332,
+                  "mean": 83,
+                  "count": 4,
+                  "value": 83
+                },
+                {
+                  "key": "B",
+                  "max": 90,
+                  "min": 75,
+                  "sum": 334,
+                  "mean": 83.5,
+                  "count": 4,
+                  "value": 83.5
+                },
+                {
+                  "key": "C",
+                  "max": 95,
+                  "min": 67,
+                  "sum": 334,
+                  "mean": 83.5,
+                  "count": 4,
+                  "value": 83.5
+                }
+              ],
+              "rejected": [],
+              "aggregate": "mean",
+              "groupColumn": "小组",
+              "valueColumn": "得分"
+            },
+            "sha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+            "mediaType": "text/csv;charset=utf-8",
+            "requestId": "fec04895-ea90-4941-a958-23ef204cfa37",
+            "byteLength": 97,
+            "executionRef": "f1070455-49dc-4b1c-a505-46d7f0507e72"
+          },
+          "sessionOngoing": false,
+          "operationCompleted": true
+        },
+        "source": {
+          "label": "原执行结果",
+          "componentKey": "table",
+          "requestId": "fec04895-ea90-4941-a958-23ef204cfa37"
+        },
+        "createdAt": "2026-11-06T09:03:22.720Z",
+        "updatedAt": "2026-11-06T09:03:29.854Z"
+      }
+    ],
+    "waits": [
+      {
+        "waitId": "1d4d31df-6c13-47d3-9e80-63ad434af395",
+        "runId": "d1f8037e-e0e1-49e3-94e8-502994ecfd1c",
+        "stepId": "d80b4dee-0245-4fdd-bb39-2b5e1c52ebd0",
+        "commandId": "fec04895-ea90-4941-a958-23ef204cfa37",
+        "state": "consumed",
+        "reason": "browser",
+        "deadline": "2026-11-07T09:03:22.991Z",
+        "nextCheckAt": "2026-11-06T09:03:26.024Z",
+        "consumedAt": "2026-11-06T09:03:29.859Z"
+      }
+    ],
+    "answerSha256": "f991e999eeb206d43cc1c883308efd68d923727c0e57f75a01a84c07e9372ca2",
+    "elapsedMs": 14602
+  },
+  "cleanup": [
+    {
+      "owner": "school",
+      "stopped": true,
+      "deleted": true
+    }
+  ],
+  "providerRequests": [
+    {
+      "index": 1,
+      "path": "/v1/chat/completions",
+      "startedAt": "2026-11-06T09:03:20.829Z",
+      "status": 200,
+      "senderPlatform": "darwin",
+      "senderHost": "Robert-Wu-MacBook-Air.local",
+      "firstProviderChunkMs": 157,
+      "elapsedMs": 1739
+    },
+    {
+      "index": 2,
+      "path": "/v1/chat/completions",
+      "startedAt": "2026-11-06T09:03:30.050Z",
+      "status": 200,
+      "senderPlatform": "darwin",
+      "senderHost": "Robert-Wu-MacBook-Air.local",
+      "firstProviderChunkMs": 155
+    }
+  ],
+  "finishedAt": "2026-11-06T09:03:37.638Z"
+}

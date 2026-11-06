@@ -73,7 +73,21 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 
 独立模型环境使用通用 `backup`、`restore`、`takeover` 流程。恢复默认保留 `model` 装配。接管后在正式模型设置核对提示，并用原引用检查结果。重新连接时为新安装签发 WP01 授权并更新设备绑定。
 
-学校侧受控调用方可用正式包中的 `xunjie model-task --root <学校环境> --file <请求 JSON>` 或产品运行时的 `modelTask` 接口提交和查询已配对设备的调用任务。两者都走学校宿主的本机控制端口。任务用独立 `taskId` 标识，`attemptId` 保持模型调用原身份。设备主动经 `learning.authority` 拉取并交回回执，学校核对已认证成员的学习 owner、授权和设备安装身份。回执只包含公开尝试投影。现有调用入口仍负责建立段和上传固定图片，任务通道仅处理该段上的接收、派发、查询及取消。
+学校侧受控调用方可用正式包中的 `xunjie model-task --root <学校环境> --file <请求 JSON>` 或产品运行时的 `modelTask` 接口提交和查询已配对设备的调用任务。两者都走学校宿主的本机控制端口。任务用独立 `taskId` 标识，`attemptId` 保持模型调用原身份。设备主动经 `learning.authority` 拉取并交回回执；早期调用任务仍核对学习 owner，WP07 的版本化学习任务使用独立成员模型绑定，不改变学校活动和作品的目标。
+
+`service.ts` 的 `LearningModelPort` 覆盖选择、原生段、学习请求、公开进度、请求重建、固定图片与结果保留。`paired-learning.ts` 在学校模型 owner 保存任务及段/attempt/图片/结果的固定目标；后续选择或绑定变化不能把旧请求转发到新设备。设备模型凭据留在设备，SDK 外发前重新验证原 Agent 服务、安装、授权和 Run 领取代际。单次任务内部读取共享接受时的准入结果，外发校验独立执行；未知回包使用原业务身份核对。版本化任务支持建段前准备，不伪造尚未存在的 Run 或 attempt。
+
+Root 的 `models.selection.read/save` 保存同一成员选择版本，合并学校默认、Root self 和已配对设备的选项。设备经原 `learning.authority` 的 `modelChoices` 发布公开投影；学校设置页可直接发现选项，无需先打开活动或调用 Agent。迁移 14 保存设备元数据及按原 outbox 接受顺序更新的刷新事实；绑定、发布和设备个人空间的选择都不改 Root pointer。显式选设备仍用原 `selection.save` 的 `{kind:'personal',connectionId,grantId}`。个人凭据、native 与费用事实留在实际 owner。旧段、attempt、图片及结果沿已持久路由继续访问；设备离线不改选择，不借用 Root 或学校额度，未选设备的离线不阻塞已有 Root 选择。
+
+`paired-grants.ts` 与迁移 15 保存授权创建、撤销、固定 grant 路由和结清事实。学校网页为设备选项创建授权时，任务由原设备实际建立 grant，Root 导入确认事实后才返回，现有“授权并选用”的连续请求无需中间刷新。撤销先在 Root 持久禁止该 grant 的新调用，包含原段和在途 attempt，再由原 owner 确认 inactive；未知回包保留原任务和原因，重查不会改变 owner。安装客户端的学校空间读写同一 Root pointer，其已有 school-scope 配置、个人配置与凭据继续由设备保管，个人空间的选择保持独立。授权任务遇到临时不可用、维护、资源忙或未知提交时保持 pending；恢复后沿原 task/request/grant 核实，不提交永久错误回执。调度按实际 binding 读取未结清任务，单批最多 16 条，维护验证及备份包含这些事实。
+
+`selection.resolve` 是学习 service 的新增操作，对指定 source 的真实 grant 重新核验并返回 snapshot，不读取或修改设备当前 selection。设备学习建段允许第二个 source 参数，实际 owner 重新校验该 grant，并把它纳入原段创建指纹。宿主对外部设备选择消费 paired adapter；原始 Root `selection.snapshot` 对设备 pointer 明确拒绝本地解析。安装客户端学校视图已接 Root 入口，个人视图继续使用设备自己的 pointer。
+
+学习网络 `selection.read` 拒绝不同主体的可选 `deviceOwner`。本机 UI 由可信宿主解析个人身份后直接调用 `Gateway.selection.read(schoolIdentity, personalIdentity)`，保留原有本人设备用途；对端不能通过参数指定另一账号。
+
+`origins.ts` 的迁移 13 把设备侧 journal 放入实际模型 owner。`models.origins.bind(identity, associationId, origin)` 固定原任务或 attempt 的主体、Agent 服务/安装/grant、设备恢复代际及已有 run/activity；调度者 driverId/generation 只用于每次任务的资格复核。`assert` 是不读取正文的可信 Node 核对接口，`validate` 进入 Gateway 维护验证，journal 随模型备份还原。school-client 只迁入并删除旧文件，不再创建文件 journal；其 `modelTarget` 与学习数据 `target` 独立。
+
+宿主可提供 `authorizeActive(identity, attemptId)`，在 SDK 在途期间强制复核原任务资格，不得复用准入 cache。未提供时沿用 fresh `authorizeDispatch`；两者都没有时使用普通授权。默认每 1000ms 非重叠复核，可通过 `authorizationPollMs` 调整；短请求在归档前也复核。失权或无法确认时先持久请求取消，再 abort 原 SDK；已经开始的复核必须结清才能归档成功。内部 `models.checks.cleanup.status(scope, attemptId)` / `cancel(scope, attemptId)` 只接收原 `{environmentId,spaceId,principalId}` 与 attempt，绕过成员授权但不能读正文、创建或派发请求，也不加入网络 service 操作表。未确认的清理阻止维护 drain 宣告完成；原生结果仍归档到原 attempt，撤权后的完成不发布工具意图或恢复成功状态。
 
 ```ts
 const school = openProductRuntime({ root: schoolRoot });
@@ -87,7 +101,9 @@ const result = await school.modelTask({ operation: 'read', identity, binding, ta
 
 任务和回执随模型 owner schema 10 进入备份，接管后查询仍按原身份和原绑定返回。新绑定不会领取旧绑定的待处理任务。原生结果仍由模型 owner 持有，Run、活动和交付可通过 owner 的 `results.retain` 与 `results.release` 增减各自的保留引用。
 
-配置版本、加密凭据引用、vault key、请求及结果资源随所属迁移和 WP01 加密备份恢复。默认产品新增后共四个 owner（含 runtime）。恢复旧三 owner 备份时，隔离阶段保持原 owner 集合；按原流程接管后正常停止/启动一次，才初始化空的模型 owner。不要跳过通用恢复的精确版本校验，也不回退到 legacy 模型配置。
+独立模型的 Root 发现、创建、撤销和在途停止见 [paired-model-grants.runtime.test.mjs](../../../../apps/server/tests/paired-model-grants.runtime.test.mjs)；安装客户端设置与实际独立 Agent 三条路线见 [agent-model-selection.runtime.test.mjs](../../../product-runtime/test/agent-model-selection.runtime.test.mjs)。[learning-model-school-tasks.runtime.test.mjs](../../../../apps/server/tests/learning-model-school-tasks.runtime.test.mjs)覆盖授权已提交但回包丢失、撤销后资源忙与原任务恢复。
+
+配置版本、加密凭据引用、vault key、请求、结果资源和独立设备路由随所属迁移和 WP01 加密备份恢复。当前完整默认产品共五个 owner（含 runtime 与教学 Agent）。恢复旧备份时，隔离阶段保持其实际 owner 集合，按通用恢复的精确版本校验推进，不回退到 legacy 模型配置。
 
 #165 新增迁移仅追加到既有版本；授权、选择、图片/变换来源、工具结果、观察、段和客户端持有方绑定都进入同一模型 owner。资源 pin 随接收/结果/段事务提交，旧段或设置更新不释放仍引用的原件。维护验证检查已有结果与图片内容；真实备份→隔离还原→接管后可读原引用并继续原生工具配对。旧 schema 必须走 WP01 正式升级，正常启动不偷偷迁移。
 

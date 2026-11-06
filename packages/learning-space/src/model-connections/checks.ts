@@ -15,7 +15,10 @@ export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql:
 ` }];
 export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
   policy?: ModelCheckPolicy; payload?: NativePayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
-const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
+export type ModelCleanupScope = Pick<SpaceIdentity, 'environmentId' | 'spaceId' | 'principalId'>;
+export type ModelCleanupStatus = Pick<ModelAttempt, 'attemptId' | 'state' | 'dispatched' | 'cancelRequested' | 'physicalRequestEnded'>;
+const cleanupScopeSchema = z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict();
+const scopeOf = (identity: ModelCleanupScope) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function createChecks(storage: OwnedStorage, owner: {
   dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } | undefined;
@@ -25,10 +28,15 @@ export function createChecks(storage: OwnedStorage, owner: {
   publishChat(tx: OwnedTransaction, attempt: ModelAttempt): Promise<void>;
   credential(identity: SpaceIdentity, ref: string): Promise<string>;
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
+  assertActive?(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
+  authorizationPollMs?: number | undefined;
   requestFetch?(identity: SpaceIdentity, attempt: ModelAttempt): Promise<typeof fetch>;
 }) {
-  const active = new Map<string, { controller: AbortController; task: Promise<void> }>();
+  const active = new Map<string, { controller: AbortController; task: Promise<void>; scope: string }>();
   const unsentClaims = new Map<string, { attemptId: string; identity: SpaceIdentity; requestId: string; fingerprint: string }>();
+  const revocations = new Map<string, { scope: ModelCleanupScope; reason: string }>();
+  const authorizationPollMs = owner.authorizationPollMs ?? 1000;
+  if (!Number.isSafeInteger(authorizationPollMs) || authorizationPollMs < 10) throw new StorageError('invalid');
   let closed = false;
   let admissionClosed = false;
   let starting = 0;
@@ -212,7 +220,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       });
       return read(identity, input.attemptId);
   }
-  async function update(identity: SpaceIdentity, id: string, effect: (body: ModelAttempt) => ModelAttempt) {
+  async function update(identity: ModelCleanupScope, id: string, effect: (body: ModelAttempt) => ModelAttempt) {
     return storage.request({ requestId: randomUUID(), fingerprint: 'model-transition:' + id }, async tx => {
       const { rows: [found] } = await tx.query('SELECT body,credential_ref FROM model_attempts WHERE id=$1 AND scope=$2 FOR UPDATE', [id, scopeOf(identity)]);
       if (!found) throw new StorageError('missing');
@@ -223,6 +231,40 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (body.segment && body.physicalRequestEnded && body.state !== 'accepted') await owner.publishChat(tx, body);
       return body;
     });
+  }
+  /** Trusted Node cleanup, scoped to an already owned attempt. No member authorization,
+   * body projection, admission or SDK dispatch is available through this interface.
+   */
+  async function cleanupStatus(value: ModelCleanupScope, attemptId: string): Promise<ModelCleanupStatus> {
+    const scope = cleanupScopeSchema.parse(value); z.uuid().parse(attemptId);
+    const { rows: [row] } = await storage.read('SELECT body FROM model_attempts WHERE id=$1 AND scope=$2', [attemptId, scopeOf(scope)]);
+    if (!row) throw new StorageError('missing');
+    const body = modelAttemptSchema.parse(row.body);
+    return { attemptId: body.attemptId, state: body.state, dispatched: body.dispatched,
+      cancelRequested: body.cancelRequested, physicalRequestEnded: body.physicalRequestEnded };
+  }
+  async function cancelCleanup(value: ModelCleanupScope, attemptId: string, reason = 'authorization-lost'): Promise<ModelCleanupStatus> {
+    const scope = cleanupScopeSchema.parse(value); z.uuid().parse(attemptId);
+    let verified = active.get(attemptId)?.scope === scopeOf(scope);
+    if (verified) revocations.set(attemptId, { scope, reason });
+    try {
+      await update(scope, attemptId, body => ({ ...body, cancelRequested: true,
+        ...(body.state === 'accepted' ? { state: 'cancelled' as const, reason }
+          : !body.physicalRequestEnded ? { reason } : {}) }));
+      verified = true;
+      revocations.delete(attemptId);
+    } finally {
+      // If persistence is temporarily unknown, stop this owner's proven local SDK anyway.
+      // The pending revocation remains a drain blocker until its durable flag is confirmed.
+      if (verified) active.get(attemptId)?.controller.abort('authorization-lost');
+    }
+    return cleanupStatus(scope, attemptId);
+  }
+  async function settleRevocations() {
+    for (const [id, pending] of revocations) {
+      await cancelCleanup(pending.scope, id, pending.reason);
+      revocations.delete(id);
+    }
   }
   async function dispatch(identity: SpaceIdentity, attemptId: string) {
     if (closed) throw new StorageError('maintenance');
@@ -259,7 +301,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (!claimed.result) return read(identity, attemptId);
     const controller = new AbortController();
     const task = deliver(identity, original, found.credential_ref as string, controller, found.input_metadata as { applicationSchema?: Record<string, unknown> } | null);
-    active.set(attemptId, { controller, task });
+    active.set(attemptId, { controller, task, scope: scopeOf(identity) });
     void task.finally(() => active.delete(attemptId)).catch(() => {});
     return read(identity, attemptId);
     } finally { starting--; }
@@ -267,6 +309,29 @@ export function createChecks(storage: OwnedStorage, owner: {
   async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController, metadata: { applicationSchema?: Record<string, unknown> } | null) {
     // Learning calls use no product-level generation deadline; the transport still needs a finite client bound.
     const timeout = setTimeout(() => controller.abort('timeout'), attempt.limits.timeoutMs ?? 2_147_483_647);
+    let watch: ReturnType<typeof setInterval> | undefined;
+    let authorizationCheck: Promise<void> | undefined;
+    let watching = false, checking = false;
+    const stopWatch = () => { watching = false; clearInterval(watch); };
+    const checkAuthorization = async () => {
+      if (!watching || checking) return;
+      checking = true;
+      try {
+        const pending = revocations.get(attempt.attemptId);
+        if (pending) {
+          await cancelCleanup(pending.scope, attempt.attemptId, pending.reason);
+          revocations.delete(attempt.attemptId);
+        } else await owner.assertActive?.(identity, attempt, ref);
+      } catch (error) {
+        if (!watching) return;
+        const scope = { environmentId: identity.environmentId, spaceId: identity.spaceId, principalId: identity.principalId };
+        const reason = error instanceof StorageError && ['forbidden', 'missing', 'stale-generation', 'identity-conflict'].includes(error.code)
+          ? 'authorization-lost' : 'authorization-unconfirmed';
+        revocations.set(attempt.attemptId, { scope, reason });
+        try { await cancelCleanup(scope, attempt.attemptId, reason); revocations.delete(attempt.attemptId); }
+        catch { /* Keep the pending durable cleanup as a maintenance blocker. */ }
+      } finally { checking = false; }
+    };
     try {
       await owner.assertDispatch(identity, attempt, ref);
       await storage.pendingIntents();
@@ -288,10 +353,23 @@ export function createChecks(storage: OwnedStorage, owner: {
         lastProgress = text; lastProgressAt = now;
         void saveProgress(identity, attempt.attemptId, text);
       } : undefined;
+      if (owner.assertActive && !controller.signal.aborted) {
+        watching = true;
+        watch = setInterval(() => { if (!checking) authorizationCheck = checkAuthorization(); }, authorizationPollMs);
+        watch.unref();
+      }
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
         : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647,
           !!attempt.segment, metadata?.applicationSchema, requestFetch, onText);
+      // A check already started while the SDK was active still owns its verdict.
+      // Settle it before publishing a completed result, even if the SDK won the race.
+      clearInterval(watch);
+      await authorizationCheck;
+      // Short requests can finish before the first timer tick. Their original permit
+      // must still be current when a consumable result is archived.
+      if (!controller.signal.aborted) await checkAuthorization();
+      stopWatch();
       const interruption = controller.signal.reason;
       if ((interruption === 'timeout' || interruption === 'maintenance') && !['completed', 'failed'].includes(result.state)) {
         result.state = 'unknown';
@@ -303,9 +381,12 @@ export function createChecks(storage: OwnedStorage, owner: {
       await storage.request({ requestId: randomUUID(), fingerprint: 'model-result:' + attempt.attemptId }, async tx => {
         const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attempt.attemptId]);
         const body = modelAttemptSchema.parse(current!.body);
-        const next = { ...body, state: result.state, reason: result.reason, text: result.text, usage: result.usage,
+        const pending = revocations.get(attempt.attemptId);
+        const revoked = pending !== undefined || body.cancelRequested && ['authorization-lost', 'authorization-unconfirmed'].includes(body.reason);
+        const next = { ...body, state: revoked ? 'cancelled' as const : result.state, reason: revoked ? pending?.reason ?? body.reason : result.reason,
+          cancelRequested: body.cancelRequested || revoked, text: result.text, usage: result.usage,
           ...('upstream' in result && result.upstream ? { upstream: result.upstream } : {}),
-          ...(attempt.segment ? { toolIntents: result.toolIntents } : {}),
+          ...(attempt.segment ? { toolIntents: revoked ? [] : result.toolIntents } : {}),
           physicalRequestEnded: true, resultRef: resource.resourceId };
         await tx.reference('model-result:' + attempt.attemptId, resource.resourceId);
         await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [attempt.attemptId, next, next.state]);
@@ -316,8 +397,8 @@ export function createChecks(storage: OwnedStorage, owner: {
     } catch {
       // No success without the resource and result transaction. Never replay a dispatched attempt.
       await update(identity, attempt.attemptId, body => body.resultRef || body.physicalRequestEnded ? body
-        : { ...body, state: 'unknown', reason: 'result-unconfirmed', physicalRequestEnded: true }).catch(() => {});
-    } finally { clearTimeout(timeout); }
+        : { ...body, state: 'unknown', reason: body.cancelRequested ? body.reason : 'result-unconfirmed', physicalRequestEnded: true }).catch(() => {});
+    } finally { stopWatch(); clearTimeout(timeout); }
   }
   async function cancel(identity: SpaceIdentity, attemptId: string) {
     await row(identity, attemptId);
@@ -349,6 +430,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     }
   }
   return { receive, read, list, requestPayload, progress, summary, dispatch, cancel, validate,
+    cleanup: { status: cleanupStatus, cancel: (scope: ModelCleanupScope, id: string) => cancelCleanup(scope, id) },
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },
     async drain() {
@@ -358,12 +440,14 @@ export function createChecks(storage: OwnedStorage, owner: {
       }, 20_000);
       try {
         await settleUnsentClaims();
+        await settleRevocations();
         while (starting || active.size) {
           await Promise.allSettled([...active.values()].map(value => value.task));
           if (starting) await new Promise(resolve => setTimeout(resolve, 5));
         }
         await settleUnsentClaims();
-        if (unsentClaims.size) throw new StorageError('resource-busy');
+        await settleRevocations();
+        if (unsentClaims.size || revocations.size) throw new StorageError('resource-busy');
         await reconcileEndedDispatchers();
         // The local task map cannot account for abandoned claims or another host's dispatcher.
         const { rows } = await storage.read('SELECT id FROM model_attempts WHERE physical_ended=false LIMIT 1');

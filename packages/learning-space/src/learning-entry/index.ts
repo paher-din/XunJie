@@ -14,6 +14,7 @@ import type { createCourses } from '../courses/index.js';
 import type { createNativeChannel } from '../learning-data/native-channel.js';
 import type { createModelGateway } from '../model-connections/index.js';
 import type { createTeachingAgent } from '../teaching-agent/index.js';
+import type { TeachingAgentPort } from '../teaching-agent/service.js';
 import { routeModels } from '../model-connections/wire.js';
 import { ModelCapabilityError } from '../model-connections/capabilities.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
@@ -62,7 +63,10 @@ export function createLearningEntry(options: {
   courses?: ReturnType<typeof createCourses>;
   nativeChannel?: ReturnType<typeof createNativeChannel>;
   models?: Awaited<ReturnType<typeof createModelGateway>>;
-  teaching?: ReturnType<typeof createTeachingAgent>;
+  teaching?: TeachingAgentPort;
+  teachingFor?(identity: SpaceIdentity, activityId: string): Promise<TeachingAgentPort>;
+  bindAgent?(input: unknown): Promise<unknown>;
+  bindModelDevice?(input: unknown): Promise<unknown>;
   restoredInstallation?(): Promise<boolean>;
   administratorToken: string;
   readOnly?: () => Promise<boolean>;
@@ -76,6 +80,7 @@ export function createLearningEntry(options: {
     start(input: { requestId: string; schoolEndpoint: string }): Promise<unknown>;
     complete(requestId: string): Promise<unknown>;
     configureLocal?(input: unknown): Promise<unknown>;
+    configureModel?(input: unknown): Promise<unknown>;
     forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string): Promise<unknown>;
   };
 }) {
@@ -165,6 +170,9 @@ export function createLearningEntry(options: {
       } else if (route === 'manage/local-binding' && method === 'POST' && options.client?.configureLocal) {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
         result = await options.client.configureLocal(await readLearningBody(request));
+      } else if (route === 'manage/model-binding' && method === 'POST' && options.client?.configureModel) {
+        if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
+        result = await options.client.configureModel(await readLearningBody(request));
       } else if (route === 'native-channel/cleanup' && method === 'POST') {
         if (!options.nativeChannel) throw new StorageError('forbidden');
         result = await options.nativeChannel.cleanup(await readLearningBody(request, 16000000));
@@ -221,7 +229,16 @@ export function createLearningEntry(options: {
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
-        if (route === 'manage/component-import') {
+        if (route === 'manage/model-device-binding') {
+          if (!options.bindModelDevice) throw new StorageError('unavailable');
+          result = await options.bindModelDevice(await readLearningBody(request));
+        } else if (route === 'manage/model-binding') {
+          if (!options.client?.configureModel) throw new StorageError('unavailable');
+          result = await options.client.configureModel(await readLearningBody(request));
+        } else if (route === 'manage/agent-binding') {
+          if (!options.bindAgent) throw new StorageError('unavailable');
+          result = await options.bindAgent(await readLearningBody(request));
+        } else if (route === 'manage/component-import') {
           if (!options.courses) throw new StorageError('forbidden');
           result = await options.courses.components.register(await readLearningBody(request, 2000000));
         } else if (route === 'manage/component-status') {
@@ -309,7 +326,8 @@ export function createLearningEntry(options: {
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         if (!options.models) throw new StorageError('unavailable');
         if (method !== 'GET' && method !== 'POST') throw new StorageError('missing');
-        result = await routeModels(options.models, identity, route, method === 'POST'
+        result = route === 'models/school-default' && method === 'GET' ? await options.models.school.read(identity)
+          : await routeModels(options.models, identity, route, method === 'POST'
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
@@ -318,38 +336,39 @@ export function createLearningEntry(options: {
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
       } else if (route.startsWith('agent/')) {
-        if (!options.teaching) throw new StorageError('unavailable');
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         const parts = route.split('/');
         const activityId = parts[1]!;
+        const teaching = await options.teachingFor?.(identity, activityId) ?? options.teaching;
+        if (!teaching) throw new StorageError('unavailable');
         const after = new URL(request.url!, endpoint).searchParams.get('after');
         const cursor = after === null ? 0 : z.coerce.number().int().nonnegative().parse(after);
         if (parts.length === 3 && parts[2] === 'conversation' && method === 'GET')
-          result = await options.teaching.conversation(identity, activityId, cursor);
+          result = await teaching.conversation(identity, activityId, cursor);
         else if (parts.length === 3 && parts[2] === 'events' && method === 'GET')
-          result = await options.teaching.events(identity, activityId, cursor);
+          result = await teaching.events(identity, activityId, cursor);
         else if (parts.length === 3 && parts[2] === 'capabilities' && method === 'GET')
-          result = await options.teaching.capabilities(identity, activityId);
+          result = await teaching.capabilities(identity, activityId);
         else if (parts.length === 3 && parts[2] === 'model-switches' && method === 'POST')
-          result = await options.teaching.switchModel(identity, activityId, await readLearningBody(request));
+          result = await teaching.switchModel(identity, activityId, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'runs' && method === 'GET')
-          result = await options.teaching.run(identity, activityId, parts[3]!);
+          result = await teaching.run(identity, activityId, parts[3]!);
         else if (parts.length === 5 && parts[2] === 'runs' && parts[4] === 'stop' && method === 'POST')
-          result = await options.teaching.stop(identity, activityId, parts[3]!, await readLearningBody(request));
+          result = await teaching.stop(identity, activityId, parts[3]!, await readLearningBody(request));
         else if (parts.length === 5 && parts[2] === 'runs' && parts[4] === 'continue' && method === 'POST')
-          result = await options.teaching.continueRun(identity, activityId, parts[3]!, await readLearningBody(request));
+          result = await teaching.continueRun(identity, activityId, parts[3]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'requests' && method === 'GET')
-          result = await options.teaching.request(identity, activityId, parts[3]!);
+          result = await teaching.request(identity, activityId, parts[3]!);
         else if (parts.length === 4 && parts[2] === 'snapshots' && method === 'GET')
-          result = await options.teaching.snapshot(identity, activityId, parts[3]!);
+          result = await teaching.snapshot(identity, activityId, parts[3]!);
         else if (parts.length === 5 && parts[2] === 'questions' && parts[4] === 'responses' && method === 'POST')
-          result = await options.teaching.respond(identity, activityId, parts[3]!, await readLearningBody(request));
+          result = await teaching.respond(identity, activityId, parts[3]!, await readLearningBody(request));
         else if (parts.length === 5 && parts[2] === 'questions' && parts[4] === 'presentations' && method === 'POST')
-          result = await options.teaching.presentQuestion(identity, activityId, parts[3]!, await readLearningBody(request));
+          result = await teaching.presentQuestion(identity, activityId, parts[3]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'responses' && method === 'GET')
-          result = await options.teaching.response(identity, activityId, parts[3]!);
+          result = await teaching.response(identity, activityId, parts[3]!);
         else throw new StorageError('missing');
       } else if (route.startsWith('executions/')) {
         // The execution owner answers accept, query, report, stop and result under one identity.
@@ -357,9 +376,10 @@ export function createLearningEntry(options: {
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         const parts = route.split('/');
-        const assertAgent = (association: AgentExecutionAssociation) => {
-          if (!options.teaching) throw new StorageError('unavailable');
-          return options.teaching.assertCommandDispatch(identity, parts[1]!, association);
+        const assertAgent = async (association: AgentExecutionAssociation) => {
+          const teaching = await options.teachingFor?.(identity, parts[1]!) ?? options.teaching;
+          if (!teaching) throw new StorageError('unavailable');
+          return teaching.assertCommandDispatch(identity, parts[1]!, association);
         };
         if (parts.length === 3 && parts[2] === 'agent-pending' && method === 'GET')
           result = await learning.executions.agent.pendingBrowser(identity, parts[1]!);

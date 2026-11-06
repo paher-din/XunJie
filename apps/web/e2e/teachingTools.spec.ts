@@ -17,7 +17,8 @@ const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 const sessionHelper = process.env.XUNJIE_NATIVE_SESSION_HELPER
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const evidence = fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-198', import.meta.url))
+const evidence = process.env.XUNJIE_TEACHING_TOOLS_EVIDENCE
+  ?? fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-198', import.meta.url))
 let runtime: ReturnType<typeof openProductRuntime>
 let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 let root = '', endpoint = ''

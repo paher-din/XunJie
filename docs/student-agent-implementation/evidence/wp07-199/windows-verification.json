@@ -348,8 +348,16 @@
   "pending": {
     "mac": {
       "passed": false,
-      "handoff": "https://github.com/paher-din/XunJie/issues/178",
-      "localFeasibilityAttempt": "Inspected Intel Windows virtualization/tools/connection entries and official QEMU VMApple host conditions; no supported Apple Silicon macOS test environment was started."
+      "handoff": "https://github.com/paher-din/XunJie/issues/209",
+      "localFeasibilityAttempt": "After the initial official-support inspection, WSL2 KVM VM/vCPU creation and a 2-vCPU generic x86_64 UEFI boot with QEMU 8.2.2 succeeded; no macOS was downloaded, installed or started, and no Apple Silicon acceptance environment was established.",
+      "localAttemptCleanup": {
+        "date": "2026-11-06",
+        "reason": "Owner requested stopping the local attempt and handing off acceptance to someone with an existing qualified Mac environment in a separate issue; environment provisioning is out of scope.",
+        "removedFileBytes": 558653825,
+        "systemPackagesInstalled": false,
+        "existingWslAndDockerRetained": true,
+        "windowsVerificationEvidenceRetained": true
+      }
     },
     "physicalIme": "not exercised; controlled Chrome Chinese text is separate",
     "teachingEffects": "not assessed",
