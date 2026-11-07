@@ -1,0 +1,22 @@
+
+> @xunjie/workspace@0.0.0 check:contracts:browser
+> npm run check:browser -w @xunjie/contracts
+
+
+> @xunjie/contracts@0.1.0 check:browser
+> node ../../scripts/check-contracts-browser.mjs
+
+Browser-safe: @xunjie/contracts/components
+Browser-safe: @xunjie/contracts/model-connections
+Browser-safe: @xunjie/contracts/action-intents
+Browser-safe: @xunjie/contracts/execution
+Browser-safe: @xunjie/contracts/spaces
+Browser-safe: @xunjie/contracts/courses
+Browser-safe: @xunjie/contracts/learning-data
+Browser-safe: @xunjie/contracts/question-drafts
+Browser-safe: @xunjie/contracts
+Browser-safe: @xunjie/contracts/http
+Browser-safe: @xunjie/contracts/editor-diagnostics
+Browser-safe: @xunjie/contracts/product-runtime
+Browser-safe: @xunjie/contracts/storage
+Browser safety checked 13 public exports.

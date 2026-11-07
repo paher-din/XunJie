@@ -1,0 +1,128 @@
+{
+  "ticket": "#192",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "root": "C:\\Users\\p3148\\AppData\\Local\\Temp\\xj-alu-recovery-nAT2Zl",
+  "compositionDriver": "CDP Input.imeSetComposition",
+  "osCandidateWindow": "not exercised",
+  "cases": [
+    "the fixed ALU course opens with its runtime prepared",
+    "a live Chinese composition edits the work without starting a run",
+    "Chrome commits Chinese through its composition pipeline and leaves no pinyin in the editor",
+    "the composed Chinese source compiles and produces the real carry observation",
+    "a run neither sends nor clears the original question draft",
+    "a reload reports the unheld run as unknown and never reruns it",
+    "a reopened activity reads its fixed text materials and runtime entry from the local cache"
+  ],
+  "status": "passed",
+  "browser": "156.0.8078.80",
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "composition": {
+    "events": [
+      {
+        "type": "compositionstart",
+        "trusted": true,
+        "data": "",
+        "composing": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "data": "zhongwen",
+        "composing": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "data": "zhongwen",
+        "composing": true
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "data": "中文组合校验",
+        "composing": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "data": "中文组合校验",
+        "composing": true
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "中文组合校验",
+        "composing": false
+      },
+      {
+        "type": "compositionstart",
+        "trusted": true,
+        "data": "",
+        "composing": false
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "data": "zhengque",
+        "composing": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "data": "zhengque",
+        "composing": true
+      },
+      {
+        "type": "compositionupdate",
+        "trusted": true,
+        "data": "正确",
+        "composing": false
+      },
+      {
+        "type": "input",
+        "trusted": true,
+        "data": "正确",
+        "composing": true
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "正确",
+        "composing": false
+      }
+    ]
+  },
+  "draftAfterRun": "为什么保留组合要归零？",
+  "unknown": {
+    "commandsBefore": 3,
+    "commandsAfter": 3,
+    "historyEntries": 3,
+    "label": "ALU 实验 · 正在执行（状态待核实）",
+    "labels": [
+      "running/confirmed",
+      "succeeded/confirmed",
+      "succeeded/confirmed"
+    ]
+  },
+  "firstOpenMaterialRequests": [
+    "/api/learning/releases/19200000-0000-4000-8000-000000000073/materials/19200000-0000-4000-8000-000000000060",
+    "/api/learning/releases/19200000-0000-4000-8000-000000000073/materials/19200000-0000-4000-8000-000000000061"
+  ],
+  "materialRequests": [],
+  "refused": [
+    {
+      "path": "/courses/digital-logic.png",
+      "status": 404
+    },
+    {
+      "path": "/courses/digital-logic.png",
+      "status": 404
+    }
+  ]
+}

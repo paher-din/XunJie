@@ -1,0 +1,124 @@
+{
+  "passed": [
+    "actual compile succeeds: {\"status\":\"completed\"}",
+    "complete 4096 observations distinguished",
+    "system tasks and VCD succeed without diagnostics",
+    "independent oracle matches all 4096 including reserved controls",
+    "identical fixed compilation reuses artifact",
+    "invalid options cannot bypass validation through cache",
+    "supported compiler option changes invalidate cache",
+    "real include preprocessing succeeds: {\"status\":\"completed\"}",
+    "explicit compilation entries permit .v include dependencies",
+    "missing compilation entry cannot reuse cached output",
+    "include content invalidates compilation",
+    "include change affects real simulation",
+    "top change fails rather than reusing old program",
+    "compile failure retains actual diagnostics",
+    "Z retained distinctly from deterministic zero",
+    "incomplete output does not report complete observation",
+    "ordinary stdout cannot become an observation",
+    "empty expected set is rejected",
+    "reserved preprocessor configuration cannot overwrite source",
+    "zero-time loop actually compiles",
+    "explicit stop terminates zero-time synchronous Worker",
+    "wall budget terminates synchronous Worker",
+    "actual stdout flood hits output budget: {\"kind\":\"result\",\"status\":\"budget-exceeded\",\"code\":\"output-budget\",\"stage\":\"simulate\",\"message\":\"Text output exceeds 2 MiB\",\"diagnostics\":[]}",
+    "actual file growth is bounded during native writes: {\"kind\":\"result\",\"status\":\"budget-exceeded\",\"code\":\"output-budget\",\"stage\":\"simulate\",\"message\":\"A generated file exceeds 8 MiB\",\"diagnostics\":[]}",
+    "normal simulation works after termination and output failures",
+    "input budget refuses oversized source",
+    "parallel slot bound refuses a second live Worker",
+    "parallel bound also applies across adapter instances",
+    "corrupt reusable compilation is rejected",
+    "runtime manifest identity protects cache basis",
+    "adapter changes invalidate the runtime identity",
+    "old compilation artifact is rejected by changed adapter identity",
+    "actual resource bytes are checked before JS evaluation",
+    "oversized-memory fixture compiles as actual HDL",
+    "oversized-memory execution cannot report success",
+    "fresh normal task succeeds after memory-limit failure",
+    "stop/complete race 0 has a single explicit outcome",
+    "stop/complete race 1 has a single explicit outcome",
+    "stop/complete race 2 has a single explicit outcome",
+    "stop/complete race 3 has a single explicit outcome",
+    "stop/complete race 4 has a single explicit outcome"
+  ],
+  "timings": [
+    {
+      "stage": "cold-compile",
+      "ms": 177.69999998807907
+    },
+    {
+      "stage": "artifact-simulation",
+      "ms": 151.19999998807907
+    },
+    {
+      "stage": "compile-cache-hit",
+      "ms": 0.19999998807907104
+    }
+  ],
+  "raceStatuses": [
+    "stopped",
+    "stopped",
+    "stopped",
+    "completed",
+    "completed"
+  ],
+  "memoryOutcome": {
+    "kind": "result",
+    "status": "failed",
+    "stage": "simulate",
+    "code": "tool-failed",
+    "message": "Aborted(). Build with -sASSERTIONS for more info.",
+    "diagnostics": [
+      "Aborted()"
+    ]
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+  "chrome": "156.0.8078.80",
+  "bundleIdentity": "d27007d2f8725b22fc5ff3b7f79b4179c12c103d7789c5bd318cb9be5aa86026",
+  "assets": {
+    "ivl.js": {
+      "bytes": 72734,
+      "sha256": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f"
+    },
+    "ivl.wasm": {
+      "bytes": 1771889,
+      "sha256": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de"
+    },
+    "ivlpp.js": {
+      "bytes": 63593,
+      "sha256": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982"
+    },
+    "ivlpp.wasm": {
+      "bytes": 102963,
+      "sha256": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3"
+    },
+    "vvp.js": {
+      "bytes": 71102,
+      "sha256": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995"
+    },
+    "vvp.wasm": {
+      "bytes": 927158,
+      "sha256": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+    }
+  },
+  "scope": "Actual Windows desktop Chrome Worker and public adapter; runtime package only, Mac deferred, no product integration or teaching acceptance",
+  "adapterFiles": {
+    "index.mjs": {
+      "bytes": 5238,
+      "sha256": "987d50f3ea7fe1eedf3cdb5454d8cb072c7716ade362dd75ffacce24b57407b9"
+    },
+    "worker.mjs": {
+      "bytes": 11367,
+      "sha256": "a22974b2eb826796084fd1420bb69d7774b986117eb14ba1307d75b37e8cbf5d"
+    },
+    "identity.mjs": {
+      "bytes": 1833,
+      "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
+    },
+    "index.d.mts": {
+      "bytes": 1772,
+      "sha256": "83b72867b72bfe8d5159a9a11e8d8ffe2cf7e5e60ce904a84e64cec29f953fb1"
+    }
+  }
+}

@@ -7,7 +7,8 @@ import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
-import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema, componentPreparationReportsSchema,
+import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema,
+  componentRuntimeResourceContentSchema, componentPreparationReportsSchema,
   componentPreparationReportReceiptSchema } from '@xunjie/contracts/components';
 import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, executionHistoryPageSchema,
   executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
@@ -26,6 +27,8 @@ import { modelSelectionSchema, modelGrantInputSchema, modelGrantSchema, modelAtt
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, exists, readJson } from './io.js';
+import { boundedJsonResponse, runtimeResourcePathPattern, runtimeResourceResponseBytes,executionArtifactRoute,executionArtifactResponseBytes,
+  runtimeResourceRoute } from './resource-response.js';
 import { createOutboundConnection, RuntimeConnectionError } from './connections.js';
 import type { InstalledConfiguration } from './runtime.js';
 import { resolveCredential } from './postgres.js';
@@ -100,6 +103,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         : 'unavailable';
       throw new StorageError(code);
     }
+    // A runtime resource is read under its own bound. Every other route keeps the reader it already had, so
+    // this ceiling cannot be borrowed by an operation that was never sized for a toolchain file.
+    if (runtimeResourceRoute.test(route)) return boundedJsonResponse(response, runtimeResourceResponseBytes);
+    if(executionArtifactRoute.test(route))return boundedJsonResponse(response,executionArtifactResponseBytes);
     return response.json() as Promise<unknown>;
   }
   const subject = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind].join('.');
@@ -623,7 +630,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const key = '[a-z][a-z0-9-]{0,47}';
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|agent-settings(?:/receipts/${id})?` +
-      `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?)?` +
+      `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?` +
+      `|/resources/${runtimeResourcePathPattern})?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
       `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
@@ -728,6 +736,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (parts[2] === 'components') {
         if (parts[4] === 'algorithm') return parsed(componentAlgorithmBundleSchema, value);
         if (parts[4] === 'dependencies') return parsed(componentDependencyContentSchema, value);
+        if (parts[4] === 'resources') {
+          const resource=parsed(componentRuntimeResourceContentSchema,value);
+          if(resource.path!==parts.slice(5).join('/'))throw new StorageError('unavailable');
+          return resource;
+        }
         if (parts[4] === 'preparation-reports') return parsed(componentPreparationReportsSchema, value);
         if (parts[4] === 'preparation-report') return parsed(componentPreparationReportReceiptSchema, value);
         return parsed(componentBundleSchema, value);

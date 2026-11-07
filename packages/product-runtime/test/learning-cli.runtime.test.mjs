@@ -61,13 +61,18 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     await assert.rejects(run('fence-source', source, '--file', await input('wrong-receiver', {
       expectedReceiver: randomUUID() + '/' + randomUUID(), sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] })),
     error => { assert.match(error.stderr, /receiver-identity-conflict/); return true; });
-    const fenced = await run('fence-source', source, '--file', await input('fence-source', {
+    const { execution, ...fenceProof } = await run('fence-source', source, '--file', await input('fence-source', {
       expectedReceiver: receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] }));
-    assert.equal(fenced.fenced, true); assert.equal(fenced.receiverId, receiverId);
-    assert.deepEqual(fenced.sourceServiceIds, [fencedService]);
-    assert.equal(fenced.execution.formatVersion, 1); assert.equal(fenced.execution.unresolved, 0);
-    assert.equal(fenced.execution.blocking, 0); assert.ok(fenced.execution.services.length > 0);
-    for (const service of fenced.execution.services) {
+    assert.deepEqual(fenceProof, { fenced: true, receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] });
+    // An acknowledgement alone is not a proof: the receiver must report the execution boundary it
+    // really observed, and that boundary must name exactly the owners this installation runs.
+    assert.equal(execution.formatVersion, 1);
+    assert.ok(!Number.isNaN(Date.parse(execution.boundaryAt)), 'the fence must report when the boundary was taken');
+    assert.equal(execution.unresolved, 0);
+    assert.equal(execution.blocking, 0);
+    assert.ok(execution.services.some(item => item.serviceId === started.environment.services[0].serviceId),
+      'the boundary must name the receiver service that took it');
+    for (const service of execution.services) {
       assert.match(service.serviceId, /^[0-9a-f-]{36}$/i);
       assert.equal(service.unresolved, 0); assert.equal(service.blocking, 0);
     }

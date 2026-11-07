@@ -1,18 +1,13 @@
-import { isTerminalExecutionState, type ExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution'
-import { acceptsState, type StateShape } from '@xunjie/contracts/components'
-import { AlgorithmError, jobFromAction, type AggregationOutcome } from './algorithm'
+import { isTerminalExecutionState, type AnyExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution'
+import type { AdapterRegistry } from './adapter'
+import { ExecutionError } from './errors'
 import { stopDecision, type ExecutionRecord } from './ledger'
 import { retainResult, mergeServiceFact, reconcileOnOpen, type ExecutionTransport } from './retention'
 import type { BrowserExecutionReceiver } from './receiver'
 import type { ResultRecord } from './store'
-import { acquireSlot, runInWorker } from './runner'
+import { acquireSlot } from './runner'
 
-export interface AlgorithmProvider {
-  /** `result` is the snapshot's declared result shape; a run must produce exactly that. */
-  load(action: ExecutionAction): Promise<{ bytes: ArrayBuffer; entry: string; memoryPages: number; result: StateShape }>
-}
 export interface ExecutionControllerState { ready: boolean; records: ExecutionRecord[]; error: string }
-export interface RunAlgorithm { (job: Parameters<typeof runInWorker>[0], signal: AbortSignal): Promise<AggregationOutcome> }
 
 /**
  * The execution controller owns real worker lifetimes and execution records. It deliberately has no
@@ -28,14 +23,16 @@ export class ExecutionController {
   private syncing = new Set<string>()
   private disposed = false
   private stopTimer: ReturnType<typeof setTimeout> | undefined
+  private syncRetryTimer:ReturnType<typeof setTimeout>|undefined
+  private syncRetries=new Set<string>()
   private unsubscribeAccept: () => void
   state: ExecutionControllerState = { ready: false, records: [], error: '' }
   constructor(readonly scope: string, readonly receiver: BrowserExecutionReceiver, private actions: {
-    createExecution(options: { requestId: string; receiver: ExecutionAction['receiver']
-      execution: ExecutionAction['execution'] }): Promise<unknown>
+    createExecution(options: { requestId: string; receiver: AnyExecutionAction['receiver']
+      execution: AnyExecutionAction['execution']; protocolVersion?: 2 | 3 }): Promise<unknown>
     cancel(requestId: string): Promise<unknown>
-  }, private transport: ExecutionTransport, private provider: AlgorithmProvider,
-  private run: RunAlgorithm = runInWorker, private canAccess: () => boolean = () => true, private readonly readOnly = false) {
+  }, private transport: ExecutionTransport, private adapters: AdapterRegistry,
+  private canAccess: () => boolean = () => true, private readonly readOnly = false) {
     this.unsubscribeAccept = receiver.onAccept(requestId => { void this.start(requestId) })
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -57,7 +54,7 @@ export class ExecutionController {
   private async observeStop(requestId: string, abort: AbortController) {
     const record = await this.receiver.store.read(this.scope, requestId)
     if (this.runs.get(requestId) === abort && record?.query.stopRequested)
-      abort.abort(new AlgorithmError('worker-terminated', '用户请求停止。'))
+      abort.abort(new ExecutionError('worker-terminated', '用户请求停止。'))
     return record
   }
   private watchStops() {
@@ -78,12 +75,12 @@ export class ExecutionController {
     try {
       return await this.receiver.store.record(this.scope, requestId, current => {
         if (current.stopRequested && !isTerminalExecutionState(current.state))
-          throw new AlgorithmError('worker-terminated', '用户请求停止。')
+          throw new ExecutionError('worker-terminated', '用户请求停止。')
         return { ...current, state: next.state, statusKnowledge: 'confirmed', confirmedSeq: current.confirmedSeq + 1,
           reason: next.reason ?? null, output: next.output ?? null }
       }, {}, this.receiver.generation)
     } catch (error) {
-      if (!(error instanceof AlgorithmError) || error.code !== 'worker-terminated') throw error
+      if (!(error instanceof ExecutionError) || error.code !== 'worker-terminated') throw error
       return this.receiver.finish(requestId, { state: 'cancelled',
         reason: { code: error.code, detail: error.message }, stopped: true })
     }
@@ -120,10 +117,14 @@ export class ExecutionController {
       void this.start(record.requestId)
     }
   }
-  async submit(action: ExecutionAction): Promise<void> {
+  async submit(action: AnyExecutionAction): Promise<void> {
     if (this.readOnly) throw new Error('还原校验环境不能运行实验。')
     if (!this.canAccess()) throw new Error('forbidden')
-    await this.actions.createExecution({ requestId: action.requestId, receiver: action.receiver, execution: action.execution })
+    // The executor for this action is resolved before anything is accepted: an unsupported version
+    // must fail here, not once the command is already the durable truth.
+    this.adapters.resolve(action).validateAndFreeze(action)
+    await this.actions.createExecution({ requestId: action.requestId, receiver: action.receiver,
+      execution: action.execution, protocolVersion: action.protocolVersion })
     if (!this.canAccess()) throw new Error('forbidden')
     await this.refresh()
     if (!this.canAccess()) throw new Error('forbidden')
@@ -158,14 +159,25 @@ export class ExecutionController {
   }
   async artifact(requestId: string): Promise<ResultRecord | null> {
     if (!this.canAccess()) return null
+    if(!this.readOnly) {
+      const record=await this.receiver.store.read(this.scope,requestId)
+      if(!this.canAccess())return null
+      const local=record&&await this.receiver.store.readResult(this.scope,record.executionRef)
+      if(!this.canAccess())return null
+      if(local) {
+        for(const ref of [local,...(local.resources??[])]) {
+          const bytes=new TextEncoder().encode(ref.text)
+          const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('')
+          if(bytes.length!==ref.byteLength||hash!==ref.sha256)throw new Error('原结果资源完整性校验失败。')
+        }
+        return this.canAccess()?local:null
+      }
+    }
     if (this.history.some(item => item.requestId === requestId) && this.transport.artifact) {
       const result = await this.transport.artifact(requestId)
       return this.canAccess() && result ? { ...result, scope: this.scope, at: Date.now() } : null
     }
-    const record = await this.receiver.store.read(this.scope, requestId)
-    if (!this.canAccess() || !record) return null
-    const result = await this.receiver.store.readResult(this.scope, record.executionRef)
-    return this.canAccess() ? result ?? null : null
+    return null
   }
   /** `stopId` is the caller's stable identity: retrying the same stop is the same request. */
   async stop(requestId: string, stopId: string = crypto.randomUUID(), inputDigest?: string): Promise<void> {
@@ -183,7 +195,7 @@ export class ExecutionController {
     const decision = stopDecision(record, record.query)
     if (decision === 'already-terminal') return
     await this.receiver.requestStop(record, decision === 'pre-start-cancel' ? '开始前取消。' : '用户请求停止。', stopId)
-    this.runs.get(requestId)?.abort(new AlgorithmError('worker-terminated', '用户请求停止。'))
+    this.runs.get(requestId)?.abort(new ExecutionError('worker-terminated', '用户请求停止。'))
     // The initial read may have raced the owner's claim or completion.
     const latest = await this.receiver.store.read(this.scope, requestId)
     if (latest && isTerminalExecutionState(latest.query.state) && latest.query.statusKnowledge === 'confirmed') {
@@ -236,30 +248,41 @@ export class ExecutionController {
         claimedNow = true
         this.started++
         await this.refresh()
-        const algorithm = await this.provider.load(record.action)
-        await this.observeStop(requestId, abort)
-        abort.signal.throwIfAborted()
-        // The ABI, not this executor, decides how a fixed command becomes a worker job.
-        const outcome = await this.run({ ...jobFromAction(record.action, limits), bytes: algorithm.bytes,
-          memoryPages: algorithm.memoryPages, entry: algorithm.entry }, abort.signal)
+        // The adapter owns this run's input and output semantics; the controller owns its lifetime.
+        const adapter = this.adapters.resolve(record.action)
+        let outcome
+        try {
+          outcome = await adapter.run(record.action, { signal: abort.signal,
+            checkpoint: async () => { await this.observeStop(requestId, abort); abort.signal.throwIfAborted() } })
+        } catch (error) {
+          // Diagnostics of a failed run are still the run's own facts; the terminal reason keeps them.
+          if (error instanceof ExecutionError) throw error
+          throw new ExecutionError('algorithm-error', error instanceof Error ? error.message : '执行没有完成。')
+        }
         await this.observeStop(requestId, abort)
         if (abort.signal.aborted) {
           await this.receiver.finish(requestId, { state: 'cancelled', reason: { code: 'worker-terminated', detail: '用户请求停止。' }, stopped: true })
           return
         }
-        // The manifest declared the result structure; a run whose numbers do not fit it is not published.
-        if (!acceptsState(algorithm.result, outcome.result))
-          throw new AlgorithmError('algorithm-error', '算法结果与清单声明的结果结构不一致，已停止。')
-        const retained = await retainResult(this.receiver, record, { output: outcome.result, text: outcome.artifact.text,
-          name: outcome.artifact.name, mediaType: outcome.artifact.mediaType })
+        if (!outcome.resources.length) throw new ExecutionError('algorithm-error', '执行没有产生任何结果资源，未发布。')
+        // The first result resource is the run's primary artifact; the rest are read back by role.
+        const primary = outcome.resources[0]!
+        const retained = await retainResult(this.receiver, record, { output: outcome.output, text: primary.text,
+          name: primary.name, mediaType: primary.mediaType }, outcome.resources.slice(1))
         abort.signal.throwIfAborted()
         await this.finish(requestId, { state: 'succeeded', output: retained.output })
       } finally { slot.release() }
     } catch (error) {
-      const code = error instanceof AlgorithmError ? error.code : 'algorithm-error'
-      const detail = error instanceof Error ? error.message : '执行没有完成。'
+      const code = error instanceof ExecutionError ? error.code : 'algorithm-error'
+      const detail = (error instanceof Error ? error.message : '执行没有完成。').slice(0,500)
       const stopped = abort.signal.aborted || code === 'worker-terminated'
-      await this.finish(requestId, { state: stopped ? 'cancelled' : 'failed',
+      let output:ExecutionQuery['output']=null
+      if(error instanceof ExecutionError && error.resources?.length) {
+        const [primary,...extras]=error.resources
+        try { output=(await retainResult(this.receiver,record,{output:null,...primary},extras)).output }
+        catch { /* A storage failure cannot publish an unreadable result. */ }
+      }
+      await this.finish(requestId, { state: stopped ? 'cancelled' : 'failed', output,
         reason: { code, detail }, stopped }).catch(() => {})
     } finally {
       this.runs.delete(requestId); this.waiting--
@@ -271,33 +294,63 @@ export class ExecutionController {
       void this.syncPending(requestId)
     }
   }
-  /** Deliver pending acceptance, facts and result for worker completion, recovery or Agent polling. */
+  /** Service delivery of the same facts; a failure keeps the local truth and retries later. */
+  async synchronize() {
+    if(this.disposed || this.readOnly || !this.canAccess())return
+    const records=await this.receiver.store.list(this.scope)
+    await Promise.all(records.filter(record=>record.acceptance.execution).map(record=>this.syncPending(record.requestId)))
+  }
+  private retrySync(requestId:string) {
+    if(this.disposed || this.readOnly)return
+    this.syncRetries.add(requestId)
+    if(this.syncRetryTimer!==undefined || !this.canAccess())return
+    this.syncRetryTimer=setTimeout(()=>{
+      this.syncRetryTimer=undefined
+      for(const id of this.syncRetries)void this.syncPending(id)
+    },1000)
+  }
+  /** Deliver the original facts for recovery and Agent polling. */
   async syncPending(requestId: string) {
-    if (this.readOnly) return
+    if (this.disposed || this.readOnly || !this.canAccess()) return
     if (this.syncing.has(requestId)) return
     this.syncing.add(requestId)
     try {
-      const record = await this.receiver.store.read(this.scope, requestId).catch(() => undefined)
+      const record = await this.receiver.store.read(this.scope, requestId)
       if (!record?.acceptance.execution) return
       // Only what the service has not confirmed yet: a lost reply resumes this run's own resource
       // instead of re-sending a command the service already holds.
       const sent = await this.receiver.store.synced(this.scope, requestId).catch(() => undefined)
       if (!sent?.command) await this.transport.accept(record.action, record.acceptance)
-      if (!sent || sent.factSeq !== record.query.confirmedSeq) await this.transport.report(requestId, record.query)
-      this.notify()
+      const stopIds=new Set(sent?.stopIds??[])
+      for(const stop of (await this.receiver.store.stops(this.scope)).filter(stop=>stop.requestId===requestId)) {
+        if(stopIds.has(stop.stopId))continue
+        await this.transport.stop(requestId,stop.stopId,stop.reason);stopIds.add(stop.stopId)
+      }
       const artifact = record.query.output && !sent?.result
         ? await this.receiver.store.readResult(this.scope, record.executionRef) : null
-      if (artifact && record.query.output) await this.transport.result(requestId, { contentId: record.query.output.contentId,
+      if(record.query.output && !sent?.result && !artifact)throw new Error('原结果资源暂时不可读。')
+      if (artifact && record.query.output) {
+        const confirmed=await this.transport.result(requestId, { contentId: record.query.output.contentId,
         output: artifact.output, text: artifact.text, name: artifact.name, mediaType: artifact.mediaType,
-        sha256: artifact.sha256, byteLength: artifact.byteLength })
+        sha256: artifact.sha256, byteLength: artifact.byteLength, ...(artifact.resources?{resources:artifact.resources}:{}) })
+        if(!confirmed)throw new Error('原结果资源尚未确认。')
+      }
+      // Publish completion only after the owner can read every retained resource it cites.
+      if (!sent || sent.factSeq !== record.query.confirmedSeq) await this.transport.report(requestId, record.query)
       await this.receiver.store.sync({ scope: this.scope, requestId, command: true,
-        factSeq: record.query.confirmedSeq, result: sent?.result === true || artifact !== null, at: Date.now() })
-    } catch { /* Offline or service unavailable: the local record is already the durable truth. */ }
+        factSeq: record.query.confirmedSeq, result: sent?.result === true || artifact !== null, at: Date.now(),...(stopIds.size?{stopIds:[...stopIds]}:{}) })
+      const latest=await this.receiver.store.read(this.scope,requestId)
+      if(latest && (latest.query.confirmedSeq!==record.query.confirmedSeq || latest.query.stopRequested!==record.query.stopRequested))this.retrySync(requestId)
+      else this.syncRetries.delete(requestId)
+      this.notify()
+    } catch { this.retrySync(requestId) /* Same durable identity; never rerun computation. */ }
     finally { this.syncing.delete(requestId) }
   }
-  async drain() { for (const abort of this.runs.values()) abort.abort(new AlgorithmError('worker-terminated', '页面正在离开。')) }
+  async drain() { for (const abort of this.runs.values()) abort.abort(new ExecutionError('worker-terminated', '页面正在离开。')) }
   dispose() { this.disposed = true; this.unsubscribeAccept()
+    if(this.syncRetryTimer!==undefined)clearTimeout(this.syncRetryTimer)
+    this.syncRetryTimer=undefined;this.syncRetries.clear()
     if (this.stopTimer !== undefined) { clearTimeout(this.stopTimer); this.stopTimer = undefined }
-    for (const abort of this.runs.values()) abort.abort(new AlgorithmError('worker-terminated', '页面正在离开。'))
+    for (const abort of this.runs.values()) abort.abort(new ExecutionError('worker-terminated', '页面正在离开。'))
     this.listeners.clear() }
 }

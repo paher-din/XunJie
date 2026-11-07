@@ -1,0 +1,203 @@
+{
+  "kind": "alu-wasm-check",
+  "ticket": "#211",
+  "command": "node tools/alu-wasm/check-browser-test.mjs",
+  "status": "passed",
+  "checks": 162,
+  "vcdBytes": 4249880,
+  "badIndices": 256,
+  "badRows": 1024,
+  "unknownIndices": 1536,
+  "unknownRows": 6144,
+  "timings": [
+    {
+      "variant": "correct",
+      "stage": "compile",
+      "ms": 108,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-0",
+      "ms": 115
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-1",
+      "ms": 121
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-2",
+      "ms": 113
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-3",
+      "ms": 124
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "compile",
+      "ms": 83,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-0",
+      "ms": 125
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-1",
+      "ms": 125
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-2",
+      "ms": 108
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-3",
+      "ms": 111
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "compile",
+      "ms": 78,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-0",
+      "ms": 116
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-1",
+      "ms": 119
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-2",
+      "ms": 121
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-3",
+      "ms": 118
+    },
+    {
+      "variant": "z-reserved",
+      "stage": "compile",
+      "ms": 73,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "z-reserved",
+      "stage": "simulate-0",
+      "ms": 118
+    },
+    {
+      "variant": "z-reserved",
+      "stage": "simulate-1",
+      "ms": 123
+    },
+    {
+      "variant": "z-reserved",
+      "stage": "simulate-2",
+      "ms": 116
+    },
+    {
+      "variant": "z-reserved",
+      "stage": "simulate-3",
+      "ms": 107
+    },
+    {
+      "variant": "wrong-reserved",
+      "stage": "compile",
+      "ms": 74,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "wrong-reserved",
+      "stage": "simulate-0",
+      "ms": 134
+    },
+    {
+      "variant": "wrong-reserved",
+      "stage": "simulate-1",
+      "ms": 146
+    },
+    {
+      "variant": "wrong-reserved",
+      "stage": "simulate-2",
+      "ms": 117
+    },
+    {
+      "variant": "wrong-reserved",
+      "stage": "simulate-3",
+      "ms": 133
+    },
+    {
+      "variant": "omitted-assignment",
+      "stage": "compile",
+      "ms": 83,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "omitted-assignment",
+      "stage": "simulate-0",
+      "ms": 117
+    },
+    {
+      "variant": "omitted-assignment",
+      "stage": "simulate-1",
+      "ms": 117
+    },
+    {
+      "variant": "omitted-assignment",
+      "stage": "simulate-2",
+      "ms": 161
+    },
+    {
+      "variant": "omitted-assignment",
+      "stage": "simulate-3",
+      "ms": 124
+    },
+    {
+      "variant": "delayed",
+      "stage": "compile",
+      "ms": 80,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "delayed",
+      "stage": "simulate-0",
+      "ms": 101
+    },
+    {
+      "variant": "delayed",
+      "stage": "simulate-1",
+      "ms": 96
+    },
+    {
+      "variant": "delayed",
+      "stage": "simulate-2",
+      "ms": 102
+    },
+    {
+      "variant": "delayed",
+      "stage": "simulate-3",
+      "ms": 92
+    }
+  ]
+}

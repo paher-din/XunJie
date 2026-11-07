@@ -17,6 +17,7 @@ import {
 import { codeRangeModelOffsets, codeSelectionRange,
   type CodeRange, type CodeSelectionResult } from '../../workspace/tutoringObject'
 import type { EditorDiagnosticMarkers } from '../../workspace/editorDiagnostics'
+import { protectCompositionNavigation } from './compositionNavigation'
 
 /**
  * 多文件代码编辑器的宿主：一个编辑器实例 + 每个文件实例一个 model。
@@ -266,6 +267,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
         const { readOnly: ro, readOnlyReason: reason } = readOnlyRef.current
         editor = monaco.editor.create(hostRef.current, editorOptions(ro, reason))
         editorRef.current = editor
+        disposables.push({ dispose: protectCompositionNavigation(hostRef.current) })
 
         let contentSubscription: { dispose(): void } | null = null
         const watchModel = () => {

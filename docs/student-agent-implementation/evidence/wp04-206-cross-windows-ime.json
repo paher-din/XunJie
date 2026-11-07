@@ -1,0 +1,22 @@
+{
+  "kind": "windows-os-ime-candidate-window",
+  "ticket": "#206",
+  "item": "X3",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.15.0",
+  "startedAt": "2026-11-06T15:03:12.505Z",
+  "cases": [
+    "a real product editor is focused in desktop Chrome on Windows",
+    "real pinyin key presses are delivered by the OS to the focused product editor",
+    "a real Space shortcut commits the selected Chinese candidate into the editor",
+    "a real Escape shortcut cancels composition without changing the protected text"
+  ],
+  "status": "passed",
+  "browser": "156.0.8078.80",
+  "pageUrl": "https://101.201.141.133:8443",
+  "compositionOutput": "FOREGROUND=Chrome_WidgetWin_1\r\nAFTER_COMPOSE_FOREGROUND=Chrome_WidgetWin_1",
+  "committedText": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Buil",
+  "afterCancelText": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Buil",
+  "finishedAt": "2026-11-06T15:03:39.557Z"
+}

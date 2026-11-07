@@ -1,0 +1,90 @@
+{
+  "date": "2026-11-07",
+  "scope": "Imported existing #192 before screenshots and initial #193 implementation evidence; not final review acceptance. JSON key/value scan and screenshot inspection found no credentials. Sources remain unchanged.",
+  "files": [
+    {
+      "file": "wp04-193-wasm-check.json",
+      "source": ".verification/alu-check/check.json",
+      "bytes": 7322,
+      "sha256": "4a678559a8c671974172957f2ce72acda7831f5651568dff24a47b827bea44d4"
+    },
+    {
+      "file": "wp04-193-wasm-check.png",
+      "source": ".verification/alu-check/check.png",
+      "bytes": 53946,
+      "sha256": "39bafd486a266e7742bb63b3fbe6c7d14e0143e64d03a18d22f77267a41c29e1"
+    },
+    {
+      "file": "wp04-193-initial-product-report.json",
+      "source": ".verification/wp04-193-product/report.json",
+      "bytes": 2502,
+      "sha256": "af15399aae6f50af396eeef3b0847f01d9378c28a7457ebd1f6b2182a39afdc5"
+    },
+    {
+      "file": "wp04-193-before-initial.png",
+      "source": ".verification/wp04-192-product/initial.png",
+      "bytes": 92366,
+      "sha256": "576b128981cd95b6eaa3d9aa859add3c381e5ffbfa9087b15a85479d58d1fb18"
+    },
+    {
+      "file": "wp04-193-before-observed.png",
+      "source": ".verification/wp04-192-product/observed.png",
+      "bytes": 101127,
+      "sha256": "09abe7231eb71073c83895f90595caac85da80c56321abcabbde68bf513d7cf5"
+    },
+    {
+      "file": "wp04-193-initial-after-check-fail.png",
+      "source": ".verification/wp04-193-product/after-check-fail.png",
+      "bytes": 156403,
+      "sha256": "172840e6058de6ad9a667546aa08eb129f09f037401ef9dcc0b5f7c4cefcb8a7"
+    },
+    {
+      "file": "wp04-193-initial-after-check-pass.png",
+      "source": ".verification/wp04-193-product/after-check-pass.png",
+      "bytes": 155674,
+      "sha256": "53b8beb8b59e840eb3482d698777803966c267700c17a5bf9112c2b8ebda3db8"
+    },
+    {
+      "file": "wp04-193-initial-after-counterexamples.png",
+      "source": ".verification/wp04-193-product/after-counterexamples.png",
+      "bytes": 131130,
+      "sha256": "842e77f3b880bae9960b3ac42aefbb9c981f4c34c22c4d3430fdd8bfcc403af6"
+    },
+    {
+      "file": "wp04-193-initial-after-dark.png",
+      "source": ".verification/wp04-193-product/after-dark.png",
+      "bytes": 88559,
+      "sha256": "5e4f738238c1f00c54524bd02302892743d8f80820c9cd9f64593fc4970df5aa"
+    },
+    {
+      "file": "wp04-193-initial-after-initial.png",
+      "source": ".verification/wp04-193-product/after-initial.png",
+      "bytes": 121303,
+      "sha256": "dbe80a7f8796a190c2eafe7b6f6ee2b0ea344e1b5b8e7222633a8eb5d4974137"
+    },
+    {
+      "file": "wp04-193-initial-after-narrow.png",
+      "source": ".verification/wp04-193-product/after-narrow.png",
+      "bytes": 93971,
+      "sha256": "6bdaba2b648affc0c87341d88a34d90f8a688be9fedf823cb9caf5ede260b693"
+    },
+    {
+      "file": "wp04-193-initial-after-observation.png",
+      "source": ".verification/wp04-193-product/after-observation.png",
+      "bytes": 126654,
+      "sha256": "0a5ae0a9f2870259d3f8de9ace20cb607d5a5221941250a720bf7b5c963fc22c"
+    },
+    {
+      "file": "wp04-193-initial-after-refresh.png",
+      "source": ".verification/wp04-193-product/after-refresh.png",
+      "bytes": 130082,
+      "sha256": "95ff5d6ca1a7015523d7e89ef8e09bca0ffb4588b9b52029695bc46c63664396"
+    },
+    {
+      "file": "wp04-193-initial-after-starter-unknown.png",
+      "source": ".verification/wp04-193-product/after-starter-unknown.png",
+      "bytes": 126595,
+      "sha256": "f43a12f34ed2e3696ae267aadda4f401a5405f5729f7aad5597847cf8c80bb4b"
+    }
+  ]
+}

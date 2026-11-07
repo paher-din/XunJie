@@ -44,9 +44,11 @@ async function beforeDeadline<T>(task: Promise<T>, deadline: number, reason: Pre
   } finally { clearTimeout(timer) }
 }
 
+/** The v2 script-dependency preparation path; a format 3 runtime has its own resource protocol. */
 export function preparedManifest(binding: ComponentBinding): ComponentPreparedManifest {
-  if (binding.definition.manifest.formatVersion === 1) throw new Error('unsupported-version')
-  return binding.definition.manifest
+  const manifest = binding.definition.manifest
+  if (manifest.formatVersion !== 2) throw new Error('unsupported-version')
+  return manifest
 }
 /** Preparation exists only for components that declare dependencies; a format 1 binding keeps its original path. */
 export function requiresPreparation(binding: ComponentBinding) { return binding.definition.manifest.formatVersion === 2 }
@@ -453,3 +455,5 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
 }
 export type ComponentPreparation = ReturnType<typeof createComponentPreparation>
 export const componentPreparation = createComponentPreparation()
+// Runtime resources share the preparation owner and store, with a version-specific compiler self-check.
+export { createRuntimePreparation, runtimePreparation } from './runtime'

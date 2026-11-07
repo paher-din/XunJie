@@ -1,0 +1,214 @@
+{
+  "formatVersion": 1,
+  "name": "xunjie-icarus-worker",
+  "version": "0.3.0",
+  "identity": "f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd",
+  "assets": {
+    "ivl.js": {
+      "bytes": 72734,
+      "sha256": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f"
+    },
+    "ivl.wasm": {
+      "bytes": 1771889,
+      "sha256": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de"
+    },
+    "ivlpp.js": {
+      "bytes": 63593,
+      "sha256": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982"
+    },
+    "ivlpp.wasm": {
+      "bytes": 102963,
+      "sha256": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3"
+    },
+    "vvp.js": {
+      "bytes": 71102,
+      "sha256": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995"
+    },
+    "vvp.wasm": {
+      "bytes": 927158,
+      "sha256": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+    }
+  },
+  "adapters": {
+    "index.mjs": {
+      "bytes": 6508,
+      "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
+    },
+    "worker.mjs": {
+      "bytes": 12537,
+      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
+    },
+    "identity.mjs": {
+      "bytes": 1833,
+      "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
+    },
+    "index.d.mts": {
+      "bytes": 2150,
+      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
+    }
+  },
+  "files": {
+    "ivl.js": {
+      "bytes": 72734,
+      "sha256": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f"
+    },
+    "ivl.wasm": {
+      "bytes": 1771889,
+      "sha256": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de"
+    },
+    "ivlpp.js": {
+      "bytes": 63593,
+      "sha256": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982"
+    },
+    "ivlpp.wasm": {
+      "bytes": 102963,
+      "sha256": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3"
+    },
+    "vvp.js": {
+      "bytes": 71102,
+      "sha256": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995"
+    },
+    "vvp.wasm": {
+      "bytes": 927158,
+      "sha256": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+    },
+    "checksums.txt": {
+      "bytes": 448,
+      "sha256": "0e495e931690f2a29e7d5b030bd7988865f92486e37d1ad9a52bd8561f30226b"
+    },
+    "index.mjs": {
+      "bytes": 6508,
+      "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
+    },
+    "worker.mjs": {
+      "bytes": 12537,
+      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
+    },
+    "identity.mjs": {
+      "bytes": 1833,
+      "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
+    },
+    "index.d.mts": {
+      "bytes": 2150,
+      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
+    },
+    "COPYING.icarus": {
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    "notices/Emscripten-LICENSE": {
+      "bytes": 5093,
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+    },
+    "notices/Emscripten-AUTHORS": {
+      "bytes": 28933,
+      "sha256": "56f7df65203d4858dac19cafe3a84a8c49abaff56b67d32d2d463d5fef6e440b"
+    },
+    "notices/libcxx-LICENSE": {
+      "bytes": 16703,
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+    },
+    "notices/libcxxabi-LICENSE": {
+      "bytes": 16706,
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+    },
+    "notices/compiler-rt-LICENSE": {
+      "bytes": 16708,
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d"
+    },
+    "notices/musl-COPYRIGHT": {
+      "bytes": 6204,
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af"
+    },
+    "source/port.py": {
+      "bytes": 3713,
+      "sha256": "489d118a901e5717c83338b63d53c47916d2c47d13177e6477b1fcc11438b356"
+    },
+    "source/build-port.sh": {
+      "bytes": 1706,
+      "sha256": "079aad410dbe99ebbbd657af300445ccd5bc7f3ee81826ad93acc2d09800ed70"
+    },
+    "source/doctor.sh": {
+      "bytes": 844,
+      "sha256": "f5dd9cb60f220650050df09335c0f6709dbf81af4d17e0e1f2575e2fed85d441"
+    },
+    "source/rebuild.sh": {
+      "bytes": 1074,
+      "sha256": "24afe9de631080e8983f70c61520781f3fb02bcdc7223de30e50edaf6e0b2795"
+    },
+    "source/verify-sdk.py": {
+      "bytes": 502,
+      "sha256": "0c560877a9d532861c198ed28419e437b6525a86b5b046a9f90224c9af7d1744"
+    },
+    "source/toolchain.lock.json": {
+      "bytes": 890,
+      "sha256": "e02bd0124e24f8e51f7a219b62e0d1875bdce1b8f99a9c3bc2fda61e0bcb41dd"
+    },
+    "source/ubuntu-packages.lock": {
+      "bytes": 19381,
+      "sha256": "3fb404a05b522de07d18abfdcf6314475f01f1ee8857872fc2a0e4937871ee88"
+    },
+    "source/README.md": {
+      "bytes": 1409,
+      "sha256": "54c15f8cae0ee762e304eba6b6b9e7d597c6445fbdac55a3274ca90ab5c9f09f"
+    },
+    "source/iverilog.tar.gz": {
+      "bytes": 3176904,
+      "sha256": "d5e0d83f7028e2c11c127e16aaa5ab35627b1f4f62abfa982defcf77e8959bc2"
+    }
+  },
+  "toolchain": {
+    "formatVersion": 1,
+    "status": "windows-and-apple-silicon-validated",
+    "icarus": {
+      "repository": "https://github.com/steveicarus/iverilog.git",
+      "commit": "c7530dbcc186de2f21eacde14fd28061b885924c"
+    },
+    "emsdk": {
+      "repository": "https://github.com/emscripten-core/emsdk.git",
+      "commit": "0b3bcbc3b005cbb811d48e497eabcc6846d43001",
+      "version": "3.1.64",
+      "emscriptenSource": "https://github.com/emscripten-core/emscripten/tree/a1fe3902bf73a3802eae0357d273d0e37ea79898",
+      "release": "fd61bacaf40131f74987e649a135f1dd559aff60",
+      "linuxX64Tools": {
+        "upstream/bin/clang": "99353aacf4767f69bad46d6043c30700ad71e86bf08d728bda85ad8e47351ebc",
+        "upstream/bin/wasm-opt": "c3407581ffe01ba18350dcb3c56c0aa025b59ab4e635684deaa790c90a954a28",
+        "node/18.20.3_64bit/bin/node": "563a678816281a08dc7da9fd3ece4e1fc5fcc01f68ffe404f6cdd1f715821b8f"
+      }
+    }
+  },
+  "compilerConfiguration": {
+    "pipelineVersion": 1,
+    "generations": [
+      "2012",
+      "no-specify"
+    ],
+    "iwidth": 32,
+    "widthcap": 65536,
+    "functors": [
+      "cprop",
+      "nodangle"
+    ],
+    "target": "vvp.tgt",
+    "systemModule": "system.vpi"
+  },
+  "license": {
+    "icarus": "See COPYING.icarus and corresponding source notices",
+    "correspondingSource": "source/iverilog.tar.gz",
+    "modifications": "source/port.py",
+    "bundledRuntimeNotices": "notices/"
+  },
+  "limits": {
+    "files": 64,
+    "fixedFileBytes": 1048576,
+    "textOutputBytes": 2097152,
+    "generatedFileBytes": 8388608,
+    "totalFileExtentBytesPerModule": 16777216,
+    "moduleMemoryBytes": 268435456,
+    "parallelWorkersPerModuleRealm": 1,
+    "maxWallTimeMs": 60000,
+    "cacheEntries": 8,
+    "cacheBytes": 33554432
+  },
+  "scope": "Fixed resources and verified-byte loader; product and platform acceptance recorded separately."
+}

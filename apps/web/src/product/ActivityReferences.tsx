@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { questionDraftViewSchema, questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
 import type { QuestionDraftSync } from '@xunjie/contracts/question-drafts'
-import { courseMaterialContentSchema } from '@xunjie/contracts/courses'
 import type { CourseActivityBinding } from '@xunjie/contracts/courses'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { DraftReferencesProvider, TextReferenceSource } from '../components/workspace/references'
@@ -14,20 +13,19 @@ import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
 import { ComponentInteractions } from '../component-host/interactions'
 import { TeachingBrowserExecution } from './TeachingBrowserExecution'
+import { runtimeCandidateIsCurrent } from '../tool-execution/runtime-action'
 import { ExecutionController } from '../tool-execution/controller'
 import { createAlgorithmProvider } from '../tool-execution/provider'
+import { createAdapterRegistry } from '../tool-execution/adapters'
+import { runtimePreparation } from '../component-preparation/runtime'
+import { cacheableMaterial, materialCache } from '../component-preparation/materials'
+import { materialLinks } from './material-links'
 import { createExecutionTransport, createSessionTransport } from './executionTransport'
 import { NativeSessionController } from '../tool-execution/session-controller'
 import { SessionRequests } from '../tool-execution/session-requests'
 import { useAgentInteraction } from './AgentInteraction'
 
-const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
-const decode = (base64: string) => {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index)
-  return new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
-}
+const readable = cacheableMaterial
 
 export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode
@@ -77,9 +75,14 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     const transport = createExecutionTransport(activity, spaceKey, namespace)
     const receiver = new TeachingBrowserExecution(scope, Date.now(), (route, body) =>
       learningRequest(activity, spaceKey, namespace, 'executions/' + activity.activityId + '/' + route, body),
-      transport, () => access.current && !workspace.accessDenied() && !readOnly, activity.activityId)
-    return new ExecutionController(scope, receiver, actions,
-      transport, receiver.withProvider(createAlgorithmProvider(activity, spaceKey, namespace)), undefined, () => access.current && !workspace.accessDenied(), readOnly)
+      transport, () => access.current && !workspace.accessDenied() && !readOnly, activity.activityId,
+      action => runtimeCandidateIsCurrent(workspace, activity, action))
+    return new ExecutionController(scope, receiver, actions, transport,
+      createAdapterRegistry({ provider: receiver.withProvider(createAlgorithmProvider(activity, spaceKey, namespace)), runtimeResources: async action => {
+        const binding = activity.course?.components?.find(b => b.key === action.execution.instance.key)
+        if (!binding || binding.definition.digest !== action.execution.instance.definitionDigest) throw new Error('forbidden')
+        return runtimePreparation.resources({ activity, binding, spaceKey, namespace })
+      } }), () => access.current && !workspace.accessDenied(), readOnly)
   }, [scope, actions, activity, spaceKey, namespace, readOnly])
   const sessions = useMemo(() => new NativeSessionController(scope,
     createSessionTransport(activity, spaceKey, namespace),
@@ -99,9 +102,9 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     return () => { active = false; stopAgentTasks(); unregister(); sessions.dispose(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
   }, [draft, workspace, actions, execution, sessions, readOnly])
   useEffect(() => {
-    if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
+    if (authorized) { draft.resume(); workspace.resume(); actions.resume();void execution.synchronize().catch(()=>{}) }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
-  }, [draft, workspace, actions, authorized])
+  }, [draft, workspace, actions, execution, authorized])
   return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions} delivery={inputInteraction.delivery}
       deliveryReady={inputInteraction.ready} onCreated={inputInteraction.reset}>{children}</DraftReferencesProvider>
@@ -124,12 +127,13 @@ export function CourseMaterialReferences({ activity, course, spaceKey, namespace
     let cancelled = false
     const readableMaterials = course.materials.filter(item => readable(item.mediaType))
     setContents(Object.fromEntries(readableMaterials.map(item => [item.materialId, {}])))
+    // An opened activity reads its fixed release from the local byte cache; the service is only
+    // asked for bytes this browser does not already hold, and every answer is re-verified.
     void Promise.all(readableMaterials.map(async item => {
       try {
-        const value = courseMaterialContentSchema.parse(await learningRequest(activity, spaceKey, namespace,
-          `releases/${course.releaseId}/materials/${item.materialId}`))
-        return [item.materialId, { text: decode(value.contentBase64) }] as const
-      } catch { return [item.materialId, { error: '材料内容暂时无法读取；已保存的引用副本不受影响。' }] as const }
+        const text = await materialCache.text(activity, course, spaceKey, namespace, item)
+        return [item.materialId, { text }] as const
+      } catch { return [item.materialId, { error: '材料内容暂时无法读取；该材料尚未缓存在本机。已保存的引用副本不受影响。' }] as const }
     })).then(entries => { if (!cancelled) setContents(Object.fromEntries(entries)) })
     return () => { cancelled = true }
   }, [activity, course, spaceKey, namespace, materialKey])
@@ -143,8 +147,12 @@ export function CourseMaterialReferences({ activity, course, spaceKey, namespace
         releaseId: course.releaseId, contentDigest: course.contentDigest, materialId: item.materialId,
         materialSha256: item.sha256, mediaType: item.mediaType }
       const content = contents[item.materialId]
+      const links = content?.text ? materialLinks(content.text) : []
       return <article className="learning-material-text" key={item.materialId} data-material-id={item.materialId} tabIndex={-1}>
         <h4>{item.title}</h4>
+        {links.length>0&&<details><summary>打开补学资料来源</summary><ul>{links.map(link=><li key={link.href}>
+          <a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>
+        </li>)}</ul></details>}
         {content?.text !== undefined ? <TextReferenceSource sourceId={questionReferenceSourceId(source)}
           sourceName={item.title} text={content.text} source={source} />
           : content?.error ? <p className="detail" role="status">{content.error}</p> : <p className="detail" role="status">正在读取材料…</p>}

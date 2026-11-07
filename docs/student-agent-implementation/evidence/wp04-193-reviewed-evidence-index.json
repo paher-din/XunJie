@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-07",
+  "scope": "Reviewed real Icarus Worker 162 assertions and Windows formal product Chrome 22 cases; original reports and screenshots retained. Two tabs serialized from fresh bases [4,5] to revision 6. 200% screenshot demonstrates CSS content zoom. No credentials in report; product flow captures authenticated activity content, never a login or account-settings form.",
+  "files": [
+    {
+      "file": "wp04-193-reviewed-wasm-check.json",
+      "source": ".verification/alu-check-review/check.json",
+      "bytes": 13994,
+      "sha256": "aaac7071b6963f775e0fb71ad97e9219a99cd0677ef51a594ca8dc760ec4527c"
+    },
+    {
+      "file": "wp04-193-reviewed-wasm-check.png",
+      "source": ".verification/alu-check-review/check.png",
+      "bytes": 103067,
+      "sha256": "617e14b893ceb69c58a2aecca1f3605e5672d3aa77eaa4d21c8d63dab2f14e10"
+    },
+    {
+      "file": "wp04-193-reviewed-product-report.json",
+      "source": ".verification/wp04-193-review-product5/report.json",
+      "bytes": 3364,
+      "sha256": "7bdb74d2f347d5c09541fdf6998a7069b6ade23e3d007ac97a55c92c5f21b5c4"
+    },
+    {
+      "file": "wp04-193-reviewed-after-initial.png",
+      "source": ".verification/wp04-193-review-product5/after-initial.png",
+      "bytes": 123174,
+      "sha256": "f4e6ff9b1657bd32210b01393554e1f4907ccf1b2549a4d699ee5c46ea771587"
+    },
+    {
+      "file": "wp04-193-reviewed-after-observation.png",
+      "source": ".verification/wp04-193-review-product5/after-observation.png",
+      "bytes": 129118,
+      "sha256": "91f0a0d5418d6041c2b345f2e035e90d429a5876208469f70e91b3302d3cfcbb"
+    },
+    {
+      "file": "wp04-193-reviewed-after-check-pass.png",
+      "source": ".verification/wp04-193-review-product5/after-check-pass.png",
+      "bytes": 152832,
+      "sha256": "5cc63464310d20c844609cf11ad05f082e1e80f79ed799270831203873282ec6"
+    },
+    {
+      "file": "wp04-193-reviewed-after-check-fail.png",
+      "source": ".verification/wp04-193-review-product5/after-check-fail.png",
+      "bytes": 158536,
+      "sha256": "d34e5b0fe0e5666b1cd9988e6f981624d4b8219a0184854c727af37ec11f54e0"
+    },
+    {
+      "file": "wp04-193-reviewed-after-counterexamples.png",
+      "source": ".verification/wp04-193-review-product5/after-counterexamples.png",
+      "bytes": 130577,
+      "sha256": "2f4f065c02413efbb286783db338c21a1f271a5a9e19bd5ba1ee34e54865d265"
+    },
+    {
+      "file": "wp04-193-reviewed-after-refresh.png",
+      "source": ".verification/wp04-193-review-product5/after-refresh.png",
+      "bytes": 128153,
+      "sha256": "90ab8a4b422f9723dbb8fbb5137b55931c8eae8277d5311c29bc77328ce1c123"
+    },
+    {
+      "file": "wp04-193-reviewed-after-narrow.png",
+      "source": ".verification/wp04-193-review-product5/after-narrow.png",
+      "bytes": 114009,
+      "sha256": "378e928484bacd59803a714e31f424ec446de67e00429d59da40f7a2ace8775d"
+    },
+    {
+      "file": "wp04-193-reviewed-after-dark.png",
+      "source": ".verification/wp04-193-review-product5/after-dark.png",
+      "bytes": 90912,
+      "sha256": "958ac35f6d8ebba4951fc4479fc8df08b52df53199742d670b73b0ca90067bdb"
+    },
+    {
+      "file": "wp04-193-reviewed-after-900.png",
+      "source": ".verification/wp04-193-review-product5/after-900.png",
+      "bytes": 124246,
+      "sha256": "a141d6563fd624684ebc925b13fed68c7b0bd737e3ffa04a62760ff94070869d"
+    },
+    {
+      "file": "wp04-193-reviewed-after-200-content-zoom.png",
+      "source": ".verification/wp04-193-review-product5/after-200-content-zoom.png",
+      "bytes": 247549,
+      "sha256": "68b27114d571345f1fc4b114e9762c0458ddf892bb4fa621eeefd1198eb11a41"
+    },
+    {
+      "file": "wp04-193-reviewed-after-split.png",
+      "source": ".verification/wp04-193-review-product5/after-split.png",
+      "bytes": 140451,
+      "sha256": "ab6f2696527a887fe6e339e193f4da0e19267b59c0eb1719fe3be9debcac0534"
+    },
+    {
+      "file": "wp04-193-reviewed-after-two-tabs.png",
+      "source": ".verification/wp04-193-review-product5/after-two-tabs.png",
+      "bytes": 145293,
+      "sha256": "20f2e5dd723924df488471dbcb902ed2d7627b81dac9096f96d7b15efc1813ea"
+    },
+    {
+      "file": "wp04-193-reviewed-engineering-gates.json",
+      "source": "Executed checks recorded by the reviewing agent; source files identify the uncommitted candidate.",
+      "bytes": 9147,
+      "sha256": "56ec56cfaf7e48a1267e4277e11d88ffcd0b8f73dd7e15f76a10ac02189979be"
+    }
+  ]
+}

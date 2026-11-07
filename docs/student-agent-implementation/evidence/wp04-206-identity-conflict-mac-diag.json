@@ -1,0 +1,812 @@
+{
+  "kind": "alu-school-cross-machine-client",
+  "ticket": "#206",
+  "label": "macos-arm64-diag",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "endpoint": "https://101.201.141.133:8443",
+  "schoolHost": "101.201.141.133",
+  "schoolNodePlatform": "linux",
+  "schoolNodeArch": "x64",
+  "schoolDistributionSha256": "4efce27d89b0787e0bc3f388b13feb171d57ff54229ea717ef92198dde9edb43",
+  "clientAddresses": [
+    "127.0.0.1",
+    "::1",
+    "fe80::1",
+    "fe80::861:3cef:413:f6c1",
+    "192.168.3.39",
+    "fe80::e065:6ff:fe1f:1f03",
+    "fe80::e065:6ff:fe1f:1f03",
+    "fe80::28ce:7c85:5579:bdfe",
+    "fe80::f9dc:136a:4838:14ca",
+    "fe80::8683:3421:1b4b:eb15",
+    "fe80::ce81:b1c:bd2c:69e",
+    "198.18.0.1"
+  ],
+  "clientLocalProduct": false,
+  "studentTrafficUsesSsh": false,
+  "startedAt": "2026-11-06T14:51:59.132Z",
+  "cases": [
+    "the school service and PostgreSQL run on a different machine from this client",
+    "strict TLS is verified with the pinned public key and the entry answers as the school profile",
+    "a school member and the fixed ALU course activity are served by the independent node",
+    "a desktop Chrome with no local product opens the independent school entry",
+    "the fixed runtime resources are authorized, verified and self-checked over the network",
+    "a real Worker run over the cross-machine school HTTPS entry produces a real carry observation"
+  ],
+  "refused": [
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409,
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409,
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409,
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    }
+  ],
+  "traffic": [
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591",
+      "status": 409
+    }
+  ],
+  "status": "failed",
+  "browser": "156.0.8078.80",
+  "activityId": "0d5c1bb5-41a1-4b08-9677-75459ab31591",
+  "consoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://101.201.141.133:8443/favicon.ico"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/executions/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "url": "https://101.201.141.133:8443/api/learning/workspaces/0d5c1bb5-41a1-4b08-9677-75459ab31591"
+    }
+  ],
+  "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\nCall Log:\n- Timeout 60000ms exceeded while waiting on the predicate\n    at captureRawStack (/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/node_modules/playwright-core/lib/coreBundle.js:9282:17)\n    at callMatcherAsStep (/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/node_modules/playwright/lib/matchers/expect.js:13316:57)\n    at Object.toBe (/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/node_modules/playwright/lib/matchers/expect.js:13308:23)\n    at /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/scripts/probe-alu-school-client.mjs:118:26",
+  "finishedAt": "2026-11-06T14:53:40.239Z"
+}

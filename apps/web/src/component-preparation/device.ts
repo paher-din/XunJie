@@ -1,7 +1,7 @@
 import type { PreparationDevice } from '@xunjie/contracts/components'
 
 /** Bumped when the preparation implementation changes behaviour; invalidates cached check results. */
-export const preparationImplementationVersion = 2
+export const preparationImplementationVersion = 3
 export const hostVersion = '1'
 
 const probes = {
@@ -9,6 +9,10 @@ const probes = {
   'crypto-subtle': () => typeof crypto !== 'undefined' && typeof crypto.subtle?.digest === 'function',
   'indexeddb': () => typeof indexedDB !== 'undefined',
   'sandboxed-iframe': () => typeof document !== 'undefined' && 'sandbox' in document.createElement('iframe'),
+  // A format 3 runtime really compiles in a dedicated Worker, so these are probed, not assumed.
+  'worker': () => typeof Worker === 'function' && typeof URL.createObjectURL === 'function',
+  'webassembly': () => typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function',
+  'web-locks': () => typeof navigator !== 'undefined' && typeof (navigator as Navigator & { locks?: unknown }).locks === 'object',
 } as const
 export type PreparationFeature = keyof typeof probes
 

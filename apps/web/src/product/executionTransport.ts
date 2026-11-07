@@ -40,6 +40,11 @@ export function createExecutionTransport(activity: LearningActivity, spaceKey: s
       const bytes = new TextEncoder().encode(artifact.text)
       const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('')
       if (hash !== artifact.sha256 || bytes.length !== artifact.byteLength) throw new Error('corrupt')
+      for(const resource of artifact.resources??[]) {
+        const data=new TextEncoder().encode(resource.text)
+        const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',data))].map(byte=>byte.toString(16).padStart(2,'0')).join('')
+        if(data.length!==resource.byteLength||digest!==resource.sha256)throw new Error('corrupt')
+      }
       return artifact
     },
     accept: async (action: ExecutionAction, acceptance: ExecutionAcceptance) => executionQuerySchema.parse(
@@ -56,7 +61,7 @@ export function createExecutionTransport(activity: LearningActivity, spaceKey: s
     stop: async (requestId: string, stopId: string, reason: string) => executionQuerySchema.parse(
       await request('/' + requestId + '/stop', { stopId, reason })),
     result: async (requestId: string, value: { contentId: string; output: unknown; text: string; name: string
-      mediaType: string; sha256: string; byteLength: number }) => {
+      mediaType: string; sha256: string; byteLength: number; resources?:import('@xunjie/contracts/execution').ExecutionRetainedResource[] }) => {
       const known = await request('/' + requestId + '/result', value)
       return known === null ? null : executionQuerySchema.parse(known)
     },

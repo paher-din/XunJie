@@ -1,46 +1,20 @@
-import { componentSource, useSemanticSource } from '../components/workspace/references/SemanticSource'
-import type { ExecutionRecord } from '../tool-execution/ledger'
-import { useRef, useState, useSyncExternalStore } from 'react'
 import { componentStateName, type ComponentBinding } from '@xunjie/contracts/components'
-import { isTerminalExecutionState, type ExecutionAction } from '@xunjie/contracts/execution'
+import { isTerminalExecutionState } from '@xunjie/contracts/execution'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import { useRef, useState, useSyncExternalStore } from 'react'
+import type { ExecutionRecord } from '../tool-execution/ledger'
 import { stateLabel } from '../tool-execution/ledger'
-import { executionAction, canonical, readComponentState } from '../tool-execution/action'
+import { executionAction, readComponentState } from '../tool-execution/action'
 import { useActivitySession } from './ActivitySession'
+import { recordPresenters } from './execution-presenters'
 import './execution-panel.css'
-
-const aggregates: Record<string, string> = { count: '计数', sum: '求和', mean: '平均' }
-interface Parameters { groupColumn: string; valueColumn: string; aggregate: string }
-interface Result { rows: number; groups: unknown[]; value: number }
-
-/** The table a record was run against, read back from the command's own basis copy. */
-function inputRows(action: ExecutionAction): number | null {
-  const state = action.execution.basis.state
-  const file = state && action.execution.basis.works.find(item => item.name === state.name)
-  try {
-    const rows = (JSON.parse(file?.value ?? '{}') as { content?: { table?: { rows?: unknown } } }).content?.table?.rows
-    return Array.isArray(rows) ? rows.length : null
-  } catch { return null }
-}
-
-/**
- * Re-saving identical content produces a new content id, so the warning compares the content
- * itself. A missing current file counts as a change.
- */
-function sameContent(action: ExecutionAction, value: string | undefined): boolean {
-  const state = action.execution.basis.state
-  const file = state && action.execution.basis.works.find(item => item.name === state.name)
-  if (!value || !file) return false
-  try {
-    return JSON.stringify(canonical((JSON.parse(value) as { content?: unknown }).content))
-      === JSON.stringify(canonical((JSON.parse(file.value) as { content?: unknown }).content))
-  } catch { return false }
-}
-const display = (value: number) => String(Number(Number(value).toFixed(6)))
 
 /**
  * The public run record of one mounted component. It reads the execution controller, not the
  * iframe, so switching tools or reloading a view keeps query, stop and download available.
+ *
+ * What a record means — its parameters, its result summary, its artifact name — comes from the
+ * presenter of its own run family. This panel only owns the list, the controls and the plumbing.
  */
 export function ExecutionPanel({ activity, binding, authorized }: {
   activity: LearningActivity; binding: ComponentBinding; authorized: boolean
@@ -61,10 +35,12 @@ export function ExecutionPanel({ activity, binding, authorized }: {
   const rerun = async () => {
     setNote('')
     try {
+      // Only a format 1 aggregate component re-runs from this panel; other families own their form.
+      if (binding.definition.manifest.formatVersion !== 1) { setNote('这类组件从它自己的实验区发起运行。'); return }
       const current = readComponentState(workspace, binding, instanceId)
       const action = await executionAction({ workspace, binding, instanceId,
         receiver: { receiverId: execution.receiver.identity.receiverId, location: 'local', kind: 'execution' },
-        operationId: binding.definition.manifest.formatVersion === 1 ? binding.definition.manifest.operations?.[0]?.operationId ?? 'aggregate' : 'aggregate',
+        operationId: binding.definition.manifest.operations?.[0]?.operationId ?? 'aggregate',
         parameters: (current.content as { parameters: unknown }).parameters,
         expectedContentId: current.contentId, requestId: crypto.randomUUID() })
       await execution.submit(action)
@@ -101,63 +77,46 @@ export function ExecutionPanel({ activity, binding, authorized }: {
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = artifact.name; anchor.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
+  const supported = binding.definition.manifest.formatVersion === 1
   return <section className="execution-panel" aria-label="计算记录">
     <header>
-      <h2>计算记录</h2>
-      <button type="button" className="ws-btn ghost" disabled={!canRun} onClick={() => void rerun()}>用当前表格重新运行</button>
+      <h2>{supported ? '计算记录' : '运行记录'}</h2>
+      {supported && <button type="button" className="ws-btn ghost" disabled={!canRun}
+        onClick={() => void rerun()}>用当前表格重新运行</button>}
     </header>
     {note && <p role="status" className="execution-note">{note}</p>}
     {state.error && <p role="alert" className="execution-warn">{state.error}</p>}
     {!state.ready ? <p className="execution-hint">正在读取本机执行记录…</p>
-      : records.length === 0 ? <p className="execution-hint">还没有计算记录。在上方表格视图里选好分组列与数值列后运行计算。</p>
+      : records.length === 0 ? <p className="execution-hint">{supported
+        ? '还没有计算记录。在上方表格视图里选好分组列与数值列后运行计算。'
+        : '还没有运行记录。在实验区设置输入后运行一次。'}</p>
       : <ol className="execution-records">
-        {records.map(record => {
-          const parameters = record.action.execution.parameters as Parameters
-          const basis = record.action.execution.basis.state
-          const result = record.query.output?.output as Result | undefined
-          const rows = inputRows(record.action)
-          const changed = basis !== null && !sameContent(record.action, currentFile?.value)
-          const terminal = isTerminalExecutionState(record.query.state)
-          return <li key={record.requestId} data-execution-request-id={record.requestId} tabIndex={-1}>
-            <p className="execution-title">{binding.configuration.title} · {record.action.execution.operation.operationId} · {stateLabel(record.query)}</p>
-            <p className="execution-hint">{`参数：按「${parameters.groupColumn || '未选'}」分组，数值列「${parameters.valueColumn || '未选'}」，方式 ${aggregates[parameters.aggregate] ?? parameters.aggregate}${rows === null ? '' : `；该次输入共 ${rows} 行`}。`}</p>
-            {changed && <p className="execution-warn">当前表格已改动：这份结果对应提交时的表格，不是现在的内容。</p>}
-            {result && <p className="execution-hint">总计 {display(result.value)}，共 {result.groups.length} 组。</p>}
-            {result && record.query.output && <ResultReferences activity={activity} binding={binding} record={record} authorized={canRead} />}
-            {record.query.reason && <p className="execution-warn">{record.query.reason.detail}</p>}
-            <div className="execution-actions">
-              <button type="button" className="ws-btn ghost" disabled={!canRead} onClick={() => void query(record.requestId)}>核对状态</button>
-              {!terminal && <button type="button" className="ws-btn ghost" disabled={workspace.isReadOnly()} onClick={() => void stop(record.requestId)}>停止</button>}
-              {record.query.output?.artifact && <button type="button" className="ws-btn ghost"
-                disabled={!canRead} onClick={() => void download(record.requestId)}>下载 CSV</button>}
-            </div>
-          </li>
-        })}
+        {records.map(record => <RecordItem key={record.requestId} activity={activity} binding={binding} record={record}
+          currentValue={currentFile?.value} authorized={canRead} readOnly={workspace.isReadOnly()}
+          onQuery={query} onStop={stop} onDownload={download} />)}
       </ol>}
   </section>
 }
 
-function ResultReferences({ activity, binding, record, authorized }: { activity: LearningActivity; binding: ComponentBinding; record: ExecutionRecord; authorized: boolean }) {
-  const output = record.query.output!, root = useRef<HTMLDetailsElement>(null)
-  const select = useSemanticSource({ source: authorized ? componentSource(activity, binding, record.requestId, output.contentId,
-    { requestId: record.requestId, executionRef: record.executionRef }) : null,
-    title: `${binding.configuration.title} · 固定聚合结果`, content: output.output,
-    locate: reference => {
-      const keys = reference.range.target?.groupKeys
-      if (!Array.isArray(keys)) return { ok: false, reason: '范围适配不可用，副本仍保留。' }
-      const row = root.current?.querySelector<HTMLButtonElement>(`[data-group-key="${CSS.escape(String(keys[0]))}"]`)
-      if (!row) return { ok: false, reason: '分组已不可用，副本仍保留。' }
-      root.current!.open = true; row.focus(); row.scrollIntoView({ block: 'nearest' }); return { ok: true }
-    } })
-  // Reference selections are snapshots; they never rerun the computation.
-  const result = output.output as { groups: { key: string; value: number; count: number }[] }
-  return <details ref={root}><summary>聚合分组</summary><ul>
-    {result.groups.map(group => <li key={group.key}>
-      <button type="button" className="ws-btn ghost" disabled={!authorized} data-group-key={group.key}
-        onClick={event => { const element = event.currentTarget; select({ kind: 'semantic', formatVersion: 1, typeId: 'aggregation-groups', version: 1,
-          target: { groupKeys: [group.key], fields: ['count', 'value'] }, start: 0, end: 1 }, () => element.getBoundingClientRect(), event.nativeEvent) }}>
-        {group.key || '空分组'}：{display(group.value)}（{group.count} 行）
-      </button>
-    </li>)}
-  </ul></details>
+function RecordItem({ activity, binding, record, currentValue, authorized, readOnly, onQuery, onStop, onDownload }: {
+  activity: LearningActivity; binding: ComponentBinding; record: ExecutionRecord
+  currentValue: string | undefined; authorized: boolean; readOnly: boolean
+  onQuery: (requestId: string) => Promise<void>; onStop: (requestId: string) => Promise<void>
+  onDownload: (requestId: string) => Promise<void>
+}) {
+  const presenter = recordPresenters.find(record.action)
+  const terminal = isTerminalExecutionState(record.query.state)
+  return <li data-execution-request-id={record.requestId} tabIndex={-1}>
+    <p className="execution-title">{binding.configuration.title} · {stateLabel(record.query)}</p>
+    {presenter
+      ? presenter.Detail({ activity, binding, record, currentValue, authorized })
+      : <p className="execution-hint">这条记录来自本产品未登记呈现的运行类型，只显示真实状态与诊断，不推断其含义。</p>}
+    {record.query.reason && <p className="execution-warn">{record.query.reason.detail}</p>}
+    <div className="execution-actions">
+      <button type="button" className="ws-btn ghost" disabled={!authorized} onClick={() => void onQuery(record.requestId)}>核对状态</button>
+      {!terminal && <button type="button" className="ws-btn ghost" disabled={readOnly} onClick={() => void onStop(record.requestId)}>停止</button>}
+      {record.query.output?.artifact && <button type="button" className="ws-btn ghost"
+        disabled={!authorized} onClick={() => void onDownload(record.requestId)}>{presenter?.artifactLabel ?? '下载结果'}</button>}
+    </div>
+  </li>
 }

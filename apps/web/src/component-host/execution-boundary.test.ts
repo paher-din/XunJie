@@ -6,6 +6,7 @@ import { ReliableWorkspace } from '../reliable-workspace'
 import { digestOf, executionAction } from '../tool-execution/action'
 import { BrowserExecutionReceiver } from '../tool-execution/receiver'
 import { ExecutionController } from '../tool-execution/controller'
+import { createAdapterRegistry } from '../tool-execution/adapters'
 import { createComponentBridge } from './bridge'
 
 it.each(['closed', 'forbidden', 'capability', 'current'] as const)(
@@ -22,7 +23,7 @@ it.each(['closed', 'forbidden', 'capability', 'current'] as const)(
       await receiver.accept(action, await digestOf(action))
     }, cancel: async () => {} }
     const transport = { accept: unused, read: async () => null, report: unused, stop: unused, result: unused }
-    const controller = new ExecutionController(key, receiver, actions, transport, { load: unused })
+    const controller = new ExecutionController(key, receiver, actions, transport, createAdapterRegistry({ provider: { load: unused } }))
     let allowed = true, runnable = true
     const bridge = createComponentBridge(workspace, scope.activityId, binding, () => allowed, { controller, canRun: () => runnable })
     let enter!: () => void, release!: () => void
@@ -68,7 +69,8 @@ it('a component can query its own run but cannot query or stop another instance 
     await receiver.accept(action, await digestOf(action)); return action
   }
   const own = await make(binding), foreign = await make(other)
-  const controller = new ExecutionController(key, receiver, actions, transport, { load: async () => { throw new Error('not dispatched') } })
+  const controller = new ExecutionController(key, receiver, actions, transport,
+    createAdapterRegistry({ provider: { load: async () => { throw new Error('not dispatched') } } }))
   const bridge = createComponentBridge(workspace, scope.activityId, binding, () => true, { controller, canRun: () => true })
   const message = (method: string, requestId: string) => ({ hostApiVersion: 1, connectionId: bridge.connectionId,
     instanceId: bridge.instanceId, messageId: crypto.randomUUID(), method,
@@ -92,7 +94,7 @@ it('answers a planned operation from real browser facts and never turns a missin
   const unused = async (): Promise<never> => { throw new Error('not dispatched') }
   const transport = { accept: unused, read: async () => null, report: unused, stop: unused, result: unused }
   const controller = new ExecutionController(key, receiver, { createExecution: async () => {}, cancel: async () => {} }, transport,
-    { load: async () => { throw new Error('not dispatched') } })
+    createAdapterRegistry({ provider: { load: async () => { throw new Error('not dispatched') } } }))
   const plan: CourseExecutionPlan = { planId: 'table-run', planVersion: 1, planDigest: 'c'.repeat(64),
     components: [{ key: 'table', definitionDigest: binding.definition.digest,
       configurationDigest: await digestOf(binding.configuration), operations: ['aggregate'] }],

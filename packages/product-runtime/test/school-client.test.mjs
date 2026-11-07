@@ -110,6 +110,12 @@ test('installed client forwards the course surface and rejects malformed or fore
     device: { platform: 'test-platform', browser: 'Chrome', browserVersion: '156', features: [], preparationImplementationVersion: 1 },
     status: 'ready', reason: 'none', stage: 'activate', capabilities: [], durationMs: 1, resourceBytes: 100, cacheHit: false, preview: false };
   const reportReceipt = { reportId: randomUUID(), report };
+  // A real toolchain file is larger than every other release payload, so its base64 body is the case that
+  // would have failed a script-sized transport bound.
+  const runtimeFileBytes = 2_362_520;
+  const runtimeResource = { resourceId: randomUUID(), path: 'ivl.wasm', role: 'toolchain-wasm',
+    sha256: 'c'.repeat(64), byteLength: runtimeFileBytes, mediaType: 'application/wasm',
+    contentBase64: 'A'.repeat(Math.ceil(runtimeFileBytes / 3) * 4) };
   const receiver = { receiverId: 'school-question-receiver', location: 'remote', kind: 'question' };
   const actionInput = { requestId: actionId, scope: { environmentId: grant.identity.environmentId,
     spaceId: grant.identity.spaceId, principalId: grant.identity.principalId, activityId: activity.activityId }, receiver,
@@ -126,6 +132,12 @@ test('installed client forwards the course surface and rejects malformed or fore
     else if (url.endsWith('/api/learning/releases/' + releaseId + '/components/table/algorithm')) {
       response.end(JSON.stringify(algorithmBundle));
     } else if (url.endsWith('/components/annotation/dependencies/mark-js')) response.end(JSON.stringify(dependencyContent));
+    // A runtime resource is the one release payload sized for a toolchain file; it must survive forwarding.
+    else if (url.endsWith('/components/alu/resources/ivl.wasm')) response.end(JSON.stringify(runtimeResource));
+    // A malformed one is refused, not handed on as if it were bytes.
+    else if (url.endsWith('/components/alu/resources/malformed.wasm')) response.end(JSON.stringify({ resourceId: randomUUID() }));
+    // The same bytes on a route the manifest does not address are refused before any response is read.
+    else if (url.endsWith('/components/alu/resources/ivl.wasm/extra')) response.end(JSON.stringify(runtimeResource));
     else if (url.endsWith('/components/annotation/dependencies/broken')) response.end(JSON.stringify({ dependencyId: 'broken' }));
     else if (url.endsWith('/components/annotation/preparation-reports')) response.end(JSON.stringify([report]));
     else if (url.endsWith('/components/annotation/preparation-report')) response.end(JSON.stringify(reportReceipt));
@@ -233,6 +245,14 @@ test('installed client forwards the course surface and rejects malformed or fore
       published.algorithmBase64);
     assert.equal((await api(`releases/${releaseId}/components/table/algorithm/extra`, undefined, remote)).status, 403);
     assert.deepEqual((await api(`releases/${releaseId}/components/annotation/dependencies/mark-js`, undefined, remote)).value, dependencyContent);
+    // Every declared role is fetchable, toolchain included: those bytes belong to the release, not the product.
+    assert.deepEqual((await api(`releases/${releaseId}/components/alu/resources/ivl.wasm`, undefined, remote)).value, runtimeResource);
+    assert.equal((await api(`releases/${releaseId}/components/alu/resources/malformed.wasm`, undefined, remote)).status, 503,
+      'a resource response that does not match its schema is an upstream failure');
+    assert.equal((await api(`releases/${releaseId}/components/alu/resources/ivl.wasm/extra`, undefined, remote)).status, 503,
+      'a well-formed nested path cannot receive bytes labelled as another resource path');
+    assert.equal((await api(`releases/${releaseId}/components/alu/resources/${'nested/'.repeat(10)}ivl.wasm`, undefined, remote)).status, 403,
+      'a path beyond the declared depth is refused before any response is read');
     assert.equal((await api(`releases/${releaseId}/components/annotation/dependencies/broken`, undefined, remote)).status, 503);
     assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-reports`, undefined, remote)).value, [report]);
     assert.deepEqual((await api(`releases/${releaseId}/components/annotation/preparation-report`, { reportId: reportReceipt.reportId, report }, remote)).value, reportReceipt);

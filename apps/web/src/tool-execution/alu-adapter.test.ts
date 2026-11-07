@@ -1,0 +1,103 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { executionActionV3Schema, type ExecutionActionV3 } from '@xunjie/contracts/execution'
+import { expectedAlu, indexInputs, type AluRow } from './adapters/alu-check'
+
+const mock = vi.hoisted(() => ({ variant: 'correct' as 'correct' | 'drop-carry' | 'x-reserved' }))
+vi.mock('./icarus-runtime', () => ({
+  aluOperationIds: ['run-single', 'observe-enabled', 'check-all'],
+  icarusProfile: { adapterId: 'icarus-alu', adapterVersion: 1, operationIds: ['run-single', 'observe-enabled', 'check-all'], memoryMiB: 256 },
+  verifiedIcarus: async () => ({
+    async compile() { return { status: 'completed', stage: 'compile', diagnostics: [], cacheHit: false,
+      artifact: { version: 1, dependencyId: 'd'.repeat(64), bundleIdentity: 'b'.repeat(64), program: new Uint8Array([1]),
+        programSha256: 'e'.repeat(64) } } },
+    async simulate(request: { plusargs?: string[]; expectedIndices?: number[] }) {
+      const round = Number(request.plusargs?.find(arg => arg.startsWith('+ROUND='))?.split('=')[1] ?? 0)
+      const sample = Number(request.plusargs?.find(arg => arg.startsWith('+SAMPLE='))?.split('=')[1] ?? 1)
+      const rows: AluRow[] = (request.expectedIndices ?? []).map(index => {
+        const inputs = indexInputs(index)
+        if (mock.variant === 'x-reserved' && inputs.M === 1 && inputs.S !== 0) return { index, f: 'xxxx', cout: 'x' }
+        const value = expectedAlu(inputs)
+        return mock.variant === 'drop-carry' && inputs.M === 1 && inputs.S === 0
+          ? { index, f: value.f, cout: '0' } : { index, f: value.f, cout: value.cout }
+      })
+      return { status: 'completed', stage: 'simulate', diagnostics: [], dependencyId: 'd'.repeat(64),
+        output: [], vcd: `$enddefinitions $end\n#${round}${sample}\n`, observations: rows,
+        observationState: mock.variant === 'x-reserved' ? 'complete-with-unknown' : 'complete' }
+    },
+  }),
+}))
+
+const identity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(),
+  activityId: crypto.randomUUID() }
+const uuid = () => crypto.randomUUID()
+const scaffoldResourceId = uuid()
+const action = (operationId: 'check-all' | 'run-single', parameters: unknown): ExecutionActionV3 =>
+  executionActionV3Schema.parse({ protocolVersion: 3, kind: 'execution', requestId: uuid(), scope: identity,
+    receiver: { receiverId: 'browser-execution', location: 'local', kind: 'execution' },
+    execution: {
+      instance: { instanceId: `${identity.activityId}:alu`, key: 'alu', componentId: uuid(), componentVersion: 2,
+        definitionDigest: 'a'.repeat(64), hostApiVersion: 1, stateVersion: 2 },
+      operation: { operationId, effect: 'execute' }, parameters,
+      basis: { works: [{ objectId: uuid(), contentId: uuid(), name: 'alu.sv', kind: 'code', encoding: 'utf8',
+        mediaType: 'text/plain', value: 'module alu; endmodule' }],
+        runtime: { adapterId: 'icarus-alu', adapterVersion: 1, bundleIdentity: 'b'.repeat(64), resources: [{
+          resourceId: scaffoldResourceId, sha256: 'c'.repeat(64), byteLength: 20, path: 'check.sv', role: 'scaffold',
+          mediaType: 'text/plain' }] },
+        compile: { top: 'experiment', entryFiles: ['alu.sv'], includeDirs: [] },
+        observation: { scaffoldResourceId, scaffoldVersion: 1, ports: { result: 'F', carry: 'Cout' },
+          resultFormat: 'xunjie-observations-v1' },
+        course: { releaseId: uuid(), behaviorRuleDigest: 'd'.repeat(64), planDigest: 'e'.repeat(64) },
+        expected: { stateContentId: null } },
+      limits: { compileTimeoutMs: 1000, simulateTimeoutMs: 1000, jobTimeoutMs: 10000, memoryMiB: 256,
+        inputBytes: 1048576, textBytes: 2097152, vcdBytes: 8388608, resultBytes: 16777216,
+        concurrentJobs: 1, queuedJobs: 1 },
+      plan: { planId: 'browser-job', planVersion: 1, planDigest: 'f'.repeat(64), location: 'browser', kind: 'job' },
+      initiator: { kind: 'student', principalId: identity.principalId },
+    } })
+const context = { signal: new AbortController().signal, checkpoint: async () => {} }
+
+beforeEach(() => { mock.variant = 'correct' })
+
+describe('ALU adapter operations', () => {
+  it('declares the three ALU operations and validates their parameters before acceptance', async () => {
+    const { createAluAdapter } = await import('./adapters/alu')
+    const adapter = createAluAdapter(async () => ({ 'check.sv': new TextEncoder().encode('module experiment; endmodule') }))
+    expect(adapter.handles(action('check-all', {}))).toBe(true)
+    expect(adapter.handles(action('run-single', { A: 0, B: 0, M: 0, S: 0, Cin: 0 }))).toBe(true)
+    expect(() => adapter.validateAndFreeze(action('check-all', { A: 0 }))).toThrow('invalid-input')
+    expect(() => adapter.validateAndFreeze(action('run-single', { A: 16, B: 0, M: 0, S: 0, Cin: 0 }))).toThrow('invalid-input')
+  })
+
+  it('packs a pass report, all 16384 observations, diagnostics and the four VCDs in four retained resources', async () => {
+    const { createAluAdapter } = await import('./adapters/alu')
+    const adapter = createAluAdapter(async () => ({ 'check.sv': new TextEncoder().encode('module experiment; endmodule') }))
+    const result = await adapter.run(action('check-all', {}), context)
+    expect(result.resources.map(resource => resource.name)).toEqual(['check-report.json', 'check-observations.json',
+      'diagnostics.txt', 'check-traces.json'])
+    const report = JSON.parse(result.resources[0]!.text)
+    expect(report).toMatchObject({ kind: 'alu-check', verdict: 'pass', totalInputs: 4096, plannedSamples: 16384,
+      sampledRows: 16384, comparedRows: 16384, fullyComparedInputs: 4096, reservedCovered: 1536,
+      behaviorErrorInputs: 0, unknownInputs: 0, inconsistentInputs: 0, missingInputs: 0, roundsCompleted: 4 })
+    const observations = JSON.parse(result.resources[1]!.text)
+    expect(observations.rounds).toHaveLength(4)
+    expect(observations.rounds.every((round: { rows: unknown[] }) => round.rows.length === 4096)).toBe(true)
+    expect(observations.counterexamples).toHaveLength(0)
+    const traces = JSON.parse(result.resources[3]!.text)
+    expect(traces.rounds).toHaveLength(4)
+    expect(traces.rounds.every((round: { vcd: string | null }) => typeof round.vcd === 'string')).toBe(true)
+    expect(result.output).toMatchObject({ verdict: 'pass', totalInputs: 4096, roundsCompleted: 4 })
+  })
+
+  it('reports the fixed negative variants without inflating their input counts', async () => {
+    const { createAluAdapter } = await import('./adapters/alu')
+    const adapter = createAluAdapter(async () => ({ 'check.sv': new TextEncoder().encode('module experiment; endmodule') }))
+    mock.variant = 'drop-carry'
+    const drop = await adapter.run(action('check-all', {}), context)
+    expect(JSON.parse(drop.resources[0]!.text)).toMatchObject({ verdict: 'fail', behaviorErrorInputs: 256,
+      counterexampleTotal: 256, comparedRows: 16384 })
+    mock.variant = 'x-reserved'
+    const x = await adapter.run(action('check-all', {}), context)
+    expect(JSON.parse(x.resources[0]!.text)).toMatchObject({ verdict: 'fail', unknownInputs: 1536,
+      fullyComparedInputs: 2560, counterexampleTotal: 1536 })
+  })
+})

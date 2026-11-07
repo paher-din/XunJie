@@ -1,0 +1,1650 @@
+{
+  "issue": 194,
+  "status": "engineering-browser-and-native-ime-passed",
+  "candidate": "wp04-194d",
+  "baseline": "33aada1831b83fd0f29f7431993598a835439951",
+  "engineering": {
+    "status": "passed",
+    "exitCode": 0,
+    "node": "v24.21.0",
+    "originalSummarySha256": "8abd6e0752447c2a67f13943ca37edd96d7f0a85dd5381ddd2494880e58b9ebf",
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "durationMs": 10134
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "durationMs": 503
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "durationMs": 295676
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "durationMs": 292752
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "durationMs": 194656
+      }
+    ]
+  },
+  "distributions": {
+    "darwin-arm64": "471323a0d81fbb30b21a32be4646e1939141dd3244f493e35f754fa9abc25bcd",
+    "win32-x64": "d021e6b8992930b0a3d52e93aff3ecfb6195a23b12f37b4ebc23abbc421ee03d",
+    "linux-x64": "0bfaf63820ad7cf4198475e8b094fdc238d67f807381b3e2b00d50764b2e926f"
+  },
+  "runs": [
+    {
+      "kind": "alu-learning-194",
+      "issue": 194,
+      "label": "darwin-arm64-product",
+      "mode": "product",
+      "suite": "all",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v24.21.0",
+      "browser": "156.0.8078.80",
+      "headed": true,
+      "browserChannel": "chrome",
+      "startedAt": "2026-11-07T08:25:00.445Z",
+      "finishedAt": "2026-11-07T08:26:23.836Z",
+      "status": "passed",
+      "acceptanceComplete": true,
+      "endpoint": "http://127.0.0.1:49466",
+      "activityId": "225faafd-5c08-45ba-b42c-23ac523128ad",
+      "releaseId": "19200000-0000-4000-8000-000000000176",
+      "binding": {
+        "key": "alu",
+        "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d"
+      },
+      "pageSecurity": {},
+      "faults": [
+        {
+          "id": "accept-loss",
+          "kind": "accept",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "50bceeae-c07e-4ac3-a74e-83a11ddb4e68",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "local-result",
+          "kind": "result",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "7cebe3e2-0507-4209-876a-a0c9482044a8"
+        },
+        {
+          "id": "retain-loss",
+          "kind": "result",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "c36bb027-b9cb-4948-b4e4-1599b703f58b",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "final-report-lag",
+          "kind": "report",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "5d61547d-e28e-4750-a1c6-aba9d5860a88"
+        },
+        {
+          "id": "draft-loss",
+          "kind": "drafts",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "eea4ade7-ed43-4d19-86ef-210aa919abbc",
+          "baseRevision": 9,
+          "upstreamStatus": 200
+        },
+        {
+          "id": "works-loss",
+          "kind": "workspaces",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "8709d1e6-b9ae-428a-891e-e5e792dade32",
+          "baseRevision": 39,
+          "upstreamStatus": 200
+        }
+      ],
+      "cleanup": [
+        {
+          "stage": "execution-and-sync-drain",
+          "status": "passed",
+          "requestIds": [
+            "1848b732-4238-4ecd-92f8-7d63a6f704bd",
+            "3176b9bd-e589-4f5b-853c-051b2f3412e6",
+            "3febb8ef-88ce-430e-9cee-32cec5249e2d",
+            "50bceeae-c07e-4ac3-a74e-83a11ddb4e68",
+            "575971a1-9a7a-4136-826c-1b7c10b00ea4",
+            "5bfbba13-3e6d-41d9-b3f1-4da5cb2712b1",
+            "5d61547d-e28e-4750-a1c6-aba9d5860a88",
+            "6d3cb35f-4bff-40f4-8215-d12524d67212",
+            "7cebe3e2-0507-4209-876a-a0c9482044a8",
+            "96677b34-b2e5-4f89-ba2c-e07800ce7e7c",
+            "b3750e7c-97d0-48ee-9a68-482aa95e41e5",
+            "ba2bfa7c-5ae8-48c7-bcb3-4fbdba76dbdf",
+            "c36bb027-b9cb-4948-b4e4-1599b703f58b",
+            "ceba25ab-a90f-4049-abc5-ea99feb55025",
+            "dffc597f-dc35-449e-9dbd-6564babbd680",
+            "f8b67cc2-e410-4422-acf5-adbcd4e75580"
+          ],
+          "stopRequestedThroughExistingUi": [],
+          "localDatabaseAbsent": false,
+          "originalAssociationsRetransmitted": [],
+          "durationMs": 2237
+        },
+        {
+          "stage": "runtime.stop",
+          "status": "passed"
+        },
+        {
+          "stage": "runtime.deleteEnvironment",
+          "status": "passed",
+          "environmentId": "11965f29-b815-471b-927b-58ab7a2ecd2a"
+        }
+      ],
+      "limitations": [
+        "Each report covers only the current client and endpoint. Run independently on Mac product, Windows product, Mac school HTTPS, and Windows school HTTPS.",
+        "No teaching-effect assessment. Remote PostgreSQL placement is not independently inspected by this browser probe."
+      ],
+      "originalReportSha256": "f26263a061c62690e2fbe458d54ee08a92b435c2666a8740668baa5c20df4ed1",
+      "localOriginalReport": ".verification/wp04-194/mac-product-d2/report.json",
+      "cases": [
+        {
+          "id": "setup",
+          "name": "正式包临时产品或独立学校 HTTPS、真实学校成员登录与新活动",
+          "group": "core",
+          "status": "passed",
+          "assertions": 12,
+          "startedAt": "2026-11-07T08:25:00.446Z",
+          "finishedAt": "2026-11-07T08:25:04.676Z"
+        },
+        {
+          "id": "enable",
+          "name": "Monaco 输入工程 fixture，真实运行启用原作品",
+          "group": "core",
+          "status": "passed",
+          "assertions": 8,
+          "startedAt": "2026-11-07T08:25:04.676Z",
+          "finishedAt": "2026-11-07T08:25:05.677Z"
+        },
+        {
+          "id": "direct-reflection",
+          "name": "直接观察不重跑即可保存解释，原预测缺项保持缺项",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:25:05.677Z",
+          "finishedAt": "2026-11-07T08:25:07.447Z"
+        },
+        {
+          "id": "question-code",
+          "name": "中文问题不发送，现有 CodeReferenceSource 加入代码引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:25:07.447Z",
+          "finishedAt": "2026-11-07T08:25:09.285Z"
+        },
+        {
+          "id": "hold",
+          "name": "候选输入与预测不自动 observe，实际值、旧报告与历史不出现在 DOM",
+          "group": "core",
+          "status": "passed",
+          "assertions": 29,
+          "startedAt": "2026-11-07T08:25:09.285Z",
+          "finishedAt": "2026-11-07T08:25:12.539Z"
+        },
+        {
+          "id": "candidate-reference",
+          "name": "候选用例加入原问题草稿，本机与服务副本一致",
+          "group": "core",
+          "status": "passed",
+          "assertions": 15,
+          "startedAt": "2026-11-07T08:25:12.539Z",
+          "finishedAt": "2026-11-07T08:25:13.442Z"
+        },
+        {
+          "id": "frozen-comparison",
+          "name": "真实边界结果与固定预测；立即编辑保留新草稿，历史仍是原值",
+          "group": "core",
+          "status": "passed",
+          "assertions": 31,
+          "startedAt": "2026-11-07T08:25:13.442Z",
+          "finishedAt": "2026-11-07T08:25:15.869Z"
+        },
+        {
+          "id": "reflections",
+          "name": "两次不可变解释修订及原父链，同一问题草稿保留两份引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 36,
+          "startedAt": "2026-11-07T08:25:15.869Z",
+          "finishedAt": "2026-11-07T08:25:21.151Z"
+        },
+        {
+          "id": "waveform",
+          "name": "真实 VCD 信号、原 tick 范围、缩放及固定波形引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 51,
+          "startedAt": "2026-11-07T08:25:21.151Z",
+          "finishedAt": "2026-11-07T08:25:22.435Z"
+        },
+        {
+          "id": "prior-sources",
+          "name": "同作品同输入重跑保留原来源，不作为独立预测",
+          "group": "core",
+          "status": "passed",
+          "assertions": 8,
+          "startedAt": "2026-11-07T08:25:22.435Z",
+          "finishedAt": "2026-11-07T08:25:23.917Z"
+        },
+        {
+          "id": "operation",
+          "name": "操作区别用例 A10 XOR B12 实际 0110 / 0",
+          "group": "core",
+          "status": "passed",
+          "assertions": 12,
+          "startedAt": "2026-11-07T08:25:23.917Z",
+          "finishedAt": "2026-11-07T08:25:25.649Z"
+        },
+        {
+          "id": "blank",
+          "name": "留空直接观察，缺项保持未填写",
+          "group": "core",
+          "status": "passed",
+          "assertions": 14,
+          "startedAt": "2026-11-07T08:25:25.649Z",
+          "finishedAt": "2026-11-07T08:25:27.349Z"
+        },
+        {
+          "id": "restore",
+          "name": "刷新与工具切换恢复输入、预测、解释草稿、波形选择、引用和问题",
+          "group": "core",
+          "status": "passed",
+          "assertions": 60,
+          "startedAt": "2026-11-07T08:25:27.349Z",
+          "finishedAt": "2026-11-07T08:25:34.161Z"
+        },
+        {
+          "id": "layout",
+          "name": "浅深主题、1440/1024/900px 真实页面与键盘焦点可操作",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:25:34.161Z",
+          "finishedAt": "2026-11-07T08:25:34.761Z"
+        },
+        {
+          "id": "accept-loss",
+          "name": "真实接收确认丢失一次；接收中历史快速选择保持原选择",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 18,
+          "startedAt": "2026-11-07T08:25:34.761Z",
+          "finishedAt": "2026-11-07T08:25:39.733Z"
+        },
+        {
+          "id": "local-result",
+          "name": "本地完成而服务未保留时，引用待同步；恢复后原请求确认且不重算",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 59,
+          "startedAt": "2026-11-07T08:25:39.733Z",
+          "finishedAt": "2026-11-07T08:25:44.791Z"
+        },
+        {
+          "id": "retain-loss",
+          "name": "真实结果已保留但确认丢失一次，仅重试原关联",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 25,
+          "startedAt": "2026-11-07T08:25:44.791Z",
+          "finishedAt": "2026-11-07T08:25:50.123Z"
+        },
+        {
+          "id": "final-report-lag",
+          "name": "原结果已到而服务终态滞后，合法引用保持可重试并在终态后确认",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 56,
+          "startedAt": "2026-11-07T08:25:50.123Z",
+          "finishedAt": "2026-11-07T08:25:54.086Z"
+        },
+        {
+          "id": "draft-loss",
+          "name": "问题草稿真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 50,
+          "startedAt": "2026-11-07T08:25:54.086Z",
+          "finishedAt": "2026-11-07T08:25:55.765Z"
+        },
+        {
+          "id": "works-loss",
+          "name": "作品真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 10,
+          "startedAt": "2026-11-07T08:25:55.765Z",
+          "finishedAt": "2026-11-07T08:25:58.856Z"
+        },
+        {
+          "id": "four-state",
+          "name": "真实 X 与 Z 结果保留四态，不伪造二值比较",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 30,
+          "startedAt": "2026-11-07T08:25:58.856Z",
+          "finishedAt": "2026-11-07T08:26:03.987Z"
+        },
+        {
+          "id": "compile-failure",
+          "name": "真实编译失败不启用失败作品，不伪造 F/Cout",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 9,
+          "startedAt": "2026-11-07T08:26:03.987Z",
+          "finishedAt": "2026-11-07T08:26:06.003Z"
+        },
+        {
+          "id": "incomplete",
+          "name": "安全输入启用后，比较期间编辑进入 hold 并停止原执行，保留真实不完整观察",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 34,
+          "startedAt": "2026-11-07T08:26:06.003Z",
+          "finishedAt": "2026-11-07T08:26:14.500Z"
+        },
+        {
+          "id": "two-tabs",
+          "name": "双标签真实 workspace 冲突、明确选择原内容并保留双方",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 6,
+          "startedAt": "2026-11-07T08:26:14.500Z",
+          "finishedAt": "2026-11-07T08:26:21.061Z"
+        },
+        {
+          "id": "network-unsent",
+          "name": "真实页面来源、Worker、零问题派发与零伪造响应",
+          "group": "core",
+          "status": "passed",
+          "assertions": 46,
+          "startedAt": "2026-11-07T08:26:21.061Z",
+          "finishedAt": "2026-11-07T08:26:21.151Z"
+        }
+      ],
+      "networkEvidence": {
+        "origins": [
+          "http://127.0.0.1:49466"
+        ],
+        "workers": [
+          "http://127.0.0.1:49466/assets/worker-AqHx1oS1.js"
+        ],
+        "questionSends": 0,
+        "questionActions": 0
+      }
+    },
+    {
+      "kind": "alu-learning-194",
+      "issue": 194,
+      "label": "windows11-x64-product",
+      "mode": "product",
+      "suite": "all",
+      "platform": "win32",
+      "arch": "x64",
+      "node": "v24.21.0",
+      "browser": "156.0.8078.81",
+      "headed": true,
+      "browserChannel": "chrome",
+      "startedAt": "2026-11-07T08:25:45.395Z",
+      "finishedAt": "2026-11-07T08:27:55.584Z",
+      "status": "passed",
+      "acceptanceComplete": true,
+      "endpoint": "http://127.0.0.1:58327",
+      "activityId": "8d7cd51e-c356-4a3a-8338-d078175b9f28",
+      "releaseId": "19200000-0000-4000-8000-000000000176",
+      "binding": {
+        "key": "alu",
+        "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d"
+      },
+      "pageSecurity": {},
+      "faults": [
+        {
+          "id": "accept-loss",
+          "kind": "accept",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "01363f0b-5754-4532-9662-eedd047359a9",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "local-result",
+          "kind": "result",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "3849d0ff-853e-4817-adcb-2e128a858aad"
+        },
+        {
+          "id": "retain-loss",
+          "kind": "result",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "c04ea5e3-27c7-4022-8722-0a2861220d65",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "final-report-lag",
+          "kind": "report",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "a7ff4ea1-6cab-462f-9751-a55e0903f4b1"
+        },
+        {
+          "id": "draft-loss",
+          "kind": "drafts",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "e1c0133c-9980-4fe2-a6a6-bcb97131295f",
+          "baseRevision": 9,
+          "upstreamStatus": 200
+        },
+        {
+          "id": "works-loss",
+          "kind": "workspaces",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "485bd0f2-18bf-48de-b835-1c394dd93992",
+          "baseRevision": 44,
+          "upstreamStatus": 200
+        }
+      ],
+      "cleanup": [
+        {
+          "stage": "execution-and-sync-drain",
+          "status": "passed",
+          "requestIds": [
+            "01363f0b-5754-4532-9662-eedd047359a9",
+            "0c367597-af9d-4aad-8102-543bb250765c",
+            "3849d0ff-853e-4817-adcb-2e128a858aad",
+            "46d48e3b-0a06-43ad-b7fa-7271a99abf1f",
+            "61296466-d852-4004-9c41-97dfae6b300a",
+            "6874e961-79f7-4c2c-b6e6-3dcb289b6016",
+            "6f3fc28c-5d2c-4f4c-88db-da32991da3fd",
+            "8e3b5e36-94fc-40bf-96e8-18a37c298063",
+            "99294ad9-a52d-4d7d-bd5c-f5e2a5478486",
+            "9c78688d-c6bb-4fc8-9056-6e816885a5a4",
+            "9ca2cfc1-0034-47c3-951c-9311a342d40c",
+            "a7ff4ea1-6cab-462f-9751-a55e0903f4b1",
+            "c04ea5e3-27c7-4022-8722-0a2861220d65",
+            "ecdf0487-1c62-4216-a660-3beddfb94f2f",
+            "ef1d4e58-7e58-4b15-ada0-7a08d69e67ee",
+            "f96d9a1d-345d-4040-8294-e6aa175d4990"
+          ],
+          "stopRequestedThroughExistingUi": [],
+          "localDatabaseAbsent": false,
+          "originalAssociationsRetransmitted": [],
+          "durationMs": 2774
+        },
+        {
+          "stage": "runtime.stop",
+          "status": "passed"
+        },
+        {
+          "stage": "runtime.deleteEnvironment",
+          "status": "passed",
+          "environmentId": "7a341cbc-68f7-4ab4-87db-ea08131dc6c6"
+        }
+      ],
+      "limitations": [
+        "Each report covers only the current client and endpoint. Run independently on Mac product, Windows product, Mac school HTTPS, and Windows school HTTPS.",
+        "No teaching-effect assessment. Remote PostgreSQL placement is not independently inspected by this browser probe."
+      ],
+      "originalReportSha256": "206c3373efac8762a0fe5c2192acc596a07f56f316671fb19e548057302132a8",
+      "localOriginalReport": ".verification/wp04-194/windows-product-d/report.json",
+      "cases": [
+        {
+          "id": "setup",
+          "name": "正式包临时产品或独立学校 HTTPS、真实学校成员登录与新活动",
+          "group": "core",
+          "status": "passed",
+          "assertions": 12,
+          "startedAt": "2026-11-07T08:25:45.401Z",
+          "finishedAt": "2026-11-07T08:26:06.830Z"
+        },
+        {
+          "id": "enable",
+          "name": "Monaco 输入工程 fixture，真实运行启用原作品",
+          "group": "core",
+          "status": "passed",
+          "assertions": 8,
+          "startedAt": "2026-11-07T08:26:06.830Z",
+          "finishedAt": "2026-11-07T08:26:08.331Z"
+        },
+        {
+          "id": "direct-reflection",
+          "name": "直接观察不重跑即可保存解释，原预测缺项保持缺项",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:26:08.331Z",
+          "finishedAt": "2026-11-07T08:26:10.415Z"
+        },
+        {
+          "id": "question-code",
+          "name": "中文问题不发送，现有 CodeReferenceSource 加入代码引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:26:10.415Z",
+          "finishedAt": "2026-11-07T08:26:13.503Z"
+        },
+        {
+          "id": "hold",
+          "name": "候选输入与预测不自动 observe，实际值、旧报告与历史不出现在 DOM",
+          "group": "core",
+          "status": "passed",
+          "assertions": 29,
+          "startedAt": "2026-11-07T08:26:13.503Z",
+          "finishedAt": "2026-11-07T08:26:17.348Z"
+        },
+        {
+          "id": "candidate-reference",
+          "name": "候选用例加入原问题草稿，本机与服务副本一致",
+          "group": "core",
+          "status": "passed",
+          "assertions": 15,
+          "startedAt": "2026-11-07T08:26:17.348Z",
+          "finishedAt": "2026-11-07T08:26:19.101Z"
+        },
+        {
+          "id": "frozen-comparison",
+          "name": "真实边界结果与固定预测；立即编辑保留新草稿，历史仍是原值",
+          "group": "core",
+          "status": "passed",
+          "assertions": 32,
+          "startedAt": "2026-11-07T08:26:19.101Z",
+          "finishedAt": "2026-11-07T08:26:21.333Z"
+        },
+        {
+          "id": "reflections",
+          "name": "两次不可变解释修订及原父链，同一问题草稿保留两份引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 36,
+          "startedAt": "2026-11-07T08:26:21.333Z",
+          "finishedAt": "2026-11-07T08:26:28.813Z"
+        },
+        {
+          "id": "waveform",
+          "name": "真实 VCD 信号、原 tick 范围、缩放及固定波形引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 51,
+          "startedAt": "2026-11-07T08:26:28.813Z",
+          "finishedAt": "2026-11-07T08:26:31.979Z"
+        },
+        {
+          "id": "prior-sources",
+          "name": "同作品同输入重跑保留原来源，不作为独立预测",
+          "group": "core",
+          "status": "passed",
+          "assertions": 9,
+          "startedAt": "2026-11-07T08:26:31.979Z",
+          "finishedAt": "2026-11-07T08:26:33.940Z"
+        },
+        {
+          "id": "operation",
+          "name": "操作区别用例 A10 XOR B12 实际 0110 / 0",
+          "group": "core",
+          "status": "passed",
+          "assertions": 13,
+          "startedAt": "2026-11-07T08:26:33.940Z",
+          "finishedAt": "2026-11-07T08:26:36.645Z"
+        },
+        {
+          "id": "blank",
+          "name": "留空直接观察，缺项保持未填写",
+          "group": "core",
+          "status": "passed",
+          "assertions": 14,
+          "startedAt": "2026-11-07T08:26:36.645Z",
+          "finishedAt": "2026-11-07T08:26:38.542Z"
+        },
+        {
+          "id": "restore",
+          "name": "刷新与工具切换恢复输入、预测、解释草稿、波形选择、引用和问题",
+          "group": "core",
+          "status": "passed",
+          "assertions": 57,
+          "startedAt": "2026-11-07T08:26:38.542Z",
+          "finishedAt": "2026-11-07T08:26:45.960Z"
+        },
+        {
+          "id": "layout",
+          "name": "浅深主题、1440/1024/900px 真实页面与键盘焦点可操作",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:26:45.960Z",
+          "finishedAt": "2026-11-07T08:26:46.977Z"
+        },
+        {
+          "id": "accept-loss",
+          "name": "真实接收确认丢失一次；接收中历史快速选择保持原选择",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 19,
+          "startedAt": "2026-11-07T08:26:46.977Z",
+          "finishedAt": "2026-11-07T08:26:53.222Z"
+        },
+        {
+          "id": "local-result",
+          "name": "本地完成而服务未保留时，引用待同步；恢复后原请求确认且不重算",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 58,
+          "startedAt": "2026-11-07T08:26:53.222Z",
+          "finishedAt": "2026-11-07T08:26:59.059Z"
+        },
+        {
+          "id": "retain-loss",
+          "name": "真实结果已保留但确认丢失一次，仅重试原关联",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 24,
+          "startedAt": "2026-11-07T08:26:59.059Z",
+          "finishedAt": "2026-11-07T08:27:04.078Z"
+        },
+        {
+          "id": "final-report-lag",
+          "name": "原结果已到而服务终态滞后，合法引用保持可重试并在终态后确认",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 56,
+          "startedAt": "2026-11-07T08:27:04.078Z",
+          "finishedAt": "2026-11-07T08:27:09.660Z"
+        },
+        {
+          "id": "draft-loss",
+          "name": "问题草稿真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 50,
+          "startedAt": "2026-11-07T08:27:09.660Z",
+          "finishedAt": "2026-11-07T08:27:11.901Z"
+        },
+        {
+          "id": "works-loss",
+          "name": "作品真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 10,
+          "startedAt": "2026-11-07T08:27:11.901Z",
+          "finishedAt": "2026-11-07T08:27:15.090Z"
+        },
+        {
+          "id": "four-state",
+          "name": "真实 X 与 Z 结果保留四态，不伪造二值比较",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 30,
+          "startedAt": "2026-11-07T08:27:15.090Z",
+          "finishedAt": "2026-11-07T08:27:22.775Z"
+        },
+        {
+          "id": "compile-failure",
+          "name": "真实编译失败不启用失败作品，不伪造 F/Cout",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 9,
+          "startedAt": "2026-11-07T08:27:22.775Z",
+          "finishedAt": "2026-11-07T08:27:25.352Z"
+        },
+        {
+          "id": "incomplete",
+          "name": "安全输入启用后，比较期间编辑进入 hold 并停止原执行，保留真实不完整观察",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 31,
+          "startedAt": "2026-11-07T08:27:25.352Z",
+          "finishedAt": "2026-11-07T08:27:36.351Z"
+        },
+        {
+          "id": "two-tabs",
+          "name": "双标签真实 workspace 冲突、明确选择原内容并保留双方",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 6,
+          "startedAt": "2026-11-07T08:27:36.351Z",
+          "finishedAt": "2026-11-07T08:27:50.073Z"
+        },
+        {
+          "id": "network-unsent",
+          "name": "真实页面来源、Worker、零问题派发与零伪造响应",
+          "group": "core",
+          "status": "passed",
+          "assertions": 46,
+          "startedAt": "2026-11-07T08:27:50.073Z",
+          "finishedAt": "2026-11-07T08:27:50.266Z"
+        }
+      ],
+      "networkEvidence": {
+        "origins": [
+          "http://127.0.0.1:58327"
+        ],
+        "workers": [
+          "http://127.0.0.1:58327/assets/worker-AqHx1oS1.js"
+        ],
+        "questionSends": 0,
+        "questionActions": 0
+      }
+    },
+    {
+      "kind": "alu-learning-194",
+      "issue": 194,
+      "label": "darwin-arm64-school-https",
+      "mode": "school-https",
+      "suite": "all",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v24.21.0",
+      "browser": "156.0.8078.80",
+      "headed": true,
+      "browserChannel": "chrome",
+      "startedAt": "2026-11-07T08:26:55.261Z",
+      "finishedAt": "2026-11-07T08:34:12.381Z",
+      "status": "passed",
+      "acceptanceComplete": true,
+      "endpoint": "https://101.201.141.133:8443",
+      "activityId": "33793bf2-291d-4064-a023-580aba44008e",
+      "releaseId": "19200000-0000-4000-8000-000000000176",
+      "binding": {
+        "key": "alu",
+        "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d"
+      },
+      "tls": {
+        "protocol": "TLSv1.3",
+        "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0=",
+        "chainAuthorized": true,
+        "certificatePolicy": "strict-chain-and-exact-SPKI",
+        "validTo": "Nov 11 18:21:45 2026 GMT"
+      },
+      "remote": {
+        "endpoint": "https://101.201.141.133:8443",
+        "resolvedAddresses": [
+          "101.201.141.133"
+        ],
+        "clientLocalProduct": false
+      },
+      "pageSecurity": {
+        "issuer": "WP04-211 Acceptance CA",
+        "protocol": "TLS 1.3",
+        "subjectName": "101.201.141.133",
+        "validFrom": 1793989305,
+        "validTo": 1794421305
+      },
+      "faults": [
+        {
+          "id": "accept-loss",
+          "kind": "accept",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "0fced071-e7a0-43cb-9f59-80066661e8dd",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "local-result",
+          "kind": "result",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "4f99ca7c-9e1e-4274-b6fc-d4f9c7f7b01e"
+        },
+        {
+          "id": "retain-loss",
+          "kind": "result",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "e4b010fc-c2f0-41be-a6d4-a897d3876389",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "final-report-lag",
+          "kind": "report",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "ea8dfb88-cf6b-49da-9c8c-2a89c9390826"
+        },
+        {
+          "id": "draft-loss",
+          "kind": "drafts",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "076169d4-31a3-4509-9f7d-a55d3a8c12ec",
+          "baseRevision": 8,
+          "upstreamStatus": 200
+        },
+        {
+          "id": "works-loss",
+          "kind": "workspaces",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "f237c28c-bc01-4500-a43b-f5bc44e20931",
+          "baseRevision": 32,
+          "upstreamStatus": 200
+        }
+      ],
+      "cleanup": [
+        {
+          "stage": "execution-and-sync-drain",
+          "status": "passed",
+          "requestIds": [
+            "02384771-c4e2-41e4-867e-7423de2db91b",
+            "0c5a6fee-440d-48e0-a073-62f9e261c39e",
+            "0fced071-e7a0-43cb-9f59-80066661e8dd",
+            "3a67d5e8-f1f1-49d7-9522-edea74d5faa7",
+            "4f99ca7c-9e1e-4274-b6fc-d4f9c7f7b01e",
+            "5ce03769-f125-4173-8287-c32209ee2a89",
+            "66b55d31-30ff-40a3-9b84-f99d50e85386",
+            "71b87f58-8fce-451b-9838-787618fdf248",
+            "90c07cc0-3e58-414f-ac86-9eadeff45a20",
+            "a2b7b0b3-47cc-487c-ba92-5195d0ffd375",
+            "d430c508-e6d4-453b-95c8-348fc7e81b48",
+            "e4b010fc-c2f0-41be-a6d4-a897d3876389",
+            "e6fa5318-609e-4de4-8624-7b3eb59678bf",
+            "ea8dfb88-cf6b-49da-9c8c-2a89c9390826",
+            "f6710133-09df-458c-bbbe-d6fa837760d3",
+            "f9b3ea3e-09fd-49cb-8ea8-d70a893ace94"
+          ],
+          "stopRequestedThroughExistingUi": [],
+          "localDatabaseAbsent": false,
+          "originalAssociationsRetransmitted": [],
+          "durationMs": 17518
+        }
+      ],
+      "limitations": [
+        "Each report covers only the current client and endpoint. Run independently on Mac product, Windows product, Mac school HTTPS, and Windows school HTTPS.",
+        "No teaching-effect assessment. Remote PostgreSQL placement is not independently inspected by this browser probe."
+      ],
+      "originalReportSha256": "792fbd501dbddaa327d540dcec0f75466e1f3c97afdc8d626dedbb829aa2ec59",
+      "localOriginalReport": ".verification/wp04-194/mac-school-d/report.json",
+      "cases": [
+        {
+          "id": "setup",
+          "name": "正式包临时产品或独立学校 HTTPS、真实学校成员登录与新活动",
+          "group": "core",
+          "status": "passed",
+          "assertions": 13,
+          "startedAt": "2026-11-07T08:26:55.262Z",
+          "finishedAt": "2026-11-07T08:27:46.536Z"
+        },
+        {
+          "id": "enable",
+          "name": "Monaco 输入工程 fixture，真实运行启用原作品",
+          "group": "core",
+          "status": "passed",
+          "assertions": 12,
+          "startedAt": "2026-11-07T08:27:46.536Z",
+          "finishedAt": "2026-11-07T08:27:51.269Z"
+        },
+        {
+          "id": "direct-reflection",
+          "name": "直接观察不重跑即可保存解释，原预测缺项保持缺项",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:27:51.269Z",
+          "finishedAt": "2026-11-07T08:27:53.253Z"
+        },
+        {
+          "id": "question-code",
+          "name": "中文问题不发送，现有 CodeReferenceSource 加入代码引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:27:53.253Z",
+          "finishedAt": "2026-11-07T08:27:55.128Z"
+        },
+        {
+          "id": "hold",
+          "name": "候选输入与预测不自动 observe，实际值、旧报告与历史不出现在 DOM",
+          "group": "core",
+          "status": "passed",
+          "assertions": 29,
+          "startedAt": "2026-11-07T08:27:55.128Z",
+          "finishedAt": "2026-11-07T08:27:58.256Z"
+        },
+        {
+          "id": "candidate-reference",
+          "name": "候选用例加入原问题草稿，本机与服务副本一致",
+          "group": "core",
+          "status": "passed",
+          "assertions": 15,
+          "startedAt": "2026-11-07T08:27:58.256Z",
+          "finishedAt": "2026-11-07T08:28:01.289Z"
+        },
+        {
+          "id": "frozen-comparison",
+          "name": "真实边界结果与固定预测；立即编辑保留新草稿，历史仍是原值",
+          "group": "core",
+          "status": "passed",
+          "assertions": 34,
+          "startedAt": "2026-11-07T08:28:01.289Z",
+          "finishedAt": "2026-11-07T08:28:07.408Z"
+        },
+        {
+          "id": "reflections",
+          "name": "两次不可变解释修订及原父链，同一问题草稿保留两份引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 36,
+          "startedAt": "2026-11-07T08:28:07.408Z",
+          "finishedAt": "2026-11-07T08:28:21.191Z"
+        },
+        {
+          "id": "waveform",
+          "name": "真实 VCD 信号、原 tick 范围、缩放及固定波形引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 51,
+          "startedAt": "2026-11-07T08:28:21.191Z",
+          "finishedAt": "2026-11-07T08:28:27.706Z"
+        },
+        {
+          "id": "prior-sources",
+          "name": "同作品同输入重跑保留原来源，不作为独立预测",
+          "group": "core",
+          "status": "passed",
+          "assertions": 11,
+          "startedAt": "2026-11-07T08:28:27.706Z",
+          "finishedAt": "2026-11-07T08:28:33.118Z"
+        },
+        {
+          "id": "operation",
+          "name": "操作区别用例 A10 XOR B12 实际 0110 / 0",
+          "group": "core",
+          "status": "passed",
+          "assertions": 14,
+          "startedAt": "2026-11-07T08:28:33.118Z",
+          "finishedAt": "2026-11-07T08:28:38.173Z"
+        },
+        {
+          "id": "blank",
+          "name": "留空直接观察，缺项保持未填写",
+          "group": "core",
+          "status": "passed",
+          "assertions": 16,
+          "startedAt": "2026-11-07T08:28:38.173Z",
+          "finishedAt": "2026-11-07T08:28:42.175Z"
+        },
+        {
+          "id": "restore",
+          "name": "刷新与工具切换恢复输入、预测、解释草稿、波形选择、引用和问题",
+          "group": "core",
+          "status": "passed",
+          "assertions": 63,
+          "startedAt": "2026-11-07T08:28:42.175Z",
+          "finishedAt": "2026-11-07T08:29:09.634Z"
+        },
+        {
+          "id": "layout",
+          "name": "浅深主题、1440/1024/900px 真实页面与键盘焦点可操作",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:29:09.634Z",
+          "finishedAt": "2026-11-07T08:29:10.238Z"
+        },
+        {
+          "id": "accept-loss",
+          "name": "真实接收确认丢失一次；接收中历史快速选择保持原选择",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 21,
+          "startedAt": "2026-11-07T08:29:10.238Z",
+          "finishedAt": "2026-11-07T08:29:34.139Z"
+        },
+        {
+          "id": "local-result",
+          "name": "本地完成而服务未保留时，引用待同步；恢复后原请求确认且不重算",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 58,
+          "startedAt": "2026-11-07T08:29:34.139Z",
+          "finishedAt": "2026-11-07T08:29:56.463Z"
+        },
+        {
+          "id": "retain-loss",
+          "name": "真实结果已保留但确认丢失一次，仅重试原关联",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 23,
+          "startedAt": "2026-11-07T08:29:56.463Z",
+          "finishedAt": "2026-11-07T08:30:10.147Z"
+        },
+        {
+          "id": "final-report-lag",
+          "name": "原结果已到而服务终态滞后，合法引用保持可重试并在终态后确认",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 56,
+          "startedAt": "2026-11-07T08:30:10.147Z",
+          "finishedAt": "2026-11-07T08:30:47.635Z"
+        },
+        {
+          "id": "draft-loss",
+          "name": "问题草稿真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 50,
+          "startedAt": "2026-11-07T08:30:47.635Z",
+          "finishedAt": "2026-11-07T08:30:59.148Z"
+        },
+        {
+          "id": "works-loss",
+          "name": "作品真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 10,
+          "startedAt": "2026-11-07T08:30:59.148Z",
+          "finishedAt": "2026-11-07T08:31:09.193Z"
+        },
+        {
+          "id": "four-state",
+          "name": "真实 X 与 Z 结果保留四态，不伪造二值比较",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 42,
+          "startedAt": "2026-11-07T08:31:09.193Z",
+          "finishedAt": "2026-11-07T08:31:44.524Z"
+        },
+        {
+          "id": "compile-failure",
+          "name": "真实编译失败不启用失败作品，不伪造 F/Cout",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 13,
+          "startedAt": "2026-11-07T08:31:44.524Z",
+          "finishedAt": "2026-11-07T08:31:58.039Z"
+        },
+        {
+          "id": "incomplete",
+          "name": "安全输入启用后，比较期间编辑进入 hold 并停止原执行，保留真实不完整观察",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 49,
+          "startedAt": "2026-11-07T08:31:58.039Z",
+          "finishedAt": "2026-11-07T08:32:38.443Z"
+        },
+        {
+          "id": "two-tabs",
+          "name": "双标签真实 workspace 冲突、明确选择原内容并保留双方",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 6,
+          "startedAt": "2026-11-07T08:32:38.443Z",
+          "finishedAt": "2026-11-07T08:33:52.834Z"
+        },
+        {
+          "id": "network-unsent",
+          "name": "真实页面来源、Worker、零问题派发与零伪造响应",
+          "group": "core",
+          "status": "passed",
+          "assertions": 46,
+          "startedAt": "2026-11-07T08:33:52.834Z",
+          "finishedAt": "2026-11-07T08:33:54.715Z"
+        }
+      ],
+      "networkEvidence": {
+        "origins": [
+          "https://101.201.141.133:8443"
+        ],
+        "workers": [
+          "https://101.201.141.133:8443/assets/worker-AqHx1oS1.js"
+        ],
+        "questionSends": 0,
+        "questionActions": 0
+      }
+    },
+    {
+      "kind": "alu-learning-194",
+      "issue": 194,
+      "label": "windows11-x64-school",
+      "mode": "school-https",
+      "suite": "all",
+      "platform": "win32",
+      "arch": "x64",
+      "node": "v24.21.0",
+      "browser": "156.0.8078.81",
+      "headed": true,
+      "browserChannel": "chrome",
+      "startedAt": "2026-11-07T08:28:40.840Z",
+      "finishedAt": "2026-11-07T08:36:40.855Z",
+      "status": "passed",
+      "acceptanceComplete": true,
+      "endpoint": "https://101.201.141.133:8443",
+      "activityId": "f4989229-c2aa-4327-a0ee-4dae952f0598",
+      "releaseId": "19200000-0000-4000-8000-000000000176",
+      "binding": {
+        "key": "alu",
+        "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d"
+      },
+      "tls": {
+        "protocol": "TLSv1.3",
+        "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0=",
+        "chainAuthorized": true,
+        "certificatePolicy": "strict-chain-and-exact-SPKI",
+        "validTo": "Nov 11 18:21:45 2026 GMT"
+      },
+      "remote": {
+        "endpoint": "https://101.201.141.133:8443",
+        "resolvedAddresses": [
+          "101.201.141.133"
+        ],
+        "clientLocalProduct": false
+      },
+      "pageSecurity": {
+        "issuer": "WP04-211 Acceptance CA",
+        "protocol": "TLS 1.3",
+        "subjectName": "101.201.141.133",
+        "validFrom": 1793989305,
+        "validTo": 1794421305
+      },
+      "faults": [
+        {
+          "id": "accept-loss",
+          "kind": "accept",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "0d2366bb-b203-4cd9-b79c-f5be238915fd",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "local-result",
+          "kind": "result",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "5f8ad867-bd7c-475a-8812-d6b7582b343a"
+        },
+        {
+          "id": "retain-loss",
+          "kind": "result",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "76a215c8-bacc-424c-a313-9f6d7d33b0ad",
+          "upstreamStatus": 200
+        },
+        {
+          "id": "final-report-lag",
+          "kind": "report",
+          "position": "before-owner-receives",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "a2e6eb75-1865-43d7-8d2c-6fd3f73aeaaf"
+        },
+        {
+          "id": "draft-loss",
+          "kind": "drafts",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 1,
+          "status": "released-after-one-abort",
+          "requestId": "e6a6d81b-433b-4d1b-a855-9e3c84ec8308",
+          "baseRevision": 9,
+          "upstreamStatus": 200
+        },
+        {
+          "id": "works-loss",
+          "kind": "workspaces",
+          "position": "after-real-owner-response",
+          "aborts": 1,
+          "heldRetries": 0,
+          "status": "released-after-one-abort",
+          "requestId": "0bdb49be-6788-4767-948a-9c81b0f6d75c",
+          "baseRevision": 35,
+          "upstreamStatus": 200
+        }
+      ],
+      "cleanup": [
+        {
+          "stage": "execution-and-sync-drain",
+          "status": "passed",
+          "requestIds": [
+            "0d2366bb-b203-4cd9-b79c-f5be238915fd",
+            "14baad48-6ceb-4e90-a015-67e2eba475d3",
+            "1cbdd596-ff20-4392-a944-438bdfb5af47",
+            "218bc05a-d400-4d59-bbb7-a329c82ad103",
+            "22cfd800-5cce-4282-b36a-c887bcac3898",
+            "417d06ce-d23e-41e5-8f1c-6c1bf9f125e9",
+            "49f3898b-0766-4b42-ba8c-a461f5f2db2a",
+            "51e972f7-8754-4d1a-a05b-c8766214cfae",
+            "55b6d687-80c0-43a5-ba23-ffacdf1e7931",
+            "5f8ad867-bd7c-475a-8812-d6b7582b343a",
+            "76a215c8-bacc-424c-a313-9f6d7d33b0ad",
+            "99cb6db0-e6ce-47b4-93cf-07a845b4fead",
+            "a2e6eb75-1865-43d7-8d2c-6fd3f73aeaaf",
+            "be7ccedc-9709-4b47-820b-0fffed498b28",
+            "c2592c72-533f-48bc-b4a6-c6fb22e8afe9",
+            "c390ffd9-d7e5-4c47-849e-70cfb0c484d9",
+            "c93e1838-f85d-428f-a81d-ac9a36bd0cfe"
+          ],
+          "stopRequestedThroughExistingUi": [],
+          "localDatabaseAbsent": false,
+          "originalAssociationsRetransmitted": [],
+          "durationMs": 6451
+        }
+      ],
+      "limitations": [
+        "Each report covers only the current client and endpoint. Run independently on Mac product, Windows product, Mac school HTTPS, and Windows school HTTPS.",
+        "No teaching-effect assessment. Remote PostgreSQL placement is not independently inspected by this browser probe."
+      ],
+      "originalReportSha256": "b5f013ee002e49a730733ec7e431608c55565c0177cb30d4543410e450378a8f",
+      "localOriginalReport": ".verification/wp04-194/windows-school-d/report.json",
+      "cases": [
+        {
+          "id": "setup",
+          "name": "正式包临时产品或独立学校 HTTPS、真实学校成员登录与新活动",
+          "group": "core",
+          "status": "passed",
+          "assertions": 13,
+          "startedAt": "2026-11-07T08:28:40.842Z",
+          "finishedAt": "2026-11-07T08:31:09.276Z"
+        },
+        {
+          "id": "enable",
+          "name": "Monaco 输入工程 fixture，真实运行启用原作品",
+          "group": "core",
+          "status": "passed",
+          "assertions": 14,
+          "startedAt": "2026-11-07T08:31:09.276Z",
+          "finishedAt": "2026-11-07T08:31:22.206Z"
+        },
+        {
+          "id": "direct-reflection",
+          "name": "直接观察不重跑即可保存解释，原预测缺项保持缺项",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:31:22.206Z",
+          "finishedAt": "2026-11-07T08:31:31.317Z"
+        },
+        {
+          "id": "question-code",
+          "name": "中文问题不发送，现有 CodeReferenceSource 加入代码引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:31:31.317Z",
+          "finishedAt": "2026-11-07T08:31:41.231Z"
+        },
+        {
+          "id": "hold",
+          "name": "候选输入与预测不自动 observe，实际值、旧报告与历史不出现在 DOM",
+          "group": "core",
+          "status": "passed",
+          "assertions": 29,
+          "startedAt": "2026-11-07T08:31:41.231Z",
+          "finishedAt": "2026-11-07T08:31:44.940Z"
+        },
+        {
+          "id": "candidate-reference",
+          "name": "候选用例加入原问题草稿，本机与服务副本一致",
+          "group": "core",
+          "status": "passed",
+          "assertions": 15,
+          "startedAt": "2026-11-07T08:31:44.940Z",
+          "finishedAt": "2026-11-07T08:31:59.600Z"
+        },
+        {
+          "id": "frozen-comparison",
+          "name": "真实边界结果与固定预测；立即编辑保留新草稿，历史仍是原值",
+          "group": "core",
+          "status": "passed",
+          "assertions": 37,
+          "startedAt": "2026-11-07T08:31:59.600Z",
+          "finishedAt": "2026-11-07T08:32:25.171Z"
+        },
+        {
+          "id": "reflections",
+          "name": "两次不可变解释修订及原父链，同一问题草稿保留两份引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 36,
+          "startedAt": "2026-11-07T08:32:25.171Z",
+          "finishedAt": "2026-11-07T08:32:55.891Z"
+        },
+        {
+          "id": "waveform",
+          "name": "真实 VCD 信号、原 tick 范围、缩放及固定波形引用",
+          "group": "core",
+          "status": "passed",
+          "assertions": 51,
+          "startedAt": "2026-11-07T08:32:55.891Z",
+          "finishedAt": "2026-11-07T08:33:15.624Z"
+        },
+        {
+          "id": "prior-sources",
+          "name": "同作品同输入重跑保留原来源，不作为独立预测",
+          "group": "core",
+          "status": "passed",
+          "assertions": 13,
+          "startedAt": "2026-11-07T08:33:15.624Z",
+          "finishedAt": "2026-11-07T08:33:30.219Z"
+        },
+        {
+          "id": "operation",
+          "name": "操作区别用例 A10 XOR B12 实际 0110 / 0",
+          "group": "core",
+          "status": "passed",
+          "assertions": 17,
+          "startedAt": "2026-11-07T08:33:30.219Z",
+          "finishedAt": "2026-11-07T08:33:44.137Z"
+        },
+        {
+          "id": "blank",
+          "name": "留空直接观察，缺项保持未填写",
+          "group": "core",
+          "status": "passed",
+          "assertions": 19,
+          "startedAt": "2026-11-07T08:33:44.137Z",
+          "finishedAt": "2026-11-07T08:33:57.816Z"
+        },
+        {
+          "id": "restore",
+          "name": "刷新与工具切换恢复输入、预测、解释草稿、波形选择、引用和问题",
+          "group": "core",
+          "status": "passed",
+          "assertions": 60,
+          "startedAt": "2026-11-07T08:33:57.816Z",
+          "finishedAt": "2026-11-07T08:34:23.528Z"
+        },
+        {
+          "id": "layout",
+          "name": "浅深主题、1440/1024/900px 真实页面与键盘焦点可操作",
+          "group": "core",
+          "status": "passed",
+          "assertions": 5,
+          "startedAt": "2026-11-07T08:34:23.528Z",
+          "finishedAt": "2026-11-07T08:34:24.495Z"
+        },
+        {
+          "id": "accept-loss",
+          "name": "真实接收确认丢失一次；接收中历史快速选择保持原选择",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 19,
+          "startedAt": "2026-11-07T08:34:24.496Z",
+          "finishedAt": "2026-11-07T08:34:34.099Z"
+        },
+        {
+          "id": "local-result",
+          "name": "本地完成而服务未保留时，引用待同步；恢复后原请求确认且不重算",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 58,
+          "startedAt": "2026-11-07T08:34:34.099Z",
+          "finishedAt": "2026-11-07T08:34:47.070Z"
+        },
+        {
+          "id": "retain-loss",
+          "name": "真实结果已保留但确认丢失一次，仅重试原关联",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 23,
+          "startedAt": "2026-11-07T08:34:47.070Z",
+          "finishedAt": "2026-11-07T08:34:56.581Z"
+        },
+        {
+          "id": "final-report-lag",
+          "name": "原结果已到而服务终态滞后，合法引用保持可重试并在终态后确认",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 56,
+          "startedAt": "2026-11-07T08:34:56.581Z",
+          "finishedAt": "2026-11-07T08:35:11.193Z"
+        },
+        {
+          "id": "draft-loss",
+          "name": "问题草稿真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 50,
+          "startedAt": "2026-11-07T08:35:11.193Z",
+          "finishedAt": "2026-11-07T08:35:16.243Z"
+        },
+        {
+          "id": "works-loss",
+          "name": "作品真实提交后丢失回执，核对原 requestId 恢复",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 10,
+          "startedAt": "2026-11-07T08:35:16.243Z",
+          "finishedAt": "2026-11-07T08:35:20.245Z"
+        },
+        {
+          "id": "four-state",
+          "name": "真实 X 与 Z 结果保留四态，不伪造二值比较",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 36,
+          "startedAt": "2026-11-07T08:35:20.245Z",
+          "finishedAt": "2026-11-07T08:35:37.285Z"
+        },
+        {
+          "id": "compile-failure",
+          "name": "真实编译失败不启用失败作品，不伪造 F/Cout",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 10,
+          "startedAt": "2026-11-07T08:35:37.285Z",
+          "finishedAt": "2026-11-07T08:35:42.375Z"
+        },
+        {
+          "id": "incomplete",
+          "name": "安全输入启用后，比较期间编辑进入 hold 并停止原执行，保留真实不完整观察",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 37,
+          "startedAt": "2026-11-07T08:35:42.375Z",
+          "finishedAt": "2026-11-07T08:36:00.222Z"
+        },
+        {
+          "id": "two-tabs",
+          "name": "双标签真实 workspace 冲突、明确选择原内容并保留双方",
+          "group": "fault",
+          "status": "passed",
+          "assertions": 6,
+          "startedAt": "2026-11-07T08:36:00.222Z",
+          "finishedAt": "2026-11-07T08:36:33.207Z"
+        },
+        {
+          "id": "network-unsent",
+          "name": "真实页面来源、Worker、零问题派发与零伪造响应",
+          "group": "core",
+          "status": "passed",
+          "assertions": 46,
+          "startedAt": "2026-11-07T08:36:33.207Z",
+          "finishedAt": "2026-11-07T08:36:33.774Z"
+        }
+      ],
+      "networkEvidence": {
+        "origins": [
+          "https://101.201.141.133:8443"
+        ],
+        "workers": [
+          "https://101.201.141.133:8443/assets/worker-AqHx1oS1.js"
+        ],
+        "questionSends": 0,
+        "questionActions": 0
+      }
+    }
+  ],
+  "nativeIme": {
+    "status": "passed",
+    "runs": [
+      {
+        "kind": "macos-os-ime-acceptance",
+        "ticket": "#194",
+        "platform": "darwin",
+        "arch": "arm64",
+        "os": "macOS 27.2",
+        "node": "v24.21.0",
+        "candidate": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/dist/product-darwin-arm64-wp04-194d",
+        "startedAt": "2026-11-07T09:27:37.241Z",
+        "finishedAt": "2026-11-07T09:28:22.248Z",
+        "status": "passed",
+        "caseCount": 4,
+        "passCount": 4,
+        "cases": [
+          {
+            "id": "A0",
+            "name": "the real macOS Chinese input method is selected through Text Input Sources",
+            "status": "passed"
+          },
+          {
+            "id": "D1",
+            "name": "Monaco composition followed by ALU-tab switch and back keeps text and focus correct",
+            "status": "passed"
+          },
+          {
+            "id": "E1",
+            "name": "new prediction reason accepts native Chinese, cancels without residue and survives active-composition navigation",
+            "status": "passed",
+            "evidence": {
+              "committed": "测试"
+            }
+          },
+          {
+            "id": "E2",
+            "name": "new explanation accepts/cancels native Chinese and saves an immutable revision without running or sending",
+            "status": "passed",
+            "evidence": {
+              "text": "测试"
+            }
+          }
+        ],
+        "chromePid": 71630,
+        "desiredInputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "inputSourceSelection": "SELECTED 0 com.bytedance.inputmethod.doubaoime.pinyin\nCURRENT com.bytedance.inputmethod.doubaoime.pinyin",
+        "texts": {
+          "monacoAfterToolSwitch": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen"
+        },
+        "cleanup": "owned temporary installation deleted through the product owner",
+        "originalReportSha256": "84fa881a168719347059f409b436bfd7c8bc2463074dbcc426bf837964771f22",
+        "localOriginalReport": ".verification/wp04-194/mac-ime-d5/report.json",
+        "foregroundChecksPassed": 15,
+        "screenshotsManuallyInspected": true
+      },
+      {
+        "kind": "windows-os-ime-acceptance",
+        "ticket": "#194",
+        "platform": "win32",
+        "arch": "x64",
+        "os": "Windows 10.0.26200.0",
+        "node": "v24.21.0",
+        "candidate": "C:\\Users\\h\\product-win32-x64-wp04-194d",
+        "startedAt": "2026-11-07T09:25:50.160Z",
+        "finishedAt": "2026-11-07T09:27:11.151Z",
+        "status": "passed",
+        "caseCount": 4,
+        "passCount": 4,
+        "cases": [
+          {
+            "id": "A0",
+            "name": "an unlocked Windows interactive desktop owns the real product Chrome and native IME",
+            "status": "passed"
+          },
+          {
+            "id": "D1",
+            "name": "Monaco composition followed by ALU-tab switch and back keeps text and focus correct",
+            "status": "passed"
+          },
+          {
+            "id": "E1",
+            "name": "new prediction reason accepts native Chinese, cancels without residue and survives active-composition navigation",
+            "status": "passed",
+            "evidence": {
+              "committed": "测试"
+            }
+          },
+          {
+            "id": "E2",
+            "name": "new explanation accepts/cancels native Chinese and saves an immutable revision without running or sending",
+            "status": "passed",
+            "evidence": {
+              "text": "测试"
+            }
+          }
+        ],
+        "chromePid": 25876,
+        "nativeInput": "System.Windows.Forms.SendKeys in the same Interactive desktop session as the probe Chrome; no CDP composition",
+        "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display",
+        "texts": {
+          "monacoAfterToolSwitch": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen"
+        },
+        "cleanup": "owned temporary installation deleted through the product owner",
+        "originalReportSha256": "9076f4b33716da618325ca35b789d91b627209f47539a4b9e3eaad4ebf283e4b",
+        "localOriginalReport": ".verification/wp04-194/windows-ime-d2/report.json",
+        "foregroundChecksPassed": 15,
+        "screenshotsManuallyInspected": true
+      }
+    ],
+    "coverage": "A0 native desktop/input source, D1 Monaco active composition switch, E1 reason native commit/cancel/navigation, E2 explanation native commit/cancel/save; zero unintended execution or question dispatch in the input phases"
+  },
+  "teachingEffect": "not-evaluated"
+}

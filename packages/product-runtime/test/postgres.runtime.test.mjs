@@ -15,7 +15,10 @@ const exec = promisify(execFile);
 const bin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!bin) throw new Error('Set XUNJIE_PRODUCT_POSTGRES_BIN to the pinned complete PostgreSQL 18.6 distribution.');
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin: bin, postgresVersion: '18.6',
-  webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
+  webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
+  // A managed database on Windows is gated on the packaged prerequisite helper, so this fixture
+  // declares it the same way the other native runtime fixtures do.
+  windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
 const tool = name => join(bin, name + (process.platform === 'win32' ? '.exe' : ''));
 
 async function client(root, runtime) {

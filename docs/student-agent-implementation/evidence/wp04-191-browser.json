@@ -1,0 +1,159 @@
+{
+  "scope": "Freshly source-built runtime; actual desktop Chrome Worker smoke only; no product integration or teaching acceptance",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+  "startedAt": "2026-11-05T12:45:27.348Z",
+  "results": [
+    {
+      "mode": "correct",
+      "loadMs": 68,
+      "preprocessMs": 22.600000023841858,
+      "compileMs": 93.39999997615814,
+      "simulationMs": 148.10000002384186,
+      "repeatedSimulationMs": [
+        70.89999997615814,
+        67.30000001192093,
+        59.90000003576279
+      ],
+      "singleInputs": [
+        {
+          "inputIndex": 2529,
+          "rows": [
+            "ROW 2529 0000 1"
+          ],
+          "ms": 6.300000011920929,
+          "matched": true
+        },
+        {
+          "inputIndex": 1204,
+          "rows": [
+            "ROW 1204 1111 0"
+          ],
+          "ms": 8.899999976158142,
+          "matched": true
+        },
+        {
+          "inputIndex": 2084,
+          "rows": [
+            "ROW 2084 0011 0"
+          ],
+          "ms": 5.900000035762787,
+          "matched": true
+        }
+      ],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 0,
+      "unknown": 0,
+      "rowsSha256": "3860148aec303b9db2ca17fb388e7f444e2b59ece58bd438b13e293bf38253c5",
+      "vcdBytes": 189545,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [],
+      "totalMs": 561.3000000119209
+    },
+    {
+      "mode": "lost-carry",
+      "loadMs": 37.09999996423721,
+      "preprocessMs": 14.299999952316284,
+      "compileMs": 64.80000001192093,
+      "simulationMs": 97.80000001192093,
+      "repeatedSimulationMs": [],
+      "singleInputs": [],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 256,
+      "unknown": 0,
+      "rowsSha256": "f3199dca83ee0c9b2f8a781a894dcd1a5597117a4eab6d9fc6c17d7011a4be00",
+      "vcdBytes": 187913,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [],
+      "totalMs": 221.30000001192093
+    },
+    {
+      "mode": "unknown",
+      "loadMs": 45.19999998807907,
+      "preprocessMs": 13.399999976158142,
+      "compileMs": 79,
+      "simulationMs": 115.80000001192093,
+      "repeatedSimulationMs": [],
+      "singleInputs": [],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 1536,
+      "unknown": 1536,
+      "rowsSha256": "5f2effbb518ac778345fa96dc5f560c0347d3912f168bd323680676264b3c48b",
+      "vcdBytes": 204895,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [],
+      "totalMs": 260.60000002384186
+    },
+    {
+      "mode": "spin",
+      "terminatedByHost": true,
+      "observedMs": 256.9000000357628
+    },
+    {
+      "mode": "zero-spin",
+      "terminatedByHost": true,
+      "observedMs": 252.19999998807907
+    },
+    {
+      "mode": "recovery",
+      "loadMs": 47.80000001192093,
+      "preprocessMs": 12.600000023841858,
+      "compileMs": 38.80000001192093,
+      "simulationMs": 111.79999995231628,
+      "repeatedSimulationMs": [
+        86.20000004768372,
+        75.69999998807907,
+        65.5
+      ],
+      "singleInputs": [
+        {
+          "inputIndex": 2529,
+          "rows": [
+            "ROW 2529 0000 1"
+          ],
+          "ms": 7.099999964237213,
+          "matched": true
+        },
+        {
+          "inputIndex": 1204,
+          "rows": [
+            "ROW 1204 1111 0"
+          ],
+          "ms": 9.5,
+          "matched": true
+        },
+        {
+          "inputIndex": 2084,
+          "rows": [
+            "ROW 2084 0011 0"
+          ],
+          "ms": 5.699999988079071,
+          "matched": true
+        }
+      ],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 0,
+      "unknown": 0,
+      "rowsSha256": "3860148aec303b9db2ca17fb388e7f444e2b59ece58bd438b13e293bf38253c5",
+      "vcdBytes": 189545,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [],
+      "totalMs": 470.60000002384186
+    }
+  ],
+  "finishedAt": "2026-11-05T12:45:29.650Z",
+  "passed": true,
+  "hasRuntimeDiagnostics": false,
+  "probeDeclaredScope": "Loopback-hosted browser experiment only; no installer, Windows, production UI or teaching acceptance",
+  "host": {
+    "platform": "win32",
+    "architecture": "x64",
+    "release": "10.0.26200",
+    "chrome": "156.0.8078.80",
+    "headless": false
+  },
+  "resources": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f  ivl.js\n4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de  ivl.wasm\nd9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982  ivlpp.js\nc0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3  ivlpp.wasm\n04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995  vvp.js\nbd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430  vvp.wasm\n"
+}

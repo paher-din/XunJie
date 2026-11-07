@@ -1,0 +1,306 @@
+{
+  "kind": "alu-school-https",
+  "ticket": "#192",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-school-Zx9jXm",
+  "publicIp": "192.168.3.39",
+  "certificatePin": "spki-sha256",
+  "cases": [
+    "a Windows school deployment listens on a non-loopback address over TLS",
+    "strict TLS is verified against the probe CA and the entry answers as the school profile",
+    "the fixed ALU component and course import through the school owner",
+    "a Chrome with no local product opens the school entry over pinned HTTPS",
+    "the fixed runtime resources are authorized, verified and self-checked from the school entry"
+  ],
+  "traffic": [
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/155655ca-134f-4bd1-8ba1-49b61b459560/report",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/bea15430-ee5e-4189-a367-a633bf1c0da8/checkpoints",
+      "status": 200
+    }
+  ],
+  "refused": [
+    {
+      "path": "/courses/digital-logic.png",
+      "status": 404
+    }
+  ],
+  "status": "failed",
+  "endpoint": "https://192.168.3.39:55581",
+  "context": {
+    "profile": "school",
+    "clientNamespace": "xunjie.v1.e8fccfb3-9af4-40ed-b5b8-dde576236319",
+    "readOnly": false,
+    "identities": []
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "bea15430-ee5e-4189-a367-a633bf1c0da8",
+  "consoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://192.168.3.39:55581/favicon.ico"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://192.168.3.39:55581/courses/digital-logic.png"
+    }
+  ],
+  "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('输出包含 X/Z')\nExpected: visible\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" getByText('输出包含 X/Z') with timeout 90000ms\n  - waiting for getByText('输出包含 X/Z')\n\n    at captureRawStack (/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/node_modules/playwright-core/lib/coreBundle.js:9282:17)\n    at callMatcherAsStep (/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/node_modules/playwright/lib/matchers/expect.js:13316:57)\n    at Object.toBeVisible (/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/node_modules/playwright/lib/matchers/expect.js:13308:23)\n    at /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/scripts/probe-alu-school-https.mjs:136:62"
+}

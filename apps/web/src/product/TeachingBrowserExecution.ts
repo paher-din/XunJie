@@ -1,9 +1,10 @@
 import { actionReceiptSchema } from '@xunjie/contracts/action-intents'
-import { executionAcceptanceSchema, executionActionSchema, agentBrowserIdSchema, agentBrowserClaimInputSchema,
+import { executionAcceptanceSchema, anyExecutionActionSchema, agentBrowserIdSchema, agentBrowserClaimInputSchema,
   agentBrowserCommandSchema, agentBrowserPendingSchema, agentBrowserStopsSchema,
-  isTerminalExecutionState, type ExecutionAcceptance, type ExecutionAction } from '@xunjie/contracts/execution'
+  isTerminalExecutionState, type ExecutionAcceptance, type AnyExecutionAction } from '@xunjie/contracts/execution'
 import { BrowserExecutionReceiver } from '../tool-execution/receiver'
-import type { AlgorithmProvider, ExecutionController } from '../tool-execution/controller'
+import type { ExecutionController } from '../tool-execution/controller'
+import type { AlgorithmProvider } from '../tool-execution/adapters'
 import type { ExecutionTransport } from '../tool-execution/retention'
 import { AlgorithmError } from '../tool-execution/algorithm'
 
@@ -22,9 +23,9 @@ export async function teachingBrowserId(): Promise<string> {
   })
 }
 
-async function actionDigest(action: ExecutionAction) {
+async function actionDigest(action: AnyExecutionAction) {
   // The execution owner's digest is of the schema-normalized action, not canonical JSON.
-  const bytes = new TextEncoder().encode(JSON.stringify(executionActionSchema.parse(action)))
+  const bytes = new TextEncoder().encode(JSON.stringify(anyExecutionActionSchema.parse(action)))
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
@@ -33,17 +34,18 @@ export class TeachingBrowserExecution extends BrowserExecutionReceiver {
   private closed = false
   private timer: ReturnType<typeof setTimeout> | undefined
   constructor(scope: string, generation: number, private request: Request, private transport: ExecutionTransport,
-    private allowed: () => boolean, private activityId: string) {
-    super({ receiverId: 'browser-execution', location: 'local', kind: 'execution' }, scope, generation, allowed)
+    private allowed: () => boolean, private activityId: string,
+    current?: ConstructorParameters<typeof BrowserExecutionReceiver>[4]) {
+    super({ receiverId: 'browser-execution', location: 'local', kind: 'execution' }, scope, generation, allowed, current)
   }
   private assertOpen() { if (this.closed || !this.allowed()) throw new Error('forbidden') }
-  private verify(action: ExecutionAction) {
+  private verify(action: AnyExecutionAction) {
     const scope = JSON.parse(this.scope) as string[]
     if (action.execution.initiator.kind !== 'agent' || action.execution.plan.location !== 'browser'
       || action.scope.activityId !== this.activityId || action.scope.environmentId !== scope[1]
       || action.scope.spaceId !== scope[2] || action.scope.principalId !== scope[3]) throw new Error('forbidden')
   }
-  private async claimCommand(action: ExecutionAction) {
+  private async claimCommand(action: AnyExecutionAction) {
     this.assertOpen(); this.verify(action)
     const value = agentBrowserCommandSchema.parse(await this.request(`agent/${action.requestId}/claim`,
       agentBrowserClaimInputSchema.parse({ browserId: await teachingBrowserId() })))
@@ -52,7 +54,7 @@ export class TeachingBrowserExecution extends BrowserExecutionReceiver {
       throw new Error('identity-conflict')
   }
   /** Before a Worker can start, both owners have durably accepted the same original identity. */
-  override async accept(action: ExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
+  override async accept(action: AnyExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
     if (action.execution.initiator.kind !== 'agent') return super.accept(action, inputDigest)
     await this.claimCommand(action)
     if (await actionDigest(action) !== inputDigest) throw new Error('identity-conflict')

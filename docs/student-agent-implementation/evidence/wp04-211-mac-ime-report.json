@@ -1,0 +1,822 @@
+{
+  "kind": "macos-os-ime-acceptance",
+  "ticket": "#211",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "macOS 27.2",
+  "node": "v24.21.0",
+  "desiredInputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+  "startedAt": "2026-11-06T19:10:52.542Z",
+  "cases": [
+    {
+      "id": "A0",
+      "name": "the real macOS Chinese input method is selected through Text Input Sources",
+      "status": "passed"
+    },
+    {
+      "id": "A1",
+      "name": "real pinyin composition shows the OS candidate window over the Monaco editor",
+      "status": "passed",
+      "evidence": {
+        "owner": "豆包输入法",
+        "layer": 2147483628,
+        "bounds": [
+          410,
+          606,
+          527,
+          64
+        ]
+      }
+    },
+    {
+      "id": "A2",
+      "name": "arrow selection followed by a real Space commit inserts exactly the selected Chinese candidate",
+      "status": "passed",
+      "evidence": {
+        "committed": "侧室"
+      }
+    },
+    {
+      "id": "A3",
+      "name": "a real Escape cancel leaves no pinyin, no lost or duplicated text, and focus remains in Monaco",
+      "status": "passed"
+    },
+    {
+      "id": "B1",
+      "name": "real pinyin composition and Space commit fill the question draft exactly once without dropped characters",
+      "status": "passed",
+      "evidence": {
+        "value": "侧室输入",
+        "first": "侧室"
+      }
+    },
+    {
+      "id": "B2",
+      "name": "the ALU experiment prepared and the real run control is enabled",
+      "status": "passed",
+      "evidence": {
+        "preparationWaitMs": 0
+      }
+    },
+    {
+      "id": "B3",
+      "name": "the real run succeeded and enabled the current work",
+      "status": "passed"
+    },
+    {
+      "id": "B4",
+      "name": "running and the full check never clear or send the question draft",
+      "status": "passed",
+      "evidence": {
+        "draft": "侧室输入",
+        "sendRequests": 0
+      }
+    },
+    {
+      "id": "C1",
+      "name": "an illegal numeric draft (-1) stays in the field and is marked aria-invalid",
+      "status": "passed",
+      "evidence": {
+        "value": "-1"
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Escape cancel keeps the original illegal draft; aria-invalid, ports and simulation count are unchanged",
+      "status": "passed"
+    },
+    {
+      "id": "C3",
+      "name": "a committed Chinese candidate in the numeric field is invalid and triggers no simulation",
+      "status": "passed",
+      "evidence": {
+        "value": "测试"
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Monaco composition followed by ALU-tab switch and back keeps text and focus correct",
+      "status": "passed"
+    },
+    {
+      "id": "D2",
+      "name": "switching between the numeric input and the question draft does not leak or leave text behind",
+      "status": "passed"
+    }
+  ],
+  "keySequences": [
+    {
+      "id": "A1",
+      "label": "monaco compose ceshi",
+      "keys": "c e s h i",
+      "keyCodes": [
+        8,
+        14,
+        1,
+        4,
+        34
+      ]
+    },
+    {
+      "id": "A2",
+      "label": "monaco arrow select candidate",
+      "keys": "Down Arrow",
+      "keyCodes": [
+        125
+      ]
+    },
+    {
+      "id": "A3",
+      "label": "monaco Space commit",
+      "keys": "Space",
+      "keyCodes": [
+        49
+      ]
+    },
+    {
+      "id": "A4",
+      "label": "monaco second composition shuru",
+      "keys": "s h u r u",
+      "keyCodes": [
+        1,
+        4,
+        32,
+        15,
+        32
+      ]
+    },
+    {
+      "id": "A5",
+      "label": "monaco Escape cancel",
+      "keys": "Escape",
+      "keyCodes": [
+        53
+      ]
+    },
+    {
+      "id": "B1",
+      "label": "draft compose ceshi",
+      "keys": "c e s h i",
+      "keyCodes": [
+        8,
+        14,
+        1,
+        4,
+        34
+      ]
+    },
+    {
+      "id": "B2",
+      "label": "draft Space commit",
+      "keys": "Space",
+      "keyCodes": [
+        49
+      ]
+    },
+    {
+      "id": "B3",
+      "label": "draft compose shuru",
+      "keys": "s h u r u",
+      "keyCodes": [
+        1,
+        4,
+        32,
+        15,
+        32
+      ]
+    },
+    {
+      "id": "C1",
+      "label": "numeric A type -1",
+      "keys": "- 1",
+      "keyCodes": [
+        27,
+        18
+      ]
+    },
+    {
+      "id": "C2",
+      "label": "numeric A compose ceshi",
+      "keys": "c e s h i",
+      "keyCodes": [
+        8,
+        14,
+        1,
+        4,
+        34
+      ]
+    },
+    {
+      "id": "C3",
+      "label": "numeric A Escape cancel",
+      "keys": "Escape",
+      "keyCodes": [
+        53
+      ]
+    },
+    {
+      "id": "C4",
+      "label": "numeric A compose and commit ceshi",
+      "keys": "c e s h i Space",
+      "keyCodes": [
+        8,
+        14,
+        1,
+        4,
+        34,
+        49
+      ]
+    },
+    {
+      "id": "D1",
+      "label": "monaco compose shuru before tab switch",
+      "keys": "s h u r u",
+      "keyCodes": [
+        1,
+        4,
+        32,
+        15,
+        32
+      ]
+    },
+    {
+      "id": "D2",
+      "label": "monaco compose ceshi after tab switch",
+      "keys": "c e s h i Space",
+      "keyCodes": [
+        8,
+        14,
+        1,
+        4,
+        34,
+        49
+      ]
+    },
+    {
+      "id": "D3",
+      "label": "draft compose nihao",
+      "keys": "n i h a o Space",
+      "keyCodes": [
+        45,
+        34,
+        4,
+        0,
+        31,
+        49
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "mac-ime-01-monaco-candidate",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-01-monaco-candidate.png"
+    },
+    {
+      "name": "mac-ime-01-monaco-candidate-window",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-01-monaco-candidate-window.png",
+      "region": {
+        "id": 64,
+        "layer": 2147483628,
+        "owner": "豆包输入法",
+        "x": 410,
+        "y": 606,
+        "width": 527,
+        "height": 64
+      }
+    },
+    {
+      "name": "mac-ime-02-monaco-candidate-selected",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-02-monaco-candidate-selected.png",
+      "region": {
+        "id": 64,
+        "layer": 2147483628,
+        "owner": "豆包输入法",
+        "x": 410,
+        "y": 606,
+        "width": 527,
+        "height": 209
+      }
+    },
+    {
+      "name": "mac-ime-03-monaco-after-commit",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-03-monaco-after-commit.png"
+    },
+    {
+      "name": "mac-ime-04-monaco-second-composition",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-04-monaco-second-composition.png",
+      "region": {
+        "id": 64,
+        "layer": 2147483628,
+        "owner": "豆包输入法",
+        "x": 436,
+        "y": 606,
+        "width": 527,
+        "height": 64
+      }
+    },
+    {
+      "name": "mac-ime-05-monaco-after-cancel",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-05-monaco-after-cancel.png"
+    },
+    {
+      "name": "mac-ime-06-draft-candidate",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-06-draft-candidate.png",
+      "region": {
+        "id": 64,
+        "layer": 2147483628,
+        "owner": "豆包输入法",
+        "x": 953,
+        "y": 399,
+        "width": 527,
+        "height": 64
+      }
+    },
+    {
+      "name": "mac-ime-07-draft-committed",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-07-draft-committed.png"
+    },
+    {
+      "name": "mac-ime-08-draft-after-run-check",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-08-draft-after-run-check.png"
+    },
+    {
+      "name": "mac-ime-09-numeric-invalid",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-09-numeric-invalid.png"
+    },
+    {
+      "name": "mac-ime-10-numeric-candidate",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-10-numeric-candidate.png",
+      "region": {
+        "id": 64,
+        "layer": 2147483628,
+        "owner": "豆包输入法",
+        "x": 391,
+        "y": 611,
+        "width": 527,
+        "height": 64
+      }
+    },
+    {
+      "name": "mac-ime-11-numeric-after-cancel",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-11-numeric-after-cancel.png"
+    },
+    {
+      "name": "mac-ime-12-tool-switch-editor",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-12-tool-switch-editor.png"
+    },
+    {
+      "name": "mac-ime-13-numeric-draft-switch",
+      "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/.verification/wp04-211/ime-mac/mac-ime-13-numeric-draft-switch.png"
+    }
+  ],
+  "candidateWindows": [
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 410,
+      "y": 606,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 410,
+      "y": 606,
+      "width": 527,
+      "height": 209
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 436,
+      "y": 606,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 953,
+      "y": 399,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 953,
+      "y": 399,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 391,
+      "y": 611,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 375,
+      "y": 611,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 410,
+      "y": 656,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 410,
+      "y": 707,
+      "width": 527,
+      "height": 64
+    },
+    {
+      "id": 64,
+      "layer": 2147483628,
+      "owner": "豆包输入法",
+      "x": 953,
+      "y": 399,
+      "width": 527,
+      "height": 64
+    }
+  ],
+  "texts": {
+    "initialEditor": "module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nendm",
+    "monacoPreedit": "ce'shimodule alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [",
+    "monacoAfterCommit": "侧室module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen",
+    "monacoSecondPreedit": "侧室shu'rumodule alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic",
+    "monacoAfterCancel": "侧室module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen",
+    "draftAfterFirstCommit": "侧室",
+    "draftAfterCommit": "侧室输入",
+    "draftAfterRunAndCheck": "侧室输入",
+    "numericAfterEscape": "-1",
+    "readoutBefore": "F=1111 Cout=0",
+    "readoutAfter": "F=1111 Cout=0",
+    "monacoAfterToolSwitch": "测试// correct ALU for #211 IME acceptance\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin",
+    "draftBeforeNumericSwitch": "侧室输入",
+    "draftAfterNumericSwitch": "侧室输入你好",
+    "numericAfterDraftSwitch": "7"
+  },
+  "network": {
+    "draftSendRequests": [],
+    "executionRequests": [
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/history"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/checkpoints"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/bf7f636a-9cb0-415c-aad8-bfd33ebceee1/result"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/20d6f6c3-6401-4354-93f6-257935344f24/bf7f636a-9cb0-415c-aad8-bfd33ebceee1/report"
+      }
+    ]
+  },
+  "foregroundChecks": [
+    {
+      "at": "2026-11-06T19:11:12.067Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:15.773Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:18.674Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:20.212Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:22.281Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:25.185Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:28.293Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:31.326Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:33.000Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:35.687Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:48.275Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:50.349Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:53.385Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:55.207Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:57.897Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:11:59.727Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:12:02.475Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:12:04.845Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:12:07.545Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:12:09.720Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    },
+    {
+      "at": "2026-11-06T19:12:12.466Z",
+      "front": "Google Chrome",
+      "frontWindow": {
+        "x": 0,
+        "y": 33,
+        "width": 1450,
+        "height": 822
+      }
+    }
+  ],
+  "status": "passed",
+  "desktopNote": "A first run at 02:43 was invalidated: the Qoder CN desktop app took the foreground, so its own IME candidate window was captured instead of the probe. Qoder CN was hidden with System Events before this run and restored afterwards; every real key sequence is guarded by a foreground-is-Chrome assertion.",
+  "backgroundAppsBefore": {
+    "qoder": "true",
+    "systemSettings": "true"
+  },
+  "chromePid": 3243,
+  "browser": "156.0.8078.80",
+  "activityId": "20d6f6c3-6401-4354-93f6-257935344f24",
+  "pageUrl": "https://101.201.141.133:8443",
+  "inputSourceSelection": "SELECTED 0 com.bytedance.inputmethod.doubaoime.pinyin\nCURRENT com.bytedance.inputmethod.doubaoime.pinyin",
+  "activeInputSource": "CURRENT com.bytedance.inputmethod.doubaoime.pinyin",
+  "draftSelectorUsed": "section[aria-label=\"Agent 问题草稿\"] textarea",
+  "finishedAt": "2026-11-06T19:12:13.635Z",
+  "caseCount": 13,
+  "passCount": 13
+}

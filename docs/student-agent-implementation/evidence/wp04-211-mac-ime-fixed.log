@@ -1,0 +1,16 @@
+PASS A0 the real macOS Chinese input method is selected through Text Input Sources
+PASS A1 real pinyin composition shows the OS candidate window over the Monaco editor
+PASS A2 arrow selection followed by a real Space commit inserts exactly the selected Chinese candidate
+PASS A3 a real Escape cancel leaves no pinyin, no lost or duplicated text, and focus remains in Monaco
+PASS B1 real pinyin composition and Space commit fill the question draft exactly once without dropped characters
+PASS B-cancel a real Escape cancels question-draft composition without changing text, sending or running
+PASS B2 the ALU experiment prepared and the real run control is enabled
+PASS B3 the real run succeeded and enabled the current work
+PASS B4 running and the full check never clear or send the question draft
+PASS C1 an illegal numeric draft (-1) stays in the field and is marked aria-invalid
+PASS C2 Escape cancel keeps the original illegal draft; aria-invalid, ports and simulation count are unchanged
+PASS C3 a committed Chinese candidate in the numeric field is invalid and triggers no simulation
+PASS D1 Monaco composition followed by ALU-tab switch and back keeps text and focus correct
+PASS D2 switching between the numeric input and the question draft does not leak or leave text behind
+36:78: execution error: “System Events”遇到一个错误：不能将“process "Qoder CN"”设置为“false”。 (-10006)
+{"status":"passed","cases":14,"pass":14,"error":null}

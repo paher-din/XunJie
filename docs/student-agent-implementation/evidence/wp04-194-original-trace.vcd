@@ -1,0 +1,55 @@
+$date
+	Sat Nov  7 16:25:13 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module experiment $end
+$var wire 4 ! F [3:0] $end
+$var wire 1 " Cout $end
+$var reg 4 # A [3:0] $end
+$var reg 4 $ B [3:0] $end
+$var reg 1 % Cin $end
+$var reg 1 & M $end
+$var reg 2 ' S [1:0] $end
+$var integer 32 ( fd [31:0] $end
+$var integer 32 ) ignored [31:0] $end
+$scope module dut $end
+$var wire 4 * A [3:0] $end
+$var wire 4 + B [3:0] $end
+$var wire 1 , Cin $end
+$var wire 1 - M $end
+$var wire 2 . S [1:0] $end
+$var reg 1 / Cout $end
+$var reg 4 0 F [3:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b0 0
+1/
+b0 .
+1-
+0,
+b1 +
+b1111 *
+b1 )
+bx (
+b0 '
+1&
+0%
+b1 $
+b1111 #
+1"
+b0 !
+$end
+#1000
+b10000000000000000000000000000011 (
+#2000

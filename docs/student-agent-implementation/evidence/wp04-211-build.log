@@ -1,0 +1,10 @@
+[build] HIT contracts
+[build] HIT storage
+[build] HIT learning-space
+[build] HIT server
+[build] HIT product-runtime
+[build] HIT web:src
+[build] HIT web
+[build] HIT web:runtime
+[build] HIT local-runtime
+EXIT=0

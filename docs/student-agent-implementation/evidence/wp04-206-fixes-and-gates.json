@@ -1,0 +1,49 @@
+{
+  "ticket": "#206",
+  "kind": "fixes-and-regression-gates",
+  "recordedAt": "2026-11-06T14:47:00Z",
+  "candidate": {
+    "branch": "wp04",
+    "commit": "6a4cafac23e9781bdc60faa043bb46b2a3d91e52"
+  },
+  "platform": {
+    "os": "darwin 27.2.0",
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "chrome": "156.0.8078.80",
+    "node": "v24.21.0",
+    "npm": "11.19.0"
+  },
+  "fixes": [
+    {
+      "id": "capability-unavailable-race",
+      "symptom": "同机学校 HTTPS 探针 2/3 次在「准备完成即点运行」出现 capability-unavailable；诊断显示 secure context / Web Locks / crypto / Worker 全部可用，干净运行真实成功",
+      "rootCause": "重复的 prepare 在缓存校验期间把已激活的 ready 环境降级为 preparing，运行读取时拿不到可用环境",
+      "change": "apps/web/src/component-preparation/runtime.ts 新增 warm-path 缓存校验：缓存命中时直接返回已激活的 ready 环境，不重写记录状态；导出 runtimeScope 供回归断言",
+      "test": "apps/web/src/component-preparation/runtime.test.ts 新增「重复 prepare 期间保持 ready 环境可用」用例，9/9 通过",
+      "sourceFiles": [
+        "apps/web/src/component-preparation/runtime.ts",
+        "apps/web/src/component-preparation/runtime.test.ts"
+      ]
+    },
+    {
+      "id": "course-cover-404",
+      "symptom": "学校页面请求不存在的 /courses/digital-logic.png 等封面触发 404，使探针末尾 refused 断言失败",
+      "rootCause": "apps/web/src/components/home/LearningCards.tsx 硬编码三张从未产出的插画封面，加载失败再回退到几何占位",
+      "change": "按 DESIGN.md C1–C4 直接以已确认的几何封面呈现，删除对不存在 PNG 的请求与失败状态",
+      "test": "真实桌面 Chrome 跨机学校探针 refused 为空（Mac 客户端 8/8，见 evidence/wp04-206-cross-mac-client.json）",
+      "sourceFiles": [
+        "apps/web/src/components/home/LearningCards.tsx"
+      ]
+    }
+  ],
+  "regressionGates": [
+    { "name": "npm run typecheck", "result": "passed" },
+    { "name": "npm run build (all)", "result": "passed" },
+    { "name": "npm run check:contracts:browser", "result": "passed", "publicExports": 13 },
+    { "name": "npx vitest run apps/web/src/component-preparation/runtime.test.ts", "result": "passed", "tests": 9 },
+    { "name": "npm test (build:test / unit / server / tools)", "result": "passed", "exitCode": 0, "summary": ".verification/2026-11-06T14-43-11-792Z-kFfiLI/summary.json" },
+    { "name": "node --check (5 个新增验收脚本)", "result": "passed" }
+  ],
+  "note": "修复未放宽任何既有断言；两处改动均为产品源码，已随本票候选固定并全量回归。"
+}

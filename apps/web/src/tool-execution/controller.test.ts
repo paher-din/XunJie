@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { executionActionSchema, type ExecutionAction } from '@xunjie/contracts/execution'
 import { AlgorithmError, type AggregationOutcome } from './algorithm'
-import { ExecutionController, type AlgorithmProvider, type RunAlgorithm } from './controller'
+import { ExecutionController } from './controller'
+import { createAdapterRegistry, type AlgorithmProvider, type RunAlgorithm } from './adapters'
 import { BrowserExecutionReceiver } from './receiver'
 import type { ExecutionTransport } from './retention'
 
@@ -73,7 +74,8 @@ function setup(options: { scope?: string; generation?: number; run?: RunAlgorith
     return receiver.accept(action, digestOf(action))
   }), cancel: vi.fn(async () => null) }
   const controller = new ExecutionController(receiver.scope, receiver, actions, options.transport ?? offline,
-    options.provider ?? provider, options.run ?? (async () => outcome), options.canAccess ?? (() => true))
+    createAdapterRegistry({ provider: options.provider ?? provider, run: options.run ?? (async () => outcome) }),
+    options.canAccess ?? (() => true))
   controllers.push(controller)
   const read = (requestId: string) => receiver.store.read(receiver.scope, requestId)
   return { controller, receiver, actions, read }
@@ -81,6 +83,58 @@ function setup(options: { scope?: string; generation?: number; run?: RunAlgorith
 const until = async (check: () => unknown | Promise<unknown>) => {
   await vi.waitFor(async () => { expect(await check()).toBeTruthy() }, { timeout: 1500, interval: 10 })
 }
+describe('durable result synchronization',()=>{
+  it('preserves the original stop identity and delivers a newer terminal fact after an older sync was already in flight',async()=>{
+    const entered=deferred<void>(),gate=deferred<void>(),runner=liveRunner(),stopId=crypto.randomUUID(),stops:string[]=[],reports:string[]=[]
+    let accepted=false
+    const env:ReturnType<typeof setup>=setup({run:runner.run,transport:{...offline,
+      accept:async action=>{entered.resolve(undefined);await gate.promise;accepted=true;const record=await env.read(action.requestId);if(!record)throw new Error('missing');return record.query},
+      stop:async(id,originalStopId)=>{stops.push(originalStopId);if(!accepted)throw new Error('missing');const record=await env.read(id);if(!record)throw new Error('missing');return record.query},
+      report:async(_id,query)=>{reports.push(query.state);return query}}})
+    const action=actionOf(crypto.randomUUID())
+    await env.controller.submit(action);await until(()=>runner.signal())
+    const syncing=env.controller.synchronize();await entered.promise
+    try {
+      await env.controller.stop(action.requestId,stopId)
+      await until(async()=>(await env.read(action.requestId))?.query.state==='cancelled')
+    } finally {gate.resolve(undefined)}
+    await syncing
+    await vi.waitFor(async()=>{
+      const synced=await env.receiver.store.synced(env.receiver.scope,action.requestId),record=await env.read(action.requestId)
+      expect(synced?.factSeq).toBe(record?.query.confirmedSeq);expect(synced?.stopIds).toContain(stopId)
+    },{timeout:3000,interval:20})
+    expect(new Set(stops)).toEqual(new Set([stopId]));expect(reports.at(-1)).toBe('cancelled')
+  })
+  it('confirms retained resources before reporting a completed service fact',async()=>{
+    const gate=deferred<void>(),events:string[]=[]
+    const env:ReturnType<typeof setup>=setup({transport:{...offline,
+      accept:async action=>{const record=await env.read(action.requestId);if(!record)throw new Error('missing');return record.query},
+      report:async(_id,query)=>{events.push(query.state);return query},
+      result:async id=>{events.push('resource');await gate.promise;const record=await env.read(id);if(!record)throw new Error('missing');return record.query}}})
+    const action=actionOf(crypto.randomUUID())
+    try {
+      await env.controller.submit(action)
+      await until(()=>events.includes('resource'))
+      expect(events).not.toContain('succeeded')
+    } finally {gate.resolve(undefined)}
+    await until(async()=>Boolean((await env.receiver.store.synced(env.receiver.scope,action.requestId))?.result))
+    expect(events.at(-1)).toBe('succeeded')
+  })
+  it('retries the original retained result when the service returns without rerunning the calculation',async()=>{
+    let online=false
+    const run=vi.fn<RunAlgorithm>(async()=>outcome),requests:string[]=[]
+    const env:ReturnType<typeof setup>=setup({run,transport:{...offline,
+      accept:async action=>{requests.push(action.requestId);if(!online)throw new Error('offline');const record=await env.read(action.requestId);if(!record)throw new Error('missing');return record.query},
+      report:async(_id,query)=>query,
+      result:async id=>{const record=await env.read(id);if(!record)throw new Error('missing');return record.query}}})
+    const action=actionOf(crypto.randomUUID())
+    await env.controller.submit(action)
+    await until(async()=>(await env.read(action.requestId))?.query.state==='succeeded')
+    await until(()=>requests.length>0);online=true
+    await vi.waitFor(async()=>expect((await env.receiver.store.synced(env.receiver.scope,action.requestId))?.result).toBe(true),{timeout:3000,interval:20})
+    expect(run).toHaveBeenCalledTimes(1);expect(new Set(requests)).toEqual(new Set([action.requestId]))
+  })
+})
 afterEach(async () => {
   for (const controller of controllers) controller.dispose()
   await until(() => controllers.every(controller => controller.counts().running === 0 && controller.counts().queued === 0))

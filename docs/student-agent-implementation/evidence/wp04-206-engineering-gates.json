@@ -1,0 +1,38 @@
+{
+  "formatVersion": 1,
+  "ticket": "#206",
+  "parent": "#192",
+  "recordedAt": "2026-11-06T12:55:00Z",
+  "platform": { "os": "darwin", "release": "27.2.0", "arch": "arm64", "cpu": "Apple M5" },
+  "node": "24.21.0",
+  "npm": "11.19.0",
+  "chrome": "156.0.8078.80",
+  "commands": [
+    { "command": "npm run build", "exitCode": 0, "log": ".verification/wp04-206/engineering-gates-rerun.log",
+      "note": "首次因本机 node_modules 缺已声明的 openai@7.42.0 / @anthropic-ai/sdk@1.1.0 报 TS2307；npm install 补齐依赖后重跑通过（未改动任何跟踪文件）。" },
+    { "command": "npm run typecheck", "exitCode": 0, "log": ".verification/wp04-206/engineering-gates-rerun.log" },
+    { "command": "npm run check:contracts:browser", "exitCode": 0, "count": 13,
+      "note": "Browser safety checked 13 public exports.", "log": ".verification/wp04-206/engineering-gates-rerun.log" },
+    { "command": "npm run build:runtime -w @xunjie/web", "exitCode": 0, "log": ".verification/wp04-206/engineering-gates.log" },
+    { "command": "node components/alu-experiment/package.mjs", "exitCode": 0,
+      "note": "25 项运行资源，runtimeIdentity f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd。" },
+    { "command": "python3 tools/alu-wasm/fixture.py", "exitCode": 0 },
+    { "command": "XUNJIE_ALU_ADAPTER_ROOT=components/alu-icarus-runtime node tools/alu-wasm/adapter-browser-test.mjs ...", "exitCode": 0,
+      "count": 53, "evidence": "evidence/wp04-206-mac-adapter-browser.json",
+      "note": "真实桌面 Chrome（headless:false）Worker，darwin/arm64，Chrome 156.0.8078.80。" },
+    { "command": "npm test", "exitCode": 0,
+      "note": "build:test / unit / server / tools 四阶段全部 passed，182.5s。",
+      "log": ".verification/wp04-206/workspace-tests-clean.log",
+      "summary": ".verification/2026-11-06T12-51-57-325Z-TgxaOr/summary.json" },
+    { "command": "npm run package:product -- --out dist/product-darwin-arm64-wp04-206", "exitCode": 0,
+      "note": "从 6a4cafa 重建 Mac 未签名完整包，distribution.json SHA-256 e0307a701c7d7d7ff8a9389b4600d913b2dfa3b567048f6f7b2ed961edccd744，221 项入口摘要。",
+      "log": ".verification/wp04-206/package-product.log" },
+    { "command": "XUNJIE_ALU_PRODUCT_ROOT=dist/product-darwin-arm64-wp04-206 node scripts/probe-alu-product.mjs", "exitCode": 0,
+      "count": 17, "evidence": "evidence/wp04-206-mac-product.json",
+      "note": "Mac 正式产品包完整链路 17/17 通过。", "log": ".verification/wp04-206/product-probe.log" }
+  ],
+  "notes": [
+    "所有命令使用固定 Node 24.21.0（完整发行版，含 npm）与 PostgreSQL 18.6。",
+    "原始日志位于 gitignore 的 .verification/wp04-206/，可用本文档 §7 命令重跑；JSON 报告与截图已复制进 evidence/。"
+  ]
+}

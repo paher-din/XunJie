@@ -1,0 +1,117 @@
+{
+  "cases": [
+    "create A: 200",
+    "create B: 200",
+    "open A: ALU tab 1",
+    "open B: ALU tab 1"
+  ],
+  "errors": [],
+  "status": "identity-conflict",
+  "login": 200,
+  "aResponses": [
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f/receipts/6dad934b-6d86-476c-a3b2-498eea5637fb",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+      "status": 200
+    }
+  ],
+  "bResponses": [
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/873b9cca-98ac-4d65-95df-bb0c5daa8321/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/873b9cca-98ac-4d65-95df-bb0c5daa8321/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/873b9cca-98ac-4d65-95df-bb0c5daa8321/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321/receipts/fc96e4a9-817f-42b7-9175-7c77121c5a10",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321/receipts/fc96e4a9-817f-42b7-9175-7c77121c5a10",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+      "status": 409
+    }
+  ],
+  "bad": [
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+      "status": 409
+    },
+    {
+      "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+      "status": 409
+    }
+  ]
+}

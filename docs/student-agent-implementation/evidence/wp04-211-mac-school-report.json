@@ -1,0 +1,936 @@
+{
+  "kind": "alu-school-211-cross-machine-client",
+  "ticket": "#211",
+  "label": "macos-arm64",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "endpoint": "https://101.201.141.133:8443",
+  "schoolHost": "101.201.141.133",
+  "schoolNodePlatform": "linux",
+  "schoolNodeArch": "x64",
+  "schoolNodeVersion": "v24.21.0",
+  "schoolDistributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3",
+  "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0=",
+  "clientAddresses": [
+    "127.0.0.1",
+    "::1",
+    "fe80::1",
+    "fe80::861:3cef:413:f6c1",
+    "192.168.3.39",
+    "fe80::e065:6ff:fe1f:1f03",
+    "fe80::e065:6ff:fe1f:1f03",
+    "fe80::28ce:7c85:5579:bdfe",
+    "fe80::f9dc:136a:4838:14ca",
+    "fe80::8683:3421:1b4b:eb15",
+    "fe80::ce81:b1c:bd2c:69e",
+    "198.18.0.1"
+  ],
+  "clientLocalProduct": false,
+  "studentTrafficUsesSsh": false,
+  "startedAt": "2026-11-06T19:03:10.259Z",
+  "cases": [
+    {
+      "id": "env-placement",
+      "name": "学校服务与 PostgreSQL 位于客户端之外的真实机器",
+      "status": "PASS",
+      "detail": {
+        "schoolHost": "101.201.141.133",
+        "schoolNodePlatform": "linux",
+        "schoolNodeArch": "x64",
+        "schoolNodeVersion": "v24.21.0",
+        "distributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3",
+        "clientAddressIsSchoolHost": false,
+        "localAddressCount": 12
+      }
+    },
+    {
+      "id": "tls-pin",
+      "name": "严格 TLS + SPKI 公钥固定生效，entry 为 school profile",
+      "status": "PASS",
+      "detail": {
+        "tlsAuthorized": true,
+        "spkiMatches": true,
+        "profile": "school",
+        "browser": "156.0.8078.80",
+        "readOnly": false
+      }
+    },
+    {
+      "id": "login-activity",
+      "name": "学校成员登录并创建固定 ALU 课程活动",
+      "status": "PASS",
+      "detail": {
+        "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd",
+        "releaseId": "19200000-0000-4000-8000-000000000076",
+        "taskTitle": "设计并验证 4 位 ALU"
+      }
+    },
+    {
+      "id": "preparation",
+      "name": "正常组件/课程/准备/自检（真实网络资源与浏览器 Worker）",
+      "status": "PASS",
+      "detail": {
+        "preparationMs": 42665,
+        "workspaceRevision": 1,
+        "reportCount": 31,
+        "readyCount": 31,
+        "latest": {
+          "status": "ready",
+          "stage": "activate",
+          "durationMs": 41436,
+          "cacheHit": false,
+          "resourceBytes": 6327922,
+          "device": "chrome",
+          "platform": "MacIntel",
+          "features": [
+            "message-port",
+            "crypto-subtle",
+            "indexeddb",
+            "sandboxed-iframe",
+            "worker",
+            "webassembly",
+            "web-locks"
+          ]
+        }
+      }
+    },
+    {
+      "id": "starter-observation",
+      "name": "起始作品运行得到真实 X 观察（不是假零）",
+      "status": "PASS",
+      "detail": {
+        "boardStatus": "输出含 X/Z，不能当作零。",
+        "readout": "F=xxxx Cout=x",
+        "observationState": "complete-with-unknown"
+      }
+    },
+    {
+      "id": "correct-observation",
+      "name": "Monaco 输入正确 ALU 源码后运行，A=15/B=0/M=1/S=00/Cin=1 得到 F=0000/Cout=1",
+      "status": "PASS",
+      "detail": {
+        "inputs": {
+          "A": 15,
+          "B": 0,
+          "M": 1,
+          "S": 0,
+          "Cin": 1
+        },
+        "f": "0000",
+        "cout": "1",
+        "lastInputToObservationMs": 829
+      }
+    },
+    {
+      "id": "offline-sync",
+      "name": "应用 API 阻断时本地自由观察仍可用，恢复后同步到学校 owner 且不重复执行",
+      "status": "PASS",
+      "detail": {
+        "offlineReadout": "F=0001 Cout=1",
+        "beforeCount": 3,
+        "beforeRequestIds": [
+          "165c4f4f-00e2-4038-999e-ef8401275d30",
+          "1e84a8d0-4da8-46dc-bd75-b0df4245f9a6",
+          "27881a1f-6361-45c3-a7f7-c6035066b0d1"
+        ],
+        "afterCount": 5,
+        "newObservationRequestIds": [
+          "355dc614-e70c-4a96-8a7a-73853ee95c00",
+          "468b5a79-a21c-4ba0-b9a8-18b6135c3322"
+        ],
+        "observations": [
+          {
+            "requestId": "468b5a79-a21c-4ba0-b9a8-18b6135c3322",
+            "parameters": {
+              "A": 15,
+              "B": 0,
+              "M": 1,
+              "S": 0,
+              "Cin": 1
+            },
+            "state": "succeeded",
+            "f": "0000",
+            "cout": "1",
+            "operation": "observe-enabled"
+          },
+          {
+            "requestId": "355dc614-e70c-4a96-8a7a-73853ee95c00",
+            "parameters": {
+              "A": 15,
+              "B": 1,
+              "M": 1,
+              "S": 0,
+              "Cin": 1
+            },
+            "state": "succeeded",
+            "f": "0001",
+            "cout": "1",
+            "operation": "observe-enabled"
+          }
+        ],
+        "uniqueRequestIds": true,
+        "afterRequestIds": [
+          "165c4f4f-00e2-4038-999e-ef8401275d30",
+          "1e84a8d0-4da8-46dc-bd75-b0df4245f9a6",
+          "27881a1f-6361-45c3-a7f7-c6035066b0d1",
+          "355dc614-e70c-4a96-8a7a-73853ee95c00",
+          "468b5a79-a21c-4ba0-b9a8-18b6135c3322"
+        ]
+      }
+    },
+    {
+      "id": "check-pass",
+      "name": "完整检查通过：4096 组 / 16384 行 / 1536 保留输入，报告资源从学校 owner 可取",
+      "status": "PASS",
+      "detail": {
+        "requestId": "917addd5-6675-4afd-80f9-8fe776731748",
+        "executionRef": "6bdfa8cb-6c6a-4e96-8e57-8647d8a29638",
+        "metrics": {
+          "verdict": "pass",
+          "sampledRows": 16384,
+          "totalInputs": 4096,
+          "comparedRows": 16384,
+          "missingInputs": 0,
+          "unknownInputs": 0,
+          "plannedSamples": 16384,
+          "roundsCompleted": 4,
+          "inconsistentInputs": 0,
+          "behaviorErrorInputs": 0,
+          "reservedInputs": 1536,
+          "reservedCovered": 1536,
+          "counterexampleTotal": 0
+        },
+        "primaryBytes": 1788,
+        "resources": [
+          {
+            "name": "check-observations.json",
+            "byteLength": 291150
+          },
+          {
+            "name": "diagnostics.txt",
+            "byteLength": 238
+          },
+          {
+            "name": "check-traces.json",
+            "byteLength": 1646482
+          }
+        ],
+        "resourceBytes": 1939658
+      }
+    },
+    {
+      "id": "check-fail",
+      "name": "固定丢进位实现检查失败：256 个唯一反例 / 1024 错误行",
+      "status": "PASS",
+      "detail": {
+        "requestId": "5890b73e-3a68-4c8d-a0f4-6beb162b9f2a",
+        "executionRef": "f033d2e3-825a-44b7-b842-a235e6c6e05d",
+        "metrics": {
+          "verdict": "fail",
+          "sampledRows": 16384,
+          "totalInputs": 4096,
+          "comparedRows": 16384,
+          "missingInputs": 0,
+          "unknownInputs": 0,
+          "plannedSamples": 16384,
+          "roundsCompleted": 4,
+          "inconsistentInputs": 0,
+          "behaviorErrorInputs": 256
+        },
+        "errorRows": 1024,
+        "resources": [
+          {
+            "name": "check-observations.json",
+            "byteLength": 409221
+          },
+          {
+            "name": "diagnostics.txt",
+            "byteLength": 230
+          },
+          {
+            "name": "check-traces.json",
+            "byteLength": 1559472
+          }
+        ]
+      }
+    },
+    {
+      "id": "refresh",
+      "name": "刷新后恢复已启用输入、观察与检查报告，不重算",
+      "status": "PASS",
+      "detail": {
+        "refreshMs": 13221,
+        "historyEntries": 8,
+        "recomputed": false,
+        "readout": "F=0000 Cout=0"
+      }
+    },
+    {
+      "id": "worker-stop",
+      "name": "真实零时间 Worker 停止；停止后正常实验与检查可继续",
+      "status": "PASS",
+      "detail": {
+        "stopMs": 222,
+        "normalRunAfterStop": true,
+        "checkPassAfterStop": true
+      }
+    },
+    {
+      "id": "second-activity",
+      "name": "同一身份第二活动不再 409 identity-conflict，且可正常准备/运行",
+      "status": "PASS",
+      "detail": {
+        "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+        "workRevision": 1,
+        "workspaceObjectId": "ea20e33c-91d9-4755-bd9d-debd1b44d48d",
+        "contentId": "e99d8752-b589-47eb-9c9a-9ddfc9b54566",
+        "firstActivityObjectId": "4df639ef-82a0-45c7-afe2-801934d2a9da",
+        "objectIdIsPerActivity": true,
+        "workspacePosts": [
+          {
+            "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+            "status": 200
+          }
+        ],
+        "executionPosts": [
+          {
+            "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+            "status": 200
+          }
+        ],
+        "identityConflict": false,
+        "preparationMs": 17345
+      }
+    },
+    {
+      "id": "network-origin",
+      "name": "页面仅访问学校 origin，无 loopback/localhost/SSH 隧道，refused 已记录",
+      "status": "PASS",
+      "detail": {
+        "pageHosts": [
+          "101.201.141.133:8443"
+        ],
+        "pageSchemes": [
+          "blob:",
+          "https:"
+        ],
+        "refused": [
+          "404 /api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/stop",
+          "400 /api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd"
+        ],
+        "requestFailures": 0
+      }
+    }
+  ],
+  "caseSummary": {
+    "pass": 13,
+    "fail": 0,
+    "skip": 0
+  },
+  "timings": {
+    "loginMs": 610,
+    "preparationMs": 42665,
+    "starterRunMs": 864,
+    "correctRunMs": 1004,
+    "lastInputToObservationMs": 829,
+    "offlineObservationMs": 312,
+    "checkPassMs": 1401,
+    "checkFailMs": 1401,
+    "refreshMs": 13221,
+    "stopMs": 222,
+    "secondActivityMs": 17345
+  },
+  "timestamps": {
+    "loginAt": "2026-11-06T19:03:11.605Z",
+    "preparationReadyAt": "2026-11-06T19:03:54.587Z",
+    "starterRunAt": "2026-11-06T19:03:55.977Z",
+    "correctRunAt": "2026-11-06T19:03:58.248Z",
+    "observationAt": "2026-11-06T19:03:59.343Z",
+    "checkPassAt": "2026-11-06T19:04:08.600Z",
+    "checkFailAt": "2026-11-06T19:04:17.055Z",
+    "refreshAt": "2026-11-06T19:04:38.112Z",
+    "stopAt": "2026-11-06T19:04:41.379Z"
+  },
+  "traffic": [],
+  "apiPosts": [
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "preparation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "starter-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "starter-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/1e84a8d0-4da8-46dc-bd75-b0df4245f9a6/result",
+      "status": 200,
+      "step": "starter-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/1e84a8d0-4da8-46dc-bd75-b0df4245f9a6/report",
+      "status": 200,
+      "step": "starter-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/27881a1f-6361-45c3-a7f7-c6035066b0d1/result",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/27881a1f-6361-45c3-a7f7-c6035066b0d1/report",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/165c4f4f-00e2-4038-999e-ef8401275d30/result",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/165c4f4f-00e2-4038-999e-ef8401275d30/report",
+      "status": 200,
+      "step": "correct-observation",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/468b5a79-a21c-4ba0-b9a8-18b6135c3322/result",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/468b5a79-a21c-4ba0-b9a8-18b6135c3322/report",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/355dc614-e70c-4a96-8a7a-73853ee95c00/result",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/355dc614-e70c-4a96-8a7a-73853ee95c00/report",
+      "status": 200,
+      "step": "offline-sync",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "check-pass",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "check-pass",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/917addd5-6675-4afd-80f9-8fe776731748/result",
+      "status": 200,
+      "step": "check-pass",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/917addd5-6675-4afd-80f9-8fe776731748/report",
+      "status": 200,
+      "step": "check-pass",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/558c6695-9a64-4a6e-a729-bb0ab81bc760/result",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/558c6695-9a64-4a6e-a729-bb0ab81bc760/report",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/5890b73e-3a68-4c8d-a0f4-6beb162b9f2a/result",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/5890b73e-3a68-4c8d-a0f4-6beb162b9f2a/report",
+      "status": 200,
+      "step": "check-fail",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/stop",
+      "status": 404,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "body": "{\"error\":\"missing\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/stop",
+      "status": 200,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/result",
+      "status": 200,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/report",
+      "status": 200,
+      "step": "worker-stop",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 400,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "body": "{\"error\":\"invalid\"}"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/82be27fd-153c-456a-8743-93c0eee517f2/result",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/82be27fd-153c-456a-8743-93c0eee517f2/report",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/50c7bce8-379c-4f10-8ab7-80aaf13e226c/result",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/50c7bce8-379c-4f10-8ab7-80aaf13e226c/report",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd"
+    },
+    {
+      "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550"
+    },
+    {
+      "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550"
+    },
+    {
+      "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550"
+    },
+    {
+      "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550/be0671f4-f684-48d8-97cd-a6376fb14322/result",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550"
+    },
+    {
+      "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550/be0671f4-f684-48d8-97cd-a6376fb14322/report",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550"
+    },
+    {
+      "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+      "status": 200,
+      "step": "second-activity",
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550"
+    }
+  ],
+  "refused": [
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/stop",
+      "status": 404,
+      "step": "worker-stop",
+      "body": "{\"error\":\"missing\"}"
+    },
+    {
+      "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+      "status": 400,
+      "step": "second-activity",
+      "body": "{\"error\":\"invalid\"}"
+    }
+  ],
+  "status": "passed",
+  "tls": {
+    "authorized": true,
+    "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0=",
+    "protocol": "TLSv1.3",
+    "cipher": "TLS_AES_256_GCM_SHA384"
+  },
+  "browser": "156.0.8078.80",
+  "identity": {
+    "environmentId": "c5166ead-00ca-403f-b16d-b32f6d7cb9dc",
+    "spaceId": "d900ce5c-f7b1-4661-8af2-74bd37110c4c",
+    "principalId": "d042375b-3eb9-42bc-9871-ab10583abb68"
+  },
+  "activityId": "998e8c2c-485e-4b75-92a4-b19f388714cd",
+  "preparation": {
+    "reportCount": 31,
+    "readyCount": 31,
+    "latest": {
+      "status": "ready",
+      "stage": "activate",
+      "durationMs": 41436,
+      "cacheHit": false,
+      "resourceBytes": 6327922,
+      "device": "chrome",
+      "platform": "MacIntel",
+      "features": [
+        "message-port",
+        "crypto-subtle",
+        "indexeddb",
+        "sandboxed-iframe",
+        "worker",
+        "webassembly",
+        "web-locks"
+      ]
+    }
+  },
+  "firstActivityWorkspace": {
+    "revision": 1,
+    "objectId": "4df639ef-82a0-45c7-afe2-801934d2a9da",
+    "contentId": "50dc5682-8212-4072-a4fa-a88acec35c8c"
+  },
+  "historySync": {
+    "beforeCount": 3,
+    "beforeRequestIds": [
+      "165c4f4f-00e2-4038-999e-ef8401275d30",
+      "1e84a8d0-4da8-46dc-bd75-b0df4245f9a6",
+      "27881a1f-6361-45c3-a7f7-c6035066b0d1"
+    ],
+    "afterCount": 5,
+    "newObservationRequestIds": [
+      "355dc614-e70c-4a96-8a7a-73853ee95c00",
+      "468b5a79-a21c-4ba0-b9a8-18b6135c3322"
+    ],
+    "observations": [
+      {
+        "requestId": "468b5a79-a21c-4ba0-b9a8-18b6135c3322",
+        "parameters": {
+          "A": 15,
+          "B": 0,
+          "M": 1,
+          "S": 0,
+          "Cin": 1
+        },
+        "state": "succeeded",
+        "f": "0000",
+        "cout": "1",
+        "operation": "observe-enabled"
+      },
+      {
+        "requestId": "355dc614-e70c-4a96-8a7a-73853ee95c00",
+        "parameters": {
+          "A": 15,
+          "B": 1,
+          "M": 1,
+          "S": 0,
+          "Cin": 1
+        },
+        "state": "succeeded",
+        "f": "0001",
+        "cout": "1",
+        "operation": "observe-enabled"
+      }
+    ],
+    "uniqueRequestIds": true,
+    "afterRequestIds": [
+      "165c4f4f-00e2-4038-999e-ef8401275d30",
+      "1e84a8d0-4da8-46dc-bd75-b0df4245f9a6",
+      "27881a1f-6361-45c3-a7f7-c6035066b0d1",
+      "355dc614-e70c-4a96-8a7a-73853ee95c00",
+      "468b5a79-a21c-4ba0-b9a8-18b6135c3322"
+    ]
+  },
+  "checkPass": {
+    "requestId": "917addd5-6675-4afd-80f9-8fe776731748",
+    "executionRef": "6bdfa8cb-6c6a-4e96-8e57-8647d8a29638",
+    "metrics": {
+      "verdict": "pass",
+      "sampledRows": 16384,
+      "totalInputs": 4096,
+      "comparedRows": 16384,
+      "missingInputs": 0,
+      "unknownInputs": 0,
+      "plannedSamples": 16384,
+      "roundsCompleted": 4,
+      "inconsistentInputs": 0,
+      "behaviorErrorInputs": 0,
+      "reservedInputs": 1536,
+      "reservedCovered": 1536,
+      "counterexampleTotal": 0
+    },
+    "primaryBytes": 1788,
+    "resources": [
+      {
+        "name": "check-observations.json",
+        "byteLength": 291150
+      },
+      {
+        "name": "diagnostics.txt",
+        "byteLength": 238
+      },
+      {
+        "name": "check-traces.json",
+        "byteLength": 1646482
+      }
+    ],
+    "resourceBytes": 1939658
+  },
+  "checkFail": {
+    "requestId": "5890b73e-3a68-4c8d-a0f4-6beb162b9f2a",
+    "executionRef": "f033d2e3-825a-44b7-b842-a235e6c6e05d",
+    "metrics": {
+      "verdict": "fail",
+      "sampledRows": 16384,
+      "totalInputs": 4096,
+      "comparedRows": 16384,
+      "missingInputs": 0,
+      "unknownInputs": 0,
+      "plannedSamples": 16384,
+      "roundsCompleted": 4,
+      "inconsistentInputs": 0,
+      "behaviorErrorInputs": 256
+    },
+    "errorRows": 1024,
+    "resources": [
+      {
+        "name": "check-observations.json",
+        "byteLength": 409221
+      },
+      {
+        "name": "diagnostics.txt",
+        "byteLength": 230
+      },
+      {
+        "name": "check-traces.json",
+        "byteLength": 1559472
+      }
+    ]
+  },
+  "refreshState": {
+    "before": {
+      "readout": "F=0000 Cout=0",
+      "switches": [
+        "true",
+        "true",
+        "true",
+        "true",
+        "false",
+        "false",
+        "false",
+        "false",
+        "true",
+        "false",
+        "false",
+        "true"
+      ]
+    },
+    "after": {
+      "readout": "F=0000 Cout=0",
+      "switches": [
+        "true",
+        "true",
+        "true",
+        "true",
+        "false",
+        "false",
+        "false",
+        "false",
+        "true",
+        "false",
+        "false",
+        "true"
+      ]
+    }
+  },
+  "secondActivityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+  "secondActivity": {
+    "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+    "workRevision": 1,
+    "workspaceObjectId": "ea20e33c-91d9-4755-bd9d-debd1b44d48d",
+    "contentId": "e99d8752-b589-47eb-9c9a-9ddfc9b54566",
+    "firstActivityObjectId": "4df639ef-82a0-45c7-afe2-801934d2a9da",
+    "objectIdIsPerActivity": true,
+    "workspacePosts": [
+      {
+        "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+        "status": 200
+      }
+    ],
+    "executionPosts": [
+      {
+        "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+        "status": 200
+      }
+    ],
+    "identityConflict": false,
+    "preparationMs": 17345
+  },
+  "pageHosts": [
+    "101.201.141.133:8443"
+  ],
+  "pageSchemes": [
+    "blob:",
+    "https:"
+  ],
+  "requestFailures": [],
+  "finishedAt": "2026-11-06T19:05:09.222Z"
+}

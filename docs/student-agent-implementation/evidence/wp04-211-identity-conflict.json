@@ -1,0 +1,203 @@
+{
+  "kind": "identity-conflict-fix-evidence",
+  "ticket": "#211",
+  "parent": "#193",
+  "related": "#206",
+  "symptom": "同一学校节点同一 release 打开第二个课程活动时 workspace POST 返回 409 {\"error\":\"identity-conflict\"}，作品内容保留但无法继续同步。",
+  "rootCause": "旧 Web bundle 的 ActivityWorkspace 用课程发布固定 starter.workId 作为学生作品 objectId；服务端 work_objects 以 objectId 为全局身份并绑定第一个 activity，第二个 activity 复用固定 id 即 409。",
+  "fix": "apps/web/src/product/ActivityWorkspace.tsx 在初始化 starter 时为每个活动生成独立 crypto.randomUUID() 作为 objectId；contentId 也独立生成。课程发布模板、workId、releaseId 不变。",
+  "fixFiles": [
+    "apps/web/src/product/ActivityWorkspace.tsx"
+  ],
+  "localBefore": {
+    "case": "two activities under one release, old bundle",
+    "status": "identity-conflict",
+    "bad": [
+      {
+        "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+        "status": 409
+      },
+      {
+        "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+        "status": 409
+      }
+    ],
+    "responses": {
+      "a": [
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/history",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/sessions",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/checkpoints",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f/receipts/6dad934b-6d86-476c-a3b2-498eea5637fb",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/sessions",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/59d61bb2-3e55-44dd-b977-7f773af96e7f/checkpoints",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/59d61bb2-3e55-44dd-b977-7f773af96e7f",
+          "status": 200
+        }
+      ],
+      "b": [
+        {
+          "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/873b9cca-98ac-4d65-95df-bb0c5daa8321/history",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/873b9cca-98ac-4d65-95df-bb0c5daa8321/sessions",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/executions/873b9cca-98ac-4d65-95df-bb0c5daa8321/checkpoints",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321/receipts/fc96e4a9-817f-42b7-9175-7c77121c5a10",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+          "status": 409
+        },
+        {
+          "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321/receipts/fc96e4a9-817f-42b7-9175-7c77121c5a10",
+          "status": 200
+        },
+        {
+          "path": "/api/learning/workspaces/873b9cca-98ac-4d65-95df-bb0c5daa8321",
+          "status": 409
+        }
+      ]
+    }
+  },
+  "localAfter": {
+    "case": "two activities under one release, fixed bundle",
+    "status": "passed",
+    "bad": []
+  },
+  "schoolSmoke": {
+    "path": ".verification/wp04-211/school-smoke/report.json",
+    "status": "passed",
+    "bad": [],
+    "activities": [
+      "c90d13b7-4a75-48db-bca5-d609936fb8d1",
+      "e4647db7-9b9f-47ea-8a12-eb719f50cc92"
+    ]
+  },
+  "schoolMac": {
+    "path": ".verification/wp04-211/school-mac/report.json",
+    "status": "passed",
+    "secondActivity": {
+      "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+      "workRevision": 1,
+      "workspaceObjectId": "ea20e33c-91d9-4755-bd9d-debd1b44d48d",
+      "contentId": "e99d8752-b589-47eb-9c9a-9ddfc9b54566",
+      "firstActivityObjectId": "4df639ef-82a0-45c7-afe2-801934d2a9da",
+      "objectIdIsPerActivity": true,
+      "workspacePosts": [
+        {
+          "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+          "status": 200
+        }
+      ],
+      "executionPosts": [
+        {
+          "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+          "status": 200
+        }
+      ],
+      "identityConflict": false,
+      "preparationMs": 17345
+    }
+  },
+  "schoolWindows": {
+    "path": ".verification/wp04-211/school-windows/report.json",
+    "status": "passed",
+    "secondActivity": {
+      "activityId": "c83003dd-6f7f-4814-b106-9baddc62f9ff",
+      "workRevision": 1,
+      "workspaceObjectId": "bc8a50df-6dc4-4530-9bc8-3bfa0afc135e",
+      "contentId": "513c1973-f6c3-4a76-baeb-4f6505a95819",
+      "firstActivityObjectId": "93e90803-7aa3-4daa-9b58-06203f2eca36",
+      "objectIdIsPerActivity": true,
+      "workspacePosts": [
+        {
+          "path": "/api/learning/workspaces/c83003dd-6f7f-4814-b106-9baddc62f9ff",
+          "status": 200
+        }
+      ],
+      "executionPosts": [
+        {
+          "path": "/api/learning/executions/c83003dd-6f7f-4814-b106-9baddc62f9ff",
+          "status": 200
+        }
+      ],
+      "identityConflict": false,
+      "preparationMs": 20433
+    }
+  },
+  "oldBundleAttempt": {
+    "path": ".verification/wp04-211/school-mac/attempt1-old-bundle/report.json",
+    "status": "failed",
+    "caseSummary": {
+      "pass": 4,
+      "fail": 1,
+      "skip": 8
+    },
+    "note": "旧部署 web root 仍为 product-linux-x64（固定 objectId）；切换到 product-linux-x64b（crypto.randomUUID 修复）后复测 13/13。"
+  },
+  "sourceHashes": {
+    "apps/web/src/product/ActivityWorkspace.tsx": "d17f0b51d7818a205b1a1b075bed6503a6533db4cd91d3f37643a22a1346a1aa"
+  }
+}
