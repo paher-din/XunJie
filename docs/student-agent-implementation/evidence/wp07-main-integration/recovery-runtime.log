@@ -1,0 +1,15 @@
+✔ a restored independent Agent continues its original student Wait through the existing learning-data route (25118.218834ms)
+✔ a restored independent Agent continues its original tool Wait through the existing learning-data route (38392.529125ms)
+✔ formal backup accounts for a student Wait and revised queue, then re-derives the same owner facts in isolation (5426.404209ms)
+✔ a paused Run with an unconfirmed real physical model call remains unknown in owner maintenance (2266.610958ms)
+✔ a complete native result before Agent association survives formal restore and seals its original segment (18095.463291ms)
+✔ the closed owner rejects a mismatched inventory and unsupported mandatory evidence version (1872.920833ms)
+✔ an unclaimed real WP03 command survives independent restore; an unconfirmed live browser blocks backup (11493.809708ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 103161.002208

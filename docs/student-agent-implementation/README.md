@@ -35,6 +35,7 @@
 | WP07 #200 的 macOS 引导、排队与暂停续接实机验收 | [#210 macOS 验收](wp07-210-mac-acceptance.md) |
 | WP07 学习对话的完整备份、隔离还原与权威接管 | [#204 实施选择](specs/wp07-conversation-recovery.md) · [交付与验收](wp07-204-conversation-recovery.md) · [双轴审查](wp07-204-code-review.md) · [Mac/跨机交接 #212](https://github.com/paher-din/XunJie/issues/212) |
 | WP07 Windows 工程检查的 20 项后续修复与重新验收 | [实施与复验](wp07-engineering-checks.md) · [双轴审查](wp07-engineering-code-review.md) |
+| WP07 与已合入 main 的最终 WP04 整合、组合回归及清理 | [合并与复验](wp07-main-integration.md) |
 | WP08 的能力装配、独立 Skills、上下文压缩、记忆读取及 PDF 资料来源；MCP/Plugin 暂缓 | [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |

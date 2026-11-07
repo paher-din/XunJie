@@ -1,0 +1,424 @@
+{
+  "issue": 202,
+  "label": "main-integration",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "headed": true,
+  "model": "controlled external transport; real tools",
+  "startedAt": "2026-11-07T14:01:48.709Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:01:48.712Z",
+      "result": {
+        "endpoint": "http://127.0.0.1:52505",
+        "releaseId": "19200000-0000-4000-8000-000000000205",
+        "definitionDigest": "6f9c2da7c7deffa13904692866a23f071948b8d900533ccfa6a9fdbfb102169e"
+      },
+      "elapsedMs": 16636
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:05.349Z",
+      "result": {
+        "requestId": "f48ebbcc-6b71-458c-95b4-49a77eb3d656",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "451437ac575c152b408c4acbc344178fc4f2fef0bc89eb897967bd882a7a44f8",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 3039
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:08.389Z",
+      "result": {
+        "requestId": "057d26d4-bd72-459b-8c94-e8303ab7642f",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 5400
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:13.789Z",
+      "result": {
+        "requestId": "93e494bb-d95a-4039-9d63-871b4b40a493",
+        "referenceId": "f0d55a05-37b2-40a2-a695-0db11f6c8786",
+        "index": 2079
+      },
+      "elapsedMs": 2301
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:16.091Z",
+      "result": {
+        "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+        "commandId": "ebfe364b-cdfe-4491-8c33-c0ec5442ecca",
+        "originalCodeVerifiedAfterEdit": true,
+        "answerSha256": "1dcda8c20607ad4afe49d0cfff846881b0369c120dbc9762bbd05c7c4617c887"
+      },
+      "elapsedMs": 18055
+    },
+    {
+      "id": "student-correction-real-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:34.147Z",
+      "result": {
+        "requestId": "d116e7fb-e448-460d-821f-8e44d5966c6f",
+        "output": {
+          "f": "0000",
+          "cout": "1",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 1969
+    },
+    {
+      "id": "normal-input-real-agent",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:36.116Z",
+      "result": {
+        "runId": "ae461654-1d1c-4c4e-913c-e0782d45615d",
+        "commandId": "d47282d5-7df2-4c8d-97b8-cae23dc9559c",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        },
+        "answerSha256": "1dcda8c20607ad4afe49d0cfff846881b0369c120dbc9762bbd05c7c4617c887"
+      },
+      "elapsedMs": 17197
+    },
+    {
+      "id": "help-policy-with-tool-output-instructions",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:02:53.313Z",
+      "result": {
+        "runId": "5fd77b23-a730-4294-bb99-549732fd6a6e",
+        "codeUnchanged": true,
+        "studentPredictionUnchanged": true,
+        "answerSha256": "1dcda8c20607ad4afe49d0cfff846881b0369c120dbc9762bbd05c7c4617c887"
+      },
+      "elapsedMs": 9171
+    },
+    {
+      "id": "daily-reopen-and-source-retention",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:03:02.485Z",
+      "result": {
+        "retainedRuns": 3,
+        "originalAgentCommands": 3
+      },
+      "elapsedMs": 1841
+    },
+    {
+      "id": "desktop-layout-and-provenance",
+      "status": "passed",
+      "startedAt": "2026-11-07T14:03:04.327Z",
+      "result": {
+        "workerCount": 1,
+        "codeAndResourceOwner": "existing WP03/WP04",
+        "teachingEffect": "not-evaluated"
+      },
+      "elapsedMs": 251
+    }
+  ],
+  "modelCalls": [
+    {
+      "payloadSha256": "d124a5ab30d97a1aecaeb7342ee688961d741cf0fdc70079e5668bf7979a59e9",
+      "at": "2026-11-07T14:02:18.209Z"
+    },
+    {
+      "payloadSha256": "16ee41dcce1879ff0223bd8101522564987b51c9f6d212f8a3eb36035ad98325",
+      "at": "2026-11-07T14:02:19.212Z"
+    },
+    {
+      "payloadSha256": "7c159ac6bc7f83d4953e408afc650d1a2b438b7efceb96024b178a62356d5412",
+      "at": "2026-11-07T14:02:20.116Z"
+    },
+    {
+      "payloadSha256": "56f2dedbd5b5a566a84aa0b3dd1f1efe706738e6b0c763cfcbb97deda9dfc669",
+      "at": "2026-11-07T14:02:20.982Z"
+    },
+    {
+      "payloadSha256": "1cd3132f7711e4764225fcb0a3076d67f7b7ec3c7b1064f91b495c71e5bdff16",
+      "at": "2026-11-07T14:02:21.877Z"
+    },
+    {
+      "payloadSha256": "02bca8d6c5a9975b375e045d2ed21ef45c0959fe7b6a2af31ef808a04c9e48f0",
+      "at": "2026-11-07T14:02:22.699Z"
+    },
+    {
+      "payloadSha256": "66c06f2995d9a31f38c14d5e9bde93fdb3b588a7f5cd42f9b090f83fb57af73e",
+      "at": "2026-11-07T14:02:32.226Z"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "a701154e-8d4d-43b9-9b8e-cdef530682ba",
+      "snapshotId": "e0ba77b5-28c6-42d3-82ce-db32d7a4c318",
+      "payloadSha256": "995ca65c306326e51f9acfd56e98df11cd4ed23a50ffe8095a297d72a22d714c",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "fc769f5b-3df6-4835-8914-25f936d8762b",
+      "snapshotId": "3887acac-1709-45ae-97da-68e48f4eafbe",
+      "payloadSha256": "107b0c4a81bf45c9c44c79efaa685a31a067a9bc5e697d010a6e6fe786ee26e1",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "f3a4b3f1-646c-4358-adc6-5000580d42f7",
+      "snapshotId": "15ffb0ae-95bd-46d0-8bf2-3bb2c28d5494",
+      "payloadSha256": "ac84ecd5811a4564588ef2e9009b383e22ecc33339b9e8c56349f0a8f1c36068",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "69d9208b-037b-4ab1-b2ff-8703d80d97ce",
+      "snapshotId": "ead313d6-f91e-47b5-a04e-fc605b92a51c",
+      "payloadSha256": "3b400fce0181cf6b94fd2c1bbce18b5587375ab8930be4645493e82743ed404b",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "2b0d4d20-73a8-4086-95ae-8da0bdf6d934",
+      "snapshotId": "bd20af44-ec23-4d69-a983-2b84a8d1ab30",
+      "payloadSha256": "b3bd9fcc5541330d90f1439ad90d3ce6a6badf5ae71b6b974404bd507b129269",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "34d23bb7-3b43-4079-a6a2-05224f866a62",
+      "snapshotId": "4384b8ed-aeda-4179-bd5f-04332b07c267",
+      "payloadSha256": "0b235d50aede3b4bf3d670a368df95321f70378b1f699021fa805547a7300bad",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a04da5d0-74d7-4810-9e3f-c4a933ea539f",
+      "attemptId": "6ae52000-a786-47eb-a457-9005936e0a70",
+      "snapshotId": "af3a69e2-302c-4ce5-9973-0c67b322789f",
+      "payloadSha256": "d8cb1f4c749e81e1a9a4695319e9c99230f76cb9139f4429110ee2b9204fe6fd",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "payloadSha256": "73301f2a818e1a06291a3aabc761158965a0d44c62f9f09e7d3deb5c70d76641",
+      "at": "2026-11-07T14:02:37.860Z"
+    },
+    {
+      "payloadSha256": "29dcdf6aa68d7bc36bfdb5c9c3dfc9814917b29a54a331e8d1cec0714db48da2",
+      "at": "2026-11-07T14:02:38.940Z"
+    },
+    {
+      "payloadSha256": "8e30f9482045000723d7adda99a64ee5c2ee11350c0a7ac82c4f22756dbb6403",
+      "at": "2026-11-07T14:02:51.521Z"
+    },
+    {
+      "runId": "ae461654-1d1c-4c4e-913c-e0782d45615d",
+      "attemptId": "27e1a44a-e5e8-4c54-9d4f-00e7e723a98e",
+      "snapshotId": "c7b4450a-f36c-4f45-bb5f-b3c41f65caf2",
+      "payloadSha256": "871fafd90a450a8ca73302d9bbdc10d79486382d2572839e7e50be8ae70a66d7",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "ae461654-1d1c-4c4e-913c-e0782d45615d",
+      "attemptId": "e5d77367-f3af-4557-8298-8abecc7e3c90",
+      "snapshotId": "a614809e-517b-4a0d-9791-53d02fcfe695",
+      "payloadSha256": "53eabcebfccba02294b65c6dffb074e8d8ffcd2f3b78d9e8c9ceae0e452d5d48",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "ae461654-1d1c-4c4e-913c-e0782d45615d",
+      "attemptId": "11f6c0a1-8fa3-40ee-b202-b99d533e7780",
+      "snapshotId": "364fa9f1-9b29-4529-87f0-81b436c4ad02",
+      "payloadSha256": "bdca5bd57d6e7d66a9a284d959adf61d25d80c65ab648c504f8f0ab637d060a2",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "payloadSha256": "bd65b05e477d5700ed8f3230eebb81f268be904cb0287743cf08aa6f94234742",
+      "at": "2026-11-07T14:02:55.108Z"
+    },
+    {
+      "payloadSha256": "e8055c88701c475c72ac36b5f1084fa80b24cfb302573f0e776d093db887537e",
+      "at": "2026-11-07T14:02:56.047Z"
+    },
+    {
+      "payloadSha256": "b253d4fe1a631fdf2ebdd70400c4868710f1b3beaddef07d6e9d50ab3e826dcf",
+      "at": "2026-11-07T14:03:01.245Z"
+    },
+    {
+      "runId": "5fd77b23-a730-4294-bb99-549732fd6a6e",
+      "attemptId": "cf03e25b-e8e5-4de7-bb42-439e8eb49aa7",
+      "snapshotId": "dbf3b4cb-9da3-4268-b6c3-5617cf851626",
+      "payloadSha256": "06be29065e3ec311b9e2fed1799d128fa24a8fa5b77a7306e64a39d59869424c",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "5fd77b23-a730-4294-bb99-549732fd6a6e",
+      "attemptId": "64f01027-ae4b-47d8-933a-89edb26023e7",
+      "snapshotId": "9ebcabc5-e09f-4a54-b700-b91d97dd816d",
+      "payloadSha256": "47653a82e596f583cc0383d0163aad5409c5339a9aab9bcf8888589947ac8fd1",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "5fd77b23-a730-4294-bb99-549732fd6a6e",
+      "attemptId": "d0e3ecaf-5f95-41fb-bdb5-002f9b56d9ab",
+      "snapshotId": "68e6f9b8-20b5-453d-8764-c7dda8245762",
+      "payloadSha256": "cbab556bfcf8ef3e0485edfefa28784e0584f0212381ef3124f2f0e7671d909f",
+      "model": {
+        "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    }
+  ],
+  "workers": [
+    "http://127.0.0.1:52505/assets/worker-BFqxMnuA.js"
+  ],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "status": "passed",
+  "product": {
+    "candidate": "/Users/robertwu/.codex/worktrees/e54a/XunJie/.verification/wp07-main/product-darwin",
+    "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-211-ime-10MteQ",
+    "productNodeVersion": "24.21.0",
+    "distributionSha256": "4f922ea83ac03db7019256496316b3012d91ab973de9b62e9a7cf8141b678641"
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "84125a17-eb77-483f-9246-a79b912716b5",
+  "providerConfiguration": {
+    "connectionId": "5ec46a51-b085-43c5-96f6-f3e57a9d2c80",
+    "protocol": "chat-completions",
+    "modelId": "alu-controlled",
+    "baseUrl": "http://127.0.0.1:52860/v1"
+  },
+  "origins": [
+    "http://127.0.0.1:52505"
+  ],
+  "completedAt": "2026-11-07T14:03:05.593Z"
+}

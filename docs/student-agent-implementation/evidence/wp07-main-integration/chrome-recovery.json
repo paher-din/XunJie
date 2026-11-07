@@ -1,0 +1,699 @@
+{
+  "ticket": 195,
+  "label": "wp07-main-integration-final-2",
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "mode": "local-product",
+  "headed": true,
+  "startedAt": "2026-11-07T14:10:11.724Z",
+  "status": "passed",
+  "cases": [
+    {
+      "name": "formal client opens the fixed ALU release with real preparation",
+      "activityId": "63dd798d-0dcc-41fd-b688-907e60a2d26b"
+    },
+    {
+      "name": "lost acceptance during maintenance reconciles the original identity and confirms its boundary without another execution",
+      "requestId": "57c030aa-0491-466a-9be9-9e1cf5bad0a9"
+    },
+    {
+      "name": "lost acceptance and retention confirmations reconcile the original request without another observation",
+      "acceptance": true,
+      "result": true
+    },
+    {
+      "name": "source retains code, fixed inputs, predictions, explanation chain, full check, VCD and four semantic references",
+      "commands": 4,
+      "enabled": "94f62af0-ea1c-4539-9c11-593bce62d564",
+      "compared": "8310ec92-e89a-43c7-8056-07dad0bba400",
+      "checked": "9f2480da-32a1-4d80-a128-9d622b4de6cc",
+      "materials": 2,
+      "componentEntry": true,
+      "runtimeResources": 26
+    },
+    {
+      "name": "real held backup closes every owner at one confirmed boundary",
+      "backupId": "4f942627-91c2-41a6-bb62-59e5264855c6"
+    },
+    {
+      "name": "missing and corrupt ALU facts and fixed runtime resources refuse activation and preserve the original backup",
+      "cases": [
+        {
+          "ownerUnit": "learning-data",
+          "kind": "missing",
+          "artifact": "76c1def7-340d-401c-bb08-645d7f7bc63c/09efcafa-f2f1-4474-9653-a642efe7e675.blob",
+          "code": "invalid-recovery",
+          "message": "invalid-recovery"
+        },
+        {
+          "ownerUnit": "learning-data",
+          "kind": "corrupt",
+          "artifact": "76c1def7-340d-401c-bb08-645d7f7bc63c/09efcafa-f2f1-4474-9653-a642efe7e675.blob",
+          "code": "invalid-recovery",
+          "message": "invalid-recovery"
+        },
+        {
+          "ownerUnit": "space-course",
+          "kind": "missing",
+          "artifact": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000420.blob",
+          "code": "invalid-recovery",
+          "message": "invalid-recovery"
+        },
+        {
+          "ownerUnit": "space-course",
+          "kind": "corrupt",
+          "artifact": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000420.blob",
+          "code": "invalid-recovery",
+          "message": "invalid-recovery"
+        }
+      ]
+    },
+    {
+      "name": "independent isolated Chrome re-reads exact original identities and bytes with zero writes or Worker execution",
+      "oldNamespace": "xunjie.v1.6c7de905-90ee-45fc-a865-64b0af7c1373",
+      "newNamespace": "xunjie.v1.6c7de905-90ee-45fc-a865-64b0af7c1373.recovery.d193d9af-81cf-4cb1-b0c2-80aa996bc945",
+      "writes": 0,
+      "workers": 0
+    },
+    {
+      "name": "an unavailable fixed component version refuses runtime bytes while original work, explanations and result copies remain readable",
+      "status": 503,
+      "version": 4
+    },
+    {
+      "name": "lost takeover confirmation retries the same transfer; retired source, old browser namespace and old handler stay refused",
+      "oldQueueStatus": 403,
+      "oldHandlerStatus": 403,
+      "newRequestId": "1caeff9c-4dff-4502-b1bf-8bdf5e586263"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "live-worker-blocks-backup.json",
+      "sha256": "94938ed288419e2e1d6ac4ac20e639f0152f77378b32e3ac4b71b5d1bd7a34a2"
+    },
+    {
+      "path": "source-before-backup.png"
+    },
+    {
+      "path": "source-received.json",
+      "sha256": "341770311fdfdd9098d33cc7d7351a3d2ee2e47181b03e9b03ff0d20e505c428"
+    },
+    {
+      "path": "negative-recovery.json",
+      "sha256": "86aea38c68b5fff3ae25c36a4460c9aa2e6261feeb0edf1413c8503226fa99d6"
+    },
+    {
+      "path": "isolated-restored.png"
+    },
+    {
+      "path": "isolated-comparison.png"
+    },
+    {
+      "path": "isolated-received.json",
+      "sha256": "cd36fe74ed7064bcfc5be0b16386c84a24f86e8e500b21f67ee65ae04f25c5ef"
+    },
+    {
+      "path": "takeover.json",
+      "sha256": "f448a16e37f396bbbd0d380d5d2a07ebac206650c2131aa7a4c6c4803be7365a"
+    },
+    {
+      "path": "fixed-version-unavailable.png"
+    },
+    {
+      "path": "takeover-active.png"
+    }
+  ],
+  "teachingEffect": "not-evaluated",
+  "installation": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0",
+    "postgresVersion": "18.6",
+    "environment": {
+      "formatVersion": 1,
+      "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+      "installationId": "ae59f0a3-0aca-4db6-8e70-978e4dc2bd9c",
+      "clientNamespace": "xunjie.v1.6c7de905-90ee-45fc-a865-64b0af7c1373",
+      "profile": "local",
+      "services": [
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "899065ea-23be-4a6a-a5a3-2d4044f66186",
+          "unit": "client",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "learning.authority"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "c9577079-278f-415b-8f10-55640175b28c",
+          "unit": "space-course",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "76c1def7-340d-401c-bb08-645d7f7bc63c",
+          "unit": "learning-data",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.dependencies"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "79e3377c-bef0-47f7-9094-5351ce687b92",
+          "unit": "model-connection",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "a53d49c1-18e2-44b2-986c-e8c26ac9af0a",
+          "unit": "teaching-agent",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        }
+      ]
+    },
+    "distributionSha256": "4f922ea83ac03db7019256496316b3012d91ab973de9b62e9a7cf8141b678641",
+    "endpoint": "http://127.0.0.1:58789"
+  },
+  "chrome": "156.0.8078.80",
+  "backup": {
+    "formatVersion": 1,
+    "backupId": "4f942627-91c2-41a6-bb62-59e5264855c6",
+    "source": {
+      "formatVersion": 1,
+      "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+      "installationId": "ae59f0a3-0aca-4db6-8e70-978e4dc2bd9c",
+      "clientNamespace": "xunjie.v1.6c7de905-90ee-45fc-a865-64b0af7c1373",
+      "profile": "local",
+      "services": [
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "899065ea-23be-4a6a-a5a3-2d4044f66186",
+          "unit": "client",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "c9577079-278f-415b-8f10-55640175b28c",
+          "unit": "space-course",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "spaces.access"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "76c1def7-340d-401c-bb08-645d7f7bc63c",
+          "unit": "learning-data",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": [
+            "activity:read",
+            "activity:write"
+          ]
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "79e3377c-bef0-47f7-9094-5351ce687b92",
+          "unit": "model-connection",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": []
+        },
+        {
+          "environmentId": "6c7de905-90ee-45fc-a865-64b0af7c1373",
+          "serviceId": "a53d49c1-18e2-44b2-986c-e8c26ac9af0a",
+          "unit": "teaching-agent",
+          "endpoint": "http://127.0.0.1:58789",
+          "protocolVersion": 1,
+          "capabilities": []
+        }
+      ]
+    },
+    "boundaryAt": "2026-11-07T14:10:37.517Z",
+    "completedAt": "2026-11-07T14:10:38.818Z",
+    "durationMs": 1352,
+    "services": [
+      {
+        "serviceId": "899065ea-23be-4a6a-a5a3-2d4044f66186",
+        "schemaVersion": "1",
+        "engineVersion": "18.6"
+      },
+      {
+        "serviceId": "c9577079-278f-415b-8f10-55640175b28c",
+        "schemaVersion": "storage/1;owner/10",
+        "engineVersion": "18.6"
+      },
+      {
+        "serviceId": "76c1def7-340d-401c-bb08-645d7f7bc63c",
+        "schemaVersion": "storage/1;owner/22",
+        "engineVersion": "18.6"
+      },
+      {
+        "serviceId": "79e3377c-bef0-47f7-9094-5351ce687b92",
+        "schemaVersion": "storage/1;owner/16",
+        "engineVersion": "18.6"
+      },
+      {
+        "serviceId": "a53d49c1-18e2-44b2-986c-e8c26ac9af0a",
+        "schemaVersion": "storage/1;owner/8",
+        "engineVersion": "18.6"
+      }
+    ],
+    "receiverIds": [],
+    "boundary": {
+      "formatVersion": 1,
+      "services": [
+        {
+          "serviceId": "899065ea-23be-4a6a-a5a3-2d4044f66186",
+          "kind": "xunjie.runtime.boundary",
+          "unresolved": 0,
+          "settled": 0,
+          "blocking": 0
+        },
+        {
+          "serviceId": "c9577079-278f-415b-8f10-55640175b28c",
+          "kind": "xunjie.storage.boundary",
+          "unresolved": 0,
+          "settled": 0,
+          "blocking": 0
+        },
+        {
+          "serviceId": "76c1def7-340d-401c-bb08-645d7f7bc63c",
+          "kind": "xunjie.learning-data.boundary",
+          "unresolved": 0,
+          "settled": 4,
+          "blocking": 0
+        },
+        {
+          "serviceId": "79e3377c-bef0-47f7-9094-5351ce687b92",
+          "kind": "xunjie.storage.boundary",
+          "unresolved": 0,
+          "settled": 0,
+          "blocking": 0
+        },
+        {
+          "serviceId": "a53d49c1-18e2-44b2-986c-e8c26ac9af0a",
+          "kind": "xunjie.teaching-agent.boundary",
+          "unresolved": 0,
+          "settled": 0,
+          "blocking": 0
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/09efcafa-f2f1-4474-9653-a642efe7e675.blob",
+        "sha256": "f759f715bc5151ee71293d2497d6529a366d166e2b8b61e5df6e73bb6e60efa9",
+        "byteLength": 1083
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/18d80620-6de5-4a82-bc03-68da6bae6cd2.blob",
+        "sha256": "38f41bc67326a04862cb60c7ebd7fa712f92d0c9932e7c2ade9dbbae40e4addd",
+        "byteLength": 1596
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/2003c92e-e4bd-4692-ab58-385f2c1a0a83.blob",
+        "sha256": "6dd236106b2a08bc3eea5e983805d948200793e89eda61caa3ff28585ea666d5",
+        "byteLength": 699
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/33ed2291-3025-4c74-ba0c-2326d7a7d535.blob",
+        "sha256": "0389aa83c7eb91daa13a3763d2b13aa2f9eb1688523105fac4b6e41fecc17da0",
+        "byteLength": 264
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/3e41eab6-512f-452a-acc6-ff13e5de61d1.blob",
+        "sha256": "b53126d8a7bdb358150b880e6eb5b6e0fe2df6d5b5f49b962c998de170dfac35",
+        "byteLength": 460
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/3eb587f7-0595-4837-bda8-2d2606ce3070.blob",
+        "sha256": "4ae2d31b669580252a51682a524741a97da6233d93deb30a0fc2d4ea17d22e04",
+        "byteLength": 884
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/44fda0be-c6d2-41d9-a2ba-afbc1a564c54.blob",
+        "sha256": "15bc1c4174d4f91b523509bb96f3bc89054ee65ba4a9f5587d136333f8a74e30",
+        "byteLength": 1344
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/45e52150-6c81-40a3-bdf2-b775981102dc.blob",
+        "sha256": "9fe6432dc7151bb7c05ab87f93adf7eb7d493d1599ec105821b5c6b3753ec7d0",
+        "byteLength": 1451
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/49262cc8-c35c-4226-b386-f3f123dc7378.blob",
+        "sha256": "3b8a4c5ea93caf99d8b09f7ac41a30553bb95f33a62c1e9bb1bea271411454be",
+        "byteLength": 819
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/5123b100-c513-4bff-9de7-f4d826c18153.blob",
+        "sha256": "36999326b984611931798b6e63ee8b9814654fa71503baff5d8f54b4c0c76527",
+        "byteLength": 291229
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/5562ff8b-2917-4f5f-8029-3c51e917de24.blob",
+        "sha256": "5c00413d6a750f56cae96e559860fa5e94ce9ffc930b1aebb8f4f2a896ceba4d",
+        "byteLength": 190
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/6abcb932-ecd8-47e3-a4f2-0d2a9ce95b96.blob",
+        "sha256": "b08448a31548bb116a9ffb7ff1043a7d009ad42fc9ee14da0419a127c8e78e8c",
+        "byteLength": 1561
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/78cfa8de-2a90-417f-8498-596e62ec0248.blob",
+        "sha256": "dc588034ce6fc2b3cb8b48e629e11310a2fb0ed42da6db58d22a95213611162f",
+        "byteLength": 294
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/7d4fa8d3-dce5-479c-b5ad-bd2645b94b4c.blob",
+        "sha256": "f7d250ab7fb3f3a113633a8fa6f6693dd836c75d8dfecd4b03894a9daefcfd57",
+        "byteLength": 1867
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/829f1555-d4f0-4aa1-a5c8-e7d8e1949fcb.blob",
+        "sha256": "85fe9c73dc3865813bbc54bbaf0cb49a64b38b777f08561270fbc27b10f1b62b",
+        "byteLength": 174
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/992b10b4-476f-4be9-8c30-cd99e5de879b.blob",
+        "sha256": "a9cf49826e83e7463b10c7f98ff1652f5a331fdae215059cfa915fe68ed13cf0",
+        "byteLength": 819
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/9de307ad-bec5-458c-a115-c587d0e7f16b.blob",
+        "sha256": "74d36f2cea54d104d91f7da4f68405f48bbcf8b2981d101c5a18dee15445d614",
+        "byteLength": 855
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/9e5a091e-221a-4c8e-8862-459459f1e4ad.blob",
+        "sha256": "6401b5b03663277b4b3e772e2dd1df9463703d980dec645296eb7abfa7963cd6",
+        "byteLength": 1451
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/a711cad2-2eba-49b3-987b-7798dc28ecae.blob",
+        "sha256": "110ccba19e9e7c5fb0fe92ea5165f3071bbc7125d8073bbc10efdffdc93c1617",
+        "byteLength": 1380
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/a92c6843-2e35-4103-8b6a-2b2d94761fe4.blob",
+        "sha256": "046f43112d6d3f0e288343effa0fc369cafe29820b99f1649b8611f9f6ecd6dd",
+        "byteLength": 288
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/b1410f3e-d42f-4feb-86fa-d087b5659001.blob",
+        "sha256": "f9632aa30d68f847a69823e35180ecf48319576ba6a4755a36c00122e9c6a74d",
+        "byteLength": 819
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/b1d3e443-f02a-48ee-8ed1-b5c05409e775.blob",
+        "sha256": "82a6e5a23f260fd6180ed6db98fd6a8ed920c0ffa9b05f07f82b2f5f7d021f6e",
+        "byteLength": 884
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/b9f22de3-4c87-4397-a304-4b1044c0d7b0.blob",
+        "sha256": "5d5079cb7de051b778483bd9d107adf3c2dbaebef8550f2a841f17dd991296e2",
+        "byteLength": 174
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/bb77c3d4-6d21-4837-a924-3a885b45a5ec.blob",
+        "sha256": "bede81fac4d8c60939cc450529aec7817dbf94a31796aea5f8eea0358393fd5a",
+        "byteLength": 855
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/c881543c-855c-4e00-bff6-39bf305d4e02.blob",
+        "sha256": "34e8a099034455187b9055cb0035e0c837e96d857fc5a076db0cbc41ba00f615",
+        "byteLength": 669
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/d4495762-7a0b-4a70-97b2-ea4d4ddcb4d8.blob",
+        "sha256": "784aadc97089088cd40e44e12f2228c452b61f4c49aa0d0ce9402470c5f2e1ab",
+        "byteLength": 389
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/d5bbe090-ae0d-4385-b417-14256f742269.blob",
+        "sha256": "4eebe383a20b628a36035483396c482c8e18e32777e6f8deb73cc3889f9803d6",
+        "byteLength": 749
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/dc150555-b4cf-4faa-8235-8a953475b2e9.blob",
+        "sha256": "2b2c9bde00aaf89c1ecf70bbfb6f4e42ae78a1b75c6794bd4e20632376e1fc3c",
+        "byteLength": 1640
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/e6131a0e-48ea-455e-8252-e177a640918c.blob",
+        "sha256": "c994fb6db469adb12573495d24ca19ee3d55b5688762de2789bb373af0215295",
+        "byteLength": 1451
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/e7f5d5a9-a707-402c-bb65-645d6e8d34e8.blob",
+        "sha256": "341c142da652ac08ed626c4258a2bd7f55a74804c61459750aa19f3e51f03ed1",
+        "byteLength": 239
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/fb6b3378-0da9-415b-8f0d-9fa87be0dc07.blob",
+        "sha256": "aa1202fbc799d4d899f20cefa4ba0d5d6a08419ae9ba2329d6b27d7c6fc639c7",
+        "byteLength": 1646565
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/recovery.json",
+        "sha256": "fbbdf7f7cfae2e213cacfb292a9f44a85ce7e4abb1bda2187564196c337d8b0e",
+        "byteLength": 36836
+      },
+      {
+        "path": "76c1def7-340d-401c-bb08-645d7f7bc63c/schema.dump",
+        "sha256": "b177a7321148da74e0fd09c9ecd349efc6765c0833e9681715c7f967d3874a83",
+        "byteLength": 145575
+      },
+      {
+        "path": "79e3377c-bef0-47f7-9094-5351ce687b92/240b1190-aa48-40ab-9897-d78d6b6ef977.blob",
+        "sha256": "955ffb8629f037315e9df11677e4e8a5a3ee89c79b8a742e930fa635afb4e5e9",
+        "byteLength": 115
+      },
+      {
+        "path": "79e3377c-bef0-47f7-9094-5351ce687b92/recovery.json",
+        "sha256": "868cb7efba6b151325fc71700c6590680625bd0fb04dd3f406550503196d1b70",
+        "byteLength": 9725
+      },
+      {
+        "path": "79e3377c-bef0-47f7-9094-5351ce687b92/schema.dump",
+        "sha256": "a7620766a4898e014dc51ac73bf868fee62b09530c29e71ea8efb1ae5350c645",
+        "byteLength": 55559
+      },
+      {
+        "path": "899065ea-23be-4a6a-a5a3-2d4044f66186/recovery.json",
+        "sha256": "ec114875d01033fdc7a39c26f7d8289b46d39c118990185d412b02a2b1045f5b",
+        "byteLength": 5282
+      },
+      {
+        "path": "899065ea-23be-4a6a-a5a3-2d4044f66186/runtime.dump",
+        "sha256": "e0ee7276d39948ab5cf4d83d438c0622711c87d1cb223aab4b40713309d4e780",
+        "byteLength": 1446
+      },
+      {
+        "path": "a53d49c1-18e2-44b2-986c-e8c26ac9af0a/recovery.json",
+        "sha256": "fee4be144a1bb5b1154e4ddc38b264a5539f0cf8d260397e254271e63bba38e5",
+        "byteLength": 15608
+      },
+      {
+        "path": "a53d49c1-18e2-44b2-986c-e8c26ac9af0a/schema.dump",
+        "sha256": "7fd70c2eb47d0e78210feabc88c37e0d9a3969e2e6d9d740db4fe7168dd85d62",
+        "byteLength": 70837
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000402.blob",
+        "sha256": "d2ac5b2f27fde9b0c0bfbf26c335f8c26b0fd0bf1e6968f3857ede6a8221d975",
+        "byteLength": 460
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000420.blob",
+        "sha256": "488a8292647a643ea3bdb1798ea0ed3a07b634a1af6ece6fb37e7c13f92be9ab",
+        "byteLength": 72817
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000421.blob",
+        "sha256": "6f259f9a9fa70a07416ef3d895f3266786657b5a713d2e0fe723804700be7791",
+        "byteLength": 1771972
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000422.blob",
+        "sha256": "6a78ab8574eb084cac4b61c011131b5fd530be28c1350a87b71b87a24e8a4677",
+        "byteLength": 63676
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000423.blob",
+        "sha256": "d03cda93ce39dc82e694aeb5b4dbb1099bfb8f6b09b2ab074eacc58d7fdce5b1",
+        "byteLength": 103046
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000424.blob",
+        "sha256": "3b9d32488b5bb25a40c67c3e47438e6c3f42c4a50c63287c420a35d0d0573e8c",
+        "byteLength": 71185
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000425.blob",
+        "sha256": "5f0ff292a8afe57203d053751530e7ad726fc99a11c02f34734a559d28a19c90",
+        "byteLength": 927241
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000426.blob",
+        "sha256": "2dbfe3beb86e1388b67583fedc47469732a6cf872a055a866f8da7f9a29c8e75",
+        "byteLength": 531
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000427.blob",
+        "sha256": "a6cb3a6e3ba4835a9336017d6d0b5f39fa056f0aeb5efc13d4babe275bee6353",
+        "byteLength": 18175
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000428.blob",
+        "sha256": "374671fe7a6d8db0f198cf2db67cc6961ff40ce01d7e99ad6ebb42eae3121b0e",
+        "byteLength": 5176
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000429.blob",
+        "sha256": "df950e9c1841e1bfdb8871137296b7cdddad9822b5b714eccb36c50aa8f4cfb7",
+        "byteLength": 29016
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000430.blob",
+        "sha256": "5f74733076ecc9d9c11ce5c9704c05e1172700842d54276e928f4eb0fc146238",
+        "byteLength": 16786
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000431.blob",
+        "sha256": "d7630b49356a04e166aff5a35803c6590c1d88261c1c52c29fcc39ee03b32044",
+        "byteLength": 16789
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000432.blob",
+        "sha256": "b18ca222d156e2cbcc419ad67c7ae43282621a347f93f136080c4d624f0df6a2",
+        "byteLength": 16791
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000433.blob",
+        "sha256": "8b50ed394bd1601ac83c550f31ac6329ab64b2746d4ca752b268c988d9d8df01",
+        "byteLength": 6287
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000434.blob",
+        "sha256": "49059fe336a5020cd7aba057bcd386e2ffa81d15490f0b3e28f32a58e65b52bc",
+        "byteLength": 3796
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000435.blob",
+        "sha256": "a0e9229241873290391ddfc706d8f2e558b6637f08413fa7512528559c4c3446",
+        "byteLength": 1789
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000436.blob",
+        "sha256": "786a0d9d8dc8b39cfa57b8101b685378899fe55bd5ed207a142c4e01e985d760",
+        "byteLength": 927
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000437.blob",
+        "sha256": "4084960b0e95f076abe0868f1fb18311dfd656bdf1c64a8bedf54711b388e47c",
+        "byteLength": 1157
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000438.blob",
+        "sha256": "7f9041713b7d1d024af27ef7e570025f54c7a7828d806d4ba9988bb5e2c96a84",
+        "byteLength": 585
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000439.blob",
+        "sha256": "5b3c75c5f164f75742bcf383b318127e4c3dfa5a483d10dfc862fcef3c7187e4",
+        "byteLength": 973
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000440.blob",
+        "sha256": "510cd4416b8519d12a7f5b63361dddf6b94a46e5c17f0dbb8e51a30919ef9836",
+        "byteLength": 19464
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000441.blob",
+        "sha256": "396ebda887b25bf7e952eb0416a7bb653eef319b76fc4690d1f9400ca280dcb3",
+        "byteLength": 1492
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000442.blob",
+        "sha256": "a6eff4b18bd71002cac4f0c5a6112076fe00a3b8e4360aa7bde3fb0d14833fa0",
+        "byteLength": 3176987
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000443.blob",
+        "sha256": "8de4c41b75df1f139e68e11dbf982a6937d9f526b90d0ce1169d570b2c70b94b",
+        "byteLength": 739
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000444.blob",
+        "sha256": "74b6987ce9624a50607503bf0e4a62befc1b0151247ce1f12701fbcecc7a0aa0",
+        "byteLength": 460
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000445.blob",
+        "sha256": "98ff94359ea42698d480e20def8a6cf94a800653b34acc9c9456f6b130c907b8",
+        "byteLength": 1846
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000460.blob",
+        "sha256": "093c9c0d67a1a7cb8e9f8fb347c154216b0cfefbc72f577ea023029dc5fdc915",
+        "byteLength": 6081
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/19200000-0000-4000-8000-000000000461.blob",
+        "sha256": "b35327d3385602fee86a71823d565bfbb73b73c175f9effecfa73f508981e94f",
+        "byteLength": 389
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/recovery.json",
+        "sha256": "2998fe56edbea38109de165cca8643628cd84f11d3445be27a15facc73878303",
+        "byteLength": 23710
+      },
+      {
+        "path": "c9577079-278f-415b-8f10-55640175b28c/schema.dump",
+        "sha256": "0aed354df0005f9d27ccb6124711a5269131c928fe0624aa7d37ce8a47b59f31",
+        "byteLength": 80035
+      }
+    ],
+    "authentication": "9ccde00258e57228ad1e29e04db63cb8bf8e57488e8cb42a33d336751b39b062"
+  },
+  "isolation": {
+    "workerEvents": [],
+    "writes": []
+  },
+  "cleanup": {
+    "stopped": true,
+    "temporaryRootRemoved": true
+  },
+  "browserErrors": [],
+  "finishedAt": "2026-11-07T14:10:52.568Z"
+}

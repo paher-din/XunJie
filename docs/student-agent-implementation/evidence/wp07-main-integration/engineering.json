@@ -1,0 +1,69 @@
+{
+  "baseMain": "9d41236d7e76a887c66f5376497ebbad0e257a35",
+  "priorWp07": "9b26b6d895eeadca862d97bca8a9e2f073bce942",
+  "mergeCommit": "0794a8ba",
+  "productSourceCommit": "6dffa3c",
+  "node": "v24.21.0",
+  "verification": {
+    "status": "passed",
+    "startedAt": "2026-11-07T14:00:15.799Z",
+    "finishedAt": "2026-11-07T14:04:23.382Z",
+    "jobs": 4,
+    "testsCached": false
+  },
+  "stages": [
+    {
+      "name": "prepare",
+      "status": "passed",
+      "tasks": 4
+    },
+    {
+      "name": "build:test",
+      "status": "passed",
+      "tasks": 1
+    },
+    {
+      "name": "unit",
+      "status": "passed",
+      "tasks": 34
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "tasks": 90
+    },
+    {
+      "name": "tools",
+      "status": "passed",
+      "tasks": 45
+    }
+  ],
+  "web": {
+    "files": 89,
+    "passed": 991,
+    "failed": 0
+  },
+  "native": {
+    "ownerAgentAluAndStorage": 73,
+    "conversationAndIndependentRecovery": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "chrome": {
+    "platform": "darwin-arm64",
+    "tutoring": 10,
+    "recovery": 9,
+    "modelTransport": "controlled; real production owners, Worker/Wasm, PG, resources and recovery"
+  },
+  "review": {
+    "scope": "main integration since 9b26b6d8 and follow-up test/probe fixes",
+    "Standards": 0,
+    "Spec": 0
+  },
+  "teachingEffect": "not-evaluated",
+  "candidate": {
+    "platform": "darwin-arm64",
+    "applicationSha256": "8ad0f2f0a6b9a97761d36abacc265229e65eba555c3b6222927e286a1ab533c2",
+    "distributionSha256": "4f922ea83ac03db7019256496316b3012d91ab973de9b62e9a7cf8141b678641"
+  }
+}
