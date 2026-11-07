@@ -3,5 +3,24 @@
   "remoteOriginalReportPending": true,
   "screenshots": "Existing before-final-review screenshots, application SHA256 4f36d24d5556ba9642eaad55930920b7b00bced81d5f5ecc9507cc4845f6cf18",
   "reason": "New SSH sessions authenticate and are reset before opening a channel; final files and cleanup remain pending.",
-  "coordination": "Preserve active sibling jobs and existing Windows connections; do not restart sshd or Windows. This issue runner finished with exit code 0 and has no remaining SSH control handle."
+  "coordination": "Preserve active sibling jobs and existing Windows connections; do not restart sshd or Windows. This issue runner finished with exit code 0 and has no remaining SSH control handle.",
+  "pendingFiles": {
+    "root": "C:/Users/h/AppData/Local/Temp/xj-wp08-217-chrome",
+    "report": "evidence/chrome-skills.json",
+    "desktop": "desktop.json",
+    "screenshots": [
+      "evidence/win32-settings-after.png",
+      "evidence/win32-draft-after.png",
+      "evidence/win32-skill-source.png",
+      "evidence/win32-dark-narrow.png"
+    ]
+  },
+  "cleanupAfterCopy": {
+    "temporaryHarness": "C:/Users/h/AppData/Local/Temp/xj-wp08-217-chrome",
+    "sharedCandidate": "C:/Users/h/.verification/wp08-217-cross-ywisqryz",
+    "failedUninstalledRoots": "C:/Users/h/AppData/Local/Temp/xj-wp08-217-ui-*",
+    "scheduledTask": "XunJie-WP08-217-SkillsChrome-01a1b761",
+    "taskUnregistration": "Runner finally returned successfully; independent readback pending",
+    "precondition": "Confirm no process uses these task-owned paths; touch no sibling or user data."
+  }
 }
