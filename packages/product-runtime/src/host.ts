@@ -30,6 +30,8 @@ export interface ProductHostOptions {
     owners: readonly RecoveryOwner[];
     /** Explicit opt-in: the application enforces isolated reads at its own domain boundary. */
     isolatedReads?: true;
+    /** The owning application identifies received browser commands without exposing its tables. */
+    hasReceivedBrowserExecution?(activityId: string, requestId: string): Promise<boolean>;
     capabilities?: Readonly<Record<string, CapabilityHandler>>;
     /** Host facts an operator must be able to read before asking this node to run anything. */
     facts?: () => Promise<readonly RuntimeDependencyStatus[]>;
@@ -188,7 +190,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     const state: RuntimeStatus['state'] = !initialized || starting ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
       : await authorityClosed() ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
         : dependencies.some(value => value.state !== 'ready') ? 'degraded' : 'ready';
-    return { state, environment, endpoint, dependencies, ...(startupFailure ? { reason: startupFailure } : {}) };
+    const reason = startupFailure ?? (state === 'failed' ? maintenance.status().error : undefined);
+    return { state, environment, endpoint, dependencies, ...(reason ? { reason } : {}) };
   }
 
   const applicationCapabilities = Object.keys(application?.capabilities ?? {});
@@ -216,13 +219,24 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       // writes close; the module checks proofs read-only before considering any first write.
       const terminalAcknowledgement = () => environment.profile === 'school' && request.method === 'POST'
         && pathname === '/api/learning/native-channel/cleanup';
-      if ((gatesClosed || stopping) && !terminalAcknowledgement()
+      // A browser's original query/stop/result/report can settle a failed maintenance drain. Its
+      // owner still verifies scope, request/digest/ref and monotonic facts; this cannot accept a
+      // new command. Restored copies and retired installations never gain this exception.
+      const settlementIdentity = /^\/api\/learning\/executions\/([0-9a-f-]{36})\/([0-9a-f-]{36})(?:\/(artifact|report|result|stop))?$/i.exec(pathname);
+      const settlementOperation = settlementIdentity?.[3];
+      const settlementMethod = request.method === 'GET' ? settlementOperation === undefined || settlementOperation === 'artifact'
+        : request.method === 'POST' && ['report', 'result', 'stop'].includes(settlementOperation ?? '');
+      const browserSettlement = (gatesClosed || await authorityClosed()) && !stopping
+        && !await isolatedMode() && !await exists(join(root, 'retired.json'))
+        && settlementMethod
+        && !!settlementIdentity && await application?.hasReceivedBrowserExecution?.(settlementIdentity[1]!, settlementIdentity[2]!) === true;
+      if ((gatesClosed || stopping) && !terminalAcknowledgement() && !browserSettlement
         && !(application?.isolatedReads && !stopping && await isolatedMode())) { send(response, 503, { error: 'maintenance' }); return; }
       activeApplicationRequests++;
       try {
         // Isolated recovery serves the same application through its read-only HTTP boundary.
         // Ordinary maintenance remains unavailable; no runtime capability is enabled here.
-        if ((await authorityClosed() || gatesClosed || stopping) && !terminalAcknowledgement()
+        if ((await authorityClosed() || gatesClosed || stopping) && !terminalAcknowledgement() && !browserSettlement
           && !(application?.isolatedReads && !stopping && await isolatedMode())) { send(response, 503, { error: 'maintenance' }); return; }
         if (application && await application.handle(request, response)) return;
       } finally { activeApplicationRequests--; }
@@ -292,11 +306,13 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         else if (action === 'backup') {
           const saved = await exists(join(root, 'backup-policy.json')) ? await policy() : undefined;
           const key = Buffer.from(await resolveCredential(root, input?.recoveryKeyRef ?? saved?.recoveryKeyRef ?? ''), 'base64');
+          // Keep the attempted location/key reference so the catalog can diagnose a failed first
+          // backup as well as a successful one. This stores no secret key or business data.
+          await atomicJson(join(root, 'last-backup-settings.json'), { directory: input?.directory ?? saved?.directory,
+            recoveryKeyRef: input?.recoveryKeyRef ?? saved?.recoveryKeyRef });
           result = await recovery.backup({ directory: input?.directory ?? saved?.directory, key,
             keep: input?.keep ?? saved?.keep, minimumFreeBytes: input?.minimumFreeBytes ?? saved?.minimumFreeBytes,
             leaveClosed: input?.leaveClosed === true });
-          await atomicJson(join(root, 'last-backup-settings.json'), { directory: input?.directory ?? saved?.directory,
-            recoveryKeyRef: input?.recoveryKeyRef ?? saved?.recoveryKeyRef });
         } else if (action === 'resume') result = await recovery.resume();
         else if (action === 'retire') result = await recovery.retire(input);
         else if (action === 'fence-source') {

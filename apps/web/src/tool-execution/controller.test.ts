@@ -84,6 +84,29 @@ const until = async (check: () => unknown | Promise<unknown>) => {
   await vi.waitFor(async () => { expect(await check()).toBeTruthy() }, { timeout: 1500, interval: 10 })
 }
 describe('durable result synchronization',()=>{
+  it('queries the original identity after lost acceptance and settles its stop while new acceptance is closed', async () => {
+    const runner = liveRunner(), stops: string[] = [], reports: string[] = []
+    const run = vi.fn(runner.run)
+    let accepted = false
+    const env: ReturnType<typeof setup> = setup({ run, transport: { ...offline,
+      accept: async () => { accepted = true; throw new Error('acceptance reply lost; maintenance now rejects acceptance') },
+      read: async id => accepted ? (await env.read(id))?.query ?? null : null,
+      stop: async (id, stopId) => { stops.push(stopId); return (await env.read(id))!.query },
+      report: async (_id, query) => { reports.push(query.state); return query },
+    } })
+    const action = actionOf(crypto.randomUUID()), stopId = crypto.randomUUID()
+    await env.controller.submit(action)
+    await until(() => runner.signal())
+    await env.controller.stop(action.requestId, stopId)
+    await vi.waitFor(async () => {
+      const sent = await env.receiver.store.synced(env.receiver.scope, action.requestId)
+      expect(sent?.stopIds).toContain(stopId)
+      expect(sent?.factSeq).toBe((await env.read(action.requestId))?.query.confirmedSeq)
+    }, { timeout: 3000, interval: 20 })
+    expect(reports.at(-1)).toBe('cancelled')
+    expect(new Set(stops)).toEqual(new Set([stopId]))
+    expect(run).toHaveBeenCalledTimes(1)
+  })
   it('preserves the original stop identity and delivers a newer terminal fact after an older sync was already in flight',async()=>{
     const entered=deferred<void>(),gate=deferred<void>(),runner=liveRunner(),stopId=crypto.randomUUID(),stops:string[]=[],reports:string[]=[]
     let accepted=false

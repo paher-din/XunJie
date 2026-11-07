@@ -69,8 +69,10 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
       instanceId, componentId, version, definitionDigest: binding.definition.digest, stateVersion: version, operationId: crypto.randomUUID(), content: state }) })
   let snapshot = { ready: true, files: [code, stateFile()], conflict: null }
   const listeners = new Set<() => void>(), runListeners = new Set<() => void>()
+  let readOnly = false
   const workspace = { key, snapshot: () => snapshot, subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener) },
-    isReadOnly: () => false, accessDenied: () => false, change: (files: WorkFile[]) => {
+    isReadOnly: () => readOnly, accessDenied: () => false, change: (files: WorkFile[]) => {
+      if (readOnly) throw new Error('Read-only recovery')
       snapshot = { ...snapshot, files }; state = JSON.parse(files.find(file => file.kind === 'state')!.value).content
       listeners.forEach(listener => listener())
     }, trackInput: async (task: Promise<unknown>) => task, leave: async () => {} } as unknown as ReliableWorkspace
@@ -98,6 +100,7 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
   await act(async () => { root!.render(<WorkspaceReferencesProvider workspaceKey={key} onSubmit={() => {}}>
     {split && <AluExperimentTool {...props} compact />}<AluExperimentTool {...props} /></WorkspaceReferencesProvider>) })
   return { submitted, enabled, release: () => releaseSubmit!(), read: () => state,
+    isolate: () => { readOnly = true; snapshot = { ...snapshot }; listeners.forEach(listener => listener()) },
     files: () => snapshot.files,
     seedNotes: () => {
       const noteIds = [crypto.randomUUID(), crypto.randomUUID()], action = submitted.at(-1)!
@@ -125,6 +128,25 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
 }
 
 describe('ALU view coordination and result ownership', () => {
+  it('browses an earlier restored case without changing the read-only workspace or executing again', async () => {
+    const env = await experiment({}, false, 3)
+    const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!
+    for (let index = 0; index < 2; index++) {
+      await act(async () => button('新用例').click())
+      await act(async () => button('运行并比较').click())
+      await act(async () => env.release())
+      await act(async () => env.complete())
+    }
+    const first = env.submitted[0]!.requestId, saved = JSON.stringify(env.files()), state = { ...env.read() }
+    await act(async () => env.isolate())
+    const select = container.querySelector<HTMLSelectElement>('[aria-label="用例记录"]')!
+    await act(async () => { select.value = first; select.dispatchEvent(new Event('change', { bubbles: true })) })
+    expect(select.value).toBe(first)
+    expect(JSON.stringify(env.files())).toBe(saved)
+    expect(env.read()).toEqual(state)
+    expect(env.submitted).toHaveLength(2)
+    expect(button('运行').disabled).toBe(true)
+  })
   it('keeps resumed free observation when an older compare submission finishes', async () => {
     const env = await experiment({}, false, 3)
     const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!

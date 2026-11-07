@@ -275,6 +275,7 @@ export async function createProductLearningApplication(context: {
           adapterVersion: adapter.adapterVersion, platforms: adapter.platforms ?? [] })) };
     };
     return { owners, isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}),
+      ...(learning ? { hasReceivedBrowserExecution: learning.executions.hasReceivedBrowserCommand } : {}),
       capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks) },
       ...(models ? { async modelTask(value: unknown) {
         const input = modelTaskRequest.parse(value);

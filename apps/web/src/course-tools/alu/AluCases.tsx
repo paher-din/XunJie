@@ -69,8 +69,8 @@ export function AluCaseEditor({ activity, binding, state, stateFile, records, en
   </section>
 }
 
-export function AluCaseResults({ activity, binding, state, records, fallbackRecord, suppressed, canWrite, writeState }: CaseProps & {
-  fallbackRecord?: ExecutionRecord; suppressed: boolean
+export function AluCaseResults({ activity, binding, state, records, fallbackRecord, suppressed, canWrite, writeState, selectState }: CaseProps & {
+  fallbackRecord?: ExecutionRecord; suppressed: boolean; selectState: WriteState
 }) {
   const { execution, workspace } = useActivitySession(), references = useWorkspaceReferences()
   const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
@@ -136,7 +136,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   return <section className="alu-case-results" aria-label="比较与解释">
     <header className="alu-section-head"><h2>比较与解释</h2>
       {cases.length > 0 && <label>用例记录<select aria-label="用例记录" value={suppressed ? '' : state.selectedCase}
-        onChange={event => writeState(previous => ({ ...previous, selectedCase: event.target.value, caseRequestId: '',
+        onChange={event => selectState(previous => ({ ...previous, selectedCase: event.target.value, caseRequestId: '',
           selectedObservation: event.target.value, selectedObservationRevision: -1, feedbackPolicy: 'live' }))}>
         <option value="">当前观察</option>{cases.map((item, index) => <option key={item.requestId} value={item.requestId}>
           {cases.length - index} · {new Date(item.createdAt).toLocaleTimeString('zh-CN')} · {stateLabel(item.query)}
@@ -173,7 +173,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
           <details key={file.contentId}><summary>{file.name} · {file.contentId.slice(0, 8)}</summary><pre>{file.value}</pre></details>)}</details>
       </>}
       <AluWaveform vcdText={artifact?.resources?.find(resource => resource.name === 'trace.vcd')?.text ?? null}
-        selection={selection} onChange={range => writeState(previous => ({ ...previous,
+        selection={selection} onChange={range => selectState(previous => ({ ...previous,
           waveSelection: range && record ? JSON.stringify({ requestId: record.requestId, range }) : '' }), true)}
         onReference={canWrite && source ? (range, anchor) => add('alu-waveform', anchor, range) : undefined}
         sourceLabel={record ? `${recordLabel} · ${describeInputs(record.action.execution.parameters)}` : '原仿真波形'}

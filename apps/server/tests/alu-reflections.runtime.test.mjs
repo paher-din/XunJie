@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import { createFileBackend, openStorage, provisionStorage, StorageError } from '@xunjie/storage';
 import { learningMigrations } from '@xunjie/learning-space';
 import { activitySchema } from '@xunjie/contracts/learning-data';
@@ -120,7 +121,7 @@ async function fixture(t) {
     return { objectId: note.noteId, contentId: note.noteId, name: aluReflectionName(note.bindingKey, note.noteId), kind: 'state',
       encoding: 'json', mediaType: ALU_REFLECTION_MEDIA_TYPE, value: JSON.stringify(note) };
   }
-  return { get storage() { return storage; }, current, identity, works, activity, caseOf, observationOf, receive, reflection, transaction,
+  return { get storage() { return storage; }, resourceRoot: join(pg.root, 'reflections'), current, identity, works, activity, caseOf, observationOf, receive, reflection, transaction,
     async reopen() { await storage.close(); storage = await openStorage(options); return createWorks(storage, authorize); } };
 }
 
@@ -135,6 +136,43 @@ test('works waits for the original case command and then retries the same immuta
   assert.deepEqual(saved, { revision: 1, files: [file] });
   assert.deepEqual(await f.works.sync(f.identity, f.current.activityId, input), saved);
   await validateWorks(f.storage);
+});
+
+test('ALU maintenance refuses a reported observation until its original result bytes are retained', { timeout: 120000 }, async t => {
+  const { createExecutions, validateExecutions } = await import('../../../packages/learning-space/dist/learning-data/executions.js');
+  const f = await fixture(t), source = f.observationOf('run-single');
+  const executions = createExecutions(f.storage, { works: f.works, activity: async () => f.current });
+  const accepted = await executions.accept(f.identity, f.current.activityId, { action: source.action, acceptance: source.acceptance });
+  const output = { f: '0101', cout: '0', observationState: 'complete' }, text = JSON.stringify(output), contentId = randomUUID();
+  const artifact = { name: 'observation.json', mediaType: 'application/json', sha256: hash(text), byteLength: Buffer.byteLength(text) };
+  await executions.report(f.identity, f.current.activityId, source.action.requestId, { ...accepted,
+    state: 'succeeded', confirmedSeq: accepted.confirmedSeq + 1, output: { contentId, output, artifact } });
+  await assert.rejects(validateExecutions(f.storage), { code: 'corrupt' },
+    'a terminal HTTP report alone cannot establish a complete backup of the observation');
+  await assert.rejects(executions.shutdown(), { code: 'unavailable' },
+    'keep the original retention channel open until the reported result has actually arrived');
+  const trace = '$timescale 1ns $end\n$scope module alu $end\n$var wire 4 ! F $end\n$upscope $end\n$enddefinitions $end\n#0\nb0101 !\n';
+  const wave = { contentId: randomUUID(), name: 'trace.vcd', mediaType: 'text/plain', text: trace,
+    sha256: hash(trace), byteLength: Buffer.byteLength(trace) };
+  const retained = { contentId, output, text, ...artifact, resources: [wave] };
+  await executions.result(f.identity, f.current.activityId, source.action.requestId, retained);
+  await validateExecutions(f.storage);
+  await executions.shutdown();
+  await executions.result(f.identity, f.current.activityId, source.action.requestId, retained);
+  const history = await executions.history(f.identity, f.current.activityId);
+  assert.equal(history.entries.length, 1);
+  assert.deepEqual([history.entries[0].query.requestId, history.entries[0].query.inputDigest, history.entries[0].query.executionRef],
+    [source.action.requestId, source.inputDigest, source.executionRef]);
+  assert.equal((await executions.artifact(f.identity, f.current.activityId, source.action.requestId)).text, text);
+  const path = join(f.resourceRoot, (await f.storage.resource(wave.contentId)).locator.key);
+  const original = await readFile(path), corrupt = Buffer.from(original); corrupt[corrupt.length - 1] ^= 1;
+  try {
+    await writeFile(path, corrupt);
+    await assert.rejects(validateExecutions(f.storage), { code: 'corrupt' }, 'the ALU owner validates the actual retained VCD bytes');
+    await rm(path);
+    await assert.rejects(validateExecutions(f.storage), 'the ALU owner cannot substitute a missing original VCD');
+  } finally { await writeFile(path, original); }
+  await validateExecutions(f.storage);
 });
 
 test('original runs and free observations retain explanations without creating a prediction or rerunning', { timeout: 120000 }, async t => {

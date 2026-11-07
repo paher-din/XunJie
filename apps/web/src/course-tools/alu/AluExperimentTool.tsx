@@ -116,7 +116,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       return { file: undefined, contentId: null, content: manifest.initialState, stateError: errorText(error) }
     }
   }, [workspace, work.files, binding, instanceId, manifest])
-  const alu = readAluState(current.content)
+  const [historyView, setHistoryView] = useState<{ key: string; selection: Partial<AluState> }>({ key: '', selection: {} })
+  const alu = { ...readAluState(current.content),
+    ...(workspace.isReadOnly() && historyView.key === workspace.key ? historyView.selection : {}) }
   stateRef.current = alu
   const controls = controlsOf(alu)
   const basis = parseEnabledBasis(alu.enabledBasis)
@@ -183,6 +185,18 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       }])
       setNote('已重建实验输入状态；作品、运行记录和检查报告均未删除。')
     } catch (error) { setNote(`未能重建实验输入状态：${errorText(error)}`) }
+  }
+  // Isolated history browsing changes only this view, never the restored work or a sync queue.
+  const selectState = (change: (state: AluState) => AluState, quiet = false) => {
+    if (!workspace.isReadOnly()) return writeState(change, quiet)
+    setHistoryView(previous => {
+      const base = { ...readAluState(current.content), ...(previous.key === workspace.key ? previous.selection : {}) }
+      const next = change(base)
+      const keys = ['selectedCase', 'selectedObservation', 'selectedObservationRevision', 'selectedCheck',
+        'selectedCheckBasis', 'feedbackPolicy', 'waveSelection'] as const
+      return { key: workspace.key, selection: Object.fromEntries(keys.map(key => [key, next[key]])) }
+    })
+    return true
   }
   const changeInput = (control: AluControl, value: number) => {
     if (!canWrite) return
@@ -528,7 +542,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         </div>
         <div className="execution-actions">
           {observationHistory && <button type="button" className="ws-btn ghost" onClick={() => {
-            writeState(previous => ({ ...previous, selectedObservation: '', selectedObservationRevision: -1 }))
+            selectState(previous => ({ ...previous, selectedObservation: '', selectedObservationRevision: -1 }))
           }}>返回当前输入</button>}
           {!observationHistory && shownObservation && <button type="button" className="ws-btn ghost" onClick={() => {
             writeState(previous => ({ ...previous, selectedObservation: '', selectedObservationRevision: -1 }))
@@ -541,7 +555,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       </section>
       <NumericEditor values={controls} disabled={!canWrite} onChange={changeInput} />
       {manifest.stateVersion === 3 && <AluCaseResults activity={activity} binding={binding} state={alu} records={records}
-        fallbackRecord={readingRecord} suppressed={feedbackHeld} canWrite={canWrite} writeState={writeState} />}
+        fallbackRecord={readingRecord} suppressed={feedbackHeld} canWrite={canWrite} writeState={writeState} selectState={selectState} />}
       <details className="alu-rules" open>
         <summary>公开行为、映射与采样规则</summary>
         <table><thead><tr><th>M</th><th>S</th><th>F</th><th>Cout</th></tr></thead><tbody>
@@ -559,7 +573,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           <button type="button" className="ws-btn ghost" onClick={() => void stopCheck(activeCheck)}>停止该检查</button></p>}
       {latestCheck && alu.selectedCheck && latestCheck.requestId !== alu.selectedCheck &&
         <p role="status" className="alu-notice">已有更新的检查记录。
-          <button type="button" className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous, selectedCheck: '', selectedCheckBasis: '' }))}>查看最新检查</button></p>}
+          <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous, selectedCheck: '', selectedCheckBasis: '' }))}>查看最新检查</button></p>}
       {checkMismatch && <p role="alert" className="alu-alert">这份报告对应另一份已启用作品，不是当前作品的检查；请核对运行记录。</p>}
       {alu.selectedCheck && !selectedCheckRecord && <p role="status">所选检查记录暂不可读，原选择仍保留，未改选其他报告。</p>}
       {!feedbackHeld && displayCheckRecord?.query.statusKnowledge === 'unknown' && <p role="status">检查结果尚未确认，原记录仍保留，不显示通过。
@@ -586,7 +600,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           <div><h3>观察</h3>
             {observations.length === 0 ? <p className="alu-hint">还没有自由观察或运行记录。</p>
               : <ul>{observations.slice(0, 8).map(record => <li key={record.requestId}>
-                <button type="button" className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous,
+                <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous,
                   selectedObservation: record.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
                   selectedCase: record.action.protocolVersion === 3 && aluCaseFromAction(record.action) ? record.requestId : '' }))}>查看</button>
                 <span>{record.action.execution.operation.operationId === 'run-single' ? '显式运行' : '自由观察'}</span>
@@ -597,7 +611,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           <div><h3>检查</h3>
             {checks.length === 0 ? <p className="alu-hint">还没有全量检查记录。</p>
               : <ul>{checks.slice(0, 8).map(record => <li key={record.requestId}>
-                <button type="button" className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous,
+                <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous,
                   selectedCheck: record.requestId, selectedCheckBasis: basis?.requestId ?? '' }))}>查看</button>
                 <span>{new Date(record.createdAt).toLocaleTimeString('zh-CN')} · {record.query.state}</span>
                 <span>{enabledRecord && sameCodeBasis(record, enabledRecord) ? '当前启用作品' : '另一份作品'}</span>
