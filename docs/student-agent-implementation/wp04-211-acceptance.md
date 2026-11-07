@@ -9,8 +9,8 @@
 | 项目 | 实际值 |
 | --- | --- |
 | 源码 | `wp04` 工作树；运行入口为 Node 24.21.0；最终提交见 §7 |
-| Mac 产品包 | [dist/product-darwin-arm64-wp04-211b](../../dist/product-darwin-arm64-wp04-211b)（`darwin-arm64`，full，unsigned-candidate，`distribution.json` SHA-256 `66047e4392e3da7545065119fe992a56021fefb46da7a45b17055dc605c64c9c`） |
-| Windows 产品包 | [dist/product-win32-x64-wp04-211](../../dist/product-win32-x64-wp04-211)（`win32-x64`，full，unsigned-candidate，`distribution.json` SHA-256 `b7db2a5c5636cbbd79172c29a097d10affe5e94c1e8f7c16fdc351d5551fb787`） |
+| Mac 产品包 | `dist/product-darwin-arm64-wp04-211b`（`darwin-arm64`，full，unsigned-candidate，`distribution.json` SHA-256 `66047e4392e3da7545065119fe992a56021fefb46da7a45b17055dc605c64c9c`） |
+| Windows 产品包 | `dist/product-win32-x64-wp04-211`（`win32-x64`，full，unsigned-candidate，`distribution.json` SHA-256 `b7db2a5c5636cbbd79172c29a097d10affe5e94c1e8f7c16fdc351d5551fb787`） |
 | 学校 Linux 产品包 | `wp04-211-cross/product-linux-x64b`（`linux-x64`，full，unsigned-candidate，`distribution.json` SHA-256 `4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3`） |
 | 三平台 Web 运行包 | `runtime-nmzfEewm.js` 三包一致，SHA-256 `b8fe1615db6622aa232b1a38498d459905c7aaab6adfd91ed6fa01d6ca438b01`，1,068,183 B |
 | 课程/组件 | 课程 `19200000-0000-4000-8000-000000000071`，release `…0076`；组件 `…0001` v2；运行包 ALU adapter `icarus-alu` v1；状态 schema v2；旧 stateVersion1 兼容包单独导入 |
