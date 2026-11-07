@@ -1,5 +1,17 @@
 import type { ModelUpstream } from '@xunjie/contracts/model-connections';
 
+/** Classify an explicit refusal without exporting provider error prose or credentials. */
+export function contextCapacityFailure(value: unknown, status?: number): boolean {
+  if (status !== undefined && ![400, 413, 422].includes(status)) return false;
+  if (!value || typeof value !== 'object') return false;
+  const outer = value as Record<string, unknown>;
+  const error = outer.error && typeof outer.error === 'object' ? outer.error as Record<string, unknown> : outer;
+  if (['context_length_exceeded','context_window_exceeded','max_context_length_exceeded','prompt_too_long','input_too_long']
+    .includes(String(error.code ?? error.type))) return true;
+  return status !== undefined && typeof error.message === 'string'
+    && /maximum context length|context (?:window|length).{0,40}exceed|(?:prompt|input) (?:is )?too long/i.test(error.message);
+}
+
 /** Only bounded, credential-free response facts may leave the credential holder. */
 export function responseFacts(status: number, headers: Headers, apiKey: string): ModelUpstream {
   const facts: ModelUpstream = {};

@@ -4,7 +4,7 @@ import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUpstream } fr
 import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative, messagesEventSensitiveValues } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
-import { responseFacts } from './upstream-facts.js';
+import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
 export { validateMessagesNative } from './messages-native.js';
 
 export const messagesSdkVersion = '@anthropic-ai/sdk@1.1.0';
@@ -57,7 +57,8 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     state = malformed || status || confirmedStreamError ? 'failed'
       : signal.aborted ? 'cancelled' : events.length ? 'incomplete' : 'unknown';
     reason = malformed ? 'malformed-response' : status === 401 || status === 403 ? 'authentication'
-      : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
+      : status === 429 ? 'rate-limited' : contextCapacityFailure(error instanceof Anthropic.APIError ? error.error : null, status)
+        ? 'context-capacity-exceeded' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
       : confirmedStreamError ? 'upstream-stream-error' : signal.aborted ? 'client-abort'
       : deadline.aborted || error instanceof Anthropic.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
   }
@@ -67,6 +68,7 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   if (state !== 'failed' && assembler.terminal) {
     reason = String(message?.stop_reason);
     state = ['end_turn', 'tool_use', 'stop_sequence'].includes(reason) ? 'completed' : reason === 'refusal' ? 'failed' : 'incomplete';
+    if (reason === 'model_context_window_exceeded') { state = 'failed'; reason = 'context-capacity-exceeded'; }
     if (state === 'completed') try { const result = messagesOutput(message, nativeTools); toolIntents = result.intents; }
     catch { state = 'failed'; reason = 'invalid-native-result'; }
   } else if (state !== 'failed' && signal.aborted) { state = 'cancelled'; reason = 'client-abort'; }

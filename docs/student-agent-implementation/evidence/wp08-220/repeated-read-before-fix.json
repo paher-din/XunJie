@@ -1,0 +1,184 @@
+{
+  "measuredAt": "2026-11-07T20:04:59.993Z",
+  "model": "deepseek-flash",
+  "parameterMode": "plain",
+  "capability": "bounded-compaction-read_work",
+  "limits": {
+    "maxGenerations": 9,
+    "maxPerProtocol": 3,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "paused",
+      "reason": "rate-limited",
+      "modelRequests": 3,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        },
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "partial"
+      },
+      "answerSha256": "4b65e75a391e3a3e2b87820a709bc0694d19eaabebb4a5b7494485e0fe039c0d"
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 3,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 132829,
+        "outputTokens": 1435,
+        "totalTokens": 134264,
+        "cachedTokens": 2944,
+        "reasoningTokens": 0
+      },
+      "answerSha256": "a14a9f24410ad848c93051b6c970f873aca71476ebd3b86cc1ebec6c28cc15a3",
+      "assemblies": [
+        {
+          "resolvedId": "ec051705-a6a1-4225-9d9a-6053390646a3",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "aec75309-c702-4000-a23c-ab5ac49b04d9",
+          "payloadSha256": "68164576a1a890f4d6a62a1dac7ae19eecd1e72cc4044a5afdf15c92d8c13c3a",
+          "contextManifestId": "f8d38c2c-d410-4e02-98e0-dc0cee58b3dd",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "836521ae-4058-4213-bc21-1ee50ba394d4",
+          "definitionId": "xunjie.learning.context-summary",
+          "definitionVersion": 1,
+          "snapshotId": "e60516d7-9b3d-411e-812d-790708f8cfa2",
+          "payloadSha256": "26183f049510729d20aa652652f3568e8db480c88335e047d7c2f0f7554034df",
+          "contextManifestId": "accea805-dc32-4f67-8bd4-734aad01356b",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "ec051705-a6a1-4225-9d9a-6053390646a3",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "302051da-9eeb-4734-a352-1ca755d0a0e3",
+          "payloadSha256": "4e41c79679847e04c556259919c7a9fa1820fd86bd74f9262c660ec27fa1d725",
+          "contextManifestId": "67c5972a-7d4a-4067-9b3e-a7051f215080",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ],
+      "compaction": {
+        "compactionId": "0c64b151-0482-4721-b173-4039548e9ff2",
+        "sourceStart": 1,
+        "sourceEnd": 13,
+        "sourceDigest": "d1604a1a094ac297c6785e8fe230920d852249825e76a9c7de01c7f78b2b7242",
+        "resultRef": "e7bccf40-90f8-46af-80f9-bb579fe393c9",
+        "transitionId": "b36c06fe-eb75-4710-bcc9-8e45013e8cae",
+        "toolFree": true,
+        "originalEffectPreserved": true,
+        "restartPureRead": true,
+        "budgetSteps": 3
+      }
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": false,
+      "state": "paused",
+      "reason": "rate-limited",
+      "modelRequests": 3,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        },
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "partial"
+      },
+      "answerSha256": "80b82c5d85fc7a7e2689580a4b6ef7302ddefd4a2c4b8ea06a94aca243690058"
+    }
+  ],
+  "generations": 9,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1316,
+      "payloadSha256": "922fe094ae396e636eb7fb842be36acf450c592491b7a7d3ed8c35f83b830c78"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 7525,
+      "payloadSha256": "fb64ab9b4f3a49a2b81bf9f92374c955e34e090fa2fd2e4af53e8e82d1e0bfdf"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1473,
+      "payloadSha256": "8728583cd68c7381a7d308c7c03f2923485e6db46b84327fbb1370c84c077fec"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 1322,
+      "payloadSha256": "68164576a1a890f4d6a62a1dac7ae19eecd1e72cc4044a5afdf15c92d8c13c3a"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 5886,
+      "payloadSha256": "26183f049510729d20aa652652f3568e8db480c88335e047d7c2f0f7554034df"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 3669,
+      "payloadSha256": "4e41c79679847e04c556259919c7a9fa1820fd86bd74f9262c660ec27fa1d725"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1388,
+      "payloadSha256": "7afddf0c70367f5b369c01a3287e723532fb29a17075e849c7d09e4596d310ef"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 7586,
+      "payloadSha256": "8245f6efacb829aea8ae1c00e951c173a1b5ea1c482a91281c7d8ccfe8fc4548"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1213,
+      "payloadSha256": "2b1dfed798db92d03b772789af521ab93807ef0cff83362f524e04c01b6a87c2"
+    }
+  ]
+}

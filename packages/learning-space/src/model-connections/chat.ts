@@ -3,7 +3,7 @@ import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@
 import { modelUsageSchema } from '@xunjie/contracts/model-connections';
 import { createChatAssembler, compileOutputSchema, chatSensitiveValues } from './chat-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
-import { responseFacts } from './upstream-facts.js';
+import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
 
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
 export const sdkVersion = 'openai@7.42.0';
@@ -83,7 +83,8 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       'unsupported_parameter', 'unsupported_value'].includes(error.code ?? '');
     if (error instanceof OpenAI.APIError && error.error) upstreamError = error.error;
     reason = malformed ? 'malformed-response' : status === 401 || status === 403 ? 'authentication'
-      : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http' : explicitError ? 'upstream-stream-error'
+      : status === 429 ? 'rate-limited' : contextCapacityFailure(upstreamError, status) ? 'context-capacity-exceeded'
+      : unsupported ? 'upstream-unsupported' : status ? 'upstream-http' : explicitError ? 'upstream-stream-error'
       : signal.aborted ? 'client-abort' : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
     state = malformed || status || explicitError ? 'failed' : signal.aborted ? 'cancelled' : chunks.length ? 'incomplete' : 'unknown';
   }

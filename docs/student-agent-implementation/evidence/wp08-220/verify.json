@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "startedAt": "2026-11-07T20:10:12.609Z",
+  "finishedAt": "2026-11-07T20:19:30.434Z",
+  "nodeVersion": "v24.21.0",
+  "exitCode": 0,
+  "group": "full",
+  "jobs": 4,
+  "testsCached": false,
+  "stages": [
+    {
+      "name": "prepare",
+      "status": "passed",
+      "tasks": 4,
+      "durationMs": 105612
+    },
+    {
+      "name": "build:test",
+      "status": "passed",
+      "tasks": 1,
+      "durationMs": 2354
+    },
+    {
+      "name": "unit",
+      "status": "passed",
+      "tasks": 35,
+      "durationMs": 449847
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "tasks": 92,
+      "durationMs": 444728
+    },
+    {
+      "name": "tools",
+      "status": "passed",
+      "tasks": 45,
+      "durationMs": 329553
+    }
+  ]
+}

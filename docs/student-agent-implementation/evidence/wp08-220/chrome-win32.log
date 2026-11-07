@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ok 1 [chromium] 鈥?apps\web\e2e\teachingCompaction.spec.ts:11:1 鈥?formal long conversation preserves history, draft and controls across compaction and restart (40.4s)
+
+  1 passed (43.2s)

@@ -4,7 +4,7 @@ import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage, ModelU
 import { compileOutputSchema } from './chat-native.js';
 import { createResponsesAssembler, object, responsesOutput, responsesUsage, responsesSensitiveValues, responsesEventSensitiveValues, validateResponsesNative } from './responses-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
-import { responseFacts } from './upstream-facts.js';
+import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
 export { validateResponsesNative } from './responses-native.js';
 
 export const responsesAdapterVersion = 'xunjie-responses-native-v1';
@@ -69,7 +69,11 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
         state = 'completed'; reason = 'completed';
         if (result.refused) { state = 'failed'; reason = 'content-refused'; }
       } else if (assembler.terminalType === 'response.incomplete') { state = 'incomplete'; reason = 'incomplete'; }
-      else if (assembler.terminalType === 'response.failed' || assembler.streamError) { state = 'failed'; reason = 'upstream-stream'; }
+      else if (assembler.terminalType === 'response.failed' || assembler.streamError) {
+        state = 'failed';
+        reason = assembler.terminalType === 'response.failed' && contextCapacityFailure(assembler.response)
+          ? 'context-capacity-exceeded' : 'upstream-stream';
+      }
     }
   } catch (error) {
     text = assembler.partialText;
@@ -81,7 +85,8 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     if (error instanceof OpenAI.APIError && error.error) upstreamError = error.error;
     const malformed = error instanceof MalformedResponse || error instanceof SyntaxError || error instanceof StorageError;
     reason = malformed ? 'malformed-response' : signal.aborted ? 'client-abort' : status === 401 || status === 403 ? 'authentication'
-      : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
+      : status === 429 ? 'rate-limited' : contextCapacityFailure(upstreamError, status) ? 'context-capacity-exceeded'
+      : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
       : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
     state = malformed ? 'failed' : signal.aborted ? 'cancelled' : status || upstreamError ? 'failed' : events.length ? 'incomplete' : 'unknown';
     if (responseLimited) { state = 'incomplete'; reason = 'response-limit'; }
@@ -108,7 +113,8 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
       } catch { state = 'failed'; reason = 'malformed-response'; }
     } else if (assembler.terminalType) {
       state = assembler.terminalType === 'response.failed' ? 'failed' : 'incomplete';
-      reason = assembler.terminalType === 'response.failed' ? 'upstream-stream' : 'incomplete';
+      reason = assembler.terminalType === 'response.failed'
+        ? contextCapacityFailure(assembler.response) ? 'context-capacity-exceeded' : 'upstream-stream' : 'incomplete';
     }
   }
   if (state === 'completed' && (payload.tool_choice === 'none' && toolIntents.length > 0

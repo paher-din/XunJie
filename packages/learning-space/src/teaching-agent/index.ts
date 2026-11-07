@@ -36,6 +36,8 @@ import { modelLearningInputSchema, modelToolResultSchema } from '@xunjie/contrac
 import type { LearningModelPort } from '../model-connections/service.js';
 import { createTeachingSegments, teachingSegmentMigration, validateTeachingSegmentTransitions } from './segments.js';
 import { assembleTeachingAgent, teachingAssemblyMigration, learningAgentDefinition, validateTeachingAssemblyData } from './assembly.js';
+import { abandonTeachingCompactions, createTeachingCompaction, teachingCompactionMigration } from './compaction.js';
+import { validateTeachingCompactions } from './compaction-validation.js';
 
 const reasonText = (reason: unknown) => {
   switch (typeof reason === 'string' ? reason : '') {
@@ -99,7 +101,7 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     ADD COLUMN call_started_at timestamptz,ADD COLUMN call_settled_ms bigint;
   UPDATE teaching_steps SET input_reserved=COALESCE((plan->'model'->>'contextWindow')::bigint,1048576);
   ALTER TABLE teaching_steps ALTER COLUMN input_reserved SET NOT NULL;
-` }, teachingInputMigration, teachingSegmentMigration, teachingAssemblyMigration];
+` }, teachingInputMigration, teachingSegmentMigration, teachingAssemblyMigration, teachingCompactionMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -136,6 +138,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   let ticker: ReturnType<typeof setInterval> | undefined;
   const segments = createTeachingSegments(storage, { models: options.models, leaseMs,
     assertWritable() { if (writesClosed || dispatchClosed) throw new StorageError('maintenance'); } });
+  const compactions = createTeachingCompaction(storage);
 
   function toRun(row: RunRow): TeachingRun {
     return teachingRunSchema.parse({
@@ -262,6 +265,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         const { rows: [current] } = await tx.query('SELECT activity_id,state,stop_requested FROM teaching_runs WHERE run_id=$1 FOR UPDATE', [row.run_id]);
         if (!current || terminal(current.state as TeachingRun['state']) || current.stop_requested) return null;
         await tx.query('UPDATE teaching_runs SET stop_requested=true,updated_at=clock_timestamp() WHERE run_id=$1', [row.run_id]);
+        await abandonTeachingCompactions(tx, String(row.run_id), 'stop-requested');
         await appendEvent(tx, current.activity_id as string, 'stop-requested', { runId: row.run_id, requestId,
           source: 'cancellation-after-accept' });
         return null;
@@ -377,13 +381,14 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     });
   }
   async function historyThrough(activityId: string, boundary: number, runId?: string): Promise<ContextMessage[]> {
-    const { rows } = await storage.read(`SELECT e.kind,e.body,i.state AS input_state,i.adopted_run_id,v.body AS fixed_input,
+    const { rows } = await storage.read(`SELECT e.seq,e.event_id,e.kind,e.body,i.state AS input_state,i.adopted_run_id,v.body AS fixed_input,
       EXISTS(SELECT 1 FROM teaching_events a WHERE a.activity_id=e.activity_id AND a.kind='input-adopted'
         AND a.body->>'inputId'=e.body->>'inputId') AS adoption_logged
       FROM teaching_events e LEFT JOIN teaching_inputs i ON i.input_id::text=e.body->>'inputId'
       LEFT JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=COALESCE((e.body->>'version')::integer,1)
       WHERE e.activity_id=$1 AND e.seq<$2 AND e.kind IN ('input','input-adopted','assistant','question-created','student-response','tool-result') ORDER BY e.seq`, [activityId, boundary]);
     return rows.flatMap((row): ContextMessage[] => {
+      const messages = ((): ContextMessage[] => {
       const body = row.body as Record<string, unknown>;
       if (row.kind === 'input-adopted' || row.kind === 'input' && row.input_state === 'adopted' && !row.adoption_logged) {
         if (runId && (body.runId === runId || row.adopted_run_id === runId)) return [];
@@ -405,12 +410,15 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           source: { kind: 'history', id: String(body.commandId), label: '原命令已核实的工具效果' } }];
       }
       return [];
+      })();
+      return messages.map(message => ({ ...message, eventId: String(row.event_id), eventSeq: Number(row.seq) }));
     });
   }
   async function historyBefore(activityId: string, runId: string): Promise<ContextMessage[]> {
     const { rows: [own] } = await storage.read("SELECT seq FROM teaching_events WHERE activity_id=$1 AND kind IN ('run-received','run-continued') AND body->>'runId'=$2 ORDER BY seq LIMIT 1",
       [activityId, runId]);
-    return historyThrough(activityId, own ? Number(own.seq) : Number.MAX_SAFE_INTEGER, runId);
+    const boundary = own ? Number(own.seq) : Number.MAX_SAFE_INTEGER;
+    return compactions.history(activityId, await historyThrough(activityId, boundary, runId), boundary);
   }
   async function sessionRow(activityId: string) {
     const { rows: [row] } = await storage.read('SELECT * FROM teaching_sessions WHERE activity_id=$1', [activityId]);
@@ -428,13 +436,32 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   async function ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
     choice: Awaited<ReturnType<TeachingAgentOptions['models']['selection']['snapshot']>>, selectionVersion: number,
-    system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string) {
-    const authority = { key: `run:${run.runId}:${ownerId}:${generation}`,
-      assert: (tx: OwnedTransaction) => assertAuthority(tx, run.runId, generation) };
+    system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string,
+    change?: { reason: 'compaction-generation' | 'compaction'; compactionId: string }) {
+    const assertCompaction = async (tx: OwnedTransaction, compactionId: string) => {
+      const { rows: [current] } = await tx.query('SELECT stop_requested,state FROM teaching_runs WHERE run_id=$1', [run.runId]);
+      if (!current || current.stop_requested || terminal(current.state as TeachingRun['state'])) throw new StorageError('conflict');
+      const record = await compactions.read(compactionId, tx);
+      if (record.state === 'rejected' || !await compactions.matches(tx, activity.activityId, record.source)) throw new StorageError('conflict');
+    };
+    const completeCompaction = async (tx: OwnedTransaction, transition: { reason: string; compactionId?: string | null; transitionId: string }) => {
+      if (transition.reason !== 'compaction' || !transition.compactionId) return;
+      await assertCompaction(tx, transition.compactionId);
+      const { rows } = await tx.query(`UPDATE teaching_compactions SET state='adopted',adoption_transition_id=$2,
+        adopted_at=clock_timestamp() WHERE compaction_id=$1 AND state='generated' RETURNING body,result,result_ref`,
+        [transition.compactionId, transition.transitionId]);
+      if (rows.length) await appendEvent(tx, activity.activityId, 'context-compacted', { runId: run.runId,
+        compactionId: transition.compactionId, transitionId: transition.transitionId,
+        source: rows[0]!.body, result: rows[0]!.result, resultRef: rows[0]!.result_ref });
+    };
     const pending = await segments.pending(activity.activityId);
+    const guardedCompactionId = pending?.compactionId ?? change?.compactionId;
+    const authority = { key: `run:${run.runId}:${ownerId}:${generation}`,
+      assert: async (tx: OwnedTransaction) => { await assertAuthority(tx, run.runId, generation);
+        if (guardedCompactionId) await assertCompaction(tx, guardedCompactionId); } };
     if (pending) {
       if (pending.reason === 'model-switch') throw new StorageError('resource-busy');
-      const recovered = await segments.advance(identity, pending.transitionId, authority);
+      const recovered = await segments.advance(identity, pending.transitionId, authority, completeCompaction);
       return { segmentId: recovered.toSegmentId, sequence: recovered.createResult!.sequence,
         model: recovered.target.model, fresh: true, transitionId: recovered.transitionId, assemblyId: recovered.assemblyId };
     }
@@ -442,15 +469,28 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const segmentId = session.segment_id as string | null;
     const model = modelFact(choice.choice.connection);
     const fingerprint = fingerprintOf(model, system + canonicalDigest(tools));
+    if (change && segmentId) {
+      const { rows: [received] } = await storage.read(`SELECT * FROM teaching_segment_transitions WHERE activity_id=$1
+        AND compaction_id=$2 AND reason=$3 AND state='completed' AND to_segment_id=$4`,
+        [activity.activityId, change.compactionId, change.reason, segmentId]);
+      if (received) {
+        const native = await options.models.segments.read(identity, segmentId);
+        if (native.closed || native.pending || native.pendingTools.length || received.fingerprint !== fingerprint
+          || received.assembly_id !== assemblyId) throw new StorageError('conflict');
+        return { segmentId, sequence: native.sequence, model, fresh: true,
+          transitionId: String(received.transition_id), assemblyId: received.assembly_id as string | null };
+      }
+    }
     if (segmentId) {
       const segment = await options.models.segments.read(identity, segmentId);
       if (segment.pending || segment.pendingTools.length) throw new StorageError('resource-busy');
-      if (!segment.closed && session.segment_fingerprint === fingerprint
+      if (!change && !segment.closed && session.segment_fingerprint === fingerprint
         && (assemblyId === undefined || session.segment_assembly_id === assemblyId)) {
         return { segmentId, sequence: segment.sequence, model, fresh: false, assemblyId: session.segment_assembly_id as string | null };
       }
     }
-    const transitionId = operationId('teaching-segment-transition:' + canonicalDigest([activity.activityId, run.runId, segmentId, fingerprint, assemblyId ?? null]));
+    const transitionId = operationId('teaching-segment-transition:' + canonicalDigest([activity.activityId, run.runId, segmentId, fingerprint, assemblyId ?? null,
+      ...(change ? [change.reason, change.compactionId] : [])]));
     const createdId = operationId('teaching-transition-segment:' + transitionId);
     const createRequestId = operationId('teaching-transition-create:' + transitionId);
     const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history, activity));
@@ -461,19 +501,20 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       ...(segmentId ? { previousSegmentId: segmentId } : {}) });
     await storage.request({ requestId: 'teaching-transition-receive:' + transitionId, fingerprint: canonicalDigest(candidate) }, async tx => {
       await authority.assert(tx);
-      await segments.receive(tx, { transitionId, activityId: activity.activityId, reason: segmentId ? 'assembly-change' : 'initial',
+      await segments.receive(tx, { transitionId, activityId: activity.activityId, reason: change?.reason ?? (segmentId ? 'assembly-change' : 'initial'),
         identity, fromSegmentId: segmentId, toSegmentId: createdId, assemblyId: assemblyId ?? null, fingerprint, selectionVersion,
         target: { model, source: { kind: choice.source.kind, feeSource: choice.source.feeSource } }, resolvedAgent: null,
-        closeRequestId: operationId('teaching-transition-close:' + transitionId), createRequestId, createBody: candidate });
+        closeRequestId: operationId('teaching-transition-close:' + transitionId), createRequestId, createBody: candidate,
+        ...(change ? { compactionId: change.compactionId } : {}) });
       return null;
     });
-    const completed = await segments.advance(identity, transitionId, authority);
+    const completed = await segments.advance(identity, transitionId, authority, completeCompaction);
     return { segmentId: completed.toSegmentId, sequence: completed.createResult!.sequence, model: completed.target.model,
       fresh: true, transitionId, assemblyId: completed.assemblyId };
   }
 
   async function fullHistory(activityId: string): Promise<ContextMessage[]> {
-    const history = await historyThrough(activityId, Number.MAX_SAFE_INTEGER);
+    const history = await compactions.history(activityId, await historyThrough(activityId, Number.MAX_SAFE_INTEGER));
     // Logical effects can outlive their model step (or Run). Both kinds of segment
     // transition must carry these owner facts even when the latest step had no tools.
     const { rows: outstanding } = await storage.read(`SELECT c.run_id,c.command_id,c.command,c.outcome,
@@ -679,7 +720,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   async function awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttemptFact): Promise<ModelAttemptFact> {
     let fact = initial ?? await options.models.checks.read(identity, attemptId);
-    const bufferProgress = requiresExplanationReview(await options.activity(identity, run.activityId));
+    const { rows: [step] } = await storage.read('SELECT plan FROM teaching_steps WHERE attempt_id=$1', [attemptId]);
+    const bufferProgress = !!(step?.plan as { compaction?: unknown } | undefined)?.compaction
+      || requiresExplanationReview(await options.activity(identity, run.activityId));
     const known = await lastProgressEvent(run.activityId, attemptId);
     let lastHeartbeat = Date.now(), unknownReads = 0, lastRevision = known.revision, lastLength = known.length;
     async function publishProgress() {
@@ -1205,4 +1248,5 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
     if (!session) throw new StorageError('corrupt');
   }
   await validateTeachingAssemblyData(storage);
+  await validateTeachingCompactions(storage);
 }

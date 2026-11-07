@@ -1,0 +1,169 @@
+TAP version 13
+# Subtest: configuration changes take effect after the original tool pair without rewriting the original step
+ok 1 - configuration changes take effect after the original tool pair without rewriting the original step
+  ---
+  duration_ms: 11806.427375
+  type: 'test'
+  ...
+# Subtest: a missing required capability preserves the input and explains its source before any model request
+ok 2 - a missing required capability preserves the input and explains its source before any model request
+  ---
+  duration_ms: 6798.795958
+  type: 'test'
+  ...
+# Subtest: revocation between model generation and preparation cannot dispatch a formerly resolved executor
+ok 3 - revocation between model generation and preparation cannot dispatch a formerly resolved executor
+  ---
+  duration_ms: 8156.565125
+  type: 'test'
+  ...
+# Subtest: same logical names from different sources retain distinct schemas and invoke the fixed original executor
+ok 4 - same logical names from different sources retain distinct schemas and invoke the fixed original executor
+  ---
+  duration_ms: 7594.288166
+  type: 'test'
+  ...
+# Subtest: an oversized required input is retained with the exact range to reduce and never silently truncated
+ok 5 - an oversized required input is retained with the exact range to reduce and never silently truncated
+  ---
+  duration_ms: 6704.46525
+  type: 'test'
+  ...
+# Subtest: an in-Run close receipt loss resumes the received V2 assembly even after V3 is configured
+ok 6 - an in-Run close receipt loss resumes the received V2 assembly even after V3 is configured
+  ---
+  duration_ms: 9680.85775
+  type: 'test'
+  ...
+# Subtest: an in-Run create receipt loss resumes the received V2 assembly even after V3 is configured
+ok 7 - an in-Run create receipt loss resumes the received V2 assembly even after V3 is configured
+  ---
+  duration_ms: 7314.191583
+  type: 'test'
+  ...
+# Subtest: steering beyond the fixed input policy pauses with the full supplement before another model request
+ok 8 - steering beyond the fixed input policy pauses with the full supplement before another model request
+  ---
+  duration_ms: 7074.579417
+  type: 'test'
+  ...
+# Subtest: the original request explains its fixed assembly, actual prompt, executor and material after restart
+ok 9 - the original request explains its fixed assembly, actual prompt, executor and material after restart
+  ---
+  duration_ms: 8233.497834
+  type: 'test'
+  ...
+# Subtest: responses persists the exact resolved tools and ordered native request
+ok 10 - responses persists the exact resolved tools and ordered native request
+  ---
+  duration_ms: 9387.690209
+  type: 'test'
+  ...
+# Subtest: messages persists the exact resolved tools and ordered native request
+ok 11 - messages persists the exact resolved tools and ordered native request
+  ---
+  duration_ms: 10434.520666
+  type: 'test'
+  ...
+# Subtest: model-switch carries course facts and an earlier accepted operation after steering
+    # Subtest: the actual successor request retains the earlier Command and Wait
+    ok 1 - the actual successor request retains the earlier Command and Wait
+      ---
+      duration_ms: 0.677084
+      type: 'test'
+      ...
+    # Subtest: course facts remain user data while the fixed help policy remains a system rule
+    ok 2 - course facts remain user data while the fixed help policy remains a system rule
+      ---
+      duration_ms: 0.229209
+      type: 'test'
+      ...
+    1..2
+ok 12 - model-switch carries course facts and an earlier accepted operation after steering
+  ---
+  duration_ms: 19258.109083
+  type: 'test'
+  ...
+# Subtest: assembly-change carries course facts and an earlier accepted operation after steering
+    # Subtest: the actual successor request retains the earlier Command and Wait
+    ok 1 - the actual successor request retains the earlier Command and Wait
+      ---
+      duration_ms: 0.973583
+      type: 'test'
+      ...
+    # Subtest: course facts remain user data while the fixed help policy remains a system rule
+    ok 2 - course facts remain user data while the fixed help policy remains a system rule
+      ---
+      duration_ms: 0.252459
+      type: 'test'
+      ...
+    1..2
+ok 13 - assembly-change carries course facts and an earlier accepted operation after steering
+  ---
+  duration_ms: 14526.771334
+  type: 'test'
+  ...
+# Subtest: initial segment receipt loss and Agent restart reuse the original segment before any model dispatch
+ok 14 - initial segment receipt loss and Agent restart reuse the original segment before any model dispatch
+  ---
+  duration_ms: 8492.0665
+  type: 'test'
+  ...
+# Subtest: a fenced Agent with a delayed create receipt cannot overwrite its successor or dispatch another model call
+ok 15 - a fenced Agent with a delayed create receipt cannot overwrite its successor or dispatch another model call
+  ---
+  duration_ms: 6765.567667
+  type: 'test'
+  ...
+# Subtest: close receipt loss resumes the fixed model switch under competing Agents without reassembly
+ok 16 - close receipt loss resumes the fixed model switch under competing Agents without reassembly
+  ---
+  duration_ms: 6554.047584
+  type: 'test'
+  ...
+# Subtest: create receipt loss resumes the fixed model switch under competing Agents without reassembly
+ok 17 - create receipt loss resumes the fixed model switch under competing Agents without reassembly
+  ---
+  duration_ms: 6258.819125
+  type: 'test'
+  ...
+# Subtest: a paired accepted student Wait keeps its original command, deadline and Run budget through a switch and restart
+ok 18 - a paired accepted student Wait keeps its original command, deadline and Run budget through a switch and restart
+  ---
+  duration_ms: 7853.113292
+  type: 'test'
+  ...
+# Subtest: an assembly-change close receipt loss keeps the received definition when configuration changes again
+ok 19 - an assembly-change close receipt loss keeps the received definition when configuration changes again
+  ---
+  duration_ms: 8443.631334
+  type: 'test'
+  ...
+# Subtest: an assembly-change create receipt loss keeps the received definition when configuration changes again
+ok 20 - an assembly-change create receipt loss keeps the received definition when configuration changes again
+  ---
+  duration_ms: 7740.796417
+  type: 'test'
+  ...
+# Subtest: a switch requested while the first assembly is resolving seals the segment actually reached at the boundary
+ok 21 - a switch requested while the first assembly is resolving seals the segment actually reached at the boundary
+  ---
+  duration_ms: 4603.146583
+  type: 'test'
+  ...
+# Subtest: a lost snapshot upload acknowledgement retains its original context when an earlier operation completes before recovery
+ok 22 - a lost snapshot upload acknowledgement retains its original context when an earlier operation completes before recovery
+  ---
+  duration_ms: 11492.748834
+  type: 'test'
+  ...
+# Snapshot resource boundary attempts: [{"uploadId":"d5eb7d2c-99c3-4010-9506-e862617b24e7","sha256":"75008024588b6aeaaf92cb9d18b2597eb93058323e2a9bc497f4444f29f87fb7","waits":["pending"],"effects":["accepted"]},{"uploadId":"d5eb7d2c-99c3-4010-9506-e862617b24e7","sha256":"75008024588b6aeaaf92cb9d18b2597eb93058323e2a9bc497f4444f29f87fb7","waits":["pending"],"effects":["accepted"]}]
+1..22
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 198129.966667

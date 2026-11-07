@@ -65,6 +65,8 @@ export const teachingEventKindSchema = z.enum([
   'question-created', 'question-presented', 'student-response', 'question-expired', 'question-cancelled',
   'input-adopted', 'input-revised', 'input-removed', 'input-promoted', 'inputs-paused', 'question-superseded',
   'model-switch-requested', 'model-switch-completed', 'model-switch-paused',
+  'context-compaction-selected', 'context-compaction-generated', 'context-compacted', 'context-compaction-rejected',
+  'model-capacity-rejected',
   'extension',
 ]);
 
