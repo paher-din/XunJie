@@ -1,12 +1,12 @@
 {
   "engineering": {
     "status": "passed",
-    "startedAt": "2026-11-07T18:44:52.694Z",
-    "finishedAt": "2026-11-07T18:47:58.305Z",
+    "startedAt": "2026-11-07T19:31:31.626Z",
+    "finishedAt": "2026-11-07T19:37:37.178Z",
     "nodeVersion": "v24.21.0",
     "exitCode": 0,
     "group": "full",
-    "jobs": 4,
+    "jobs": 2,
     "testsCached": false,
     "stages": [
       {
@@ -40,7 +40,7 @@
         "failed": []
       }
     ],
-    "scope": "Complete engineering verification; native PostgreSQL Agent regression is reported separately."
+    "scope": "Complete engineering verification after native-turn intent and required-scope follow-up."
   },
   "snapshotRecovery": {
     "status": "passed",
@@ -92,7 +92,8 @@
           "completed"
         ]
       }
-    ]
+    ],
+    "sourceCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c"
   },
   "review": {
     "standards": {
@@ -127,7 +128,7 @@
   "docs": {
     "status": "passed",
     "markdownFiles": 260,
-    "localTargets": 2568,
+    "localTargets": 2571,
     "failures": 0
   },
   "nativeAgentRegression": {
@@ -149,6 +150,43 @@
     ],
     "warnings": [
       "Existing fixture accumulation emitted MaxListenersExceededWarning; no test failed."
-    ]
+    ],
+    "sourceCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c"
+  },
+  "nativeTurnFollowup": {
+    "status": "passed",
+    "regression": {
+      "files": [
+        "teaching-agent.assembly-config.runtime.test.mjs",
+        "teaching-agent.context-portable.runtime.test.mjs",
+        "teaching-agent.snapshot-recovery.runtime.test.mjs",
+        "teaching-agent.segments.runtime.test.mjs"
+      ],
+      "tests": 23,
+      "pass": 23,
+      "fail": 0,
+      "scope": "Native-turn fix; before subsequent required-scope diagnostic refinement."
+    },
+    "finalTargeted": {
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "scope": [
+        "actual new native turn ends with fixed student intent",
+        "capacity reports adopted question and work when no input is pending"
+      ]
+    },
+    "redEvidence": [
+      "actual last role was assistant instead of user",
+      "requiredScope.questions was empty instead of the adopted request ID"
+    ],
+    "realProtocols": "real-model-native-intent.json",
+    "standardsFindings": 0,
+    "specFindings": 0,
+    "sources": {
+      "packages/learning-space/src/teaching-agent/driver.ts": "65a0c2df9521da6fac0f0c7e276d7d31e0546edc4233a1ab228fbf8d2865dee4",
+      "apps/server/tests/teaching-agent.assembly-config.runtime.test.mjs": "587491a94641f6a20773481fd096bf8c8fdf6e1bd84ce6cedacffd291c511810",
+      "scripts/probe-teaching-assembly-transition.mjs": "cbe096abfeb33aec05b93a6d69ab567e9843839c9e191e8348564ccd93180791"
+    }
   }
 }

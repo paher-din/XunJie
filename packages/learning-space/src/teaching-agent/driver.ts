@@ -346,18 +346,27 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
+    // A new native segment needs the accepted student intent as its current user
+    // turn. Portable assistant facts must not reopen a provider reasoning turn.
+    if (previous && plan.input.segmentId !== previous.segment_id && !plan.input.input.text && !texts.length) {
+      const operations = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
+        name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
+      plan.input.input.text = '继续处理同一已接受问题。以下是原操作的固定状态，已完成项无需重做，未结项只核对原身份：\n'
+        + JSON.stringify(operations) + '\n\n当前固定学生意图与依据：\n' + fixedInputText(scope.input);
+    }
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
     const policy = plan.resolvedAgent?.definition.contextPolicy;
     if (plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
       || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
+      const requiredInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
       await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
         { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
           inputChars: plan.input.input.text.length, policy,
-          requiredScope: { questions: fixedInputs.map(item => item.input.requestId),
-            references: fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.referenceId)),
-            works: fixedInputs.flatMap(item => item.input.works.map(work => work.contentId)),
-            workNames: [...new Set(fixedInputs.flatMap(item => item.input.works.map(work => work.name)))],
-            referenceNames: [...new Set(fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.sourceName)))] } } });
+          requiredScope: { questions: requiredInputs.map(input => input.requestId),
+            references: requiredInputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+            works: requiredInputs.flatMap(input => input.works.map(work => work.contentId)),
+            workNames: [...new Set(requiredInputs.flatMap(input => input.works.map(work => work.name)))],
+            referenceNames: [...new Set(requiredInputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] } } });
       return null;
     }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
