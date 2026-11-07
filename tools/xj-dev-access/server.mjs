@@ -152,7 +152,7 @@ export function createAccessService(config, adapters = {}) {
     }
     catch (error) { reply(res, error instanceof AccessError ? error.status : 503, { ok: false, code: error instanceof AccessError ? error.code : 'ACCESS_UNAVAILABLE' }); }
   });
-  const adminEndpoint = localSocket(config.adminSocket);
+  const adminEndpoint = (adapters.localEndpoint ?? localSocket)(config.adminSocket);
   let closed = false, started = false;
   return {
     store, publicServer, adminServer,

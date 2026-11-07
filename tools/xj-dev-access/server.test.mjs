@@ -15,6 +15,7 @@ import { AccessError, digest, signProof, writePrivateJson } from '../xj-dev/src/
 import { createAccessService } from './server.mjs';
 import { adminRequest } from './admin.mjs';
 import { openAccessStore } from './store.mjs';
+import { localTestEndpoint, localTestPath } from '../../apps/server/tests/support/local-endpoint.ts';
 
 test('HTTPS enroll resumes only unfinished stages; device/member revocation and replay checks share one store', async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'xja-')));
@@ -28,10 +29,11 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
     const systemCalls = [], applicationCalls = [];
     let failApplication = true, failClose = true;
     const config = { serviceId: 'https-test-service', endpoint: 'https://localhost:8443', listenHost: '127.0.0.1', port: 0,
-      databaseFile: join(root, 'access.sqlite'), credentialKeyFile, adminSocket: join(root, 'a'), backupDirectory: root,
+      databaseFile: join(root, 'access.sqlite'), credentialKeyFile, adminSocket: localTestPath(join(root, 'a')), backupDirectory: root,
       tls: { keyFile: cert.keyFile, certFile: cert.certFile, caFile: ca.certFile }, knownHostsFile, cloudCaFile: ca.certFile,
       courseIds: ['approved-course'], target: { schema: 'xj-dev/connection-v1', host: 'approved.test', port: 22, applicationPort: 13444, browserOrigin: 'https://localhost:13445' } };
     service = createAccessService(config, {
+      localEndpoint: localTestEndpoint,
       system: async input => {
         systemCalls.push(input.operation);
         if (input.operation === 'revoke' && failClose) { failClose = false; throw new AccessError('DEVICE_CLOSE_INCOMPLETE', 503); }

@@ -14,7 +14,7 @@ import { createPackages } from '../../xj-dev-access/packages.mjs';
 import { authenticatedRequest, joinEnrollment } from '../src/enrollment-client.mjs';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
 import { environmentId, environmentPaths, repoPaths } from '../src/paths.mjs';
-import { ACCESS_PROTOCOL, writePrivateJson } from '../src/enrollment-protocol.mjs';
+import { writePrivateJson } from '../src/enrollment-protocol.mjs';
 import { ensureBaseline } from '../src/baseline.mjs';
 import { databaseDriver } from '../src/repro-data.mjs';
 import { captureRepro } from '../src/repro.mjs';
@@ -23,9 +23,11 @@ import { LOCKFILES, git } from '../src/repro-code.mjs';
 import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mjs';
 import { crc64XZ } from '../src/package-transfer.mjs';
 import { acquireLock } from '../src/state.mjs';
+import { localTestEndpoint, localTestPath } from '../../../apps/server/tests/support/local-endpoint.ts';
 
 const checkout = realpathSync(join(import.meta.dirname, '../../..'));
 const fixtureTimeout = process.platform === 'win32' ? 600000 : 120000;
+const cliTimeout = process.platform === 'win32' ? 120000 : 20000;
 
 // Real access HTTPS/proof/SQLite, real ZIP/fetch/restore. Only object storage and
 // privileged OS/account adapters are controlled; this is not cloud acceptance.
@@ -68,24 +70,13 @@ async function fixture(t) {
       headers: { host: new URL(objectOrigin).host, range: `bytes=${offset}-`, 'if-match': etag }, expiresAt: Date.now() + 299000, allowedHost: new URL(objectOrigin).host }),
   };
   const config = { serviceId: randomUUID(), endpoint: 'https://localhost:8443', port: 0, listenHost: '127.0.0.1',
-    databaseFile: join(root, 'access.sqlite'), credentialKeyFile: keyFile, adminSocket: join(root, 'a'), backupDirectory: root,
+    databaseFile: join(root, 'access.sqlite'), credentialKeyFile: keyFile, adminSocket: localTestPath(join(root, 'a')), backupDirectory: root,
     tls: { keyFile: cert.keyFile, certFile: cert.certFile, caFile: ca.certFile }, knownHostsFile: pins, cloudCaFile: ca.certFile,
     courseIds: ['course'], target: { schema: 'xj-dev/connection-v1', host: 'approved.test', port: 22, browserOrigin: 'https://localhost:13445', applicationPort: 13444 },
     packages: { bucket: 'fixture-bucket', prefix: 'team/' } };
-  service = createAccessService(config, { storage, system: async input => ({ username: 'xjd_' + input.deviceId.replaceAll('-', '').slice(0, 28) }), application: async () => ({}) });
+  service = createAccessService(config, { storage, localEndpoint: localTestEndpoint, system: async input => ({ username: 'xjd_' + input.deviceId.replaceAll('-', '').slice(0, 28) }), application: async () => ({}) });
   const catalog = createPackages(service.store, config.packages, { storage }).catalog;
-  const admin = async (operation, input) => {
-    if (process.platform !== 'win32') return adminRequest(config.adminSocket, operation, input);
-    // The deployed access host uses a Unix-only owner socket. On Windows seed
-    // its controlled owner state directly; every client request still crosses
-    // the real HTTPS/proof/live-capability boundary below.
-    if (operation === 'invite') return { protocol: ACCESS_PROTOCOL, serviceId: config.serviceId, endpoint: config.endpoint,
-      caPem: readFileSync(ca.certFile, 'utf8'), cloudCaPem: readFileSync(ca.certFile, 'utf8'), sshKnownHosts: readFileSync(pins, 'utf8'),
-      ...service.store.createInvitation(input) };
-    if (operation === 'package-baseline') return catalog.addBaseline(input);
-    assert.equal(operation, 'revoke-device');
-    service.store.denyDevice(input.deviceId); service.store.closed(input.deviceId);
-  };
+  const admin = (operation, input) => adminRequest(config.adminSocket, operation, input);
   // Exercise client binding against a conflicting/malformed catalog response,
   // while retaining the real service's proof and download authorization checks.
   service.publicServer.on('request', (_req, res) => {
@@ -225,7 +216,7 @@ test('team baseline catalog and pinned use retain read-only authorization, diges
 
   await t.test('CLI parses team boolean and catalog output through the existing authenticated route', async () => {
     const child = spawn(process.execPath, [join(checkout, 'tools/xj-dev/xj-dev.mjs'), 'baseline', 'list', '--team', '--worktree', checkout], {
-      env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000,
+      env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['ignore', 'pipe', 'pipe'], timeout: cliTimeout,
     });
     let stdout = ''; child.stdout.on('data', bytes => stdout += bytes); child.stderr.resume();
     assert.equal(await new Promise((done, reject) => { child.once('error', reject); child.once('close', done); }), 0);
@@ -372,7 +363,7 @@ test('--here initializes only empty local data, preserving current code and reje
   await t.test('public CLI --here imports data in the specified current checkout instance', async () => {
     const instance = 'here-cli', env = environmentPaths(f.home, environmentId(checkout, instance));
     const child = spawn(process.execPath, [join(checkout, 'tools/xj-dev/xj-dev.mjs'), 'baseline', 'use', 'course-start', '--team', '--version', '0.2.0-fixed', '--here', '--worktree', checkout, '--instance', instance], {
-      env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000,
+      env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['ignore', 'pipe', 'pipe'], timeout: cliTimeout,
     });
     let stdout = ''; child.stdout.on('data', bytes => stdout += bytes); child.stderr.resume();
     assert.equal(await new Promise((done, reject) => { child.once('error', reject); child.once('close', done); }), 0, stdout);

@@ -259,7 +259,7 @@ test('invitation files with broad POSIX permissions or symlinks are rejected bef
 
 async function stdinJoin(f, extraArgs, input) {
   const args = [join(import.meta.dirname, '../xj-dev.mjs'), 'join', ...extraArgs, '--no-start', '--worktree', join(import.meta.dirname, '../../..')];
-  const child = spawn(process.execPath, args, { env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['pipe', 'pipe', 'pipe'], timeout: 20000 });
+  const child = spawn(process.execPath, args, { env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['pipe', 'pipe', 'pipe'], timeout: process.platform === 'win32' ? 120000 : 20000 });
   let stdout = '', stderr = '';
   child.stdout.on('data', bytes => stdout += bytes); child.stderr.on('data', bytes => stderr += bytes);
   child.stdin.on('error', () => {}); // Early argument/size rejection may close the pipe.

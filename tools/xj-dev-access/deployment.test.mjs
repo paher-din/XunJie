@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { DEPLOYMENT_FILES, prepareDeployment } from './prepare-deployment.mjs';
 
 test('developer deployment takes only the exact committed allowlist and records all digests; dirty content cannot acquire that source label', () => {
@@ -29,5 +30,21 @@ test('developer deployment takes only the exact committed allowlist and records 
     assert.throws(() => readFileSync(join(output, 'unrelated-private.json')), { code: 'ENOENT' });
     assert.throws(() => prepareDeployment(commit, output, repo), /NEW_DIRECTORY_REQUIRED/);
     assert.throws(() => prepareDeployment('HEAD', join(root, 'other'), repo), /FIXED_COMMIT/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the independent committed deployment loads its service and owner client without checkout dependencies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'xj-deploy-load-'));
+  const repo = join(import.meta.dirname, '../..');
+  try {
+    const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+    const output = join(root, 'bundle');
+    prepareDeployment(commit, output, repo);
+    const imports = ['server.mjs', 'admin.mjs'].map(name => pathToFileURL(join(output, 'tools/xj-dev-access', name)).href);
+    const loaded = spawnSync(process.execPath, ['--input-type=module', '-e',
+      imports.map(url => `await import(${JSON.stringify(url)});`).join('\n')], {
+      cwd: output, env: { ...process.env, NODE_PATH: '', NODE_OPTIONS: '' }, encoding: 'utf8', timeout: 20000,
+    });
+    assert.equal(loaded.status, 0, loaded.stderr);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

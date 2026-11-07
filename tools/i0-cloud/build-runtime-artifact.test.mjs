@@ -123,7 +123,7 @@ test('runtime artifact carries per-file digests, pre-compressed static outputs a
     assert.equal(sizeOf(manifest.runtimeFiles)['node_modules/zod/index.js'],
       statSync(join(root, 'node_modules/zod/index.js')).size);
 
-    const listing = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' }).trim().split('\n');
+    const listing = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' }).trim().split(/\r?\n/);
     for (const name of ['apps/web/dist/index.html', 'apps/web/dist/asset-digests.json',
       'apps/server/dist/server/main.js', 'node_modules/zod/index.js', 'tools/i0-cloud/cloud-host.mjs']) {
       assert.ok(listing.includes(name), `tarball missing: ${name}`);

@@ -163,6 +163,7 @@ def write_release(release: Path, commit: str, tree: str, script: bytes, marker: 
     (release / "deployment.json").chmod(0o644)
 
 
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Linux deployment host; run with Linux Python')
 class ArtifactDeploymentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="xunjie-deploy-test-")

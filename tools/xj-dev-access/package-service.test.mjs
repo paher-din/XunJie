@@ -12,6 +12,7 @@ import { authenticatedRequest, joinEnrollment, refreshEnrollment } from '../xj-d
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../xj-dev/src/certificates.mjs';
 import { environmentPaths } from '../xj-dev/src/paths.mjs';
 import { writePrivateJson } from '../xj-dev/src/enrollment-protocol.mjs';
+import { localTestEndpoint, localTestPath } from '../../apps/server/tests/support/local-endpoint.ts';
 
 test('real HTTPS/proof grants file-only identities without SSH/application access; a pending signature cannot outlive live revocation', async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'xjf-'))); let service, release;
@@ -21,12 +22,12 @@ test('real HTTPS/proof grants file-only identities without SSH/application acces
     const key = join(root,'credential.key'), pins = join(root,'pins');
     writeFileSync(key,randomBytes(32),{mode:0o600});writeFileSync(pins,'approved.test '+readFileSync(hostKey+'.pub','utf8'));
     const config = { serviceId:'file-capability-test', endpoint:'https://localhost:8443',port:0,listenHost:'127.0.0.1',databaseFile:join(root,'access.sqlite'),credentialKeyFile:key,
-      adminSocket:join(root,'a'),backupDirectory:root,tls:{keyFile:cert.keyFile,certFile:cert.certFile,caFile:ca.certFile},knownHostsFile:pins,cloudCaFile:ca.certFile,
+      adminSocket:localTestPath(join(root,'a')),backupDirectory:root,tls:{keyFile:cert.keyFile,certFile:cert.certFile,caFile:ca.certFile},knownHostsFile:pins,cloudCaFile:ca.certFile,
       courseIds:['course'],target:{schema:'xj-dev/connection-v1',host:'approved.test',port:22,browserOrigin:'https://localhost:13445',applicationPort:13444},
       packages:{bucket:'fixture-bucket',prefix:'team/'} };
     let reached;const signing = new Promise(done=>{reached=done;}), gate = new Promise(done=>{release=done;});
     const operations=[];
-    service=createAccessService(config, { system:async input=>{operations.push('ssh-'+input.operation);return {username:'xjd_'+input.deviceId.replaceAll('-','').slice(0,28)};},
+    service=createAccessService(config, { localEndpoint:localTestEndpoint, system:async input=>{operations.push('ssh-'+input.operation);return {username:'xjd_'+input.deviceId.replaceAll('-','').slice(0,28)};},
       application:async operation=>{operations.push('app-'+operation);return {};},storage:{
         initiate:async()=> 'fixture-upload',list:async()=>[],
         part:async()=>{reached();await gate;return {method:'PUT',url:'https://fixture-bucket.oss-cn-beijing.aliyuncs.com/fixture',headers:{},expiresAt:Date.now()+299000,allowedHost:'fixture-bucket.oss-cn-beijing.aliyuncs.com'};},

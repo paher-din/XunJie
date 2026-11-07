@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { localSocket, localSocketAddress } from '../server/access/local-socket.ts';
+import { localSocket } from '../server/access/local-socket.ts';
 
-test('local control excludes a second owner, survives its failed close and permits an explicit restart', async () => {
+test('local control excludes a second owner, survives its failed close and permits an explicit restart', { skip: process.platform === 'win32' ? 'Production owner endpoints require Unix; verified on Linux' : false }, async () => {
   const root = mkdtempSync(join(tmpdir(), 'xj-local-control-')), path = join(root, 'control');
   const servers = [createServer((_req, res) => res.end('original owner')), createServer((_req, res) => res.end('successor'))] as const;
   const first = localSocket(path), contender = localSocket(path), successor = localSocket(path);
@@ -39,7 +39,7 @@ test('local control excludes a second owner, survives its failed close and permi
   }
 });
 
-test('an abruptly ended local owner releases its endpoint for an explicit successor', { timeout: 30000 }, async () => {
+test('an abruptly ended local owner releases its endpoint for an explicit successor', { timeout: 30000, skip: process.platform === 'win32' ? 'Production owner endpoints require Unix; verified on Linux' : false }, async () => {
   const root = mkdtempSync(join(tmpdir(), 'xj-local-owner-')), path = join(root, 'control');
   const module = new URL('../server/access/local-socket.ts', import.meta.url).href;
   const script = `import {createServer} from 'node:http'; import {localSocket} from ${JSON.stringify(module)};
@@ -57,7 +57,7 @@ test('an abruptly ended local owner releases its endpoint for an explicit succes
     child.kill('SIGKILL'); await exited;
     await successor.listen(server, 0o600);
     const response = await new Promise<string>((done, fail) => {
-      const req = request({ socketPath: localSocketAddress(path), path: '/' }, res => {
+      const req = request({ socketPath: path, path: '/' }, res => {
         let body = ''; res.on('data', bytes => { body += bytes; }); res.on('end', () => done(body));
       }); req.on('error',fail); req.end();
     });
