@@ -833,8 +833,13 @@ test('pending cleanup of completed native inputs survives Agent restart without 
       children.push(child);
       return child;
     });
-    let sessionRequestId, explaining = false, holdStop = true;
+    let sessionRequestId, explaining = false, holdStop = true, askingAfterCleanup = false;
     const f = await fixture(async (payload, response, index) => {
+      if (askingAfterCleanup) {
+        assert.equal(index, 4, 'Only the new student question creates a post-cleanup model request.');
+        reply(response, { text: '原输入已经完成，原会话停止也已核实；不再当作运行中会话。' });
+        return;
+      }
       if (index === 1) reply(response, { call: { id: 'cleanup-start', name: 'course_operation',
         arguments: { componentKey: 'counter', operationId: 'start_session', parameters: {} } } });
       else if (index === 2) {
@@ -846,9 +851,7 @@ test('pending cleanup of completed native inputs survives Agent restart without 
         assert.equal(index, 3, 'cleanup must not request another model generation');
         const result = JSON.parse(payload.messages.filter(message => message.role === 'tool').at(-1).content);
         assert.deepEqual(result.query.session.observation, { value: 2, total: 2, applied: 1 });
-        explaining = true;
-        await gate.promise;
-        if (!response.destroyed) reply(response, { text: '原输入已经完成。' });
+        reply(response, { text: '原输入已经完成。' });
       }
     }, { course: true });
     try {
@@ -860,7 +863,16 @@ test('pending cleanup of completed native inputs survives Agent restart without 
           return effect(tx);
         });
       } };
-      const agent = f.makeAgent({ ownedStorage, leaseMs: 10_000 }); agent.resume();
+      const models = { ...f.models, checks: { ...f.models.checks, async read(...args) {
+        const fact = await f.models.checks.read(...args);
+        if (!explaining && fact.state === 'completed' && fact.text === '原输入已经完成。') {
+          // Hold only delivery of the real completed model result. Its physical
+          // request ends normally before the later post-cleanup student question.
+          explaining = true; await gate.promise;
+        }
+        return fact;
+      } } };
+      const agent = f.makeAgent({ ownedStorage, models, leaseMs: 10_000 }); agent.resume();
       const runId = await f.send(agent);
       await until(() => explaining, 'did not reach the later model step after completed native input');
       const before = await f.conversation(agent);
@@ -1014,6 +1026,42 @@ test('pending cleanup of completed native inputs survives Agent restart without 
       assert.deepEqual(await f.events(again), events, 'terminal cleanup and Wait consumption happen once');
       assert.equal(f.payloads.length, 3);
       await again.validate();
+      askingAfterCleanup = true;
+      const followingRunId = await f.send(again);
+      const following = await f.completed(again, followingRunId);
+      assert.notEqual(followingRunId, runId);
+      assert.equal(following.runs.find(run => run.runId === followingRunId).segmentId, before.runs[0].segmentId,
+        'The next question must receive cleanup facts while reusing the original native segment.');
+      assert.equal(f.payloads.length, 4);
+      const history = f.payloads[3].messages.flatMap(message => Array.isArray(message.content)
+        ? message.content.filter(block => block.type === 'text' && typeof block.text === 'string').map(block => block.text)
+        : typeof message.content === 'string' ? [message.content] : []).join('\n');
+      const cleanupFacts = history.split('\n').flatMap(line => {
+        const start = line.indexOf('{');
+        if (start < 0) return [];
+        try {
+          const fact = JSON.parse(line.slice(start)), entries = [fact];
+          // Observations are actual caller envelopes in the native request;
+          // inspect their bounded text, never the old tool feedback field.
+          if (fact.source === 'caller' && typeof fact.text === 'string') {
+            const first = fact.text.indexOf('{');
+            if (first >= 0) entries.push(JSON.parse(fact.text.slice(first)));
+          }
+          return entries.flatMap(entry => {
+            const cleanup = entry.cleanup ?? entry;
+            return cleanup.phase === 'stop-original-execution' ? [cleanup] : [];
+          });
+        } catch { return []; }
+      });
+      const terminalCleanup = cleanupFacts.filter(fact => fact.cleanupCompleted === true);
+      assert.equal(terminalCleanup.length, before.tools.length, 'The actual next-question request contains each distinct terminal cleanup fact.');
+      for (const fact of terminalCleanup) {
+        assert.equal(fact.sessionStopped, true);
+        assert.equal(fact.sessionOngoing, false);
+        assert.ok(['completed', 'failed'].includes(fact.state), 'Cleanup carries its actual terminal state, separately from original feedback.');
+      }
+      assert.deepEqual(terminalCleanup.map(fact => fact.state).sort(), cleanupVersions(events)
+        .filter(event => event.body.outcome.result.stoppedExecution?.cleanupCompleted === true).map(event => event.body.cleanupState).sort());
       again.closeWrites(); again.closeDispatch(); await again.drain();
       const participant = f.storage.participant();
       await participant.closeDispatch(); await participant.closeWrites(); await participant.drain();

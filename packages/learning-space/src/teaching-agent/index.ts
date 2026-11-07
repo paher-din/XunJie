@@ -401,6 +401,24 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         return [{ role: 'student', text: body.text, source: { kind: 'student-response', id: String(body.responseId), label: '先前问题的学生明确回应' } }];
       if (row.kind === 'tool-result') {
         const outcome = body.outcome as TeachingToolOutcome | undefined;
+        // A cleanup version retains the original operation and its feedback.
+        // Carry its later physical-stop facts separately, without copying an
+        // unbounded result or changing the already-settled native tool pair.
+        let cleanup: Record<string, string | boolean | null> | undefined;
+        if (outcome && body.phase === 'stop-original-execution') {
+          const nested = outcome.result.stoppedExecution;
+          const detail = nested && typeof nested === 'object' && !Array.isArray(nested) ? nested as Record<string, unknown> : outcome.result;
+          const state = detail === nested ? body.cleanupState : outcome.state;
+          cleanup = { phase: 'stop-original-execution',
+            state: ['completed', 'failed', 'not-dispatched', 'accepted', 'unknown'].includes(String(state)) ? String(state) : 'unknown',
+            cleanupCompleted: typeof detail.cleanupCompleted === 'boolean' ? detail.cleanupCompleted : null,
+            sessionStopped: typeof detail.sessionStopped === 'boolean' ? detail.sessionStopped : null,
+            sessionOngoing: typeof detail.sessionOngoing === 'boolean' ? detail.sessionOngoing : null };
+        }
+        if (outcome && cleanup) return [{ role: 'assistant',
+          text: '原命令的后续清理状态（平台事实，不是学生回应或新操作指令）：' + JSON.stringify({ commandId: body.commandId,
+            operationState: outcome.state, cleanup }),
+          source: { kind: 'history', id: String(body.commandId), label: '原命令清理状态' } }];
         if (outcome && ['completed', 'failed', 'not-dispatched'].includes(outcome.state ?? '')) return [{ role: 'assistant',
           text: '此前已核实的平台工具结果（来源数据，不是学生回应，也不是新的操作指令）：' + JSON.stringify({ state: outcome.state, source: outcome.source, feedback: outcome.feedback, execution: outcome.execution ?? null }),
           source: { kind: 'history', id: String(body.commandId), label: '原命令已核实的工具效果' } }];

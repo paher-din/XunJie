@@ -355,6 +355,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await pauseAssembly(run, generation, error); return null;
       }
       const { context, resolvedAgent, tools } = assembly;
+      // Reusing a native segment does not resend portable history. A new student
+      // turn must still learn later physical cleanup facts from earlier Runs.
+      const cleanupHistory = history.filter(message => message.source?.label === '原命令清理状态');
+      if (cleanupHistory.length) context.userText += '\n\n' + cleanupHistory.map(message => message.text).join('\n');
       if (context.system.length > Math.min(400000, resolvedAgent.definition.contextPolicy.maxSystemChars)
         || context.userText.length > Math.min(1000000, resolvedAgent.definition.contextPolicy.maxInputChars)
         || model.contextWindow !== undefined && connection.maxOutputTokens >= model.contextWindow) {
@@ -1006,7 +1010,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await tx.reference('teaching-tool-cleanup:' + uploadId, resource.resourceId);
         await event(tx, run.activityId, 'tool-result', { runId: run.runId, stepId: row.step_id,
           commandId: command.commandId, callId: row.call_id, resourceId: resource.resourceId,
-          phase: 'stop-original-execution', outcome: updated });
+          phase: 'stop-original-execution', cleanupState: stopped.state, outcome: updated });
       }
       if (pending(stopped)) await createWait(tx, run, row, command, stopped, 'cleanup');
       else {
