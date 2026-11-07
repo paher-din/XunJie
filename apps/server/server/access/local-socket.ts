@@ -5,6 +5,8 @@ import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { listenWindowsPipe } from './windows-pipe.ts';
+export { localSocketAddress } from './windows-pipe.ts';
 
 const APPLICATION_ID = 0x584a534c;
 const FORMAT = 'xunjie/local-socket-v1';
@@ -58,9 +60,15 @@ export function localSocket(path: string) {
   let mutex: DatabaseSync | undefined, published: Identity | undefined, boundPath: string | undefined;
   const receiptPath = path + '.owner.json';
   let listening = false, closed = false;
+  let opening: Promise<void> | undefined;
   return {
     async listen(server: Server, mode: number, gid?: number) {
-      if (closed || mutex) conflict();
+      if (closed || mutex || listening || opening || server.listening) conflict();
+      if (process.platform === 'win32') {
+        opening = listenWindowsPipe(server, path, gid).then(() => { listening = true; });
+        try { await opening; } finally { opening = undefined; }
+        return;
+      }
       mkdirSync(dirname(path), { recursive: true, mode: 0o750 });
       mutex = lock(path + '.lease.sqlite');
       try {
@@ -107,6 +115,7 @@ export function localSocket(path: string) {
     async close(server: Server) {
       if (closed) return;
       closed = true;
+      await opening?.catch(() => {});
       if (listening) { await new Promise<void>(done => server.close(() => done())); listening = false; }
       if (published && same(path, published)) rmSync(path);
       published = undefined;

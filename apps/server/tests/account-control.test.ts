@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { createLocalAccountControl } from '../server/access/account-control.ts';
+import { localSocketAddress } from '../server/access/local-socket.ts';
 import { createPasswordRecord } from '../server/access/password.ts';
 import { createDigitalLogicApplication } from '../server/app/digital-logic.ts';
 import { createDigitalLogicApplicationDatabase } from '../server/db/transaction.ts';
@@ -28,7 +29,7 @@ test('optional local account control grants one identity, revokes existing sessi
   const control = await createLocalAccountControl(configurationFile, { db, staticAllowed: ['base'] });
   let service = await createDigitalLogicApplication({ ...options, loginAuthorization: control.loginAuthorization });
   const call = (operation: string, body: unknown) => new Promise<{ status: number; data: unknown }>((accept, reject) => {
-    const req = request({ socketPath, path: '/' + operation, method: 'POST' }, res => {
+    const req = request({ socketPath: localSocketAddress(socketPath), path: '/' + operation, method: 'POST' }, res => {
       let text = ''; res.on('data', bytes => { text += bytes; }); res.on('end', () => accept({ status: res.statusCode!, data: JSON.parse(text) }));
     }); req.on('error', reject); req.end(JSON.stringify(body));
   });

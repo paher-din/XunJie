@@ -221,8 +221,9 @@ promises.lookup = async (host, options) => typeof host === 'string' && host.ends
   endpoint = schoolStatus.endpoint!
   namespace = schoolStatus.environment.clientNamespace
   const admin = { authorization: 'Bearer ' + await resolveCredential(schoolRoot, 'control') }
-  memberIdentity = await must('manage/members', { requestId: randomUUID(), loginName: 'model-switch-ui', password: 'model-switch-password' }, admin)
-  const login = await api('login', { loginName: 'model-switch-ui', password: 'model-switch-password' })
+  const password = randomUUID()
+  memberIdentity = await must('manage/members', { requestId: randomUUID(), loginName: 'model-switch-ui', password }, admin)
+  const login = await api('login', { loginName: 'model-switch-ui', password })
   expect(login.status, JSON.stringify(login.value)).toBe(200)
   cookie = login.cookie!
   const connection = (name: string, protocol: string, baseUrl: string, path: string, modelId: string) => ({ requestId: randomUUID(),

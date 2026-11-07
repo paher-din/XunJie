@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { request } from 'node:http';
 import { AccessError, requireAccess } from '../xj-dev/src/enrollment-protocol.mjs';
+import { localSocketAddress } from '../../apps/server/server/access/local-socket.ts';
 
 export function systemOperation(command, input) {
   return new Promise((accept, reject) => {
@@ -28,7 +29,7 @@ export function applicationOperation(socketPath, operation, body, { timeoutMs = 
       else accept(data);
     };
     const unavailable = () => finish(new AccessError('APPLICATION_CONTROL_UNAVAILABLE', 503));
-    const req = request({ socketPath, path: `/${operation}`, method: 'POST', headers: { 'content-type': 'application/json' } }, res => {
+    const req = request({ socketPath: localSocketAddress(socketPath), path: `/${operation}`, method: 'POST', headers: { 'content-type': 'application/json' } }, res => {
       response = res;
       let output = '';
       res.on('data', bytes => { output += bytes; if (output.length > 65536) unavailable(); });

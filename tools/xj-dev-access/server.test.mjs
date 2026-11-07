@@ -113,7 +113,10 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
     const refreshedCli = await cli(['refresh']);
     assert.equal(refreshedCli.code, 0); assert.equal(refreshedCli.result.enrollment.identity.deviceId, cliDevice);
     assert.equal(service.store.inspect().devices.filter(d => d.id === cliDevice).length, 1);
+    for (const destination of [join(root, '..', 'outside.sqlite'), join(root + '-sibling', 'snapshot.sqlite'), join(root, 'nested', 'snapshot.sqlite')])
+      await assert.rejects(adminRequest(config.adminSocket, 'snapshot', { destination }), { code: 'BACKUP_PATH_INVALID' });
     const saved = await adminRequest(config.adminSocket, 'snapshot', { destination: join(root, 'snapshot.sqlite') });
+    await assert.rejects(adminRequest(config.adminSocket, 'snapshot', { destination: saved.file }), { code: 'BACKUP_TARGET_EXISTS' });
     const restored = openAccessStore(saved.file, saved.keyFile, config.serviceId);
     try {
       assert.equal(restored.inspect().devices.length, service.store.inspect().devices.length);

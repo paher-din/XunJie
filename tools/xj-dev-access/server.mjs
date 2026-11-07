@@ -1,8 +1,9 @@
 import { createServer as httpsServer } from 'node:https';
 import { createServer as httpServer } from 'node:http';
-import { chmodSync, copyFileSync, existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ACCESS_PROTOCOL, AccessError, privateJson, requireAccess, writePrivateJson } from '../xj-dev/src/enrollment-protocol.mjs';
+import { ACCESS_PROTOCOL, AccessError, ensurePrivateDirectory, privateJson, requireAccess, writePrivateFile, writePrivateJson } from '../xj-dev/src/enrollment-protocol.mjs';
 import { openAccessStore } from './store.mjs';
 import { authenticateDevice } from './identity.mjs';
 import { applicationOperation, systemOperation } from './adapters.mjs';
@@ -95,13 +96,15 @@ export function createAccessService(config, adapters = {}) {
     if (operation === 'revoke-device') return revokeDevice(input.deviceId);
     if (operation === 'revoke-member') return revokeMember(input.memberId);
     if (operation === 'snapshot') {
-      const file = input.destination;
-      requireAccess(typeof file === 'string' && file.startsWith(config.backupDirectory + '/') && /^[A-Za-z0-9_-]+\.sqlite$/.test(file.slice(config.backupDirectory.length + 1)), 'BACKUP_PATH_INVALID');
+      requireAccess(typeof input.destination === 'string' && isAbsolute(input.destination), 'BACKUP_PATH_INVALID');
+      const file = resolve(input.destination);
+      requireAccess(/^[A-Za-z0-9_-]+\.sqlite$/.test(relative(resolve(config.backupDirectory), file)), 'BACKUP_PATH_INVALID');
       const keyFile = file + '.key', receiptFile = file + '.json';
       requireAccess(![file, keyFile, receiptFile].some(existsSync), 'BACKUP_TARGET_EXISTS');
       try {
+        ensurePrivateDirectory(config.backupDirectory);
         await store.snapshot(file);
-        copyFileSync(config.credentialKeyFile, keyFile); chmodSync(keyFile, 0o600);
+        writePrivateFile(keyFile, readFileSync(config.credentialKeyFile));
         writePrivateJson(receiptFile, { format: 'xunjie/dev-access-backup-v1', serviceId: config.serviceId, databaseFile: file, credentialKeyFile: keyFile });
         return { file, keyFile, receiptFile };
       } catch (error) { for (const path of [file, keyFile, receiptFile]) rmSync(path, { force: true }); throw error; }

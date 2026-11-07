@@ -118,6 +118,7 @@ async function prepareRemote(context, mode, options, log) {
       });
       req.setTimeout(1500, () => req.destroy());
     }), 'HTTPS gateway');
+    await waitHttp(() => gatewayResponds(ctx, ports.gateway, '/'), 'HTTPS page');
     mkdirSync(ctx.env.browserProfile, { recursive: true });
     state = { version: 1, mode, envId: ctx.id, ports, worktree: ctx.worktree, connectionFile: c.file, identityFile: c.identityFile, target: c.id, browserOrigin: c.browserOrigin, business: connection.business, createdAt: state?.createdAt ?? new Date().toISOString() };
     saveState(ctx.env, state);
