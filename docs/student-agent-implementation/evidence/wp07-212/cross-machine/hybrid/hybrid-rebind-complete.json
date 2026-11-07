@@ -1,0 +1,30 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "rebind-complete",
+  "measuredAt": "2026-11-07T11:10:27.681Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the successor device re-paired and re-bound the rotated school authority over cross-machine HTTPS",
+      "detail": {
+        "reconnectRequestId": "2d4867fb-7e47-4c09-83ba-58c0d1b3d043",
+        "restoredRuntimeConnectionId": "9184b60e-c089-487c-89d6-0cf646a3eb6c",
+        "space": "school:2d4867fb-7e47-4c09-83ba-58c0d1b3d043",
+        "namespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6.recovery.84280b1b-1ef6-4b52-a725-c5353f80fedf"
+      }
+    }
+  ],
+  "facts": {
+    "reconnectRequestId": "2d4867fb-7e47-4c09-83ba-58c0d1b3d043",
+    "restoredRuntimeConnectionId": "9184b60e-c089-487c-89d6-0cf646a3eb6c",
+    "space": "school:2d4867fb-7e47-4c09-83ba-58c0d1b3d043",
+    "namespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6.recovery.84280b1b-1ef6-4b52-a725-c5353f80fedf"
+  },
+  "status": "passed"
+}

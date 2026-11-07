@@ -1,0 +1,48 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "setup",
+  "measuredAt": "2026-11-07T09:49:15.603Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Windows independent Agent installed and started with a stable public HTTPS endpoint",
+      "detail": "https://192.168.3.8:9444"
+    }
+  ],
+  "facts": {
+    "environment": {
+      "environmentId": "29f93661-05a9-4577-9044-ef8cccaf2f70",
+      "installationId": "fd24d0ac-b63b-4a39-8456-011e966c596f",
+      "profile": "agent",
+      "services": [
+        {
+          "unit": "client",
+          "serviceId": "6c7dc1cf-c917-4c88-a3c3-f4a9e9990d58"
+        },
+        {
+          "unit": "teaching-agent",
+          "serviceId": "ec4d216e-a717-47dd-a679-578e3f2876a8"
+        }
+      ]
+    },
+    "agent": {
+      "environmentId": "29f93661-05a9-4577-9044-ef8cccaf2f70",
+      "serviceId": "ec4d216e-a717-47dd-a679-578e3f2876a8",
+      "unit": "teaching-agent",
+      "endpoint": "https://192.168.3.8:9444",
+      "protocolVersion": 1,
+      "capabilities": [
+        "runtime.status",
+        "teaching.agent"
+      ]
+    },
+    "endpoint": "https://192.168.3.8:9444"
+  },
+  "status": "passed"
+}

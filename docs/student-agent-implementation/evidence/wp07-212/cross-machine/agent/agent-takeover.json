@@ -1,0 +1,36 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "takeover",
+  "measuredAt": "2026-11-07T10:27:27.281Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Agent target completed formal takeover with the remote Mac school SSH fence",
+      "detail": {
+        "phase": "active",
+        "backupId": "0595d214-8367-48c8-9bb0-22f24042e81f",
+        "installationId": "fbd7b7a7-07a6-4a93-835f-dcb37b08fcfb"
+      }
+    },
+    {
+      "name": "the retired Agent source can no longer start",
+      "detail": "Command failed: C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\resources\\node\\node.exe C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\app\\cli.js start --root C:\\Users\\h\\.verification\\wp07-212\\agent-source --json\n{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+    }
+  ],
+  "facts": {
+    "takeover": {
+      "phase": "active",
+      "backupId": "0595d214-8367-48c8-9bb0-22f24042e81f",
+      "installationId": "fbd7b7a7-07a6-4a93-835f-dcb37b08fcfb"
+    },
+    "sourceStop": "stopped",
+    "sourceRetired": "Command failed: C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\resources\\node\\node.exe C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\app\\cli.js start --root C:\\Users\\h\\.verification\\wp07-212\\agent-source --json\n{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+  },
+  "status": "passed"
+}

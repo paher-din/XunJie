@@ -1,0 +1,20 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "reconnect-dependency",
+  "measuredAt": "2026-11-07T10:29:22.497Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Agent target registered its rotated private dependency credential over HTTPS",
+      "detail": "0d16a1aa-0345-4b91-9f77-bced979ccc68"
+    }
+  ],
+  "facts": {},
+  "status": "passed"
+}

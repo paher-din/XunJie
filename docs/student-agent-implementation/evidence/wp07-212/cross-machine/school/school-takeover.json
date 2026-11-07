@@ -1,0 +1,30 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "takeover",
+  "measuredAt": "2026-11-07T09:41:43.055Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the school target completed formal takeover",
+      "detail": {
+        "phase": "active",
+        "backupId": "a75040e2-56c7-47ea-9acc-8f331a1605cb",
+        "installationId": "02ac2127-b11e-47fe-ba29-a1d19c61e164"
+      }
+    }
+  ],
+  "facts": {
+    "takeover": {
+      "phase": "active",
+      "backupId": "a75040e2-56c7-47ea-9acc-8f331a1605cb",
+      "installationId": "02ac2127-b11e-47fe-ba29-a1d19c61e164"
+    },
+    "sourceAfter": "maintenance"
+  },
+  "status": "passed"
+}

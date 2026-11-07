@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: the deployment receiver verifies a remote CLI fencing proof through the SSH process boundary
+ok 1 - the deployment receiver verifies a remote CLI fencing proof through the SSH process boundary
+  ---
+  duration_ms: 15.928291
+  type: 'test'
+  ...
+# Subtest: a successful SSH exit with another receiver identity never confirms fencing
+ok 2 - a successful SSH exit with another receiver identity never confirms fencing
+  ---
+  duration_ms: 3.283042
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 663.225167

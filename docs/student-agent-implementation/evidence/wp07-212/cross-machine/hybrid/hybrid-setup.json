@@ -1,0 +1,84 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "setup",
+  "measuredAt": "2026-11-07T10:51:37.230Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the Windows hybrid device installed and started a local learning-data owner over LAN HTTPS",
+      "detail": {
+        "endpoint": "https://127.0.0.1:9448",
+        "environmentId": "dbcd94f0-7014-4a29-8b56-55c989eb52b6",
+        "installationId": "87ee0efd-6413-4c4d-947f-274650c69bf4",
+        "profile": "local",
+        "deviceTarget": {
+          "environmentId": "dbcd94f0-7014-4a29-8b56-55c989eb52b6",
+          "serviceId": "3db1f233-9809-4df0-bfa0-5882d459cebe",
+          "version": 1
+        },
+        "services": [
+          {
+            "unit": "client",
+            "serviceId": "30a41c8e-33d8-47e0-aad3-5b47926514f0"
+          },
+          {
+            "unit": "space-course",
+            "serviceId": "572182fc-a641-4734-bf5e-7af1ad255f7b"
+          },
+          {
+            "unit": "learning-data",
+            "serviceId": "3db1f233-9809-4df0-bfa0-5882d459cebe"
+          },
+          {
+            "unit": "model-connection",
+            "serviceId": "632e6744-3a60-414e-b231-7e611e511643"
+          },
+          {
+            "unit": "teaching-agent",
+            "serviceId": "f4aacd43-1dc2-4abd-9cd1-ad5d1950b78c"
+          }
+        ]
+      }
+    }
+  ],
+  "facts": {
+    "endpoint": "https://127.0.0.1:9448",
+    "environmentId": "dbcd94f0-7014-4a29-8b56-55c989eb52b6",
+    "installationId": "87ee0efd-6413-4c4d-947f-274650c69bf4",
+    "profile": "local",
+    "deviceTarget": {
+      "environmentId": "dbcd94f0-7014-4a29-8b56-55c989eb52b6",
+      "serviceId": "3db1f233-9809-4df0-bfa0-5882d459cebe",
+      "version": 1
+    },
+    "services": [
+      {
+        "unit": "client",
+        "serviceId": "30a41c8e-33d8-47e0-aad3-5b47926514f0"
+      },
+      {
+        "unit": "space-course",
+        "serviceId": "572182fc-a641-4734-bf5e-7af1ad255f7b"
+      },
+      {
+        "unit": "learning-data",
+        "serviceId": "3db1f233-9809-4df0-bfa0-5882d459cebe"
+      },
+      {
+        "unit": "model-connection",
+        "serviceId": "632e6744-3a60-414e-b231-7e611e511643"
+      },
+      {
+        "unit": "teaching-agent",
+        "serviceId": "f4aacd43-1dc2-4abd-9cd1-ad5d1950b78c"
+      }
+    ]
+  },
+  "status": "passed"
+}

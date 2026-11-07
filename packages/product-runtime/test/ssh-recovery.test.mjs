@@ -13,12 +13,12 @@ test('the deployment receiver verifies a remote CLI fencing proof through the SS
   const installationId = '44444444-4444-4444-8444-444444444444';
   const binding = { backupId: '55555555-5555-4555-8555-555555555555', targetInstallationId: '66666666-6666-4666-8666-666666666666' };
   let supplied;
+  let stdinPayload = '';
   const child = new EventEmitter();
   child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.kill = () => {};
-  const stdin = [];
-  child.stdin.on('data', (bytes) => stdin.push(bytes.toString('utf8')));
   const stub = mock.method(cp, 'spawn', (command, args, options) => {
     supplied = { command, args, options };
+    stdinPayload = Buffer.from(args.at(-1).match(/printf '%s' '([^']+)'/)[1], 'base64').toString('utf8');
     process.nextTick(() => {
       child.stdout.end(JSON.stringify({ fenced: true, ...binding, receiverId: environmentId + '/' + serviceId,
         sourceEnvironmentId: sourceId, sourceInstallationId: installationId, sourceServiceIds: [sourceId],
@@ -38,8 +38,12 @@ test('the deployment receiver verifies a remote CLI fencing proof through the SS
     assert.ok(supplied.args.includes('approved-school'));
     assert.match(supplied.args.at(-1), /fence-source/);
     assert.equal(supplied.options.shell, false);
+    // The request rides in the command and decodes through a remote-local pipeline, so Windows
+    // OpenSSH never has to signal EOF on a forwarded stdin.
+    assert.equal(supplied.options.stdio[0], 'ignore');
+    assert.match(supplied.args.at(-1), /base64 --decode/);
     // The remote CLI receives the retired installation so only that instance is cut off.
-    assert.equal(JSON.parse(stdin.join('')).sourceInstallationId, installationId);
+    assert.equal(JSON.parse(stdinPayload).sourceInstallationId, installationId);
   } finally { stub.mock.restore(); }
 });
 

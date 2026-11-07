@@ -1,0 +1,29 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "agent-rebind",
+  "measuredAt": "2026-11-07T10:28:40.563Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the school reconnected to the Agent target with a rotated credential over HTTPS",
+      "detail": "3f611a80-070b-4bc3-8c4b-5630cd371018"
+    },
+    {
+      "name": "the school authorized the Agent installation for teaching.dependencies",
+      "detail": "80aef0f0-54de-4150-920d-03139ca9b965"
+    }
+  ],
+  "facts": {
+    "schoolConnectionId": "3f611a80-070b-4bc3-8c4b-5630cd371018",
+    "dependencyGrantId": "80aef0f0-54de-4150-920d-03139ca9b965",
+    "learningDataServiceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2",
+    "schoolEnvironmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+    "agentInstallationId": "fbd7b7a7-07a6-4a93-835f-dcb37b08fcfb"
+  },
+  "status": "passed"
+}

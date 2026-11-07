@@ -1,0 +1,22 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "authorize-inbound",
+  "measuredAt": "2026-11-07T09:51:26.563Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Agent authorized the school learning-data owner for teaching.agent",
+      "detail": "8575ed52-d500-4adf-94a5-adfe387ba58a"
+    }
+  ],
+  "facts": {
+    "grantId": "8575ed52-d500-4adf-94a5-adfe387ba58a"
+  },
+  "status": "passed"
+}

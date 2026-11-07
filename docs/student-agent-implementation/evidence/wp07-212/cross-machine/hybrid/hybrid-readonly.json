@@ -1,0 +1,26 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "readonly",
+  "measuredAt": "2026-11-07T11:04:28.642Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the isolated device target refuses paired business over HTTPS while read-only",
+      "detail": {
+        "isolatedWriteStatus": 503,
+        "state": "maintenance"
+      }
+    }
+  ],
+  "facts": {
+    "isolatedWriteStatus": 503,
+    "state": "maintenance"
+  },
+  "status": "passed"
+}

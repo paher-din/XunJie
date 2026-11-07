@@ -1,0 +1,22 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "authorize-inbound-target",
+  "measuredAt": "2026-11-07T10:27:41.005Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Agent target re-authorized the school for teaching.agent",
+      "detail": "5c5e4cf0-6280-46a2-8ec5-1a0f3fefd81d"
+    }
+  ],
+  "facts": {
+    "grantId": "5c5e4cf0-6280-46a2-8ec5-1a0f3fefd81d"
+  },
+  "status": "passed"
+}

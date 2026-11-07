@@ -1,0 +1,44 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "hybrid-member",
+  "measuredAt": "2026-11-07T10:52:34.737Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the school registered a hybrid member bound to the Windows device learning-data owner with a course",
+      "detail": "8e52088e-f63d-4eea-a618-443e978e3e22"
+    }
+  ],
+  "facts": {
+    "endpoint": "https://192.168.3.39:9445",
+    "member": {
+      "kind": "school",
+      "name": "学校学习空间",
+      "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+      "principalId": "8e52088e-f63d-4eea-a618-443e978e3e22",
+      "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4"
+    },
+    "clientService": {
+      "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+      "serviceId": "586b0482-d5d9-42e8-9af0-69c0c6f43b6a",
+      "unit": "client",
+      "endpoint": "https://192.168.3.39:9445",
+      "protocolVersion": 1,
+      "capabilities": [
+        "runtime.status",
+        "learning.authority"
+      ]
+    },
+    "schoolEnvironmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+    "course": {
+      "courseId": "76f09d1f-1208-476e-b574-b04c5c5ae11e",
+      "releaseId": "8c7c9317-b7ad-46b9-953d-612d771cf971"
+    }
+  },
+  "status": "passed"
+}

@@ -1,0 +1,31 @@
+{
+  "kind": "cross-machine-recovery-client",
+  "phase": "readonly",
+  "measuredAt": "2026-11-07T09:41:33.242Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the isolated target serves the identical original conversation over cross-machine HTTPS",
+      "detail": {
+        "runId": "290e8ad4-f70e-4a4c-86ce-5869751e58dc"
+      }
+    },
+    {
+      "name": "the isolated target refuses the student response over HTTPS",
+      "detail": {
+        "status": 503
+      }
+    }
+  ],
+  "facts": {
+    "isolatedWriteStatus": 503,
+    "identical": true
+  },
+  "status": "passed"
+}

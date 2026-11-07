@@ -1,0 +1,14 @@
+# exit code 0
+[build] HIT contracts
+[build] HIT contracts:typecheck
+[build] HIT storage
+[build] HIT storage:typecheck
+[build] HIT learning-space
+[build] HIT learning-space:typecheck
+[build] HIT product-runtime
+[build] RUN server:typecheck
+[build] RUN product-runtime:typecheck
+[build] HIT local-runtime
+[build] RUN local-runtime:typecheck
+[build] HIT web:src
+[build] HIT web:node
