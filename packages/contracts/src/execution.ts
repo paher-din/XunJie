@@ -228,6 +228,26 @@ export const executionAcceptanceSchema = z.object({ receipt: actionReceiptSchema
     { message: 'Only an accepted receipt carries an execution reference' });
 export type ExecutionAcceptance = z.infer<typeof executionAcceptanceSchema>;
 
+/** Durable Agent association shared by the execution owner and its browser broker. */
+export const agentExecutionAssociationSchema = z.object({ runId: z.uuid(), stepId: z.uuid(),
+  commandId: z.uuid(), snapshotId: z.uuid() }).strict();
+export type AgentExecutionAssociation = z.infer<typeof agentExecutionAssociationSchema>;
+export const agentBrowserIdSchema = z.uuid();
+export const agentBrowserClaimInputSchema = z.object({ browserId: agentBrowserIdSchema }).strict();
+export type AgentBrowserClaimInput = z.infer<typeof agentBrowserClaimInputSchema>;
+export const agentBrowserAcceptanceInputSchema = z.object({ browserId: agentBrowserIdSchema,
+  acceptance: executionAcceptanceSchema }).strict();
+export type AgentBrowserAcceptanceInput = z.infer<typeof agentBrowserAcceptanceInputSchema>;
+/** Returned by pending delivery and by a successful claim of the same original command. */
+export const agentBrowserCommandSchema = z.object({ action: anyExecutionActionSchema,
+  association: agentExecutionAssociationSchema }).strict();
+export type AgentBrowserCommand = z.infer<typeof agentBrowserCommandSchema>;
+export const agentBrowserPendingSchema = z.array(agentBrowserCommandSchema);
+export const agentBrowserStopSchema = z.object({ requestId: z.uuid(), association: agentExecutionAssociationSchema,
+  action: anyExecutionActionSchema.optional(), stop: executionStopSchema }).strict();
+export type AgentBrowserStop = z.infer<typeof agentBrowserStopSchema>;
+export const agentBrowserStopsSchema = z.array(agentBrowserStopSchema);
+
 export const executionStateSchema = z.enum(['queued', 'running', 'paused', 'succeeded', 'failed', 'cancelled']);
 export type ExecutionState = z.infer<typeof executionStateSchema>;
 export const executionFailureSchema = z.object({ code: z.enum(['invalid-input', 'input-too-large', 'output-too-large',

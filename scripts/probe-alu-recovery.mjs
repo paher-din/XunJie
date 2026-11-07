@@ -305,8 +305,8 @@ try {
   assert.notEqual(isolatedContext.clientNamespace, sourceState.clientNamespace);
   recordingIsolation = true;
   await page.goto(targetEndpoint + '/?space=school&activity=' + activity.activityId);
-  await expect(page.getByText('这是还原校验环境，作品与历史只读，实验尚未启用。')).toBeVisible();
   await tab('ALU 实验');
+  await expect(tool().getByRole('status').filter({ hasText: '作品与历史只读' })).toContainText(/实验(?:尚)?未启用/);
   await expect(button('运行')).toBeDisabled();
   // Isolation intentionally withholds executable toolchain bytes; restore validates them via
   // the course owner's maintenance API. Re-read those same bytes publicly after takeover.

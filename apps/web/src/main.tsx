@@ -10,7 +10,6 @@ import './icons/icons.css'
 const LegacyApp = lazy(() => import('./LegacyApp'))
 // Legacy execution and teacher consumers retain their own business entry until their WP replaces it.
 // Preparation is an explicit UI reference; it is never the production fallback.
-const legacy = PREP_BUILD || /^#\/(teacher|task|agent|settings|icons|brand|dev)(?:\/|$)/.test(location.hash)
-  || import.meta.env.DEV && /^#\/(?:\?|$)/.test(location.hash)
+const legacy = PREP_BUILD || /^#\/(teacher|task|settings|icons|brand|dev)(?:\/|$)/.test(location.hash)
 createRoot(document.getElementById('root')!).render(legacy
   ? <Suspense fallback={<p>正在打开…</p>}><LegacyApp /></Suspense> : <LearningApp />)

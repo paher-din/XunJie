@@ -1,0 +1,297 @@
+{
+  "issue": 202,
+  "label": "windows-product-202-final",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "headed": true,
+  "model": "deepseek-flash",
+  "startedAt": "2026-11-07T11:58:22.931Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:58:22.933Z",
+      "result": {
+        "endpoint": "http://127.0.0.1:61089",
+        "releaseId": "19200000-0000-4000-8000-000000000203",
+        "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d"
+      },
+      "elapsedMs": 21470
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:58:44.405Z",
+      "result": {
+        "requestId": "d77e7f6a-0fb6-4418-a067-8c17a7e4f6f9",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "e3c63e18d57f49e2ca6d406299d4f2a5650bbee5e8a1f68d9016d258410a0877",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 5091
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:58:49.498Z",
+      "result": {
+        "requestId": "7848104c-6cc2-4f31-9f09-ba707e0e0d66",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 4777
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:58:54.276Z",
+      "result": {
+        "requestId": "7c3e662e-72ba-4461-a9a5-f92ab7e1244d",
+        "referenceId": "353da68e-b9b5-4aed-900c-4412596c8c9b",
+        "index": 2079
+      },
+      "elapsedMs": 4084
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:58:58.362Z",
+      "result": {
+        "runId": "89418abf-4907-4cd1-9799-fc11166c3ea9",
+        "commandId": "44ea0c11-2b6c-4254-8179-0596ce4f80cf",
+        "originalCodeVerifiedAfterEdit": true,
+        "answerSha256": "d103a7ab5c8c15969b5247fe0a4aebfa49533c534eeef51300545c59f3adf98b"
+      },
+      "elapsedMs": 50151
+    },
+    {
+      "id": "student-correction-real-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:59:48.515Z",
+      "result": {
+        "requestId": "fcd09f73-2d25-445f-9525-ebaad869a400",
+        "output": {
+          "f": "0000",
+          "cout": "1",
+          "operationId": "run-single",
+          "dependencyId": "ef81c45574ef2fe3a01b0d9693a15b8fc5fa78cdab7a829cc0a671d3349072d6",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 2499
+    },
+    {
+      "id": "normal-input-real-agent",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:59:51.015Z",
+      "result": {
+        "runId": "c3b0da28-c264-4b6e-99a7-e4ce481d3553",
+        "commandId": "56861dbd-1733-48ec-b369-25237606eb88",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "ef81c45574ef2fe3a01b0d9693a15b8fc5fa78cdab7a829cc0a671d3349072d6",
+          "observationState": "complete"
+        },
+        "answerSha256": "c449bb733b5a53be5b1d00989baeb30c650d828af70641abdc7a6bc005aeec4f"
+      },
+      "elapsedMs": 34665
+    },
+    {
+      "id": "help-policy-with-tool-output-instructions",
+      "status": "passed",
+      "startedAt": "2026-11-07T12:00:25.683Z",
+      "result": {
+        "runId": "26c01d96-0f39-4252-949e-f1a46083bb73",
+        "codeUnchanged": true,
+        "studentPredictionUnchanged": true,
+        "answerSha256": "978716fda5df0420a5e2c5bafad8c37f7a8a6bb3b85115cd2bd32aa4a09736dd"
+      },
+      "elapsedMs": 20658
+    },
+    {
+      "id": "daily-reopen-and-source-retention",
+      "status": "passed",
+      "startedAt": "2026-11-07T12:00:46.343Z",
+      "result": {
+        "retainedRuns": 3,
+        "originalAgentCommands": 2
+      },
+      "elapsedMs": 1974
+    },
+    {
+      "id": "desktop-layout-and-provenance",
+      "status": "passed",
+      "startedAt": "2026-11-07T12:00:48.319Z",
+      "result": {
+        "workerCount": 1,
+        "codeAndResourceOwner": "existing WP03/WP04",
+        "teachingEffect": "not-evaluated"
+      },
+      "elapsedMs": 299
+    }
+  ],
+  "modelCalls": [
+    {
+      "runId": "89418abf-4907-4cd1-9799-fc11166c3ea9",
+      "attemptId": "8a3487c3-4cf8-4b7d-82f8-cf6feb514bb9",
+      "snapshotId": "446ac2e1-f552-4a20-a243-698932c05666",
+      "payloadSha256": "c6266fd6c52b3530add8c13c7ecf3a1eb7ebfe08fe03645875817d25f8b4230a",
+      "model": {
+        "connectionId": "f76216ed-0b6f-46a1-b725-cd901337a414",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "89418abf-4907-4cd1-9799-fc11166c3ea9",
+      "attemptId": "d0c2c9a8-642c-40d6-9c3d-0d2e87ba0afb",
+      "snapshotId": "17a14270-928c-4f4a-9abb-71c500a93507",
+      "payloadSha256": "1570b0472ea06cbcbe720e8b46eff067298fb5cd5fe90ba8de66d6574daf71be",
+      "model": {
+        "connectionId": "f76216ed-0b6f-46a1-b725-cd901337a414",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "89418abf-4907-4cd1-9799-fc11166c3ea9",
+      "attemptId": "84d6560e-0b51-483c-8e34-6b8cf3f21f19",
+      "snapshotId": "505145a3-3cdd-4c53-b1c8-84fba815ab60",
+      "payloadSha256": "f4fb096558e8f54e2035b23785d807e72ed86d98e2c510442c0ecf7349028413",
+      "model": {
+        "connectionId": "f76216ed-0b6f-46a1-b725-cd901337a414",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "c3b0da28-c264-4b6e-99a7-e4ce481d3553",
+      "attemptId": "88d6a161-0951-4a25-8cb7-2db244304c7e",
+      "snapshotId": "c060bcb3-a89c-4770-ad55-66fb0996eb37",
+      "payloadSha256": "c363eee9583530b278fcdd66c7229cdf473d278371df95757714607d1dee6f7b",
+      "model": {
+        "connectionId": "f76216ed-0b6f-46a1-b725-cd901337a414",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "c3b0da28-c264-4b6e-99a7-e4ce481d3553",
+      "attemptId": "5e4dfcb1-6b75-4c2e-b0ed-8ccb1e6b45bf",
+      "snapshotId": "78230363-e9ca-4cda-aecb-5d0cd33da257",
+      "payloadSha256": "e51f2d9027023d64f9ab07e85757931eb216b5fde556c7ba6a35bd6a05de5481",
+      "model": {
+        "connectionId": "f76216ed-0b6f-46a1-b725-cd901337a414",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    }
+  ],
+  "workers": [
+    "http://127.0.0.1:61089/assets/worker-AqHx1oS1.js"
+  ],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "status": "passed",
+  "product": {
+    "candidate": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\product-final",
+    "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-alu-211-ime-15RXyh",
+    "productNodeVersion": "24.21.0",
+    "distributionSha256": "7f0d9ea5c96b06a92394187ff47243cfaffd432a3dc8f5b2b6da18fe44cea830"
+  },
+  "browser": "156.0.8078.81",
+  "activityId": "6e92c84a-7e5b-44c3-bc7e-366b848a092f",
+  "providerTransport": "holder-local byte relay to TLS-verified api.deepseek.com",
+  "providerRequests": [
+    {
+      "startedAt": "2026-11-07T11:59:02.237Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 6671
+    },
+    {
+      "startedAt": "2026-11-07T11:59:13.476Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 2054
+    },
+    {
+      "startedAt": "2026-11-07T11:59:23.153Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 22687
+    },
+    {
+      "startedAt": "2026-11-07T11:59:53.790Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 3071
+    },
+    {
+      "startedAt": "2026-11-07T12:00:13.552Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 10047
+    },
+    {
+      "startedAt": "2026-11-07T12:00:28.856Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 5217
+    },
+    {
+      "startedAt": "2026-11-07T12:00:35.799Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 8684
+    }
+  ],
+  "providerConfiguration": {
+    "connectionId": "f76216ed-0b6f-46a1-b725-cd901337a414",
+    "protocol": "chat-completions",
+    "modelId": "deepseek-flash",
+    "baseUrl": "http://127.0.0.1:56388/v1"
+  },
+  "origins": [
+    "http://127.0.0.1:61089"
+  ],
+  "completedAt": "2026-11-07T12:00:52.070Z"
+}

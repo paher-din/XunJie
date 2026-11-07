@@ -1,0 +1,39 @@
+{
+  "kind": "cross-machine-recovery-client",
+  "phase": "before",
+  "measuredAt": "2026-11-07T09:40:26.132Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Windows host authenticated to the Mac school over LAN HTTPS",
+      "detail": {
+        "endpoint": "https://192.168.3.39:9443",
+        "host": "LAPTOP-S7A4IQFU"
+      }
+    },
+    {
+      "name": "the original question, queued input and revision are durable before backup",
+      "detail": {
+        "runId": "290e8ad4-f70e-4a4c-86ce-5869751e58dc",
+        "inputId": "ec0ad3f3-b29c-448f-9fab-9f2132d37cce",
+        "questions": 1,
+        "inputs": 2,
+        "sourceNamespace": "xunjie.v1.f69b48b6-2329-4396-8fe7-78d73da985d4"
+      }
+    }
+  ],
+  "facts": {
+    "runId": "290e8ad4-f70e-4a4c-86ce-5869751e58dc",
+    "inputId": "ec0ad3f3-b29c-448f-9fab-9f2132d37cce",
+    "questions": 1,
+    "inputs": 2,
+    "sourceNamespace": "xunjie.v1.f69b48b6-2329-4396-8fe7-78d73da985d4"
+  },
+  "status": "passed"
+}

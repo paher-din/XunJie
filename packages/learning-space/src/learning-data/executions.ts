@@ -4,7 +4,7 @@ import { StorageError } from '@xunjie/storage';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
-import { componentInstanceId, componentStateName } from '@xunjie/contracts/components';
+import { acceptsState, matchesComponentState, componentInstanceId, componentStateName } from '@xunjie/contracts/components';
 import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, anyExecutionActionSchema as executionActionSchema,
   executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { AnyExecutionAction as ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
@@ -20,6 +20,8 @@ import type { NativeSessionOptions } from './native-sessions.js';
 import { readSessionCheckpointPage } from './session-checkpoints.js';
 import { createChannelExecutions } from './channel-executions.js';
 import type { createNativeChannel } from './native-channel.js';
+import { createAgentExecutions, validateAgentExecutionCommands, verifyAgentRuntimeBasis } from './agent-executions.js';
+export { agentExecutionMigration } from './agent-executions.js';
 
 /**
  * The `tool-execution` owner keeps the command basis the service really received, the original
@@ -139,12 +141,17 @@ export function createExecutions(storage: OwnedStorage, options: {
     // This owner entry is authenticated for students, including the installed school's local forward.
     // Agent, preview and self-test roles need their own trusted caller context before they can be accepted.
     if (submittedAction.execution.initiator.kind !== 'student') fail('forbidden');
+    return acceptTrusted(identity, activityId, value, async () => {});
+  }
+  async function acceptTrusted(identity: SpaceIdentity, activityId: string, value: unknown, guard: () => Promise<void>): Promise<ExecutionQuery> {
+    const submittedAction = executionActionSchema.parse((value as { action?: unknown })?.action);
+    await guard();
     const location = submittedAction.execution.plan.location;
     if (location === 'native') {
       const receiver = submittedAction.receiver.location;
-      if (channel && receiver === 'local') return channel.accept(identity, activityId, value);
+      if (channel && receiver === 'local') return channel.accept(identity, activityId, value, guard);
       if (!native) fail('missing');
-      return native.accept(identity, activityId, value);
+      return native.accept(identity, activityId, value, guard);
     }
     const activity = await authorize(identity, activityId);
     const input = z.object({ action: executionActionSchema, acceptance: executionAcceptanceSchema }).strict().parse(value);
@@ -177,6 +184,7 @@ export function createExecutions(storage: OwnedStorage, options: {
       verifyAluCasePriorSource(action,prior,executionActionSchema.parse(source.row.body),source.query);
     }
     for (const file of action.execution.basis.works) await works.registerBasis(identity, activityId, file);
+    await guard();
     const begun: ExecutionQuery = executionQuerySchema.parse({ requestId: action.requestId, inputDigest,
       scope, executionRef: acceptance.execution.executionRef, state: 'queued', statusKnowledge: 'confirmed',
       stopRequested: false, confirmedSeq: acceptance.execution.acceptedSeq, reason: null, output: null });
@@ -198,9 +206,9 @@ export function createExecutions(storage: OwnedStorage, options: {
     if (!saved || !sameIdentity(saved.query, begun)) fail('corrupt');
     return saved.query;
   }
-  async function read(identity: SpaceIdentity, activityId: string, requestId: string) {
+  async function read(identity: SpaceIdentity, activityId: string, requestId: string, guard?: () => Promise<void>) {
     await authorize(identity, activityId); z.uuid().parse(requestId);
-    if (channel && await channel.owns(activityId, requestId)) return channel.read(identity, activityId, requestId);
+    if (channel && await channel.owns(activityId, requestId)) return channel.read(identity, activityId, requestId, guard);
     if (native && await native.owns(activityId, requestId)) return native.read(identity, activityId, requestId);
     const found = await find(activityId, requestId);
     return found ? found.query : null;
@@ -250,10 +258,10 @@ export function createExecutions(storage: OwnedStorage, options: {
     const local = native ? await native.list(identity, activityId) : [];
     return channel ? [...local, ...await channel.list(identity, activityId)] : local;
   }
-  async function control(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
-    if (channel && await channel.owns(activityId, requestId)) return channel.control(identity, activityId, requestId, value);
+  async function control(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown, guard?: () => Promise<void>) {
+    if (channel && await channel.owns(activityId, requestId)) return channel.control(identity, activityId, requestId, value, guard);
     if (!native) fail('missing');
-    return native.control(identity, activityId, requestId, value);
+    return native.control(identity, activityId, requestId, value, guard);
   }
   /** A reported fact advances only forward; a confirmed terminal fact is never rewritten. */
   async function report(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
@@ -286,8 +294,13 @@ export function createExecutions(storage: OwnedStorage, options: {
     await authorize(identity, activityId); z.uuid().parse(requestId);
     if (channel && await channel.owns(activityId, requestId)) return channel.stop(identity, activityId, requestId, value);
     if (native && await native.owns(activityId, requestId)) return native.stop(identity, activityId, requestId, value);
+    await stopBrowser(activityId, requestId, value);
+    // The durable stop receipt is idempotent; the query must reflect a later real result.
+    return (await read(identity, activityId, requestId))!;
+  }
+  async function stopBrowser(activityId: string, requestId: string, value: unknown) {
     const input = executionStopSchema.parse(value);
-    const result = await storage.request({ requestId: 'execution-stop:' + input.stopId,
+    await storage.request({ requestId: 'execution-stop:' + input.stopId,
       fingerprint: digest({ activityId, requestId, stopId: input.stopId }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2 FOR UPDATE',
         [activityId, requestId]);
@@ -301,7 +314,7 @@ export function createExecutions(storage: OwnedStorage, options: {
       await tx.query(`UPDATE execution_commands SET stop_requested=true,updated_at=clock_timestamp() WHERE request_id=$1`, [requestId]);
       return stopped;
     });
-    return executionQuerySchema.parse(result.result);
+    return (await find(activityId, requestId))!.query;
   }
   /** The bytes are stored once under the run's own identity; a lost reply re-reads, never recomputes. */
   async function result(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown) {
@@ -366,7 +379,53 @@ export function createExecutions(storage: OwnedStorage, options: {
     });
     return executionQuerySchema.parse(saved.result);
   }
-  return { accept, read, history, artifact, report, stop, result, control, sessions,
+  const agent = createAgentExecutions(storage, { activity: authorize, works, accept: acceptTrusted, read, control, stop,
+    reclaim: async (action, value) => {
+      const activityId = action.scope.activityId, requestId = action.requestId;
+      if (action.protocolVersion === 2 && channel && await channel.owns(activityId, requestId)) return channel.reclaimOriginal(action, value);
+      if (action.protocolVersion === 2 && native && await native.owns(activityId, requestId)) {
+        const { rows: [row] } = await storage.read('SELECT session_ref,action FROM native_sessions WHERE activity_id=$1 AND request_id=$2', [activityId, requestId]);
+        if (!row || canonicalDigest(row.action) !== canonicalDigest(action)) fail('identity-conflict');
+        return native.reclaim(String(row.session_ref));
+      }
+      const found = await find(activityId, requestId);
+      if (!found) return null;
+      if (canonicalDigest(found.row.body) !== canonicalDigest(action)) fail('identity-conflict');
+      return stopBrowser(activityId, requestId, value);
+    },
+    verify: async (activity, action) => {
+      const instance = action.execution.instance;
+      const binding = activity.course?.components?.find(item => item.key === instance.key);
+      if (!binding || binding.definition.digest !== instance.definitionDigest
+        || binding.definition.manifest.componentId !== instance.componentId
+        || binding.definition.manifest.version !== instance.componentVersion
+        || binding.definition.manifest.stateVersion !== instance.stateVersion
+        || componentInstanceId(activity.activityId, instance.key) !== instance.instanceId) fail('identity-conflict');
+      const manifest = binding.definition.manifest;
+      if (activity.course?.helpPolicy?.questions === 'disabled') fail('forbidden');
+      if (action.protocolVersion === 3) {
+        verifyAgentRuntimeBasis(activity, action);
+        return;
+      }
+      if (manifest.formatVersion !== 1) fail('invalid');
+      verifyState(action);
+      const state = action.execution.basis.state;
+      const stateFile = state ? action.execution.basis.works.find(item => item.contentId === state.contentId) : undefined;
+      if (stateFile && !matchesComponentState(binding, activity.activityId, stateFile)) fail('invalid');
+      const operation = action.execution.plan.location === 'native' ? manifest.session : null;
+      if (operation) {
+        if (action.execution.operation.operationId !== operation.operation.operationId
+          || !acceptsState(operation.parameters, action.execution.parameters)) fail('invalid');
+        verifyPlannedExecution(activity, { key: instance.key, definitionDigest: instance.definitionDigest,
+          operationId: action.execution.operation.operationId, location: 'native' });
+      } else {
+        verifyBasis(activity, action);
+        const declared = manifest.operations?.find(item => item.operationId === action.execution.operation.operationId);
+        if (!declared || !acceptsState(declared.parameters, action.execution.parameters)) fail('invalid');
+      }
+      await options.native?.authorizeComponent?.(activity.identity, activity, action);
+    } });
+  return { agent, accept, read, history, artifact, report, stop, result, control, sessions,
     /** Maintenance admission asks the owner; it never infers a browser command from an HTTP path. */
     hasReceivedBrowserCommand: async (activityId: string, requestId: string) => {
       if (channel && await channel.owns(activityId, requestId) || native && await native.owns(activityId, requestId)) return false;
@@ -413,6 +472,7 @@ export function createExecutions(storage: OwnedStorage, options: {
 
 /** Recovery validation: every stored command still names its own activity, basis and artifact. */
 export async function validateExecutions(storage: OwnedStorage) {
+  await validateAgentExecutionCommands(storage);
   const corrupt = (detail: string): never => {
     const error = new StorageError('corrupt');
     error.message += ` (execution recovery: ${detail})`;

@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: a restored independent Agent continues its original student Wait through the existing learning-data route
+ok 1 - a restored independent Agent continues its original student Wait through the existing learning-data route
+  ---
+  duration_ms: 23064.593708
+  type: 'test'
+  ...
+# Subtest: a restored independent Agent continues its original tool Wait through the existing learning-data route
+ok 2 - a restored independent Agent continues its original tool Wait through the existing learning-data route
+  ---
+  duration_ms: 35636.817542
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 58948.687083

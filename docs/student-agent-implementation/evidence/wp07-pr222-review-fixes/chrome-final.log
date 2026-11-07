@@ -1,0 +1,28 @@
+
+Running 22 tests using 1 worker
+
+  -   1 [chromium] › apps/web/e2e/inputControl.spec.ts:13:1 › baseline: capture the existing busy composer and personal settings before input control UI
+  ✓   2 [chromium] › apps/web/e2e/inputControl.spec.ts:44:1 › personal interaction settings persist and the busy composer freezes the chosen queue mode (5.0s)
+  ✓   3 [chromium] › apps/web/e2e/inputControl.spec.ts:90:1 › queued input editing survives reload and lost control receipts without changing the received request (6.4s)
+  ✓   4 [chromium] › apps/web/e2e/inputControl.spec.ts:142:1 › steering defers the old question while its Chinese response can be kept as a new supplement (5.9s)
+  ✓   5 [chromium] › apps/web/e2e/inputControl.spec.ts:172:1 › stop and selected continuation keep original control identities and removed input never runs (6.4s)
+  ✓   6 [chromium] › apps/web/e2e/inputControl.spec.ts:221:1 › explicit response bypasses queue, consumption rejects a late edit and another queued input becomes steering (4.3s)
+  -   7 [chromium] › apps/web/e2e/studentAsk.spec.ts:86:1 › capture the formal conversation baseline before student response UI
+  ✓   8 [chromium] › apps/web/e2e/studentAsk.spec.ts:97:1 › the existing conversation presents a durable Agent question and explicitly submits a choice (3.7s)
+  ✓   9 [chromium] › apps/web/e2e/studentAsk.spec.ts:125:1 › IP opens the same unanswered question without stealing focus or treating display as an answer (6.2s)
+  ✓  10 [chromium] › apps/web/e2e/studentAsk.spec.ts:172:1 › Chinese text survives an unaccepted send and a lost acceptance reply is queried by its original identity (4.7s)
+  ✓  11 [chromium] › apps/web/e2e/studentAsk.spec.ts:226:1 › explicit skip remains distinct and the response entry works with keyboard, dark mode and a narrow desktop (3.7s)
+  ✓  12 [chromium] › apps/web/e2e/teachingConversation.spec.ts:78:1 › a missing model keeps the activity and first question and offers the real settings entry (4.1s)
+  ✓  13 [chromium] › apps/web/e2e/teachingConversation.spec.ts:97:1 › the formal home and activity conversation persist a first question, a follow-up, reload and stop (9.5s)
+  ✓  14 [chromium] › apps/web/e2e/teachingConversation.spec.ts:172:1 › a course activity asks through the fixed help policy in the formal conversation UI (3.8s)
+  ✓  15 [chromium] › apps/web/e2e/teachingConversation.spec.ts:207:1 › a product process restart reopens the persisted conversation in the same Chrome session (3.8s)
+  ✓  16 [chromium] › apps/web/e2e/teachingModelSwitch.spec.ts:260:1 › school and personal models switch both ways while prior questions, answers, work and tool results keep their provenance (15.3s)
+  ✓  17 [chromium] › apps/web/e2e/teachingModelSwitch.spec.ts:325:1 › a switch requested during a slow answer waits for the original call, keeps duplicate identity and rejects a competing request before continuing on the new model (14.5s)
+  ✓  18 [chromium] › apps/web/e2e/teachingModelSwitch.spec.ts:366:1 › a lost switch reply is explicit, keeps the activity readable after reload and a product process restart, and can be reapplied (9.9s)
+  ✓  19 [chromium] › apps/web/e2e/teachingModelSwitch.spec.ts:418:1 › stopping an answer keeps the stopped state and the unsent draft (4.5s)
+  ✓  20 [chromium] › apps/web/e2e/teachingTools.spec.ts:124:1 › the formal conversation shows the real fixed work read and retains it after editing and reload (3.1s)
+  -  21 [chromium] › apps/web/e2e/teachingTools.spec.ts:185:1 › capture the existing formal conversation baseline before UI changes
+  ✓  22 [chromium] › apps/web/e2e/teachingTools.spec.ts:196:1 › real native and browser operations retain results; a disconnected browser waits and can be stopped (23.9s)
+
+  3 skipped
+  19 passed (2.5m)

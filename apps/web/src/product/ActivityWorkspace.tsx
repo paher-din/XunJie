@@ -9,7 +9,7 @@ import { materialCache } from '../component-preparation/materials'
 import { useActivitySession } from './ActivitySession'
 
 export interface ActivityWorkspaceHandle { leave(): Promise<void> }
-export function ActivityWorkspace({ activity, namespace,spaceKey,authorized }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }) {
+export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, location }: { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; location?: { objectId: string } }) {
     const scope = workspaceScope(namespace, activity)
     const { workspace,execution } = useActivitySession()
     const runs=useSyncExternalStore(execution.subscribe,execution.snapshot)
@@ -39,6 +39,7 @@ export function ActivityWorkspace({ activity, namespace,spaceKey,authorized }: {
       return()=>{live=false}
     },[activity,spaceKey,namespace,state.ready,authorized,readOnly,workspace])
     const [selected, setSelected] = useState<string | null>(null)
+    useEffect(() => { if (location) setSelected(location.objectId) }, [location])
     const [name, setName] = useState('')
     const [rename, setRename] = useState('')
     const [merged, setMerged] = useState('')
@@ -58,7 +59,8 @@ export function ActivityWorkspace({ activity, namespace,spaceKey,authorized }: {
       const anchor = document.createElement('a'); anchor.href = url; anchor.download = '循阶作品备份.json'; anchor.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
-    return <section className="learning-workspace" aria-label="当前作品">
+    return <section className="learning-workspace" aria-label="当前作品" tabIndex={-1}
+      data-work-object-id={file?.objectId} data-work-content-id={file?.contentId}>
       {(failure || state.error) && <div role="alert" className="learning-error"><p>{failure || state.error}</p>
         <button type="button" className="ws-btn ghost" onClick={download}>导出当前作品</button>
         <label>可复制的当前原文<textarea readOnly value={file?.value ?? ''} /></label></div>}

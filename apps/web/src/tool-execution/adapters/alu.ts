@@ -1,4 +1,5 @@
 import type { ExecutionActionV3 } from '@xunjie/contracts/execution'
+import { isAluCodeWork } from '@xunjie/contracts/alu-learning'
 import type { AdapterContext, ExecutionAdapter, ResultResource } from '../adapter'
 import { verifiedIcarus, icarusProfile, aluOperationIds, type AluOperationId } from '../icarus-runtime'
 import { ExecutionError, type ExecutionErrorCode } from '../errors'
@@ -27,7 +28,7 @@ function failureLog(lines:string[], limit:number) {
 }
 
 function codeOf(action:ExecutionActionV3) {
-  return action.execution.basis.works.filter(file=>file.kind==='code' && /\.(sv|v|svh|vh)$/.test(file.name))
+  return action.execution.basis.works.filter(isAluCodeWork)
 }
 function statusError(status:string, expired:boolean):ExecutionErrorCode {
   if(expired || status==='budget-exceeded') return 'budget-exceeded'

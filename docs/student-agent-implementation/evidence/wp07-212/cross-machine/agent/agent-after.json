@@ -1,0 +1,46 @@
+{
+  "kind": "cross-machine-recovery-client",
+  "phase": "agent-after",
+  "measuredAt": "2026-11-07T10:29:31.073Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the original response and revised FIFO input continue through the restored independent Agent",
+      "detail": {
+        "runs": [
+          {
+            "runId": "f5944824-5c92-4eac-ab08-869a86086112",
+            "state": "completed"
+          },
+          {
+            "runId": "d410852c-7874-499d-ac7c-6ccf7e918584",
+            "state": "completed"
+          }
+        ],
+        "adoptedInputId": "ecd878b5-8ccc-4807-a27f-c8bfbfd2882a",
+        "responseRequestId": "a3915e79-ab87-4b54-a975-7f3f6c3f9324"
+      }
+    }
+  ],
+  "facts": {
+    "runs": [
+      {
+        "runId": "f5944824-5c92-4eac-ab08-869a86086112",
+        "state": "completed"
+      },
+      {
+        "runId": "d410852c-7874-499d-ac7c-6ccf7e918584",
+        "state": "completed"
+      }
+    ],
+    "adoptedInputId": "ecd878b5-8ccc-4807-a27f-c8bfbfd2882a",
+    "responseRequestId": "a3915e79-ab87-4b54-a975-7f3f6c3f9324"
+  },
+  "status": "passed"
+}

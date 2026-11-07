@@ -381,7 +381,8 @@ test('Responses real backup isolated restore and strict takeover retain pending 
       target = openProductRuntime({ root: targetRoot, resources });
       const state = await target.start(); assert.equal(state.state, 'maintenance');
       const targetApi = async (path, body) => {
-        const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        const response = await fetch(state.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal',
+          'x-xj-namespace': state.environment.clientNamespace },
           ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
         return { status: response.status, value: await response.json() };
       };

@@ -1,0 +1,2227 @@
+{
+  "formatVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/204",
+  "branch": "wp07",
+  "reviewBase": "798199ca0e1d27683bbd6472e699e0bb327106ef",
+  "finalProductImplementationCommit": "3e77136e3c9e99d2cd33ba81dd49c56c9cd8e581",
+  "noPullRequest": true,
+  "environment": {
+    "os": "Windows 11 build 26200",
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "chrome": "157.0.8103.38"
+  },
+  "fullEngineering": {
+    "runner": "repository-full-plan-file-stdio",
+    "sameRepositoryVerificationDiscovery": true,
+    "testForceExit": true,
+    "fileStdio": true,
+    "testsCached": false,
+    "startedAt": "2026-11-06T21:28:28.833Z",
+    "finishedAt": "2026-11-06T21:54:12.952Z",
+    "scheduledTasks": 167,
+    "passedTasks": 145,
+    "failedTasks": 22,
+    "unexecutedTasks": 0,
+    "originalExitCode": 1,
+    "groups": {
+      "prepare": {
+        "passed": 4,
+        "failed": 0
+      },
+      "build:test": {
+        "passed": 1,
+        "failed": 0
+      },
+      "unit": {
+        "passed": 26,
+        "failed": 3
+      },
+      "server": {
+        "passed": 86,
+        "failed": 2
+      },
+      "tools": {
+        "passed": 28,
+        "failed": 17
+      }
+    },
+    "tasks": [
+      {
+        "name": "typecheck",
+        "group": "prepare",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:28:28.835Z",
+        "finishedAt": "2026-11-06T21:28:56.446Z",
+        "log": "001-typecheck.log"
+      },
+      {
+        "name": "build",
+        "group": "prepare",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:28:56.449Z",
+        "finishedAt": "2026-11-06T21:29:05.271Z",
+        "log": "002-build.log"
+      },
+      {
+        "name": "check:contracts:browser",
+        "group": "prepare",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:05.272Z",
+        "finishedAt": "2026-11-06T21:29:06.405Z",
+        "log": "003-check-contracts-browser.log"
+      },
+      {
+        "name": "check:docs",
+        "group": "prepare",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:06.406Z",
+        "finishedAt": "2026-11-06T21:29:07.521Z",
+        "log": "004-check-docs.log"
+      },
+      {
+        "name": "build:test",
+        "group": "build:test",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:07.522Z",
+        "finishedAt": "2026-11-06T21:29:11.439Z",
+        "log": "005-build-test.log"
+      },
+      {
+        "name": "scripts/build.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:11.440Z",
+        "finishedAt": "2026-11-06T21:30:57.237Z",
+        "log": "006-scripts-build.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/alu-check.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:11.849Z",
+        "finishedAt": "2026-11-06T21:29:12.807Z",
+        "log": "007-apps-server-runner-alu-check.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/backup-retained.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:29:12.807Z",
+        "finishedAt": "2026-11-06T21:29:20.039Z",
+        "log": "008-tools-i0-cloud-backup-retained.test.mjs.log"
+      },
+      {
+        "name": "scripts/check-contracts-browser.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:20.040Z",
+        "finishedAt": "2026-11-06T21:29:29.427Z",
+        "log": "009-scripts-check-contracts-browser.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/control.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:29.428Z",
+        "finishedAt": "2026-11-06T21:29:30.955Z",
+        "log": "010-apps-server-runner-control.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:29:30.956Z",
+        "finishedAt": "2026-11-06T21:29:33.575Z",
+        "log": "011-tools-i0-cloud-build-runtime-artifact.test.mjs.log"
+      },
+      {
+        "name": "scripts/check-doc-links.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:33.575Z",
+        "finishedAt": "2026-11-06T21:29:43.035Z",
+        "log": "012-scripts-check-doc-links.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/course.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:43.037Z",
+        "finishedAt": "2026-11-06T21:29:44.250Z",
+        "log": "013-apps-server-runner-course.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/capacity-analysis.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:44.252Z",
+        "finishedAt": "2026-11-06T21:29:45.935Z",
+        "log": "014-tools-i0-cloud-capacity-analysis.test.mjs.log"
+      },
+      {
+        "name": "scripts/ci-build-artifact.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:45.936Z",
+        "finishedAt": "2026-11-06T21:29:58.436Z",
+        "log": "015-scripts-ci-build-artifact.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/editor-diagnostics.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:58.437Z",
+        "finishedAt": "2026-11-06T21:29:59.181Z",
+        "log": "016-apps-server-runner-editor-diagnostics.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/capacity-collect.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:59.182Z",
+        "finishedAt": "2026-11-06T21:29:59.943Z",
+        "log": "017-tools-i0-cloud-capacity-collect.test.mjs.log"
+      },
+      {
+        "name": "scripts/package-product.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:29:59.944Z",
+        "finishedAt": "2026-11-06T21:30:05.241Z",
+        "log": "018-scripts-package-product.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/hdl-clock.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:05.242Z",
+        "finishedAt": "2026-11-06T21:30:05.971Z",
+        "log": "019-apps-server-runner-hdl-clock.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/capacity-metrics.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:05.972Z",
+        "finishedAt": "2026-11-06T21:30:06.624Z",
+        "log": "020-tools-i0-cloud-capacity-metrics.test.mjs.log"
+      },
+      {
+        "name": "scripts/test-discovery.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:06.625Z",
+        "finishedAt": "2026-11-06T21:30:08.724Z",
+        "log": "021-scripts-test-discovery.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/hdl-profile.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:08.724Z",
+        "finishedAt": "2026-11-06T21:30:09.644Z",
+        "log": "022-apps-server-runner-hdl-profile.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:30:09.645Z",
+        "finishedAt": "2026-11-06T21:30:32.104Z",
+        "log": "023-tools-i0-cloud-capacity-run-failure.test.mjs.log"
+      },
+      {
+        "name": "scripts/test-scheduler.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:32.105Z",
+        "finishedAt": "2026-11-06T21:30:47.679Z",
+        "log": "024-scripts-test-scheduler.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/node-files.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:47.680Z",
+        "finishedAt": "2026-11-06T21:30:48.410Z",
+        "log": "025-apps-server-runner-node-files.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/capacity-workflow.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:48.411Z",
+        "finishedAt": "2026-11-06T21:30:58.854Z",
+        "log": "026-tools-i0-cloud-capacity-workflow.test.mjs.log"
+      },
+      {
+        "name": "scripts/verify.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:57.238Z",
+        "finishedAt": "2026-11-06T21:31:38.452Z",
+        "log": "027-scripts-verify.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/report.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:30:58.855Z",
+        "finishedAt": "2026-11-06T21:30:59.675Z",
+        "log": "028-apps-server-runner-report.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/deploy-artifact.test.py",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:30:59.676Z",
+        "finishedAt": "2026-11-06T21:31:19.349Z",
+        "log": "029-tools-i0-cloud-deploy-artifact.test.py.log"
+      },
+      {
+        "name": "web",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:19.351Z",
+        "finishedAt": "2026-11-06T21:32:56.828Z",
+        "log": "030-web.log"
+      },
+      {
+        "name": "apps/server/runner/result-files.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:38.453Z",
+        "finishedAt": "2026-11-06T21:31:39.102Z",
+        "log": "031-apps-server-runner-result-files.test.ts.log"
+      },
+      {
+        "name": "tools/i0-cloud/prepare-demo-data.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:39.104Z",
+        "finishedAt": "2026-11-06T21:31:46.332Z",
+        "log": "032-tools-i0-cloud-prepare-demo-data.test.mjs.log"
+      },
+      {
+        "name": "packages/contracts/test/execution-plan.test.ts",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:46.333Z",
+        "finishedAt": "2026-11-06T21:31:48.079Z",
+        "log": "033-packages-contracts-test-execution-plan.test.ts.log"
+      },
+      {
+        "name": "apps/server/runner/run-snapshot.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:48.081Z",
+        "finishedAt": "2026-11-06T21:31:48.636Z",
+        "log": "034-apps-server-runner-run-snapshot.test.ts.log"
+      },
+      {
+        "name": "tools/i0-hdl/editor-source.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:48.638Z",
+        "finishedAt": "2026-11-06T21:31:55.371Z",
+        "log": "035-tools-i0-hdl-editor-source.test.mjs.log"
+      },
+      {
+        "name": "packages/contracts/test/teaching-event.test.ts",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:55.372Z",
+        "finishedAt": "2026-11-06T21:31:57.050Z",
+        "log": "036-packages-contracts-test-teaching-event.test.ts.log"
+      },
+      {
+        "name": "apps/server/runner/snapshot.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:57.051Z",
+        "finishedAt": "2026-11-06T21:31:57.563Z",
+        "log": "037-apps-server-runner-snapshot.test.ts.log"
+      },
+      {
+        "name": "tools/i0-hdl/receive-frozen-images.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:57.566Z",
+        "finishedAt": "2026-11-06T21:31:58.345Z",
+        "log": "038-tools-i0-hdl-receive-frozen-images.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/connections-installation.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:31:58.346Z",
+        "finishedAt": "2026-11-06T21:32:02.418Z",
+        "log": "039-packages-product-runtime-test-connections-installation.test.mjs.log"
+      },
+      {
+        "name": "apps/server/runner/verify.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:02.419Z",
+        "finishedAt": "2026-11-06T21:32:03.275Z",
+        "log": "040-apps-server-runner-verify.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/access.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:03.276Z",
+        "finishedAt": "2026-11-06T21:32:06.978Z",
+        "log": "041-tools-xj-dev-access-access.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/host-facts.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:06.980Z",
+        "finishedAt": "2026-11-06T21:32:18.464Z",
+        "log": "042-packages-product-runtime-test-host-facts.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/deployment-identity.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:18.467Z",
+        "finishedAt": "2026-11-06T21:32:19.850Z",
+        "log": "043-apps-server-server-app-deployment-identity.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/adapters.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:19.852Z",
+        "finishedAt": "2026-11-06T21:32:20.860Z",
+        "log": "044-tools-xj-dev-access-adapters.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/io.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:20.862Z",
+        "finishedAt": "2026-11-06T21:32:34.522Z",
+        "log": "045-packages-product-runtime-test-io.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/digital-logic.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:34.523Z",
+        "finishedAt": "2026-11-06T21:32:35.248Z",
+        "log": "046-apps-server-server-app-digital-logic.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/deployment.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:35.249Z",
+        "finishedAt": "2026-11-06T21:32:39.952Z",
+        "log": "047-tools-xj-dev-access-deployment.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/learning-drain.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:39.953Z",
+        "finishedAt": "2026-11-06T21:32:43.863Z",
+        "log": "048-packages-product-runtime-test-learning-drain.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/execution-nodes.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:43.864Z",
+        "finishedAt": "2026-11-06T21:33:00.554Z",
+        "log": "049-apps-server-server-app-execution-nodes.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/entrypoints.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:56.829Z",
+        "finishedAt": "2026-11-06T21:32:57.265Z",
+        "log": "050-tools-xj-dev-access-entrypoints.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/lifecycle.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:32:57.266Z",
+        "finishedAt": "2026-11-06T21:35:54.371Z",
+        "log": "051-packages-product-runtime-test-lifecycle.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/i0-readiness.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:00.555Z",
+        "finishedAt": "2026-11-06T21:33:18.217Z",
+        "log": "052-apps-server-server-app-i0-readiness.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/github-login.e2e.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:18.218Z",
+        "finishedAt": "2026-11-06T21:33:18.534Z",
+        "log": "053-tools-xj-dev-access-github-login.e2e.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/maintenance.test.ts",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:18.535Z",
+        "finishedAt": "2026-11-06T21:33:18.832Z",
+        "log": "054-packages-product-runtime-test-maintenance.test.ts.log"
+      },
+      {
+        "name": "apps/server/server/app/i0-tutoring.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:18.833Z",
+        "finishedAt": "2026-11-06T21:33:36.970Z",
+        "log": "055-apps-server-server-app-i0-tutoring.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/github-login.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:36.972Z",
+        "finishedAt": "2026-11-06T21:33:40.461Z",
+        "log": "056-tools-xj-dev-access-github-login.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/prerequisites-cli.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:40.462Z",
+        "finishedAt": "2026-11-06T21:33:41.319Z",
+        "log": "057-packages-product-runtime-test-prerequisites-cli.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/i0.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:33:41.320Z",
+        "finishedAt": "2026-11-06T21:34:14.205Z",
+        "log": "058-apps-server-server-app-i0.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/lifecycle.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:34:14.206Z",
+        "finishedAt": "2026-11-06T21:34:16.419Z",
+        "log": "059-tools-xj-dev-access-lifecycle.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:34:16.421Z",
+        "finishedAt": "2026-11-06T21:34:17.049Z",
+        "log": "060-packages-product-runtime-test-prerequisites-lifecycle.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/main-readiness-compatibility.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:34:17.052Z",
+        "finishedAt": "2026-11-06T21:34:18.316Z",
+        "log": "061-apps-server-server-app-main-readiness-compatibility.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/oss-storage.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:34:18.318Z",
+        "finishedAt": "2026-11-06T21:34:22.899Z",
+        "log": "062-tools-xj-dev-access-oss-storage.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/prerequisites.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:34:22.900Z",
+        "finishedAt": "2026-11-06T21:34:23.561Z",
+        "log": "063-packages-product-runtime-test-prerequisites.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/model-budget.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:34:23.563Z",
+        "finishedAt": "2026-11-06T21:35:01.158Z",
+        "log": "064-apps-server-server-app-model-budget.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/package-cleanup.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:35:01.159Z",
+        "finishedAt": "2026-11-06T21:35:02.052Z",
+        "log": "065-tools-xj-dev-access-package-cleanup.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+        "group": "unit",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:35:02.053Z",
+        "finishedAt": "2026-11-06T21:36:44.339Z",
+        "log": "066-packages-product-runtime-test-recovery-connections.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/personal-models.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:35:54.373Z",
+        "finishedAt": "2026-11-06T21:36:04.382Z",
+        "log": "067-apps-server-server-app-personal-models.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/package-service.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:36:04.383Z",
+        "finishedAt": "2026-11-06T21:36:08.701Z",
+        "log": "068-tools-xj-dev-access-package-service.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/recovery-files.test.mjs",
+        "group": "unit",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:36:08.703Z",
+        "finishedAt": "2026-11-06T21:36:10.638Z",
+        "log": "069-packages-product-runtime-test-recovery-files.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/pr53-56-readiness.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:10.638Z",
+        "finishedAt": "2026-11-06T21:36:18.700Z",
+        "log": "070-apps-server-server-app-pr53-56-readiness.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/packages.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:18.702Z",
+        "finishedAt": "2026-11-06T21:36:20.375Z",
+        "log": "071-tools-xj-dev-access-packages.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/recovery.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:20.377Z",
+        "finishedAt": "2026-11-06T21:36:41.484Z",
+        "log": "072-packages-product-runtime-test-recovery.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/app/response-metrics.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:41.485Z",
+        "finishedAt": "2026-11-06T21:36:44.928Z",
+        "log": "073-apps-server-server-app-response-metrics.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/server.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:36:44.340Z",
+        "finishedAt": "2026-11-06T21:36:46.472Z",
+        "log": "074-tools-xj-dev-access-server.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/school-client.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:44.929Z",
+        "finishedAt": "2026-11-06T21:36:49.272Z",
+        "log": "075-packages-product-runtime-test-school-client.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/personal-agent/integration.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:46.474Z",
+        "finishedAt": "2026-11-06T21:36:52.223Z",
+        "log": "076-apps-server-server-personal-agent-integration.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev-access/tls.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:49.274Z",
+        "finishedAt": "2026-11-06T21:36:49.829Z",
+        "log": "077-tools-xj-dev-access-tls.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/service-routing.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:49.831Z",
+        "finishedAt": "2026-11-06T21:37:00.213Z",
+        "log": "078-packages-product-runtime-test-service-routing.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/personal-agent/model-budget.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:52.223Z",
+        "finishedAt": "2026-11-06T21:36:52.896Z",
+        "log": "079-apps-server-server-personal-agent-model-budget.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/baseline-recovery.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:36:52.897Z",
+        "finishedAt": "2026-11-06T21:37:33.746Z",
+        "log": "080-tools-xj-dev-tests-baseline-recovery.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:00.214Z",
+        "finishedAt": "2026-11-06T21:37:03.767Z",
+        "log": "081-packages-product-runtime-test-shutdown-sockets.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/personal-agent/student-tasks.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:03.768Z",
+        "finishedAt": "2026-11-06T21:37:06.966Z",
+        "log": "082-apps-server-server-personal-agent-student-tasks.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:37:06.967Z",
+        "finishedAt": "2026-11-06T21:37:15.121Z",
+        "log": "083-tools-xj-dev-tests-baseline-team.test.mjs.log"
+      },
+      {
+        "name": "packages/product-runtime/test/ssh-recovery.test.mjs",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:15.123Z",
+        "finishedAt": "2026-11-06T21:37:17.366Z",
+        "log": "084-packages-product-runtime-test-ssh-recovery.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/records/records.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:17.367Z",
+        "finishedAt": "2026-11-06T21:37:17.843Z",
+        "log": "085-apps-server-server-records-records.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/baseline-unstarted.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:17.844Z",
+        "finishedAt": "2026-11-06T21:37:24.201Z",
+        "log": "086-tools-xj-dev-tests-baseline-unstarted.test.mjs.log"
+      },
+      {
+        "name": "packages/storage/test/blobs.test.mjs",
+        "group": "unit",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:37:24.202Z",
+        "finishedAt": "2026-11-06T21:37:28.348Z",
+        "log": "087-packages-storage-test-blobs.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/records/teaching-projection.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:28.350Z",
+        "finishedAt": "2026-11-06T21:37:50.124Z",
+        "log": "088-apps-server-server-records-teaching-projection.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/certificates.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:33.748Z",
+        "finishedAt": "2026-11-06T21:39:10.364Z",
+        "log": "089-tools-xj-dev-tests-certificates.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/records/teaching-review.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:37:50.125Z",
+        "finishedAt": "2026-11-06T21:38:19.739Z",
+        "log": "090-apps-server-server-records-teaching-review.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:38:19.740Z",
+        "finishedAt": "2026-11-06T21:39:15.905Z",
+        "log": "091-tools-xj-dev-tests-enrollment-client.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/records/teaching.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:39:10.365Z",
+        "finishedAt": "2026-11-06T21:39:32.132Z",
+        "log": "092-apps-server-server-records-teaching.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:39:15.907Z",
+        "finishedAt": "2026-11-06T21:39:19.589Z",
+        "log": "093-tools-xj-dev-tests-enrollment-protocol.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/deepseek-sdk.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:39:19.591Z",
+        "finishedAt": "2026-11-06T21:39:21.387Z",
+        "log": "094-apps-server-server-tutoring-test-deepseek-sdk.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:39:21.389Z",
+        "finishedAt": "2026-11-06T21:39:24.448Z",
+        "log": "095-tools-xj-dev-tests-enrollment-ssh.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/hdl-help.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:39:24.449Z",
+        "finishedAt": "2026-11-06T21:39:25.282Z",
+        "log": "096-apps-server-server-tutoring-test-hdl-help.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/env-removal.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:39:25.284Z",
+        "finishedAt": "2026-11-06T21:42:43.670Z",
+        "log": "097-tools-xj-dev-tests-env-removal.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/index.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:39:32.134Z",
+        "finishedAt": "2026-11-06T21:39:34.713Z",
+        "log": "098-apps-server-server-tutoring-test-index.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:39:34.714Z",
+        "finishedAt": "2026-11-06T21:44:16.379Z",
+        "log": "099-tools-xj-dev-tests-gateway-certificate-lifecycle.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/learner-analysis.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:42:43.672Z",
+        "finishedAt": "2026-11-06T21:42:57.939Z",
+        "log": "100-apps-server-server-tutoring-test-learner-analysis.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/integration.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:42:57.940Z",
+        "finishedAt": "2026-11-06T21:44:48.050Z",
+        "log": "101-tools-xj-dev-tests-integration.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/openai-compatible.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:44:16.381Z",
+        "finishedAt": "2026-11-06T21:44:17.276Z",
+        "log": "102-apps-server-server-tutoring-test-openai-compatible.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/local-status.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:44:17.278Z",
+        "finishedAt": "2026-11-06T21:47:07.070Z",
+        "log": "103-tools-xj-dev-tests-local-status.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/real-model-support.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:44:48.052Z",
+        "finishedAt": "2026-11-06T21:44:54.532Z",
+        "log": "104-apps-server-server-tutoring-test-real-model-support.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/managed-modes.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:44:54.535Z",
+        "finishedAt": "2026-11-06T21:44:59.929Z",
+        "log": "105-tools-xj-dev-tests-managed-modes.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/tutoring/test/student-help.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:44:59.931Z",
+        "finishedAt": "2026-11-06T21:45:37.882Z",
+        "log": "106-apps-server-server-tutoring-test-student-help.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/operation-lock.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:45:37.883Z",
+        "finishedAt": "2026-11-06T21:45:46.308Z",
+        "log": "107-tools-xj-dev-tests-operation-lock.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/a5-consumption.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:45:46.309Z",
+        "finishedAt": "2026-11-06T21:45:50.953Z",
+        "log": "108-apps-server-server-workspace-a5-consumption.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:45:50.954Z",
+        "finishedAt": "2026-11-06T21:46:39.796Z",
+        "log": "109-tools-xj-dev-tests-package-transfer.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/editor-diagnostics.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:46:39.798Z",
+        "finishedAt": "2026-11-06T21:46:44.234Z",
+        "log": "110-apps-server-server-workspace-editor-diagnostics.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-code-batch.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:46:44.235Z",
+        "finishedAt": "2026-11-06T21:47:01.806Z",
+        "log": "111-tools-xj-dev-tests-repro-code-batch.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/hdl.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:47:01.807Z",
+        "finishedAt": "2026-11-06T21:47:28.035Z",
+        "log": "112-apps-server-server-workspace-hdl.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:47:07.071Z",
+        "finishedAt": "2026-11-06T21:47:49.778Z",
+        "log": "113-tools-xj-dev-tests-repro-e2e.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/integration.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:47:28.037Z",
+        "finishedAt": "2026-11-06T21:47:53.156Z",
+        "log": "114-apps-server-server-workspace-integration.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:47:49.780Z",
+        "finishedAt": "2026-11-06T21:48:50.863Z",
+        "log": "115-tools-xj-dev-tests-repro-restore.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/job-composition.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:47:53.157Z",
+        "finishedAt": "2026-11-06T21:47:57.197Z",
+        "log": "116-apps-server-server-workspace-job-composition.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:47:57.198Z",
+        "finishedAt": "2026-11-06T21:48:35.949Z",
+        "log": "117-tools-xj-dev-tests-repro-secrets.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/limited-check.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:48:35.950Z",
+        "finishedAt": "2026-11-06T21:48:56.030Z",
+        "log": "118-apps-server-server-workspace-limited-check.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:48:50.864Z",
+        "finishedAt": "2026-11-06T21:49:10.313Z",
+        "log": "119-tools-xj-dev-tests-repro.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/review.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:48:56.032Z",
+        "finishedAt": "2026-11-06T21:49:04.705Z",
+        "log": "120-apps-server-server-workspace-review.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/unit.test.mjs",
+        "group": "tools",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:49:04.706Z",
+        "finishedAt": "2026-11-06T21:49:20.521Z",
+        "log": "121-tools-xj-dev-tests-unit.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/runs.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:10.314Z",
+        "finishedAt": "2026-11-06T21:49:11.308Z",
+        "log": "122-apps-server-server-workspace-runs.test.ts.log"
+      },
+      {
+        "name": "tools/xj-dev/tests/workspace-dependencies.test.mjs",
+        "group": "tools",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:11.310Z",
+        "finishedAt": "2026-11-06T21:49:13.536Z",
+        "log": "123-tools-xj-dev-tests-workspace-dependencies.test.mjs.log"
+      },
+      {
+        "name": "apps/server/server/workspace/submissions.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:13.536Z",
+        "finishedAt": "2026-11-06T21:49:34.804Z",
+        "log": "124-apps-server-server-workspace-submissions.test.ts.log"
+      },
+      {
+        "name": "apps/server/server/workspace/workspace.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:20.522Z",
+        "finishedAt": "2026-11-06T21:49:21.494Z",
+        "log": "125-apps-server-server-workspace-workspace.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/a5-feedback.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:21.495Z",
+        "finishedAt": "2026-11-06T21:49:52.098Z",
+        "log": "126-apps-server-tests-a5-feedback.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/a5-followup.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:34.805Z",
+        "finishedAt": "2026-11-06T21:49:42.356Z",
+        "log": "127-apps-server-tests-a5-followup.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/access.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:42.357Z",
+        "finishedAt": "2026-11-06T21:50:40.439Z",
+        "log": "128-apps-server-tests-access.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/account-control.test.ts",
+        "group": "server",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:49:52.099Z",
+        "finishedAt": "2026-11-06T21:49:55.996Z",
+        "log": "129-apps-server-tests-account-control.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/app.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:49:55.998Z",
+        "finishedAt": "2026-11-06T21:49:56.862Z",
+        "log": "130-apps-server-tests-app.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/application-database.test.ts",
+        "group": "server",
+        "status": "failed",
+        "code": 1,
+        "startedAt": "2026-11-06T21:49:56.863Z",
+        "finishedAt": "2026-11-06T21:50:03.488Z",
+        "log": "131-apps-server-tests-application-database.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-activities.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:03.489Z",
+        "finishedAt": "2026-11-06T21:50:43.493Z",
+        "log": "132-apps-server-tests-design-activities.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-agent.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:40.440Z",
+        "finishedAt": "2026-11-06T21:51:37.931Z",
+        "log": "133-apps-server-tests-design-agent.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-checks.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:43.495Z",
+        "finishedAt": "2026-11-06T21:50:44.317Z",
+        "log": "134-apps-server-tests-design-checks.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-draft.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:44.319Z",
+        "finishedAt": "2026-11-06T21:50:45.257Z",
+        "log": "135-apps-server-tests-design-draft.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-material.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:45.259Z",
+        "finishedAt": "2026-11-06T21:50:46.288Z",
+        "log": "136-apps-server-tests-design-material.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-projection.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:46.290Z",
+        "finishedAt": "2026-11-06T21:50:47.742Z",
+        "log": "137-apps-server-tests-design-projection.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/design-storage.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:50:47.744Z",
+        "finishedAt": "2026-11-06T21:51:30.044Z",
+        "log": "138-apps-server-tests-design-storage.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/display-metadata.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:51:30.045Z",
+        "finishedAt": "2026-11-06T21:51:35.076Z",
+        "log": "139-apps-server-tests-display-metadata.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/dl-a-app.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:51:35.077Z",
+        "finishedAt": "2026-11-06T21:52:14.885Z",
+        "log": "140-apps-server-tests-dl-a-app.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/dl-a-hdl-help.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:51:37.932Z",
+        "finishedAt": "2026-11-06T21:51:56.544Z",
+        "log": "141-apps-server-tests-dl-a-hdl-help.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/durability.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:51:56.545Z",
+        "finishedAt": "2026-11-06T21:51:59.168Z",
+        "log": "142-apps-server-tests-durability.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/errors.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:51:59.170Z",
+        "finishedAt": "2026-11-06T21:52:00.019Z",
+        "log": "143-apps-server-tests-errors.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/execution-nodes.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:00.020Z",
+        "finishedAt": "2026-11-06T21:52:00.976Z",
+        "log": "144-apps-server-tests-execution-nodes.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/model-capability-images.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:00.977Z",
+        "finishedAt": "2026-11-06T21:52:02.952Z",
+        "log": "145-apps-server-tests-model-capability-images.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/model-consumer.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:02.953Z",
+        "finishedAt": "2026-11-06T21:52:23.111Z",
+        "log": "146-apps-server-tests-model-consumer.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/model-messages-review.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:14.886Z",
+        "finishedAt": "2026-11-06T21:52:17.014Z",
+        "log": "147-apps-server-tests-model-messages-review.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/model-network-policy.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:17.015Z",
+        "finishedAt": "2026-11-06T21:52:19.474Z",
+        "log": "148-apps-server-tests-model-network-policy.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/model-progress.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:19.475Z",
+        "finishedAt": "2026-11-06T21:52:19.771Z",
+        "log": "149-apps-server-tests-model-progress.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/model-protocol-review.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:19.772Z",
+        "finishedAt": "2026-11-06T21:52:25.424Z",
+        "log": "150-apps-server-tests-model-protocol-review.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/model-sensitive-boundary.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:23.113Z",
+        "finishedAt": "2026-11-06T21:52:25.098Z",
+        "log": "151-apps-server-tests-model-sensitive-boundary.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/native-isolation.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:25.100Z",
+        "finishedAt": "2026-11-06T21:52:26.742Z",
+        "log": "152-apps-server-tests-native-isolation.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/native-session.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:25.425Z",
+        "finishedAt": "2026-11-06T21:52:33.159Z",
+        "log": "153-apps-server-tests-native-session.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/records-adapter-performance.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:26.744Z",
+        "finishedAt": "2026-11-06T21:52:29.174Z",
+        "log": "154-apps-server-tests-records-adapter-performance.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/records-adapter.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:29.175Z",
+        "finishedAt": "2026-11-06T21:52:38.622Z",
+        "log": "155-apps-server-tests-records-adapter.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/review.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:33.161Z",
+        "finishedAt": "2026-11-06T21:54:06.413Z",
+        "log": "156-apps-server-tests-review.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/semantic-references.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:38.625Z",
+        "finishedAt": "2026-11-06T21:52:39.748Z",
+        "log": "157-apps-server-tests-semantic-references.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/session-checkpoints.test.mjs",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:39.750Z",
+        "finishedAt": "2026-11-06T21:52:40.758Z",
+        "log": "158-apps-server-tests-session-checkpoints.test.mjs.log"
+      },
+      {
+        "name": "apps/server/tests/session-store.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:40.760Z",
+        "finishedAt": "2026-11-06T21:52:41.365Z",
+        "log": "159-apps-server-tests-session-store.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/startup.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:41.367Z",
+        "finishedAt": "2026-11-06T21:52:43.791Z",
+        "log": "160-apps-server-tests-startup.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/teacher-design-budget.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:43.792Z",
+        "finishedAt": "2026-11-06T21:52:44.559Z",
+        "log": "161-apps-server-tests-teacher-design-budget.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/teacher-workflow.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:52:44.560Z",
+        "finishedAt": "2026-11-06T21:53:02.804Z",
+        "log": "162-apps-server-tests-teacher-workflow.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/transaction.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:53:02.806Z",
+        "finishedAt": "2026-11-06T21:53:03.264Z",
+        "log": "163-apps-server-tests-transaction.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/validation.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:53:03.265Z",
+        "finishedAt": "2026-11-06T21:53:04.133Z",
+        "log": "164-apps-server-tests-validation.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/workspace-hydration-performance.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:53:04.136Z",
+        "finishedAt": "2026-11-06T21:53:08.231Z",
+        "log": "165-apps-server-tests-workspace-hydration-performance.test.ts.log"
+      },
+      {
+        "name": "apps/server/tests/workspace-scope-performance.test.ts",
+        "group": "server",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:53:08.233Z",
+        "finishedAt": "2026-11-06T21:53:16.998Z",
+        "log": "166-apps-server-tests-workspace-scope-performance.test.ts.log"
+      },
+      {
+        "name": "packages/product-runtime/test/connections.test.ts",
+        "group": "unit",
+        "status": "passed",
+        "code": 0,
+        "startedAt": "2026-11-06T21:54:06.415Z",
+        "finishedAt": "2026-11-06T21:54:12.951Z",
+        "log": "167-packages-product-runtime-test-connections.test.ts.log"
+      }
+    ],
+    "sourceSnapshot": {
+      "allSourceBytesVerified": true,
+      "base": "798199ca0e1d27683bbd6472e699e0bb327106ef",
+      "head": "c9e3c0ad171f22785df8688aed40cee136bf2828",
+      "files": [
+        {
+          "path": "apps/local-runtime/src/cli.ts",
+          "sha256": "3621F15AC408318E67FDB9DA0D1582F85FD3B681FE76BB4C1C7843CDDB56EDA1"
+        },
+        {
+          "path": "apps/server/tests/agent-deployment-cleanup.runtime.test.mjs",
+          "sha256": "16C6061DB2AE12091382D6AC3B9CD742BDD37E80BE73F1F19F5BC87999FD5A63"
+        },
+        {
+          "path": "apps/server/tests/support/teaching-input-control.d.mts",
+          "sha256": "1A0EC250F2AD4FC6561B9624FB2429E9AE108ED805EA1A3C11D01D1FA77F8578"
+        },
+        {
+          "path": "apps/server/tests/support/teaching-input-control.mjs",
+          "sha256": "A45C9FD180642EE617DA6782AC887928F19A82C995EC3907D392027EB4470676"
+        },
+        {
+          "path": "apps/server/tests/support/teaching-recovery.mjs",
+          "sha256": "5F7AF319DB7D76C2786476BE7EB68E955383086E91A472F083E8CC48C249B98F"
+        },
+        {
+          "path": "apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs",
+          "sha256": "B8D4F3E2E31DDA19E1F8D76CB609C77DC5FE9B03E1DA36AE120FF404CBD76781"
+        },
+        {
+          "path": "apps/server/tests/teaching-agent.recovery.runtime.test.mjs",
+          "sha256": "1ADAB98EED685D04D14CFCE020241C6F1682191473111491957D98C8CBCEB666"
+        },
+        {
+          "path": "apps/server/tests/teaching-tools-host.runtime.test.mjs",
+          "sha256": "F299536437FFA0D74ADBEDB11780E8D25A02C8F2306253565C6CBBBDE33ECEA5"
+        },
+        {
+          "path": "apps/web/src/product/ActivityConversation.tsx",
+          "sha256": "E65FB2EC261D8AC829B92EF0B3AC77B3E8830BDE7B74A3931F34560BEF11FAD9"
+        },
+        {
+          "path": "apps/web/src/product/ActivityPage.tsx",
+          "sha256": "1C99FA484CE83288850123A34BF1DCB70F9ED480A977D52AF20F9B9A15B6C422"
+        },
+        {
+          "path": "apps/web/src/product/LearningApp.tsx",
+          "sha256": "AD4A8852DBAB558719E569263B85CAD940EBA2C6E3BACFE8A9CA509AEADB6C2B"
+        },
+        {
+          "path": "docs/student-agent-implementation/evidence/wp07-204/restore-before-win32.png",
+          "sha256": "498A2AF35C6B65B675AFF21D1B19B1F983BEC44532C9A4E503EB3D290859E915"
+        },
+        {
+          "path": "docs/student-agent-implementation/evidence/wp07-204/restore-readonly-win32.png",
+          "sha256": "4F78D3BD365E98B9C27EA423D81117C0C2219258B9D8647294F4EC73476B5D75"
+        },
+        {
+          "path": "docs/student-agent-implementation/README.md",
+          "sha256": "F6EB257CC1B7431AE02405A9468D3658F39DB3A909C0B548B49ED8A53E3EB5FE"
+        },
+        {
+          "path": "docs/student-agent-implementation/specs/README.md",
+          "sha256": "5AADA260C520CD64E95A2032CFE8FA9DAA370808EE7657E518950A964ACB67E8"
+        },
+        {
+          "path": "docs/student-agent-implementation/specs/wp07-conversation-recovery.md",
+          "sha256": "717F8EA8C5C6C2235066ABBD247DB771ED54B393542554F113DFF55B21EF8A41"
+        },
+        {
+          "path": "docs/student-agent-implementation/wp07-204-conversation-recovery.md",
+          "sha256": "F79E8A943B514D76D4632CAC1836C1A023D7F9BA175C0D65F1A20A7C8025835E"
+        },
+        {
+          "path": "packages/contracts/src/product-runtime.ts",
+          "sha256": "ED7A84852FB595059B303643843EB8A9E8D369A0C35B06EA7AC5F169EB9AA34B"
+        },
+        {
+          "path": "packages/contracts/src/teaching-agent.ts",
+          "sha256": "FD9785136B096BF676A98A584A39BC7711D647259D91412958F6D341DFA1DC0C"
+        },
+        {
+          "path": "packages/contracts/test/teaching-event.test.ts",
+          "sha256": "C5A60D64F4CE71ABD03F1776341DA6EF0E5D633A2FE7D7BFFA56D38F87671544"
+        },
+        {
+          "path": "packages/learning-space/src/index.ts",
+          "sha256": "C8B1C391ADCBAC79428802DCD869EBC3A909EECB1C6A62E98570B1B1EF9F5418"
+        },
+        {
+          "path": "packages/learning-space/src/learning-data/agent-executions.ts",
+          "sha256": "D45EBFD44ACE81D31319762B5FC8456435A49D0CBB4ADE7AC195E6B62B4D7148"
+        },
+        {
+          "path": "packages/learning-space/src/learning-data/index.ts",
+          "sha256": "4951D372F54C7EC82180CE971FDEF0E1985E94FBD7F314CD848608F6B7AB145F"
+        },
+        {
+          "path": "packages/learning-space/src/learning-data/README.md",
+          "sha256": "BD42DF9B758F4112F02009409FDF70D6BB06B87D7FB571AA3EB5A356DD2291C1"
+        },
+        {
+          "path": "packages/learning-space/src/teaching-agent/driver.ts",
+          "sha256": "962C3EC05F056B5E6C7CD27DA00DAF83934A662F4A6086CDDBCDB0CB69F60EC4"
+        },
+        {
+          "path": "packages/learning-space/src/teaching-agent/maintenance.ts",
+          "sha256": "B4838D5A1E6C35C391828D1C11C94CE2D7F800E9D8FD4C7CC56D9F903AC57A48"
+        },
+        {
+          "path": "packages/learning-space/src/teaching-agent/README.md",
+          "sha256": "4787C01A996932C90A29B10AB0B82574C741582A83BB8F8C24C7829F95120FF1"
+        },
+        {
+          "path": "packages/learning-space/src/teaching-agent/remote-state.ts",
+          "sha256": "81CDC0E1966E17011FCED3A3C7B9F3E14214D1D5BCF85AB8A065B9CB08908482"
+        },
+        {
+          "path": "packages/product-runtime/README.md",
+          "sha256": "DA88F06AB80872F6A5E609DDC7B66C06649E5D31C295E024962B4DC85829E2DD"
+        },
+        {
+          "path": "packages/product-runtime/src/agent-application.ts",
+          "sha256": "0575EDEA8CBE94338A01AB73B37A3DF1C17333F9B47C419B077A555FFE765430"
+        },
+        {
+          "path": "packages/product-runtime/src/agent-connections.ts",
+          "sha256": "24978EB6CA52A7604F935C5CAB4DA14EF51FDE7EF208FA56B310FC7F3ACC3CF5"
+        },
+        {
+          "path": "packages/product-runtime/src/host.ts",
+          "sha256": "90FA301517BFD3E494FD90B992C823326DCDF547AA381A37D94FD7F70B67FC13"
+        },
+        {
+          "path": "packages/product-runtime/src/learning-entry.ts",
+          "sha256": "379A7DDC19204F18BB1119CB25DF2BB08FC519A8AC8C5F7FB60B87B54AC593FD"
+        },
+        {
+          "path": "packages/product-runtime/src/recovery-successions.ts",
+          "sha256": "93C22C524CF5F399D381AE2280688D929937EF1ED841F0027FF0B9E02751731D"
+        },
+        {
+          "path": "packages/product-runtime/src/recovery-types.ts",
+          "sha256": "E68E8896555300A8904EB205BD60FDFD5EADA7E65BBBA114A53BCCC80D72280E"
+        },
+        {
+          "path": "packages/product-runtime/src/recovery.ts",
+          "sha256": "B8D20309C1CF7B0D85067E4AE8F0FF96B66EFE3C4D644ED661639E997CE62BE2"
+        },
+        {
+          "path": "packages/product-runtime/src/runtime-recovery.ts",
+          "sha256": "30FDF437954390D937EAECB4D12D69EB8312139D22CD2FAA9F6C163A8B790B83"
+        },
+        {
+          "path": "packages/product-runtime/src/runtime.ts",
+          "sha256": "AD6B89B82B8A251FDC5A76C5F6443D1C880D387F6E043B29CB7395E4645B83FE"
+        },
+        {
+          "path": "packages/product-runtime/src/storage-recovery.ts",
+          "sha256": "1843F4871F10C4647A0EA46840CE7CBAFBAA5824D51C4EAB56CE21A7E90BA095"
+        },
+        {
+          "path": "scripts/probe-conversation-recovery.mjs",
+          "sha256": "65D8D5A108A467CDD128A38A669F2C2905FE8B6109EFC9F8C9FE7211EB8763E8"
+        }
+      ],
+      "fileCount": 40
+    },
+    "laterFixtureCopies": [
+      {
+        "reason": "Final test fixture and grant race checks before native task execution",
+        "path": "apps/server/tests/agent-deployment-cleanup.runtime.test.mjs",
+        "sha256": "6F9AFA424D4D126B530A30F6D8E3502C9E472DFD268937BBD6266C68C91E8E42"
+      },
+      {
+        "reason": "Final test fixture and grant race checks before native task execution",
+        "path": "apps/server/tests/teaching-agent.independent-recovery.runtime.test.mjs",
+        "sha256": "B8D4F3E2E31DDA19E1F8D76CB609C77DC5FE9B03E1DA36AE120FF404CBD76781"
+      }
+    ],
+    "finalCodeDelta": {
+      "files": [
+        "packages/product-runtime/src/host.ts",
+        "packages/product-runtime/test/recovery-connections.test.mjs"
+      ],
+      "reason": "The failed manual-fence compatibility case found by this complete run was subsequently fixed.",
+      "verification": {
+        "log": ".verification/wp07-204/receiver-compatibility-final.log",
+        "tests": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    "failedTasksWithFollowup": [
+      {
+        "name": "tools/i0-cloud/backup-retained.test.mjs",
+        "group": "tools",
+        "category": "windows-symlink-permission",
+        "rawLog": ".verification/wp07-204/full-complete-plan/008-tools-i0-cloud-backup-retained.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+        "group": "tools",
+        "category": "windows-symlink-permission",
+        "rawLog": ".verification/wp07-204/full-complete-plan/011-tools-i0-cloud-build-runtime-artifact.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+        "group": "tools",
+        "category": "private-file-validation",
+        "rawLog": ".verification/wp07-204/full-complete-plan/023-tools-i0-cloud-capacity-run-failure.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/i0-cloud/deploy-artifact.test.py",
+        "group": "tools",
+        "category": "legacy-bash-command-path-quoting",
+        "rawLog": ".verification/wp07-204/full-complete-plan/029-tools-i0-cloud-deploy-artifact.test.py.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+        "group": "unit",
+        "category": "unchanged-test-assertion-or-environment",
+        "rawLog": ".verification/wp07-204/full-complete-plan/066-packages-product-runtime-test-recovery-connections.test.mjs.log",
+        "followup": {
+          "status": "fixed",
+          "explanation": "Preserve the closed manual-fence retry; allow only a completely bound takeover retry to reopen.",
+          "verification": {
+            "log": ".verification/wp07-204/receiver-compatibility-final.log",
+            "tests": 6,
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0
+          }
+        }
+      },
+      {
+        "name": "tools/xj-dev-access/package-service.test.mjs",
+        "group": "tools",
+        "category": "legacy-local-socket-conflict",
+        "rawLog": ".verification/wp07-204/full-complete-plan/068-tools-xj-dev-access-package-service.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "packages/product-runtime/test/recovery-files.test.mjs",
+        "group": "unit",
+        "category": "windows-symlink-permission",
+        "rawLog": ".verification/wp07-204/full-complete-plan/069-packages-product-runtime-test-recovery-files.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev-access/server.test.mjs",
+        "group": "tools",
+        "category": "legacy-local-socket-conflict",
+        "rawLog": ".verification/wp07-204/full-complete-plan/074-tools-xj-dev-access-server.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+        "group": "tools",
+        "category": "private-file-validation",
+        "rawLog": ".verification/wp07-204/full-complete-plan/083-tools-xj-dev-tests-baseline-team.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "packages/storage/test/blobs.test.mjs",
+        "group": "unit",
+        "category": "windows-symlink-permission",
+        "rawLog": ".verification/wp07-204/full-complete-plan/087-packages-storage-test-blobs.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+        "group": "tools",
+        "category": "private-file-validation",
+        "rawLog": ".verification/wp07-204/full-complete-plan/091-tools-xj-dev-tests-enrollment-client.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+        "group": "tools",
+        "category": "private-file-validation",
+        "rawLog": ".verification/wp07-204/full-complete-plan/093-tools-xj-dev-tests-enrollment-protocol.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+        "group": "tools",
+        "category": "private-file-validation",
+        "rawLog": ".verification/wp07-204/full-complete-plan/095-tools-xj-dev-tests-enrollment-ssh.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+        "group": "tools",
+        "category": "legacy-cloud-fixture-unavailable",
+        "rawLog": ".verification/wp07-204/full-complete-plan/099-tools-xj-dev-tests-gateway-certificate-lifecycle.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+        "group": "tools",
+        "category": "private-file-validation",
+        "rawLog": ".verification/wp07-204/full-complete-plan/109-tools-xj-dev-tests-package-transfer.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+        "group": "tools",
+        "category": "legacy-source-scanner-refuses-existing-test-fixture",
+        "rawLog": ".verification/wp07-204/full-complete-plan/113-tools-xj-dev-tests-repro-e2e.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+        "group": "tools",
+        "category": "unchanged-test-assertion-or-environment",
+        "rawLog": ".verification/wp07-204/full-complete-plan/115-tools-xj-dev-tests-repro-restore.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+        "group": "tools",
+        "category": "legacy-source-scanner-refuses-existing-test-fixture",
+        "rawLog": ".verification/wp07-204/full-complete-plan/117-tools-xj-dev-tests-repro-secrets.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/repro.test.mjs",
+        "group": "tools",
+        "category": "windows-symlink-permission",
+        "rawLog": ".verification/wp07-204/full-complete-plan/119-tools-xj-dev-tests-repro.test.mjs.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "tools/xj-dev/tests/unit.test.mjs",
+        "group": "tools",
+        "category": "unchanged-test-assertion-or-environment",
+        "rawLog": ".verification/wp07-204/full-complete-plan/121-tools-xj-dev-tests-unit.test.mjs.log",
+        "followup": {
+          "status": "passed-in-correct-environment",
+          "explanation": "The outside-worktree fixture must use a temporary directory outside the containing repository.",
+          "verification": {
+            "log": ".verification/wp07-204/unit-outside-worktree.log",
+            "tests": 15,
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0
+          }
+        }
+      },
+      {
+        "name": "apps/server/tests/account-control.test.ts",
+        "group": "server",
+        "category": "legacy-local-socket-conflict",
+        "rawLog": ".verification/wp07-204/full-complete-plan/129-apps-server-tests-account-control.test.ts.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      },
+      {
+        "name": "apps/server/tests/application-database.test.ts",
+        "group": "server",
+        "category": "windows-symlink-permission",
+        "rawLog": ".verification/wp07-204/full-complete-plan/131-apps-server-tests-application-database.test.ts.log",
+        "followup": {
+          "status": "still-failed-not-claimed-passed",
+          "baselineRerunPerformed": false
+        }
+      }
+    ],
+    "remainingFailedTasks": 20,
+    "invalidOrAbortedAttempts": [
+      "Initial clone omitted already-committed changed files; invalidated and recopied with per-file SHA256 verification.",
+      "Earlier verify batches stalled on test handles; terminated and retained rather than counted as complete."
+    ]
+  },
+  "targeted": {
+    "continuousFormalRecoveryAndCleanup": {
+      "log": ".verification/wp07-204/final-native-continuous.log",
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "independentAgent": {
+      "log": ".verification/wp07-204/independent-handoff-final.log",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "receiverProtocol": {
+      "log": ".verification/wp07-204/receiver-compatibility-final.log",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "earlierNativeFailureRetained": {
+      "log": ".verification/wp07-204/recovery-final-regression.log",
+      "explanation": "A Windows process-identity PowerShell query failed during resume; the same WP03 case passed in isolation and in the final continuous batch.",
+      "isolatedRerun": {
+        "log": ".verification/wp07-204/wp03-final-isolated.log",
+        "tests": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    "broaderIncompleteAttempt": {
+      "log": ".verification/wp07-204/affected-owner-regression.log",
+      "status": "aborted-not-claimed-passed"
+    }
+  },
+  "chrome": {
+    "fullPackage": {
+      "formatVersion": 1,
+      "platform": "win32",
+      "osRelease": "10.0.26200",
+      "source": "independent-full-package",
+      "stages": [
+        {
+          "name": "bundled-or-source-cli-start",
+          "passed": true,
+          "fact": {
+            "state": "ready"
+          }
+        },
+        {
+          "name": "isolated-history",
+          "passed": true,
+          "fact": {
+            "runId": "b7122474-0fee-4a6f-be41-8c98e98d165f",
+            "inputId": "0d9f1e90-9e32-4c3e-89c2-14ebb2b729b4",
+            "calls": 1
+          }
+        },
+        {
+          "name": "chrome-readonly",
+          "passed": true,
+          "fact": {
+            "calls": 1,
+            "noResponseSubmitted": true
+          }
+        },
+        {
+          "name": "takeover-and-old-client-rejection",
+          "passed": true,
+          "fact": {
+            "oldClientRejected": true
+          }
+        },
+        {
+          "name": "chrome-active-original-response-and-fifo",
+          "passed": true,
+          "fact": {
+            "calls": 3,
+            "revisedQueueVisibleAsAdopted": true,
+            "runs": [
+              {
+                "runId": "b7122474-0fee-4a6f-be41-8c98e98d165f",
+                "state": "completed"
+              },
+              {
+                "runId": "6a031697-860b-4705-9aaa-d483ac5a0cdf",
+                "state": "completed"
+              }
+            ]
+          }
+        }
+      ],
+      "modelCalls": 3,
+      "cleanup": "completed",
+      "nodeVersion": "v24.21.0",
+      "postgresVersion": "postgres (PostgreSQL) 18.6",
+      "chromeVersion": "157.0.8103.38"
+    },
+    "independentAgent": {
+      "source": "independent-agent-same-host-stable-endpoint",
+      "platform": "win32",
+      "chromeVersion": "157.0.8103.38",
+      "originalRunId": "344edf00-f863-4f87-9d9a-ac3454b96ff3",
+      "finalRunId": "344edf00-f863-4f87-9d9a-ac3454b96ff3",
+      "modelCalls": 3,
+      "repeatedTakeoverAfterReconnection": true,
+      "credentialRotationInSameProcess": true,
+      "dormantReceiverQuestionRetained": true,
+      "sourceRetired": true,
+      "cleanup": "completed"
+    },
+    "ordinaryWeb": {
+      "formatVersion": 1,
+      "platform": "win32",
+      "osRelease": "10.0.26200",
+      "source": "ordinary-web",
+      "stages": [
+        {
+          "name": "bundled-or-source-cli-start",
+          "passed": true,
+          "fact": {
+            "state": "ready"
+          }
+        },
+        {
+          "name": "isolated-history",
+          "passed": true,
+          "fact": {
+            "runId": "d8cda531-cfa0-4cc4-a147-3cfaca14b694",
+            "inputId": "2517c175-8108-4fe7-a541-2ad627ced97e",
+            "calls": 1
+          }
+        },
+        {
+          "name": "chrome-readonly",
+          "passed": true,
+          "fact": {
+            "calls": 1,
+            "noResponseSubmitted": true
+          }
+        },
+        {
+          "name": "takeover-and-old-client-rejection",
+          "passed": true,
+          "fact": {
+            "oldClientRejected": true
+          }
+        },
+        {
+          "name": "chrome-active-original-response-and-fifo",
+          "passed": true,
+          "fact": {
+            "calls": 3,
+            "runs": [
+              {
+                "runId": "d8cda531-cfa0-4cc4-a147-3cfaca14b694",
+                "state": "completed"
+              },
+              {
+                "runId": "e047f9ad-9943-4d1a-b3d1-2011ee76e6a5",
+                "state": "completed"
+              }
+            ]
+          }
+        }
+      ],
+      "modelCalls": 3,
+      "cleanup": "completed",
+      "nodeVersion": "v24.21.0",
+      "postgresVersion": "postgres (PostgreSQL) 18.6",
+      "chromeVersion": "157.0.8103.38"
+    }
+  },
+  "productArtifacts": [
+    {
+      "path": "app/cli.js",
+      "sha256": "84c59eb3001346a97989f8a300f54a06e122196b7511b0f94cef005ffb94aa85"
+    },
+    {
+      "path": "resources/node/node.exe",
+      "sha256": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32"
+    },
+    {
+      "path": "resources/postgres/bin/postgres.exe",
+      "sha256": "5fc1baf66a21e54405af63d11c0d5797a9f112a57ad502ec7f575ab0cc71d814"
+    },
+    {
+      "path": "resources/native/windows-session.exe",
+      "sha256": "ed3292f7d97c9e0fa57c303ddd9aedf55811513195281ed6038bcb84470dc9e2"
+    },
+    {
+      "path": "web/index.html",
+      "sha256": "9d3a9dec1c601fde096fb59b175e1f5bb37400a1eba2d9cca96688bb3b3062f4"
+    }
+  ],
+  "codeReview": {
+    "standardsUnresolved": 0,
+    "specUnresolved": 0,
+    "document": "docs/student-agent-implementation/wp07-204-code-review.md"
+  },
+  "finalDocumentation": {
+    "changedMarkdownFiles": 8,
+    "localTargets": 187,
+    "failures": 0,
+    "log": ".verification/wp07-204/docs-final.log",
+    "probeSyntaxCheckPassed": true
+  },
+  "macAndTrueCrossMachine": {
+    "status": "not-executed-on-this-host",
+    "handoffIssue": "https://github.com/paher-din/XunJie/issues/212",
+    "existingEnvironmentOnly": true
+  },
+  "teachingEffect": {
+    "evaluated": false,
+    "engineeringOnly": true
+  },
+  "cleanup": {
+    "normalChromeEnvironments": "completed",
+    "failedTestEmergencyStops": "recorded separately; never counted as successful formal stops",
+    "finalTemporaryEnvironmentCleanup": "completed",
+    "ownedLiveProcesses": 0,
+    "temporaryRootsRemoved": 4,
+    "originalDevelopmentEnvironmentStillRunning": true,
+    "freedBytesOnD": 2435366912,
+    "rawLogsRetained": true,
+    "finalCandidate": ".verification/wp07-204/product-win32-x64-final"
+  }
+}

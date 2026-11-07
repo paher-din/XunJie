@@ -72,7 +72,10 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     assert.equal(execution.blocking, 0);
     assert.ok(execution.services.some(item => item.serviceId === started.environment.services[0].serviceId),
       'the boundary must name the receiver service that took it');
-    assert.ok(execution.services.every(item => item.unresolved === 0 && item.blocking === 0));
+    for (const service of execution.services) {
+      assert.match(service.serviceId, /^[0-9a-f-]{36}$/i);
+      assert.equal(service.unresolved, 0); assert.equal(service.blocking, 0);
+    }
     const body = { requestId: randomUUID(), goal: '通过正式 CLI 恢复活动', question: '', references: [] };
     const created = await fetch(new URL('/api/learning/activities', started.endpoint), { method: 'POST',
       headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' }, body: JSON.stringify(body) });
@@ -99,7 +102,7 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
       formatVersion: 1, requestId: randomUUID(),
       course: { courseId, name: '恢复验收课程' },
       task: { taskId, title: '恢复验收任务', summary: '验证备份与恢复。' },
-      release: { releaseId, objectives: ['验收课程恢复'], requirements: '保持固定版本与材料。',
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['验收课程恢复'], requirements: '保持固定版本与材料。',
         materials: [
           { materialId: studentMaterialId, title: '开放材料', path: 'materials/open.md', mediaType: 'text/markdown',
             access: 'student', sha256: sha256(openText), byteLength: openText.byteLength },
@@ -154,7 +157,10 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     const savedAction = await prepareAction.json();
     assert.equal(savedAction.state, 'prepared');
     const capabilities = await fetch(new URL(`/api/learning/intents/${pinned.activityId}/capabilities`, started.endpoint), { headers: { cookie } });
-    assert.equal(capabilities.status, 200); assert.deepEqual(await capabilities.json(), []);
+    assert.equal(capabilities.status, 200);
+    const registered = await capabilities.json();
+    assert.deepEqual(registered.map(item => item.kind), ['question']);
+    assert.match(registered[0].receiverId, /^teaching-agent:/);
     assert.equal((await fetch(new URL(`/api/learning/intents/${pinned.activityId}/${actionInput.requestId}/dispatch`, started.endpoint), {
       method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: '{}' })).status, 503);
     const cancelledInput = { ...actionInput, requestId: randomUUID() };
@@ -194,7 +200,7 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
         const materialId = randomUUID(), nextReleaseId = randomUUID();
         const response = await fetch(new URL('/api/learning/manage/course-import', started.endpoint), { method: 'POST',
           headers: { 'content-type': 'application/json', authorization: 'Bearer ' + control }, body: JSON.stringify({ ...publicationBase,
-            requestId: randomUUID(), release: { ...publicationBase.release, releaseId: nextReleaseId,
+            requestId: randomUUID(), release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  ...publicationBase.release, releaseId: nextReleaseId,
               materials: [{ materialId, title: '并发原材料', path: 'concurrent.md', mediaType: 'text/plain', access: 'student', sha256: sha256(content), byteLength: content.length }] },
             resources: [{ path: 'concurrent.md', contentBase64: content.toString('base64') }] }) });
         if (response.status === 503) { publicationClosed = true; break; }
@@ -206,7 +212,7 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     await Promise.all([writer, publisher]);
     assert.ok(latestWork.revision > 2 && latestPublished, 'real work and new resource publications must precede the held boundary');
     assert.ok(workClosed && publicationClosed, 'closing must reject continuing producers instead of waiting for input to stop');
-    assert.equal(backup.services.length, 4);
+    assert.equal(backup.services.length, 5);
     const damagedBackup = join(directory, 'damaged-backup-copy');
     await cp(join(backupDirectory, backup.backupId), damagedBackup, { recursive: true });
     await unlink(join(damagedBackup, 'artifacts', backup.artifacts[0].path));

@@ -1,0 +1,361 @@
+{
+  "status": "observed-confirmed-failure",
+  "platform": "win32",
+  "path": "independent school HTTPS",
+  "entries": [
+    {
+      "action": {
+        "protocolVersion": 3,
+        "kind": "execution",
+        "requestId": "95ffe242-277d-499a-9753-91dc029fa9bf",
+        "scope": {
+          "environmentId": "113a46ef-618d-4098-ae94-6da731674508",
+          "spaceId": "adc5fd82-ab2f-4f4b-b75c-cf6c28954e69",
+          "principalId": "b4ec4efc-5092-4157-8783-8e090be3223c",
+          "activityId": "c0515e01-62a0-492a-b46f-94092e9c84ce"
+        },
+        "receiver": {
+          "receiverId": "browser-execution",
+          "location": "local",
+          "kind": "execution"
+        },
+        "execution": {
+          "instance": {
+            "instanceId": "c0515e01-62a0-492a-b46f-94092e9c84ce:alu",
+            "key": "alu",
+            "componentId": "19200000-0000-4000-8000-000000000001",
+            "componentVersion": 3,
+            "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d",
+            "hostApiVersion": 1,
+            "stateVersion": 3
+          },
+          "operation": {
+            "operationId": "run-single",
+            "effect": "execute"
+          },
+          "parameters": {
+            "A": 15,
+            "B": 1,
+            "M": 1,
+            "S": 0,
+            "Cin": 0
+          },
+          "basis": {
+            "works": [
+              {
+                "objectId": "6600561a-51d2-4d70-962c-ee01d351b8a1",
+                "name": "alu.sv",
+                "kind": "code",
+                "contentId": "3d9c9943-47f3-459f-94cf-f2cd2e0f155c",
+                "encoding": "utf8",
+                "mediaType": "text/plain",
+                "value": "// Engineering acceptance fixture entered by the student-side editor, never supplied by the Agent.\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout);\nalways_comb begin F=0; Cout=0; case({M,S})\n3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B;\n3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin;\ndefault:begin F=0; Cout=0;end endcase end endmodule\n"
+              },
+              {
+                "objectId": "a36f3505-2044-4345-8fc0-bd2103a0b705",
+                "name": "components/alu.json",
+                "kind": "state",
+                "contentId": "8eb33cab-a1bb-4c78-9d07-0b203c91701a",
+                "encoding": "json",
+                "mediaType": "application/vnd.xunjie.component-state+json",
+                "value": "{\"formatVersion\":1,\"instanceId\":\"c0515e01-62a0-492a-b46f-94092e9c84ce:alu\",\"componentId\":\"19200000-0000-4000-8000-000000000001\",\"version\":3,\"definitionDigest\":\"3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d\",\"stateVersion\":3,\"operationId\":\"21b888e1-2ef8-4c45-b137-638e455b1e67\",\"content\":{\"A\":15,\"activationRevision\":1,\"B\":1,\"caseDraft\":\"{\\\"formatVersion\\\":1,\\\"caseId\\\":\\\"14b8cc73-aa1b-47c0-bad2-398aa8422936\\\",\\\"revisionId\\\":\\\"e469cb3a-c09a-4faf-8e5c-08908ac84ac9\\\",\\\"purpose\\\":\\\"boundary\\\",\\\"predictedF\\\":\\\"0000\\\",\\\"predictedCout\\\":\\\"1\\\",\\\"reason\\\":\\\"15 加 1 的完整和需要第 5 位；此前观察的来源应保留。\\\",\\\"helpReported\\\":false,\\\"priorSources\\\":[{\\\"requestId\\\":\\\"02019694-da50-4414-b68f-0ddfaff49021\\\",\\\"inputDigest\\\":\\\"fd71985ed380fbaa1f6870cf83e828abf6096dd7c8d30829e39b096237744e4f\\\",\\\"executionRef\\\":\\\"85220213-fcde-45eb-b764-32e97485aff9\\\",\\\"kind\\\":\\\"same-input-observation\\\"}]}\",\"caseRequestId\":\"\",\"Cin\":0,\"enabledBasis\":\"{\\\"requestId\\\":\\\"02019694-da50-4414-b68f-0ddfaff49021\\\",\\\"executionRef\\\":\\\"85220213-fcde-45eb-b764-32e97485aff9\\\",\\\"definitionDigest\\\":\\\"3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d\\\",\\\"activationRevision\\\":1}\",\"feedbackPolicy\":\"live\",\"inputRevision\":3,\"M\":1,\"pendingActivation\":\"\",\"pendingActivationBase\":0,\"pendingActivationRevision\":0,\"reflectionDraft\":\"\",\"reflectionFor\":\"\",\"reflectionParent\":\"\",\"S\":0,\"selectedCase\":\"\",\"selectedCheck\":\"a5c5bb68-4c83-4dd8-9103-61052d61a7e4\",\"selectedCheckBasis\":\"follow:02019694-da50-4414-b68f-0ddfaff49021\",\"selectedObservation\":\"ad23664e-cb42-4b85-9d2a-a5a45b763c09\",\"selectedObservationRevision\":-1,\"waveSelection\":\"{\\\"requestId\\\":\\\"e85e44bc-2067-42c3-a4e4-4cb072459586\\\",\\\"range\\\":{\\\"signalIds\\\":[\\\"experiment.Cout\\\"],\\\"fromTick\\\":\\\"0\\\",\\\"toTick\\\":\\\"2000\\\"}}\"}}"
+              }
+            ],
+            "runtime": {
+              "adapterId": "icarus-alu",
+              "adapterVersion": 1,
+              "bundleIdentity": "f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd",
+              "resources": [
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000020",
+                  "sha256": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+                  "byteLength": 72734,
+                  "path": "ivl.js",
+                  "role": "toolchain-script",
+                  "mediaType": "text/javascript"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000021",
+                  "sha256": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de",
+                  "byteLength": 1771889,
+                  "path": "ivl.wasm",
+                  "role": "toolchain-wasm",
+                  "mediaType": "application/wasm"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000022",
+                  "sha256": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+                  "byteLength": 63593,
+                  "path": "ivlpp.js",
+                  "role": "toolchain-script",
+                  "mediaType": "text/javascript"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000023",
+                  "sha256": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3",
+                  "byteLength": 102963,
+                  "path": "ivlpp.wasm",
+                  "role": "toolchain-wasm",
+                  "mediaType": "application/wasm"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000024",
+                  "sha256": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+                  "byteLength": 71102,
+                  "path": "vvp.js",
+                  "role": "toolchain-script",
+                  "mediaType": "text/javascript"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000025",
+                  "sha256": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430",
+                  "byteLength": 927158,
+                  "path": "vvp.wasm",
+                  "role": "toolchain-wasm",
+                  "mediaType": "application/wasm"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000026",
+                  "sha256": "0e495e931690f2a29e7d5b030bd7988865f92486e37d1ad9a52bd8561f30226b",
+                  "byteLength": 448,
+                  "path": "checksums.txt",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000027",
+                  "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+                  "byteLength": 18092,
+                  "path": "COPYING.icarus",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000028",
+                  "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+                  "byteLength": 5093,
+                  "path": "notices/Emscripten-LICENSE",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000029",
+                  "sha256": "56f7df65203d4858dac19cafe3a84a8c49abaff56b67d32d2d463d5fef6e440b",
+                  "byteLength": 28933,
+                  "path": "notices/Emscripten-AUTHORS",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000030",
+                  "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+                  "byteLength": 16703,
+                  "path": "notices/libcxx-LICENSE",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000031",
+                  "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+                  "byteLength": 16706,
+                  "path": "notices/libcxxabi-LICENSE",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000032",
+                  "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+                  "byteLength": 16708,
+                  "path": "notices/compiler-rt-LICENSE",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000033",
+                  "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+                  "byteLength": 6204,
+                  "path": "notices/musl-COPYRIGHT",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000034",
+                  "sha256": "489d118a901e5717c83338b63d53c47916d2c47d13177e6477b1fcc11438b356",
+                  "byteLength": 3713,
+                  "path": "source/port.py",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000035",
+                  "sha256": "079aad410dbe99ebbbd657af300445ccd5bc7f3ee81826ad93acc2d09800ed70",
+                  "byteLength": 1706,
+                  "path": "source/build-port.sh",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000036",
+                  "sha256": "f5dd9cb60f220650050df09335c0f6709dbf81af4d17e0e1f2575e2fed85d441",
+                  "byteLength": 844,
+                  "path": "source/doctor.sh",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000037",
+                  "sha256": "24afe9de631080e8983f70c61520781f3fb02bcdc7223de30e50edaf6e0b2795",
+                  "byteLength": 1074,
+                  "path": "source/rebuild.sh",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000038",
+                  "sha256": "0c560877a9d532861c198ed28419e437b6525a86b5b046a9f90224c9af7d1744",
+                  "byteLength": 502,
+                  "path": "source/verify-sdk.py",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000039",
+                  "sha256": "e02bd0124e24f8e51f7a219b62e0d1875bdce1b8f99a9c3bc2fda61e0bcb41dd",
+                  "byteLength": 890,
+                  "path": "source/toolchain.lock.json",
+                  "role": "attachment",
+                  "mediaType": "application/json"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000040",
+                  "sha256": "3fb404a05b522de07d18abfdcf6314475f01f1ee8857872fc2a0e4937871ee88",
+                  "byteLength": 19381,
+                  "path": "source/ubuntu-packages.lock",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000041",
+                  "sha256": "54c15f8cae0ee762e304eba6b6b9e7d597c6445fbdac55a3274ca90ab5c9f09f",
+                  "byteLength": 1409,
+                  "path": "source/README.md",
+                  "role": "attachment",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000042",
+                  "sha256": "d5e0d83f7028e2c11c127e16aaa5ab35627b1f4f62abfa982defcf77e8959bc2",
+                  "byteLength": 3176904,
+                  "path": "source/iverilog.tar.gz",
+                  "role": "attachment",
+                  "mediaType": "application/gzip"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000043",
+                  "sha256": "91aed970915d0d5cba388fabeca92e655cc6e24fb15212dfc7ae83bce49cc4a4",
+                  "byteLength": 656,
+                  "path": "single.sv",
+                  "role": "scaffold",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000044",
+                  "sha256": "a14b80a6a3257facb05efc4cc4cc9e2ce3a193f83dadc0f6517faf3f259b8a84",
+                  "byteLength": 377,
+                  "path": "self-check.sv",
+                  "role": "scaffold",
+                  "mediaType": "text/plain"
+                },
+                {
+                  "resourceId": "19200000-0000-4000-8000-000000000045",
+                  "sha256": "2a2ab0a561f93bb9ae12136c699510af1fe8306f0e33d895b2e1a20a9b67e35f",
+                  "byteLength": 1763,
+                  "path": "check.sv",
+                  "role": "scaffold",
+                  "mediaType": "text/plain"
+                }
+              ]
+            },
+            "compile": {
+              "top": "experiment",
+              "entryFiles": [
+                "alu.sv"
+              ],
+              "includeDirs": []
+            },
+            "observation": {
+              "scaffoldResourceId": "19200000-0000-4000-8000-000000000043",
+              "scaffoldVersion": 1,
+              "ports": {
+                "result": "F",
+                "carry": "Cout"
+              },
+              "resultFormat": "xunjie-observations-v1"
+            },
+            "course": {
+              "releaseId": "19200000-0000-4000-8000-000000000203",
+              "behaviorRuleDigest": "27fe184d915cfe707d49ed8607050f975cfc1a7b34c03321063982f4b9dcb3c3",
+              "planDigest": "8fb21a22cee78f382f5e9ec3c792be2bf12d204477d1d9085383cf0354ee2761"
+            },
+            "expected": {
+              "stateContentId": "8eb33cab-a1bb-4c78-9d07-0b203c91701a"
+            }
+          },
+          "limits": {
+            "compileTimeoutMs": 30000,
+            "simulateTimeoutMs": 5000,
+            "jobTimeoutMs": 40000,
+            "memoryMiB": 256,
+            "inputBytes": 1048576,
+            "textBytes": 2097152,
+            "vcdBytes": 8388608,
+            "resultBytes": 16777216,
+            "concurrentJobs": 1,
+            "queuedJobs": 1
+          },
+          "plan": {
+            "planId": "alu-browser",
+            "planVersion": 3,
+            "planDigest": "8fb21a22cee78f382f5e9ec3c792be2bf12d204477d1d9085383cf0354ee2761",
+            "location": "browser",
+            "kind": "job"
+          },
+          "initiator": {
+            "kind": "student",
+            "principalId": "b4ec4efc-5092-4157-8783-8e090be3223c"
+          }
+        }
+      },
+      "query": {
+        "requestId": "95ffe242-277d-499a-9753-91dc029fa9bf",
+        "inputDigest": "018d7b9801893537b7306f513b71d3a6abdfb37cc096ee418e7105361e363a00",
+        "scope": {
+          "environmentId": "113a46ef-618d-4098-ae94-6da731674508",
+          "spaceId": "adc5fd82-ab2f-4f4b-b75c-cf6c28954e69",
+          "principalId": "b4ec4efc-5092-4157-8783-8e090be3223c",
+          "activityId": "c0515e01-62a0-492a-b46f-94092e9c84ce"
+        },
+        "executionRef": "e10466e3-da4e-4c84-a151-3d43a753c101",
+        "state": "failed",
+        "statusKnowledge": "confirmed",
+        "stopRequested": false,
+        "confirmedSeq": 3,
+        "reason": {
+          "code": "budget-exceeded",
+          "detail": "编译未完成"
+        },
+        "output": {
+          "contentId": "25753c3b-370a-4ef0-b90f-ce7ab58e3f21",
+          "output": null,
+          "artifact": {
+            "name": "failure.json",
+            "mediaType": "application/json",
+            "byteLength": 45,
+            "sha256": "78a0d16607e0f0d81f6d2a5151064a8fba16d86b4af620f3c93139c2e5ac617a"
+          }
+        }
+      }
+    }
+  ],
+  "notPassedAsNormalObservation": true
+}

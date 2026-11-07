@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { workFilesSchema } from './learning-data.js';
 import { questionTextSchema, questionReferencesSchema, questionWorkBasisSchema } from './question-drafts.js';
+import { teachingInputDeliverySchema } from './teaching-inputs.js';
 
 export const actionReceiverSchema = z.object({ receiverId: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,159}$/),
   location: z.enum(['remote', 'local']), kind: z.enum(['question', 'submission', 'execution']) }).strict();
@@ -11,7 +12,8 @@ export const actionEvidenceSchema = z.object({ ownerServiceId: z.uuid(), recordI
   revision: z.number().int().positive(), kind: z.enum(['observation', 'submission', 'guidance']) }).strict();
 export const actionScopeSchema = z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid(), activityId: z.uuid() }).strict();
 export const actionInputSchema = z.object({ requestId: z.uuid(), scope: actionScopeSchema, receiver: actionReceiverSchema,
-  draft: actionDraftSchema, works: workFilesSchema, evidence: z.array(actionEvidenceSchema).max(64) }).strict()
+  draft: actionDraftSchema, works: workFilesSchema, evidence: z.array(actionEvidenceSchema).max(64),
+  delivery: teachingInputDeliverySchema.optional() }).strict()
   .refine(value => JSON.stringify(value).length <= 4000000, { message: 'fixed action input exceeds its supported recovery envelope' });
 export type ActionInput = z.infer<typeof actionInputSchema>;
 export type ActionReceiverIdentity = z.infer<typeof actionReceiverSchema>;

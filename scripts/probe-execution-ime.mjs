@@ -86,7 +86,7 @@ try {
     formatVersion: 1, requestId: randomUUID(),
     course: { courseId, name: '输入法候选验收' },
     task: { taskId, title: '系统中文输入法候选', summary: '物理键击组字并选择候选后计算' },
-    release: {
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
       releaseId, objectives: ['系统输入法候选上屏进入计算'], requirements: '用系统中文输入法填写表格后运行计算。',
       starterWorks: [], capabilities: [],
       components: [{ key: 'table', definition, configuration: { title: '表格聚合' }, materialIds: [] }],

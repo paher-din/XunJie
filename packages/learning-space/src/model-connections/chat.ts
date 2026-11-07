@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { modelUsageSchema } from '@xunjie/contracts/model-connections';
 import { createChatAssembler, compileOutputSchema, chatSensitiveValues } from './chat-native.js';
-import { createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
+import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts } from './upstream-facts.js';
 
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
@@ -16,8 +16,10 @@ export function checkPayload(configuration: ModelConfiguration, maxOutputTokens:
     ...(configuration.dialect === 'deepseek' ? { thinking: { type: configuration.parameterMode === 'thinking' ? 'enabled' : 'disabled' } } : {}) };
 }
 export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
-  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>, requestFetch: typeof fetch = fetch) {
+  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void) {
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
+  const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const chunks: unknown[] = [];
   const assembler = createChatAssembler(configuration.dialect);
   let text = '', finishReason: string | null = null, bytes = 0, usage: ModelUsage = { state: 'unknown' };
@@ -50,7 +52,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       const choice = value.choices.find(item => item.index === 0);
       if (choice && (!choice.delta || choice.delta.content != null && typeof choice.delta.content !== 'string'
         || choice.finish_reason != null && typeof choice.finish_reason !== 'string')) throw new MalformedResponse();
-      if (choice?.delta.content) text += choice.delta.content;
+      if (choice?.delta.content) { text += choice.delta.content; progress?.(text); }
       if (choice?.finish_reason) finishReason = choice.finish_reason;
       if (value.usage) {
         const native = value.usage;

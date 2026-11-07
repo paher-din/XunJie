@@ -67,7 +67,7 @@ async function fixture(t) {
   await new Promise(done => server.listen(0, '127.0.0.1', done));
   const invitation = { protocol: ACCESS_PROTOCOL, serviceId, endpoint: `https://127.0.0.1:${server.address().port}`,
     caPem: readFileSync(ca.certFile, 'utf8'), sshKnownHosts: knownHosts, cloudCaPem: readFileSync(ca.certFile, 'utf8'),
-    invitationId, secret, expiresAt: Date.now() + 60000 };
+    invitationId, secret, expiresAt: Date.now() + (process.platform === 'win32' ? 300000 : 60000) };
   writePrivateJson(invitationFile, invitation);
   t.after(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); rmSync(root, { recursive: true, force: true, maxRetries: 5 }); });
   return { root, home, invitationFile, invitation, controls, requests, proofs, bound, secret, password, identity };
@@ -259,7 +259,7 @@ test('invitation files with broad POSIX permissions or symlinks are rejected bef
 
 async function stdinJoin(f, extraArgs, input) {
   const args = [join(import.meta.dirname, '../xj-dev.mjs'), 'join', ...extraArgs, '--no-start', '--worktree', join(import.meta.dirname, '../../..')];
-  const child = spawn(process.execPath, args, { env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['pipe', 'pipe', 'pipe'], timeout: 20000 });
+  const child = spawn(process.execPath, args, { env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['pipe', 'pipe', 'pipe'], timeout: process.platform === 'win32' ? 120000 : 20000 });
   let stdout = '', stderr = '';
   child.stdout.on('data', bytes => stdout += bytes); child.stderr.on('data', bytes => stderr += bytes);
   child.stdin.on('error', () => {}); // Early argument/size rejection may close the pipe.

@@ -43,7 +43,7 @@ test('historical checkpoints remain discoverable beyond recent sessions and boun
     const binding = { key: 'accumulator', definition, configuration: { title: '四态累加模拟' }, materialIds: [] };
     const course = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '有状态会话验收样例' },
       task: { taskId, title: '观察四态累加', summary: '' },
-      release: { releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
         starterWorks: [], capabilities: [], components: [binding], materials: [] }, resources: [] };
     assert.equal((await api('manage/course-import', course, admin)).status, 200);
     const password = randomUUID();

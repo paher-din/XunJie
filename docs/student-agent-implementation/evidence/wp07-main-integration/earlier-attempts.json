@@ -1,0 +1,20 @@
+{
+  "countedAsPassed": false,
+  "attempts": [
+    {
+      "boundary": "first complete verify",
+      "result": "failed: 990/991 Web tests; obsolete submitted.length===1 in completion helper",
+      "fix": "retain compare() per-submission wait and all read-only assertions; remove duplicate fixed-count wait"
+    },
+    {
+      "boundary": "independent tool Wait recovery",
+      "result": "ERR_UNSUPPORTED_RESOLVE_REQUEST: ./errors from data: module; reproduced twice",
+      "fix": "bundle the production algorithm and its real dependencies before loading; unchanged published Wasm"
+    },
+    {
+      "boundary": "ALU recovery Chrome probes",
+      "result": "two attempts failed at the obsolete or hidden read-only status selector after 6 completed cases; owned roots cleaned",
+      "fix": "select the ALU tab before checking its read-only status; disabled, zero-worker and zero-write assertions retained"
+    }
+  ]
+}

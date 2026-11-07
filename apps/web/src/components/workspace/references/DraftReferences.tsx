@@ -4,6 +4,7 @@ import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts'
 import type { ReliableQuestionDraft } from '../../../reliable-workspace/draft'
 import type { ReliableActions } from '../../../reliable-workspace/actions'
 import { isExecutionAction } from '@xunjie/contracts/execution'
+import type { ActionInput } from '@xunjie/contracts/action-intents'
 import { snapshotReference, type ReferenceSelection, type ReferenceSource, type WorkspaceReference } from './model'
 import { ReferencesContext, type ReferencesController } from './WorkspaceReferences'
 
@@ -15,12 +16,13 @@ function displayReferences(references: readonly QuestionReferenceInput[], worksp
     text: reference.copy, source: reference.source,
     range: Object.freeze({ ...reference.range }) }))
 }
-export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode }
+export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode
+  delivery?: ActionInput['delivery']; deliveryReady?: boolean; onCreated?: () => void }
 /** Production host consumes the common workspace; availability comes only from registered receivers. */
 export function DraftReferencesProvider(props: DraftReferencesProviderProps) {
   return <DraftReferencesSession key={props.workspaceKey} {...props} />
 }
-function DraftReferencesSession({ workspaceKey, draft, actions, children }: DraftReferencesProviderProps) {
+function DraftReferencesSession({ workspaceKey, draft, actions, children, delivery, deliveryReady = true, onCreated }: DraftReferencesProviderProps) {
   const state = useSyncExternalStore(draft.subscribe, draft.snapshot)
   const actionState = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const receiver = actionState.receivers.find(item => item.kind === 'question')
@@ -110,6 +112,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   }
   const submit = async () => {
     if (!receiver || !actionState.ready) { setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。'); return }
+    if (!deliveryReady) { setNotice('正在核对本次发送方式，原问题与引用仍保留。'); return }
     if (creating.current || !draft.snapshot().question.trim()) return
     creating.current = true; setBusy(true)
     try {
@@ -124,7 +127,8 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
       const previous = items.find(item => item.input.requestId === remembered)
       const requestId = remembered && !previous ? remembered : crypto.randomUUID()
       actionIds.current.set(token, requestId)
-      await actions.create({ requestId, receiver })
+      await actions.create({ requestId, receiver, ...(delivery && receiver.receiverId.startsWith('teaching-agent:') ? { delivery } : {}) })
+      onCreated?.()
       setNotice('已保留这次问题，可继续编辑；接收情况见下方记录。')
     } catch { setNotice('这次问题尚未可靠保留，未继续派发。请保留此页，原文仍可复制。') }
     finally { creating.current = false; setBusy(false) }

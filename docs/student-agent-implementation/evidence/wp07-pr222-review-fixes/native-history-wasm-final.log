@@ -1,0 +1,15 @@
+✔ long histories, large inputs and saved 1M windows are used without probe limits (6455.341208ms)
+✔ a new model configuration reconstructs the question behind a prior explicit answer (2668.40875ms)
+▶ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+  ✔ paused (4372.058916ms)
+  ✔ stopped (4051.993ms)
+✔ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane (8424.604041ms)
+✔ a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run (3350.060166ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21602.549916

@@ -1,0 +1,52 @@
+{
+  "kind": "cross-machine-recovery-client",
+  "phase": "after",
+  "measuredAt": "2026-11-07T09:43:28.563Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the retired source client namespace is rejected over cross-machine HTTPS",
+      "detail": {
+        "status": 403
+      }
+    },
+    {
+      "name": "the original response and revised FIFO input continue through the restored school",
+      "detail": {
+        "runs": [
+          {
+            "runId": "290e8ad4-f70e-4a4c-86ce-5869751e58dc",
+            "state": "completed"
+          },
+          {
+            "runId": "5b752de8-03f7-46a9-bf7a-3e495b58bf1c",
+            "state": "completed"
+          }
+        ],
+        "adoptedInputId": "ec0ad3f3-b29c-448f-9fab-9f2132d37cce",
+        "newNamespace": "xunjie.v1.f69b48b6-2329-4396-8fe7-78d73da985d4.recovery.1f70f2dc-8bf9-47dd-bef4-49b509c22c03"
+      }
+    }
+  ],
+  "facts": {
+    "runs": [
+      {
+        "runId": "290e8ad4-f70e-4a4c-86ce-5869751e58dc",
+        "state": "completed"
+      },
+      {
+        "runId": "5b752de8-03f7-46a9-bf7a-3e495b58bf1c",
+        "state": "completed"
+      }
+    ],
+    "adoptedInputId": "ec0ad3f3-b29c-448f-9fab-9f2132d37cce",
+    "newNamespace": "xunjie.v1.f69b48b6-2329-4396-8fe7-78d73da985d4.recovery.1f70f2dc-8bf9-47dd-bef4-49b509c22c03"
+  },
+  "status": "passed"
+}

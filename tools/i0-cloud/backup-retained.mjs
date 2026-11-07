@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { closeSync, constants, copyFileSync, cpSync, createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,31 @@ const sha256File = path => createHash('sha256').update(readFileSync(path)).diges
 const utcStamp = date => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 
 class BackupError extends Error {}
+
+// This maintenance helper is also installed standalone. Protect its newly owned
+// plaintext staging and output directories without importing developer tooling.
+function privateDirectory(path) {
+  mkdirSync(path, { recursive: true, mode: 0o700 });
+  const stat = lstatSync(path);
+  require(stat.isDirectory() && !stat.isSymbolicLink(), 'PRIVATE_DIRECTORY_REQUIRED');
+  if (process.platform !== 'win32') return;
+  const script = `
+$ErrorActionPreference = 'Stop'
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$sid = $identity.User
+$acl = [IO.Directory]::GetAccessControl($env:XJ_BACKUP_DIRECTORY)
+$owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+if ($owner -ne $sid.Value -and $owner -ne $identity.Owner.Value) { throw 'owner' }
+$acl = New-Object Security.AccessControl.DirectorySecurity
+$acl.SetOwner($sid)
+$acl.SetAccessRuleProtection($true, $false)
+$acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit, ObjectInherit', 'None', 'Allow')))
+[IO.Directory]::SetAccessControl($env:XJ_BACKUP_DIRECTORY, $acl)
+`;
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+    { env: { ...process.env, XJ_BACKUP_DIRECTORY: path }, stdio: 'ignore', windowsHide: true, timeout: 15000 });
+  require(result.status === 0, 'PRIVATE_DIRECTORY_REQUIRED');
+}
 
 function require(condition, code) {
   if (!condition) throw new BackupError(code);
@@ -150,18 +175,19 @@ export async function createEncryptedBackup(options) {
   const addDirectory = (source, path) => {
     for (const file of walkFiles(source)) {
       if (/-(?:wal|shm|journal)$/.test(file)) continue;
-      add(file, path + '/' + relative(source, file).split('\\').join('/'), databaseName(file) || isDatabase(file));
+      add(file, path + '/' + relative(source, file).split(sep).join('/'), databaseName(file) || isDatabase(file));
     }
   };
   add(settings.courseDatabaseFile, 'course/synthetic.sqlite', true);
   if (settings.personalModelsDirectory) addDirectory(settings.personalModelsDirectory, 'personal-models');
   for (const item of settings.databases ?? []) { const entry = namedSource(item); add(entry.source, entry.path, true); }
   for (const item of settings.directories ?? []) { const entry = namedSource(item); addDirectory(entry.source, entry.path); }
-  for (const file of settings.extraFiles) add(file, 'extra/' + file.split('/').pop(), false);
+  for (const file of settings.extraFiles) add(file, 'extra/' + basename(file), false);
   for (const item of settings.recoveryFiles ?? []) { const entry = namedSource(item); add(entry.source, entry.path, false); }
   const staging = mkdtempSync(join(tmpdir(), 'xunjie-backup-'));
   const contents = [];
   try {
+    privateDirectory(staging);
     for (const entry of plan) {
       const target = join(staging, entry.path);
       mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
@@ -179,7 +205,7 @@ export async function createEncryptedBackup(options) {
     if (spawnSync('tar', ['-czf', plain, '-C', staging, ...new Set(contents.map(entry => entry.path.split('/')[0])), 'backup-manifest.json'],
       { stdio: ['ignore', 'ignore', 'pipe'] }).status !== 0) throw new BackupError('TARBALL_FAILED');
 
-    mkdirSync(settings.outputDirectory, { recursive: true, mode: 0o700 });
+    privateDirectory(settings.outputDirectory);
     const archive = join(settings.outputDirectory,
       `${label}-${utcStamp(new Date())}-${createHash('sha256').update(String(process.hrtime.bigint())).digest('hex').slice(0, 8)}${ARCHIVE_SUFFIX}`);
     await encryptFile(plain, archive, keyFile);
@@ -227,6 +253,7 @@ export async function restoreEncryptedBackup(options) {
     decipher.setAuthTag(tag);
     const staging = mkdtempSync(join(tmpdir(), 'xunjie-restore-'));
     try {
+      privateDirectory(staging);
       const plain = join(staging, 'archive.tar.gz');
       await pipeline(
         createReadStream(restore, { start: 0, end: size - header.length - 1 }),
@@ -234,7 +261,7 @@ export async function restoreEncryptedBackup(options) {
         createWriteStream(plain));
       const listing = spawnSync('tar', ['-tzf', plain], { encoding: 'utf8' });
       require(listing.status === 0, 'ARCHIVE_CORRUPT');
-      const names = listing.stdout.trim().split('\n').filter(Boolean);
+      const names = listing.stdout.trim().split(/\r?\n/).filter(Boolean);
       require(names.every(name => !name.startsWith('/') && !name.split('/').includes('..')), 'ARCHIVE_UNSAFE_PATHS');
       const extracted = join(staging, 'extracted');
       mkdirSync(extracted);
@@ -251,7 +278,7 @@ export async function restoreEncryptedBackup(options) {
         require(existsSync(path) && lstatSync(path).isFile() && !lstatSync(path).isSymbolicLink()
           && sha256File(path) === entry.sha256, 'ARCHIVE_FILE_DIGEST_MISMATCH');
       }
-      require(walkFiles(extracted).every(file => expectedFiles.has(relative(extracted, file).split('\\').join('/'))), 'ARCHIVE_UNLISTED_FILE');
+      require(walkFiles(extracted).every(file => expectedFiles.has(relative(extracted, file).split(sep).join('/'))), 'ARCHIVE_UNLISTED_FILE');
       const Driver = loadDriver(teachingRoot);
       const verified = [];
       for (const entry of manifest.files) {
@@ -264,7 +291,7 @@ export async function restoreEncryptedBackup(options) {
           verified.push(entry.path);
         } finally { db.close(); }
       }
-      mkdirSync(target, { recursive: true, mode: 0o700 });
+      privateDirectory(target);
       for (const entry of readdirSync(extracted)) {
         // A recovery target can be on another volume. These are verified,
         // offline files; copying preserves that support without invoking mv.

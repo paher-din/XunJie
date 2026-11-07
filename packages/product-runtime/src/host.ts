@@ -6,8 +6,8 @@ import type { Socket } from 'node:net';
 import { extname, join, resolve, sep } from 'node:path';
 import type { RuntimeDependencyStatus, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority, createOutboundConnection } from './connections.js';
-import type { CapabilityHandler } from './connections.js';
-import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson } from './io.js';
+import type { CapabilityHandler, SourceFenceProof } from './connections.js';
+import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson, withLock } from './io.js';
 import { createMaintenanceCoordinator } from './maintenance.js';
 import type { MaintenanceParticipant } from './maintenance.js';
 import { inspectDatabase, resolveCredential, startDatabase, stopDatabase } from './postgres.js';
@@ -15,6 +15,8 @@ import type { InstalledConfiguration } from './runtime.js';
 import { openProductRuntime } from './runtime.js';
 import { createRecoveryManager, RecoveryError } from './recovery.js';
 import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
+import { recordRecoverySuccession } from './recovery-successions.js';
+import { validateAgentTransfers } from './agent-transfer-journal.js';
 import { createSshRecoveryReceiver } from './ssh-recovery.js';
 import type { SshRecoveryReceiver } from './ssh-recovery.js';
 import type { BackupPolicy, ReceiverExecutionBoundary, RecoveryOwner } from './recovery-types.js';
@@ -33,11 +35,13 @@ export interface ProductHostOptions {
     /** The owning application identifies received browser commands without exposing its tables. */
     hasReceivedBrowserExecution?(activityId: string, requestId: string): Promise<boolean>;
     capabilities?: Readonly<Record<string, CapabilityHandler>>;
+    serviceCapabilities?: Readonly<Record<string, Readonly<Record<string, CapabilityHandler>>>>;
     /** Host facts an operator must be able to read before asking this node to run anything. */
     facts?: () => Promise<readonly RuntimeDependencyStatus[]>;
     lifecycle?: { pause(): Promise<void>; resume(): Promise<void>; close(): Promise<void> };
     poll?(isOpen: () => boolean): Promise<void>;
     modelTask?(input: unknown): Promise<unknown>;
+    authorizedSource?(targetServiceId: string, source: Omit<import('./connections.js').ConnectionGrant, 'token'>): Promise<void>;
     handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
   } | undefined>;
 }
@@ -75,8 +79,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
   const isolatedMode = async () => await exists(join(root, 'recovery-state.json'))
     && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
-  if (environment.profile !== 'school' && (!['127.0.0.1', '::1'].includes(config.host)
+  if (!['school', 'agent'].includes(environment.profile) && (!['127.0.0.1', '::1'].includes(config.host)
     || !['127.0.0.1', '[::1]', 'localhost'].includes(new URL(environment.services[0]!.endpoint).hostname))) throw new Error('Device profiles require a loopback listener and endpoint.');
+  if (!['127.0.0.1', '::1'].includes(config.host)
+    && (!config.tls || new URL(environment.services[0]!.endpoint).protocol !== 'https:')) throw new Error('A shared listener requires HTTPS.');
+  if (environment.profile === 'agent' && config.database.mode === 'none') throw new Error('The agent profile requires PostgreSQL.');
   if (!config.installed) { await releaseOnce(); throw new Error('Product is uninstalled.'); }
   const service = environment.services[0]!;
   const endpoint = service.endpoint;
@@ -104,7 +111,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     },
   });
   const runtimeParticipant: MaintenanceParticipant = {
-    descriptor: { serviceId: service.serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: ['installation'] },
+    descriptor: { serviceId: service.serviceId, schemaVersion: '2', resourceRoots: [], configurationRefs: ['installation'] },
     async closeWrites() { gatesClosed = true; },
     async closeDispatch() { gatesClosed = true; await application?.lifecycle?.pause(); },
     async drain() {
@@ -115,7 +122,10 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         await new Promise(resolve => setTimeout(resolve, 10));
       }
     },
-    async validate() { if (config.database.mode !== 'none') await inspectDatabase(root, config.database); },
+    async validate() {
+      if (config.database.mode !== 'none') await inspectDatabase(root, config.database);
+      await validateAgentTransfers(root);
+    },
     async resume() {
       if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
       gatesClosed = false;
@@ -132,6 +142,12 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       .map(item => `${item.target.environmentId}/${item.target.serviceId}`),
     owners: [createRuntimeRecoveryOwner({ root, participant: runtimeParticipant,
       requiredServiceIds: maintenance.status().participants.map(item => item.serviceId) }), ...suppliedOwners],
+    prepareActivation: receiverIds => withLock(root, async () => {
+      const fenced = new Set(receiverIds);
+      const installed = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+      await atomicJson(join(root, 'installation.json'), { ...installed,
+        connections: installed.connections.filter(item => !fenced.has(`${item.target.environmentId}/${item.target.serviceId}`)) });
+    }),
   });
   let scheduler: ReturnType<typeof setInterval> | undefined;
   let applicationPoll: ReturnType<typeof setInterval> | undefined;
@@ -194,18 +210,23 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     return { state, environment, endpoint, dependencies, ...(reason ? { reason } : {}) };
   }
 
-  const applicationCapabilities = Object.keys(application?.capabilities ?? {});
-  service.capabilities = ['runtime.status', ...applicationCapabilities];
+  const authorities = new Map<string, ReturnType<typeof createConnectionAuthority>>();
+  for (const target of environment.services) {
+    const handlers = { ...(target.serviceId === service.serviceId ? application?.capabilities : {}),
+      ...application?.serviceCapabilities?.[target.serviceId] };
+    const applicationHandlers = Object.fromEntries(Object.entries(handlers).filter(([name]) => name !== 'runtime.status')
+      .map(([name, handler]) => [name, async (...args: Parameters<CapabilityHandler>) => {
+        activeApplicationRequests++;
+        try {
+          if (stopping || await authorityClosed()) throw new RecoveryError('maintenance');
+          return await handler(...args);
+        } finally { activeApplicationRequests--; }
+      }]));
+    target.capabilities = ['runtime.status', ...Object.keys(applicationHandlers)];
+    authorities.set(target.serviceId, createConnectionAuthority({ root, service: target,
+      handlers: { ...applicationHandlers, 'runtime.status': () => status() } }));
+  }
   await atomicJson(join(root, 'environment.json'), environment);
-  const applicationHandlers = Object.fromEntries(Object.entries(application?.capabilities ?? {}).map(([name, handler]) =>
-    [name, async (...args: Parameters<CapabilityHandler>) => {
-      activeApplicationRequests++;
-      try {
-        if (stopping || await authorityClosed()) throw new RecoveryError('maintenance');
-        return await handler(...args);
-      } finally { activeApplicationRequests--; }
-    }]));
-  const authority = createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status(), ...applicationHandlers } });
   async function publicRequest(request: IncomingMessage, response: ServerResponse) {
     const pathname = new URL(request.url ?? '/', 'http://runtime.invalid').pathname;
     if (request.method === 'GET' && pathname === '/runtime/environment') { send(response, 200, environment); return; }
@@ -244,7 +265,12 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     if (await authorityClosed() && (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/'))) {
       send(response, 503, { error: 'maintenance' }); return;
     }
-    if (await authority.handle(request, response)) return;
+    if (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/')) {
+      const targetId = request.headers['x-runtime-target-service-id'];
+      const target = typeof targetId === 'string' ? authorities.get(targetId) : undefined;
+      if (!target) { send(response, 409, { error: 'target_identity_mismatch' }); return; }
+      if (await target.handle(request, response)) return;
+    }
     if (!['GET', 'HEAD'].includes(request.method ?? '') || pathname.startsWith('/runtime/')) { send(response, 404, { error: 'not_found' }); return; }
     const relative = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).slice(1);
     const webRoot = await realpath(config.resources.webRoot);
@@ -288,7 +314,13 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         let result: unknown;
         if (action === 'authorize-capability') {
           if (await authorityClosed()) throw new RecoveryError('maintenance');
-          result = await authority.authorize(input);
+          const target = authorities.get(input.targetServiceId);
+          if (!target) throw new RecoveryError('target-identity-mismatch');
+          const grant = await target.authorize(input.authorization);
+          const { token, ...source } = grant;
+          try { await application?.authorizedSource?.(input.targetServiceId, source); }
+          catch (error) { await target.revoke(grant.grantId); throw error; }
+          result = grant;
         }
         else if (action === 'model-task') {
           if (await authorityClosed() || !application?.modelTask) throw new RecoveryError('maintenance');
@@ -316,17 +348,35 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         } else if (action === 'resume') result = await recovery.resume();
         else if (action === 'retire') result = await recovery.retire(input);
         else if (action === 'fence-source') {
+          const validId = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
+          const sourceServiceIds = input.sourceServiceIds ?? [input.sourceServiceId];
+          if (!validId(input.sourceEnvironmentId) || !validId(input.sourceServiceId)
+            || input.sourceInstallationId !== undefined && !validId(input.sourceInstallationId)
+            || !Array.isArray(sourceServiceIds) || !sourceServiceIds.length || sourceServiceIds.length > 100
+            || !sourceServiceIds.includes(input.sourceServiceId) || sourceServiceIds.some(id => !validId(id)))
+            throw new RecoveryError('invalid-source-services');
+          if ((input.backupId !== undefined || input.targetInstallationId !== undefined)
+            && (!validId(input.backupId) || !validId(input.targetInstallationId) || !validId(input.sourceInstallationId)))
+            throw new RecoveryError('invalid-identity');
           // Fence admission first. Closing this receiver's actual owners then waits for the
           // asynchronous effects that outlive a capability handler. On failure remain closed;
           // never turn a handler-only acknowledgement into an execution-safety proof.
-          const proof = await authority.fenceSource(input);
-          const reopen = maintenance.status().phase === 'open';
-          if (reopen || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
+          const boundTakeover = input.backupId && input.sourceInstallationId && input.targetInstallationId;
+          const reopen = maintenance.status().phase === 'open'
+            || maintenance.status().reason === 'receiver-fence' && Boolean(boundTakeover);
+          gatesClosed = true;
+          if (maintenance.status().phase === 'open' || maintenance.status().phase === 'failed') await maintenance.enter('receiver-fence');
           await maintenance.validate();
+          let proof: SourceFenceProof | undefined;
+          for (const serviceId of new Set<string>(sourceServiceIds)) for (const target of authorities.values()) {
+            const confirmed = await target.fenceSource({ ...input, sourceServiceId: serviceId });
+            if (serviceId === input.sourceServiceId) proof = confirmed;
+          }
           const boundaryAt = new Date().toISOString();
           const services: ReceiverExecutionBoundary['services'] = [];
           for (const owner of suppliedOwners) {
-            const material = await owner.material({ backupId: input.backupId ?? input.sourceInstallationId ?? input.sourceEnvironmentId,
+            const readMaterial = owner.receiverMaterial ?? owner.material;
+            const material = await readMaterial.call(owner, { backupId: input.backupId ?? input.sourceInstallationId ?? input.sourceEnvironmentId,
               boundaryAt, signal: AbortSignal.timeout(30000) });
             if (material.serviceId !== owner.participant.descriptor.serviceId || material.boundaryAt !== boundaryAt
               || material.source.environmentId !== environment.environmentId
@@ -340,6 +390,10 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           if (JSON.stringify(services.map(item => item.serviceId).sort()) !== JSON.stringify(expectedOwners))
             throw new RecoveryError('missing-receiver-boundary-owner');
           const execution: ReceiverExecutionBoundary = { formatVersion: 1, boundaryAt, services, unresolved: 0, blocking: 0 };
+          if (input.backupId && input.sourceInstallationId && input.targetInstallationId) for (const serviceId of new Set<string>(sourceServiceIds)) {
+            await recordRecoverySuccession(root, { formatVersion: 1, backupId: input.backupId, sourceEnvironmentId: input.sourceEnvironmentId,
+              sourceServiceId: serviceId, sourceInstallationId: input.sourceInstallationId, targetInstallationId: input.targetInstallationId });
+          }
           if (reopen) await maintenance.resume();
           result = { ...proof, execution };
         }
@@ -354,10 +408,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
               // Every source service identity is fenced at each receiving authority. The retired
               // installation is fenced, not the whole environment, so a successor installation can
               // still be authorized and connected.
-              let execution: ReceiverExecutionBoundary | undefined;
-              for (const serviceId of sourceServiceIds) execution = (await receiverRuntime.recovery.fenceSource({
-                sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: serviceId,
-                sourceInstallationId: sourceEnvironment.installationId, ...binding,
+              const execution = (await receiverRuntime.recovery.fenceSource({
+                sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: sourceServiceIds[0]!,
+                sourceInstallationId: sourceEnvironment.installationId, sourceServiceIds, ...binding,
               })).execution;
               // The proof names the installation that was really fenced, so the takeover cannot
               // accept an acknowledgement for a different source or a partial service set.
@@ -367,20 +420,6 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
                 sourceServiceIds: [...sourceServiceIds], execution };
             } })),
           });
-          // The grants held by this installation were retired together with the source instance, so
-          // connections to those receivers are void. Keeping them would make readiness report a
-          // dependency that can never return without a fresh authorization for this installation.
-          const fencedReceivers = new Set(receivers.map(receiver => receiver.id));
-          const installed = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
-          const dropped = installed.connections.filter(item => fencedReceivers.has(`${item.target.environmentId}/${item.target.serviceId}`));
-          if (dropped.length) {
-            const droppedIds = new Set(dropped.map(item => item.connectionId));
-            // The credential reference is retained for audit; only the void connection is removed.
-            await atomicJson(join(root, 'installation.json'), { ...installed,
-              connections: installed.connections.filter(item => !droppedIds.has(item.connectionId)) });
-            const state = await readJson<Record<string, unknown>>(join(root, 'recovery-state.json'));
-            await atomicJson(join(root, 'recovery-state.json'), { ...state, fencedConnections: [...droppedIds] });
-          }
         } else throw new RecoveryError('unknown-action');
         send(response, 200, result); return;
       } catch (error) {
@@ -479,7 +518,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
           activeApplicationRequests--;
           polling = false;
         });
-      }, 10_000);
+      }, 250);
       applicationPoll.unref();
     }
     return { status, stop, maintenance, recovery, environment, endpoint };

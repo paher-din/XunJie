@@ -1,0 +1,48 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "after",
+  "measuredAt": "2026-11-07T11:10:32.990Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the retired source device namespace is rejected over cross-machine HTTPS",
+      "detail": {
+        "status": 403
+      }
+    },
+    {
+      "name": "the original learning action, work and draft survive the hybrid cross-machine takeover",
+      "detail": {
+        "intentRequestId": "90883684-0c20-4469-8a83-88c9ae542ab6",
+        "fileObjectId": "425ce634-8f3f-4e5e-87ae-f844d7b17e60",
+        "draftId": "53b8b6f2-c65b-4de7-ac03-047af3f633a2"
+      }
+    },
+    {
+      "name": "a new learning action is prepared through the restored hybrid device",
+      "detail": {
+        "preserved": true,
+        "oldNamespaceStatus": 403,
+        "preservedIntentState": "prepared",
+        "newIntentRequestId": "acb5f2ee-9d67-4df1-9ed1-c0da0955ef93",
+        "newIntentState": "prepared",
+        "newNamespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6.recovery.84280b1b-1ef6-4b52-a725-c5353f80fedf"
+      }
+    }
+  ],
+  "facts": {
+    "preserved": true,
+    "oldNamespaceStatus": 403,
+    "preservedIntentState": "prepared",
+    "newIntentRequestId": "acb5f2ee-9d67-4df1-9ed1-c0da0955ef93",
+    "newIntentState": "prepared",
+    "newNamespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6.recovery.84280b1b-1ef6-4b52-a725-c5353f80fedf"
+  },
+  "status": "passed"
+}

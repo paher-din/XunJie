@@ -1,0 +1,370 @@
+{
+  "formatVersion": 1,
+  "recordedAt": "2026-11-06T11:04:18.559Z",
+  "issue": "https://github.com/paher-din/XunJie/issues/199",
+  "branch": "wp07",
+  "implementationBase": "0db776529d9d72756ca9385e42533f1df41b4156",
+  "productCodeCommit": "e0e2fcdb4eb4f32cb893b1a2e659e7b006fb74f9",
+  "environment": {
+    "os": "Windows 11 x64",
+    "version": "10.0.26200",
+    "cpu": "Intel Core Ultra 9 275HX",
+    "chrome": "157.0.8103.38",
+    "browser": "installed desktop Chrome; headed; one worker",
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "distribution": "18.6.1"
+  },
+  "engineering": {
+    "preparation": {
+      "passed": 4,
+      "total": 4
+    },
+    "fullLocalRun": {
+      "status": "failed",
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "passed",
+          "totalFiles": 4,
+          "passedFiles": 4,
+          "failedFiles": []
+        },
+        {
+          "name": "build:test",
+          "status": "passed",
+          "totalFiles": 1,
+          "passedFiles": 1,
+          "failedFiles": []
+        },
+        {
+          "name": "unit",
+          "status": "failed",
+          "totalFiles": 27,
+          "passedFiles": 21,
+          "failedFiles": [
+            "scripts/build.test.mjs",
+            "scripts/ci-build-artifact.test.mjs",
+            "scripts/verify.test.mjs",
+            "packages/product-runtime/test/lifecycle.test.mjs",
+            "packages/product-runtime/test/recovery-files.test.mjs",
+            "packages/storage/test/blobs.test.mjs"
+          ]
+        },
+        {
+          "name": "server",
+          "status": "failed",
+          "totalFiles": 88,
+          "passedFiles": 33,
+          "failedFiles": [
+            "apps/server/server/tutoring/test/index.test.ts",
+            "apps/server/server/tutoring/test/learner-analysis.test.ts",
+            "apps/server/server/tutoring/test/openai-compatible.test.ts",
+            "apps/server/server/tutoring/test/real-model-support.test.ts",
+            "apps/server/server/tutoring/test/student-help.test.ts",
+            "apps/server/server/workspace/a5-consumption.test.ts",
+            "apps/server/server/workspace/editor-diagnostics.test.ts",
+            "apps/server/server/workspace/hdl.test.ts",
+            "apps/server/server/workspace/integration.test.ts",
+            "apps/server/server/workspace/job-composition.test.ts",
+            "apps/server/server/workspace/limited-check.test.ts",
+            "apps/server/server/workspace/review.test.ts",
+            "apps/server/server/workspace/runs.test.ts",
+            "apps/server/server/workspace/submissions.test.ts",
+            "apps/server/server/workspace/workspace.test.ts",
+            "apps/server/tests/a5-feedback.test.ts",
+            "apps/server/tests/a5-followup.test.ts",
+            "apps/server/tests/access.test.ts",
+            "apps/server/tests/account-control.test.ts",
+            "apps/server/tests/app.test.ts",
+            "apps/server/tests/application-database.test.ts",
+            "apps/server/tests/design-activities.test.ts",
+            "apps/server/tests/design-agent.test.ts",
+            "apps/server/tests/design-checks.test.ts",
+            "apps/server/tests/design-draft.test.ts",
+            "apps/server/tests/design-material.test.ts",
+            "apps/server/tests/design-projection.test.ts",
+            "apps/server/tests/design-storage.test.ts",
+            "apps/server/tests/display-metadata.test.ts",
+            "apps/server/tests/dl-a-app.test.ts",
+            "apps/server/tests/dl-a-hdl-help.test.ts",
+            "apps/server/tests/durability.test.ts",
+            "apps/server/tests/errors.test.ts",
+            "apps/server/tests/execution-nodes.test.ts",
+            "apps/server/tests/model-capability-images.test.mjs",
+            "apps/server/tests/model-consumer.test.ts",
+            "apps/server/tests/model-messages-review.test.mjs",
+            "apps/server/tests/model-network-policy.test.mjs",
+            "apps/server/tests/model-protocol-review.test.mjs",
+            "apps/server/tests/model-sensitive-boundary.test.mjs",
+            "apps/server/tests/native-isolation.test.mjs",
+            "apps/server/tests/native-session.test.mjs",
+            "apps/server/tests/records-adapter-performance.test.ts",
+            "apps/server/tests/records-adapter.test.ts",
+            "apps/server/tests/review.test.ts",
+            "apps/server/tests/semantic-references.test.mjs",
+            "apps/server/tests/session-checkpoints.test.mjs",
+            "apps/server/tests/session-store.test.ts",
+            "apps/server/tests/startup.test.ts",
+            "apps/server/tests/teacher-design-budget.test.ts",
+            "apps/server/tests/teacher-workflow.test.ts",
+            "apps/server/tests/transaction.test.ts",
+            "apps/server/tests/validation.test.ts",
+            "apps/server/tests/workspace-hydration-performance.test.ts",
+            "apps/server/tests/workspace-scope-performance.test.ts"
+          ]
+        },
+        {
+          "name": "tools",
+          "status": "failed",
+          "totalFiles": 45,
+          "passedFiles": 28,
+          "failedFiles": [
+            "tools/i0-cloud/backup-retained.test.mjs",
+            "tools/i0-cloud/build-runtime-artifact.test.mjs",
+            "tools/i0-cloud/capacity-run-failure.test.mjs",
+            "tools/i0-cloud/deploy-artifact.test.py",
+            "tools/xj-dev-access/package-service.test.mjs",
+            "tools/xj-dev-access/server.test.mjs",
+            "tools/xj-dev/tests/baseline-team.test.mjs",
+            "tools/xj-dev/tests/enrollment-client.test.mjs",
+            "tools/xj-dev/tests/env-removal.test.mjs",
+            "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+            "tools/xj-dev/tests/integration.test.mjs",
+            "tools/xj-dev/tests/local-status.test.mjs",
+            "tools/xj-dev/tests/package-transfer.test.mjs",
+            "tools/xj-dev/tests/repro-e2e.test.mjs",
+            "tools/xj-dev/tests/repro-restore.test.mjs",
+            "tools/xj-dev/tests/repro-secrets.test.mjs",
+            "tools/xj-dev/tests/repro.test.mjs"
+          ]
+        }
+      ]
+    },
+    "repairedUnitServerRun": {
+      "status": "failed",
+      "stages": [
+        {
+          "name": "unit",
+          "status": "failed",
+          "totalFiles": 27,
+          "passedFiles": 22,
+          "failedFiles": [
+            "scripts/ci-build-artifact.test.mjs",
+            "scripts/verify.test.mjs",
+            "packages/product-runtime/test/lifecycle.test.mjs",
+            "packages/product-runtime/test/recovery-files.test.mjs",
+            "packages/storage/test/blobs.test.mjs"
+          ]
+        },
+        {
+          "name": "server",
+          "status": "failed",
+          "totalFiles": 88,
+          "passedFiles": 86,
+          "failedFiles": [
+            "apps/server/tests/account-control.test.ts",
+            "apps/server/tests/application-database.test.ts"
+          ]
+        }
+      ]
+    },
+    "additionalToolRecheck": {
+      "log": "engineering-tool-recheck.log",
+      "sha256": "99dc431941289be1395a6fdaa7d60f82f53700a350a81b0522a2fcb40e121d8e",
+      "tests": 40,
+      "passed": 38,
+      "failed": 0,
+      "skipped": 2
+    },
+    "additionalPassedFiles": [
+      "scripts/ci-build-artifact.test.mjs",
+      "scripts/verify.test.mjs"
+    ],
+    "finalFileCoverage": {
+      "passed": 110,
+      "total": 115,
+      "description": "Unit/server by file after documented repair and follow-ups; not a single all-green run."
+    },
+    "browserContracts": {
+      "publicExports": 14,
+      "failed": 0
+    },
+    "dependencyRepair": {
+      "pinnedOfflinePackages": 371,
+      "copiedFiles": 19073,
+      "retainedFiles": 5060,
+      "workspaceLinks": 9,
+      "reason": "xj-dev full tests attempted npm ci against the root; a loaded Windows SQLite extension refused unlink, leaving missing dependencies.",
+      "removedOrSkippedBusinessAssertions": false,
+      "lockfileModified": false
+    }
+  },
+  "native": {
+    "initialSixFileRun": {
+      "log": "native-regression-repaired.log",
+      "sha256": "ce49e45af6dd0c28b795aa45d5de025f859c858fc8f004371a4de165c0a2a662",
+      "tests": 48,
+      "passed": 37,
+      "failed": 11,
+      "skipped": 0
+    },
+    "studentQuestions": {
+      "passed": 12,
+      "total": 12,
+      "skipped": 0
+    },
+    "unchangedPassingFiles": [
+      {
+        "file": "teaching-agent.runtime.test.mjs",
+        "passed": 9
+      },
+      {
+        "file": "teaching-agent.driver.runtime.test.mjs",
+        "passed": 1
+      },
+      {
+        "file": "teaching-tools-host.runtime.test.mjs",
+        "passed": 6
+      }
+    ],
+    "toolsFollowup": {
+      "log": "tools-regression-final.log",
+      "sha256": "f072e9d1728f23de62dcd17c11736d9672888b99a7b44ed5ca7055a5c0c2be45",
+      "tests": 20,
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0,
+      "toolFile": {
+        "file": "teaching-agent.tools.runtime.test.mjs",
+        "passed": 8,
+        "total": 8
+      },
+      "note": "The two failures were recovery tests in the intermediate 15s fixture experiment, later corrected."
+    },
+    "productionLeaseRecoveryFile": {
+      "log": "tools-recovery-production-lease-final.log",
+      "sha256": "a81b315629f6d1e2ee0e42688dd3cfef35bf7dbc30bab2f19342469c7ca0e02a",
+      "tests": 12,
+      "passed": 11,
+      "failed": 1,
+      "skipped": 0
+    },
+    "remainingLongChainUnchangedSingleCase": {
+      "log": "lost-native-input-default-lease.log",
+      "sha256": "1a0818665c4b78a5fa0ac1dd5a2028c73b449f8d54c7cef8c478a59d9e87eff1",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "fixture": {
+      "normalLease": "production default 10000ms",
+      "takeoverLeaseMs": 1500,
+      "takeoverOverrides": 4,
+      "completionObservationMs": 15000,
+      "assertionChanges": false,
+      "cleanup": "10 bounded retries; 100ms delay"
+    },
+    "note": "All 48 distinct scenarios obtained passing evidence across the documented file and single-case runs. No single 48/48 consolidated all-green run is claimed; the long-chain timeout is retained and is not a latency pass."
+  },
+  "chrome": {
+    "runtimeWeb": {
+      "passed": 4,
+      "total": 4,
+      "skipped": 0
+    },
+    "ordinaryWeb": {
+      "passed": 4,
+      "total": 4,
+      "skipped": 0
+    },
+    "completePackage": {
+      "passed": 4,
+      "total": 4,
+      "skipped": 0
+    },
+    "cases": [
+      "explicit choice and reload",
+      "IP location without focus/draft theft or implicit answer",
+      "exact Chinese text, unaccepted send and original-identity lost-reply recovery",
+      "explicit skip, keyboard, dark and narrow desktop"
+    ]
+  },
+  "package": {
+    "profile": "full",
+    "platform": "win32-x64",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-11-06T10:07:24.348Z",
+    "cliSha256": "228914edda49e54d415ddaf0359c8c65edb94868a11daa7e82651af7482e7cba",
+    "resourcesSha256": "c6bdfcb45d3ee3cdca3885341b0c7cfaea3967758be9ddecfbd535f01e941c29",
+    "distributionSha256": "db1b5bce03cbc589133d93447334d2177f6948d71def0c8101cc052b0f90765b",
+    "installPassed": true,
+    "startedState": "ready",
+    "stoppedState": "stopped",
+    "entry": "bundled Node -> bundled app/cli.js install/start/stop, own external fixture root; bundled PG and web"
+  },
+  "screenshots": [
+    {
+      "file": "student-ask-before-win32.png",
+      "sha256": "9c3f79be799e01d6eb71653cd3fa0b703ed7aaa2d702576ddd52ec3dd15d4fc4"
+    },
+    {
+      "file": "student-ask-choice-win32.png",
+      "sha256": "0bd81f4d17d7aab62dcf89064e3a6734718cfdb584312f1f86838738a0aaeb54"
+    },
+    {
+      "file": "student-ask-ip-win32.png",
+      "sha256": "31f287cb96efb7558d88b517d7921b2753a8812ddcb8472f4aefc3c8dc3cbd09"
+    },
+    {
+      "file": "student-ask-text-win32.png",
+      "sha256": "937c6e9b41a2bcb13a51c6f107dede138d11da0985feefb460c5c70445b4d638"
+    },
+    {
+      "file": "student-ask-receipt-recovered-win32.png",
+      "sha256": "a3d03c5e6969861cd8c98a42aa026325524b2a9a16ec694b2f3b1c5fb6acf19f"
+    },
+    {
+      "file": "student-ask-dark-narrow-win32.png",
+      "sha256": "ca7426d861643e34dd8012a0ce26c4d866e27dfe098f0b97676956728ee6a436"
+    },
+    {
+      "file": "student-ask-skipped-win32.png",
+      "sha256": "1b3f91707dc078520c8d1d45f068dd9265b8dedfc8881564f9fe926fbef89629"
+    }
+  ],
+  "review": {
+    "standards": {
+      "resolved": 4,
+      "remaining": 0
+    },
+    "spec": {
+      "resolved": 3,
+      "remaining": 0
+    },
+    "independentReadOnlyReviewers": 2
+  },
+  "pending": {
+    "mac": {
+      "passed": false,
+      "handoff": "https://github.com/paher-din/XunJie/issues/209",
+      "localFeasibilityAttempt": "After the initial official-support inspection, WSL2 KVM VM/vCPU creation and a 2-vCPU generic x86_64 UEFI boot with QEMU 8.2.2 succeeded; no macOS was downloaded, installed or started, and no Apple Silicon acceptance environment was established.",
+      "localAttemptCleanup": {
+        "date": "2026-11-06",
+        "reason": "Owner requested stopping the local attempt and handing off acceptance to someone with an existing qualified Mac environment in a separate issue; environment provisioning is out of scope.",
+        "removedFileBytes": 558653825,
+        "systemPackagesInstalled": false,
+        "existingWslAndDockerRetained": true,
+        "windowsVerificationEvidenceRetained": true
+      }
+    },
+    "physicalIme": "not exercised; controlled Chrome Chinese text is separate",
+    "teachingEffects": "not assessed",
+    "crossHostAgentDeployment": "belongs to WP07 #203/#204; not claimed by same-machine acceptance"
+  },
+  "cleanup": {
+    "dependency-install": true,
+    "XunJie-wp07-199": true
+  }
+}

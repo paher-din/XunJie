@@ -15,6 +15,7 @@ import { AccessError, digest, signProof, writePrivateJson } from '../xj-dev/src/
 import { createAccessService } from './server.mjs';
 import { adminRequest } from './admin.mjs';
 import { openAccessStore } from './store.mjs';
+import { localTestEndpoint, localTestPath } from '../../apps/server/tests/support/local-endpoint.ts';
 
 test('HTTPS enroll resumes only unfinished stages; device/member revocation and replay checks share one store', async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'xja-')));
@@ -28,10 +29,11 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
     const systemCalls = [], applicationCalls = [];
     let failApplication = true, failClose = true;
     const config = { serviceId: 'https-test-service', endpoint: 'https://localhost:8443', listenHost: '127.0.0.1', port: 0,
-      databaseFile: join(root, 'access.sqlite'), credentialKeyFile, adminSocket: join(root, 'a'), backupDirectory: root,
+      databaseFile: join(root, 'access.sqlite'), credentialKeyFile, adminSocket: localTestPath(join(root, 'a')), backupDirectory: root,
       tls: { keyFile: cert.keyFile, certFile: cert.certFile, caFile: ca.certFile }, knownHostsFile, cloudCaFile: ca.certFile,
       courseIds: ['approved-course'], target: { schema: 'xj-dev/connection-v1', host: 'approved.test', port: 22, applicationPort: 13444, browserOrigin: 'https://localhost:13445' } };
     service = createAccessService(config, {
+      localEndpoint: localTestEndpoint,
       system: async input => {
         systemCalls.push(input.operation);
         if (input.operation === 'revoke' && failClose) { failClose = false; throw new AccessError('DEVICE_CLOSE_INCOMPLETE', 503); }
@@ -49,7 +51,7 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
         let text = ''; res.on('data', bytes => { text += bytes; }); res.on('end', () => accept({ status: res.statusCode, body: JSON.parse(text) }));
       }); req.on('error', reject); req.end(JSON.stringify(body));
     });
-    const inviteInput = { label: 'member', teamRole: 'developer', courseId: 'approved-course', appRole: 'student', capabilities: ['page'], ttlSeconds: 60 };
+    const inviteInput = { label: 'member', teamRole: 'developer', courseId: 'approved-course', appRole: 'student', capabilities: ['page'], ttlSeconds: process.platform === 'win32' ? 300 : 60 };
     const i = await adminRequest(config.adminSocket, 'invite', inviteInput);
     const proof = async (path, body, index = 0, invitationSecret) => {
       const response = await call('/v1/challenges', { publicKey: readFileSync(keys[index] + '.pub', 'utf8'), method: 'POST', path, bodyHash: digest(JSON.stringify(body)), invitationSecret, deviceId: body.deviceId });
@@ -99,13 +101,13 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
     const cli = args => new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [tool, ...args, '--worktree', worktree], { env: { ...process.env, XJ_DEV_HOME: join(root, 'home') }, stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '', error = ''; child.stdout.on('data', bytes => { out += bytes; }); child.stderr.on('data', bytes => { error += bytes; });
-      child.on('error', reject); child.on('exit', code => {
+      child.on('error', reject); child.on('close', code => {
         assert.equal(out.includes(cliInvite.secret), false); assert.equal(error.includes(cliInvite.secret), false);
         resolve({ code, result: JSON.parse(out) });
       });
     });
     const firstCli = await cli(['join', '--invitation-file', invitationFile, '--no-start']);
-    assert.equal(firstCli.code, 0); assert.equal(firstCli.result.ok, true);
+    assert.equal(firstCli.code, 0, JSON.stringify(firstCli.result.failure)); assert.equal(firstCli.result.ok, true);
     assert.equal(firstCli.result.enrollment.state, 'registered');
     const cliDevice = firstCli.result.enrollment.identity.deviceId;
     const repeatedCli = await cli(['join', '--invitation-file', invitationFile, '--no-start']);
@@ -113,7 +115,10 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
     const refreshedCli = await cli(['refresh']);
     assert.equal(refreshedCli.code, 0); assert.equal(refreshedCli.result.enrollment.identity.deviceId, cliDevice);
     assert.equal(service.store.inspect().devices.filter(d => d.id === cliDevice).length, 1);
+    for (const destination of [join(root, '..', 'outside.sqlite'), join(root + '-sibling', 'snapshot.sqlite'), join(root, 'nested', 'snapshot.sqlite')])
+      await assert.rejects(adminRequest(config.adminSocket, 'snapshot', { destination }), { code: 'BACKUP_PATH_INVALID' });
     const saved = await adminRequest(config.adminSocket, 'snapshot', { destination: join(root, 'snapshot.sqlite') });
+    await assert.rejects(adminRequest(config.adminSocket, 'snapshot', { destination: saved.file }), { code: 'BACKUP_TARGET_EXISTS' });
     const restored = openAccessStore(saved.file, saved.keyFile, config.serviceId);
     try {
       assert.equal(restored.inspect().devices.length, service.store.inspect().devices.length);

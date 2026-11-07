@@ -32,7 +32,7 @@ mkdirSync(resolve(cwd,out),{recursive:true});writeFileSync(join(resolve(cwd,out)
 async function put(root, path, value) { await mkdir(dirname(join(root,path)),{recursive:true}); await writeFile(join(root,path),value); }
 async function fixture(t) {
   const root=await mkdtemp(join(tmpdir(),'xunjie-build-'));
-  t.after(()=>rm(root,{recursive:true,force:true}));
+  t.after(()=>rm(root,{recursive:true,force:true,maxRetries:3}));
   await put(root,'package.json',JSON.stringify({type:'module'}));
   await put(root,'package-lock.json','{}');
   for(const [name,path] of Object.entries(paths)) {

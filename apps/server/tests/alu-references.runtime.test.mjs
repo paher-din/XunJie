@@ -14,6 +14,7 @@ import { createExecutions } from '../../../packages/learning-space/dist/learning
 import { verifySemanticReference } from '../../../packages/learning-space/dist/learning-data/semantic-references.js';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 import { aluReferenceFixture, aluReferenceTrace } from '../../../packages/contracts/test/fixtures/alu-reference.mjs';
+import { aluCounterexampleFixture, aluCheckObservations } from '../../../packages/contracts/test/fixtures/alu-counterexample.mjs';
 import { aluCoursePackage } from '../../../components/alu-experiment/package.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -56,16 +57,19 @@ async function fixture(t) {
     const acceptance = { receipt: { requestId: f.action.requestId, inputDigest, receiver: f.action.receiver, state: 'accepted',
       receiptId: 'browser:' + f.action.requestId, detail: 'Original fixed owner command' }, execution: { executionRef, acceptedSeq: 1 } };
     // Genuine owner DB/resources; these are receiver facts, not a WASM/HDL simulation claim.
-    await transaction(tx => tx.query(`INSERT INTO execution_commands(request_id,activity_id,input_digest,execution_ref,body,
+    await transaction(async tx => {
+      await tx.query(`INSERT INTO execution_commands(request_id,activity_id,input_digest,execution_ref,body,
       acceptance,state,status_knowledge,confirmed_seq,action_text) VALUES($1,$2,$3,$4,$5,$6,'queued','confirmed',1,$7)`,
-    [f.action.requestId, f.activityId, inputDigest, executionRef, JSON.stringify(f.action), JSON.stringify(acceptance), JSON.stringify(f.action)]));
+        [f.action.requestId, f.activityId, inputDigest, executionRef, JSON.stringify(f.action), JSON.stringify(acceptance), JSON.stringify(f.action)]);
+      for (const file of f.action.execution.basis.works) await tx.reference(`execution/${f.action.requestId}/work/${file.contentId}`, file.contentId);
+    });
     return { ...f, inputDigest, executionRef };
   }
   async function result(f, { state = 'succeeded', report = true, contentId = randomUUID(), output = { f: '1101', cout: '0', observationState: 'complete' },
+    name = 'observation.json', text = JSON.stringify({ inputs: f.inputs, ...output }),
     resources = [resource('diagnostics.txt', 'Retained receiver diagnostics'), resource('trace.vcd', aluReferenceTrace)] } = {}) {
-    const text = JSON.stringify({ inputs: f.inputs, ...output });
     const query = await executions.result(f.identity, f.activityId, f.action.requestId, { contentId, output, text,
-      name: 'observation.json', mediaType: 'application/json', sha256: hash(text), byteLength: Buffer.byteLength(text), resources });
+      name, mediaType: 'application/json', sha256: hash(text), byteLength: Buffer.byteLength(text), resources });
     if (report) await executions.report(f.identity, f.activityId, f.action.requestId, { ...query, state, statusKnowledge: 'confirmed', confirmedSeq: 2 });
     const artifact = await executions.artifact(f.identity, f.activityId, f.action.requestId);
     return { ...f, contentId, artifact, state };
@@ -80,15 +84,95 @@ async function fixture(t) {
       origin: state ? 'state' : 'execution-result', requestId: state ? null : f.action.requestId, executionRef: state ? null : f.executionRef };
     const material = content ?? (state ? JSON.parse(f.stateFile.value).content
       : { action: f.action, output: f.artifact.output, state: f.state, resources: f.artifact.resources ?? [],
+        name: f.artifact.name, mediaType: f.artifact.mediaType, text: f.artifact.text,
         inputDigest: f.inputDigest, executionRef: f.executionRef });
     const copy = aluReferenceCopy(typeId, target, material);
     return questionReferenceInputSchema.parse({ referenceId: randomUUID(), source,
       range: { kind: 'semantic', formatVersion: 1, typeId, version: 1, target, start: 0, end: copy.length }, copy, sourceName: 'Original ALU evidence' });
   }
-  return { get storage() { return storage; }, current, identity, component, works, executions, activity, transaction, fixed, receive, result, reference,
+  const check = () => aluCounterexampleFixture({ binding: component, activityId: current.activityId, identity });
+  return { get storage() { return storage; }, current, identity, component, works, executions, activity, transaction, fixed, check, receive, result, reference,
     path: async contentId => join(options.backend.location.root, (await storage.resource(contentId)).locator.key),
     async reopen() { await storage.close(); storage = await openStorage(options); } };
 }
+
+test('check counterexamples verify the primary report through the original owner and reopen without executing', { timeout: 120000 }, async t => {
+  const f = await fixture(t), check = f.check();
+  const fixed = await f.result(await f.receive(check), { name: 'check-report.json', text: check.text, output: check.output });
+  const reference = f.reference(fixed, 'alu-counterexample', { index: 2559 });
+  await verifySemanticReference(f.storage, f.current, reference);
+  await f.reopen();
+  await verifySemanticReference(f.storage, f.current, reference, true);
+  const { rows } = await f.storage.read('SELECT request_id FROM execution_commands');
+  assert.deepEqual(rows.map(row => row.request_id), [fixed.action.requestId]);
+});
+
+test('counterexample owners verify original code resources and report code hashes, not claimed names', { timeout: 120000 }, async t => {
+  const f = await fixture(t), check = f.check();
+  const fixed = await f.result(await f.receive(check), { name: 'check-report.json', text: check.text, output: check.output });
+  const reference = f.reference(fixed, 'alu-counterexample', { index: 2559 });
+  const path = await f.path(check.codeFile.contentId), original = await readFile(path);
+  await writeFile(path, Buffer.from('x'.repeat(original.length)));
+  await assert.rejects(verifySemanticReference(f.storage, f.current, reference), { code: 'corrupt' });
+  await writeFile(path, original);
+  await verifySemanticReference(f.storage, f.current, reference);
+  const forged = f.check(); forged.report.source.works[0].sha256 = '0'.repeat(64);
+  const bad = await f.result(await f.receive(forged), { name: 'check-report.json', text: JSON.stringify(forged.report), output: forged.output });
+  await assert.rejects(verifySemanticReference(f.storage, f.current, f.reference(bad, 'alu-counterexample', { index: 2559 })), { code: 'invalid' });
+});
+
+test('counterexamples reject cross-scope sources, edited copies, fake indexes and damaged original resources', { timeout: 120000 }, async t => {
+  const f = await fixture(t), check = f.check();
+  const fixed = await f.result(await f.receive(check), { name: 'check-report.json', text: check.text, output: check.output,
+    resources: [resource('check-observations.json', JSON.stringify(aluCheckObservations(check.report))),
+      resource('diagnostics.txt', 'Retained original check diagnostics')] });
+  const reference = f.reference(fixed, 'alu-counterexample', { index: 2559 });
+  await verifySemanticReference(f.storage, f.current, reference);
+  for (const key of ['environmentId', 'spaceId', 'principalId', 'activityId', 'componentId', 'objectId', 'contentId', 'requestId', 'executionRef'])
+    await assert.rejects(verifySemanticReference(f.storage, f.current,
+      { ...reference, source: { ...reference.source, [key]: randomUUID() } }), { code: 'invalid' }, key);
+  for (const historical of [false, true]) {
+    await assert.rejects(verifySemanticReference(f.storage, f.current,
+      { ...reference, copy: reference.copy.replace('Cout=0', 'Cout=1') }, historical), { code: 'invalid' });
+    await assert.rejects(verifySemanticReference(f.storage, f.current,
+      { ...reference, range: { ...reference.range, target: { index: 0 } } }, historical), { code: 'invalid' });
+  }
+  for (const contentId of [fixed.contentId, ...fixed.artifact.resources.map(item => item.contentId)]) {
+    const path = await f.path(contentId), original = await readFile(path), damaged = Buffer.from(original);
+    damaged[damaged.length - 1] ^= 1;
+    await writeFile(path, damaged);
+    await assert.rejects(verifySemanticReference(f.storage, f.current, reference, true), { code: 'corrupt' });
+    await writeFile(path, original);
+  }
+  const path = await f.path(check.codeFile.contentId), bytes = await readFile(path);
+  await rm(path);
+  await assert.rejects(verifySemanticReference(f.storage, f.current, reference), { code: 'unavailable' });
+  await writeFile(path, bytes);
+  await verifySemanticReference(f.storage, f.current, reference, true);
+});
+
+test('counterexample history keeps fixed code and trusted agent origin after later edits and reopen', { timeout: 120000 }, async t => {
+  const f = await fixture(t), check = f.check();
+  check.action.execution.initiator = { kind: 'agent', principalId: f.identity.principalId };
+  const fixed = await f.result(await f.receive(check), { name: 'check-report.json', text: check.text, output: check.output });
+  const reference = f.reference(fixed, 'alu-counterexample', { index: 2559 }), copy = reference.copy;
+  assert.match(copy, /执行来源：Agent 验证/);
+  assert.equal(copy.includes('原预测'), false);
+  await verifySemanticReference(f.storage, f.current, reference);
+  await f.works.registerBasis(f.identity, f.current.activityId, { ...check.codeFile, contentId: randomUUID(), value: 'module new_alu; endmodule\n' });
+  await f.reopen();
+  await verifySemanticReference(f.storage, f.current, reference, true);
+  assert.equal(reference.copy, copy);
+  const { rows } = await f.storage.read('SELECT request_id FROM execution_commands');
+  assert.deepEqual(rows.map(row => row.request_id), [fixed.action.requestId]);
+});
+
+test('counterexample owner uses the original runtime HDL selection rather than unrelated fixed code', { timeout: 120000 }, async t => {
+  const f = await fixture(t), check = f.check();
+  check.action.execution.basis.works.push({ ...check.codeFile, objectId: randomUUID(), contentId: randomUUID(), name: 'other.c', value: 'int x;' });
+  const fixed = await f.result(await f.receive(check), { name: 'check-report.json', text: check.text, output: check.output });
+  await verifySemanticReference(f.storage, f.current, f.reference(fixed, 'alu-counterexample', { index: 2559 }));
+});
 
 test('ALU state and V3 result owners validate the same client copies against real retained PG resources', { timeout: 120000 }, async t => {
   const f = await fixture(t), fixed = await f.result(await f.receive(f.fixed()));

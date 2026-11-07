@@ -1,55 +1,158 @@
-import { useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
-import { CenterToolArea, type ToolSpec } from '../components/workspace/CenterToolArea'
+import { CenterToolArea, type ToolKey, type ToolSpec } from '../components/workspace/CenterToolArea'
+import { questionReferenceSchema, questionReferenceSourceSchema } from '@xunjie/contracts/question-drafts'
+import { executionQuerySchema } from '@xunjie/contracts/execution'
+import { componentStateName } from '@xunjie/contracts/components'
+import type { TeachingToolLocator } from './TeachingToolRecords'
 import { ComponentView } from '../component-host/ComponentView'
 import { useActivitySession } from './ActivitySession'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
+import { ActivityConversation, FirstQuestionAutoSend, firstQuestionKey, currentStudentQuestion } from './ActivityConversation'
 import { ExecutionPanel } from './ExecutionPanel'
 import { NativeSessionPanel } from './NativeSessionPanel'
-import { RuntimeTool } from './RuntimeTool'
+import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
+import { learningRequest, workspaceScope } from './learningTransport'
+import { GuidancePresentation } from '../components/workspace/guidance/GuidancePresentation'
+import { AgentInputMode } from './AgentInteraction'
+
+async function focusLocation(root: HTMLDivElement | null, selector: string) {
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const target = root?.querySelector<HTMLElement>(selector)
+    if (target) { target.focus(); target.scrollIntoView({ block: 'nearest' }); return { ok: true as const } }
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  }
+  return { ok: false as const, reason: '原位置当前无法打开，固定依据和结果仍保留。' }
+}
+import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
+  onModels?: () => void
   details: ReactNode; account: ReactNode; error: ReactNode
 }) {
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
+  const [conversationActive, setConversationActive] = useState(false)
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
-  const { workspace, draft, actions } = useActivitySession()
+  const { workspace, draft, actions, execution, sessions, inputInteraction } = useActivitySession()
+  const root = useRef<HTMLDivElement>(null)
+  const [tool, setTool] = useState<ToolKey>('design')
+  const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
+  const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
+  const scope = workspaceScope(namespace, activity)
+  const [pendingQuestion, setPendingQuestion] = useState<TeachingStudentQuestion | null>(null)
+  const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
+  const questionFocused = useCallback(() => setFocusQuestionId(null), [])
+  useEffect(() => { setPendingQuestion(null); setFocusQuestionId(null) }, [scope])
+  useEffect(() => {
+    if (references.open || !authorized || readOnly) return
+    let current = true
+    const read = async () => {
+      try {
+        const value = teachingConversationSchema.parse(await learningRequest(activity, spaceKey, namespace, `agent/${activity.activityId}/conversation`))
+        if (current) setPendingQuestion(currentStudentQuestion(value))
+      } catch { if (current) setPendingQuestion(null) }
+    }
+    void read()
+    const timer = setInterval(() => { void read() }, 5000)
+    return () => { current = false; clearInterval(timer) }
+  }, [scope, references.open, authorized, readOnly, activity, spaceKey, namespace])
+  const firstQuestionOpened = useRef<string | null>(null)
+  useEffect(() => {
+    if (firstQuestionOpened.current === activity.activityId) return
+    firstQuestionOpened.current = activity.activityId
+    if (activity.question || localStorage.getItem(firstQuestionKey(activity.activityId))) references.setOpen(true)
+  }, [activity.activityId, references])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
     await workspace.leave(); await draft.leave(); await actions.leave()
   } }), [workspace, draft, actions])
   const [toolError, setToolError] = useState('')
+  const locateTool: TeachingToolLocator = async record => {
+    const reference = questionReferenceSchema.safeParse(record.result?.reference ?? record.basis.reference)
+    const source = questionReferenceSourceSchema.safeParse(record.result?.source ?? record.basis.source)
+    const fixed = reference.success ? reference.data.source : source.success ? source.data : null
+    const objectId = fixed?.kind === 'work' ? fixed.objectId : record.name === 'read_work' ? record.arguments.objectId : null
+    const contentId = fixed?.kind === 'work' ? fixed.contentId : record.arguments.contentId
+    if (typeof objectId === 'string') {
+      const file = workspace.snapshot().files.find(item => item.objectId === objectId)
+      if (!file || file.contentId !== contentId) return { ok: false, reason: '来源已变化或不可用，保留的是本次使用的固定原文。' }
+      await workspace.leave(); setWorkLocation({ objectId }); setTool('design')
+      return focusLocation(root.current, `[data-work-object-id="${CSS.escape(objectId)}"][data-work-content-id="${CSS.escape(String(contentId))}"]`)
+    }
+    const requestId = record.source?.requestId ?? (fixed?.kind === 'component' ? fixed.requestId : null)
+    const local = requestId ? execution.snapshot().records.find(item => item.requestId === requestId) : null
+    const componentKey = record.source?.componentKey ?? (fixed?.kind === 'component' ? fixed.bindingKey : null)
+      ?? local?.action.execution.instance.key
+    const binding = activity.course?.components?.find(item => item.key === componentKey)
+    if (binding) {
+      if (fixed?.kind === 'component' && (fixed.definitionDigest !== binding.definition.digest
+        || (fixed.origin === 'state' && workspace.snapshot().files.find(item => item.name === componentStateName(binding.key))?.contentId !== fixed.contentId)))
+        return { ok: false, reason: '组件来源版本已变化，固定副本仍保留。' }
+      await workspace.leave()
+      let selector = requestId ? `[data-execution-request-id="${CSS.escape(requestId)}"]`
+        : `[data-component-key="${CSS.escape(binding.key)}"]`
+      if (requestId && binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session) {
+        const current = await sessions.refresh(requestId)
+        if (!current) return { ok: false, reason: '原会话当前无法读取，固定结果仍保留。' }
+        const fixedQuery = executionQuerySchema.safeParse(record.result?.query)
+        const seq = fixedQuery.success ? fixedQuery.data.session?.appliedSeq : undefined
+        if (seq === 0 && current.session?.appliedSeq !== 0)
+          return { ok: false, reason: '原会话已推进，启动时的观察保留在本条工具记录中。' }
+        if (seq && seq > 0) selector += ` [data-observation-seq="${seq}"]`
+        await sessions.select(requestId)
+      }
+      if (requestId && binding.definition.manifest.formatVersion === 3) {
+        setComponentLocation({ key: binding.key, requestId, token: crypto.randomUUID(),
+          ...(reference.success ? { range: reference.data.range } : {}) })
+        if (reference.success && reference.data.range.kind === 'semantic' && reference.data.range.typeId === 'alu-counterexample'
+          && typeof reference.data.range.target.index === 'number')
+          selector = `[data-check-request-id="${CSS.escape(requestId)}"] [data-alu-counterexample-index="${reference.data.range.target.index}"]`
+      }
+      setTool(`component:${binding.key}`)
+      return focusLocation(root.current, selector)
+    }
+    if (fixed?.kind === 'course-material' || fixed?.kind === 'course-field') {
+      if (fixed.releaseId !== activity.course?.releaseId) return { ok: false, reason: '材料版本已变化，固定副本仍保留。' }
+      setMaterialsOpen(true)
+      if (window.matchMedia('(width < 1024px)').matches) references.setOpen(false)
+      return focusLocation(root.current, fixed.kind === 'course-material'
+        ? `[data-material-id="${CSS.escape(fixed.materialId)}"]` : '[data-course-requirements]')
+    }
+    return { ok: false, reason: '原来源当前无法定位，固定依据和结果仍保留。' }
+  }
   const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
     ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
   // A component may declare a restricted run or a native stateful session; both keep their
   // record, query and stop in this area instead of inside the opaque view.
   const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
     (binding.definition.manifest.formatVersion === 3
-      ? <RuntimeTool key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>
+      ? <RuntimeTool key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+        location={componentLocation?.key === binding.key ? componentLocation : undefined}/>
       : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
-      ? <div key={binding.key} className="component-tool">
+      ? <div key={binding.key} className="component-tool" data-component-key={binding.key} tabIndex={-1}>
         <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
         {nativeAvailable || activity.course?.executionPlan ? <NativeSessionPanel activity={activity} binding={binding} authorized={authorized} spaceKey={spaceKey} namespace={namespace} />
           : <p className="execution-hint">当前运行方式不提供原生会话；已有作品与记录仍保留。</p>}
       </div>
       : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.operations?.length
-        ? <div key={binding.key} className="component-tool">
+        ? <div key={binding.key} className="component-tool" data-component-key={binding.key} tabIndex={-1}>
           <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
           <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />
         </div>
-        : <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />)]))
+        : <div key={binding.key} style={{ height: '100%' }} data-component-key={binding.key} tabIndex={-1}>
+          <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></div>)]))
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
-  return <div className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
+  return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
       <button type="button" className="ws-navbtn" aria-label="返回活动列表" onClick={onBack}><Icon name="arrow-left" size={18} /></button>
       <div className="product-activity-title"><span>{activity.course?.courseName ?? '自主学习'}</span><h1 id="activity-title">{title}</h1></div>
@@ -69,7 +172,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         </WorkspacePopover>
       </div>
     </header>
-    {readOnly && <div role="status" className="product-workspace-notice">这是还原校验环境，作品与历史只读，实验尚未启用。</div>}
+    {readOnly && <div role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</div>}
     {error && <div className="product-workspace-notice">{error}</div>}
     {toolError && <div role="alert" className="product-workspace-notice">{toolError}</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />
@@ -78,14 +181,28 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">{details}</aside>}
       <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         beforeToolChange={() => workspace.leave()}
-        tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
+        tool={tool} onToolChange={value => { setTool(value); setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
         designBody={<>{(activity.course?.components??[]).filter(b=>b.definition.manifest.formatVersion===3).map(binding=>
           <RuntimeTool compact key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>)}
-          <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></>} />
+          <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} location={workLocation} /></>} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
-        <WorkspaceReferenceComposer closeFocusRef={ask} /><ActivityActions />
+        <FirstQuestionAutoSend activity={activity} />
+        <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
+          onActiveChange={setConversationActive} onLocateTool={locateTool} onQuestionChange={setPendingQuestion}
+          focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} />
+        <AgentInputMode active={conversationActive} />
+        <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={!inputInteraction.ready}
+          blockedHint="正在核对本次发送方式，问题与引用仍保留。" blockedLabel="核对发送方式…"
+          submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
       </aside>}
     </div>
     <SelectionToolbar />
+    {pendingQuestion && !references.open && authorized && !readOnly && <GuidancePresentation
+      item={{ id: scope + ':' + pendingQuestion.questionId, label: '等你回应',
+        content: { kind: 'text', text: 'Agent 有一个关于当前学习目标的问题。你可以继续编辑作品，准备好后再回应。' },
+        actions: [{ id: 'answer', label: '回答当前问题', primary: true }] }} state="waiting"
+      companionAction={{ id: 'answer', label: '学习助手：回答当前问题' }} onAction={() => {
+        setFocusQuestionId(pendingQuestion.questionId); references.setOpen(true)
+      }} />}
   </div>
 }

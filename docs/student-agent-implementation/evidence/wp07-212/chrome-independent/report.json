@@ -1,0 +1,13 @@
+{
+  "source": "independent-agent-same-host-stable-endpoint",
+  "platform": "darwin",
+  "chromeVersion": "156.0.8078.80",
+  "originalRunId": "33af85f8-f189-4c12-9087-89237b9cd913",
+  "finalRunId": "33af85f8-f189-4c12-9087-89237b9cd913",
+  "modelCalls": 3,
+  "repeatedTakeoverAfterReconnection": true,
+  "credentialRotationInSameProcess": true,
+  "dormantReceiverQuestionRetained": true,
+  "sourceRetired": true,
+  "cleanup": "completed"
+}

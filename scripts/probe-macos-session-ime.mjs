@@ -70,7 +70,7 @@ try {
   const courseId = randomUUID(), releaseId = randomUUID();
   await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '系统输入法与恢复会话验收' },
     task: { taskId: randomUUID(), title: '系统拼音候选与真实会话', summary: '' },
-    release: { releaseId, objectives: ['系统输入法候选不误触发发送或会话操作'], requirements: '用系统中文输入法写问题并保留引用。', starterWorks: [], capabilities: [],
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['系统输入法候选不误触发发送或会话操作'], requirements: '用系统中文输入法写问题并保留引用。', starterWorks: [], capabilities: [],
       components: [
         { key: 'annotation', definition: annotation, configuration: { title: '材料标注' }, materialIds: [materialId] },
         { key: 'accumulator', definition: accumulator, configuration: { title: '恢复累加器' }, materialIds: [] }],

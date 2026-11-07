@@ -13,7 +13,7 @@ const units: Record<RuntimeService['unit'], string> = {
   client: '网页客户端', 'space-course': '空间与课程', 'learning-data': '学习数据',
   'teaching-agent': '教学 Agent', 'model-connection': '模型连接', 'tool-execution': '工具执行',
 }
-const profiles = { local: '本地环境', school: '学校环境', remote: '远程环境', model: '独立模型环境' }
+const profiles = { local: '本地环境', school: '学校环境', remote: '远程环境', model: '独立模型环境', agent: '独立 Agent 环境' }
 
 export default function RuntimePage() {
   useTheme()

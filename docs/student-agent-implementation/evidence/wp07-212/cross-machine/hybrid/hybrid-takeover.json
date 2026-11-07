@@ -1,0 +1,36 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "takeover",
+  "measuredAt": "2026-11-07T11:04:34.171Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the device target completed formal takeover with the remote Mac school SSH fence",
+      "detail": {
+        "phase": "active",
+        "backupId": "fbd7a3cc-3d20-4acf-85a2-d835acd32071",
+        "installationId": "e838063a-8eb5-4bc2-9d6b-e799c73e9aff"
+      }
+    },
+    {
+      "name": "the retired device source can no longer start",
+      "detail": "Command failed: C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\resources\\node\\node.exe C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\app\\cli.js start --root C:\\Users\\h\\.verification\\wp07-212\\device-source --json\n{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+    }
+  ],
+  "facts": {
+    "takeover": {
+      "phase": "active",
+      "backupId": "fbd7a3cc-3d20-4acf-85a2-d835acd32071",
+      "installationId": "e838063a-8eb5-4bc2-9d6b-e799c73e9aff"
+    },
+    "sourceStop": "stopped",
+    "sourceRetired": "Command failed: C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\resources\\node\\node.exe C:\\Users\\h\\.verification\\wp07-212\\product-win32-x64-full\\app\\cli.js start --root C:\\Users\\h\\.verification\\wp07-212\\device-source --json\n{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+  },
+  "status": "passed"
+}

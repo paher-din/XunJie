@@ -105,7 +105,10 @@ describe('existing format 3 ALU activities retain their single-run state contrac
     const originalState = workspace.snapshot().files.find(file => file.name === componentStateName('alu'))!
     const run = [...container.querySelectorAll('button')].find(button => button.textContent === '运行')!
     expect(run.disabled).toBe(false)
-    await act(async () => { run.click() })
+    await act(async () => {
+      run.click()
+      await vi.waitFor(() => expect(submitted).toHaveLength(1), { timeout: 2000, interval: 10 })
+    })
     expect(submitted).toHaveLength(1)
     const action = submitted[0]!
     expect(action.execution.operation.operationId).toBe('run-single')

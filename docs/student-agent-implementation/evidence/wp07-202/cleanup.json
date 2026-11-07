@@ -1,0 +1,64 @@
+{
+  "issue": 202,
+  "status": "passed",
+  "school": {
+    "status": "passed",
+    "environmentId": "113a46ef-618d-4098-ae94-6da731674508",
+    "ownerStopAndDelete": true,
+    "ownedProcessesRemaining": 0,
+    "permanentRootEntries": [
+      ".locks",
+      ".xunjie-root"
+    ],
+    "removed": [
+      "product",
+      "product-final",
+      "final-linux-product.tar.gz",
+      "payload.tar.gz",
+      "reviewed-linux-app.tar.gz",
+      "school-payload.private.json",
+      "school-state.private.json",
+      "windows-school-state.private.json",
+      "server.key",
+      "server.crt",
+      "ca.crt",
+      "start-school.mjs"
+    ],
+    "original8443ListenerUnchanged": true,
+    "original8443Listening": true,
+    "completedAt": "2026-11-07T12:07:43.363Z"
+  },
+  "network": {
+    "status": "passed",
+    "removedOwnedRuleId": "sgr-2ze06rpqpzc5vjotd1mh",
+    "originalRulesRestoredExactly": true,
+    "remainingRuleCount": 3,
+    "originalRuleIds": [
+      "sgr-2ze2860rkgwpr8z52g6f",
+      "sgr-2ze7b9txw6v48o8rnnin",
+      "sgr-2zeaxfflqnv8ds05i8b9"
+    ],
+    "completedAt": "2026-11-07T12:08:11.695226+00:00"
+  },
+  "windows": {
+    "acceptanceDirectoryRemoved": true,
+    "ownedProcessesRemaining": 0,
+    "remainingScheduledTaskCount": 0,
+    "archiveMetadataRemovedUsingExtendedPath": true,
+    "knownEmptyHelperTempRemoved": true,
+    "status": "passed",
+    "completedAt": "2026-11-07T12:09:22.4820089Z"
+  },
+  "local": {
+    "status": "passed",
+    "ownedProcessesRemaining": 0,
+    "temporaryCandidatePackagesArchivesAndCertificatesRemoved": true,
+    "ownedCredentialCopiesRemoved": true,
+    "originalCredentialFileUnchanged": true,
+    "sharedDesktopLocksReleased": true,
+    "knownCredentialValuesAbsentFromAllDeliveryFiles": true,
+    "filesScanned": 86,
+    "permanentOwnerLocksPreserved": true
+  },
+  "completedAt": "2026-11-07T12:11:21.256613+00:00"
+}

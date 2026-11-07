@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createEncryptedBackup, restoreEncryptedBackup } from './backup-retained.mjs';
 import { openAccessStore } from '../xj-dev-access/store.mjs';
+import { assertPrivateFile } from '../xj-dev/src/enrollment-protocol.mjs';
 
 const REPOSITORY = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const TEACHING_ROOT = join(REPOSITORY, 'apps/server');
@@ -65,7 +66,7 @@ test('encrypted backup covers business data and recovery materials, then restore
     assert.equal(result.status, 'created');
     const archive = result.path;
     assert.match(archive, /daily-\d{8}T\d{6}Z-[0-9a-f]{8}\.xunjiebak$/);
-    assert.equal(statSync(archive).mode & 0o077, 0);
+    assertPrivateFile(archive, { maxBytes: Number.MAX_SAFE_INTEGER });
     assert.deepEqual(result.files, ['course/synthetic.sqlite', 'personal-models/credentials.key',
       'personal-models/personal-agent.sqlite', 'extra/signing-secret.txt']);
     assert.equal(result.sha256, sha256(readFileSync(archive)));

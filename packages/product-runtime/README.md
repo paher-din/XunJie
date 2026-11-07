@@ -32,9 +32,13 @@ import {
 
 ## owner 与维护装配
 
-默认 daemon 在有数据库的产品组合中自动注册 runtime、空间身份和学习数据 owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。课程发布、作品和 Agent 仍按后续子票接入。生产依赖不得导入 `scripts/probe-recovery.mjs`、其验收 owner 或测试宿主。
+默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
 
-`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据和模型连接 owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。新增模型 owner 后，完整默认组合共四个 owner（含 runtime）。
+独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据服务调用 `teaching.dependencies`；学习数据服务通过 `teaching.agent` 调用实际 Agent。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型设备绑定，学生继续使用原活动界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
+
+`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。完整默认组合共五个 owner（含 runtime），独立 Agent 组合共两个。
+
+教学 Agent 的正常与独立装配均登记领域清单；目标通过所属 owner 的 `validateTeachingBoundary` 重读记录和资源原字节核对，运行层不枚举或修改 Agent 业务表。返回的还原 owner 保留同一领域清单接口，供隔离校验及后续备份使用。维护与接管沿用本模块的关闸、源退休、接收端撤权及命名空间流程；见 [#204 交付](../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)。
 
 恢复 WP06 之前的三 owner 备份时，隔离目标保留原 owner 集合，通过原有精确版本校验完成接管；接管后正常停止并启动一次，才初始化空的模型 owner。新模型配置不会从 legacy 或其他空间自动导入。新的四 owner 备份已包含模型配置、加密凭据和原生检查资源，按正常流程完整恢复。
 
@@ -60,7 +64,9 @@ CLI 的 restore/upgrade JSON 对应支持 `database`、`databaseCredentialFile` 
 
 takeover 要求最新且仍 held 的源备份、源 `retire` 绑定证明及全部 receiver。receiver id 为 `environmentId/serviceId`；默认 root 适配器核对实际 receiver 身份，再对源 environment 及全部传入 serviceIds 调用真实 authority 的 `fenceSource`。旧 grant 视为 generation 0；fence 持久推进代际，拒绝旧 token（含重启和旧文件复活），等待已接受 handler 全部结束才返回无秘密 proof。新 token 只能由 authorize 取得当前代际。
 
-源不可达/拒绝、receiver 缺失/身份错误、断线/超时或验证失败均不得启用目标；确认源退休、receiver fencing 及校验后才恢复写入/派发，失败重新封闸。退休源即使在线也不能 resume。active 后仍需接收方重新授权；恢复已保留的连接通过原 credentialRef 写入新凭据，新增连接才登记新描述。能力就绪与权威交接分别判断。维护 resume 不能跳过目标隔离或源退休。
+源不可达/拒绝、receiver 缺失/身份错误、断线/超时或验证失败均不得启用目标；确认源退休、receiver fencing 及校验后才恢复写入/派发，失败重新封闸。退休源即使在线也不能 resume。active 后仍需接收方重新授权；已移除的出站连接用 `connect` 登记，仍保留的固定连接用 `reconnect` 和新的私有 `credentialRef` 保存新授权。`reconnect` 先核对真实握手，禁止变更固定 owner、能力或传输描述；重试读取相同原凭据引用，不覆盖私有原件。能力就绪与权威交接分别判断。维护 resume 不能跳过目标隔离或源退休。
+
+接收端在关闸并排空轮询后撤销旧安装授权，逐服务记录绑定备份、旧安装和目标安装的继任事实；事实与退休记录一起进入运行时备份。固定活动路由原件保持不变，仅经该证明匹配继任安装，之后仍逐次校验新 grant。真实学习数据 owner 在新授权签发时附加执行授权交接记录，原 origin/命令/回执不改写；原活动关闭或已开始清理的命令不恢复。目标在启用前移除失效连接，重复接管不会删除重新建立的新授权连接。独立 Agent 本次要求保持稳定 `publicEndpoint`，由运维在主机切换时调整该地址的路由。
 
 固定引擎为 17.10、17.11、18.6，升级走逻辑备份与独立目标恢复。失败保留原备份及现场，用兼容资源从原备份再还原到另一个独立目标；只换回旧 binary 不构成数据库回滚。学校 external 的独立目标 cluster、权限、工具及启停由管理员负责，产品不接管其服务生命周期。
 

@@ -18,7 +18,7 @@ const payload = {
   password: randomUUID(),
   course: { courseId, name: '跨机远端执行验收' },
   task: { taskId, title: '学校入口浏览器计算', summary: '不装本机库，直接在学校网页上计算' },
-  release: {
+  release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
     releaseId, objectives: ['学校网页完成浏览器计算'], requirements: '在学校入口编辑表格并运行计算。',
     starterWorks: [], capabilities: [],
     components: [{ key: 'table', definition, configuration: { title: '表格聚合' }, materialIds: [] }],

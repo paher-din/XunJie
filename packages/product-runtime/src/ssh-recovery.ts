@@ -23,35 +23,51 @@ export function createSshRecoveryReceiver(value: SshRecoveryReceiver): RecoveryR
     // The retired installation is fenced by identity, so a successor installation of the same
     // environment and service remains authorized at the receiving authority.
     const installationId = z.uuid().parse(source.installationId);
-    const command = [receiver.ssh.nodePath, receiver.ssh.cliPath, 'fence-source', '--root', receiver.ssh.root,
+    const payload = JSON.stringify({ expectedReceiver: receiver.id, sourceEnvironmentId: environmentId,
+      sourceInstallationId: installationId, sourceServiceIds: ids, backupId, targetInstallationId });
+    // Windows OpenSSH never signals channel EOF for the local stdin it forwards, so piping the
+    // request into the remote `/dev/stdin` hangs the takeover. Carry the identity-only request as
+    // base64 in the command and decode it through a remote-local pipeline instead; the receiving
+    // POSIX shell then supplies a clean EOF to the CLI on every supported deployment host.
+    const encoded = Buffer.from(payload, 'utf8').toString('base64');
+    const cli = [receiver.ssh.nodePath, receiver.ssh.cliPath, 'fence-source', '--root', receiver.ssh.root,
       '--file', '/dev/stdin'].map(quote).join(' ');
+    const command = `printf '%s' '${encoded}' | base64 --decode | ${cli}`;
     return new Promise((resolve, reject) => {
-      const fail = () => reject(new RecoveryError('receiver-unavailable'));
+      let settled = false;
+      const finish = (fn: (value: unknown) => void, value: unknown) => { if (!settled) { settled = true; fn(value); } };
+      const fail = () => finish(reject, new RecoveryError('receiver-unavailable'));
+      let output = '';
+      const readProof = () => {
+        const proof = z.object({ fenced: z.literal(true), receiverId: z.literal(receiver.id), sourceEnvironmentId: z.literal(environmentId),
+          backupId: z.literal(backupId), targetInstallationId: z.literal(targetInstallationId),
+          sourceInstallationId: z.literal(installationId), sourceServiceIds: z.array(z.uuid()),
+          execution: z.object({ formatVersion: z.literal(1), boundaryAt: z.iso.datetime(),
+            unresolved: z.literal(0), blocking: z.literal(0), services: z.array(z.object({ serviceId: z.uuid(),
+              unresolved: z.literal(0), settled: z.number().int().nonnegative(), blocking: z.literal(0) }).strict()).min(1) }).strict(),
+        }).strict().parse(JSON.parse(output));
+        if (JSON.stringify(proof.sourceServiceIds) !== JSON.stringify(ids)) throw new Error();
+        return proof;
+      };
       const child = cp.spawn('ssh', ['-F', receiver.ssh.configFile, '-T', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
         '-o', 'ForwardAgent=no', '-o', 'ConnectTimeout=10', receiver.ssh.host, command],
-      { shell: false, windowsHide: true, timeout: 90000, stdio: ['pipe', 'pipe', 'ignore'] });
-      let output = '';
+      { shell: false, windowsHide: true, timeout: 90000, stdio: ['ignore', 'pipe', 'ignore'] });
+      if (!child.stdout) { fail(); return; }
       child.stdout.on('data', (bytes: Buffer) => {
         output += bytes.toString('utf8');
-        if (Buffer.byteLength(output) > 65536) { child.kill(); fail(); }
+        if (Buffer.byteLength(output) > 65536) { child.kill(); fail(); return; }
+        // Windows OpenSSH can deliver the proof yet never close the channel. The identity-bound
+        // proof is the confirmation, so accept it as soon as the complete line arrives.
+        if (output.endsWith('\n')) {
+          try { const proof = readProof(); child.kill(); finish(resolve, proof); } catch { /* incomplete or invalid; await close */ }
+        }
       });
-      child.on('error', fail); child.stdin.on('error', fail);
+      child.on('error', fail);
       child.on('close', code => {
+        if (settled) return;
         if (code !== 0) { fail(); return; }
-        try {
-          const proof = z.object({ fenced: z.literal(true), receiverId: z.literal(receiver.id), sourceEnvironmentId: z.literal(environmentId),
-            backupId: z.literal(backupId), targetInstallationId: z.literal(targetInstallationId),
-            sourceInstallationId: z.literal(installationId), sourceServiceIds: z.array(z.uuid()),
-            execution: z.object({ formatVersion: z.literal(1), boundaryAt: z.iso.datetime(),
-              unresolved: z.literal(0), blocking: z.literal(0), services: z.array(z.object({ serviceId: z.uuid(),
-                unresolved: z.literal(0), settled: z.number().int().nonnegative(), blocking: z.literal(0) }).strict()).min(1) }).strict(),
-          }).strict().parse(JSON.parse(output));
-          if (JSON.stringify(proof.sourceServiceIds) !== JSON.stringify(ids)) throw new Error();
-          resolve(proof);
-        } catch { reject(new RecoveryError('invalid-receiver-proof')); }
+        try { finish(resolve, readProof()); } catch { finish(reject, new RecoveryError('invalid-receiver-proof')); }
       });
-      child.stdin.end(JSON.stringify({ expectedReceiver: receiver.id, sourceEnvironmentId: environmentId,
-        sourceInstallationId: installationId, sourceServiceIds: ids, backupId, targetInstallationId }));
     });
   } };
 }

@@ -1,4 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { agentExecutionOriginMigration, agentExecutionAuthorityMigration } from './agent-executions.js';
+import { activityAgentRouteMigration, validateActivityAgentRoutes } from './agent-routes.js';
+import { agentPreferenceMigration, createAgentPreferences, validateAgentPreferences } from './agent-preferences.js';
+import { chunkChannelMigrationSql, createChunkChannel } from '../teaching-agent/chunk-channel.js';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage, Migration } from '@xunjie/storage';
@@ -11,7 +15,7 @@ import { createWorks, workMigration, validateWorks } from './works.js';
 import { createQuestionDrafts, questionDraftMigration, validateQuestionDrafts } from './drafts.js';
 import { createActionIntents, actionIntentMigration, validateActionIntents } from './intents.js';
 import type { ActionIntentOptions } from './intents.js';
-import { createExecutions, executionActionTextMigration, executionMigration, validateExecutions } from './executions.js';
+import { createExecutions, executionActionTextMigration, executionMigration, agentExecutionMigration, validateExecutions } from './executions.js';
 import { nativeSessionMigration, validateNativeSessions } from './native-sessions.js';
 import { nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, validateNativeChannel } from './native-channel.js';
 import type { createNativeChannel } from './native-channel.js';
@@ -37,7 +41,8 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
   CREATE INDEX course_activity_requests_scope ON course_activity_requests(space_environment_id,space_id,principal_id);
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
-nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration];
+nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -57,6 +62,9 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 }
 
 export async function validateLearningData(storage: OwnedStorage) {
+  await validateAgentPreferences(storage);
+  await createChunkChannel(storage).validate();
+  await validateActivityAgentRoutes(storage);
   await validateWorks(storage);
   await validateQuestionDrafts(storage);
   await validateActionIntents(storage);
@@ -280,5 +288,6 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
   return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, intents, executions,
+    agentPreferences: createAgentPreferences(storage, access),
     validate: () => validateLearningData(storage) };
 }

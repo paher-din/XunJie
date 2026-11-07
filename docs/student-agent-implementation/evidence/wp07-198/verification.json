@@ -1,0 +1,122 @@
+{
+  "measuredAt": "2026-11-05T19:09:06.336479+00:00",
+  "baseline": "e39462c9362172e9f853c69e0d1f2f0ebfa94612",
+  "branch": "wp07",
+  "fullVerification": {
+    "status": "passed",
+    "node": "v24.21.0",
+    "jobs": 3,
+    "durationMs": 241978,
+    "rawSummary": ".verification/2026-11-05T18-52-14-032Z-Yl2ICg/summary.json",
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": 27
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": 88
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": 45
+      }
+    ]
+  },
+  "nativeCore": {
+    "status": "passed",
+    "tests": 54,
+    "pass": 54,
+    "fail": 0,
+    "skipped": 0,
+    "duration_ms": 127558.900333,
+    "files": 8,
+    "rawEvidence": "core-native.tap"
+  },
+  "broaderRegression": {
+    "initial": {
+      "tests": 124,
+      "pass": 123,
+      "fail": 1,
+      "skipped": 0,
+      "duration_ms": 584732.243375
+    },
+    "resolvedFailure": "native-channel runtime fixture required explicit helpPolicy; final native core reran the entire file successfully",
+    "otherPassedPaths": [
+      "actual Responses SDK and native result validation",
+      "reliable actions and immutable references",
+      "execution results and component host",
+      "school login and learning HTTP boundary",
+      "paired school/device and independent model owner",
+      "isolated restore and takeover"
+    ],
+    "laterCoreAttempts": "Old connection-level refusal assertion updated for command cancellation; two stop tests passed separately, then use the production 10000ms lease for the final serial pass. Dedicated lease-takeover cases retain the short test lease."
+  },
+  "browser": {
+    "macos": {
+      "status": "passed",
+      "passed": 2,
+      "skipped": 1,
+      "skipReason": "opt-in baseline capture; original before screenshot retained",
+      "measuredAt": "2026-11-05T18:47:25.727466+00:00",
+      "platform": "darwin",
+      "arch": "arm64",
+      "osVersion": "27.2",
+      "osBuild": "26B123",
+      "browser": "Google Chrome 156.0.8078.80",
+      "headed": true,
+      "node": "v24.21.0",
+      "postgres": "postgres (PostgreSQL) 18.6",
+      "sourceArchiveSha256": "723584d027f9e6646961ef77baeb7fabcb14da47c6742d292cd463ae634d771d"
+    },
+    "windows": {
+      "status": "passed",
+      "passed": 2,
+      "skipped": 1,
+      "skipReason": "opt-in baseline capture; original before screenshot retained",
+      "elevated": false,
+      "sourceArchiveSha256": "723584d027f9e6646961ef77baeb7fabcb14da47c6742d292cd463ae634d771d",
+      "sessionId": 1,
+      "build": "26200",
+      "node": "v24.21.0",
+      "browserVersion": "156.0.8078.80",
+      "os": "Microsoft Windows 11 家庭版 中文版",
+      "arch": "64 位",
+      "measuredAt": "2026-11-05T18:48:55.4446636Z",
+      "browser": "Google Chrome",
+      "headed": true
+    }
+  },
+  "realModel": {
+    "status": "passed",
+    "protocols": [
+      "chat-completions",
+      "responses",
+      "messages"
+    ],
+    "generations": 6,
+    "source": "real-model.json"
+  },
+  "review": {
+    "standardsFindings": 2,
+    "specFindings": 6,
+    "remainingConfirmedFindings": 0,
+    "finalStopReview": "all three P1 findings resolved; no remaining blocker"
+  },
+  "teachingEffect": "not evaluated",
+  "aluAdapter": "separate issue #202",
+  "deployment": "local production composition; no new hosted deployment or release"
+}

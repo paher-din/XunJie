@@ -8,6 +8,7 @@ import {setImmediate as turn} from 'node:timers/promises';
 import {fixture,allocate} from '../../apps/server/tests/dl-a-support.ts';
 import {CliError} from '../xj-dev/src/envelope.mjs';
 import {runCapacity} from './capacity-run.mjs';
+import {writePrivateJson} from '../xj-dev/src/enrollment-protocol.mjs';
 
 async function until(predicate){
   const end=performance.now()+10_000;
@@ -32,7 +33,7 @@ async function setup(t,publish,{wait=controlledWait,transferAtSeconds=[0,1],onBu
   }});
   const root=mkdtempSync(join(tmpdir(),'xj133-failure-')),source='1'.repeat(40),labels=['T','S1','S2','S3','S4'];
   const users=['teacher','student','other','capacity-s3','capacity-s4'],privateFile=(name,data)=>{
-    const file=join(root,name);writeFileSync(file,JSON.stringify(data),{mode:0o600});return file;
+    const file=join(root,name);writePrivateJson(file,data);return file;
   };
   const actors=labels.map((label,i)=>({label,memberId:randomUUID(),home:join(root,label),deviceFile:join(root,label+'-device.json'),
     accountFile:privateFile(label+'-account.json',{loginName:users[i],password:f.password}),

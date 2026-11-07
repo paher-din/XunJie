@@ -152,7 +152,7 @@ for (const scenario of ['retired', 'isolated']) {
       assert.equal((await check(fresh.services[0], freshGrant.token)).state, 'ready');
     } finally {
       await Promise.allSettled([runtime.stop(), source === runtime ? Promise.resolve() : source.stop(), peer.stop()]);
-      await rm(directory, { recursive: true, force: true });
+      await rm(directory, { recursive: true, force: true, maxRetries: 3 });
     }
   });
 }

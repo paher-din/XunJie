@@ -16,6 +16,7 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
 import { spaceMigrations } from '../spaces/index.js';
+import { memberAgentBindingMigration } from '../spaces/agent-bindings.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
 import type { ComponentBinding } from '@xunjie/contracts/components';
@@ -50,7 +51,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration, memberAgentBindingMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
@@ -73,6 +74,7 @@ const storedContentSchema = z.object({
     kind: z.enum(['component', 'executor']), objectId: uuid, version: z.number().int().positive(),
   }).strict()).max(50), components: componentBindingsSchema.optional(),
   executionPlan: courseExecutionPlanSchema.optional(),
+  helpPolicy: courseReleaseSchema.shape.helpPolicy,
 }).strict();
 type StoredContent = z.infer<typeof storedContentSchema>;
 
@@ -153,7 +155,7 @@ function bindingOf(associationId: string, courseName: string, taskTitle: string,
   return courseActivityBindingSchema.parse({ associationId, courseId: content.courseId, courseName,
     taskId: content.taskId, taskTitle, releaseId: content.releaseId, contentDigest: contentDigest(content),
     objectives: content.objectives, requirements: content.requirements, materials: studentMaterials(content),
-    starterWorks: content.starterWorks, capabilities: content.capabilities,
+    starterWorks: content.starterWorks, capabilities: content.capabilities, helpPolicy: content.helpPolicy,
     ...(content.components ? { components: content.components } : {}),
     ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}) });
 }
@@ -195,11 +197,13 @@ function planImport(value: unknown) {
   const materials: StoredContent['materials'] = input.release.materials.map(material => ({ materialId: material.materialId,
     title: material.title, mediaType: material.mediaType, access: material.access,
     sha256: material.sha256, byteLength: material.byteLength }));
+  // Key order is part of the persisted content digest; follow storedContentSchema exactly.
   const content: StoredContent = { formatVersion: 1, courseId: input.course.courseId, taskId: input.task.taskId,
     releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
     materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[],
     ...(input.release.components ? { components: input.release.components } : {}),
-    ...(input.release.executionPlan ? { executionPlan: input.release.executionPlan } : {}) };
+    ...(input.release.executionPlan ? { executionPlan: input.release.executionPlan } : {}),
+    helpPolicy: input.release.helpPolicy };
   storedContentSchema.parse(content);
   verifyExecutionPlan(content);
   return { input, content, materials, contentHash: contentDigest(content) };
@@ -385,7 +389,8 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     return courseReleaseSchema.parse({ formatVersion: 1, courseId: content.courseId, taskId: content.taskId,
       releaseId: content.releaseId, contentDigest: row.content_digest, objectives: content.objectives,
       requirements: content.requirements, materials: studentMaterials(content), starterWorks: content.starterWorks,
-      capabilities: content.capabilities, ...(content.components ? { components: content.components } : {}),
+      capabilities: content.capabilities, helpPolicy: content.helpPolicy,
+      ...(content.components ? { components: content.components } : {}),
       ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}),
       publishedAt: row.published_at.toISOString(), courseName: row.course_name,
       taskTitle: row.task_title });

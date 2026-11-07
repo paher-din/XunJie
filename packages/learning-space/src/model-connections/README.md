@@ -11,6 +11,7 @@
 | `checks.dispatch(identity, id)` | 有效授权与代际下最多一次外发；重复派发只查原记录；没有课程、活动或 Run 前置 |
 | `checks.read/list(identity, id?)` | 只读原事实，并核验结果资源；结果含部分文本、usage 及 resultRef，不返回原生 reasoning 或错误正文 |
 | `checks.cancel(identity, id)` | 未外发确认未开始；外发后 abort 本机 SDK；保留终态竞争的实际事实，上游计算/费用仍未知 |
+| `checks.progress(identity, id)` | 只返回学习 attempt 已通过凭据尾部扣留并持久化的安全正文前缀与修订号；探针不写进度 |
 | `school.save(spaceId, input)` | 仅受认证的宿主管理入口调用；每个学校一个默认连接，CAS 更新、停用、检查许可和限额 |
 | `selection.read/save`、`selection.createGrant/revoke` | 真实主体的显式引用、费用来源及授权版本；撤销不删除历史，不回退到学校额度 |
 | `images.upload` | 接收本主体的固定 PNG 原件或有来源的变换版本；不接受 URL、教师材料 ID 或任意文件路径 |
@@ -19,6 +20,8 @@
 HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只发送固定合成短文本；最多 128 个输出 token、30 秒等待、每主体每小时 6 次准入，全组件最多 2 个、同主体最多 1 个未结束物理请求。取消、失败、缺 usage、重复请求或重启均不返还准入计数。授权 60 秒有效，查询时将未派发的过期检查终结并释放临时凭据。临时凭据随检查终态在同一所属事务删除，避免完成回执后崩溃留下密钥。
 
 ## 学校默认和个人引用
+
+正式产品宿主可在 `openProductRuntime().install({ learningAdmissionPolicy })` 固定 learning 准入策略，保存到安装配置并随 runtime 备份还原；浏览器不能提交该策略。同一策略版本不能对应不同数值，变更值须使用新版本。省略时采用本模块的有限默认值，原 attempt 保留接收时的策略与费用来源。SDK 已在本地结束与上游计算已确认结束分别记录；未知上游保留物理槽，未知 usage 保留费用预留。需要在一个未知调用未清账时开始另一个独立请求的部署，应显式配置相应的有限主体并发，不能通过换 Run、grant 或安装重置旧占用。
 
 学校维护者使用 `xunjie school-model --root <学校环境> --file <私有 JSON>`，其输入为 `schoolModelInputSchema`：正常连接保存字段、`requestId/expectedVersion/credential`，以及 `policy: { checksAllowed, maxChecksPerHour, maxOutputTokens, timeoutMs }`。首次版本为 0；更新用返回版本；`enabled:false` 停用，`credential.action:"clear"` 显式清除。凭据放私有文件，命令只输出脱敏配置；管理凭据由产品在本机解析，学生不能调用管理写入。没有“管理员允许个人模型”开关。
 
@@ -34,7 +37,11 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 
 `POST models/segments` 接收 `segmentId/requestId/source/prefix/portable`，可用 `previousSegmentId` 表达新段出处。`prefix` 固定 `system`、工具 `{name,description,inputSchema}` 和可选参数：显式 `toolChoice`、`responseFormat`、`applicationSchema`、`requiredCapabilities`、`capabilityProbe`。工具只支持同步、有限深度的本地 JSON Schema 校验；异步、外部引用、正则执行等未接入项在外发前拒绝。
 
-`POST models/calls` 是受控调用方使用的同一 Gateway 入口：`purpose:"chat-probe"`、稳定 `attemptId`、`segmentId/expectedSequence`、`input:{text,images,toolResults,observations}` 和有限 `limits`。这不建立学习聊天或执行工具。`models/calls/<id>` 的查询、`dispatch/cancel` 复用可靠调用状态机；`models/checks` 仍只接受合成文本检查用途，两类 ID 不能混用。原生调用最多 2048 输出 token、30 秒、32 步；完整 wire 最多 1 MB、8 张图片，超限拒绝而不裁剪。
+`POST models/calls` 是受控调用方使用的同一 Gateway 入口：`purpose:"chat-probe"`、稳定 `attemptId`、`segmentId/expectedSequence`、`input:{text,images,toolResults,observations}` 和有限 `limits`。这不建立学习聊天或执行工具。`models/calls/<id>` 的查询、`dispatch/cancel` 复用可靠调用状态机；`models/checks` 仍只接受合成文本检查用途，两类 ID 不能混用。原生探针调用最多 2048 输出 token、30 秒、32 步；完整探针 wire 最多 1 MB、8 张图片，超限拒绝而不裁剪。
+
+学习用途由 `teaching-agent` 的受认证 `RunDriver` 在自己的 owner 内接收，不经过公开 `models/calls`。学习段与 attempt 复用同一选择、授权、segment/check 状态机、三协议 SDK 和原生结果资源，但不受探针次数、段序号、输出或时间上限约束；输出上限与上下文窗口取保存的模型配置，`maxOutputTokens` 不再被探针上限静默改写。每段可携带真实 `user/assistant` 角色的可移植历史；学习调用仍不执行工具。
+
+学习 attempt 的增量正文写入独立 `model_attempt_progress` 表（迁移 11）。三种协议都在解析各自增量后调用同一个凭据尾部扣留发布器：完整凭据出现前不公开可能拼出凭据的尾部，出现后停止公开；探针、检查与取消不产生进度行。进度读取只返回已持久化的安全前缀与修订号，`teaching-agent` 再用稳定 attempt 身份追加事件。
 
 工具参数按 choice/tool index 聚合；只有名字、身份、完整 JSON/schema、整体终态和可读持久结果同时成立，公开结果才出现 `toolIntents`。拒绝、半截参数、截断、未知关键块、缺终态或本地发布失败不交付意图。DeepSeek 保留 `reasoning_content`；已实测 Command Code 方言保留 `reasoning` 及按块索引聚合的 `reasoning_details`，未知关键格式保留原始 chunks 但不可续接。公开投影不返回原生推理。
 
@@ -60,7 +67,7 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 
 原生请求不含认证；完整原生响应由 owner 保存，公开文本再次脱敏。只有结果资源与结果引用可靠提交后才发布完成。HTTP、流内错误、畸形数据、截断、缺终态、超时、取消和未知状态分别记录。累计 usage 以最后实际值替换，未知不补零，真实零值保留。
 
-维护先关闭新准入/派发，等待已接收检查结果落盘，再封存储写。真实进程崩溃后不重新生成；仅在主机/PID/进程出生身份能确认旧本机处理者已结束时回收其本机物理槽，未知 usage 不变。无法确认远端处理者死亡时继续保守占用；跨机接管由后续子票补齐。
+维护先关闭新准入/派发，等待已接收检查结果落盘，再封存储写。真实进程崩溃后不重新生成；仅在主机/PID/进程出生身份能确认旧本机处理者已结束时确认其本地 SDK 已结束，未知 usage 不变。无法确认远端处理者死亡时继续保守占用；跨机接管由后续子票补齐。
 
 ## 恢复与验证
 
@@ -68,7 +75,21 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 
 独立模型环境使用通用 `backup`、`restore`、`takeover` 流程。恢复默认保留 `model` 装配。接管后在正式模型设置核对提示，并用原引用检查结果。重新连接时为新安装签发 WP01 授权并更新设备绑定。
 
-学校侧受控调用方可用正式包中的 `xunjie model-task --root <学校环境> --file <请求 JSON>` 或产品运行时的 `modelTask` 接口提交和查询已配对设备的调用任务。两者都走学校宿主的本机控制端口。任务用独立 `taskId` 标识，`attemptId` 保持模型调用原身份。设备主动经 `learning.authority` 拉取并交回回执，学校核对已认证成员的学习 owner、授权和设备安装身份。回执只包含公开尝试投影。现有调用入口仍负责建立段和上传固定图片，任务通道仅处理该段上的接收、派发、查询及取消。
+学校侧受控调用方可用正式包中的 `xunjie model-task --root <学校环境> --file <请求 JSON>` 或产品运行时的 `modelTask` 接口提交和查询已配对设备的调用任务。两者都走学校宿主的本机控制端口。任务用独立 `taskId` 标识，`attemptId` 保持模型调用原身份。设备主动经 `learning.authority` 拉取并交回回执；早期调用任务仍核对学习 owner，WP07 的版本化学习任务使用独立成员模型绑定，不改变学校活动和作品的目标。
+
+`service.ts` 的 `LearningModelPort` 覆盖选择、原生段、学习请求、公开进度、请求重建、固定图片与结果保留。`paired-learning.ts` 在学校模型 owner 保存任务及段/attempt/图片/结果的固定目标；后续选择或绑定变化不能把旧请求转发到新设备。设备模型凭据留在设备，SDK 外发前重新验证原 Agent 服务、安装、授权和 Run 领取代际。单次任务内部读取共享接受时的准入结果，外发校验独立执行；未知回包使用原业务身份核对。版本化任务支持建段前准备，不伪造尚未存在的 Run 或 attempt。
+
+Root 的 `models.selection.read/save` 保存同一成员选择版本，合并学校默认、Root self 和已配对设备的选项。设备经原 `learning.authority` 的 `modelChoices` 发布公开投影；学校设置页可直接发现选项，无需先打开活动或调用 Agent。迁移 14 保存设备元数据及按原 outbox 接受顺序更新的刷新事实；绑定、发布和设备个人空间的选择都不改 Root pointer。显式选设备仍用原 `selection.save` 的 `{kind:'personal',connectionId,grantId}`。个人凭据、native 与费用事实留在实际 owner。旧段、attempt、图片及结果沿已持久路由继续访问；设备离线不改选择，不借用 Root 或学校额度，未选设备的离线不阻塞已有 Root 选择。
+
+`paired-grants.ts` 与迁移 15 保存授权创建、撤销、固定 grant 路由和结清事实。学校网页为设备选项创建授权时，任务由原设备实际建立 grant，Root 导入确认事实后才返回，现有“授权并选用”的连续请求无需中间刷新。撤销先在 Root 持久禁止该 grant 的新调用，包含原段和在途 attempt，再由原 owner 确认 inactive；未知回包保留原任务和原因，重查不会改变 owner。安装客户端的学校空间读写同一 Root pointer，其已有 school-scope 配置、个人配置与凭据继续由设备保管，个人空间的选择保持独立。授权任务遇到临时不可用、维护、资源忙或未知提交时保持 pending；恢复后沿原 task/request/grant 核实，不提交永久错误回执。调度按实际 binding 读取未结清任务，单批最多 16 条，维护验证及备份包含这些事实。
+
+`selection.resolve` 是学习 service 的新增操作，对指定 source 的真实 grant 重新核验并返回 snapshot，不读取或修改设备当前 selection。设备学习建段允许第二个 source 参数，实际 owner 重新校验该 grant，并把它纳入原段创建指纹。宿主对外部设备选择消费 paired adapter；原始 Root `selection.snapshot` 对设备 pointer 明确拒绝本地解析。安装客户端学校视图已接 Root 入口，个人视图继续使用设备自己的 pointer。
+
+学习网络 `selection.read` 拒绝不同主体的可选 `deviceOwner`。本机 UI 由可信宿主解析个人身份后直接调用 `Gateway.selection.read(schoolIdentity, personalIdentity)`，保留原有本人设备用途；对端不能通过参数指定另一账号。
+
+`origins.ts` 的迁移 13 把设备侧 journal 放入实际模型 owner。`models.origins.bind(identity, associationId, origin)` 固定原任务或 attempt 的主体、Agent 服务/安装/grant、设备恢复代际及已有 run/activity；调度者 driverId/generation 只用于每次任务的资格复核。`assert` 是不读取正文的可信 Node 核对接口，`validate` 进入 Gateway 维护验证，journal 随模型备份还原。school-client 只迁入并删除旧文件，不再创建文件 journal；其 `modelTarget` 与学习数据 `target` 独立。
+
+宿主可提供 `authorizeActive(identity, attemptId)`，在 SDK 在途期间强制复核原任务资格，不得复用准入 cache。未提供时沿用 fresh `authorizeDispatch`；两者都没有时使用普通授权。默认每 1000ms 非重叠复核，可通过 `authorizationPollMs` 调整；短请求在归档前也复核。失权或无法确认时先持久请求取消，再 abort 原 SDK；已经开始的复核必须结清才能归档成功。内部 `models.checks.cleanup.status(scope, attemptId)` / `cancel(scope, attemptId)` 只接收原 `{environmentId,spaceId,principalId}` 与 attempt，绕过成员授权但不能读正文、创建或派发请求，也不加入网络 service 操作表。未确认的清理阻止维护 drain 宣告完成；原生结果仍归档到原 attempt，撤权后的完成不发布工具意图或恢复成功状态。
 
 ```ts
 const school = openProductRuntime({ root: schoolRoot });
@@ -82,7 +103,9 @@ const result = await school.modelTask({ operation: 'read', identity, binding, ta
 
 任务和回执随模型 owner schema 10 进入备份，接管后查询仍按原身份和原绑定返回。新绑定不会领取旧绑定的待处理任务。原生结果仍由模型 owner 持有，Run、活动和交付可通过 owner 的 `results.retain` 与 `results.release` 增减各自的保留引用。
 
-配置版本、加密凭据引用、vault key、请求及结果资源随所属迁移和 WP01 加密备份恢复。默认产品新增后共四个 owner（含 runtime）。恢复旧三 owner 备份时，隔离阶段保持原 owner 集合；按原流程接管后正常停止/启动一次，才初始化空的模型 owner。不要跳过通用恢复的精确版本校验，也不回退到 legacy 模型配置。
+独立模型的 Root 发现、创建、撤销和在途停止见 [paired-model-grants.runtime.test.mjs](../../../../apps/server/tests/paired-model-grants.runtime.test.mjs)；安装客户端设置与实际独立 Agent 三条路线见 [agent-model-selection.runtime.test.mjs](../../../product-runtime/test/agent-model-selection.runtime.test.mjs)。[learning-model-school-tasks.runtime.test.mjs](../../../../apps/server/tests/learning-model-school-tasks.runtime.test.mjs)覆盖授权已提交但回包丢失、撤销后资源忙与原任务恢复。
+
+配置版本、加密凭据引用、vault key、请求、结果资源和独立设备路由随所属迁移和 WP01 加密备份恢复。当前完整默认产品共五个 owner（含 runtime 与教学 Agent）。恢复旧备份时，隔离阶段保持其实际 owner 集合，按通用恢复的精确版本校验推进，不回退到 legacy 模型配置。
 
 #165 新增迁移仅追加到既有版本；授权、选择、图片/变换来源、工具结果、观察、段和客户端持有方绑定都进入同一模型 owner。资源 pin 随接收/结果/段事务提交，旧段或设置更新不释放仍引用的原件。维护验证检查已有结果与图片内容；真实备份→隔离还原→接管后可读原引用并继续原生工具配对。旧 schema 必须走 WP01 正式升级，正常启动不偷偷迁移。
 
@@ -122,3 +145,13 @@ system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_to
 Chat 先补齐同一组全部工具回复，再追加用户图片消息；每张工具图携带原 callId 与固定资源版本。Messages 截断工具 JSON 时继续读取有界终态与用量，合法空 end_turn 可完成；半截参数始终不产生工具意图。设置页后台读取不会清除操作失败；冲突时保留草稿与密钥意图，显式读取/核对后重试；未知提交使用原 requestId 与原 payload 核对。
 
 定向单测见 [协议](../../../../apps/server/tests/model-protocol-review.test.mjs)、[Messages](../../../../apps/server/tests/model-messages-review.test.mjs)、[网络政策](../../../../apps/server/tests/model-network-policy.test.mjs)、[能力和图片](../../../../apps/server/tests/model-capability-images.test.mjs)。真实 PostgreSQL、宿主权限、持久化和重启回归见 [model-review.runtime.test.mjs](../../../../apps/server/tests/model-review.runtime.test.mjs)；修复矩阵与实际验收见 [PR #177 修复记录](../../../../docs/student-agent-implementation/wp06-pr177-review-fixes.md)。
+
+## Learning 共享准入（R9）
+
+`learning-admission.ts` 在模型 owner 的持久事务中按稳定 attempt 接收顺序保存队列、政策版本、费用来源、跨活动主体资格、费用预留及物理槽。默认 `learning-token-budget-v1` 为每费用来源滚动 24 小时 1000 万 token、owner 并发 8、费用来源并发 4、主体并发 1；可信宿主可通过 `learningAdmissionPolicy` 配置有限政策，新参数必须使用新版本。Learning 不消费探针每小时次数；其共享预算、物理并发与 Run 自身预算分别成立。
+
+预留为原生请求 UTF-8 字节数、4096 token 帧开销余量及实际输出上限之和；最终费用按 input/output 总量核对，cache/reasoning 细项不重复累计。服务商报告的更高 total 以实际值结算，超出预留的差额保留在共享账中，后续请求继续受预算约束。最终 usage 和结果引用同事务结算一次，未知费用持续占预留，跨预算窗口也不退款。确认调用结束但 usage 未知只释放物理槽；取消、断流和旧 dispatcher 结束不会证明上游结束，继续保留费用与物理槽。`ModelAttempt.physicalRequestEnded` 保持本地 SDK 结束的原语义；ledger 的独立 `upstream_ended` 才授权释放 `physical_held`。本地结束后逻辑 stop、维护排空和备份可以完成，未知上游占用随账本恢复并继续限制新准入。确定外发前取消或未发送的 claim 才能撤销预留。
+
+缺少资格时 attempt 保持 `accepted` 和原输入，`reason` 分别说明主体并发、费用来源并发、owner 物理容量、费用预算、单请求超预算或公平队列等待。仅已请求派发的请求进入公平队列，按原接收顺序选取当前合格者。派发在慢预检前持久标记 ticket，资源等待保留 ticket；授权或预检失败时撤回未预留的 ticket，保留原 attempt 与输入。撤回事务失败或提交未知时向上传播存储错误，由 Run 沿原 attempt 重试确认后再报告原授权失败；ticket 身份防止旧失败回包撤回较新并发重试；尚未请求派发或已失去资格的旧请求不能阻塞其他主体。`LIMIT 20` 仅是教学端扫描批次；准入上限由政策和持久占用决定。迁移 19 保存这些准入事实；教学端等待释放逻辑执行者，后台重试同一 attempt，并轮转扫描等待的 Run。
+
+[原生 PostgreSQL 准入测试](../../../../apps/server/tests/learning-admission.runtime.test.mjs) 使用实际 owner 事务与 SDK、受控 fetch 计数，核对竞争、等待、重启、未知调用和一次结算；[政策源码测试](../../../../apps/server/tests/learning-admission-policy.test.mjs) 核对有限配置与真实 usage 核算。

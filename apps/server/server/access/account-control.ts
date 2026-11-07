@@ -7,7 +7,7 @@ import { dirname, isAbsolute } from 'node:path';
 import { z } from 'zod';
 import { readControlledJson } from '../app/config.ts';
 import { createPasswordRecord } from './password.ts';
-import { localSocket } from './local-socket.ts';
+import { localSocket, type LocalEndpoint } from './local-socket.ts';
 import type { SyntheticDatabase, Transaction } from '../db/transaction.ts';
 
 class AccountControlError extends Error {
@@ -30,7 +30,9 @@ const inputSchema = z.strictObject({ externalId: externalIdSchema, loginName: z.
   password: z.string().min(32).max(128), courseId: z.string().min(1).max(128), role: z.enum(['student', 'teacher']) });
 type Management = { disableUserInTransaction(tx: Transaction, userId: string): void };
 
-export async function createLocalAccountControl(configurationFile: string, { db, staticAllowed }: { db: SyntheticDatabase; staticAllowed?: string[] }) {
+export async function createLocalAccountControl(configurationFile: string, { db, staticAllowed, localEndpoint = localSocket }: {
+  db: SyntheticDatabase; staticAllowed?: string[]; localEndpoint?: (path: string) => LocalEndpoint;
+}) {
   const config = configurationSchema.parse(readControlledJson(configurationFile));
   requireAccess(Array.isArray(staticAllowed) && staticAllowed.length, 'EXPLICIT_APPLICATION_SCOPE_REQUIRED');
   const baseAllowed = new Set(staticAllowed);
@@ -93,7 +95,7 @@ export async function createLocalAccountControl(configurationFile: string, { db,
     } catch (error) { send(error instanceof AccountControlError ? error.status : 503, { ok: false, code: error instanceof AccountControlError ? error.code : error instanceof z.ZodError ? 'APPLICATION_CONTROL_INVALID' : 'APPLICATION_CONTROL_FAILED' }); }
   });
   server.requestTimeout = 10000; server.headersTimeout = 5000;
-  const endpoint = localSocket(config.socketPath);
+  const endpoint = localEndpoint(config.socketPath);
   return {
     loginAuthorization: (id: string) => baseAllowed.has(id) || registry.accounts[id]?.active === true,
     async listen(service: { management: Management }) {

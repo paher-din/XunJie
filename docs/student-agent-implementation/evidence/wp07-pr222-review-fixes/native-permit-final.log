@@ -1,0 +1,13 @@
+✔ tool RPC fences a delayed Driver while an unaccepted native command cannot start (3323.853459ms)
+✔ tool RPC fences a delayed Driver while an accepted browser command remains claimable (4912.281167ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable (3914.407959ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable after an interrupted enqueue (3384.249708ms)
+✔ closed activity rejects fresh model dispatch authority without changing the original attempt (2500.618292ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18232.248458

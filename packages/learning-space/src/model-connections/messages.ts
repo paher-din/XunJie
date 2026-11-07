@@ -3,7 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative, messagesEventSensitiveValues } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
-import { createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
+import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts } from './upstream-facts.js';
 export { validateMessagesNative } from './messages-native.js';
 
@@ -21,9 +21,10 @@ export function messagesCheckPayload(configuration: ModelConfiguration, tokens: 
 }
 export async function runMessages(configuration: ModelConfiguration, apiKey: string, payload: MessagesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void) {
   let limited = false, upstream: ModelUpstream | undefined;
   const sensitive = createSensitiveOutput(apiKey);
+  const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const client = new Anthropic({ apiKey, baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0,
     timeout: timeoutMs, logLevel: 'off', fetchOptions: { redirect: 'error' },
     ...(configuration.dialect === 'deepseek' ? { defaultHeaders: { 'anthropic-version': '2023-06-01' } } : {}),
@@ -42,7 +43,7 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     // Raw SDK events, with bounded explicit aggregation. No SDK multi-turn/tool helpers.
     // In SDK 1.1.0 MessageStream overwrites each signature_delta; we preserve all fragments.
     const stream = await client.messages.create(payload, { signal: requestSignal });
-    for await (const event of stream) { events.push(structuredClone(event)); assembler.add(event); }
+    for await (const event of stream) { events.push(structuredClone(event)); assembler.add(event); progress?.(assembler.text); }
   } catch (error) {
     const status = (error instanceof Anthropic.APIError ? error.status : undefined)
       ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);

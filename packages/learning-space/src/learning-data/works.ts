@@ -182,5 +182,18 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
     });
     return receipt.result as { objectId: string; contentId: string };
   }
-  return { read, sync, receipt, content, registerBasis };
+  /** Metadata for one approved immutable version. No workspace-head bytes leave this owner. */
+  async function inspectVersion(identity: SpaceIdentity, activityId: string, value: { objectId: string; contentId: string }) {
+    await authorize(identity, activityId);
+    const input = z.object({ objectId: z.uuid(), contentId: z.uuid() }).strict().parse(value);
+    const { rows: [row] } = await storage.read(`SELECT
+      EXISTS(SELECT 1 FROM work_contents c WHERE c.activity_id=$1 AND c.object_id=$2 AND c.content_id=$3) AS retained,
+      COALESCE((SELECT h.revision FROM work_heads h WHERE h.activity_id=$1),0) AS current_revision,
+      EXISTS(SELECT 1 FROM work_heads h WHERE h.activity_id=$1 AND h.files @> $4::jsonb) AS is_current,
+      EXISTS(SELECT 1 FROM work_versions v WHERE v.activity_id=$1 AND v.files @> $4::jsonb) AS ever_published`,
+      [activityId, input.objectId, input.contentId, JSON.stringify([input])]);
+    return { retained: Boolean(row!.retained), currentRevision: Number(row!.current_revision),
+      isCurrent: Boolean(row!.is_current), everPublished: Boolean(row!.ever_published) };
+  }
+  return { read, sync, receipt, content, registerBasis, inspectVersion };
 }

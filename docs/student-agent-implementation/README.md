@@ -27,7 +27,15 @@
 | WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |
 | #175 已完成：课程运行方案固定、按操作判定执行位置、Linux 受限会话入口、学校节点真实原生会话与撤权/旧安装失权 | [#175 课程运行方案与学校节点执行](wp03-course-execution-plan.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
-| WP07 的持久运行、session log、请求重建及正式学习对话 | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) · [实施子票](specs/README.md#wp07-实施子票) |
+| WP07 的持久运行、session log、请求重建及正式学习对话 | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) · [交付与验收](wp07-197-recoverable-learning-conversation.md) · [双轴审查](wp07-197-code-review.md) · [实施子票](specs/README.md#wp07-实施子票) |
+| WP07 固定作品读取、课程工具、持久等待与原执行核对 | [#198 实现与验收](wp07-198-agent-tools.md) · [实施选择](specs/wp07-agent-tools.md) · [双轴审查](wp07-198-code-review.md) · [旧消费者迁接归属](wp07-198-legacy-consumers.md) |
+| WP07 Agent 独立服务、固定活动路由与跨机设备模型 | [#203 部署与验收](wp07-203-agent-deployment.md) · [双轴审查](wp07-203-code-review.md) |
+| WP07 Agent 固定提问、可靠明确回应及原 Run 继续 | [#199 实现与验收](wp07-199-student-ask.md) · [实施选择](specs/wp07-student-ask.md) · [双轴审查](wp07-199-code-review.md) · [Agent owner](../../packages/learning-space/src/teaching-agent/README.md) |
+| WP07 忙碌时引导、FIFO 排队、输入修订及暂停选择继续 | [#200 实施选择](specs/wp07-input-control.md) · [实现与验收](wp07-200-input-control.md) · [双轴审查](wp07-200-code-review.md) |
+| WP07 #200 的 macOS 引导、排队与暂停续接实机验收 | [#210 macOS 验收](wp07-210-mac-acceptance.md) |
+| WP07 学习对话的完整备份、隔离还原与权威接管 | [#204 实施选择](specs/wp07-conversation-recovery.md) · [交付与验收](wp07-204-conversation-recovery.md) · [双轴审查](wp07-204-code-review.md) · [Mac/跨机交接 #212](https://github.com/paher-din/XunJie/issues/212) |
+| WP07 Windows 工程检查的 20 项后续修复与重新验收 | [实施与复验](wp07-engineering-checks.md) · [双轴审查](wp07-engineering-code-review.md) |
+| WP07 与已合入 main 的最终 WP04 整合、组合回归及清理 | [合并与复验](wp07-main-integration.md) |
 | WP08 的能力装配、独立 Skills、上下文压缩、记忆读取及 PDF 资料来源；MCP/Plugin 暂缓 | [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |

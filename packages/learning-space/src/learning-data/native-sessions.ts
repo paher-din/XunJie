@@ -212,7 +212,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     if (canonicalDigest(value) !== state.sha256) fail('corrupt');
   }
 
-  async function accept(identity: SpaceIdentity, activityId: string, value: unknown): Promise<ExecutionQuery> {
+  async function accept(identity: SpaceIdentity, activityId: string, value: unknown, guard?: () => Promise<void>): Promise<ExecutionQuery> {
     if (closing) throw new StorageError('maintenance');
     const input = z.object({ action: executionActionSchema, acceptance: z.unknown().optional() }).strict().parse(value);
     const action = input.action;
@@ -227,13 +227,13 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       if (accepted.inputDigest !== digest(action)) fail('identity-conflict');
       return accepted;
     }
-    const attempt = beginAccept(identity, activityId, action);
+    const attempt = beginAccept(identity, activityId, action, guard);
     starting.set(key, attempt);
     try { return await attempt; }
     finally { starting.delete(key); }
   }
 
-  async function beginAccept(identity: SpaceIdentity, activityId: string, action: ExecutionAction): Promise<ExecutionQuery> {
+  async function beginAccept(identity: SpaceIdentity, activityId: string, action: ExecutionAction, guard?: () => Promise<void>): Promise<ExecutionQuery> {
     await ensureReady();
     const activity = await options.activity(identity, activityId);
     const scope = action.scope;
@@ -307,6 +307,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
       }
       isolation = measured;
     }
+    try { await guard?.(); }
+    catch (error) { return refuseStart(activityId, action.requestId, error); }
     let spawned: SupervisedSession;
     try {
       spawned = await SupervisedSession.create({
@@ -331,6 +333,7 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     try {
       const current = await options.activity(identity, activityId);
       await verifyPlacement(identity, current, action);
+      await guard?.();
     } catch (error) { await spawned.dispose(); throw error; }
     if (spawned.exitFact) {
       await settleExit(sessionRef, spawned.exitFact);
@@ -526,14 +529,14 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
   }
 
   async function control(identity: SpaceIdentity, activityId: string, requestId: string,
-    value: unknown): Promise<ExecutionQuery> {
+    value: unknown, guard?: () => Promise<void>): Promise<ExecutionQuery> {
     if (closing) throw new StorageError('maintenance');
-    const attempt = applyControl(identity, activityId, requestId, value);
+    const attempt = applyControl(identity, activityId, requestId, value, guard);
     controlling.add(attempt);
     try { return await attempt; } finally { controlling.delete(attempt); }
   }
   async function applyControl(identity: SpaceIdentity, activityId: string, requestId: string,
-    value: unknown): Promise<ExecutionQuery> {
+    value: unknown, guard?: () => Promise<void>): Promise<ExecutionQuery> {
     await ensureReady();
     const activity = await options.activity(identity, activityId);
     const input = executionControlSchema.parse(value);
@@ -614,6 +617,19 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     if (booked.applied) return queryOf((await findRef(sessionRef))!);
     await verifyPlacement(identity, await options.activity(identity, activityId), action);
     await assertGeneration((await findRef(sessionRef))!);
+    try { await guard?.(); }
+    catch (error) {
+      // The process has not received this input. Keep that fact durable instead of leaving an
+      // indefinitely dispatching operation after the Run lost its permit.
+      await storage.request({ requestId: 'native-permit-refused:' + input.controlId,
+        fingerprint: digest({ sessionRef, inputDigest }) }, async tx => {
+        await tx.query(`UPDATE native_session_operations SET status='rejected',reason=$2,updated_at=clock_timestamp()
+          WHERE control_id=$1 AND status='dispatching'`, [input.controlId,
+          JSON.stringify(reasonOf('invalid-input', '派发许可已撤销，本次输入未送入原生会话。'))]);
+        return null;
+      });
+      throw error;
+    }
     let observation;
     try {
       observation = await entry.process.control(input.effect, input.controlId, booked.seq, input.parameters);

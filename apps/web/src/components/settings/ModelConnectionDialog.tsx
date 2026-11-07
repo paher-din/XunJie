@@ -5,8 +5,9 @@ import { ProviderIdentityFields } from './ProviderIdentityFields'
 import { Field, TextInput } from './controls'
 import { Icon } from '../../icons'
 
-const fields = { name: '名称', baseUrl: 'Base URL', protocol: '协议', path: '路径', modelId: '模型 ID', dialect: '方言', parameterMode: '参数模式', enabled: '启用连接' } as const
-const display = (value: string | boolean) => typeof value === 'boolean' ? value ? '启用' : '停用' : value
+const fields = { name: '名称', baseUrl: 'Base URL', protocol: '协议', path: '路径', modelId: '模型 ID', dialect: '方言',
+  parameterMode: '参数模式', enabled: '启用连接', contextWindow: '上下文窗口', maxOutputTokens: '最大输出 token' } as const
+const display = (value: unknown) => typeof value === 'boolean' ? value ? '启用' : '停用' : value === undefined ? '未填写' : String(value)
 
 export function ModelConnectionDialog({ connection, attempts, onClose, onSave, onRead, onCheck, onCancel }: {
   connection: ModelConnection | null; attempts: ModelAttempt[]; onClose(): void
@@ -117,6 +118,12 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
         <Field label="参数模式"><select className="st-input" aria-label="参数模式" value={configuration.parameterMode} onChange={event => change({ parameterMode: event.target.value as ModelConfiguration['parameterMode'] })}>
           <option value="plain">默认文本参数</option><option value="thinking" disabled={configuration.dialect !== 'deepseek'}>DeepSeek 思考模式</option></select></Field>
         <label><input type="checkbox" checked={configuration.enabled} onChange={event => change({ enabled: event.target.checked })} />启用连接</label>
+        <Field label="上下文窗口" tip="按模型官方参数填写；学习请求按此值做容量判断"><TextInput aria-label="上下文窗口" className="st-mono-input"
+          inputMode="numeric" value={configuration.contextWindow ?? ''} placeholder="例如 262144"
+          onChange={event => change({ contextWindow: event.target.value ? Number(event.target.value) : undefined })} /></Field>
+        <Field label="最大输出 token" tip="学习请求使用此值；连接检查仍有自己的小输出上限"><TextInput aria-label="最大输出 token" className="st-mono-input"
+          inputMode="numeric" value={configuration.maxOutputTokens ?? ''} placeholder="例如 8192"
+          onChange={event => change({ maxOutputTokens: event.target.value ? Number(event.target.value) : undefined })} /></Field>
         <p className="detail">一次文本检查不会验证图像、工具或 strict schema 能力。</p>
         {error && <p role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}

@@ -107,7 +107,7 @@ export class ExecutionController {
         await this.receiver.store.record(this.scope, record.requestId, () => decided.query,
           { startedAt: record.startedAt ?? null })
       }
-      if (record.acceptance.execution) void this.flush(record.requestId)
+      if (record.acceptance.execution) void this.syncPending(record.requestId)
     }
     await this.refresh()
     for (const record of records) {
@@ -206,7 +206,7 @@ export class ExecutionController {
       await this.receiver.adopt(requestId).catch(() => false)
       await this.receiver.finish(requestId, { state: 'cancelled', reason: { code: 'worker-terminated', detail: '执行开始前已取消。' }, stopped: true })
       await this.actions.cancel(requestId)
-      await this.refresh(); void this.flush(requestId)
+      await this.refresh(); void this.syncPending(requestId)
       return
     }
     await this.refresh()
@@ -225,7 +225,7 @@ export class ExecutionController {
     if (this.waiting >= limits.concurrentJobs + limits.queuedJobs) {
       await this.finish(requestId, { state: 'failed', reason: { code: 'budget-exceeded',
         detail: `同一浏览器已有 ${limits.concurrentJobs} 项执行、${limits.queuedJobs} 项等待，本次未进入队列。` } })
-      await this.refresh(); void this.flush(requestId); return
+      await this.refresh(); void this.syncPending(requestId); return
     }
     this.waiting++
     let claimedNow = false
@@ -252,8 +252,14 @@ export class ExecutionController {
         const adapter = this.adapters.resolve(record.action)
         let outcome
         try {
+          const checkpoint = async () => {
+            await this.receiver.beforeRun(record.action)
+            await this.observeStop(requestId, abort)
+            abort.signal.throwIfAborted()
+          }
+          await checkpoint()
           outcome = await adapter.run(record.action, { signal: abort.signal,
-            checkpoint: async () => { await this.observeStop(requestId, abort); abort.signal.throwIfAborted() } })
+            checkpoint })
         } catch (error) {
           // Diagnostics of a failed run are still the run's own facts; the terminal reason keeps them.
           if (error instanceof ExecutionError) throw error
@@ -291,14 +297,14 @@ export class ExecutionController {
       }
       if (claimedNow) this.started--
       await this.refresh().catch(() => {})
-      void this.flush(requestId)
+      void this.syncPending(requestId)
     }
   }
   /** Service delivery of the same facts; a failure keeps the local truth and retries later. */
   async synchronize() {
     if(this.disposed || this.readOnly || !this.canAccess())return
     const records=await this.receiver.store.list(this.scope)
-    await Promise.all(records.filter(record=>record.acceptance.execution).map(record=>this.flush(record.requestId)))
+    await Promise.all(records.filter(record=>record.acceptance.execution).map(record=>this.syncPending(record.requestId)))
   }
   private retrySync(requestId:string) {
     if(this.disposed || this.readOnly)return
@@ -306,10 +312,11 @@ export class ExecutionController {
     if(this.syncRetryTimer!==undefined || !this.canAccess())return
     this.syncRetryTimer=setTimeout(()=>{
       this.syncRetryTimer=undefined
-      for(const id of this.syncRetries)void this.flush(id)
+      for(const id of this.syncRetries)void this.syncPending(id)
     },1000)
   }
-  private async flush(requestId: string) {
+  /** Deliver the original facts for recovery and Agent polling. */
+  async syncPending(requestId: string) {
     if (this.disposed || this.readOnly || !this.canAccess()) return
     if (this.syncing.has(requestId)) return
     this.syncing.add(requestId)

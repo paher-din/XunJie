@@ -1,0 +1,22 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "connect-dependency",
+  "measuredAt": "2026-11-07T09:52:19.897Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Agent connected to the Mac school learning-data owner over LAN HTTPS",
+      "detail": "0d16a1aa-0345-4b91-9f77-bced979ccc68"
+    }
+  ],
+  "facts": {
+    "connectionId": "0d16a1aa-0345-4b91-9f77-bced979ccc68"
+  },
+  "status": "passed"
+}

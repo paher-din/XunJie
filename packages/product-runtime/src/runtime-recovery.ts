@@ -7,6 +7,8 @@ import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { runtimeEnvironmentSchema } from '@xunjie/contracts/product-runtime';
 import { atomicJson, exists, readJson } from './io.js';
 import { retiredInstallations, restoreRetiredInstallations } from './retired-installations.js';
+import { recoverySuccessions, restoreRecoverySuccessions } from './recovery-successions.js';
+import { exportAgentTransfers, parseAgentTransferBackup, restoreAgentTransfers } from './agent-transfer-journal.js';
 import type { MaintenanceParticipant } from './maintenance.js';
 import { databaseBinding, inspectDatabase, resolveCredential, startDatabase, storeCredential } from './postgres.js';
 import type { DatabaseConfiguration, RuntimeResources } from './postgres.js';
@@ -61,9 +63,13 @@ export function createRuntimeRecoveryOwner(options: { root: string; participant:
           await client.query('COMMIT');
         } finally { await client.end(); }
       }
-      return { formatVersion: 1, schemaVersion: '1', ...(engineVersion ? { engineVersion } : {}),
+      const agentTransfers = await exportAgentTransfers(root, directory, signal);
+      if (options.participant.descriptor.schemaVersion === '1' && agentTransfers.entries.length)
+        throw new RecoveryError('incompatible-runtime-format');
+      return { formatVersion: 1, schemaVersion: options.participant.descriptor.schemaVersion, ...(engineVersion ? { engineVersion } : {}),
         data: { environment, configuration: { ...config, requiredServiceIds: options.requiredServiceIds ?? config.requiredServiceIds },
-          credentials, tls, databaseIdentity, retiredInstallations: await retiredInstallations(root) } };
+          credentials, tls, databaseIdentity, retiredInstallations: await retiredInstallations(root), recoverySuccessions: await recoverySuccessions(root),
+          agentTransfers } };
     },
     async release() {},
     /**
@@ -87,12 +93,17 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
   return {
     serviceId: options.serviceId,
     async restore({ directory, recovery, signal }) {
-      if (recovery.schemaVersion !== '1' || recovery.formatVersion !== 1) throw new RecoveryError('incompatible-runtime-format');
+      if (!['1', '2'].includes(recovery.schemaVersion) || recovery.formatVersion !== 1) throw new RecoveryError('incompatible-runtime-format');
       const data = recovery.data as { environment: RuntimeEnvironment; configuration: InstalledConfiguration;
-        retiredInstallations?: unknown;
+        retiredInstallations?: unknown; recoverySuccessions?: unknown; agentTransfers?: unknown;
         databaseIdentity?: { systemIdentifier: string; databaseOid: string } };
+      if (recovery.schemaVersion === '2' && !data.agentTransfers) throw new RecoveryError('incompatible-runtime-format');
+      const transfers = data.agentTransfers === undefined ? { version: 1 as const, entries: [] } : parseAgentTransferBackup(data.agentTransfers);
+      if (recovery.schemaVersion === '1' && transfers.entries.length) throw new RecoveryError('incompatible-runtime-format');
       const source = runtimeEnvironmentSchema.parse(data.environment);
       if (source.services[0]?.serviceId !== options.serviceId) throw new RecoveryError('owner-identity-conflict');
+      if (source.profile === 'agent' && options.installation && options.installation.profile !== 'agent')
+        throw new RecoveryError('incompatible-deployment-profile');
       if (recovery.engineVersion && (!isSupportedPostgresVersion(recovery.engineVersion)
         || !isSupportedPostgresVersion(options.resources.postgresVersion ?? ''))) throw new RecoveryError('incompatible-engine');
       const sourceMajor = recovery.engineVersion ? Number.parseInt(recovery.engineVersion) : undefined;
@@ -104,9 +115,10 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
         if (!options.databaseCredential) throw new RecoveryError('target-database-credential-required');
         await storeCredential(options.root, databaseConfiguration.credentialRef, options.databaseCredential);
       }
-      const installed = await runtime.install({ profile: source.profile === 'model' ? 'model'
+      const installed = await runtime.install({ profile: source.profile === 'model' || source.profile === 'agent' ? source.profile
         : databaseConfiguration.mode === 'none' ? 'remote' : databaseConfiguration.mode === 'external' ? 'school' : 'local',
-        ...options.installation, database: databaseConfiguration,
+        ...options.installation, ...(data.configuration.agent ? { agent: data.configuration.agent } : {}), database: databaseConfiguration,
+        ...(data.configuration.learningAdmissionPolicy ? { learningAdmissionPolicy: data.configuration.learningAdmissionPolicy } : {}),
         requiredServiceIds: data.configuration.requiredServiceIds });
       const environment: RuntimeEnvironment = { ...source, installationId: randomUUID(),
         clientNamespace: `xunjie.v1.${source.environmentId}.recovery.${randomUUID()}`,
@@ -114,6 +126,8 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
         services: source.services.map((service, index) => index === 0 ? { ...service, endpoint: installed.environment.services[0]!.endpoint } : service) };
       await atomicJson(join(options.root, 'environment.json'), environment);
       await restoreRetiredInstallations(options.root, data.retiredInstallations ?? []);
+      await restoreAgentTransfers(options.root, directory, transfers);
+      await restoreRecoverySuccessions(options.root, data.recoverySuccessions ?? []);
       const config = await readJson<InstalledConfiguration>(join(options.root, 'installation.json'));
       // Outgoing identities are retained. Their credentials must be reissued by each receiver.
       await atomicJson(join(options.root, 'installation.json'), { ...config, connections: data.configuration.connections });
@@ -137,7 +151,7 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
           args: ['--exit-on-error', '--single-transaction', '--no-owner', '--no-acl', '--clean', '--if-exists', join(directory, 'runtime.dump')] });
       } else if (sourceMajor) throw new RecoveryError('target-database-required');
       const participant: MaintenanceParticipant = {
-        descriptor: { serviceId: options.serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: ['installation'] },
+        descriptor: { serviceId: options.serviceId, schemaVersion: recovery.schemaVersion, resourceRoots: [], configurationRefs: ['installation'] },
         async closeWrites() {}, async closeDispatch() {}, async drain() {},
         async validate() { if (database) await inspectDatabase(options.root, config.database); },
         async resume() {},
@@ -156,8 +170,11 @@ export async function restoreProductRecovery(options: { root: string; backupDire
   if (!runtimeId) throw new RecoveryError('runtime-participant-missing');
   // Authenticated source descriptors identify the normal product's business owners.
   // Explicit targets keep custom hosts in control of their complete owner set.
-  const targets = options.targets ?? (manifest.source.services.some(service => ['space-course', 'learning-data'].includes(service.unit))
-    ? createLearningRecoveryTargets({ root: options.root, environment: manifest.source, resources: options.resources,
+  const ownerIds = new Set(manifest.services.map(owner => owner.serviceId));
+  const ownerEnvironment = { ...manifest.source, services: manifest.source.services.filter(service => ownerIds.has(service.serviceId)) };
+  const targets = options.targets ?? (ownerEnvironment.services.some(service =>
+    ['space-course', 'learning-data', 'model-connection', 'teaching-agent'].includes(service.unit))
+    ? createLearningRecoveryTargets({ root: options.root, environment: ownerEnvironment, resources: options.resources,
       admin: () => recoveryDatabase(options.root) }) : []);
   return restoreRecoverySet({ backupDirectory: options.backupDirectory, targetRoot: options.root, key: options.key,
     ...(options.minimumFreeBytes === undefined ? {} : { minimumFreeBytes: options.minimumFreeBytes }),

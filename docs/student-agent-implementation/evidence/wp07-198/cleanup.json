@@ -1,0 +1,29 @@
+{
+  "windows": {
+    "taskName": "XunJie-WP07-198-Chrome",
+    "taskRemoved": true,
+    "acceptanceRootRemoved": true,
+    "sharedRuntimePreserved": true
+  },
+  "macos": {
+    "browserAndRuntimeFixtures": "closed by successful test teardown",
+    "failedRelativePostgresRun": "task-owned test process tree stopped; no matching temporary runtime directories remain"
+  },
+  "localOneTimeFiles": {
+    "status": "removed",
+    "files": [
+      "/tmp/xj-wp07-198-build.ps1",
+      "/tmp/xj-wp07-198-chrome.ps1",
+      "/tmp/xj-wp07-198-cleanup.ps1",
+      "/tmp/xj-wp07-198-prepare.ps1",
+      "/tmp/xj-wp07-198-session-diag.ps1",
+      "/tmp/xj-wp07-198-session-probe.mjs",
+      "/tmp/xj-wp07-198-source-files",
+      "/tmp/xj-wp07-198-source.tar.gz",
+      "/tmp/xj-wp07-198-start-chrome.ps1",
+      "/tmp/xj-wp07-198-windows-session-diag.c",
+      "/tmp/wp07-src.tgz"
+    ],
+    "retained": "reusable Node runtime, build outputs and final verification logs"
+  }
+}

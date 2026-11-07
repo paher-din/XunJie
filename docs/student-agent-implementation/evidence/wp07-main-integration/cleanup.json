@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "desktopLockReleased": true,
+  "tutoring": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "aluRecovery": {
+    "stopped": true,
+    "temporaryRootRemoved": true
+  },
+  "failedFixtureOwnerCleanup": {
+    "status": "passed",
+    "entries": [
+      {
+        "name": "xj-input-control-bxtVS0",
+        "ownerStopAndDelete": true
+      },
+      {
+        "name": "xj-input-control-JipPPm",
+        "ownerStopAndDelete": true
+      }
+    ]
+  },
+  "failedRecoveryOwnerCleanup": {
+    "status": "passed",
+    "entries": [
+      {
+        "name": "xj-independent-recovery-nn6V0W",
+        "ownerStopAndDelete": true,
+        "encryptedTemporaryBackupsRemoved": true,
+        "permanentRootLocksPreserved": true
+      },
+      {
+        "name": "xj-independent-recovery-8DC1y0",
+        "ownerStopAndDelete": true,
+        "encryptedTemporaryBackupsRemoved": true,
+        "permanentRootLocksPreserved": true
+      }
+    ]
+  },
+  "knownPrivateValuesAbsentFromPublicEvidence": true,
+  "sharedSchoolAndOtherWorktreesChanged": false,
+  "permanentOwnerLocksPreserved": true,
+  "temporaryCandidatePayloadsAndPrivateConfigurationRemoved": true,
+  "completedAt": "2026-11-07T14:15:46.057229+00:00"
+}

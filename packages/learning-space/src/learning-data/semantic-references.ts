@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto';
 import { componentInstanceId, componentStateName, matchesComponentState } from '@xunjie/contracts/components';
 import type { ComponentBinding } from '@xunjie/contracts/components';
 import { aluReferenceAdapters } from '@xunjie/contracts/alu-references';
-import { ALU_REFLECTION_MEDIA_TYPE } from '@xunjie/contracts/alu-learning';
+import { ALU_REFLECTION_MEDIA_TYPE, isAluCodeWork } from '@xunjie/contracts/alu-learning';
 import { semanticAdapters, semanticReferenceCopy, type QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
-import type { LearningActivity } from '@xunjie/contracts/learning-data';
+import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import { readAluReflectionSource } from './alu-reflections.js';
 import { readExecutionSource } from './execution-source.js';
@@ -64,8 +64,29 @@ async function originalReflection(storage: OwnedStorage, activity: LearningActiv
     return { note: material.note, action: material.action };
   } catch (error) { return pending(error); }
 }
+async function originalCheckWorks(storage: OwnedStorage, activity: LearningActivity, requestId: string, works: WorkFile[], text: string) {
+  let source;
+  try {
+    source = z.object({ source: z.object({ works: z.array(z.object({ name: z.string(), contentId: z.uuid(),
+      sha256: z.string().regex(/^[a-f0-9]{64}$/) })).max(512) }) }).parse(JSON.parse(text)).source;
+  } catch { return fail(); }
+  const code = works.filter(isAluCodeWork);
+  if (!code.length || source.works.length !== code.length || new Set(source.works.map(file => file.contentId)).size !== code.length) return fail();
+  for (const file of code) {
+    const reported = source.works.find(item => item.contentId === file.contentId && item.name === file.name);
+    if (!reported || file.encoding !== 'utf8' || reported.sha256 !== hash(file.value)) return fail();
+    const { rows: [row] } = await storage.read(`SELECT c.object_id,c.activity_id,c.encoding,c.media_type,o.kind,o.activity_id AS object_activity_id
+      FROM work_contents c LEFT JOIN work_objects o ON o.object_id=c.object_id WHERE c.content_id=$1`, [file.contentId]);
+    if (!row) throw new StorageError('unavailable');
+    if (row.object_id !== file.objectId || row.activity_id !== activity.activityId || row.object_activity_id !== activity.activityId
+      || row.kind !== 'code' || row.encoding !== file.encoding || row.media_type !== file.mediaType) return fail();
+    const { bytes, resource } = await originalResource(storage, file.contentId, `works/${activity.activityId}/${file.objectId}`);
+    if (resource.mediaType !== file.mediaType || resource.sha256 !== reported.sha256 || decode(bytes) !== file.value) return corrupt();
+    await originalPin(storage, `execution/${requestId}/work/${file.contentId}`, file.contentId);
+  }
+}
 async function originalV3Result(storage: OwnedStorage, activity: LearningActivity, binding: ComponentBinding,
-  source: ComponentSource, requireAlu: boolean) {
+  source: ComponentSource, requireAlu: boolean, counterexample = false) {
   if (source.objectId !== source.requestId || !source.requestId || !source.executionRef) return fail();
   const { action, query } = await readExecutionSource(storage, activity, { requestId: source.requestId, executionRef: source.executionRef });
   const instance = action.execution.instance, manifest = binding.definition.manifest;
@@ -87,7 +108,7 @@ async function originalV3Result(storage: OwnedStorage, activity: LearningActivit
   const refs = expected.resources ?? [];
   if (new Set(refs.map(ref => ref.contentId)).size !== refs.length || refs.some(ref => ref.contentId === source.contentId)) return corrupt();
   const scopeName = `execution/${source.requestId}`;
-  await originalResource(storage, source.contentId, scopeName, expected);
+  const primary = await originalResource(storage, source.contentId, scopeName, expected);
   await originalPin(storage, `${scopeName}/result`, source.contentId);
   const resources = [];
   for (const ref of refs) {
@@ -95,7 +116,14 @@ async function originalV3Result(storage: OwnedStorage, activity: LearningActivit
     await originalPin(storage, `${scopeName}/resource/${ref.contentId}`, ref.contentId);
     resources.push({ ...ref, text: decode(bytes) });
   }
-  return { action, output: row.output, state: query.statusKnowledge === 'confirmed' ? query.state : 'unknown', resources };
+  const text = decode(primary.bytes);
+  if (counterexample) {
+    if (action.execution.operation.operationId !== 'check-all' || expected.name !== 'check-report.json'
+      || expected.mediaType !== 'application/json') return fail();
+    await originalCheckWorks(storage, activity, action.requestId, action.execution.basis.works, text);
+  }
+  return { action, output: row.output, state: query.statusKnowledge === 'confirmed' ? query.state : 'unknown', resources,
+    name: expected.name, mediaType: expected.mediaType, text };
 }
 /** Reads immutable facts through their owner, never accepting a caller's digest as proof. */
 export async function verifySemanticReference(storage: OwnedStorage, activity: LearningActivity,
@@ -112,7 +140,7 @@ export async function verifySemanticReference(storage: OwnedStorage, activity: L
   const alu = Object.hasOwn(aluReferenceAdapters, range.typeId);
   if (alu) {
     if (adapter!.origin !== source.origin) return fail();
-    const content = source.origin === 'execution-result' ? await originalV3Result(storage, activity, binding, source, true)
+    const content = source.origin === 'execution-result' ? await originalV3Result(storage, activity, binding, source, true, range.typeId === 'alu-counterexample')
       : range.typeId === 'alu-reflection' ? await originalReflection(storage, activity, source)
       : await originalState(storage, activity, binding, source);
     if (range.version !== adapter!.version) { if (historical) return; return fail(); }

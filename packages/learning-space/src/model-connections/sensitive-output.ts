@@ -22,6 +22,27 @@ export function createSensitiveOutput(apiKey: string) {
   return { clean, contains, containsFragments };
 }
 
+/** Publish only a prefix that cannot contain the credential, withholding any tail that could
+ * grow into it. A complete occurrence stops publication; the final result still fails/redacts.
+ */
+export function createProgressPublisher(apiKey: string, emit: (text: string) => void) {
+  let published = '', halted = false;
+  return (text: string) => {
+    if (halted || !text) return;
+    if (!apiKey) { if (text.length > published.length) { published = text; emit(text); } return; }
+    const at = text.indexOf(apiKey);
+    let base = at >= 0 ? text.slice(0, at) : text;
+    if (at >= 0) halted = true;
+    // Even a suffix that is only the beginning of the credential stays private.
+    let cut = Math.max(0, base.length - (apiKey.length - 1));
+    for (let size = Math.min(apiKey.length - 1, cut); size > 0; size--) {
+      if (base.slice(0, cut).endsWith(apiKey.slice(0, size))) { cut -= size; break; }
+    }
+    const safe = base.slice(0, cut);
+    if (safe.length > published.length) { published = safe; emit(safe); }
+  };
+}
+
 /** Only the ordered primary logprob tokens are a deterministic output field. */
 export function protocolTokenSequences(value: unknown): string[] {
   const sequences: string[] = [], pending = [value], seen = new Set<object>();

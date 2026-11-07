@@ -153,7 +153,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID(), materialId = randomUUID()
   const bytes = Buffer.from('可选择的课程材料，中文原文保持不变。')
   await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '课程入口回归' },
-    task: { taskId, title: '实际课程任务', summary: '从固定材料进入作品' }, release: { releaseId, objectives: ['保留固定依据'],
+    task: { taskId, title: '实际课程任务', summary: '从固定材料进入作品' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保留固定依据'],
       requirements: '要求与当前作品一起容易找到。', materials: [{ materialId, title: '课程材料', path: 'material.txt', access: 'student',
         mediaType: 'text/plain', byteLength: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }], starterWorks: [], capabilities: [] },
     resources: [{ path: 'material.txt', contentBase64: bytes.toString('base64') }] })
@@ -289,7 +289,7 @@ async function courseHistoryFixture(page: Page, withComponent = false) {
   for (const label of ['A', 'B']) {
     const courseId = randomUUID(), releaseId = randomUUID(), name = '课程历史 ' + label, title = '发布任务 ' + label
     await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name },
-      task: { taskId: randomUUID(), title, summary: '' }, release: { releaseId, objectives: ['固定课程依据'], requirements: '核对当前课程', materials: [], starterWorks: [], capabilities: [],
+      task: { taskId: randomUUID(), title, summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['固定课程依据'], requirements: '核对当前课程', materials: [], starterWorks: [], capabilities: [],
         ...(definition ? { components: [{ key: 'annotation', definition, configuration: { title: '材料标注' }, materialIds: [] }] } : {}) }, resources: [] })
     await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true })
     courses.push({ courseId, releaseId, name, title })

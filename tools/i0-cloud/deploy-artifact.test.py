@@ -163,6 +163,7 @@ def write_release(release: Path, commit: str, tree: str, script: bytes, marker: 
     (release / "deployment.json").chmod(0o644)
 
 
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Linux deployment host; run with Linux Python')
 class ArtifactDeploymentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="xunjie-deploy-test-")
@@ -817,18 +818,49 @@ class ArtifactPublicationWorkflowTests(unittest.TestCase):
                 else:sys.exit(2)
             '''))
             gh.chmod(0o755)
+            bash = shutil.which('bash')
+            if os.name == 'nt':
+                # system32/bash.exe launches WSL, which has another filesystem,
+                # environment and Node installation. Exercise this checkout in Git Bash.
+                git_exe = Path(shutil.which('git')).resolve()
+                bash = str(git_exe.parent.parent / 'usr/bin/bash.exe')
+                self.assertTrue(Path(bash).is_file(), 'Git for Windows Bash is required')
+                gh_program = root / 'fixture-gh.py'
+                gh.rename(gh_program)
+                gh.write_text('#!/bin/sh\nexec "$FIXTURE_PYTHON" "$FIXTURE_GH" "$@"\n', encoding='utf-8', newline='\n')
+                # Native Windows Node cannot execute a shebang script. Replace
+                # only the already-controlled external gh API boundary.
+                boundary = root / 'gh-boundary.cjs'
+                boundary.write_text(textwrap.dedent('''
+                    const cp = require('node:child_process');
+                    for (const method of ['spawnSync', 'execFileSync']) {
+                      const original = cp[method];
+                      cp[method] = function(command, args, options) {
+                        return command === 'gh'
+                          ? original.call(this, process.env.FIXTURE_PYTHON, [process.env.FIXTURE_GH, ...args], options)
+                          : original.call(this, command, args, options);
+                      };
+                    }
+                '''), encoding='utf-8', newline='\n')
+            publication_script = root / 'publication.sh'
+            publication_script.write_text(script, encoding='utf-8', newline='\n')
             state = root / 'release.json'
             mutations = root / 'release-mutations.jsonl'
             environment = {**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH'],
-                           'RUNNER_TEMP': str(runtime), 'GITHUB_SHA': commit, 'TAG': 'cloud-' + commit,
+                           'RUNNER_TEMP': runtime.as_posix(), 'GITHUB_SHA': commit, 'TAG': 'cloud-' + commit,
                            'GITHUB_REPOSITORY': 'fixture/runtime',
                            'GH_TEST_STATE': str(state), 'GH_TEST_MUTATIONS': str(mutations)}
+            for name in ['GH_TOKEN', 'GITHUB_TOKEN']:
+                environment.pop(name, None)
+            if os.name == 'nt':
+                environment.update(FIXTURE_PYTHON=sys.executable, FIXTURE_GH=str(gh_program),
+                                   NODE_OPTIONS=environment.get('NODE_OPTIONS', '') + f' --require "{boundary.as_posix()}"')
             def publish(index, cancel=False, query_failure=''):
                 checkout = root / ('checkout-' + str(index))
                 git('clone', '--quiet', str(remote), str(checkout))
                 env = {**environment, 'CANCEL_PUBLICATION': '1' if cancel else '0', 'QUERY_FAILURE': query_failure,
                        'GIT_AUTHOR_DATE': f'2026-10-23T10:0{index}:00Z', 'GIT_COMMITTER_DATE': f'2026-10-23T10:0{index}:00Z'}
-                return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], cwd=checkout,
+                return subprocess.run([bash, '-e', '-o', 'pipefail', publication_script.as_posix()], cwd=checkout,
                                       env=env, capture_output=True, text=True)
             first = publish(1, cancel=True)
             self.assertEqual(first.returncode, 130, first.stderr)

@@ -184,7 +184,7 @@ async function exercisePairedDevice(profile) {
     const material = Buffer.from(materialText);
     const manifest = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '混合部署课程' },
       task: { taskId, title: '学校身份，本机作品', summary: '' },
-      release: { releaseId, objectives: ['保持原版本'], requirements: '保存中文作品', materials: [{ materialId, title: '原材料',
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保持原版本'], requirements: '保存中文作品', materials: [{ materialId, title: '原材料',
         path: 'original.md', mediaType: 'text/markdown', access: 'student', sha256: createHash('sha256').update(material).digest('hex'), byteLength: material.length }],
       starterWorks: [], capabilities: [] }, resources: [{ path: 'original.md', contentBase64: material.toString('base64') }] };
     await api(schoolStatus.endpoint, 'manage/course-import', manifest, admin);

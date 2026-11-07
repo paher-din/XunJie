@@ -1,0 +1,17 @@
+[
+  {
+    "platform": "darwin-arm64",
+    "distributionSha256": "a179c343c1e2a7b33a8abf5f3653d6b94010fb071cedb21d97934babd1f3164b",
+    "applicationSha256": "4cd8925ea728b36a275e6585877e5a482d9ace491559853348839470f68f7e4b"
+  },
+  {
+    "platform": "win32-x64",
+    "distributionSha256": "7f0d9ea5c96b06a92394187ff47243cfaffd432a3dc8f5b2b6da18fe44cea830",
+    "applicationSha256": "4cd8925ea728b36a275e6585877e5a482d9ace491559853348839470f68f7e4b"
+  },
+  {
+    "platform": "linux-x64",
+    "distributionSha256": "9385380954d9787e69d124c8794a29bc3005b49f261bc5a733e2930fdc94d124",
+    "applicationSha256": "4cd8925ea728b36a275e6585877e5a482d9ace491559853348839470f68f7e4b"
+  }
+]

@@ -52,7 +52,7 @@ test('component import, fixed course binding and typed state use real product ow
     const bytes = Buffer.from('公开材料：阅读、观察，并记录自己的理解。'), hidden = Buffer.from('private-canary-169');
     const binding = { key: 'annotation', definition: imported.value, configuration: { title: '材料标注' }, materialIds: [materialId] };
     const course = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '标注验收样例' }, task: { taskId, title: '阅读与标注', summary: '' },
-      release: { releaseId, objectives: ['记录理解'], requirements: '阅读开放材料并标注。', starterWorks: [], capabilities: [], components: [binding],
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['记录理解'], requirements: '阅读开放材料并标注。', starterWorks: [], capabilities: [], components: [binding],
         materials: [{ materialId, title: '公开材料', path: 'open.txt', mediaType: 'text/plain', access: 'student', sha256: hash(bytes), byteLength: bytes.length },
           { materialId: hiddenId, title: '私有材料', path: 'private.txt', mediaType: 'text/plain', access: 'private', sha256: hash(hidden), byteLength: hidden.length }] },
       resources: [{ path: 'open.txt', contentBase64: bytes.toString('base64') }, { path: 'private.txt', contentBase64: hidden.toString('base64') }] };
@@ -181,7 +181,7 @@ test('prepared component import, fixed dependency resources and preparation repo
     const binding = { key: 'annotation', definition: imported.value, configuration: { title: '材料标注' }, materialIds: [materialId] };
     const legacyBinding = { key: 'legacy', definition: legacy.value, configuration: { title: '材料标注（原版）' }, materialIds: [materialId] };
     const course = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '依赖准备验收样例' }, task: { taskId, title: '阅读与标注', summary: '' },
-      release: { releaseId, objectives: ['记录理解'], requirements: '阅读开放材料并标注。', starterWorks: [], capabilities: [], components: [binding, legacyBinding],
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['记录理解'], requirements: '阅读开放材料并标注。', starterWorks: [], capabilities: [], components: [binding, legacyBinding],
         materials: [{ materialId, title: '公开材料', path: 'open.txt', mediaType: 'text/plain', access: 'student', sha256: hash(bytes), byteLength: bytes.length }] },
       resources: [{ path: 'open.txt', contentBase64: bytes.toString('base64') }] };
     assert.equal((await api('manage/course-import', course, admin)).status, 200);

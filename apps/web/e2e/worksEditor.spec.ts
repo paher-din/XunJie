@@ -69,7 +69,7 @@ test('course catalog returns after activity restoration races with discovery', a
     return response.json();
   };
   await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '课程目录恢复' },
-    task: { taskId, title: '固定版本任务', summary: '' }, release: { releaseId, objectives: ['保持课程入口可用'],
+    task: { taskId, title: '固定版本任务', summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保持课程入口可用'],
       requirements: '返回活动列表后可以继续选择课程。', materials: [], starterWorks: [], capabilities: [] }, resources: [] });
   const password = randomUUID();
   const loginName = 'catalog-session-' + randomUUID();

@@ -132,7 +132,11 @@ for (const mode of ['cloud', 'cloud-api']) {
     const ca = ensureCertificateAuthority(context.home);
     const cloudCa = ensureCertificateAuthority(join(root, 'cloud'));
     const cloudLeaf = ensureEnvironmentCertificate(environmentPaths(join(root, 'cloud'), 'leaf'), cloudCa);
-    const cloud = createServer({ key: readFileSync(cloudLeaf.keyFile), cert: readFileSync(cloudLeaf.certFile) }, (_req, res) => res.end('ready'));
+    let pageUnavailable = mode === 'cloud';
+    const cloud = createServer({ key: readFileSync(cloudLeaf.keyFile), cert: readFileSync(cloudLeaf.certFile) }, (req, res) => {
+      if (req.url === '/' && pageUnavailable) { pageUnavailable = false; res.writeHead(503); }
+      res.end('ready');
+    });
     cloud.listen(0, '127.0.0.1'); await once(cloud, 'listening');
     const connectionFile = join(root, 'connection.json');
     writeFileSync(join(root, 'identity'), 'invalid-test-private-key-placeholder');
@@ -153,10 +157,11 @@ for (const mode of ['cloud', 'cloud-api']) {
     mkdirSync(paths.root, { recursive: true });
     saveState(paths, { version: 1, mode, envId: id, ports, worktree: repository });
     const marker = join(paths.root, 'controlled-connection.mjs');
-    writeFileSync(marker, 'setInterval(() => {}, 1000);');
-    const connection = spawnComponent(paths, 'connection', process.execPath, marker, [], { envId: id });
     const statusFile = join(paths.root, 'page-connection-status.json');
-    writeJsonAtomic(statusFile, { state: 'ready', checkedAt: new Date().toISOString(), business: { backendVersion: 'invalid-test-placeholder' } });
+    writeFileSync(marker, `import {writeJsonAtomic} from ${JSON.stringify(new URL('../src/state.mjs', import.meta.url).href)};
+const publish = () => writeJsonAtomic(${JSON.stringify(statusFile)}, {state:'ready', checkedAt:new Date().toISOString(), business:{backendVersion:'invalid-test-placeholder'}});
+publish(); setInterval(publish, 1000);`);
+    const connection = spawnComponent(paths, 'connection', process.execPath, marker, [], { envId: id });
     const leaf = ensureEnvironmentCertificate(paths, ca);
     writeJsonAtomic(join(paths.root, 'gateway-config.json'), { mode, ...{ port: ports.gateway, backendPort: ports.backend, vitePort: ports.vite },
       keyFile: leaf.keyFile, certFile: leaf.certFile, cloud: { browserOrigin: c.browserOrigin, caFile: c.caFile }, connectionStatusFile: statusFile });
@@ -166,7 +171,8 @@ for (const mode of ['cloud', 'cloud-api']) {
     const url = `https://127.0.0.1:${ports.gateway}`;
     await waitForInvalidGateway(url, ca.certFile);
     const ready = await useMode(context, mode, { connection: connectionFile });
-    assert.equal(ready.ok, true);
+    assert.equal(ready.ok, true, JSON.stringify({ page: ready.page, frontend: ready.capabilities.frontend,
+      api: ready.capabilities.api, connectionState: ready.connection.state, supervisorRunning: ready.connection.supervisorRunning }));
     assert.equal(ready.capabilities.frontend.available, true);
     assert.equal(ready.capabilities.api.available, true);
     assert.equal(ready.page.url, url);

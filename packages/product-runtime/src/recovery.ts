@@ -139,6 +139,8 @@ export function createRecoveryManager(options: {
   owners: readonly RecoveryOwner[];
   requiredServiceIds: readonly string[];
   receiverIds?: readonly string[] | (() => Promise<readonly string[]>);
+  /** Runtime-owned credential connections are retired before the target can admit configuration or work. */
+  prepareActivation?(receiverIds: readonly string[]): Promise<void>;
   timeoutMs?: number;
 }) {
   const root = resolve(options.root);
@@ -471,6 +473,7 @@ export function createRecoveryManager(options: {
         await saveStage('validating-target');
         state.phase = 'validating-target'; await record(root, state);
         await options.maintenance.validate();
+        await options.prepareActivation?.(input.receivers.map(receiver => receiver.id));
         // The durable isolation marker is removed only after proof and receiver confirmation.
         await saveStage('validating-target', 'activating');
         await options.maintenance.resume();

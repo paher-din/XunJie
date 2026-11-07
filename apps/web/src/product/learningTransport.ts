@@ -1,4 +1,5 @@
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 
 export function workspaceScope(namespace: string, activity: LearningActivity) {
   const { environmentId, spaceId, principalId } = activity.identity
@@ -8,10 +9,14 @@ export function workspaceScope(namespace: string, activity: LearningActivity) {
 /** Same-origin production endpoint; the server derives identity and checks the expected subject. */
 export async function learningRequest(activity: LearningActivity, spaceKey: string, namespace: string,
   route: string, body?: unknown): Promise<unknown> {
+  return learningSubjectRequest(activity.identity, spaceKey, namespace, route, body)
+}
+export async function learningSubjectRequest(identity: SpaceIdentity, spaceKey: string, namespace: string,
+  route: string, body?: unknown): Promise<unknown> {
   const response = await fetch('/api/learning/' + route, { method: body === undefined ? 'GET' : 'POST',
     credentials: 'same-origin', redirect: 'error', cache: 'no-store',
     headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
-      'x-xj-expected-subject': [activity.identity.environmentId, activity.identity.spaceId, activity.identity.principalId].join('.') },
+      'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) })
   let value: unknown
   try { value = await response.json() }

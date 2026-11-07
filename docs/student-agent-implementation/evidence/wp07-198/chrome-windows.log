@@ -1,0 +1,9 @@
+
+Running 3 tests using 1 worker
+
+  ok 1 [chromium] › e2e\teachingTools.spec.ts:122:1 › the formal conversation shows the real fixed work read and retains it after editing and reload (3.7s)
+  -  2 [chromium] › e2e\teachingTools.spec.ts:183:1 › capture the existing formal conversation baseline before UI changes
+  ok 3 [chromium] › e2e\teachingTools.spec.ts:194:1 › real native and browser operations retain results; a disconnected browser waits and can be stopped (34.1s)
+
+  1 skipped
+  2 passed (49.6s)

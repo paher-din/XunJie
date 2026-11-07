@@ -1,0 +1,13 @@
+{
+  "source": "independent-agent-same-host-stable-endpoint",
+  "platform": "win32",
+  "chromeVersion": "157.0.8103.38",
+  "originalRunId": "344edf00-f863-4f87-9d9a-ac3454b96ff3",
+  "finalRunId": "344edf00-f863-4f87-9d9a-ac3454b96ff3",
+  "modelCalls": 3,
+  "repeatedTakeoverAfterReconnection": true,
+  "credentialRotationInSameProcess": true,
+  "dormantReceiverQuestionRetained": true,
+  "sourceRetired": true,
+  "cleanup": "completed"
+}

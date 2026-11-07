@@ -1,0 +1,64 @@
+{
+  "status": "passed",
+  "nodeVersion": "v24.21.0",
+  "startedAt": "2026-11-07T11:53:50.431Z",
+  "finishedAt": "2026-11-07T11:57:23.326Z",
+  "command": "rtk bypass npm run verify",
+  "jobs": 4,
+  "testsCached": false,
+  "stages": [
+    {
+      "name": "prepare",
+      "status": "passed",
+      "tasks": 4
+    },
+    {
+      "name": "build:test",
+      "status": "passed",
+      "tasks": 1
+    },
+    {
+      "name": "unit",
+      "status": "passed",
+      "tasks": 34
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "tasks": 89
+    },
+    {
+      "name": "tools",
+      "status": "passed",
+      "tasks": 45
+    }
+  ],
+  "relatedNativeAndOwner": {
+    "passed": 47,
+    "failed": 0,
+    "files": [
+      "agent-browser-v3.runtime.test.mjs",
+      "alu-code-works.runtime.test.mjs",
+      "alu-references.runtime.test.mjs",
+      "teaching-agent.alu.runtime.test.mjs",
+      "teaching-tools-host.runtime.test.mjs",
+      "channel-executions.runtime.test.mjs",
+      "native-channel-cleanup.runtime.test.mjs"
+    ]
+  },
+  "review": {
+    "Standards": {
+      "remaining": 0
+    },
+    "Spec": {
+      "remaining": 0
+    }
+  },
+  "teachingEffect": "not-evaluated",
+  "remoteIntegration": "a91e252ee9174afdfbc850b81803437f9cc9a7d9",
+  "web": {
+    "files": 86,
+    "passed": 957,
+    "failed": 0
+  }
+}

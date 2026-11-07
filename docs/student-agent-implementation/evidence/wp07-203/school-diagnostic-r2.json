@@ -1,0 +1,156 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T08:24:56.239Z",
+  "mode": "school",
+  "protocol": "chat-completions",
+  "status": "failed",
+  "host": {
+    "name": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0"
+  },
+  "limits": {
+    "maxGenerations": 24,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "stages": [
+    {
+      "name": "private-provider-configured",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:24:56.268Z",
+      "fact": {
+        "configured": true,
+        "secretRecorded": false
+      },
+      "finishedAt": "2026-11-06T08:24:56.269Z"
+    },
+    {
+      "name": "deepseek-authentication-without-generation",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:24:56.269Z",
+      "fact": {
+        "httpStatus": 200,
+        "selectedModelPresent": true,
+        "generations": 0
+      },
+      "finishedAt": "2026-11-06T08:24:56.501Z"
+    },
+    {
+      "name": "install-and-start-school",
+      "status": "passed",
+      "startedAt": "2026-11-06T08:24:56.614Z",
+      "fact": {
+        "state": "ready",
+        "profile": "school"
+      },
+      "finishedAt": "2026-11-06T08:24:57.657Z"
+    },
+    {
+      "name": "real-deepseek-selection",
+      "status": "failed",
+      "startedAt": "2026-11-06T08:24:57.718Z",
+      "error": "api-models-http-403",
+      "finishedAt": "2026-11-06T08:24:57.722Z"
+    }
+  ],
+  "engineering": "owned-by-mainline",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "source": {
+    "commit": "0db776529d9d72756ca9385e42533f1df41b4156",
+    "trackedDiffSha256": "9df647b192de83f1e5e09a0c483cd3cffc783f0831ce639154e96260fbdb9d2c",
+    "probeSha256": "9e49f25d746775ee80f135c237be167630d521edf530371afb9a8f906171fa7e"
+  },
+  "budget": {
+    "usedBefore": 4,
+    "available": 20,
+    "limit": 24,
+    "usedAfter": 4
+  },
+  "package": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "createdAt": "2026-11-06T08:17:01.122Z",
+    "distributionSha256": "6c67b6ea54cec50608482d0d5e71d40ca302621660fd1003a3547bc827edd503",
+    "applicationSha256": "d4e55eef4253deb0c27da8f1c81ddfbcd048a1feac4ff40c3052eac20f11e17f",
+    "nodeVersion": "v24.21.0",
+    "postgresVersion": "postgres (PostgreSQL) 18.6"
+  },
+  "temporaryRoot": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp07-203-N7bdxH",
+  "school": {
+    "formatVersion": 1,
+    "environmentId": "b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+    "installationId": "c4478ba2-7d6a-4037-81a3-d6f51f4b1f83",
+    "clientNamespace": "xunjie.v1.b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+    "profile": "school",
+    "services": [
+      {
+        "environmentId": "b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+        "serviceId": "2b33c338-2e27-4af6-be3b-93775cbe89de",
+        "unit": "client",
+        "endpoint": "http://127.0.0.1:62339",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status",
+          "learning.authority"
+        ]
+      },
+      {
+        "environmentId": "b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+        "serviceId": "6fce2219-12f0-4372-874f-0c3eec3130e1",
+        "unit": "space-course",
+        "endpoint": "http://127.0.0.1:62339",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      },
+      {
+        "environmentId": "b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+        "serviceId": "0de5a757-84c7-454c-8d8b-e1bdec2800b0",
+        "unit": "learning-data",
+        "endpoint": "http://127.0.0.1:62339",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status",
+          "teaching.dependencies"
+        ]
+      },
+      {
+        "environmentId": "b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+        "serviceId": "a6415ca5-e172-4a72-bd49-2e2fc65edb35",
+        "unit": "model-connection",
+        "endpoint": "http://127.0.0.1:62339",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      },
+      {
+        "environmentId": "b25a6da5-dea9-4eef-8588-03fe2e1897b2",
+        "serviceId": "ce6aa0ea-953e-4a52-a57c-5db0f2b1e911",
+        "unit": "teaching-agent",
+        "endpoint": "http://127.0.0.1:62339",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      }
+    ]
+  },
+  "failure": {
+    "code": "api-models-http-403"
+  },
+  "cleanup": [
+    {
+      "owner": "school",
+      "stopped": true,
+      "deleted": true
+    }
+  ],
+  "providerRequests": [],
+  "finishedAt": "2026-11-06T08:24:58.026Z"
+}

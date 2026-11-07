@@ -1,0 +1,114 @@
+{
+  "measuredAt": "2026-11-05T17:09:22.607Z",
+  "model": "deepseek-flash",
+  "limits": {
+    "maxGenerations": 6,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with TLS hostname verification and explicitly resolved provider address",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 2642,
+        "outputTokens": 658,
+        "totalTokens": 3300,
+        "cachedTokens": 1280,
+        "reasoningTokens": 195
+      },
+      "answerSha256": "5c78e7fc8df983787ca481b80a905adf682df0db22a738f990a5bf4456b7d7d1"
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 2680,
+        "outputTokens": 1074,
+        "totalTokens": 3754,
+        "cachedTokens": 2176,
+        "reasoningTokens": 562
+      },
+      "answerSha256": "24ccf94872cd3c45e467b5f836d20348d9db41b9996ce8136fa0f2b25e352741"
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "end_turn",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 429,
+        "outputTokens": 467,
+        "cachedTokens": 2176
+      },
+      "answerSha256": "9c258469b18bdf020823e8309ec7611f9bda17f41a09c428e5cd9523cf154d0a"
+    }
+  ],
+  "generations": 6,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 2095
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 3940
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 2146
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 6728
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1440
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 3028
+    }
+  ]
+}

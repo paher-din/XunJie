@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage, StorageError } from '@xunjie/storage';
@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
   createCourses, spaceCourseMigrations, createLearningAuthority, linuxSessionEntry, productNativeAdapters, createNativeChannel,
-  collectExecutionBoundary, validateExecutionBoundary } from '@xunjie/learning-space';
+  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, createTeachingTools, teachingAgentMigrations, validateTeachingAgent } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { ExecutionDevice } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -26,6 +26,34 @@ import { createSchoolClient } from './school-client.js';
 import { verifyWindowsSessionHelper } from './prerequisites.js';
 import { createNativeChannelClients } from './native-channel-clients.js';
 import { isInstallationRetired } from './retired-installations.js';
+import { isRecoverySuccessor, hasRecoverySuccession } from './recovery-successions.js';
+import { withModelOriginRecovery, createModelRecipientRecovery } from './model-origin-authority.js';
+import { createStandaloneAgentApplication } from './agent-application.js';
+import { createAgentConnection } from './agent-connections.js';
+import type { CapabilityHandler } from './connections.js';
+import { createConnectionAuthority, RuntimeConnectionError } from './connections.js';
+import { createMemberAgentBindings, createActivityAgentRoutes, createTeachingAgentClient,
+  createTeachingDependencyService, teachingDependencyCallSchema, learningModelRequestSchema, createChunkChannel,
+  createPairedLearningModels, createLearningModelService, createLearningModelClient } from '@xunjie/learning-space';
+import type { PairedModelOrigin } from '@xunjie/learning-space';
+import type { TeachingAgentPort } from '@xunjie/learning-space';
+import { teachingAgentBindingInputSchema, teachingAgentReceiverId } from '@xunjie/contracts/teaching-agent';
+import { collectTeachingBoundary, collectTeachingReceiverBoundary, validateTeachingBoundary } from '@xunjie/learning-space';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+const agentDependencyAuthorization = new AsyncLocalStorage<(identity: SpaceIdentity) => Promise<void>>();
+const agentDependencyFreshAuthorization = new AsyncLocalStorage<() => Promise<void>>();
+const agentDependencyContext = new AsyncLocalStorage<{
+  input: z.infer<typeof teachingDependencyCallSchema>; source: Parameters<CapabilityHandler>[1];
+}>();
+
+function currentExecutionOrigin() {
+  const source = agentDependencyContext.getStore()?.source;
+  if (!source) return undefined;
+  if (!source.sourceInstallationId) throw new StorageError('forbidden');
+  return { sourceEnvironmentId: source.sourceEnvironmentId, sourceServiceId: source.sourceServiceId,
+    sourceInstallationId: source.sourceInstallationId, grantId: source.grantId };
+}
 
 const modelTaskContext = { identity: spaceIdentitySchema,
   binding: z.object({ grantId: z.uuid(), installationId: z.uuid() }).strict() };
@@ -40,23 +68,27 @@ export async function createProductLearningApplication(context: {
   readOnly?: () => Promise<boolean>;
 }, actions: ActionIntentOptions = {}) {
   const { root, environment, configuration } = context;
+  const matchesInstallation = (binding: { installationId: string; target: { environmentId: string; serviceId: string } }, installationId?: string) =>
+    installationId ? isRecoverySuccessor(root, { sourceEnvironmentId: binding.target.environmentId,
+      sourceServiceId: binding.target.serviceId, sourceInstallationId: binding.installationId }, installationId) : Promise.resolve(false);
   const readOnly = context.readOnly ?? (async () => await exists(join(root, 'recovery-state.json'))
     && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active');
   const isolatedAtStartup = await readOnly();
   const requiresNamespace = await exists(join(root, 'recovery-state.json'));
   const modelOnly = environment.profile === 'model';
-  const client = environment.profile === 'school' ? undefined : createSchoolClient(root, environment);
-  const lifecycle = client && !modelOnly ? await createNativeChannelClients({ root, environment, resources: configuration.resources, client }) : undefined;
+  const client = environment.profile === 'school' || environment.profile === 'agent' ? undefined : createSchoolClient(root, environment);
+  const lifecycle = client ? await createNativeChannelClients({ root, environment, resources: configuration.resources, client }) : undefined;
   const database = await databaseBinding(root, configuration.database);
-  if (!database && (environment.profile === 'school' || modelOnly)) throw new Error('This product profile requires PostgreSQL.');
+  if (!database && (environment.profile === 'school' || environment.profile === 'agent' || modelOnly)) throw new Error('This product profile requires PostgreSQL.');
   if (!database) return { owners: [], isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}), handle: createLearningEntry({ environment,
     administratorToken: await resolveCredential(root, 'control'), client, readOnly, requiresNamespace }) };
   const { credentialRef, ...connection } = database;
   const admin = { ...connection, password: await resolveCredential(root, credentialRef) };
   const opened: OwnedStorage[] = [];
   const owners: RecoveryOwner[] = [];
+  let teaching: ReturnType<typeof createTeachingAgent> | undefined;
   try {
-    async function owner(unit: 'space-course' | 'learning-data' | 'model-connection', migrations: typeof spaceMigrations) {
+    async function owner(unit: 'space-course' | 'learning-data' | 'model-connection' | 'teaching-agent', migrations: typeof spaceMigrations) {
       let descriptor = environment.services.find(item => item.unit === unit);
       if (!descriptor) {
         descriptor = { environmentId: environment.environmentId, serviceId: randomUUID(), unit,
@@ -113,6 +145,13 @@ export async function createProductLearningApplication(context: {
       opened.push(storage);
       return { storage, binding, backend, migrations };
     }
+    if (environment.profile === 'agent') {
+      const module = await owner('teaching-agent', teachingAgentMigrations);
+      const application = createStandaloneAgentApplication({ root, environment, configuration, readOnly,
+        storage: module.storage, binding: module.binding });
+      await application.start();
+      return application;
+    }
     const space = await owner('space-course', spaceCourseMigrations);
     const data = modelOnly ? undefined : await owner('learning-data', learningMigrations);
     // An isolated pre-WP06 restore must keep exactly the authenticated backup's owner set through takeover.
@@ -122,12 +161,21 @@ export async function createProductLearningApplication(context: {
       && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
     const model = deferModel ? undefined : await owner('model-connection', modelMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
+    const agentBindings = createMemberAgentBindings(space.storage, spaces.authorize);
     const models = model ? await createModelGateway(model.storage, {
+      ...(configuration.learningAdmissionPolicy ? { learningAdmissionPolicy: configuration.learningAdmissionPolicy } : {}),
       holder: environment.profile === 'school' ? 'school' : 'device',
       async authorize(identity) {
+        await agentDependencyAuthorization.getStore()?.(identity);
         if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
         if (!client || identity.kind !== 'school') throw new StorageError('forbidden');
         await client.authorizeModel(identity);
+      },
+      async authorizeDispatch(identity) {
+        await agentDependencyFreshAuthorization.getStore()?.();
+        if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
+        if (!client || identity.kind !== 'school') throw new StorageError('forbidden');
+        await client.authorizeModelDispatch(identity);
       },
       async schoolDefault(identity) { return client ? client.schoolModel(identity) : null; }, dispatcher: {
       id: JSON.stringify([hostname(), process.pid, await processIdentity(process.pid), environment.installationId]),
@@ -170,14 +218,120 @@ export async function createProductLearningApplication(context: {
       authenticate: (token, connectionId) => spaces.authenticateConnection(token, connectionId),
       authorizeConnection: (identity, connectionId) => spaces.authorizeConnection(identity, connectionId),
       authorize: (identity, activityId) => learning!.open(identity, activityId),
+      assertAgentDispatch: async (identity, activityId, association) => {
+        return (await teachingFor(identity, activityId)).assertCommandDispatch(identity, activityId, association);
+      },
     }) : undefined;
-    learning = data ? createLearningData(data.storage, spaces, courses, actions, native, nativeChannel) : undefined;
-    const modules = [[space, async () => { await spaces.validate(); await courses.validate(); }],
+    const agent = data && models ? await owner('teaching-agent', teachingAgentMigrations) : undefined;
+    teaching = agent && models ? createTeachingAgent(agent.storage, {
+      authorize: identity => spaces.authorize(identity),
+      async identityFor(scope) {
+        const identity = await spaces.lookup(scope.spaceId, scope.principalId);
+        if (identity.environmentId !== scope.environmentId) throw new StorageError('forbidden');
+        return identity;
+      },
+      activity: (identity, activityId) => learning!.open(identity, activityId),
+      models, tools: createTeachingTools({ learning: () => learning!, courses, models, executionOrigin: currentExecutionOrigin,
+        authorizeDispatch: async (scope, command) => {
+          await agentDependencyFreshAuthorization.getStore()?.();
+          return teachingFor(scope.identity, scope.activity.activityId).then(agent => agent.assertCommandDispatch(scope.identity,
+            scope.activity.activityId, { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId,
+              commandId: command.commandId, ...(scope.authority ? { authority: scope.authority } : {}) }));
+        },
+        environment: scope => executionEnvironment(scope.identity) }), start: false,
+    }) : undefined;
+    const routes = data ? createActivityAgentRoutes(data.storage, (identity, activityId) => learning!.open(identity, activityId), readOnly) : undefined;
+    async function teachingFor(identity: SpaceIdentity, activityId: string): Promise<TeachingAgentPort> {
+      if (!routes || !teaching || !agent) throw new StorageError('unavailable');
+      const localTeaching = teaching;
+      const binding = await routes.resolve(identity, activityId, async () => {
+        const local = { version: 1 as const, connectionId: agent.storage.owner.serviceId, installationId: environment.installationId,
+          target: environment.services.find(item => item.serviceId === agent.storage.owner.serviceId)! };
+        // Pre-deployment activities have Agent facts but no route row yet. Consult that owner
+        // through its public read interface before applying a new member configuration.
+        const existing = await localTeaching.conversation(identity, activityId);
+        return existing.runs.length || existing.messages.length ? local : await agentBindings.read(identity) ?? local;
+      });
+      if (binding.target.environmentId === environment.environmentId && binding.target.serviceId === agent.storage.owner.serviceId) return teaching;
+      return createTeachingAgentClient(binding.target.serviceId, identity, activityId,
+        createAgentConnection(root, binding.connectionId, 'teaching.agent', binding.target));
+    }
+    const receivers = [...(actions.receivers ?? [])];
+    learning = data ? createLearningData(data.storage, spaces, courses,
+      { ...actions, receivers, ...(teaching ? { receiversFor: async (identity, activityId) => [(await teachingFor(identity, activityId)).receiver] } : {}) }, native, nativeChannel) : undefined;
+    const dataDescriptor = data ? environment.services.find(item => item.serviceId === data.storage.owner.serviceId)! : undefined;
+    const sourceAuthority = dataDescriptor ? createConnectionAuthority({ root, service: { ...dataDescriptor,
+      capabilities: ['teaching.dependencies'] }, handlers: {} }) : undefined;
+    let modelDispatchOpen = !isolatedAtStartup;
+    const paired = model && models ? createPairedLearningModels(model.storage, models, {
+      authorize: spaces.authorize,
+      authorizeBinding: async (identity, binding) => { await spaces.authorizeConnection(identity, binding.connectionId); },
+      recipientSuccessions: createModelRecipientRecovery(root, environment.services[0]!, async (identity, connectionId) => {
+        await spaces.authorizeConnection(identity, connectionId);
+      }),
+      async authorizeOrigin(identity, origin, request) {
+        await spaces.authorize(identity);
+        if (!sourceAuthority) throw new StorageError('unavailable');
+        try { await sourceAuthority.assertSourceAuthorized({ sourceEnvironmentId: origin.service.environmentId,
+          sourceServiceId: origin.service.serviceId, sourceInstallationId: origin.installationId, grantId: origin.grantId }, 'teaching.dependencies'); }
+        catch { throw new StorageError('forbidden'); }
+        const activityId = origin.authority?.activityId ?? origin.activityId;
+        const fixed = activityId ? await routes?.read(identity, activityId) : null;
+        if (!fixed || fixed.target.environmentId !== origin.service.environmentId || fixed.target.serviceId !== origin.service.serviceId
+          || !await matchesInstallation(fixed, origin.installationId)) throw new StorageError('forbidden');
+        if (request.operation === 'checks.receive' || request.operation === 'checks.dispatch') {
+          if (!origin.authority) throw new StorageError('forbidden');
+          const attemptId = request.operation === 'checks.receive' ? (request.args[0] as { attemptId: string }).attemptId : String(request.args[0]);
+          await (await teachingFor(identity, activityId!)).assertModelDispatch(identity, activityId!, {
+            ...origin.authority, attemptId, dispatch: request.operation === 'checks.dispatch' });
+        }
+      },
+      assertWritable() { if (!modelDispatchOpen) throw new StorageError('maintenance'); },
+    }) : undefined;
+    const localModelService = models ? createLearningModelService(models, spaces.authorize) : undefined;
+    const modelRequest = async (request: z.infer<typeof learningModelRequestSchema>) => {
+      const context = agentDependencyContext.getStore();
+      if (!localModelService) throw new StorageError('unavailable');
+      if (!context || request.identity.kind !== 'school' || !paired) return localModelService(request);
+      if (!context.source.sourceInstallationId) throw new StorageError('forbidden');
+      const operation = request.operation;
+      const read = ['selection.read', 'selection.snapshot', 'selection.pinned', 'segments.read', 'checks.read', 'checks.progress', 'checks.summary',
+        'checks.requestPayload', 'images.read'].includes(operation);
+      const fingerprint = createHash('sha256').update(JSON.stringify([request, context.source.grantId, context.input.authority ?? null])).digest('hex');
+      const operationId = read ? randomUUID() : `${fingerprint.slice(0, 8)}-${fingerprint.slice(8, 12)}-4${fingerprint.slice(13, 16)}-a${fingerprint.slice(17, 20)}-${fingerprint.slice(20, 32)}`;
+      const scope = context.input.operation.startsWith('tool.') ? z.object({ segmentId: z.uuid().optional() }).parse(context.input.args[0]) : undefined;
+      const origin: PairedModelOrigin = { operationId, service: { environmentId: context.source.sourceEnvironmentId, serviceId: context.source.sourceServiceId },
+        installationId: context.source.sourceInstallationId, grantId: context.source.grantId,
+        ...(context.input.activityId ? { activityId: context.input.activityId } : {}),
+        ...(context.input.authority ? { authority: context.input.authority } : {}), ...(scope?.segmentId ? { segmentId: scope.segmentId } : {}) };
+      return paired.request(request, origin);
+    };
+    const toolModels = models ? createLearningModelClient(modelRequest) : undefined;
+    const dependencyService = learning && models ? createTeachingDependencyService({
+      authorize: async identity => { await spaces.authorize(identity); await agentDependencyAuthorization.getStore()?.(identity); },
+      identityFor: async scope => {
+        const identity = await spaces.lookup(scope.spaceId, scope.principalId);
+        if (identity.environmentId !== scope.environmentId) throw new StorageError('forbidden');
+        return identity;
+      },
+      activity: learning.open, models, modelRequest,
+      tools: createTeachingTools({ learning: () => learning!, courses, ...(toolModels ? { models: toolModels } : {}), executionOrigin: currentExecutionOrigin,
+        authorizeDispatch: async (scope, command) => {
+          await agentDependencyFreshAuthorization.getStore()?.();
+          return (await teachingFor(scope.identity, scope.activity.activityId)).assertCommandDispatch(
+            scope.identity, scope.activity.activityId, { runId: scope.runId, stepId: scope.stepId, snapshotId: scope.snapshotId,
+              commandId: command.commandId, ...(scope.authority ? { authority: scope.authority } : {}) });
+        },
+        environment: scope => executionEnvironment(scope.identity) }),
+    }) : undefined;
+    const modules = [[space, async () => { await spaces.validate(); await courses.validate(); await agentBindings.validate(); }],
       ...(data && learning ? [[data, learning.validate] as const] : []),
-      ...(model && models ? [[model, models.validate] as const] : [])] as const;
+      ...(model && models ? [[model, models.validate] as const] : []),
+      ...(agent && teaching ? [[agent, teaching.validate] as const] : [])] as const;
     for (const [module, validate] of modules) {
       const recoveryOwner = createStorageRecoveryOwner({ storage: module.storage, binding: module.binding, migrations: module.migrations,
-        resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', module === space ? 'space-course' : module === data ? 'learning-data' : 'model-connection')],
+        resources: configuration.resources, resourceRoots: [join(root, 'learning-resources',
+          module === space ? 'space-course' : module === data ? 'learning-data' : module === model ? 'model-connection' : 'teaching-agent')],
         installationId: environment.installationId,
         // Only the learning-data owner holds execution facts; the component owner reports its own
         // fixed material through the generic storage boundary.
@@ -192,7 +346,7 @@ export async function createProductLearningApplication(context: {
               ...(command.node?.executorInstanceId ? { executorInstanceId: command.node.executorInstanceId } : {}) })),
             blocking: boundary.blocking, retained: { resources: 0, checkpoints: boundary.checkpoints },
             evidence: boundary };
-        } } : {}),
+        } } : module === agent ? { boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary } : {}),
         validateService: validate });
       const participant = recoveryOwner.participant;
       let dispatchClosing: Promise<void> | undefined;
@@ -223,17 +377,25 @@ export async function createProductLearningApplication(context: {
           finally { dispatchClosing = undefined; }
         },
       } } : module === model && models ? { ...recoveryOwner, participant: { ...participant,
-        async closeWrites() { models.closeWrites(); await models.checks.drain(); await participant.closeWrites(); await participant.closeDispatch(); },
-        async closeDispatch() { models.checks.closeDispatch(); },
+        async closeWrites() { modelDispatchOpen = false; models.closeWrites(); await models.checks.drain(); await participant.closeWrites(); await participant.closeDispatch(); },
+        async closeDispatch() { modelDispatchOpen = false; models.checks.closeDispatch(); },
         async drain() { await models.checks.drain(); await participant.drain(); },
-        async resume() { await participant.resume(); models.resume(); },
-      } } : recoveryOwner);
+        async resume() { await participant.resume(); models.resume(); modelDispatchOpen = true; },
+      } } : module === agent && teaching ? (() => {
+        const activeTeaching = teaching;
+        return { ...recoveryOwner, participant: { ...participant,
+          async closeWrites() { activeTeaching.closeWrites(); await participant.closeWrites(); },
+          async closeDispatch() { activeTeaching.closeDispatch(); await participant.closeDispatch(); },
+          async drain() { await activeTeaching.drain(); await participant.drain(); },
+          async resume() { await participant.resume(); activeTeaching.resume(); },
+        } };
+      })() : recoveryOwner);
     }
     const targetOwner = data ?? model;
     if (!targetOwner) throw new RecoveryError('missing-business-owner');
     const localTarget = { ...targetOwner.storage.owner, version: 1 as const };
     const schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
-      target: localTarget, ...(data ? { create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions) } : {}),
+      target: localTarget, ...(model ? { modelTarget: { ...model.storage.owner, version: 1 as const } } : {}), ...(data ? { create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions) } : {}),
       models, personal: spaces.personal });
     // The isolation answer is host-wide, so the owner measures it once. Status reports the state
     // machine rather than a prose message: `starting` until the unit answers, then `ready` with a
@@ -274,17 +436,121 @@ export async function createProductLearningApplication(context: {
         adapters: productNativeAdapters.map(adapter => ({ adapterId: adapter.adapterId,
           adapterVersion: adapter.adapterVersion, platforms: adapter.platforms ?? [] })) };
     };
+    if (teaching && learning && !isolatedAtStartup) teaching.resume();
+    const dependencyChunks = data ? createChunkChannel(data.storage) : undefined;
+    const dependencyCapability: CapabilityHandler = async (value, source) => {
+      if (!dependencyService || !dependencyChunks) throw new StorageError('unavailable');
+      const authorize = async (payload: unknown) => {
+        const input = teachingDependencyCallSchema.parse(payload);
+        const identity = input.identity ?? (input.scope ? await spaces.lookup(input.scope.spaceId, input.scope.principalId) : null);
+        if (!identity) throw new StorageError('invalid');
+        const guard = async () => {
+          try { await source.assertAuthorized?.(); }
+          catch (error) { throw new StorageError(error instanceof RuntimeConnectionError && error.code === 'unauthorized' ? 'forbidden' : 'unavailable'); }
+          const activityIds = [input.activityId, input.authority?.activityId,
+            input.operation === 'activity' ? z.uuid().parse(input.args[0]) : undefined,
+            input.operation.startsWith('tool.') ? z.object({ activity: z.object({ activityId: z.uuid() }) }).parse(input.args[0]).activity.activityId : undefined]
+            .filter((id): id is string => id !== undefined);
+          if (new Set(activityIds).size > 1) throw new StorageError('forbidden');
+          const pinned = activityIds[0] ? await routes?.read(identity, activityIds[0]) : null;
+          if (pinned) {
+            if (pinned.target.environmentId !== source.sourceEnvironmentId || pinned.target.serviceId !== source.sourceServiceId
+              || !await matchesInstallation(pinned, source.sourceInstallationId)) throw new StorageError('forbidden');
+          } else {
+            const member = await agentBindings.read(identity);
+            if (!member || member.target.environmentId !== source.sourceEnvironmentId || member.target.serviceId !== source.sourceServiceId
+              || !await matchesInstallation(member, source.sourceInstallationId)) throw new StorageError('forbidden');
+          }
+          if (input.operation === 'model') {
+            const model = learningModelRequestSchema.parse(input.args[0]);
+            if (model.operation === 'checks.receive' || model.operation === 'checks.dispatch') {
+              if (!input.authority) throw new StorageError('forbidden');
+              const attemptId = model.operation === 'checks.receive' ? (model.args[0] as { attemptId: string }).attemptId : String(model.args[0]);
+              await (await teachingFor(identity, input.authority.activityId)).assertModelDispatch(identity, input.authority.activityId,
+                { ...input.authority, attemptId, dispatch: model.operation === 'checks.dispatch' });
+            }
+          }
+        };
+        await guard();
+        return { guard, identity };
+      };
+      let admission: { key: string; guard: () => Promise<void>; identity: SpaceIdentity } | undefined;
+      const payloadKey = (payload: unknown) => createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+      try {
+        return await dependencyChunks.wrap(async payload => {
+          try {
+            const key = payloadKey(payload);
+            const admitted = admission?.key === key ? admission : { key, ...await authorize(payload) };
+            const scopedAdmission = async (identity: SpaceIdentity) => {
+              // A different actor must not inherit this request's admission. Ordinary actor authorization still runs in Gateway.
+              if (JSON.stringify(identity) !== JSON.stringify(admitted.identity)) await admitted.guard();
+            };
+            return await agentDependencyContext.run({ input: teachingDependencyCallSchema.parse(payload), source },
+              () => agentDependencyAuthorization.run(scopedAdmission,
+                () => agentDependencyFreshAuthorization.run(admitted.guard, () => dependencyService(payload))));
+          } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
+        }, { successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
+          && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
+        authorize: async payload => {
+          // Initial admission and reply/chunk reads always perform a fresh authorization.
+          admission = { key: payloadKey(payload), ...await authorize(payload) };
+        } })(value, source);
+      } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
+    };
     return { owners, isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}),
+      async authorizedSource(targetServiceId: string, source: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; grantId: string; capabilities: readonly string[] }) {
+        if (!learning || targetServiceId !== dataDescriptor?.serviceId || !source.sourceInstallationId || !source.capabilities.includes('teaching.dependencies')) return;
+        await learning.executions.agent.adoptAuthorization({ sourceEnvironmentId: source.sourceEnvironmentId, sourceServiceId: source.sourceServiceId,
+          sourceInstallationId: source.sourceInstallationId, grantId: source.grantId }, (from, to) => isRecoverySuccessor(root, from, to.sourceInstallationId));
+      },
+      ...(data && dependencyService ? { serviceCapabilities: { [data.storage.owner.serviceId]: {
+        'teaching.dependencies': dependencyCapability,
+      } } } : {}),
+      capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks,
+        paired && models ? withModelOriginRecovery(root, paired, models) : paired) },
       ...(learning ? { hasReceivedBrowserExecution: learning.executions.hasReceivedBrowserCommand } : {}),
-      capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks) },
       ...(models ? { async modelTask(value: unknown) {
         const input = modelTaskRequest.parse(value);
         return input.operation === 'enqueue' ? models.deviceTasks.enqueue(input.identity, input.binding, input.task)
           : models.deviceTasks.read(input.identity, input.binding, input.taskId);
       } } : {}),
-      ...(schoolClient && models ? { poll: schoolClient.pollModelTasks } : {}),
+      async poll(isOpen: () => boolean) {
+        if (learning && isOpen()) await learning.executions.agent.reconcileAuthorization(async (identity, activityId, origin) => {
+          const activity = await learning!.open(identity, activityId);
+          if (activity.status !== 'open') throw new StorageError('forbidden');
+          if (!origin) return;
+          if (!sourceAuthority) throw new StorageError('unavailable');
+          try { await sourceAuthority.assertSourceAuthorized(origin, 'teaching.dependencies'); }
+          catch (error) {
+            if (error instanceof RuntimeConnectionError && error.code === 'unauthorized') {
+              if (await hasRecoverySuccession(root, origin)) throw new StorageError('unavailable');
+              throw new StorageError('forbidden');
+            }
+            throw error;
+          }
+          const pinned = await routes?.read(identity, activityId);
+          if (!pinned || pinned.target.environmentId !== origin.sourceEnvironmentId
+            || pinned.target.serviceId !== origin.sourceServiceId || !await matchesInstallation(pinned, origin.sourceInstallationId))
+            throw new StorageError('forbidden');
+        }, isOpen);
+        if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
+      },
       handle: createLearningEntry({ environment, spaces, ...(learning ? { learning } : {}), courses,
-        ...(models ? { models } : {}), client: schoolClient, readOnly, requiresNamespace,
+        ...(models ? { models } : {}), ...(teaching ? { teaching, teachingFor } : {}), client: schoolClient, readOnly, requiresNamespace,
+        async bindAgent(value) {
+          const input = teachingAgentBindingInputSchema.parse(value);
+          const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+          const connection = config.connections.find(item => item.connectionId === input.connectionId);
+          if (!connection || connection.sourceEnvironmentId !== environment.environmentId || connection.sourceServiceId !== data?.storage.owner.serviceId
+            || connection.target.environmentId !== input.target.environmentId || connection.target.serviceId !== input.target.serviceId
+            || !connection.requiredCapabilities.includes('teaching.agent')) throw new StorageError('forbidden');
+          return agentBindings.bind(input);
+        },
+        async bindModelDevice(value) {
+          if (!paired) throw new StorageError('unavailable');
+          const input = z.object({ identity: spaceIdentitySchema, binding: z.unknown() }).strict().parse(value);
+          return paired.bind(input.identity, input.binding as Parameters<typeof paired.bind>[1]);
+        },
         executionEnvironment, ...(nativeChannel ? { nativeChannel } : {}), target: localTarget,
         async restoredInstallation() {
           const path = join(root, 'recovery-state.json');
@@ -303,7 +569,10 @@ export async function createProductLearningApplication(context: {
           : { name: 'native-sessions', required: false, state: 'unavailable' as const,
             detail: 'restricted-entry-not-measured' }];
       } } : {}) };
-  } catch (error) { await lifecycle?.close(); await Promise.allSettled(opened.map(storage => storage.close())); throw error; }
+  } catch (error) {
+    if (typeof teaching !== 'undefined') teaching.close();
+    await lifecycle?.close(); await Promise.allSettled(opened.map(storage => storage.close())); throw error;
+  }
 }
 
 /** Both real owners register native restore targets and validate only their own domain facts. */
@@ -311,10 +580,12 @@ export function createLearningRecoveryTargets(options: {
   root: string; environment: RuntimeEnvironment; resources: RuntimeResources;
   admin(): Promise<DatabaseConnection | null>;
 }) {
-  return (['space-course', 'learning-data', 'model-connection'] as const).map(unit => {
+  return (['space-course', 'learning-data', 'model-connection', 'teaching-agent'] as const).map(unit => {
     const descriptors = options.environment.services.filter(service => service.unit === unit);
-    if (descriptors.length === 0 && (unit === 'learning-data' && options.environment.profile === 'model'
-      || unit === 'model-connection' && options.environment.profile !== 'model')) return null;
+    if (descriptors.length === 0 && (options.environment.profile === 'agent' && unit !== 'teaching-agent'
+      || unit === 'learning-data' && options.environment.profile === 'model'
+      || unit === 'model-connection' && options.environment.profile !== 'model'
+      || unit === 'teaching-agent')) return null;
     if (descriptors.length !== 1) throw new RecoveryError('missing-business-owner');
     const descriptor = descriptors[0]!;
     const resourceRoot = join(options.root, 'learning-resources', unit);
@@ -322,15 +593,20 @@ export function createLearningRecoveryTargets(options: {
       admin: async () => { const value = await options.admin(); if (!value) throw new RecoveryError('target-database-required'); return value; },
       resources: options.resources, backend: createFileBackend({ id: unit, root: resourceRoot }), resourceRoots: [resourceRoot],
       installationId: options.environment.installationId,
-      migrations: unit === 'space-course' ? spaceCourseMigrations : unit === 'model-connection' ? modelMigrations : learningMigrations,
+      migrations: unit === 'space-course' ? spaceCourseMigrations : unit === 'model-connection' ? modelMigrations
+        : unit === 'teaching-agent' ? teachingAgentMigrations : learningMigrations,
       ...(unit === 'learning-data' ? { validateMaterial: async (storage: OwnedStorage, material: OwnerBoundaryMaterial) =>
-        validateExecutionBoundary(storage, material.evidence) } : {}),
+        validateExecutionBoundary(storage, material.evidence) } : unit === 'teaching-agent' ? {
+          boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary, validateMaterial: validateTeachingBoundary,
+        } : {}),
       validateService: async storage => {
         if (unit === 'learning-data') return validateLearningData(storage);
+        if (unit === 'teaching-agent') return validateTeachingAgent(storage);
         if (unit === 'model-connection') return (await createModelGateway(storage, { authorize: async () => {} })).validate();
         const spaces = createSpaces(storage);
         await spaces.validate();
         await createCourses(storage, spaces).validate();
+        await createMemberAgentBindings(storage, spaces.authorize).validate();
       } });
   }).filter((target): target is NonNullable<typeof target> => target !== null);
 }

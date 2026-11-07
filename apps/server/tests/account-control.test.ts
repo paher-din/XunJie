@@ -6,13 +6,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { createLocalAccountControl } from '../server/access/account-control.ts';
+import { localTestEndpoint, localTestPath } from './support/local-endpoint.ts';
 import { createPasswordRecord } from '../server/access/password.ts';
 import { createDigitalLogicApplication } from '../server/app/digital-logic.ts';
 import { createDigitalLogicApplicationDatabase } from '../server/db/transaction.ts';
 import { runtime } from './dl-a-support.ts';
 
 test('optional local account control grants one identity, revokes existing sessions, preserves the original account and normal startup', async () => {
-  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'xac-'))), socketPath = join(directory, 's');
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'xac-'))), socketPath = localTestPath(join(directory, 's'));
   const configurationFile = join(directory, 'control.json'), stateFile = join(directory, 'policy.json');
   writeFileSync(configurationFile, JSON.stringify({ socketPath, stateFile, accountPrefix: 'managed-', courseIds: ['course'] }), { mode: 0o600 });
   const db = createDigitalLogicApplicationDatabase(), password = randomBytes(36).toString('base64url'), record = await createPasswordRecord(password);
@@ -25,7 +26,7 @@ test('optional local account control grants one identity, revokes existing sessi
   const options = { db, origin: 'https://account-control.example', signingSecret: randomBytes(40).toString('hex'),
     executionNodes: [], approvedHdlRuntimes: [runtime], allowedLoginUserIds: ['base'],
     studentHelp: { versions: { modelConfig: 'disabled', prompt: 'disabled', schema: 'disabled', policy: 'disabled' }, budgetAvailable: () => false } };
-  const control = await createLocalAccountControl(configurationFile, { db, staticAllowed: ['base'] });
+  const control = await createLocalAccountControl(configurationFile, { db, staticAllowed: ['base'], localEndpoint: localTestEndpoint });
   let service = await createDigitalLogicApplication({ ...options, loginAuthorization: control.loginAuthorization });
   const call = (operation: string, body: unknown) => new Promise<{ status: number; data: unknown }>((accept, reject) => {
     const req = request({ socketPath, path: '/' + operation, method: 'POST' }, res => {

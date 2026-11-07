@@ -45,7 +45,7 @@ try {
  const modern = await api('manage/component-import', { requestId: randomUUID(), ...await accumulatorPackage() });
  const courseId = randomUUID(), releaseId = randomUUID();
  await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '会话控制与恢复验收' },
-  task: { taskId: randomUUID(), title: '观察四态累加与检查点恢复', summary: '' }, release: { releaseId,
+  task: { taskId: randomUUID(), title: '观察四态累加与检查点恢复', summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId,
    objectives: ['核对真实内部状态恢复'], requirements: '输入、暂停、单步并保存检查点，原进程丢失后核对恢复实例。',
    starterWorks: [], capabilities: [], materials: [], components: [
     { key: 'legacy', definition: legacy, configuration: { title: '原版累加器' }, materialIds: [] },

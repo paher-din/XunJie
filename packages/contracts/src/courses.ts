@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { LearningTarget, SpaceIdentity } from './spaces.js';
 import { componentBindingsSchema } from './components.js';
 import { courseExecutionPlanSchema } from './execution-plan.js';
+import { teachingHelpPolicySchema } from './course-help.js';
 
 /** Course owner wire. Student projections never contain teacher-private material or storage locators. */
 export const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -36,6 +37,8 @@ export const courseReleaseSchema = z.object({
   components: componentBindingsSchema.optional(),
   /** Absent for a release published before execution plans existed; such a release keeps its own bytes. */
   executionPlan: courseExecutionPlanSchema.optional(),
+  /** Fixed by the release so a later policy edit cannot change an existing course activity. */
+  helpPolicy: teachingHelpPolicySchema,
   taskTitle: z.string().min(1).max(300),
 }).strict();
 export type CourseRelease = z.infer<typeof courseReleaseSchema>;
@@ -91,6 +94,7 @@ export const courseImportSchema = z.object({
     components: componentBindingsSchema.optional(),
     /** The supported import boundary: a new release states its plan, an old one simply has none. */
     executionPlan: courseExecutionPlanSchema.optional(),
+    helpPolicy: teachingHelpPolicySchema,
   }).strict(),
   resources: z.array(courseImportResourceSchema).max(100),
 }).strict();
@@ -118,6 +122,8 @@ export const courseActivityBindingSchema = z.object({
   objectives: objectivesSchema, requirements: requirementsSchema, materials: z.array(courseMaterialSchema).max(100),
   starterWorks: starterWorksSchema, capabilities: capabilitiesSchema,
   components: componentBindingsSchema.optional(),
+  /** Versioned help policy fixed with the release; the Agent receiver refuses questions outside it. */
+  helpPolicy: teachingHelpPolicySchema,
   /** Snapshot of the release plan at the moment the activity was opened; a later release never rewrites it. */
   executionPlan: courseExecutionPlanSchema.optional(),
 }).strict();

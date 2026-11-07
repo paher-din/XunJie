@@ -10,6 +10,9 @@ export const modelConfigurationSchema = z.object({
   path: z.enum(['/chat/completions', '/responses', '/v1/messages']),
   modelId: z.string().trim().min(1).max(200), dialect: z.enum(['standard', 'deepseek', 'command-code']),
   parameterMode: z.enum(['plain', 'thinking']), enabled: z.boolean(),
+  /** Learning calls use the values saved with the connection, never probe limits. */
+  contextWindow: z.number().int().min(1).max(10_000_000).optional(),
+  maxOutputTokens: z.number().int().min(1).max(1_000_000).optional(),
 }).strict().refine(value => value.path === ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[value.protocol]);
 export const modelCredentialChangeSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('keep') }).strict(), z.object({ action: z.literal('clear') }).strict(),
@@ -55,7 +58,7 @@ export type ModelCheckPolicy = z.infer<typeof modelCheckPolicySchema>;
 export const modelCheckInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
   source: z.union([
     z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
-    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
+    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative(), pinId: z.uuid().optional() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
     z.object({ draft: modelConfigurationSchema, credential: modelCredentialChangeSchema,
       savedCredential: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional() }).strict(),
@@ -93,7 +96,7 @@ export const modelChatOptionsSchema = z.object({
 export const modelCapabilityInputSchema = z.object({
   source: z.union([
     z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
-    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
+    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative(), pinId: z.uuid().optional() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
   ]),
   prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),
@@ -124,9 +127,12 @@ export const modelCapabilityFailureSchema = z.object({ error: z.literal('capabil
 export type ModelCapabilityInput = z.infer<typeof modelCapabilityInputSchema>;
 export type ModelCapabilityDecision = z.infer<typeof modelCapabilityDecisionSchema>;
 export type ModelCapabilityRequirement = z.infer<typeof modelCapabilityRequirementSchema>;
+export const modelSegmentPurposeSchema = z.enum(['chat-probe', 'learning']);
 export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId: z.uuid(), source: modelCheckInputSchema.shape.source,
-  prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),
-  portable: z.array(z.object({ text: z.string().max(8192), resultRef: z.uuid().optional() }).strict()).max(8),
+  purpose: modelSegmentPurposeSchema.optional(),
+  prefix: z.object({ system: z.string().max(400_000), tools: z.array(modelToolSchema).max(64), options: modelChatOptionsSchema.optional() }).strict(),
+  portable: z.array(z.object({ text: z.string().max(400_000), role: z.enum(['user', 'assistant']).optional(),
+    resultRef: z.uuid().optional() }).strict()).max(512),
   previousSegmentId: z.uuid().optional() }).strict();
 export const modelSegmentCloseSchema = z.object({ requestId: z.uuid(), expectedSequence: z.number().int().nonnegative() }).strict();
 export const modelPortableResultSchema = z.object({ owner: storageOwnerSchema, attemptId: z.uuid(), resultRef: z.uuid(), routeId: z.uuid(),
@@ -139,11 +145,17 @@ export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.l
   expectedSequence: z.number().int().min(0).max(32), input: z.object({ text: z.string().max(8192), images: z.array(modelImageRefSchema).max(2),
     toolResults: z.array(modelToolResultSchema).max(8), observations: z.array(modelObservationSchema).max(8).default([]) }).strict(),
   limits: z.object({ maxOutputTokens: z.number().int().min(1).max(2048), timeoutMs: z.number().int().min(250).max(30000) }).strict() }).strict();
-export const modelAttemptInputSchema = z.union([modelCheckInputSchema, modelChatInputSchema]);
-export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.enum(['connection-check', 'chat-probe']),
+/** Learning calls are not probes: no probe count, sequence, output or time caps apply. */
+export const modelLearningInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('learning'), segmentId: z.uuid(),
+  expectedSequence: z.number().int().nonnegative(), input: z.object({ text: z.string().max(1_000_000), images: z.array(modelImageRefSchema).max(8).default([]),
+    toolResults: z.array(modelToolResultSchema).max(64).default([]), observations: z.array(modelObservationSchema).max(512).default([]) }).strict(),
+  limits: z.object({ maxOutputTokens: z.number().int().min(1).max(1_000_000),
+    timeoutMs: z.number().int().min(250).max(2_147_483_647).optional() }).strict() }).strict();
+export const modelAttemptInputSchema = z.union([modelCheckInputSchema, modelChatInputSchema, modelLearningInputSchema]);
+export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.enum(['connection-check', 'chat-probe', 'learning']),
   source: z.object({ kind: z.enum(['school', 'personal']), ownerScope: z.string().min(1).max(500),
     feeSource: z.string().min(1).max(500), grantId: z.uuid().optional(), grantVersion: z.number().int().positive().optional() }).strict().optional(),
-  connection: modelConnectionSchema, limits: modelChatInputSchema.shape.limits,
+  connection: modelConnectionSchema, limits: modelLearningInputSchema.shape.limits,
   segment: z.object({ segmentId: z.uuid(), sequence: z.number().int().nonnegative() }).strict().optional(),
   toolIntents: z.array(modelToolIntentSchema).max(8).optional(),
   state: z.enum(['accepted', 'dispatched', 'completed', 'incomplete', 'failed', 'cancelled', 'unknown']),
@@ -157,6 +169,8 @@ export type ModelAttempt = z.infer<typeof modelAttemptSchema>;
 export type ModelUsage = z.infer<typeof modelUsageSchema>;
 export type ModelUpstream = z.infer<typeof modelUpstreamSchema>;
 export type ModelChatInput = z.infer<typeof modelChatInputSchema>;
+export type ModelLearningInput = z.infer<typeof modelLearningInputSchema>;
+export type ModelSegmentPurpose = z.infer<typeof modelSegmentPurposeSchema>;
 export type ModelAttemptInput = z.infer<typeof modelAttemptInputSchema>;
 export type ModelTool = z.infer<typeof modelToolSchema>;
 export type ModelToolIntent = z.infer<typeof modelToolIntentSchema>;

@@ -1,0 +1,58 @@
+{
+  "measuredAt": "2026-11-06T19:02:11.708Z",
+  "schoolHost": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "endpoint": "https://192.168.3.39:9443",
+  "identity": {
+    "environmentId": "b47082d9-6e9d-4dee-b4d5-67f8db950a24",
+    "installationId": "475ac9da-812e-4c4d-a632-e436e9b2756c",
+    "profile": "school",
+    "principalId": "a0e67034-d498-4edb-89ca-f52bcaa168ae",
+    "spaceId": "31e0a600-f057-4468-a6a5-0ce642a7940d"
+  },
+  "services": [
+    {
+      "unit": "client",
+      "serviceId": "bfa9f60a-51c1-45b9-93e1-1e565f459c35"
+    },
+    {
+      "unit": "space-course",
+      "serviceId": "71ab5f1a-c065-4928-ba9d-f1bf8d714650"
+    },
+    {
+      "unit": "learning-data",
+      "serviceId": "b3b9af0e-c4a1-4109-891f-e1780245b4f0"
+    },
+    {
+      "unit": "model-connection",
+      "serviceId": "81a8846e-fa25-470e-b8a0-3db84c3650ed"
+    },
+    {
+      "unit": "teaching-agent",
+      "serviceId": "c14746b9-bed0-429e-ab35-f410b2d6a83a"
+    }
+  ],
+  "member": {
+    "loginName": "wp07-210-d8446a894e79",
+    "principalId": "a0e67034-d498-4edb-89ca-f52bcaa168ae",
+    "spaceId": "31e0a600-f057-4468-a6a5-0ce642a7940d"
+  },
+  "model": {
+    "connectionId": "502f0491-ff1e-40fe-9106-0cdd2f341dde",
+    "version": 1
+  },
+  "course": {
+    "courseId": "d55fb4b8-9382-4365-a50b-37899aa7739a",
+    "releaseId": "f2f1f602-bf61-40cd-91ea-59a8f229d302",
+    "activityId": "74eaab28-aebb-48d7-93ae-8c5b310bfe61"
+  },
+  "package": {
+    "distributionSha256": "a064611a74b9e027ba187ef668eb73801429d2b766bf22b0f7d4d53383f6e3bf",
+    "createdAt": "2026-11-06T18:46:45.631Z",
+    "platform": "darwin-arm64"
+  }
+}

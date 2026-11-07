@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdir, readdir, rm } from 'node:fs/promises';
+import { mkdir, readdir, rm, unlink } from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -14,14 +14,16 @@ import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSche
   executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
+import { teachingInteractionSettingsSchema, teachingControlReceiptSchema, teachingInputControlReceiptSchema } from '@xunjie/contracts/teaching-agent';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
-import { modelDeviceTaskSchema, routeModels, ModelCapabilityError } from '@xunjie/learning-space';
+import { modelDeviceTaskSchema, routeModels, ModelCapabilityError, createLearningModelService,
+  modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelSelectionSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
+import { modelSelectionSchema, modelGrantInputSchema, modelGrantSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
   modelPortableResultSchema, modelSegmentBoundarySchema, modelSegmentProvenanceSchema, modelCapabilityInputSchema, modelCapabilityFailureSchema } from '@xunjie/contracts/model-connections';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
@@ -30,23 +32,30 @@ import { boundedJsonResponse, runtimeResourcePathPattern, runtimeResourceRespons
   runtimeResourceRoute } from './resource-response.js';
 import { createOutboundConnection, RuntimeConnectionError } from './connections.js';
 import type { InstalledConfiguration } from './runtime.js';
+import type { RecoveryManifest } from './recovery-types.js';
+import type { RetirementProof } from './recovery.js';
 import { resolveCredential } from './postgres.js';
 
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
   target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]) });
 const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url(), verifier: z.string(),
   clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
-  localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional() });
+  localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional(),
+  modelBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional() });
 type Connection = z.infer<typeof connectionSchema>;
 const cleanupDestinationSchema = z.object({ connectionId: z.uuid(), schoolEndpoint: z.url().refine(value => {
   const url = new URL(value);
   return value === url.origin && (url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname));
 }) }).strict();
-const modelTaskAuthorization = new AsyncLocalStorage<() => Promise<void>>();
+const modelTaskAuthorization = new AsyncLocalStorage<{
+  identity: SpaceIdentity; authorize(fresh?: boolean): Promise<void>;
+}>();
 
 /** Installed client retains only its own verifier and scoped grant, never the school's account database. */
 export function createSchoolClient(root: string, environment: RuntimeEnvironment, local?: {
   target: LearningTarget;
+  /** Actual model owner; independent of the learning-data target. */
+  modelTarget?: LearningTarget;
   create?(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
   models?: Awaited<ReturnType<typeof createModelGateway>> | undefined;
   personal?(): Promise<SpaceIdentity>;
@@ -54,6 +63,27 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
   const cleanupPath = (id: string) => join(root, 'native-channel', z.uuid().parse(id), 'endpoint.json');
+  async function recipientRecovery() {
+    const file = join(root, 'recovery-state.json');
+    if (!local?.modelTarget || !await exists(file)) return undefined;
+    // Only the local recovery controller writes this file. An active takeover has already
+    // verified the authenticated snapshot, source retirement, receiver fences and owner data.
+    const recovered = await readJson<{ phase: string; legacy?: boolean; manifest: RecoveryManifest; proof?: RetirementProof }>(file);
+    const manifest = recovered.manifest, proof = recovered.proof;
+    const modelOwner = { environmentId: local.modelTarget.environmentId, serviceId: local.modelTarget.serviceId };
+    const owns = (service: { environmentId: string; serviceId: string }) => service.environmentId === modelOwner.environmentId
+      && service.serviceId === modelOwner.serviceId;
+    if (recovered.phase !== 'active' || recovered.legacy === true || !manifest || !proof
+      || environment.environmentId !== modelOwner.environmentId || manifest.source?.environmentId !== modelOwner.environmentId
+      || manifest.source.installationId === environment.installationId
+      || !manifest.source.services?.some(owns) || !environment.services.some(owns)
+      || !manifest.services?.some(service => service.serviceId === modelOwner.serviceId)
+      || proof.sourceEnvironmentId !== manifest.source.environmentId || proof.sourceInstallationId !== manifest.source.installationId
+      || proof.targetInstallationId !== environment.installationId || proof.backupId !== manifest.backupId
+      || typeof proof.retiredAt !== 'string' || !Number.isFinite(Date.parse(proof.retiredAt))) throw new StorageError('identity-conflict');
+    return { formatVersion: 1 as const, backupId: manifest.backupId, modelOwner,
+      sourceInstallationId: manifest.source.installationId, targetInstallationId: environment.installationId };
+  }
   async function rememberCleanupDestination(connection: Connection) {
     const destination = cleanupDestinationSchema.parse({ connectionId: connection.requestId, schoolEndpoint: connection.schoolEndpoint });
     const path = cleanupPath(connection.requestId);
@@ -120,14 +150,24 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     throw new StorageError('forbidden');
   }
   async function authorizeModel(identity: SpaceIdentity) {
+    const task = modelTaskAuthorization.getStore();
+    if (task) {
+      if (subject(identity) !== subject(task.identity)) throw new StorageError('forbidden');
+      return task.authorize();
+    }
     await identityConnection(identity);
-    await modelTaskAuthorization.getStore()?.();
+  }
+  async function authorizeModelDispatch(identity: SpaceIdentity) {
+    const task = modelTaskAuthorization.getStore();
+    if (task) {
+      if (subject(identity) !== subject(task.identity)) throw new StorageError('forbidden');
+      return task.authorize(true);
+    }
+    await identityConnection(identity);
   }
   async function schoolModel(identity: SpaceIdentity) {
     const connection = await identityConnection(identity);
-    const selection = modelSelectionSchema.parse(await call(connection, 'models/selection', undefined, true));
-    const school = selection.options.find(item => item.kind === 'school');
-    return school ? schoolModelSchema.parse(school) : null;
+    return schoolModelSchema.nullable().parse(await call(connection, 'models/school-default', undefined, true));
   }
   async function modelForward(connection: Connection, route: string, body?: unknown) {
     const identity = await modelAccess(connection), models = local?.models;
@@ -135,6 +175,31 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const personal = await local?.personal?.();
     const localCall = (input = body) => routeModels(models, identity, route, input, personal);
     const remoteCall = (input = body) => call(connection, route, input, true);
+    // An independently paired school model has one Root pointer. The device's
+    // personal selection remains local; importing choices must never replace Root's choice.
+    if (connection.modelBinding) {
+      if (route === 'models/selection') {
+        if (body !== undefined) return remoteCall();
+        const localChoices = await publishModelChoices(connection);
+        const selection = modelSelectionSchema.parse(await remoteCall());
+        // The Root displays a remote device; this installed client still knows
+        // whether an ungranted connection belongs to its actor or personal scope.
+        return { ...selection, options: selection.options.map(choice => choice.kind === 'personal' && !choice.grantId
+          ? localChoices?.options.find(local => local.kind === 'personal' && !local.grantId
+            && local.connection.connectionId === choice.connection.connectionId) ?? choice : choice) };
+      }
+      if (/^models\/grants\/[^/]+\/revoke$/.test(route)) return remoteCall();
+      if (route === 'models/grants' && body !== undefined) {
+        const input = modelGrantInputSchema.parse(body);
+        const holder = input.owner === 'device' ? personal : identity;
+        // Preserve existing locally held configurations. Root-only choices are
+        // granted by their recorded owner through the Root adapter.
+        if (!holder || !(await models.list(holder)).some(item => item.connectionId === input.connectionId)) return remoteCall(input);
+        const grant = await localCall(input);
+        await publishModelChoices(connection);
+        return grant;
+      }
+    }
     if (route === 'models/capabilities' && body !== undefined) {
       const input = modelCapabilityInputSchema.parse(body);
       if ('school' in input.source) return remoteCall(input);
@@ -223,6 +288,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return routeBound('attemptId' in input ? 'attempt' : 'segment', 'attemptId' in input ? input.attemptId : input.segmentId, input, async () => {
         if ('school' in input.source) return { destination: 'school', schoolSource: input.source };
         if ('selected' in input.source) {
+          if (input.source.pinId) {
+            const fixed = await models.selection.pinned(identity, input.source.pinId, input.source.selectionVersion);
+            return fixed.source.kind === 'school' ? { destination: 'school', schoolSource: { school: {
+              connectionId: fixed.choice.connection.connectionId, version: fixed.choice.connection.version } } } : { destination: 'local' };
+          }
           const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
           if (selected.version !== input.source.selectionVersion) throw new StorageError('conflict');
           if (selected.selected?.kind === 'school') return { destination: 'school', schoolSource: { school: {
@@ -295,14 +365,16 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function authorityCall(connection: Connection, runtimeConnectionId: string, operation: string, input?: unknown) {
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
     const transport = config.connections.find(item => item.connectionId === runtimeConnectionId);
-    if (!local || !connection.grant || !transport || transport.sourceEnvironmentId !== local.target.environmentId
-      || transport.sourceServiceId !== local.target.serviceId || transport.target.environmentId !== connection.grant.identity.environmentId
+    const modelOperation = ['modelAccess', 'modelChoices', 'modelGrantTaskPermit', 'modelGrantRevokePermit', 'modelTaskPermit', 'pollModelTasks', 'completeModelTask'].includes(operation);
+    const sourceTarget = modelOperation && connection.modelBinding ? local?.modelTarget ?? local?.target : local?.target;
+    if (!local || !sourceTarget || !connection.grant || !transport || transport.sourceEnvironmentId !== sourceTarget.environmentId
+      || transport.sourceServiceId !== sourceTarget.serviceId || transport.target.environmentId !== connection.grant.identity.environmentId
       || !transport.requiredCapabilities.includes('learning.authority')
       || new URL(transport.target.endpoint).origin !== connection.schoolEndpoint) throw new StorageError('forbidden');
     let value: unknown;
     try {
       value = await createOutboundConnection({ connection: transport, credential: () => resolveCredential(root, transport.credentialRef),
-        allowInsecureLoopback: true, timeoutMs: 15000 }).request('learning.authority', { token: connection.grant.token, operation, input });
+        allowInsecureLoopback: true, timeoutMs: 15000 }).request('learning.authority', { token: connection.grant.token, connectionId: connection.requestId, operation, input });
     } catch (error) {
       throw new StorageError(error instanceof RuntimeConnectionError && ['http_401', 'http_403', 'credential_unavailable'].includes(error.code) ? 'forbidden' : 'unavailable');
     }
@@ -318,37 +390,178 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       || JSON.stringify(result.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
     return result;
   }
+  async function checkModelAccess(connection: Connection, runtimeConnectionId: string) {
+    const binding = connection.modelBinding;
+    if (!local || !connection.grant || !binding || binding.runtimeConnectionId !== runtimeConnectionId) throw new StorageError('forbidden');
+    const result = z.object({ identity: spaceIdentitySchema, target: learningTargetSchema }).strict()
+      .parse(await authorityCall(connection, runtimeConnectionId, 'modelAccess'));
+    if (JSON.stringify(result.identity) !== JSON.stringify(connection.grant.identity)
+      || JSON.stringify(result.target) !== JSON.stringify(local.modelTarget ?? local.target)
+      || JSON.stringify(result.target) !== JSON.stringify(binding.target)) throw new StorageError('forbidden');
+    return result;
+  }
+  const publishedChoices = new Map<string, string>();
+  async function publishModelChoices(connection: Connection) {
+    if (!connection.modelBinding || !connection.grant || !local?.models) return;
+    // Serialize publications with binding changes and each other. A late projection
+    // cannot be accepted after a newer grant projection from this same device.
+    return update(connection.requestId, async () => {
+      const current = await read(connection.requestId);
+      if (!current.modelBinding || !current.grant) throw new StorageError('forbidden');
+      await checkModelAccess(current, current.modelBinding.runtimeConnectionId);
+      const projection = modelSelectionSchema.parse(await local.models!.selection.read(current.grant.identity, await local.personal?.()));
+      const fingerprint = createHash('sha256').update(JSON.stringify([current.modelBinding,
+        projection.options.map(option => JSON.stringify(option)).sort()])).digest('hex');
+      if (publishedChoices.get(current.requestId) === fingerprint) return projection;
+      z.object({ published: z.literal(true) }).strict().parse(await authorityCall(current,
+        current.modelBinding.runtimeConnectionId, 'modelChoices', { requestId: randomUUID(), projection }));
+      publishedChoices.set(current.requestId, fingerprint);
+      return projection;
+    });
+  }
   async function pollModelTasks(isOpen: () => boolean) {
     if (!local?.models) return;
     for (const item of await list()) {
       if (!isOpen()) return;
       const connection = await read(item.key.slice('school:'.length));
-      if (!connection.localBinding || !connection.grant) continue;
-      const { runtimeConnectionId } = connection.localBinding;
+      const binding = connection.modelBinding ?? connection.localBinding;
+      if (!binding || !connection.grant) continue;
+      const { runtimeConnectionId } = binding;
+      const checkAccess = () => connection.modelBinding ? checkModelAccess(connection, runtimeConnectionId) : checkLocal(connection, runtimeConnectionId);
       try {
         const tasks = z.array(modelDeviceTaskSchema).max(16)
           .parse(await authorityCall(connection, runtimeConnectionId, 'pollModelTasks'));
-        const task = tasks[0];
-        if (!task || !isOpen()) continue;
-        const route = task.operation === 'receive' ? 'models/calls' : `models/calls/${task.attemptId}`
-          + (task.operation === 'read' ? '' : `/${task.operation}`);
-        let receipt;
-        try {
-          const input = task.operation === 'receive' ? task.input : task.operation === 'read' ? undefined : {};
-          const identity = connection.grant.identity;
-          const value = await modelTaskAuthorization.run(async () => {
-            if (!isOpen()) throw new StorageError('maintenance');
-            // The Gateway checks again immediately before SDK dispatch, including in its background task.
-            await checkLocal(connection, runtimeConnectionId);
-          }, () => routeModels(local.models!, identity, route, input));
-          receipt = { ok: true, value: modelAttemptSchema.parse(value) };
-        } catch (error) {
-          const code = error instanceof StorageError ? error.code : 'invalid';
-          if (code !== 'forbidden' && code !== 'missing' && code !== 'conflict' && code !== 'invalid' && code !== 'unavailable') continue;
-          receipt = { ok: false, code };
+        if (!tasks.length) { await publishModelChoices(connection); continue; }
+        for (const task of tasks) {
+          if (!isOpen()) return;
+          if (task.operation === 'grant-revoke' || task.operation === 'grant-create') {
+            let receipt;
+            try {
+              await checkAccess();
+              z.object({ authorized: z.literal(true) }).strict().parse(
+                await authorityCall(connection, runtimeConnectionId, 'modelGrantTaskPermit', { taskId: task.taskId }));
+              let grant;
+              if (task.operation === 'grant-create') {
+                const grantOwner = task.ownerKind === 'device' ? await local.personal?.() : connection.grant.identity;
+                if (!grantOwner) throw new StorageError('forbidden');
+                await local.models.selection.createGrant(connection.grant.identity, grantOwner, task.input);
+                grant = await local.models.selection.readGrant(connection.grant.identity, task.input.grantId);
+              } else {
+                const original = await local.models.selection.readGrant(connection.grant.identity, task.modelGrantId);
+                grant = original.active
+                  ? await local.models.selection.revoke(connection.grant.identity, task.modelGrantId, task.input) : original;
+              }
+              receipt = { ok: true, value: modelGrantSchema.parse(grant) };
+            } catch (error) {
+              // An uncertain owner write is still the original task. Re-read its
+              // durable grant on the next poll instead of recording a final failure.
+              if (error instanceof StorageError && ['unavailable', 'commit-unknown', 'maintenance', 'resource-busy'].includes(error.code)) continue;
+              receipt = { ok: false, code: error instanceof StorageError ? error.code : 'invalid' };
+            }
+            await authorityCall(connection, runtimeConnectionId, 'completeModelTask', { taskId: task.taskId, receipt });
+            continue;
+          }
+          if (task.operation === 'learning') {
+            const identity = connection.grant.identity;
+            const associationId = task.attemptId ?? task.taskId;
+            const fixedOrigin = task.formatVersion === 2
+              ? { formatVersion: 2, service: task.origin.service, installationId: task.origin.installationId, grantId: task.origin.grantId,
+                identity: task.origin.identity, recoveryGeneration: task.origin.recoveryGeneration,
+                ...(task.attemptId ? { attemptId: task.attemptId } : {}),
+                ...(task.origin.authority ? { runId: task.origin.authority.runId, activityId: task.origin.authority.activityId }
+                  : task.origin.activityId ? { activityId: task.origin.activityId } : {}) }
+              : { ...task.origin, formatVersion: 1 };
+            const checkPermit = async () => z.object({ authorized: z.literal(true),
+              successions: z.array(modelOriginSuccessionSchema).max(64).optional() }).strict().parse(
+                await authorityCall(connection, runtimeConnectionId, 'modelTaskPermit', { taskId: task.taskId }));
+            const recoveryOperation = modelOriginRecoveryOperationSchema.safeParse(task.request.operation);
+            const checkJournal = () => local.models!.origins.assert(identity, associationId, fixedOrigin,
+              recoveryOperation.success ? recoveryOperation.data : undefined);
+            const assertOrigin = () => {
+              if (subject(task.origin.identity) !== subject(identity) || subject(task.request.identity) !== subject(identity))
+                throw new StorageError('forbidden');
+              // A restored recipient gets a new installationId. Old tasks cannot become new effects.
+              if (task.origin.recoveryGeneration !== environment.installationId) throw new StorageError('stale-generation');
+            };
+            let receipt;
+            try {
+              assertOrigin();
+              await checkAccess();
+              const permit = await checkPermit();
+              const bindOrigin = async () => {
+                const saved = await local.models!.origins.read(identity, associationId).catch(error => {
+                  if (!(error instanceof StorageError) || error.code !== 'missing') throw error;
+                  return undefined;
+                });
+                const start = permit.successions?.findIndex(fact => fact.sourceInstallationId === saved?.installationId) ?? -1;
+                const successions = saved && task.formatVersion === 2 && saved.installationId !== task.origin.installationId && start >= 0
+                  ? permit.successions!.slice(start) : undefined;
+                const recipient = saved && saved.recoveryGeneration !== task.origin.recoveryGeneration && recoveryOperation.success
+                  ? await recipientRecovery() : undefined;
+                const recovery = recoveryOperation.success && (successions || recipient)
+                  ? { operation: recoveryOperation.data, ...(successions ? { successions } : {}), ...(recipient ? { recipient } : {}) } : undefined;
+                await local.models!.origins.bind(identity, associationId, fixedOrigin, recovery);
+              };
+              // Import a journal from older candidates once, then retain all ownership facts
+              // in the model owner's migration/snapshot boundary. No new runtime journal is written.
+              const legacyPath = join(root, 'native-channel', connection.requestId, 'model-learning', associationId + '.json');
+              if (await exists(legacyPath)) {
+                const old = z.record(z.string(), z.unknown()).parse(await readJson(legacyPath));
+                await local.models!.origins.bind(identity, associationId, { ...old, formatVersion: task.formatVersion });
+                await bindOrigin();
+                await unlink(legacyPath);
+              } else await bindOrigin();
+              const assertCurrent = async () => {
+                if (!isOpen()) throw new StorageError('maintenance');
+                assertOrigin();
+                const current = await read(connection.requestId);
+                if (current.schoolEndpoint !== connection.schoolEndpoint
+                  || JSON.stringify(current.grant) !== JSON.stringify(connection.grant)
+                  || (connection.modelBinding ? JSON.stringify(current.modelBinding) !== JSON.stringify(connection.modelBinding)
+                    : current.modelBinding !== undefined || JSON.stringify(current.localBinding) !== JSON.stringify(connection.localBinding))) throw new StorageError('forbidden');
+                await checkJournal();
+                await checkAccess();
+                await checkPermit();
+              };
+              // One task is one accepted operation. Internal Gateway reads share its admission;
+              // the physical send uses a separate fresh check, including in background deliver.
+              let admitted: Promise<void> | undefined;
+              const authorize = (fresh = false): Promise<void> => fresh ? assertCurrent()
+                : admitted ??= assertCurrent().catch(error => { admitted = undefined; throw error; });
+              // AsyncLocalStorage follows Gateway's background deliver into its
+              // pre-SDK authorizeModel hook, including after this poll has returned its receipt.
+              receipt = await modelTaskAuthorization.run({ identity, authorize }, () => createLearningModelService(local.models!, async actor => {
+                if (subject(actor) !== subject(task.origin.identity)) throw new StorageError('forbidden');
+                await authorize();
+              })(task.request));
+            } catch (error) {
+              receipt = { ok: false as const, code: error instanceof StorageError ? error.code : 'invalid' as const };
+            }
+            if (!isOpen()) return;
+            await authorityCall(connection, runtimeConnectionId, 'completeModelTask', { taskId: task.taskId, receipt });
+            continue;
+          }
+          const route = task.operation === 'receive' ? 'models/calls' : `models/calls/${task.attemptId}`
+            + (task.operation === 'read' ? '' : `/${task.operation}`);
+          let receipt;
+          try {
+            const input = task.operation === 'receive' ? task.input : task.operation === 'read' ? undefined : {};
+            const identity = connection.grant.identity;
+            const authorize = async () => {
+              if (!isOpen()) throw new StorageError('maintenance');
+              // The Gateway checks again immediately before SDK dispatch, including in its background task.
+              await checkAccess();
+            };
+            const value = await modelTaskAuthorization.run({ identity, authorize }, () => routeModels(local.models!, identity, route, input));
+            receipt = { ok: true, value: modelAttemptSchema.parse(value) };
+          } catch (error) {
+            const code = error instanceof StorageError ? error.code : 'invalid';
+            if (code !== 'forbidden' && code !== 'missing' && code !== 'conflict' && code !== 'invalid' && code !== 'unavailable') continue;
+            receipt = { ok: false, code };
+          }
+          if (!isOpen()) return;
+          await authorityCall(connection, runtimeConnectionId, 'completeModelTask', { taskId: task.taskId, receipt });
         }
-        if (!isOpen()) return;
-        await authorityCall(connection, runtimeConnectionId, 'completeModelTask', { taskId: task.taskId, receipt });
       } catch {
         // An offline or fenced pairing leaves the task at the school for authenticated reconciliation.
       }
@@ -367,6 +580,23 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       await atomicJson(path(input.connectionId), current);
       return { identity: current.grant!.identity, target: input.target, configured: true };
     });
+  }
+  async function configureModel(value: unknown) {
+    const input = z.object({ connectionId: z.uuid(), runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().parse(value);
+    if (!local || JSON.stringify(input.target) !== JSON.stringify(local.modelTarget ?? local.target)) throw new StorageError('forbidden');
+    const connection = await read(input.connectionId);
+    const binding = { runtimeConnectionId: input.runtimeConnectionId, target: input.target };
+    await checkModelAccess({ ...connection, modelBinding: binding }, input.runtimeConnectionId);
+    const configured = await update(input.connectionId, async () => {
+      const current = await read(input.connectionId);
+      if (current.schoolEndpoint !== connection.schoolEndpoint || JSON.stringify(current.grant) !== JSON.stringify(connection.grant)) throw new StorageError('forbidden');
+      if (current.modelBinding && JSON.stringify(current.modelBinding) !== JSON.stringify(binding)) throw new StorageError('identity-conflict');
+      current.modelBinding = binding;
+      await atomicJson(path(input.connectionId), current);
+      return { identity: current.grant!.identity, target: input.target, configured: true };
+    });
+    await publishModelChoices(await read(input.connectionId));
+    return configured;
   }
   async function localForward(connection: Connection, route: string, body?: unknown) {
     const binding = connection.localBinding!;
@@ -389,6 +619,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyReference', reference)); },
     });
     const identity = connection.grant!.identity;
+    if (route === 'agent-settings') return body === undefined ? learning.agentPreferences.read(identity) : learning.agentPreferences.save(identity, body);
+    if (route.startsWith('agent-settings/receipts/')) return learning.agentPreferences.receipt(identity, route.slice('agent-settings/receipts/'.length));
     if (route === 'activities') return body === undefined ? learning.list(identity) : learning.create(identity, body as never);
     if (route.startsWith('activities/')) return learning.open(identity, route.slice(11));
     if (route === 'activity-status') return learning.setStatus(identity, body as never);
@@ -436,11 +668,13 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+      `|agent-settings(?:/receipts/${id})?` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?` +
       `|/resources/${runtimeResourcePathPattern})?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
-      `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
+      `|models/(?:selection|connections|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
+      `|agent/${id}(?:/(?:conversation|events|capabilities|model-switches|requests/${id}|snapshots/${id}|responses/${id}|controls/${id}|inputs/${id}/control|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -448,7 +682,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -479,6 +713,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         || JSON.stringify(activity.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
       return activity;
     };
+    if (route === 'agent-settings' || route.startsWith('agent-settings/receipts/')) return value === null ? null : parsed(teachingInteractionSettingsSchema, value);
+    if (/^agent\/[^/]+\/controls\//.test(route)) return value === null ? null : parsed(teachingControlReceiptSchema, value);
+    if (/^agent\/[^/]+\/inputs\//.test(route)) return parsed(teachingInputControlReceiptSchema, value);
     if (route.startsWith('intents/')) {
       if (route.endsWith('/capabilities')) return parsed(z.array(actionReceiverSchema), value);
       const checkIntent = (candidate: unknown) => {
@@ -572,5 +809,5 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     await rememberCleanupDestination(connection);
     return call(connection, `native-channel/${operation}`, input, true);
   }
-  return { list, start, complete, configureLocal, forward, nativeChannelCall, authorizeModel, schoolModel, pollModelTasks };
+  return { list, start, complete, configureLocal, configureModel, forward, nativeChannelCall, authorizeModel, authorizeModelDispatch, schoolModel, pollModelTasks };
 }

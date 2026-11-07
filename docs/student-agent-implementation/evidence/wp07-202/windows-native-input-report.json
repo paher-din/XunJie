@@ -1,0 +1,2139 @@
+{
+  "kind": "windows-os-ime-acceptance",
+  "ticket": "#194",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "candidate": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\product-final",
+  "startedAt": "2026-11-07T11:20:32.819Z",
+  "os": "Windows 10.0.26200.0",
+  "cases": [
+    {
+      "id": "A0",
+      "name": "an unlocked Windows interactive desktop owns the real product Chrome and native IME",
+      "status": "passed"
+    },
+    {
+      "id": "A1",
+      "name": "real pinyin composition shows the OS candidate window over the Monaco editor",
+      "status": "passed",
+      "evidence": {
+        "owner": "ImeService",
+        "class": "OimeDirectUIWindow",
+        "bounds": [
+          403,
+          570,
+          606,
+          89
+        ]
+      }
+    },
+    {
+      "id": "A2",
+      "name": "arrow selection followed by a real Space commit inserts exactly the selected Chinese candidate",
+      "status": "passed",
+      "evidence": {
+        "committed": "策士"
+      }
+    },
+    {
+      "id": "A3",
+      "name": "a real Escape cancel leaves no pinyin, no lost or duplicated text, and focus remains in Monaco",
+      "status": "passed"
+    },
+    {
+      "id": "B1",
+      "name": "real pinyin composition and Space commit fill the question draft exactly once without dropped characters",
+      "status": "passed",
+      "evidence": {
+        "value": "测试输入",
+        "first": "测试"
+      }
+    },
+    {
+      "id": "B-cancel",
+      "name": "a real Escape cancels question-draft composition without changing text, sending or running",
+      "status": "passed"
+    },
+    {
+      "id": "B2",
+      "name": "the ALU experiment prepared and the real run control is enabled",
+      "status": "passed",
+      "evidence": {
+        "preparationWaitMs": 0
+      }
+    },
+    {
+      "id": "B3",
+      "name": "the real run succeeded and enabled the current work",
+      "status": "passed"
+    },
+    {
+      "id": "B4",
+      "name": "running and the full check never clear or send the question draft",
+      "status": "passed",
+      "evidence": {
+        "draft": "测试输入",
+        "sendRequests": 0
+      }
+    },
+    {
+      "id": "C1",
+      "name": "an illegal numeric draft (-1) stays in the field and is marked aria-invalid",
+      "status": "passed",
+      "evidence": {
+        "value": "-1"
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Escape cancel keeps the original illegal draft; aria-invalid, ports and simulation count are unchanged",
+      "status": "passed"
+    },
+    {
+      "id": "C3",
+      "name": "a committed Chinese candidate in the numeric field is invalid and triggers no simulation",
+      "status": "passed",
+      "evidence": {
+        "value": "测试"
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Monaco composition followed by ALU-tab switch and back keeps text and focus correct",
+      "status": "passed"
+    },
+    {
+      "id": "D2",
+      "name": "switching between the numeric input and the question draft does not leak or leave text behind",
+      "status": "passed"
+    },
+    {
+      "id": "E1",
+      "name": "new prediction reason accepts native Chinese, cancels without residue and survives active-composition navigation",
+      "status": "passed",
+      "evidence": {
+        "committed": "测试"
+      }
+    },
+    {
+      "id": "E2",
+      "name": "new explanation accepts/cancels native Chinese and saves an immutable revision without running or sending",
+      "status": "passed",
+      "evidence": {
+        "text": "测试"
+      }
+    }
+  ],
+  "keySequences": [
+    {
+      "id": "A1",
+      "label": "monaco compose ceshi",
+      "keys": "c e s h i",
+      "nativeKeys": [
+        "c",
+        "e",
+        "s",
+        "h",
+        "i"
+      ]
+    },
+    {
+      "id": "A2",
+      "label": "monaco arrow select candidate",
+      "keys": "Down Arrow",
+      "nativeKeys": [
+        "{DOWN}"
+      ]
+    },
+    {
+      "id": "A3",
+      "label": "monaco Space commit",
+      "keys": "Space",
+      "nativeKeys": [
+        " "
+      ]
+    },
+    {
+      "id": "A4",
+      "label": "monaco second composition shuru",
+      "keys": "s h u r u",
+      "nativeKeys": [
+        "s",
+        "h",
+        "u",
+        "r",
+        "u"
+      ]
+    },
+    {
+      "id": "A5",
+      "label": "monaco Escape cancel",
+      "keys": "Escape",
+      "nativeKeys": [
+        "{ESC}"
+      ]
+    },
+    {
+      "id": "B1",
+      "label": "draft compose ceshi",
+      "keys": "c e s h i",
+      "nativeKeys": [
+        "c",
+        "e",
+        "s",
+        "h",
+        "i"
+      ]
+    },
+    {
+      "id": "B2",
+      "label": "draft Space commit",
+      "keys": "Space",
+      "nativeKeys": [
+        " "
+      ]
+    },
+    {
+      "id": "B3",
+      "label": "draft compose shuru",
+      "keys": "s h u r u",
+      "nativeKeys": [
+        "s",
+        "h",
+        "u",
+        "r",
+        "u"
+      ]
+    },
+    {
+      "id": "B-cancel",
+      "label": "draft compose shuru then Escape",
+      "keys": "s h u r u Escape",
+      "nativeKeys": [
+        "s",
+        "h",
+        "u",
+        "r",
+        "u",
+        "{ESC}"
+      ]
+    },
+    {
+      "id": "C1",
+      "label": "numeric A type -1",
+      "keys": "- 1",
+      "nativeKeys": [
+        "-",
+        "1"
+      ]
+    },
+    {
+      "id": "C2",
+      "label": "numeric A compose ceshi",
+      "keys": "c e s h i",
+      "nativeKeys": [
+        "c",
+        "e",
+        "s",
+        "h",
+        "i"
+      ]
+    },
+    {
+      "id": "C3",
+      "label": "numeric A Escape cancel",
+      "keys": "Escape",
+      "nativeKeys": [
+        "{ESC}"
+      ]
+    },
+    {
+      "id": "C4",
+      "label": "numeric A compose and commit ceshi",
+      "keys": "c e s h i Space",
+      "nativeKeys": [
+        "c",
+        "e",
+        "s",
+        "h",
+        "i",
+        " "
+      ]
+    },
+    {
+      "id": "D1",
+      "label": "monaco compose shuru before tab switch",
+      "keys": "s h u r u",
+      "nativeKeys": [
+        "s",
+        "h",
+        "u",
+        "r",
+        "u"
+      ]
+    },
+    {
+      "id": "D2",
+      "label": "monaco compose ceshi after tab switch",
+      "keys": "c e s h i Space",
+      "nativeKeys": [
+        "c",
+        "e",
+        "s",
+        "h",
+        "i",
+        " "
+      ]
+    },
+    {
+      "id": "D3",
+      "label": "draft compose nihao",
+      "keys": "n i h a o Space",
+      "nativeKeys": [
+        "n",
+        "i",
+        "h",
+        "a",
+        "o",
+        " "
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "win-ime-01-monaco-candidate",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-01-monaco-candidate.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-02-monaco-candidate-selected",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-02-monaco-candidate-selected.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-03-monaco-after-commit",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-03-monaco-after-commit.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-04-monaco-second-composition",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-04-monaco-second-composition.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-05-monaco-after-cancel",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-05-monaco-after-cancel.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-06-draft-candidate",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-06-draft-candidate.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-07-draft-committed",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-07-draft-committed.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-07b-draft-before-cancel",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-07b-draft-before-cancel.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-07c-draft-after-cancel",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-07c-draft-after-cancel.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-08-draft-after-run-check",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-08-draft-after-run-check.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-09-numeric-invalid",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-09-numeric-invalid.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-10-numeric-candidate",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-10-numeric-candidate.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-11-numeric-after-cancel",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-11-numeric-after-cancel.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-11b-numeric-after-chinese-commit",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-11b-numeric-after-chinese-commit.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12a-active-composition-before-switch",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-12a-active-composition-before-switch.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12aa-requested-switch-keeps-composition",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-12aa-requested-switch-keeps-composition.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12b-tool-switch-before-refocus",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-12b-tool-switch-before-refocus.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12-tool-switch-editor",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-12-tool-switch-editor.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-13-numeric-draft-switch",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\win-ime-13-numeric-draft-switch.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "learning-ime-reason-candidate",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\learning-ime-reason-candidate.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "learning-ime-reason-switch-held",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\learning-ime-reason-switch-held.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "learning-ime-explanation-candidate",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\learning-ime-explanation-candidate.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "learning-ime-explanation-saved",
+      "path": "C:\\Users\\h\\.xunjie\\acceptance\\wp07-202-B\\windows-native-input-2\\learning-ime-explanation-saved.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    }
+  ],
+  "candidateWindows": [
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 570,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 570,
+      "width": 606,
+      "height": 233
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 429,
+      "y": 534,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 954,
+      "y": 545,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 954,
+      "y": 545,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 954,
+      "y": 545,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 389,
+      "y": 578,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 375,
+      "y": 578,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 672,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 672,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 954,
+      "y": 543,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 375,
+      "y": 530,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 401,
+      "y": 530,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 401,
+      "y": 530,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 401,
+      "y": 530,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 375,
+      "y": 577,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 401,
+      "y": 577,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    }
+  ],
+  "texts": {
+    "initialEditor": "module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nendm",
+    "monacoPreedit": "ce'shimodule alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [",
+    "monacoAfterCommit": "策士module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen",
+    "monacoSecondPreedit": "策士shu'rumodule alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic",
+    "monacoAfterCancel": "策士module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen",
+    "draftAfterFirstCommit": "测试",
+    "draftAfterCommit": "测试输入",
+    "draftAfterRunAndCheck": "测试输入",
+    "numericAfterEscape": "-1",
+    "readoutBefore": "F=1111 Cout=0",
+    "readoutAfter": "F=1111 Cout=0",
+    "monacoAfterToolSwitch": "测试// correct ALU for #211 IME acceptance\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin",
+    "draftBeforeNumericSwitch": "测试输入",
+    "draftAfterNumericSwitch": "测试输入你好",
+    "numericAfterDraftSwitch": "7"
+  },
+  "network": {
+    "draftSendRequests": [],
+    "executionRequests": [
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/history"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/sessions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/checkpoints"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-stops/08af7af7-34bf-4f7b-bd2b-e779199bf577"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce"
+      },
+      {
+        "method": "GET",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/agent-pending"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce/c8b5577a-3cd4-42f4-bef5-d17722db896e/result"
+      },
+      {
+        "method": "POST",
+        "path": "/api/learning/executions/876666cd-a691-4d64-9f36-5dbf72a190ce"
+      }
+    ],
+    "quietPhases": [
+      {
+        "id": "Monaco composition/selection/commit/cancel",
+        "executionsBefore": 0,
+        "executionsAfter": 0,
+        "questionSubmissions": 0
+      },
+      {
+        "id": "Question draft composition/commit/cancel",
+        "executionsBefore": 0,
+        "executionsAfter": 0,
+        "questionSubmissions": 0
+      },
+      {
+        "id": "Illegal numeric draft composition/cancel/commit",
+        "executionsBefore": 3,
+        "executionsAfter": 3,
+        "questionSubmissions": 0
+      },
+      {
+        "id": "Active composition and tool switch",
+        "executionsBefore": 3,
+        "executionsAfter": 3,
+        "questionSubmissions": 0
+      },
+      {
+        "id": "Numeric-to-question focus switch",
+        "executionsBefore": 4,
+        "executionsAfter": 4,
+        "questionSubmissions": 0
+      }
+    ]
+  },
+  "foregroundChecks": [
+    {
+      "at": "2026-11-07T11:20:49.763Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:20:50.834Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:20:58.647Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 403,
+          "y": 570,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:03.805Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 403,
+          "y": 570,
+          "width": 606,
+          "height": 233
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:08.313Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:14.716Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 429,
+          "y": 534,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:20.729Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:27.309Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 954,
+          "y": 545,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:31.008Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:36.117Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 954,
+          "y": 545,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:41.156Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:48.181Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 954,
+          "y": 545,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:21:57.649Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:02.247Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:08.639Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 389,
+          "y": 578,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:13.130Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:17.749Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 375,
+          "y": 578,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:23.550Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:31.329Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 403,
+          "y": 672,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:35.537Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:40.094Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 403,
+          "y": 672,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:46.078Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:50.697Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 954,
+          "y": 543,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:22:55.894Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:02.192Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 375,
+          "y": 530,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:04.770Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:09.041Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 401,
+          "y": 530,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:11.807Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:18.770Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 401,
+          "y": 530,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:21.539Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:27.754Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 375,
+          "y": 577,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:30.342Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T11:23:34.864Z",
+      "sessionId": 1,
+      "foregroundProcessId": 43484,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 401,
+          "y": 577,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "nativeInput": "System.Windows.Forms.SendKeys in the same Interactive desktop session as the probe Chrome; no CDP composition",
+  "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-alu-211-ime-vZVq9c",
+  "productNodeVersion": "24.21.0",
+  "distributionSha256": "7f0d9ea5c96b06a92394187ff47243cfaffd432a3dc8f5b2b6da18fe44cea830",
+  "endpoint": "http://127.0.0.1:58316",
+  "chromePid": 43484,
+  "browser": "156.0.8078.81",
+  "activityId": "876666cd-a691-4d64-9f36-5dbf72a190ce",
+  "draftSelectorUsed": "section[aria-label=\"Agent 问题草稿\"] textarea",
+  "checkVerdict": "4096-input-pass",
+  "toolSwitch": {
+    "beforeText": "// correct ALU for #211 IME acceptance\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin; default:begin F=0;Cout=0;end endcase end endmodule",
+    "afterText": "// correct ALU for #211 IME acceptance\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin; default:begin F=0;Cout=0;end endcase end endmodule",
+    "focusBeforeManualRefocus": {
+      "connected": true,
+      "inEditor": false,
+      "role": "tab",
+      "label": "作品"
+    }
+  },
+  "finishedAt": "2026-11-07T11:23:38.786Z",
+  "caseCount": 16,
+  "passCount": 16,
+  "cleanup": "owned temporary installation deleted through the product owner"
+}

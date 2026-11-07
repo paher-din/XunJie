@@ -1,0 +1,171 @@
+{
+  "issue": 203,
+  "measuredAt": "2026-11-06T11:05:33.477Z",
+  "mode": "windows-agent",
+  "protocol": "chat-completions",
+  "status": "passed",
+  "host": {
+    "name": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "node": "v24.21.0"
+  },
+  "limits": {
+    "maxGenerations": 40,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "stages": [
+    {
+      "name": "windows-agent-install-start-degraded",
+      "status": "passed",
+      "startedAt": "2026-11-06T11:05:33.505Z",
+      "fact": {
+        "state": "degraded",
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "dependencies": [
+          {
+            "name": "PostgreSQL",
+            "required": true,
+            "state": "ready",
+            "detail": "18.6"
+          },
+          {
+            "name": "agent-dependencies",
+            "required": false,
+            "state": "unavailable",
+            "detail": "agent-dependencies-not-configured"
+          }
+        ]
+      },
+      "finishedAt": "2026-11-06T11:05:45.846Z"
+    },
+    {
+      "name": "windows-agent-status-and-owner-migrations",
+      "status": "passed",
+      "startedAt": "2026-11-06T11:05:45.847Z",
+      "fact": {
+        "managedPostgres": true,
+        "databasePort": 64020,
+        "ownerSchemas": [
+          {
+            "serviceId": "b411e7a6-2290-44a4-b42d-ededffcb2028",
+            "schemaVersion": "1"
+          },
+          {
+            "serviceId": "93d6ea03-473b-4ff9-b032-ea385c626ab8",
+            "schemaVersion": "storage/1;owner/4"
+          }
+        ],
+        "backupId": "9f47f643-339d-46e8-a592-97326ef9c335",
+        "configuredDependency": false,
+        "afterProofState": "degraded"
+      },
+      "finishedAt": "2026-11-06T11:05:47.682Z"
+    },
+    {
+      "name": "windows-agent-stop",
+      "status": "passed",
+      "startedAt": "2026-11-06T11:05:47.684Z",
+      "fact": {
+        "state": "stopped"
+      },
+      "finishedAt": "2026-11-06T11:05:48.731Z"
+    }
+  ],
+  "engineering": "owned-by-mainline",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "source": {
+    "commit": "0db776529d9d72756ca9385e42533f1df41b4156",
+    "trackedDiffSha256": "aa301968f05a827dbbceac259c89dc44ffc1c1aaee35bd8df712a3fcca1b147c",
+    "probeSha256": "55fb154655ed90889ac74eebfd7fa56e202611f4c11545fb00ca98eede00a684"
+  },
+  "device": {
+    "platform": "win32",
+    "host": "LAPTOP-S7A4IQFU",
+    "osRelease": "10.0.26200",
+    "taskRoot": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp07-203-owner-svarFt",
+    "environment": {
+      "formatVersion": 1,
+      "environmentId": "008b5a22-5082-4771-8a5e-fd6db4e7ba0e",
+      "installationId": "3cae0841-c760-4f15-8376-b8820b35c6e5",
+      "clientNamespace": "xunjie.v1.008b5a22-5082-4771-8a5e-fd6db4e7ba0e",
+      "profile": "agent",
+      "services": [
+        {
+          "environmentId": "008b5a22-5082-4771-8a5e-fd6db4e7ba0e",
+          "serviceId": "b411e7a6-2290-44a4-b42d-ededffcb2028",
+          "unit": "client",
+          "endpoint": "http://127.0.0.1:65500",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        },
+        {
+          "environmentId": "008b5a22-5082-4771-8a5e-fd6db4e7ba0e",
+          "serviceId": "93d6ea03-473b-4ff9-b032-ea385c626ab8",
+          "unit": "teaching-agent",
+          "endpoint": "http://127.0.0.1:65500",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.agent"
+          ]
+        }
+      ]
+    },
+    "package": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "createdAt": "2026-11-06T11:02:18.542Z",
+      "distributionSha256": "ebc6aeb98069f05a3ee82235eacfdd2fc4cc9f38e6dc5ff4a98250c80b5e50c5",
+      "applicationSha256": "3b7ec1095c04c2e891f87968c8e71d269cb798158246fc4e1d26f5b820bfb73c",
+      "schemaMarkers": {
+        "model13": true,
+        "model14": true,
+        "model15": true,
+        "learning20": true,
+        "terminalModelClosesSegment": true
+      },
+      "nodeVersion": "v24.21.0",
+      "postgresVersion": "postgres (PostgreSQL) 18.6"
+    }
+  },
+  "cleanup": [
+    {
+      "device": {
+        "stopped": true,
+        "environmentDeleted": true,
+        "rootRemoved": true,
+        "witness": {
+          "platform": "win32",
+          "host": "LAPTOP-S7A4IQFU",
+          "requests": [],
+          "providerRelayClosed": true
+        }
+      }
+    }
+  ],
+  "windowsWitness": {
+    "platform": "win32",
+    "host": "LAPTOP-S7A4IQFU",
+    "requests": [],
+    "providerRelayClosed": true
+  },
+  "deviceSettled": true,
+  "requestAccounting": {
+    "observedExternalAttempts": 0,
+    "httpSuccess": 0,
+    "httpFailure": 0,
+    "responseUnconfirmed": 0,
+    "witnessFinal": true
+  },
+  "finishedAt": "2026-11-06T11:05:49.263Z"
+}

@@ -9,7 +9,7 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (route === 'models/selection') return body === undefined ? models.selection.read(identity, deviceOwner) : models.selection.save(identity, body);
   if (route === 'models/grants' && body !== undefined) {
     const input = modelGrantInputSchema.parse(body);
-    if (input.owner === 'device' && !deviceOwner) throw new StorageError('forbidden');
+    if (input.owner === 'device' && !deviceOwner) return models.selection.createDeviceGrant(identity, input);
     return models.selection.createGrant(identity, input.owner === 'device' ? deviceOwner! : identity, input);
   }
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
@@ -21,6 +21,8 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (/^models\/segments\/[^/]+$/.test(route) && body === undefined) return models.segments.read(identity, route.split('/')[2]!);
   if (/^models\/segments\/[^/]+\/tool-results$/.test(route) && body !== undefined) return models.segments.settle(identity, route.split('/')[2]!, body);
   if (/^models\/segments\/[^/]+\/close$/.test(route) && body !== undefined) return models.segments.close(identity, route.split('/')[2]!, body);
+  // Learning attempts are created only by the authenticated RunDriver; the public call wire stays
+  // a diagnostic probe path so it cannot bypass learning admission.
   if (route === 'models/calls' && body !== undefined) return models.checks.receive(identity, modelChatInputSchema.parse(body));
   if (route === 'models/checks') return body === undefined ? (await models.checks.list(identity)).filter(item => item.purpose === 'connection-check')
     : models.checks.receive(identity, modelCheckInputSchema.parse(body));

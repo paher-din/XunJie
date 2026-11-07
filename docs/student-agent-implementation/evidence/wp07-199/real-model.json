@@ -1,0 +1,154 @@
+{
+  "measuredAt": "2026-11-06T09:17:47.496Z",
+  "model": "deepseek-flash",
+  "capability": "student.ask",
+  "limits": {
+    "maxGenerations": 6,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3671,
+        "outputTokens": 636,
+        "totalTokens": 4307,
+        "cachedTokens": 1792,
+        "reasoningTokens": 145
+      },
+      "answerSha256": "ca812f6186663f45165d5b1d03a5ece7275e285084fa87c13bad10f4bc014267",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "在四态累加（状态对 4 取余）的设定下，如果当前状态是 3、再来一个输入 2，你预测下一步的状态会是多少？请写下你的预测和一句理由。",
+        "source": "依据当前学习目标「依据明确预测解释四态累加」：四态即状态按 4 取余循环，故要先让你对一个具体转移给出预测。",
+        "presentedAt": null,
+        "skippable": false
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "b51d113f525dcc6163bfdc4e0a1f8b62c1f5a5d7c8f92adb4deb637f2d596be8",
+        "8f297653ba5c8a0cfcf46fdd8273a3bdc7b413c14cbe32886fe20f28b2a65eef"
+      ]
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3869,
+        "outputTokens": 957,
+        "totalTokens": 4826,
+        "cachedTokens": 3072,
+        "reasoningTokens": 478
+      },
+      "answerSha256": "9ab42b8aaec9773b542f4b8296a1652463dcc19655184ff136f3e8d8eb4daa51",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "先做一个预测：如果当前状态是 3，加上输入 2，再对 4 取余，你预测得到的状态会是几？",
+        "source": "依据本次学习目标「依据明确预测解释四态累加」提出；未读取任何作品、引用或材料。",
+        "presentedAt": null,
+        "skippable": false
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "a988ce1bf5fa3c7615e36be059141a3ec4bd2f0b583a2f458df01333813efbf1",
+        "b8e7153d72ec440642bbc6a9ff9587699b3e7d283d28223a1a33274838d51c05"
+      ]
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "end_turn",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "student_ask",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 771,
+        "outputTokens": 867,
+        "cachedTokens": 3200
+      },
+      "answerSha256": "86b0e092031717bef5d35cc6ebdae006dec09a4deecb1538dcbf4bf85b115704",
+      "question": {
+        "version": 1,
+        "waitVersion": 1,
+        "question": "预测一下：如果当前状态是 3，输入是 2，那么按“四态累加”的规则，下一状态应该是多少？",
+        "source": "来自本次学习目标“依据明确预测解释四态累加”：状态只有 4 个（0、1、2、3），累加后对 4 取余，所以结果必须落回 0–3 之间。",
+        "presentedAt": null,
+        "skippable": true
+      },
+      "responseAdopted": true,
+      "snapshotDigests": [
+        "6ab5d67a654ccbbb386333458197257da45f269483773578dd90386ac9fac4a1",
+        "d3fadcdc59e100c65f446ea3aa6f286a0c8ce2fb302bc3a78299bc33494ef22b"
+      ]
+    }
+  ],
+  "generations": 6,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 2409
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1938
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 3890
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 2690
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 4443
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1385
+    }
+  ]
+}

@@ -66,7 +66,7 @@ const plan = { ...basis, planDigest: digest(basis) };
 expectOk('course-import', await api('manage/course-import', {
   formatVersion: 1, requestId: randomUUID(),
   course: payload.course, task: payload.task, resources: payload.resources,
-  release: { ...payload.release, components: [{ key: 'accumulator', definition: imported,
+  release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  ...payload.release, components: [{ key: 'accumulator', definition: imported,
     configuration, materialIds: [] }], executionPlan: plan },
 }));
 // A repeated acceptance on the same course reuses the enrolled member instead of failing on it.

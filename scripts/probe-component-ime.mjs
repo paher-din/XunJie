@@ -103,7 +103,7 @@ try {
     const course = { formatVersion: 1, requestId: randomUUID(),
       course: { courseId, name: '系统输入法专项 ' + variant },
       task: { taskId: randomUUID(), title: '真实中文候选与标注保护', summary: '' },
-      release: { releaseId, objectives: ['保留系统输入法确认后的原文'], requirements: '标注阅读材料。', starterWorks: [], capabilities: [],
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保留系统输入法确认后的原文'], requirements: '标注阅读材料。', starterWorks: [], capabilities: [],
         components: [{ key: 'annotation', definition, configuration: { title: '材料标注' }, materialIds: [materialId] }],
         materials: [{ materialId, title: '阅读材料', path: 'material.txt', mediaType: 'text/plain', access: 'student', byteLength: material.length, sha256: sha(material) }] },
     };

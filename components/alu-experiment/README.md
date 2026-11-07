@@ -15,6 +15,8 @@ xunjie course-import --root <环境目录> --file <绝对路径>/dist/alu-experi
 
 包固定现有 Icarus 候选的六个 JS/WASM 资源，随对应源码与许可证分发。宿主 Adapter 随产品构建，课程不能提供自己的宿主代码。运行包身份来自 [固定清单](../alu-icarus-runtime/manifest.json)。当前组件为 version 4，沿用 stateVersion 3，固定运行包 0.3.1；新的组件导入请求和课程发布 ID 与旧版分开。旧活动继续按 version 3 和原运行包身份读取，不会随产品升级改写。
 
+WP07 合入后继续复用上述组件 v4；带 Agent 帮助策略的新课程使用独立导入请求 `…0204` 和发布 `…0205`。WP04 原发布 `…0186` 与 WP07 原发布 `…0203` 保持不变，不把新运行包或帮助策略写入旧发布。
+
 修改适配器后用 `node tools/alu-wasm/refresh-adapter.mjs <new-version>` 重验六项工具资源，保留原完整包到 `components/alu-icarus-runtime/versions/<old-version>/`，再更新当前清单与身份；不重新编译或替换已验证的工具链二进制。宿主显式登记当前包和 [0.3.0 原清单](../alu-icarus-runtime/versions/0.3.0/manifest.json)，按活动固定身份选择各自的 Worker；未知版本仍拒绝。发布新身份时同步增加组件版本、导入请求和课程发布 ID，避免与已批准的不可变记录冲突。
 
 PR #213 审查包的全部修复、版本共存与真实运行界面前后对照见 [修复验收](../../docs/student-agent-implementation/wp04-pr213-review-fixes.md)。

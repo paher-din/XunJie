@@ -17,6 +17,7 @@
 
 活动级聚合 leave 由持续挂载的 ActivityPage 提供，等待作品、问题草稿和动作，不依赖当前中心工具是否显示编辑器。所有导航与身份切换共用该入口；活动存在却无保护句柄时拒绝离开，不能按空 ref 判断安全。
 - `trackInput/applyOperation`：组件输入在异步回执查询期间也参与离开保护；以空间/主体/活动/实例和 operationId 定位本机操作回执。同一操作以 Chrome Web Locks 跨页互斥，回执和内容在同一 IndexedDB 事务提交；同身份换输入拒绝，重载或超过 256 次操作不淘汰原回执。没有 Web Locks 时明确拒绝并保留输入候选。
+- `retainInput/protectInput`：Agent 回应和输入修订按原记录 key 登记完整草稿；事务失败后仍保留保护义务，复用工作区本机重试周期、`leave/flush` 和浏览器离开确认。`inputProtection` 提供保护结果，`retainedInput` 让临时卸载的视图恢复未落盘正文；只有最新编辑对应的事务完成才解除义务，提交前以 `protectInput` 确认原记录。不以 `trackInput` 的 Promise 结束代替持久化成功。
 
 ## 确认与竞争
 
@@ -41,6 +42,8 @@ owner 明确判定无效的待发请求（例如问题超过长度限制，服�
 组件状态的普通编辑与显式冲突裁决分开：普通编辑禁止删除或替换现有状态对象身份；裁决校验目标候选的完整绑定、路径与结构，允许选择合法的对方对象或空状态。裁决沿用原保护事务和 pending 身份处理，不把普通文件编辑当作状态重置。
 
 ## 边界
+
+Agent 交互设置和输入/运行控制使用同库 v9 新增的 `agentControls` 分区，按恢复命名空间、真实主体和目标隔离。`agent-controls.ts` 在提交前保护不可变请求，刷新后先查询原回执，再用同一身份重送；`record-store.ts` 与明确回应共用本机事务保护。输入修订草稿和预期版本独立保留，后台采纳或拒绝不覆盖草稿。它们不是作品/问题草稿的另一份权威，也不改变原动作的字节。设计见 [#200](../../../../docs/student-agent-implementation/specs/wp07-input-control.md)。
 
 [#153 的 `workspace.actions(draft, transport)`](../../../../docs/student-agent-implementation/wp02-action-intents.md) 将同步捕获的固定输入与动作保存在同库 v3 分区；独立依赖登记不推进当前作品/草稿 head。待发、取消和原接收回执按原身份协调；新命名空间不自动消费旧队列，显式接回先核实原范围及请求结果。没有真实接收器时正式输入区继续明确不可发送。
 

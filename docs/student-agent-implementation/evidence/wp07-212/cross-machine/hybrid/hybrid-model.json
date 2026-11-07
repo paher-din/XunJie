@@ -1,0 +1,28 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "model",
+  "measuredAt": "2026-11-07T11:00:28.818Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the device selected its own model owner for the paired school space",
+      "detail": {
+        "connectionId": "17008a9b-bfed-4b80-aa5d-400a63d26344",
+        "grantId": "b20c2e64-244a-43f4-9621-80e0025a26e2",
+        "modelPort": 47902
+      }
+    }
+  ],
+  "facts": {
+    "connectionId": "17008a9b-bfed-4b80-aa5d-400a63d26344",
+    "grantId": "b20c2e64-244a-43f4-9621-80e0025a26e2",
+    "modelPort": 47902
+  },
+  "status": "passed"
+}

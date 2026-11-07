@@ -11,6 +11,9 @@ import { componentStateMediaType, componentStateName, matchesComponentState, typ
 export { LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 export interface WorkTransport { read(): Promise<WorkView>; receipt(requestId: string): Promise<WorkView | null>; sync(input: WorkSync): Promise<WorkView> }
 export interface WorkspaceState { files: WorkFile[]; ready: boolean; error: string; conflict?: WorkConflict; conflictReady: boolean; editorEpoch: number }
+interface RetainedInput {
+  value: unknown; write: () => Promise<unknown>; before?: Promise<void>; writing?: Promise<void>; state: 'pending' | 'failed'
+}
 
 /** The page/editor's only change and recovery interface. No legacy database or execution ledger access. */
 export class ReliableWorkspace extends ReliableStateCoordinator {
@@ -20,6 +23,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   private store = new WorkStore()
   private operations = new Map<string, WorkOperation>()
   private inputs = new Set<Promise<unknown>>()
+  private retainedInputs = new Map<string, RetainedInput>()
   private listeners = new Set<() => void>()
   state: WorkspaceState = { files: [], ready: false, error: '', conflictReady: false, editorEpoch: 0 }
   constructor(readonly key: string, private transport: WorkTransport,
@@ -38,10 +42,44 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     void input.then(settled, settled)
     return input
   }
-  protected unprotectedInput() { return super.unprotectedInput() || this.inputs.size > 0 }
+  /** Keep the complete latest draft until its transaction commits, including after its view unmounts. */
+  retainInput<T>(key: string, input: T, write: (value: T) => Promise<unknown>): Promise<void> {
+    if (this.readOnly) throw new Error('还原校验环境中的输入只读。')
+    const value = structuredClone(input)
+    const entry: RetainedInput = { value, write: () => write(value), before: this.retainedInputs.get(key)?.writing, state: 'pending' }
+    this.retainedInputs.set(key, entry)
+    this.notify()
+    return this.writeInput(key, entry)
+  }
+  retainedInput<T>(key: string): T | undefined { return structuredClone(this.retainedInputs.get(key)?.value as T | undefined) }
+  inputProtection(key: string): 'protected' | 'pending' | 'failed' { return this.retainedInputs.get(key)?.state ?? 'protected' }
+  private writeInput(key: string, entry: RetainedInput): Promise<void> {
+    if (entry.writing) return entry.writing
+    if (entry.state === 'failed') { entry.state = 'pending'; this.notify() }
+    const writing = (async () => { await entry.before?.catch(() => {}); await entry.write() })()
+    entry.writing = writing
+    void writing.then(() => {
+      entry.writing = undefined
+      if (this.retainedInputs.get(key) === entry) { this.retainedInputs.delete(key); this.notify() }
+    }, () => {
+      entry.writing = undefined
+      if (this.retainedInputs.get(key) === entry) { entry.state = 'failed'; this.notify() }
+    })
+    return writing
+  }
+  /** Retry this draft before deriving a submitted operation from its stored bytes. */
+  async protectInput(key: string): Promise<void> {
+    while (this.retainedInputs.has(key)) await this.writeInput(key, this.retainedInputs.get(key)!)
+  }
+  async protect(): Promise<void> {
+    await Promise.all([super.protect(), ...[...this.retainedInputs.keys()].map(key => this.protectInput(key))])
+  }
+  protected unprotectedInput() { return super.unprotectedInput() || this.inputs.size > 0 || this.retainedInputs.size > 0 }
   async leave(): Promise<void> {
-    while (this.inputs.size) await Promise.all([...this.inputs])
-    await super.leave()
+    do {
+      while (this.inputs.size) await Promise.all([...this.inputs])
+      await super.leave()
+    } while (this.retainedInputs.size || this.inputs.size)
   }
   /** An execution start sends the protected component state as its basis, so the owner must know it. */
   async flush(): Promise<void> {

@@ -52,7 +52,7 @@ test('a course execution plan is published with the release, bound to the activi
     };
     const courseOf = (releaseId, plan) => ({ formatVersion: 1, requestId: randomUUID(),
       course: { courseId, name: '聚合验收样例' }, task: { taskId, title: '按小组统计得分', summary: '' },
-      release: { releaseId, objectives: ['用受限算法算出一组统计'], requirements: '编辑表格并运行计算。', starterWorks: [],
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['用受限算法算出一组统计'], requirements: '编辑表格并运行计算。', starterWorks: [],
         capabilities: [], components: [binding], materials: [], ...(plan ? { executionPlan: plan } : {}) }, resources: [] });
     const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
     const publishedPlan = planOf();
@@ -147,7 +147,7 @@ test('a mixed course pins execution and no-execution components without inventin
     const courseId = randomUUID(), taskId = randomUUID();
     const courseOf = (bindings, plan) => ({ formatVersion: 1, requestId: randomUUID(),
       course: { courseId, name: '统计与标注' }, task: { taskId, title: '统计并标注观察', summary: '' },
-      release: { releaseId: randomUUID(), objectives: ['计算并记录观察'], requirements: '统计数据，标注观察。',
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId: randomUUID(), objectives: ['计算并记录观察'], requirements: '统计数据，标注观察。',
         starterWorks: [], capabilities: [], components: bindings, materials: [], executionPlan: plan }, resources: [] });
     const bindings = [table, notes], plan = planOf(bindings), first = courseOf(bindings, plan);
     const published = await api('manage/course-import', first, admin);
@@ -240,7 +240,7 @@ test('a plan declares the native session it allows and the owner refuses an unpl
     const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
     const courseOf = (plan) => ({ formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '有状态会话验收样例' },
       task: { taskId, title: '观察四态累加', summary: '' },
-      release: { releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
+      release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['连续输入并观察真实内部状态'], requirements: '依次输入 1、2、2，观察 1、3、1。',
         starterWorks: [], capabilities: [], components: [binding], materials: [], executionPlan: plan }, resources: [] });
     // A plan cannot claim a budget larger than the adapter enforces, nor hide the operations it declares.
     for (const plan of [planOf({ resources: { browser: null, native: { memoryMiB: session.budgets.memoryMiB + 1,

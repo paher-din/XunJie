@@ -1,0 +1,32 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "before",
+  "measuredAt": "2026-11-07T11:03:47.370Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the original learning question, work and prepared action are durable on the device before backup",
+      "detail": {
+        "intentRequestId": "90883684-0c20-4469-8a83-88c9ae542ab6",
+        "intentState": "prepared",
+        "fileObjectId": "425ce634-8f3f-4e5e-87ae-f844d7b17e60",
+        "draftId": "53b8b6f2-c65b-4de7-ac03-047af3f633a2",
+        "sourceNamespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6"
+      }
+    }
+  ],
+  "facts": {
+    "intentRequestId": "90883684-0c20-4469-8a83-88c9ae542ab6",
+    "intentState": "prepared",
+    "fileObjectId": "425ce634-8f3f-4e5e-87ae-f844d7b17e60",
+    "draftId": "53b8b6f2-c65b-4de7-ac03-047af3f633a2",
+    "sourceNamespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6"
+  },
+  "status": "passed"
+}

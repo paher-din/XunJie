@@ -5,9 +5,9 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
-import { runtimeConnectionSchema, runtimeEnvironmentSchema } from '@xunjie/contracts/product-runtime';
+import { runtimeConnectionSchema, runtimeEnvironmentSchema, fixedRuntimeConnectionDescriptor } from '@xunjie/contracts/product-runtime';
 import type { RuntimeConnection, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
-import { createConnectionAuthority } from './connections.js';
+import { createConnectionAuthority, createOutboundConnection } from './connections.js';
 import type { ConnectionAuthorization } from './connections.js';
 import { acquireLock, assertRoot, atomicJson, exists, initializeRoot, ownsProcess, processIdentity, readJson, removeOwned, withLock } from './io.js';
 import type { ProcessOwner } from './io.js';
@@ -18,6 +18,7 @@ import type { ProductPrerequisiteResult } from './prerequisites.js';
 import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
 import { RecoveryError } from './recovery.js';
 import type { RetirementProof } from './recovery.js';
+import { learningAdmissionPolicySchema, type LearningAdmissionPolicy } from '@xunjie/learning-space';
 
 export interface InstallOptions {
   profile: RuntimeEnvironment['profile'];
@@ -27,6 +28,8 @@ export interface InstallOptions {
   publicEndpoint?: string;
   tls?: { certificateFile: string; keyFile: string };
   requiredServiceIds?: string[];
+  agent?: { dependencyConnectionId: string };
+  learningAdmissionPolicy?: LearningAdmissionPolicy;
 }
 export interface InstalledConfiguration {
   installed: boolean;
@@ -37,6 +40,8 @@ export interface InstalledConfiguration {
   tls?: { certificateFile: string; keyFile: string };
   requiredServiceIds: string[];
   connections: RuntimeConnection[];
+  agent?: { dependencyConnectionId: string };
+  learningAdmissionPolicy?: LearningAdmissionPolicy;
 }
 export interface RunningInstance extends ProcessOwner { endpoint: string }
 
@@ -47,7 +52,7 @@ const ownedEnvironmentEntries = new Set([
   'credentials', 'private', 'logs', 'status.json', 'instance.json', 'launch.json', 'maintenance.json',
   'postgres.log', 'installation.json', 'environment.json', 'backup-policy.json', 'last-backup-settings.json',
   'recovery-boundary.json', 'recovery-state.json', 'recovery-operations', 'retired.json',
-  'learning-resources',
+  'learning-resources', 'native-channel',
 ]);
 const operationIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const generatedEnvironmentEntry = new RegExp(`^(?:(?:initializing-|\\.restore-)${operationIdPattern}|upgrade-${operationIdPattern}\\.json|\\.xj-recovery-[a-z0-9]{6})$`, 'i');
@@ -83,7 +88,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
 
   async function prepare(input?: InstallOptions, reinstall = false): Promise<ProductPrerequisiteResult> {
     if (input) runtimeEnvironmentSchema.shape.profile.parse(input.profile);
-    if (input?.profile === 'model' && input.database?.mode === 'none') throw new Error('The model profile requires PostgreSQL.');
+    if (input && ['model', 'agent'].includes(input.profile) && input.database?.mode === 'none') throw new Error(`The ${input.profile} profile requires PostgreSQL.`);
     let resources: RuntimeResources;
     let database: DatabaseConfiguration;
     if (await exists(configPath)) {
@@ -109,6 +114,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       database = input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' };
     }
     if (!database || !['managed', 'external', 'none'].includes(database.mode)) throw new Error('Invalid database mode in product installation.');
+    if ((input?.profile ?? (await environment()).profile) === 'agent' && database.mode === 'none') throw new Error('The agent profile requires PostgreSQL.');
     if (!resources || typeof resources.nodePath !== 'string' || typeof resources.webRoot !== 'string') throw new Error('Invalid resources in product installation.');
     // A new product may supply its helper for old metadata. Saved Node/PG/data
     // resources are never replaced, including during a reinstall.
@@ -174,11 +180,48 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     return stopped;
   }
 
+  async function configureConnection(connection: RuntimeConnection, credential: string, replacing = false): Promise<void> {
+    await assertRoot(root);
+    const release = await acquireLock(root, 'recovery');
+    try { return await withLock(root, async () => {
+      if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
+      const boundary = await exists(join(root, 'maintenance.json')) ? await readJson<{ phase: string; reason?: string }>(join(root, 'maintenance.json')) : undefined;
+      if (boundary && boundary.phase !== 'open' && boundary.reason !== 'stop') throw new RecoveryError('configuration-in-maintenance');
+      if (await exists(join(root, 'recovery-state.json')) && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active')
+        throw new RecoveryError('target-isolated');
+      const parsed = runtimeConnectionSchema.parse(connection), descriptor = await environment();
+      if (parsed.sourceEnvironmentId !== descriptor.environmentId || !descriptor.services.some(service => service.serviceId === parsed.sourceServiceId))
+        throw new Error('Connection source identity mismatch.');
+      const config = await configuration(), prior = config.connections.find(value => value.connectionId === parsed.connectionId);
+      if (!replacing && prior) throw new Error('Connection already registered.');
+      if (replacing) {
+        if (!prior) throw new Error('Connection is not registered.');
+        const priorRef = prior.credentialRef, nextRef = parsed.credentialRef;
+        if (JSON.stringify(fixedRuntimeConnectionDescriptor(prior)) !== JSON.stringify(fixedRuntimeConnectionDescriptor(parsed)))
+          throw new Error('Reconnection cannot change the fixed owner or transport descriptor.');
+        if (priorRef === nextRef) {
+          if (await resolveCredential(root, nextRef) === credential) return;
+          throw new Error('Reconnection requires a new private credential reference.');
+        }
+        const checked = await createOutboundConnection({ connection: parsed, credential: async () => credential, allowInsecureLoopback: true }).check();
+        if (checked.state === 'unavailable') throw new Error('Reconnection authorization was not confirmed.');
+      }
+      let stored: string | undefined;
+      if (replacing) try { stored = await resolveCredential(root, parsed.credentialRef); }
+      catch (error) { if ((error as { code?: string }).code !== 'ENOENT') throw error; }
+      if (stored !== undefined && stored !== credential) throw new Error('Private credential reference is already in use.');
+      if (stored === undefined) await storeCredential(root, parsed.credentialRef, credential);
+      await atomicJson(configPath, { ...config, connections: [...config.connections.filter(value => value.connectionId !== parsed.connectionId), parsed] });
+    }); } finally { await release(); }
+  }
+
   return {
     modelTask: (input: unknown) => recoveryControl<unknown>('model-task', input),
     prepare: (input?: InstallOptions) => prepare(input),
     async install(input: InstallOptions = { profile: 'local' }): Promise<RuntimeStatus> {
       runtimeEnvironmentSchema.shape.profile.parse(input.profile);
+      const learningAdmissionPolicy = input.learningAdmissionPolicy === undefined ? undefined
+        : learningAdmissionPolicySchema.parse(input.learningAdmissionPolicy);
       await requirePrepared(input, true);
       await initializeRoot(root);
       return withLock(root, async () => {
@@ -197,14 +240,14 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (!await exists(join(resources.webRoot, 'index.html'))) throw new Error('Product web entry is missing.');
         const database = input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' };
         const host = input.host === 'localhost' ? '127.0.0.1' : input.host ?? '127.0.0.1';
-        if (input.profile !== 'school' && !['127.0.0.1', '::1'].includes(host)) throw new Error('Device profiles require a loopback listener.');
+        if (!['school', 'agent'].includes(input.profile) && !['127.0.0.1', '::1'].includes(host)) throw new Error('Device profiles require a loopback listener.');
         if (!['127.0.0.1', '::1', 'localhost'].includes(host) && !input.tls) throw new Error('A shared listener requires a TLS certificate and private key.');
         if (!['127.0.0.1', '::1'].includes(host) && !input.publicEndpoint) throw new Error('A shared listener requires its public HTTPS endpoint.');
         const port = input.port ?? await freePort();
         if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('Invalid listener port.');
         const endpoint = input.publicEndpoint ?? `${input.tls ? 'https' : 'http'}://${host === '::1' ? '[::1]' : '127.0.0.1'}:${port}`;
         const target = new URL(endpoint);
-        if (input.profile !== 'school' && !['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname)) throw new Error('Device profiles require a loopback endpoint.');
+        if (!['school', 'agent'].includes(input.profile) && !['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname)) throw new Error('Device profiles require a loopback endpoint.');
         if (target.username || target.password || target.search || target.hash || target.pathname !== '/'
           || !['https:', 'http:'].includes(target.protocol)
           || (!['127.0.0.1', '::1'].includes(host) && target.protocol !== 'https:')) throw new Error('Invalid public endpoint.');
@@ -225,7 +268,8 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (database.mode === 'external') await inspectDatabase(root, database, true, true);
         await atomicJson(configPath, {
           installed: true, resources, database, host, port: input.publicEndpoint ? port : Number(new URL(existing.services[0]!.endpoint).port || port),
-          ...(input.tls ? { tls: input.tls } : {}), requiredServiceIds: input.requiredServiceIds ?? [], connections: [],
+          ...(input.tls ? { tls: input.tls } : {}), ...(input.agent ? { agent: input.agent } : {}), requiredServiceIds: input.requiredServiceIds ?? [], connections: [],
+          ...(learningAdmissionPolicy ? { learningAdmissionPolicy } : {}),
         } satisfies InstalledConfiguration);
         const installed: RuntimeStatus = { state: 'installed', environment: existing, dependencies: [] };
         await atomicJson(join(root, 'status.json'), installed);
@@ -293,7 +337,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         return recoveryControl<RetirementProof>('retire', input);
       },
       fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; timeoutMs?: number;
-        backupId?: string; targetInstallationId?: string }) =>
+        backupId?: string; targetInstallationId?: string; sourceServiceIds?: readonly string[] }) =>
         recoveryControl<import('./connections.js').SourceFenceProof & { execution: import('./recovery-types.js').ReceiverExecutionBoundary }>('fence-source', input),
       takeover: (input: { sourceRoot: string; receivers: ({ id: string; root: string } | import('./ssh-recovery.js').SshRecoveryReceiver)[] }) => recoveryControl('takeover', input),
     },
@@ -338,35 +382,25 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       await initializeRoot(root);
       return withLock(root, () => storeCredential(root, ref, value));
     },
-    async connect(connection: RuntimeConnection, credential: string): Promise<void> {
+    connect: (connection: RuntimeConnection, credential: string) => configureConnection(connection, credential),
+    reconnect: (connection: RuntimeConnection, credential: string) => configureConnection(connection, credential, true),
+    async authorize(input: ConnectionAuthorization, targetServiceId?: string) {
       await assertRoot(root);
-      const release = await acquireLock(root, 'recovery');
-      try { return await withLock(root, async () => {
-        if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
-        const boundary = await exists(join(root, 'maintenance.json'))
-          ? await readJson<{ phase: string; reason?: string }>(join(root, 'maintenance.json')) : undefined;
-        if (boundary && boundary.phase !== 'open' && boundary.reason !== 'stop') throw new RecoveryError('configuration-in-maintenance');
-        if (await exists(join(root, 'recovery-state.json'))
-          && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active') throw new RecoveryError('target-isolated');
-        const parsed = runtimeConnectionSchema.parse(connection);
-        const descriptor = await environment();
-        if (parsed.sourceEnvironmentId !== descriptor.environmentId || !descriptor.services.some(service => service.serviceId === parsed.sourceServiceId)) throw new Error('Connection source identity mismatch.');
-        const config = await configuration();
-        if (config.connections.some(value => value.connectionId === parsed.connectionId)) throw new Error('Connection already registered.');
-        await storeCredential(root, parsed.credentialRef, credential);
-        await atomicJson(configPath, { ...config, connections: [...config.connections, parsed] });
-      }); } finally { await release(); }
-    },
-    async authorize(input: ConnectionAuthorization) {
-      await assertRoot(root);
-      if (input.capabilities.includes('learning.authority')) return recoveryControl<import('./connections.js').ConnectionGrant>('authorize-capability', input);
-      const service = (await environment()).services[0]!;
+      const descriptor = await environment();
+      const service = targetServiceId === undefined ? descriptor.services[0]!
+        : descriptor.services.find(item => item.serviceId === targetServiceId);
+      if (!service) throw new Error('Unknown target service identity.');
+      if (input.capabilities.some(capability => capability !== 'runtime.status'))
+        return recoveryControl<import('./connections.js').ConnectionGrant>('authorize-capability', { authorization: input, targetServiceId: service.serviceId });
       return createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).authorize(input);
     },
     async revoke(grantId: string) {
       await assertRoot(root);
-      const service = (await environment()).services[0]!;
-      return createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).revoke(grantId);
+      let revoked = false;
+      for (const service of (await environment()).services) {
+        if (await createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).revoke(grantId)) revoked = true;
+      }
+      return revoked;
     },
   };
 }

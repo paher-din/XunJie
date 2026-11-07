@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-11-06T09:05:55.048153+00:00",
+  "sourceHashes": {
+    "packages/learning-space/src/model-connections/origins.ts": "4b3e1789930ca2ec39964da7fede19491fba439eb0e3611b00173a64724b2571",
+    "packages/learning-space/src/model-connections/checks.ts": "c882b9e17fea3616a9014d2f466a3fb2e0a866a126473c0cd8c6b884058b4770",
+    "packages/learning-space/src/model-connections/index.ts": "d346d1360e23ee662efe8b86a2a040a51deb0dc8874631bf727d8dd38183957b",
+    "packages/learning-space/src/learning-data/agent-executions.ts": "15901587cc7913bf9bf78494635c6034c1b0823a4bd66b8cc5dde48cdd833efc",
+    "packages/learning-space/src/teaching-agent/index.ts": "a163476a6dcdbd91513ea2d9f42fc38067e7dce4f672cd260a4da1243a593750",
+    "packages/learning-space/src/teaching-agent/chunk-channel.ts": "3acd7041dc3e4677c0f349bb198d4f2caf7eee5603b0f8bb8c5c4a9eb1f5f725",
+    "packages/product-runtime/src/learning-entry.ts": "35c44dd32715bfe9693b148a21333df60443925211f4dcc766d96d75d4ed027f",
+    "packages/product-runtime/src/connections.ts": "2a47118e69d0612aae895a0eddfe173efd676eef76e543444143408ca2e9d706",
+    "packages/product-runtime/src/host.ts": "aef546721df2c111f7929ad983e95b66a8c253c3825313f85dd937f50680fc11"
+  },
+  "packages": [
+    {
+      "path": "dist/product-darwin-arm64-wp07-203-final-r1",
+      "platform": "darwin-arm64",
+      "createdAt": "2026-11-06T09:01:07.560Z",
+      "distributionSha256": "09d0f5eaf0dd1457f5e91264736d65418e997ad7fa74c994ab10e5748da986e0",
+      "applicationSha256": "6c88621910145b85e1e93944c5efed33507d0f861f1af32742f698267950893c"
+    },
+    {
+      "path": "dist/product-win32-x64-wp07-203-final-r1",
+      "platform": "win32-x64",
+      "createdAt": "2026-11-06T09:01:03.955Z",
+      "distributionSha256": "5e7c2207973465a4a7f82eb7ece1e77ff0923a7e98678cf5af0a239cca0d0f31",
+      "applicationSha256": "6c88621910145b85e1e93944c5efed33507d0f861f1af32742f698267950893c"
+    }
+  ]
+}

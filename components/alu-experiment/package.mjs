@@ -88,9 +88,9 @@ export async function aluCoursePackage() {
     capabilities:['workspace.read','workspace.change','execution.submit'],resources:{browser:{features:['worker','webassembly','sandboxed-frame']},native:null},
     locations:['browser'],remote:null};
   executionPlan.planDigest=hash(JSON.stringify(courseExecutionPlanBasis(executionPlan)));
-  return {formatVersion:1,requestId:id(185),course:{courseId:id(71),name:'数字逻辑与部件设计'},task:{taskId:id(72),title:'设计并验证 4 位 ALU',
+  return {formatVersion:1,requestId:id(204),course:{courseId:id(71),name:'数字逻辑与部件设计'},task:{taskId:id(72),title:'设计并验证 4 位 ALU',
     summary:'公开五种操作，编辑 SystemVerilog，用虚拟板自由观察并运行完整的 4096 组真实行为检查。'},
-    release:{releaseId:id(186),objectives:['理解运算选择、固定位宽与进位','使用真实观察检验自己的实现','用完整输入域发现遗漏赋值和未知输出','用一条边界用例和一条操作区别用例说明自己的选择与观察'],
+    release:{releaseId:id(205),helpPolicy:{version:1,questions:'allowed',scope:'course',note:'只解释，不修改学生 SystemVerilog，不自写测试代码，不应用补丁或提供整份可提交答案。Agent 验证与学生预测分开保留，不据验证推断掌握或教师接收。'},objectives:['理解运算选择、固定位宽与进位','使用真实观察检验自己的实现','用完整输入域发现遗漏赋值和未知输出','用一条边界用例和一条操作区别用例说明自己的选择与观察'],
       requirements:'编辑 alu.sv，实现公开的五种组合 ALU 操作。点击运行启用当时的作品；之后在虚拟板上改变 A/B/M/S/Cin 观察真实 F/Cout，或对已启用作品运行全部 4096 组输入检查。允许内置加法，保留组合必须归零。完整行为表、映射、采样与检查说明位于 ALU 实验的「公开行为与采样规则」，按需补学资料位于学习索引。Agent 只解释，不修改学生代码。',
       materials,starterWorks:[{workId:resourceId(74),title:'alu.sv',description:'仅含端口与 TODO 的学生骨架',materialId:resourceId(61)}],
       capabilities:[{kind:'component',objectId:component.manifest.componentId,version:component.manifest.version}],

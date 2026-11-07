@@ -1,0 +1,28 @@
+✔ a reserved model-step budget survives restart and prevents another paid continuation (2012.641917ms)
+✔ exhausting the reserved tool budget pairs not-executed and pauses before another model step (2267.819625ms)
+✔ saved native result survives loss before association, rereads the original attempt and reads the immutable real work (3503.992333ms)
+✔ lost real native-input receipt reconciles the original command exactly once before the next stateful input (4581.424833ms)
+✔ two real driver generations share the saved attempt and only the winner reads and settles its native call (3492.7605ms)
+✔ stop after a persisted tool permit prevents the true native host from creating any execution (2080.037041ms)
+✔ stopping a later model step stops the Agent ongoing native session and preserves a student independent session (2997.015042ms)
+✔ pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run (4082.359333ms)
+▶ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+  ✔ paused (4123.253125ms)
+  ✔ stopped (3963.575666ms)
+✔ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane (8087.339708ms)
+(node:53296) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run (3360.633583ms)
+✔ tool RPC fences a delayed Driver while an unaccepted native command cannot start (2534.274375ms)
+✔ tool RPC fences a delayed Driver while an accepted browser command remains claimable (2727.391667ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable (2622.517625ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable after an interrupted enqueue (2652.603584ms)
+✔ closed activity rejects fresh model dispatch authority without changing the original attempt (1804.694917ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48990.450375

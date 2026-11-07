@@ -42,6 +42,7 @@ export function createStorageRecoveryOwner(options: {
   installationId: string;
   /** Boundary evidence read through the owner's own tables while its gates are closed. */
   boundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
+  receiverBoundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
   /** The owner, not backup orchestration, knows how to re-read its domain through its API. */
   validateService: (storage: OwnedStorage) => Promise<void>;
 }): RecoveryOwner {
@@ -49,10 +50,8 @@ export function createStorageRecoveryOwner(options: {
   const validateStorage = participant.validate.bind(participant);
   participant.descriptor.resourceRoots = [...new Set([...participant.descriptor.resourceRoots, ...(options.resourceRoots ?? [])])];
   participant.validate = async () => { await validateStorage(); await options.validateService(options.storage); };
-  return {
-    participant,
-    async material({ boundaryAt }) {
-      const evidence = options.boundary ? await options.boundary(options.storage, { boundaryAt })
+  async function material({ boundaryAt }: { boundaryAt: string }, collect = options.boundary) {
+      const evidence = collect ? await collect(options.storage, { boundaryAt })
         : { kind: 'xunjie.storage.boundary', unresolved: [], settled: 0, blocking: [] } satisfies StorageBoundaryEvidence;
       const material: OwnerBoundaryMaterial = {
         formatVersion: 1, kind: evidence.kind, serviceId: participant.descriptor.serviceId, boundaryAt,
@@ -64,7 +63,10 @@ export function createStorageRecoveryOwner(options: {
         ...(evidence.evidence === undefined ? {} : { evidence: evidence.evidence }),
       };
       return material;
-    },
+  }
+  return {
+    participant, material,
+    ...(options.receiverBoundary ? { receiverMaterial: (input: { boundaryAt: string }) => material(input, options.receiverBoundary) } : {}),
     async export({ backupId, directory, signal }) {
       let exportFailure: unknown;
       return options.storage.snapshot(backupId, async ({ databaseSnapshot, manifest }) => {
@@ -115,6 +117,8 @@ export function createStorageRecoveryTarget(options: {
   validateService: (storage: OwnedStorage) => Promise<void>;
   /** The owner re-derives its evidence from the restored data and compares it with the material. */
   validateMaterial?: (storage: OwnedStorage, material: OwnerBoundaryMaterial) => Promise<void>;
+  boundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
+  receiverBoundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
 }): RecoveryTarget {
   let restored: OwnedStorage | undefined;
   return {
@@ -165,7 +169,8 @@ export function createStorageRecoveryTarget(options: {
         await storeCredential(targetRoot, `storage-${options.owner.serviceId}`, JSON.stringify(binding));
         await options.onRestored?.(restored, binding);
         return createStorageRecoveryOwner({ storage: restored, binding, migrations: options.migrations, resources: options.resources,
-          resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService });
+          resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService,
+          boundary: options.boundary, receiverBoundary: options.receiverBoundary });
       } catch (error) { await restored?.close(); restored = undefined; throw error; }
     },
     async validate() {

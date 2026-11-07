@@ -123,7 +123,7 @@ async function schoolFixture({ publishPlan = false } = {}) {
         native: { memoryMiB: 64, operationTimeoutMs: 5000, maxMs: 3600000 } }, locations: ['native'], remote: null };
     plan.planDigest = hash(courseExecutionPlanBasis(plan));
     await ok('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '维护排空' },
-      task: { taskId, title: '本机会话', summary: '' }, release: { releaseId, objectives: ['确认退出'], requirements: '观察',
+      task: { taskId, title: '本机会话', summary: '' }, release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['确认退出'], requirements: '观察',
         starterWorks: [], capabilities: [], components: [{ key: 'accumulator', definition,
           configuration, materialIds: [] }], materials: [], ...(publishPlan ? { executionPlan: plan } : {}) }, resources: [] }, admin);
     await ok('manage/course-access', { requestId: randomUUID(), courseId, principalId: identity.principalId, active: true }, admin);

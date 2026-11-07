@@ -106,7 +106,7 @@ function RecordItem({ activity, binding, record, currentValue, authorized, readO
 }) {
   const presenter = recordPresenters.find(record.action)
   const terminal = isTerminalExecutionState(record.query.state)
-  return <li>
+  return <li data-execution-request-id={record.requestId} tabIndex={-1}>
     <p className="execution-title">{binding.configuration.title} · {stateLabel(record.query)}</p>
     {presenter
       ? presenter.Detail({ activity, binding, record, currentValue, authorized })

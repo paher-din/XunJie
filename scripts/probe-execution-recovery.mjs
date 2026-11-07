@@ -64,7 +64,7 @@ try {
   const bytes = Buffer.from('先区分观察到的事实与自己的解释。保留原始记录，再根据新的证据修订理解。');
   await api(endpoint, 'manage/course-import', { formatVersion: 1, requestId: randomUUID(),
     course: { courseId, name: '组件与执行恢复验收' }, task: { taskId, title: '重开原作品与实验记录', summary: '真实备份、隔离与接管' },
-    release: { releaseId, objectives: ['保持原作品、输入与执行身份'], requirements: '标注材料、计算固定表格，并为真实会话保存检查点。',
+    release: { helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },  releaseId, objectives: ['保持原作品、输入与执行身份'], requirements: '标注材料、计算固定表格，并为真实会话保存检查点。',
       starterWorks: [], capabilities: [], components: [
         { key: 'annotation', definition: definitions[0], configuration: { title: '材料标注' }, materialIds: [materialId] },
         { key: 'table', definition: definitions[1], configuration: { title: '表格聚合' }, materialIds: [] },
