@@ -26,7 +26,9 @@ import { acquireLock } from '../src/state.mjs';
 import { localTestEndpoint, localTestPath } from '../../../apps/server/tests/support/local-endpoint.ts';
 
 const checkout = realpathSync(join(import.meta.dirname, '../../..'));
-const fixtureTimeout = process.platform === 'win32' ? 600000 : 120000;
+// Windows validates real private-file DACLs through native processes throughout
+// the multi-restore scenario. This bounds the fixture, not an API deadline.
+const fixtureTimeout = process.platform === 'win32' ? 1200000 : 120000;
 const cliTimeout = process.platform === 'win32' ? 120000 : 20000;
 
 // Real access HTTPS/proof/SQLite, real ZIP/fetch/restore. Only object storage and
