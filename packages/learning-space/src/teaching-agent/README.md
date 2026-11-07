@@ -11,6 +11,8 @@
 | `teaching_events` | 活动级稳定 `seq` 的输入、上下文装配、派发、增量进度、答复、终态与系统说明 |
 | `teaching_sessions` | 活动连续的 native segment、固定前缀指纹 |
 | `teaching_snapshots` | 外发前的不可变装配正文、来源、模型参数、`payloadSha256` 与资源引用 |
+| `teaching_agent_definitions` / `teaching_resolved_agents` | 固定 AgentDefinition 正文与版本、按主体/活动/课程解析的实际 Prompt、工具与 executor 来源；Run 保存初始身份，步骤绑定当时身份 |
+| `teaching_segment_transitions` | 首段、装配变化及模型切换的共同接收/完成记录，固定原段/新段、装配、close/create 请求正文与原操作回执 |
 | `teaching_steps` | 稳定模型 attempt、完整输入计划、请求快照、原生结果关联、工具配对与输出预留/结算 |
 | `teaching_commands` | 独立 command ID、原生 call ID、固定命令依据、派发许可、原回执与完整结果资源 |
 | `teaching_waits` | 原命令、身份与摘要、期限、确定性查询时点和唯一消费事实 |
@@ -23,7 +25,13 @@
 
 停止先持久标记 `stop_requested`，等待中的 Run 取消原调用；已经发生的结果按 `assistant` + 终态事件保存，未确认的外发保持 unknown 并暂停。符合恢复条件的非终态按原身份继续，失败或停止等终态后须明确选择输入建立关联后继，原终态不复活。
 
-## 固定工具与执行
+## 版本化装配与执行
+
+`assembly.ts` 是普通步骤与显式换模型共同使用的装配入口。`AgentDefinition` 固定目的、Prompt 模板、能力引用、上下文策略、输出契约和预算规则；`ResolvedAgent` 固定实际交集、模型、分层规则、工具完整定义和 executor 绑定。同逻辑名称的不同来源产生稳定协议别名，调用只按已保存绑定进入原 executor。生产工具 host 从实际平台与课程贡献生成装配，跨 owner 的 `tool.contributions` 保留同一来源；执行前重新核对当前来源、版本、对象资格和原 Run 许可。
+
+新步骤使用快照 v2，内含完整 `resolvedAgent` 与 `contextManifest`；旧 v1 继续可读。清单保存已采用输入、规则、原效果、Command/Wait、实际观察与原生 payload 的固定内容、范围、摘要及容量未知项。旧请求查询只读已保留的 JSON 和资源，不重新装配、检索或调用模型。未消费 queue 不进入装配；steering 仍按原顺序采用。
+
+`segments.ts` 的 `receive` / `advance` 接口由原 Run 或模型切换的持久权限推进，记录原操作身份后才接触模型 owner。接管核对同一段、前缀与路线；父权限代际改变时不能被旧的内部 lease 阻塞。未闭合原生工具配对拒绝换段，accepted 已闭合配对可保留原 Wait。配置变化不伪造学生换模型事件，换段不重置预算或重新派发工具。后续工具发现、Skills 和压缩沿这个入口追加其真实变化事实。
 
 运行中补充与排队由同一 owner 的迁移 8 保存：`teaching_inputs` 是当前输入投影，`teaching_input_revisions` 保留不可变版本，`teaching_controls` 保存原控制回执，`teaching_run_input_selections` 固定显式续接选择。短元数据事务共用持久顺序屏障；外部调用不持锁。步骤计划固定本次输入版本和所观察的 Wait 结果，接收、采纳、许可和收尾竞争有统一顺序。正常完整轮只自动推进明确 queue；失败、停止或预算到期暂停未消费输入。可恢复的非终态续原 Run，终态后须明确选择输入建立关联后继。详见 [#200 实施选择](../../../../docs/student-agent-implementation/specs/wp07-input-control.md)。
 
@@ -41,7 +49,7 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 ## 上下文与模型
 
-`context.ts` 分开平台指令、平台运行职责、课程规则、本次引用/作品/问题和跨 Run 历史。课程发布固定帮助策略；策略禁止问答时在接收前直接取消，不产生模型调用。历史按真实 `student/assistant` 角色进入段的可移植前缀；只有连接、前缀或配置变化时才封存旧段并建新段。
+`context.ts` 分开平台指令、Agent 输出契约、运行职责、课程帮助规则与学生输入/事实。活动目标、材料目录、固定引用和作品进入用户数据层，材料不能提高指令优先级。课程发布固定帮助策略；策略禁止问答时在接收前直接取消，不产生模型调用。历史按真实 `student/assistant` 角色进入可移植前缀；换段只携带获准事实与原业务身份。
 
 每次外发使用保存的 `contextWindow` / `maxOutputTokens`，不套用探针的次数、步数、输出或时间限制。容量事实以最终原生 payload 字符数、输出预留和配置窗口记录为 `counter:"unavailable"` 的不确定性事实，不换算成 token，也不据粗略估算缩小配置窗口；输入超过学习传输边界（前缀 400,000 字符、用户文本 1,000,000 字符）时保留完整输入并暂停，不截断作品或历史。
 

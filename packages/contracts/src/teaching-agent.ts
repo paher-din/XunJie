@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { resolvedAgentSchema, contextManifestSchema } from './agent-assembly.js';
+export { agentDefinitionSchema, agentToolBindingSchema, resolvedAgentSchema, contextManifestSchema } from './agent-assembly.js';
+export type { AgentDefinition, AgentToolBinding, ResolvedAgent, ContextManifest } from './agent-assembly.js';
 import { modelUsageSchema, modelToolResultSchema } from './model-connections.js';
 import { teachingHelpPolicySchema } from './course-help.js';
 import { runtimeServiceSchema } from './product-runtime.js';
@@ -29,6 +32,7 @@ export const teachingRunSchema = z.object({
   state: teachingRunStateSchema, reason: z.string().max(200),
   stopRequested: z.boolean(), previousRunId: z.uuid().nullable(),
   attemptId: z.uuid().nullable(), segmentId: z.uuid().nullable(),
+  initialResolvedAgentId: z.uuid().nullable().optional(),
   model: teachingModelFactSchema.nullable(),
   usage: modelUsageSchema,
   createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(), completedAt: z.iso.datetime().nullable(),
@@ -131,14 +135,18 @@ export type TeachingConversation = z.infer<typeof teachingConversationSchema>;
 
 export const teachingSnapshotSchema = z.object({
   snapshotId: z.uuid(), activityId: z.uuid(), runId: z.uuid(), attemptId: z.uuid(), segmentId: z.uuid(),
-  assemblyVersion: z.literal(1), model: teachingModelFactSchema,
+  assemblyVersion: z.union([z.literal(1), z.literal(2)]), model: teachingModelFactSchema,
   maxOutputTokens: z.number().int().positive(), contextWindow: z.number().int().positive().optional(),
   sources: z.array(z.object({ kind: z.enum(['platform', 'run', 'course', 'input', 'history', 'material', 'student-response']),
     id: z.string().max(200).optional(), label: z.string().max(200) }).strict()),
   payloadSha256: z.string().regex(/^[a-f0-9]{64}$/),
   payload: z.record(z.string(), z.unknown()),
+  resolvedAgent: resolvedAgentSchema.optional(), contextManifest: contextManifestSchema.optional(),
   createdAt: z.iso.datetime(),
-}).strict();
+}).strict().superRefine((snapshot, ctx) => {
+  if (snapshot.assemblyVersion === 2 && (!snapshot.resolvedAgent || !snapshot.contextManifest))
+    ctx.addIssue({ code: 'custom', message: 'Version 2 requires the fixed agent and context manifest.' });
+});
 export type TeachingSnapshot = z.infer<typeof teachingSnapshotSchema>;
 
 export const teachingStopInputSchema = z.object({ requestId: z.uuid() }).strict();
@@ -182,7 +190,7 @@ export const teachingToolOutcomeSchema = z.object({ state: z.enum(['not-dispatch
 export const teachingDispatchAuthoritySchema = z.object({ runId: z.uuid(), activityId: z.uuid(),
   driverId: z.string().min(1).max(1000), generation: z.number().int().positive() }).strict();
 export const teachingDependencyCallSchema = z.object({ version: z.literal(1),
-  operation: z.enum(['authorize', 'identityFor', 'activity', 'model', 'tool.definitions', 'tool.prepare', 'tool.dispatch', 'tool.reconcile', 'tool.stop']),
+  operation: z.enum(['authorize', 'identityFor', 'activity', 'model', 'tool.definitions', 'tool.contributions', 'tool.prepare', 'tool.dispatch', 'tool.reconcile', 'tool.stop']),
   identity: spaceIdentitySchema.optional(),
   activityId: z.uuid().optional(),
   scope: z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict().optional(),

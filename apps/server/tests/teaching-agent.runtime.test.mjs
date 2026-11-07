@@ -103,7 +103,8 @@ test('a learning conversation persists across runs, restart, stop and transport 
     assert.equal(received[0].max_tokens, 8192, 'the saved maximum output is not silently rewritten');
     assert.equal(received[0].messages[0].role, 'system');
     assert.match(received[0].messages[0].content, /循阶学习空间/);
-    assert.match(received[0].messages[0].content, /理解循环不变量/);
+    assert.doesNotMatch(received[0].messages[0].content, /理解循环不变量/, 'student activity facts cannot acquire system priority');
+    assert.match(JSON.stringify(received[0].messages.filter(message => message.role === 'user')), /理解循环不变量/);
     const lastContent = received[0].messages.at(-1).content;
     assert.match(Array.isArray(lastContent) ? lastContent.map(part => part.text ?? '').join('') : lastContent, /请解释这段循环/);
 

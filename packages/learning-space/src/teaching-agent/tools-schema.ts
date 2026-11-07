@@ -4,6 +4,8 @@ import { toolValidators } from '../model-connections/chat-native.js';
 import { plannedExecutionScope } from '@xunjie/contracts/execution';
 import type { TeachingToolScope } from './tool-types.js';
 import { aluVerificationSchema } from './alu-tools.js';
+import { canonicalDigest } from './identity.js';
+import type { TeachingToolContribution } from './tool-types.js';
 export const uuid = { type: 'string', minLength: 36, maxLength: 36 };
 export const objectSchema = (properties: Record<string, unknown>) => ({ type: 'object', properties,
   required: Object.keys(properties), additionalProperties: false });
@@ -48,4 +50,30 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
     { type: 'object', anyOf: operations }));
   toolValidators(definitions);
   return definitions;
+}
+
+/** Each course component owns its operation schema even when logical names match. */
+export function teachingContributions(scope: TeachingToolScope): TeachingToolContribution[] {
+  return teachingDefinitions(scope).flatMap<TeachingToolContribution>(definition => {
+    const resourceScope = { identity: scope.identity, activityId: scope.activity.activityId,
+      releaseId: scope.activity.course?.releaseId ?? null };
+    if (definition.name !== 'course_operation') return [{ definition,
+      source: { kind: 'platform' as const, sourceId: 'platform.learning', version: '1', contentDigest: canonicalDigest(definition) },
+      executor: { executorId: 'teaching-tools:' + definition.name, toolName: definition.name, version: '1' },
+      effect: definition.name === 'execution_stop' ? 'stop' as const : 'read' as const, resourceScope }];
+    return (scope.activity.course?.components ?? []).flatMap(binding => {
+      const operations = (definition.inputSchema.anyOf as Record<string, unknown>[]).filter(operation => {
+        const properties = operation.properties as Record<string, { const?: string }>;
+        return properties?.componentKey?.const === binding.key;
+      });
+      if (!operations.length) return [];
+      const owned = { ...definition, inputSchema: { type: 'object', anyOf: operations } };
+      return [{ definition: owned, source: { kind: 'course' as const,
+        sourceId: 'course:' + scope.activity.course!.releaseId + ':' + binding.key,
+        version: binding.definition.digest, contentDigest: canonicalDigest({ definition: binding.definition, tool: owned }),
+        releaseId: scope.activity.course!.releaseId, componentKey: binding.key },
+        executor: { executorId: 'teaching-tools:course_operation:' + binding.key,
+          toolName: definition.name, version: binding.definition.digest }, effect: 'execute' as const, resourceScope }];
+    });
+  });
 }

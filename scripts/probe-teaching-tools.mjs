@@ -37,6 +37,9 @@ const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
 let generations = 0, releaseInputControl = () => {}, responseGate = Promise.resolve();
+const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+  ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, canonical(item)])) : value;
+const payloadDigest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 const byPath = new Map(), observed = [];
 const relay = createServer(async (request, response) => {
   const path = request.url;
@@ -47,6 +50,9 @@ const relay = createServer(async (request, response) => {
   }
   generations++; byPath.set(path, (byPath.get(path) ?? 0) + 1);
   const item = { path, status: null, elapsedMs: 0 }; observed.push(item);
+  const requestChunks = [];
+  request.on('data', chunk => requestChunks.push(chunk));
+  request.on('end', () => { item.payloadSha256 = payloadDigest(JSON.parse(Buffer.concat(requestChunks))); });
   const started = Date.now();
   const upstream = https.request({ hostname: 'api.deepseek.com', servername: 'api.deepseek.com', path, method: 'POST',
     headers: { ...request.headers, host: 'api.deepseek.com' }, timeout: report.limits.timeoutMs,
@@ -167,6 +173,24 @@ try {
       const answer = conversation.messages.filter(message => message.role === 'assistant').map(message => message.text).join('\n');
       item.answerSha256 = createHash('sha256').update(answer).digest('hex');
       assert.equal(run?.state, 'completed');
+      const assemblyEvents = await api(`agent/${activity.activityId}/events`);
+      const actualSnapshots = await Promise.all(assemblyEvents.filter(event => event.kind === 'context-assembled')
+        .map(event => api(`agent/${activity.activityId}/snapshots/${event.body.snapshotId}`)));
+      assert.ok(actualSnapshots.length);
+      for (const snapshot of actualSnapshots) {
+        assert.equal(snapshot.assemblyVersion, 2);
+        assert.equal(snapshot.resolvedAgent.scope.activityId, activity.activityId);
+        assert.equal(snapshot.contextManifest.resolvedId, snapshot.resolvedAgent.resolvedId);
+        assert.equal(snapshot.contextManifest.payloadSha256, snapshot.payloadSha256);
+        assert.equal(payloadDigest(snapshot.payload), snapshot.payloadSha256);
+        assert.ok(observed.some(request => request.payloadSha256 === snapshot.payloadSha256));
+        assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === 'read_work' && tool.executor.toolName === 'read_work'));
+      }
+      item.assemblies = actualSnapshots.map(snapshot => ({ resolvedId: snapshot.resolvedAgent.resolvedId,
+        definitionId: snapshot.resolvedAgent.definition.definitionId, definitionVersion: snapshot.resolvedAgent.definition.version,
+        snapshotId: snapshot.snapshotId, payloadSha256: snapshot.payloadSha256,
+        contextManifestId: snapshot.contextManifest.manifestId, counting: snapshot.contextManifest.capacity.counting,
+        transportMatched: true }));
       if (values['student-ask']) {
         assert.ok(explicitResponse, 'The real model must actually use student.ask.');
         assert.equal(conversation.questions.filter(question => question.runId === runId).length, 1);

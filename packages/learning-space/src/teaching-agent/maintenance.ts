@@ -9,6 +9,7 @@ const tables = ['teaching_sessions', 'teaching_requests', 'teaching_runs', 'teac
   'teaching_student_questions', 'teaching_student_responses', 'teaching_student_presentations',
   'teaching_dependency_bindings', 'teaching_model_switches', 'teaching_inputs',
   'teaching_input_revisions', 'teaching_controls', 'teaching_run_input_selections',
+  'teaching_agent_definitions', 'teaching_resolved_agents', 'teaching_segment_transitions',
   'agent_chunk_transfers', 'agent_chunk_parts'] as const;
 const terminal = new Set(['completed', 'failed', 'stopped']);
 type Row = Record<string, unknown>;

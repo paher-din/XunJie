@@ -8,13 +8,16 @@ import { teachingEventKindSchema, teachingIgnorableExtensionSchema, teachingSnap
   type TeachingRun, type TeachingEventKind, type TeachingSnapshot } from '@xunjie/contracts/teaching-agent';
 import type { LearningModelPort } from '../model-connections/service.js';
 import { cleanupScopeFor } from './tools-execution.js';
-import { buildContext, type ContextMessage } from './context.js';
+import { buildContext, fixedInputText, type ContextMessage } from './context.js';
 import { teachingExplanationText, teachingPublicArguments } from './help-policy.js';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
 import { studentAskDefinition, prepareStudentAsk, type createStudentQuestions } from './student-questions.js';
 import { studentResponseObservations } from './student-response-context.js';
 import type { createTeachingInputs } from './inputs.js';
+import { assembleTeachingAgent, retainTeachingAssembly, manifestFor, TeachingAssemblyError, toolContributions } from './assembly.js';
+import { compileOutputSchema } from '../model-connections/chat-native.js';
+import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/contracts/teaching-agent';
 
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
@@ -24,6 +27,10 @@ interface Plan {
   inputBasis?: ActionInput; inputSequence?: number;
   inputVersions?: { inputId: string; version: number; inputDigest: string }[];
   waitVersions?: { waitId: string; outcomeDigest: string }[];
+  resolvedAgent?: ResolvedAgent;
+  contextHistory?: ContextMessage[];
+  selectionVersion?: number;
+  selectionPinId?: string;
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
@@ -57,6 +64,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   driverId: string;
   models: LearningModelPort;
   tools?: TeachingToolHost;
+  definition?: AgentDefinition | ((scope: TeachingToolScope) => Promise<AgentDefinition>);
   studentQuestions: ReturnType<typeof createStudentQuestions>;
   inputs: ReturnType<typeof createTeachingInputs>;
   limits?: Partial<TeachingRunLimits>;
@@ -70,9 +78,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   assertAuthority(tx: OwnedTransaction, runId: string, generation: number): Promise<unknown>;
   appendEvent(tx: OwnedTransaction, activityId: string, kind: TeachingEventKind, body: Record<string, unknown>): Promise<unknown>;
   historyBefore(activityId: string, runId: string): Promise<ContextMessage[]>;
+  historyForAssembly(activityId: string): Promise<ContextMessage[]>;
   ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
     choice: Awaited<ReturnType<LearningModelPort['selection']['snapshot']>>,
-    selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[]):
+    selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string):
     Promise<{ segmentId: string; sequence: number; model: Model }>;
   awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttempt): Promise<ModelAttempt>;
@@ -159,11 +168,26 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       ...(generation === undefined ? {} : { authority: { runId: run.runId, activityId: run.activityId,
         driverId: owner.driverId, generation }, assertDispatch: () => assertDispatch(run, generation) }) };
   }
+  async function assertCurrentBinding(scope: TeachingToolScope, binding: AgentToolBinding) {
+    if (binding.executor.executorId === 'teaching-student-questions:ask') {
+      if (binding.source.contentDigest !== canonicalDigest(studentAskDefinition)) throw new StorageError('forbidden');
+      return;
+    }
+    const current = await toolContributions(owner.tools, scope);
+    if (!current.some(item => item.source.sourceId === binding.source.sourceId
+      && item.source.version === binding.source.version && item.source.contentDigest === binding.source.contentDigest
+      && canonicalDigest(item.executor) === canonicalDigest(binding.executor))) throw new StorageError('forbidden');
+  }
   async function pause(run: TeachingRun, generation: number, reason: string, model = run.model) {
     const current = owner.toRun(await owner.runRow(run.runId));
     await owner.finish(run, generation, 'paused', reason, current.usage, model ?? current.model,
       { kind: ['model-not-selected', 'model-unavailable', 'model-capability-unavailable', 'max-output-missing'].includes(reason) ? 'model-unavailable' : 'system-notice',
         body: { runId: run.runId, reason } });
+  }
+  async function pauseAssembly(run: TeachingRun, generation: number, error: TeachingAssemblyError) {
+    const current = owner.toRun(await owner.runRow(run.runId));
+    await owner.finish(run, generation, 'paused', error.reason, current.usage, current.model,
+      { kind: 'system-notice', body: { runId: run.runId, reason: error.reason, unavailable: error.unavailable } });
   }
   async function planNext(run: TeachingRun, generation: number, previous?: Row): Promise<Row | null> {
     const scope = await scopeFor(run, previous ?? { step_id: operationId('step:' + run.runId + ':0'), snapshot_id: run.runId });
@@ -197,37 +221,106 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       });
       const { rows: [switched] } = segmentId !== previous.segment_id ? await storage.read(`SELECT target FROM teaching_model_switches
         WHERE activity_id=$1 AND to_segment_id=$2 AND state='completed'`, [run.activityId, segmentId]) : { rows: [] };
-      const target = switched?.target as { model: Model; source: { kind: 'school' | 'personal' } } | undefined;
+      const { rows: [transition] } = await storage.read(`SELECT t.*,a.body AS assembly FROM teaching_segment_transitions t
+        LEFT JOIN teaching_resolved_agents a ON a.resolved_id::text=t.assembly_id
+        WHERE t.activity_id=$1 AND t.to_segment_id=$2 AND t.state='completed'`, [run.activityId, segmentId]);
+      const target = (transition?.target ?? switched?.target) as { model: Model; source: { kind: 'school' | 'personal' } } | undefined;
       if (segmentId !== previous.segment_id && !target) throw new StorageError('conflict');
       if (target && !target.model.maxOutputTokens) { await pause(run, generation, 'max-output-missing', target.model); return null; }
       plan = { input: { ...priorPlan.input, segmentId, expectedSequence: native.sequence,
         ...(target?.model.maxOutputTokens ? { limits: { maxOutputTokens: target.model.maxOutputTokens } } : {}),
         input: { text: '', images: [], toolResults: [], observations } }, model: target?.model ?? priorPlan.model,
         ...((target?.source.kind ?? priorPlan.modelSource) ? { modelSource: (target?.source.kind ?? priorPlan.modelSource)! } : {}),
-        sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString() };
+        sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString(),
+        ...(priorPlan.resolvedAgent ? { resolvedAgent: priorPlan.resolvedAgent } : {}),
+        ...(priorPlan.contextHistory ? { contextHistory: priorPlan.contextHistory } : {}),
+        ...(priorPlan.selectionVersion !== undefined ? { selectionVersion: priorPlan.selectionVersion } : {}),
+        ...(priorPlan.selectionPinId ? { selectionPinId: priorPlan.selectionPinId } : {}) };
+      if (transition) {
+        if (transition.assembly) plan.resolvedAgent = transition.assembly as ResolvedAgent;
+        plan.selectionVersion = Number(transition.selection_version);
+        const source = (transition.create_body as { source: { pinId?: string } }).source;
+        if (source.pinId) plan.selectionPinId = source.pinId;
+      }
+      if (plan.resolvedAgent && plan.selectionVersion !== undefined && plan.selectionPinId) {
+        const history = await owner.historyForAssembly(run.activityId);
+        const { rows: outstanding } = await storage.read(`SELECT c.command_id,c.command,c.outcome,w.wait_id,w.state AS wait_state,w.reason,w.deadline
+          FROM teaching_commands c LEFT JOIN teaching_waits w USING(command_id)
+          WHERE c.run_id=$1 AND (c.outcome->>'state' IN ('accepted','unknown') OR w.state='pending') ORDER BY c.step_id,c.ordinal`, [run.runId]);
+        if (outstanding.length) history.push({ role: 'assistant', text: '原操作与未结等待的固定事实（只核对原身份，不是新派发指令）：' + JSON.stringify(outstanding),
+          source: { kind: 'history', id: run.runId, label: '未结 Command/Wait 与已接受效果' } });
+        let next;
+        try { next = await assembleTeachingAgent(scope, owner.tools, plan.model, history,
+          typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition); }
+        catch (error) {
+          if (!(error instanceof TeachingAssemblyError)) throw error;
+          await pauseAssembly(run, generation, error); return null;
+        }
+        if (next.resolvedAgent.resolvedId !== plan.resolvedAgent.resolvedId) {
+          await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, next.resolvedAgent); });
+          const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
+          const segment = await owner.ensureSegment(scope.identity, scope.activity, run, choice, plan.selectionVersion,
+            next.context.system, history, generation, next.tools, next.resolvedAgent.resolvedId, plan.selectionPinId);
+          plan.input.segmentId = segment.segmentId; plan.input.expectedSequence = segment.sequence;
+          plan.resolvedAgent = next.resolvedAgent; plan.contextHistory = history;
+        }
+      }
     } else {
-      const selection = await owner.models.selection.read(scope.identity);
-      if (!selection.selected) { await pause(run, generation, selection.unavailableReason ?? 'model-not-selected'); return null; }
-      const choice = await owner.models.selection.snapshot(scope.identity, selection.version);
+      const { rows: [receivedTransition] } = await storage.read(`SELECT t.*,a.body AS assembly FROM teaching_segment_transitions t
+        JOIN teaching_resolved_agents a ON a.resolved_id::text=t.assembly_id WHERE t.activity_id=$1
+        AND t.reason<>'model-switch' AND (t.state='accepted' OR t.create_body->'source'->>'pinId'=$2)
+        ORDER BY t.accepted_at DESC LIMIT 1`, [run.activityId, run.runId]);
+      const receivedSource = (receivedTransition?.create_body as { source?: { pinId?: string } } | undefined)?.source;
+      const selection = receivedTransition ? { version: Number(receivedTransition.selection_version), selected: true }
+        : await owner.models.selection.read(scope.identity);
+      if (!selection.selected) { await pause(run, generation,
+        ('unavailableReason' in selection ? selection.unavailableReason : undefined) ?? 'model-not-selected'); return null; }
+      const selectionPinId = receivedSource?.pinId ?? run.runId;
+      const choice = receivedTransition ? await owner.models.selection.pinned(scope.identity, selectionPinId, selection.version)
+        : await owner.models.selection.pin(scope.identity, run.runId, selection.version);
       const connection = choice.choice.connection;
       if (!connection.maxOutputTokens) { await pause(run, generation, 'max-output-missing'); return null; }
-      const history = await owner.historyBefore(run.activityId, run.runId);
-      const context = buildContext(scope.activity, scope.input, history, { maxOutputTokens: connection.maxOutputTokens,
-        ...(connection.contextWindow !== undefined ? { contextWindow: connection.contextWindow } : {}) });
-      if (context.system.length > 400000 || context.userText.length > 1000000) {
-        await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
-          { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded' } }); return null;
+      const history: ContextMessage[] = receivedTransition
+        ? (receivedTransition.create_body as { portable: { role?: 'user' | 'assistant'; text: string }[] }).portable
+          .map(message => ({ role: message.role === 'assistant' ? 'assistant' : 'student', text: message.text }))
+        : await owner.historyBefore(run.activityId, run.runId);
+      const model = { connectionId: connection.connectionId, version: connection.version, protocol: connection.protocol,
+        modelId: connection.modelId, ...(connection.contextWindow ? { contextWindow: connection.contextWindow } : {}),
+        maxOutputTokens: connection.maxOutputTokens };
+      let assembly;
+      try {
+        const receivedAgent = receivedTransition?.assembly as ResolvedAgent | undefined;
+        assembly = receivedAgent ? { resolvedAgent: receivedAgent,
+          context: buildContext(scope.activity, scope.input, history, { definition: receivedAgent.definition }),
+          tools: receivedAgent.tools.map(item => item.definition) }
+          : await assembleTeachingAgent(scope, owner.tools, model, history,
+            typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition);
       }
-      const tools = [studentAskDefinition, ...(owner.tools ? await owner.tools.definitions(scope) : [])];
+      catch (error) {
+        if (!(error instanceof TeachingAssemblyError)) throw error;
+        await pauseAssembly(run, generation, error); return null;
+      }
+      const { context, resolvedAgent, tools } = assembly;
+      if (context.system.length > Math.min(400000, resolvedAgent.definition.contextPolicy.maxSystemChars)
+        || context.userText.length > Math.min(1000000, resolvedAgent.definition.contextPolicy.maxInputChars)
+        || model.contextWindow !== undefined && connection.maxOutputTokens >= model.contextWindow) {
+        await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
+          { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded',
+            requiredScope: { question: scope.input.requestId, references: scope.input.draft.references.map(ref => ref.referenceId),
+              works: scope.input.works.map(work => work.contentId) },
+            systemChars: context.system.length, inputChars: context.userText.length,
+            outputReserve: connection.maxOutputTokens, contextWindow: model.contextWindow, counting: 'unknown' } }); return null;
+      }
+      await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, resolvedAgent); });
       const native = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selection.version,
-        context.system, history, generation, tools);
+        context.system, history, generation, tools, resolvedAgent.resolvedId, selectionPinId);
       plan = { input: { attemptId: run.runId, purpose: 'learning', segmentId: native.segmentId, expectedSequence: native.sequence,
         input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
-        model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString() };
+        model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString(),
+        resolvedAgent, contextHistory: history, selectionVersion: selection.version, selectionPinId };
     }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
-    const texts = additions.map(item => buildContext(scope.activity, item.input, [],
-      { maxOutputTokens: plan.input.limits.maxOutputTokens }).userText);
+    const texts = additions.map(item => fixedInputText(item.input));
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
     if (plan.input.input.text.length > 1000000) { await pause(run, generation, 'capacity-exceeded'); return null; }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
@@ -288,6 +381,12 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       await tx.query(`INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved,call_reserved_ms)
         VALUES($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10)`, [stepId, run.runId, number, attemptId,
         plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens, inputReserve, plan.input.limits.timeoutMs]);
+      if (plan.resolvedAgent) {
+        await retainTeachingAssembly(tx, plan.resolvedAgent);
+        await tx.query('UPDATE teaching_steps SET resolved_agent_id=$2 WHERE step_id=$1', [stepId, plan.resolvedAgent.resolvedId]);
+        await tx.query('UPDATE teaching_runs SET initial_resolved_agent_id=COALESCE(initial_resolved_agent_id,$2) WHERE run_id=$1',
+          [run.runId, plan.resolvedAgent.resolvedId]);
+      }
       await tx.query(`UPDATE teaching_runs SET attempt_id=$2,segment_id=$3,model=$4,state='running',updated_at=clock_timestamp()
         WHERE run_id=$1`, [run.runId, attemptId, plan.input.segmentId, JSON.stringify(plan.model)]);
       await owner.inputs.adopt(tx, run, stepId, fixedInputs);
@@ -310,10 +409,19 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     await assertDispatch(run, generation);
     await owner.models.checks.receive(scope.identity, plan.input);
     const payload = await owner.models.checks.requestPayload(scope.identity, String(saved.attempt_id));
+    const { rows: adoptedInputs } = await storage.read(`SELECT i.input_id,i.version,i.seq,v.body FROM teaching_inputs i
+      JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
+      WHERE i.adopted_run_id=$1 ORDER BY i.seq`, [run.runId]);
+    const { rows: effects } = await storage.read('SELECT command_id,call_id,command,outcome FROM teaching_commands WHERE run_id=$1 AND outcome IS NOT NULL ORDER BY step_id,ordinal', [run.runId]);
+    const { rows: waits } = await storage.read('SELECT * FROM teaching_waits WHERE run_id=$1 ORDER BY wait_id', [run.runId]);
+    const contextManifest = plan.resolvedAgent ? manifestFor(plan.resolvedAgent, payload, { inputs: adoptedInputs,
+      history: plan.contextHistory ?? [], effects, waits, observations: plan.input.input.observations ?? [],
+      activity: scope.activity, maxOutputTokens: plan.input.limits.maxOutputTokens }) : undefined;
     const snapshot = teachingSnapshotSchema.parse({ snapshotId: saved.snapshot_id, activityId: run.activityId, runId: run.runId,
-      attemptId: saved.attempt_id, segmentId: saved.segment_id, assemblyVersion: 1, model: plan.model,
+      attemptId: saved.attempt_id, segmentId: saved.segment_id, assemblyVersion: plan.resolvedAgent ? 2 : 1, model: plan.model,
       maxOutputTokens: plan.input.limits.maxOutputTokens, ...(plan.model.contextWindow ? { contextWindow: plan.model.contextWindow } : {}),
-      sources: plan.sources, payloadSha256: canonicalDigest(payload), payload, createdAt: plan.createdAt });
+      sources: plan.sources, payloadSha256: canonicalDigest(payload), payload, createdAt: plan.createdAt,
+      ...(plan.resolvedAgent ? { resolvedAgent: plan.resolvedAgent, contextManifest } : {}) });
     const resource = await storage.stageResource({ uploadId: snapshot.snapshotId, scope: 'teaching-snapshot:' + snapshot.snapshotId,
       bytes: Buffer.from(JSON.stringify(snapshot)), mediaType: 'application/json', contentVersion: 1 });
     await transaction(run, generation, async tx => {
@@ -322,6 +430,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         snapshot.attemptId, snapshot.segmentId, JSON.stringify(snapshot), resource.resourceId]);
       await tx.reference('teaching-snapshot:' + snapshot.snapshotId, resource.resourceId);
       await tx.query("UPDATE teaching_steps SET phase='model' WHERE step_id=$1", [saved.step_id]);
+      if (contextManifest) await tx.query('UPDATE teaching_steps SET context_manifest=$2 WHERE step_id=$1', [saved.step_id, JSON.stringify(contextManifest)]);
       await event(tx, run.activityId, 'context-assembled', { runId: run.runId, stepId: saved.step_id,
         snapshotId: snapshot.snapshotId, attemptId: snapshot.attemptId, segmentId: snapshot.segmentId,
         payloadSha256: snapshot.payloadSha256, sources: snapshot.sources,
@@ -416,12 +525,18 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     // All prepared commands, the native result association, and step completion share one commit.
     const prepared = await Promise.all(intents.map(async (intent, ordinal) => {
       const commandId = operationId('teaching-command:' + saved.step_id + ':' + intent.callId);
+      const resolved = (saved.plan as Plan).resolvedAgent;
+      const binding = resolved?.tools.find(item => item.modelName === intent.name);
       let command: TeachingPreparedTool, outcome: TeachingToolOutcome | null = null;
       try {
-        if (intent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, intent, commandId);
+        if (resolved && !binding) throw new StorageError('forbidden');
+        if (binding && !compileOutputSchema(binding.definition.inputSchema)(intent.arguments)) throw new StorageError('invalid');
+        if (binding) await assertCurrentBinding(scope, binding);
+        const fixedIntent = binding ? { ...intent, name: binding.executor.toolName } : intent;
+        if (fixedIntent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, fixedIntent, commandId);
         else {
           if (!owner.tools) throw new StorageError('forbidden');
-          command = await owner.tools.prepare(scope, intent, commandId);
+          command = await owner.tools.prepare(scope, fixedIntent, commandId);
         }
       } catch (error) {
         if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict'].includes(error.code)) throw error;
@@ -430,7 +545,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           conflictKey: run.activityId, location: 'owner', basis: { rejected: error.code } };
         outcome = unsent(error.code);
       }
-      return { command, outcome: stopped ? unsent('run-stopped-before-dispatch') : outcome, callId: intent.callId, ordinal };
+      return { command, bindingId: binding?.bindingId ?? null,
+        outcome: stopped ? unsent('run-stopped-before-dispatch') : outcome, callId: intent.callId, ordinal };
     }));
     await transaction(run, generation, async tx => {
       const { rows: [existing] } = await tx.query('SELECT phase FROM teaching_steps WHERE step_id=$1 FOR UPDATE', [saved.step_id]);
@@ -445,9 +561,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       for (const item of prepared) {
         const outcome = current?.stop_requested ? unsent('run-stopped-before-dispatch')
           : Number(used?.total) + item.ordinal >= Number(budget?.max_tool_commands) ? unsent('tool-budget-exhausted') : item.outcome;
-        await tx.query(`INSERT INTO teaching_commands(command_id,run_id,step_id,call_id,ordinal,command,state,outcome,initial_outcome)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8)`, [item.command.commandId, run.runId, saved.step_id, item.callId, item.ordinal,
-          JSON.stringify(item.command), outcome ? 'settled' : 'prepared', outcome ? JSON.stringify(outcome) : null]);
+        await tx.query(`INSERT INTO teaching_commands(command_id,run_id,step_id,call_id,ordinal,command,state,outcome,initial_outcome,binding_id)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8,$9)`, [item.command.commandId, run.runId, saved.step_id, item.callId, item.ordinal,
+          JSON.stringify(item.command), outcome ? 'settled' : 'prepared', outcome ? JSON.stringify(outcome) : null, item.bindingId]);
         await event(tx, run.activityId, 'tool-intent', { runId: run.runId, stepId: saved.step_id, snapshotId: saved.snapshot_id,
           attemptId: saved.attempt_id, resultRef: fact.resultRef, callId: item.callId, command: item.command });
       }
@@ -599,6 +715,18 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         });
         if (!permitted) continue;
         await assertDispatch(run, generation);
+        const resolved = (saved.plan as Plan).resolvedAgent;
+        if (resolved) {
+          const binding = resolved.tools.find(item => item.bindingId === row.binding_id);
+          try {
+            if (!binding) throw new StorageError('forbidden');
+            await assertCurrentBinding(scope, binding);
+          } catch (error) {
+            if (!(error instanceof StorageError)) throw error;
+            await saveOutcome(run, saved, row, unsent('capability-unavailable:' + error.code), generation);
+            continue;
+          }
+        }
         let outcome: TeachingToolOutcome;
         try { outcome = await owner.tools.dispatch(scope, command); }
         catch (error) {

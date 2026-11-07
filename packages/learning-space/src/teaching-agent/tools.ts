@@ -12,7 +12,7 @@ import type { createCourses } from '../courses/index.js';
 import type { AgentExecutionContext, AgentExecutionOrigin } from '../learning-data/agent-executions.js';
 import { verifyPlannedExecution } from '../learning-data/plan.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
-import { teachingDefinitions } from './tools-schema.js';
+import { teachingDefinitions, teachingContributions } from './tools-schema.js';
 import { aluVerificationAction } from './alu-tools.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-images.js';
 
@@ -336,7 +336,8 @@ export function createTeachingTools(options: {
       { query, cleanup: true, stopId: stopId(command.commandId), cleanupCompleted: completed, operationCompleted: state === 'completed',
         sessionStopped: !!query.session && completed, sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行清理', query);
   }
-  return { definitions: async scope => { await authorize(scope); return teachingDefinitions(scope); }, prepare, dispatch, reconcile, stop };
+  return { contributions: async scope => { await authorize(scope); return teachingContributions(scope); },
+    definitions: async scope => { await authorize(scope); return teachingDefinitions(scope); }, prepare, dispatch, reconcile, stop };
 }
 function stopId(commandId: string) {
   const hex = createHash('sha256').update('agent-stop:' + commandId).digest('hex');

@@ -5,6 +5,10 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { teachingPreparedToolSchema, teachingToolOutcomeSchema } from '@xunjie/contracts/teaching-agent';
 import type { z } from 'zod';
 import type { TeachingDispatchAuthority } from './remote-state.js';
+import type { AgentToolBinding } from '@xunjie/contracts/teaching-agent';
+
+/** Fixed definitions and their owning executor; model aliases never select code. */
+export type TeachingToolContribution = Omit<AgentToolBinding, 'bindingId' | 'modelName'>;
 
 /** Trusted caller context supplied by RunDriver, never accepted from a model or browser. */
 export interface TeachingToolScope {
@@ -34,6 +38,7 @@ export type TeachingPreparedTool = z.infer<typeof teachingPreparedToolSchema>;
 export type TeachingToolOutcome = z.infer<typeof teachingToolOutcomeSchema>;
 
 export interface TeachingToolHost {
+  contributions?(scope: TeachingToolScope): Promise<TeachingToolContribution[]>;
   definitions(scope: TeachingToolScope): Promise<ModelTool[]>;
   /** Validation and freezing only; must not execute a course operation. */
   prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string): Promise<TeachingPreparedTool>;
