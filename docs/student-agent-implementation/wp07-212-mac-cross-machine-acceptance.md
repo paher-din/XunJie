@@ -100,7 +100,7 @@ darwin full 包通过包内 CLI 完成安装、启动、停止；维护/学生�
 5. 重跑 `client/complete`（已交换）或 `connect`（已登记）会分别报 403/`Connection already registered`；复跑脚本按本地凭据与安装登记幂等跳过。
 6. 混合设备的动作能力表为空是既有产品行为（`school-client` 的本地 learning-data 没有注入 action receiver），因此混合证据只准备动作、不派发；不作为缺陷修改。
 
-复跑入口（配置与密钥只在本机 `.verification/wp07-212/`，不入 Git）：
+复跑入口（配置、密钥和完整包在验收时生成，验收后已按本票清理；复跑时重新生成同形配置即可）：
 
 ```sh
 # 原生恢复（真实 PG，仓库内 Node 24.21.0）
@@ -109,15 +109,15 @@ XUNJIE_PRODUCT_POSTGRES_BIN=/opt/homebrew/opt/postgresql@18/bin \
 
 # 学校/混合（Mac 侧）
 .verification/node24-bin/node scripts/cross-machine-recovery-school.mjs --phase=<setup|backup-restore|takeover|hybrid-member|hybrid-approve> \
-  --product=.verification/wp07-212/product-darwin-arm64-full --root=.verification/wp07-212/school-target \
-  --config=.verification/wp07-212/hybrid-school-config.json --out=<report.json> --work=.verification/wp07-212/school-inputs
+  --product=<darwin-arm64 full 包> --root=<school-target> \
+  --config=<hybrid-school-config.json> --out=<report.json> --work=<inputs>
 
-# Windows 侧（经已获准 SSH 主机）
-powershell -File C:\Users\h\.verification\wp07-212\run-hybrid.ps1 -Phase <phase> -Out <report.json>
+# Windows 侧（经已获准 SSH 主机；runner 只是固定引号的 PowerShell 包装）
+powershell -File <ticket-local>\run-hybrid.ps1 -Phase <phase> -Out <report.json>
 ```
 
 `scripts/cross-machine-recovery-{fixture,school,client,agent,hybrid,forwarder}.mjs` 为可复跑的验收驱动；只控制外部模型 transport，学生/依赖流量使用真实 HTTPS。
 
 ## 清理
 
-本票一次性环境已停止：Mac 学校目标 daemon、Windows 混合设备目标 daemon、独立 Agent 目标 daemon、合成模型 fixture、所有持有 SSH 会话，以及本票启动的 Mac 用户级 sshd（端口 2222）。Windows 一次性产品包与源/目标根目录、Mac 构建包与源/目标根目录位于被忽略的 `.verification/wp07-212/`，不进入 Git。未删除或修改执行者原有的 Mac 环境、PostgreSQL、桌面 Chrome、Windows 既有 SSH 私钥或任何原有资料。
+本票一次性环境已停止并移除：Mac 学校目标 daemon、Windows 混合设备源/目标 daemon、独立 Agent 源/目标 daemon、合成模型 fixture、Windows 转发会话、所有持有 SSH 会话，以及本票启动的 Mac 用户级 sshd（端口 2222）。Mac 与 Windows 两侧的 `.verification/wp07-212/` 一次性产品包、源/目标根目录、备份、配置与生成的 CA/设备密钥均已删除。未删除或修改执行者原有的 Mac 环境、PostgreSQL、桌面 Chrome、Windows 主机既有 SSH 私钥或任何原有资料；验收所需证据已保存在本仓库。
