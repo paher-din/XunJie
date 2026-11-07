@@ -43,11 +43,11 @@ export function initiallyVisible(item: TeachingToolContribution, scope: Teaching
     ref.source.kind === 'component' && ref.source.instanceId === componentInstanceId(scope.activity.activityId, item.source.componentKey!)));
 }
 export interface LoadedToolSelection { bindingId: string; sourceId: string; name: string }
-export async function loadedTools(storage: OwnedStorage, scope: TeachingToolScope): Promise<LoadedToolSelection[]> {
+export async function loadedTools(storage: OwnedStorage, scope: TeachingToolScope, includeCurrentStep = false): Promise<LoadedToolSelection[]> {
   const { rows } = await storage.read(`SELECT c.outcome FROM teaching_commands c JOIN teaching_runs r USING(run_id)
     JOIN teaching_steps s USING(step_id) WHERE r.activity_id=$1 AND r.identity=$2::jsonb
-    AND c.command->>'name'='load_tools' AND c.state='settled' AND s.paired=true ORDER BY c.created_at,c.command_id`,
-  [scope.activity.activityId, JSON.stringify(scope.identity)]);
+    AND c.command->>'name'='load_tools' AND c.state='settled' AND (s.paired=true OR s.step_id=$3) ORDER BY c.created_at,c.ordinal,c.command_id`,
+  [scope.activity.activityId, JSON.stringify(scope.identity), includeCurrentStep ? scope.stepId : null]);
   const selections = rows.flatMap(row => {
     const outcome = row.outcome as TeachingToolOutcome;
     return outcome.state === 'completed' && Array.isArray(outcome.result.selections) ? outcome.result.selections as LoadedToolSelection[] : [];
@@ -56,6 +56,16 @@ export async function loadedTools(storage: OwnedStorage, scope: TeachingToolScop
   for (const selection of selections) latest.set(selection.sourceId + ':' + selection.name, selection);
   return [...latest.values()];
 }
+function matchesObject(scope: TeachingToolScope, item: TeachingToolContribution, query: unknown) {
+  if (typeof query !== 'string') return true;
+  const name = item.executor.toolName;
+  const works = name === 'read_work' ? [...scope.input.works, ...scope.input.draft.bases]
+    .map(file => ({ objectId: file.objectId, contentId: file.contentId, name: file.name })) : [];
+  const references = ['read_work', 'read_reference', 'read_result', 'execution_query', 'execution_stop'].includes(name)
+    ? scope.input.draft.references.map(ref => ({ referenceId: ref.referenceId, sourceName: ref.sourceName, source: ref.source })) : [];
+  const materials = name === 'read_material' ? scope.activity.course?.materials.map(material => ({ materialId: material.materialId, title: material.title })) : [];
+  return JSON.stringify({ resourceScope: item.resourceScope, componentKey: item.source.componentKey, works, references, materials }).includes(query);
+}
 export async function discoveryOutcome(storage: OwnedStorage, scope: TeachingToolScope, name: string,
   args: Record<string, unknown>, candidates: TeachingToolContribution[]): Promise<TeachingToolOutcome> {
   if (name === 'discover_tools') {
@@ -63,7 +73,7 @@ export async function discoveryOutcome(storage: OwnedStorage, scope: TeachingToo
     const entries = candidates.filter(item => item.source.sourceId !== 'platform.tools' && item.source.sourceId !== 'platform.student')
       .filter(item => (typeof args.purpose !== 'string' || (item.definition.name + ' ' + item.definition.description).toLowerCase().includes(args.purpose.toLowerCase()))
         && (typeof args.source !== 'string' || item.source.sourceId.includes(args.source))
-        && (typeof args.object !== 'string' || JSON.stringify(item.resourceScope).includes(args.object)))
+        && matchesObject(scope, item, args.object))
       .sort((a, b) => (a.source.sourceId + ':' + a.definition.name).localeCompare(b.source.sourceId + ':' + b.definition.name));
     const version = canonicalDigest({ identity: scope.identity, activityId: scope.activity.activityId, query, entries });
     let offset = 0, page = 0;
@@ -112,7 +122,7 @@ export async function discoveryOutcome(storage: OwnedStorage, scope: TeachingToo
   });
   if (ids.some(id => !discovered.some(entry => entry.bindingId === id))) throw new StorageError('forbidden');
   if (ids.some(id => !candidates.some(item => contributionId(item) === id))) throw new StorageError('identity-conflict');
-  const loaded = await loadedTools(storage, scope);
+  const loaded = await loadedTools(storage, scope, true);
   const selections = ids.map(bindingId => {
     const item = candidates.find(item => contributionId(item) === bindingId)!;
     return { bindingId, sourceId: item.source.sourceId, name: item.definition.name };

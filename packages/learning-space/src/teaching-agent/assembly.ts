@@ -50,7 +50,8 @@ export class TeachingAssemblyError extends Error {
 export async function assembleTeachingAgent(scope: TeachingToolScope, host: TeachingToolHost | undefined,
   model: NonNullable<TeachingRun['model']>, history: ContextMessage[], definition: AgentDefinition = learningAgentDefinition, loaded: LoadedToolSelection[] = []) {
   definition = agentDefinitionSchema.parse(structuredClone(definition));
-  const contributions: TeachingToolContribution[] = [{ definition: studentAskDefinition,
+  const contributions: TeachingToolContribution[] = [{ definition: studentAskDefinition, purpose: studentAskDefinition.description,
+    resultSchema: { type: 'object', additionalProperties: true },
     source: { kind: 'platform', sourceId: 'platform.student', version: '1', contentDigest: canonicalDigest(studentAskDefinition) },
     executor: { executorId: 'teaching-student-questions:ask', toolName: studentAskDefinition.name, version: '1' },
     effect: 'ask', resourceScope: { identity: scope.identity, activityId: scope.activity.activityId } }];

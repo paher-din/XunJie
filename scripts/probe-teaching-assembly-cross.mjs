@@ -18,11 +18,14 @@ const { values: args } = parseArgs({ options: {
   'remote-script': { type: 'string' }, certificate: { type: 'string' }, key: { type: 'string' },
   'remote-certificate': { type: 'string' }, 'remote-key': { type: 'string' },
   'mac-host': { type: 'string' }, 'win-host': { type: 'string' },
-  'mac-port': { type: 'string', default: '38215' }, 'win-port': { type: 'string', default: '38216' },
+  'mac-port': { type: 'string' }, 'win-port': { type: 'string' },
   'credentials-file': { type: 'string' }, out: { type: 'string' },
-  worker: { type: 'boolean' }, help: { type: 'boolean' },
+  worker: { type: 'boolean' }, help: { type: 'boolean' }, discovery: { type: 'boolean' },
 } });
-const limits = Object.freeze({ maxGenerations: 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 });
+const issue = args.discovery ? 216 : 215;
+args['mac-port'] ??= args.discovery ? '38265' : '38215';
+args['win-port'] ??= args.discovery ? '38266' : '38216';
+const limits = Object.freeze({ maxGenerations: args.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 });
 const lifetime = new AbortController();
 const exec = promisify(execFile), sha = value => createHash('sha256').update(value).digest('hex');
 const delay = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms));
@@ -41,13 +44,14 @@ if (args.help) {
   --product MAC_DIR --remote-product WIN_DIR --ssh win --remote-script WIN_FILE
   --certificate PEM --key PEM --remote-certificate WIN_PEM --remote-key WIN_KEY
   --mac-host IP --win-host IP --credentials-file PRIVATE --out JSON
-  [--mac-port 38215 --win-port 38216]
+  [--mac-port 38215 --win-port 38216] [--discovery]
 Creates an isolated Mac school and Windows Agent. The same test CA/certificate must cover both IPs.
 Open Windows TCP 38216 only to the Mac IP; open Mac TCP 38215 only to the Windows IP.
 Copy this script and the test certificates before running. It never copies provider credentials.
 A fresh dependency operation is denied under a revoked grant before any Agent Run/model call;
 renewing only that connection's grant then reconciles and dispatches the same original ActionIntent.
 Two real DeepSeek chat-completions calls maximum, 2048 output tokens and 30 seconds each.
+--discovery uses issue #216, ports 38265/38266 and four calls: discover_tools -> load_tools -> read_work -> answer.
 Only hashes, public IDs, hosts, status and counts are written. No browser or teaching-effect claim.
 --worker is a private JSON-lines control mode: start/authorize/connect/restart/cleanup only.`);
   process.exit(0);
@@ -104,7 +108,7 @@ async function worker() {
   check(process.platform === 'win32' && args.product && args.certificate && args.key, 'worker-requires-windows-product-tls');
   lanIp(args['mac-host']); lanIp(args['win-host']);
   await trust(args.certificate);
-  const pkg = await product(args.product), root = await mkdtemp(join(tmpdir(), 'xj-wp08-215-agent-'));
+  const pkg = await product(args.product), root = await mkdtemp(join(tmpdir(), `xj-wp08-${issue}-agent-`));
   const runtime = pkg.module.openProductRuntime({ root, resources: pkg.resources });
   let state, dependencyConnectionId, macSource, cleanupResult;
   async function cleanup() {
@@ -161,7 +165,7 @@ function remoteDevice() {
   check(/^[A-Za-z0-9_.@-]+$/.test(args.ssh) && !args.ssh.startsWith('-'), 'invalid-ssh-alias');
   const quote = value => "'" + value.replaceAll("'", "''") + "'";
   const remoteProduct = args['remote-product'].replaceAll('\\', '/');
-  const launch = `& ${quote(remoteProduct + '/resources/node/node.exe')} ${quote(args['remote-script'])} --worker`
+  const launch = `& ${quote(remoteProduct + '/resources/node/node.exe')} ${quote(args['remote-script'])} --worker${args.discovery ? ' --discovery' : ''}`
     + ` --product ${quote(remoteProduct)} --certificate ${quote(args['remote-certificate'])} --key ${quote(args['remote-key'])}`
     + ` --mac-host ${quote(args['mac-host'])} --win-host ${quote(args['win-host'])}`
     + ` --mac-port ${port(args['mac-port'])} --win-port ${port(args['win-port'])}; exit $LASTEXITCODE`;
@@ -271,7 +275,7 @@ async function main() {
   lanIp(args['mac-host']); lanIp(args['win-host']); port(args['mac-port']); port(args['win-port']);
   check(args['mac-host'] !== args['win-host'], 'owners-must-be-on-different-machines');
   const output = resolve(args.out); await mkdir(dirname(output), { recursive: true });
-  const report = { issue: 215, measuredAt: new Date().toISOString(), status: 'running', limits,
+  const report = { issue, measuredAt: new Date().toISOString(), status: 'running', limits,
     topology: { mac: { ip: args['mac-host'], host: hostname(), platform: process.platform, port: port(args['mac-port']) },
       windows: { ip: args['win-host'], port: port(args['win-port']) }, transport: 'direct LAN HTTPS; SSH control only; provider credentials remain on Mac' },
     stages: [], engineering: 'owned-by-main', browser: 'not-run', teachingEffect: 'not-assessed' };
@@ -291,7 +295,7 @@ async function main() {
     const pkg = await product(args.product); report.packages = { mac: pkg.fact };
     check(process.versions.node.startsWith('24.'), 'node24-required');
     report.probeSha256 = sha(await readFile(fileURLToPath(import.meta.url)));
-    root = await mkdtemp(join(tmpdir(), 'xj-wp08-215-school-'));
+    root = await mkdtemp(join(tmpdir(), `xj-wp08-${issue}-school-`));
     runtime = pkg.module.openProductRuntime({ root, resources: pkg.resources });
     await stage('mac-school-direct-https', async () => {
       await runtime.install({ profile: 'school', host: '0.0.0.0', port: port(args['mac-port']),
@@ -384,8 +388,13 @@ async function main() {
     check(capability.receiver.receiverId === 'teaching-agent:' + agentTarget.serviceId, 'activity-not-routed-to-windows-agent');
     const input = { requestId: randomUUID(), scope: { environmentId: identity.environmentId, spaceId: identity.spaceId,
       principalId: identity.principalId, activityId: activity.activityId }, receiver: capability.receiver,
-      draft: { token: randomUUID(), question: `先且仅调用一次 read_work，读取 objectId=${work.objectId}、contentId=${work.contentId} 的固定原件。`
-        + '收到工具结果后，简短说明水位增加多少并结束。必须实际读取工具，不调用其他工具、不修改作品、不提问。', references: [], bases: [] },
+      draft: { token: randomUUID(), question: (args.discovery
+        ? '按顺序各调用一次工具：先 discover_tools，参数必须为 {"purpose":"read_work","source":"platform.learning","object":null,"cursor":null,"pageSize":2}；'
+          + '再将返回的 read_work bindingId 放入 bindingIds 数组调用 load_tools；'
+          + `等加载完成后，仅调用一次 read_work 读取 objectId=${work.objectId}、contentId=${work.contentId} 的固定原件。`
+          + '收到真实原件后，简短说明水位增加多少并结束。只调用这三个工具，不修改作品、不提问。'
+        : `先且仅调用一次 read_work，读取 objectId=${work.objectId}、contentId=${work.contentId} 的固定原件。`
+          + '收到工具结果后，简短说明水位增加多少并结束。必须实际读取工具，不调用其他工具、不修改作品、不提问。'), references: [], bases: [] },
       works: [work], evidence: [] };
     const prepared = await schoolApi('intents/' + activity.activityId, input);
     const base = 'agent/' + activity.activityId;
@@ -410,19 +419,29 @@ async function main() {
       check(uuid(runId), 'accepted-run-identity-missing');
       return { requestId: input.requestId, runId, inputSha256: prepared.inputDigest, dependencyConnectionId, dependencyGrantId: fresh.grantId };
     });
-    const final = await stage('windows-assembly-mac-work-and-two-real-model-calls', async () => {
+    const final = await stage(args.discovery ? 'windows-discovery-load-mac-work-and-four-real-model-calls' : 'windows-assembly-mac-work-and-two-real-model-calls', async () => {
       const conversation = await until(async () => {
         const value = await schoolApi(base + '/conversation'), run = value.runs.find(item => item.runId === receipt.runId);
         if (run && ['paused', 'failed', 'stopped'].includes(run.state)) throw Object.assign(new Error('remote-run-not-completed'), { code: 'remote-run-' + run.state });
         return run?.state === 'completed' ? value : null;
-      }, 'remote-agent-completion-timeout');
+      }, 'remote-agent-completion-timeout', args.discovery ? 180000 : 90000);
       check(conversation.runs.length === 1 && conversation.runs[0].requestId === input.requestId, 'action-was-replayed-as-another-run');
       check(conversation.inputs.length === 1 && conversation.inputs[0].requestId === input.requestId, 'original-input-identity-changed');
-      check(conversation.tools.length === 1, 'expected-one-real-read-work');
-      const tool = conversation.tools[0];
+      const expectedTools = args.discovery ? ['discover_tools', 'load_tools', 'read_work'] : ['read_work'];
+      check(conversation.tools.length === expectedTools.length && expectedTools.every(name =>
+        conversation.tools.filter(tool => tool.name === name && tool.outcome === 'completed').length === 1), 'expected-completed-tool-chain');
+      const tool = conversation.tools.find(tool => tool.name === 'read_work');
       check(tool.name === 'read_work' && tool.outcome === 'completed' && tool.result?.file?.value === work.value, 'mac-fixed-work-not-returned');
-      check(relay.requests.length === 2 && relay.requests.every(item => item.status === 200 && item.finished)
-        && relay.rejected.length === 0, 'real-provider-two-call-boundary-failed');
+      if (args.discovery) {
+        const discovered = conversation.tools.find(tool => tool.name === 'discover_tools');
+        const loaded = conversation.tools.find(tool => tool.name === 'load_tools');
+        assert.deepEqual(discovered.arguments, { purpose: 'read_work', source: 'platform.learning', object: null, cursor: null, pageSize: 2 });
+        const entry = discovered.result?.entries?.find(entry => entry.definition?.name === 'read_work');
+        check(entry && loaded.arguments.bindingIds?.length === 1 && loaded.arguments.bindingIds[0] === entry.bindingId, 'discovered-read-work-binding-not-loaded');
+        assert.deepEqual(tool.arguments, { objectId: work.objectId, contentId: work.contentId });
+      }
+      check(relay.requests.length === limits.maxGenerations && relay.requests.every(item => item.status === 200 && item.finished)
+        && relay.rejected.length === 0, args.discovery ? 'real-provider-four-call-boundary-failed' : 'real-provider-two-call-boundary-failed');
       const contributions = wire.filter(item => item.operation === 'tool.contributions' && item.state === 'completed');
       check(contributions.length > 0 && contributions.every(item => item.sourceEnvironmentId === agentTarget.environmentId
         && item.sourceServiceId === agentTarget.serviceId && item.targetServiceId === data.serviceId), 'cross-owner-tool-contributions-not-witnessed');
@@ -433,7 +452,7 @@ async function main() {
       // Only the digest of the full public conversation is retained, not its content.
       return { runId: receipt.runId, requestId: input.requestId, activityId: activity.activityId, toolCommandId: tool.commandId,
         workContentSha256: sha(tool.result.file.value), modelRequests: relay.requests.length,
-        contributionTransfers: contributions.length, toolDispatches: dispatches.length };
+        contributionTransfers: contributions.length, toolDispatches: dispatches.length, ...(args.discovery ? { completedTools: expectedTools } : {}) };
     });
     const events = await schoolApi(base + '/events');
     const snapshots = [];
@@ -450,7 +469,7 @@ async function main() {
         check(snapshot.resolvedAgent.tools.some(tool => tool.modelName === 'read_work' && tool.executor.toolName === 'read_work'
           && tool.resourceScope.activityId === activity.activityId), 'real-read-work-binding-not-retained');
       }
-      check(snapshots.length === 2, 'expected-two-original-snapshots');
+      check(snapshots.length === limits.maxGenerations, args.discovery ? 'expected-four-original-snapshots' : 'expected-two-original-snapshots');
       report.snapshots = snapshots.map(snapshot => ({ snapshotId: snapshot.snapshotId, attemptId: snapshot.attemptId,
         segmentId: snapshot.segmentId, resolvedId: snapshot.resolvedAgent.resolvedId, definitionId: snapshot.resolvedAgent.definition.definitionId,
         definitionVersion: snapshot.resolvedAgent.definition.version, contextManifestId: snapshot.contextManifest.manifestId,

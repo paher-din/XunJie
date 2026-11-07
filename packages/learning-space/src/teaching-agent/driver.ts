@@ -190,21 +190,33 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     }
     const internal = [...discoveryContributions(scope), ...discoveryContributions(scope, [readToolResultDefinition])];
     const current = binding.source.sourceId === 'platform.tools' ? internal : await toolContributions(owner.tools, scope);
-    if (!current.some(item => canonicalDigest(item) === binding.bindingId)) throw new StorageError('forbidden');
+    if (!current.some(item => {
+      const compatible = { ...item };
+      // Published v1 bindings predate these descriptive fields; all executable facts still match exactly.
+      if (binding.purpose === undefined) delete compatible.purpose;
+      if (binding.resultSchema === undefined) delete compatible.resultSchema;
+      return canonicalDigest(compatible) === binding.bindingId;
+    })) throw new StorageError('forbidden');
   }
   async function internalToolOutcome(scope: TeachingToolScope, command: TeachingPreparedTool, definition: AgentDefinition) {
     if (command.name === 'read_tool_result') {
-      const { rows: [original] } = await storage.read(`SELECT c.binding_id,s.plan FROM teaching_commands c
-        JOIN teaching_steps s USING(step_id) WHERE c.command_id=$1 AND c.run_id=$2`, [command.arguments.commandId, scope.runId]);
-      const binding = (original?.plan as Plan | undefined)?.resolvedAgent?.tools.find(item => item.bindingId === original?.binding_id);
-      if (!binding) throw new StorageError('forbidden');
-      await assertCurrentBinding(scope, binding);
+      let originalId = String(command.arguments.commandId);
+      const visited = new Set<string>();
+      for (;;) {
+        if (visited.has(originalId) || visited.size >= 64) throw new StorageError('forbidden');
+        visited.add(originalId);
+        const { rows: [original] } = await storage.read(`SELECT c.binding_id,c.command,s.plan FROM teaching_commands c
+          JOIN teaching_steps s USING(step_id) WHERE c.command_id=$1 AND c.run_id=$2`, [originalId, scope.runId]);
+        const binding = (original?.plan as Plan | undefined)?.resolvedAgent?.tools.find(item => item.bindingId === original?.binding_id);
+        if (!binding) throw new StorageError('forbidden');
+        await assertCurrentBinding(scope, binding);
+        if (binding.executor.executorId !== 'teaching-discovery:read_tool_result') break;
+        originalId = String((original!.command as TeachingPreparedTool).arguments.commandId);
+      }
       return readToolResult(storage, scope, command.arguments);
     }
     const outcome = await discoveryOutcome(storage, scope, command.name, command.arguments,
       permittedContributions(await toolContributions(owner.tools, scope), definition));
-    if (command.basis.frozenOutcome && canonicalDigest(outcome) !== canonicalDigest(command.basis.frozenOutcome))
-      throw new StorageError('identity-conflict');
     return outcome;
   }
   async function pause(run: TeachingRun, generation: number, reason: string, model = run.model) {
@@ -364,26 +376,27 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     }
     // A fresh native segment starts a new user turn. Portable assistant facts are
     // evidence, never an open provider reasoning turn or a substitute for the fixed intent.
-    if (previous && plan.input.segmentId !== previous.segment_id && !plan.input.input.text) {
+    if (previous && plan.input.segmentId !== previous.segment_id && !plan.input.input.text && !fixedInputs.length) {
       const settled = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
         name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
-      plan.input.input.text = '同一已接受问题的后续步骤；以下已完成操作不要重跑，请从尚未完成处继续：\n'
+      plan.input.input.text = '同一已接受问题的后续步骤。原操作状态如下；已完成的不重跑，已接受或未知不当作完成，按原身份核对：\n'
         + JSON.stringify(settled) + '\n\n当前固定学生意图与依据：\n' + fixedInputText(scope.input);
     }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
     const policy = plan.resolvedAgent?.definition.contextPolicy;
+    const capacityInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
     if (plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
       || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
       await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
         { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
           inputChars: plan.input.input.text.length, policy,
-          requiredScope: { questions: fixedInputs.map(item => item.input.requestId),
-            references: fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.referenceId)),
-            works: fixedInputs.flatMap(item => item.input.works.map(work => work.contentId)),
-            workNames: [...new Set(fixedInputs.flatMap(item => item.input.works.map(work => work.name)))],
-            referenceNames: [...new Set(fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.sourceName)))] } } });
+          requiredScope: { questions: capacityInputs.map(input => input.requestId),
+            references: capacityInputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+            works: capacityInputs.flatMap(input => input.works.map(work => work.contentId)),
+            workNames: [...new Set(capacityInputs.flatMap(input => input.works.map(work => work.name)))],
+            referenceNames: [...new Set(capacityInputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] } } });
       return null;
     }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
@@ -604,11 +617,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         const fixedIntent = binding ? { ...intent, name: binding.executor.toolName } : intent;
         if (fixedIntent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, fixedIntent, commandId);
         else if (binding?.source.sourceId === 'platform.tools') {
-          const frozenOutcome = fixedIntent.name === 'read_tool_result' ? undefined : await discoveryOutcome(storage, scope, fixedIntent.name, fixedIntent.arguments,
-            permittedContributions(await toolContributions(owner.tools, scope), resolved!.definition));
           command = { version: 1, commandId, name: fixedIntent.name,
             arguments: structuredClone(fixedIntent.arguments), effect: 'read', location: 'owner', conflictKey: run.activityId,
-            basis: { executorBinding: binding, ...(frozenOutcome ? { frozenOutcome } : {}), scope: { identity: scope.identity, activityId: run.activityId, runId: run.runId } } };
+            basis: { executorBinding: binding, scope: { identity: scope.identity, activityId: run.activityId, runId: run.runId } } };
         }
         else {
           if (!owner.tools) throw new StorageError('forbidden');

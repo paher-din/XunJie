@@ -15,7 +15,8 @@ const terminal = new Set(['completed', 'failed', 'stopped']);
 type Row = Record<string, unknown>;
 
 /** Called only at a closed, drained owner boundary. No models, tools or remote owners are invoked. */
-export async function collectTeachingBoundary(storage: OwnedStorage) {
+export async function collectTeachingBoundary(storage: OwnedStorage) { return collectBoundary(storage, 2); }
+async function collectBoundary(storage: OwnedStorage, formatVersion: 1 | 2) {
   const records = new Map<string, Row[]>();
   const inventory: Record<string, { count: number; sha256: string }> = {};
   for (const table of tables) {
@@ -48,6 +49,10 @@ export async function collectTeachingBoundary(storage: OwnedStorage) {
   for (const row of [...rows('teaching_snapshots'), ...rows('teaching_commands'), ...rows('agent_chunk_parts')]) {
     if (row.resource_id) resourceIds.add(String(row.resource_id));
   }
+  if (formatVersion === 2) for (const event of rows('teaching_events')) {
+    const body = event.body as { resourceId?: unknown };
+    if (event.kind === 'tool-result' && typeof body.resourceId === 'string') resourceIds.add(body.resourceId);
+  }
   const resources = [];
   for (const resourceId of [...resourceIds].sort()) {
     const reference = await storage.resource(resourceId), bytes = await storage.readResource(resourceId);
@@ -57,7 +62,7 @@ export async function collectTeachingBoundary(storage: OwnedStorage) {
   return { kind: teachingMaintenanceKind, unresolved, settled: runs.length - unresolved.length,
     // Physical model calls and executions are attested by their own owners. These are Agent facts.
     blocking: [] as { code: string; detail: string }[], retained: { resources: resources.length, checkpoints: 0 },
-    evidence: { formatVersion: 1, owner: storage.owner, tables: inventory, resources,
+    evidence: { formatVersion, owner: storage.owner, tables: inventory, resources,
       pending: { commands: commands.length, waits: waits.length,
         inputs: rows('teaching_inputs').filter(row => ['pending', 'paused'].includes(String(row.state))).length,
         studentQuestions: rows('teaching_student_questions').filter(row => row.state === 'pending').length } } };
@@ -78,9 +83,9 @@ export async function validateTeachingBoundary(storage: OwnedStorage, material: 
   // Published pre-#204 backups have no domain inventory. Normal service/resource validation still runs.
   if (material.kind === 'xunjie.storage.boundary' && material.evidence === undefined) return;
   if (material.kind !== teachingMaintenanceKind) throw new StorageError('incompatible');
-  if (!material.evidence || typeof material.evidence !== 'object'
-    || (material.evidence as { formatVersion?: unknown }).formatVersion !== 1) throw new StorageError('incompatible');
-  const actual = await collectTeachingBoundary(storage);
+  const version = (material.evidence as { formatVersion?: unknown } | undefined)?.formatVersion;
+  if (!material.evidence || typeof material.evidence !== 'object' || version !== 1 && version !== 2) throw new StorageError('incompatible');
+  const actual = await collectBoundary(storage, version);
   const { kind, unresolved, settled, retained, blocking, evidence } = material;
   if (canonicalDigest({ kind, unresolved, settled, retained, blocking, evidence }) !== canonicalDigest(actual))
     throw new StorageError('corrupt');

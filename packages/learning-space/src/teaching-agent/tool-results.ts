@@ -10,17 +10,19 @@ const feedbackBytes = 8192;
 // Exact bytes are base64 encoded. Leave room for their JSON envelope and preview
 // within the existing model feedback budget, even when the caller asks for 8192.
 const sliceBytes = 4096;
-const rangeInput = z.object({ commandId: z.uuid(), offset: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+const rangeInput = z.object({ commandId: z.uuid(), sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  offset: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   limit: z.number().int().min(1).max(8192) }).strict();
 
 export const readToolResultDefinition: ModelTool = {
   name: 'read_tool_result',
-  description: 'Read a bounded byte range of a retained tool result from this original Run. Use original.commandId, never a resource URL. '
+  description: 'Read a bounded byte range of a retained tool result version from this original Run. Use original.commandId and original.sha256, never a resource URL. '
     + 'Offsets refer to canonical JSON UTF-8 bytes. The actual range may be shorter than limit; continue at nextOffset. '
     + 'base64 contains the exact bytes; preview is only a readable excerpt.',
   inputSchema: { type: 'object', properties: { commandId: { type: 'string', minLength: 36, maxLength: 36 },
+    sha256: { type: 'string', minLength: 64, maxLength: 64, pattern: '^[a-f0-9]{64}$' },
     offset: { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER }, limit: { type: 'integer', minimum: 1, maximum: 8192 } },
-    required: ['commandId', 'offset', 'limit'], additionalProperties: false },
+    required: ['commandId', 'sha256', 'offset', 'limit'], additionalProperties: false },
 };
 
 function resultBytes(result: TeachingToolOutcome['result']) { return Buffer.from(canonical(result), 'utf8'); }
@@ -75,8 +77,8 @@ export async function readToolResult(storage: Pick<OwnedStorage, 'read' | 'readR
     || canonical(scope.input.scope) !== canonical({ environmentId: scope.identity.environmentId, spaceId: scope.identity.spaceId,
       principalId: scope.identity.principalId, activityId: scope.activity.activityId })) throw new StorageError('forbidden');
   await scope.assertDispatch();
-  const { commandId, offset, limit } = parsed.data;
-  const { rows: [row] } = await storage.read(`SELECT c.command,c.state,c.outcome,c.resource_id,r.identity,r.activity_id,r.run_id
+  const { commandId, sha256: version, offset, limit } = parsed.data;
+  const { rows: [row] } = await storage.read(`SELECT c.command,c.step_id,r.identity
     FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id
     JOIN teaching_steps s ON s.step_id=c.step_id AND s.run_id=c.run_id
     WHERE c.command_id=$1 AND r.run_id=$2 AND r.activity_id=$3
@@ -88,26 +90,43 @@ export async function readToolResult(storage: Pick<OwnedStorage, 'read' | 'readR
   const originalScope = command.basis?.scope;
   if (command.commandId !== commandId || !originalScope || canonical(originalScope.identity) !== canonical(scope.identity)
     || originalScope.activityId !== scope.activity.activityId || originalScope.runId !== scope.runId) throw new StorageError('corrupt');
-  // A pending command can acquire a later outcome/resource. Only a settled original
-  // offers an immutable version suitable for repeated byte-range reads.
-  if (row.state !== 'settled' || !row.resource_id || !row.outcome) throw new StorageError('unavailable');
+  // The command's latest outcome/resource can change after reconciliation or
+  // cleanup. Every retained tool-result event fixes an independently readable
+  // version, including accepted/unknown observations of an unfinished effect.
+  const { rows: events } = await storage.read(`SELECT body FROM teaching_events
+    WHERE activity_id=$1 AND kind='tool-result' AND body->>'commandId'=$2
+      AND body->>'runId'=$3 AND body->>'stepId'=$4 ORDER BY seq`,
+  [scope.activity.activityId, commandId, scope.runId, String(row.step_id)]);
+  let selected: { resourceId: string; outcome: TeachingToolOutcome } | undefined;
+  for (const event of events) {
+    const body = event.body as { resourceId?: unknown; outcome?: unknown };
+    const fact = teachingToolOutcomeSchema.safeParse(body.outcome);
+    if (!fact.success) throw new StorageError('corrupt');
+    if (sha256(resultBytes(fact.data.result)) !== version) continue;
+    if (!z.uuid().safeParse(body.resourceId).success) throw new StorageError('corrupt');
+    selected = { resourceId: body.resourceId as string, outcome: fact.data };
+    break;
+  }
+  if (!selected) throw new StorageError('missing');
   let retained: TeachingToolOutcome;
   try {
     retained = teachingToolOutcomeSchema.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true })
-      .decode(await storage.readResource(String(row.resource_id)))));
+      .decode(await storage.readResource(selected.resourceId))));
   } catch (error) {
     if (error instanceof StorageError) throw error;
     throw new StorageError('corrupt');
   }
-  if (canonical(retained) !== canonical(row.outcome)) throw new StorageError('corrupt');
+  if (canonical(retained) !== canonical(selected.outcome)) throw new StorageError('corrupt');
   const bytes = resultBytes(retained.result);
+  if (sha256(bytes) !== version) throw new StorageError('corrupt');
   if (offset > bytes.length) throw new StorageError('invalid');
   const end = Math.min(bytes.length, offset + Math.min(limit, sliceBytes));
   const chunk = bytes.subarray(offset, end), excerpt = preview(chunk, 256);
   // Qualification/stop can change during resource IO. The original Driver permit
   // must still be valid before bytes are returned to the model.
   await scope.assertDispatch();
-  const result = { source: { commandId }, version: 1, sha256: sha256(bytes), byteLength: bytes.length, encoding: 'utf8',
+  const result = { source: { commandId }, formatVersion: 1, version, sha256: version,
+    outcomeState: retained.state, byteLength: bytes.length, encoding: 'utf8',
     base64: chunk.toString('base64'), preview: excerpt.text,
     previewByteRange: { offset: offset + excerpt.start, end: offset + excerpt.end },
     byteRange: { offset, end }, nextOffset: end < bytes.length ? end : null };
