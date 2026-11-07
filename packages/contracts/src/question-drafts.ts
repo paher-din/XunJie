@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { aluReferenceAdapters, aluReferenceCopy, normalizeAluReferenceTarget } from './alu-references.js';
+import { teachingSkillReferencesSchema } from './agent-skills.js';
 const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** UTF-16 half-open offsets in the selected source's original text. */
@@ -67,12 +68,16 @@ export const questionReferencesSchema = z.array(questionReferenceInputSchema).ma
     && new Set(references.map(item => questionReferenceKey(item))).size === references.length
     && references.reduce((sum, item) => sum + item.copy.length, 0) <= 1000000);
 
+/** Explicit version pins travel with the original question, never a mutable catalog alias. */
+export const questionSkillsSchema = teachingSkillReferencesSchema;
+export type QuestionSkill = z.infer<typeof questionSkillsSchema>[number];
+
 /** Revision zero means no draft has been saved; it has no revision identity yet. */
 export const questionDraftViewSchema = z.object({ draftId: z.uuid(),
   revision: z.number().int().nonnegative(), revisionId: z.uuid().nullable(),
-  question: questionTextSchema, references: z.array(questionReferenceSchema).max(64) }).strict()
+  question: questionTextSchema, references: z.array(questionReferenceSchema).max(64), skills: questionSkillsSchema.optional() }).strict()
   .refine(view => view.revision === 0
-    ? view.revisionId === null && view.question === '' && view.references.length === 0
+    ? view.revisionId === null && view.question === '' && view.references.length === 0 && !view.skills?.length
     : view.revisionId !== null, { message: 'revision zero is the empty draft' });
 export type QuestionDraftView = z.infer<typeof questionDraftViewSchema>;
 
@@ -84,7 +89,7 @@ export type QuestionWorkBasis = z.infer<typeof questionWorkBasisSchema>;
 
 export const questionDraftSyncSchema = z.object({ requestId: z.uuid(), draftId: z.uuid(),
   baseRevision: z.number().int().nonnegative(), question: questionTextSchema,
-  references: questionReferencesSchema, bases: z.array(questionWorkBasisSchema).max(64) }).strict();
+  references: questionReferencesSchema, bases: z.array(questionWorkBasisSchema).max(64), skills: questionSkillsSchema.optional() }).strict();
 export type QuestionDraftSync = z.infer<typeof questionDraftSyncSchema>;
 
 /** A finite registry, shared by source owners and view adapters; names/coordinates never establish identity. */

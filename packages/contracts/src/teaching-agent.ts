@@ -8,6 +8,7 @@ import { runtimeServiceSchema } from './product-runtime.js';
 import { spaceIdentitySchema } from './spaces.js';
 import { teachingStudentQuestionSchema } from './student-questions.js';
 import { teachingInputSchema, teachingContinueSelectionSchema } from './teaching-input-control.js';
+import { teachingSkillLoadedSchema } from './agent-skills.js';
 
 export * from './student-questions.js';
 export * from './teaching-inputs.js';
@@ -96,6 +97,7 @@ export const teachingMessageSchema = z.object({
   summaryTruncated: z.boolean().optional(),
   model: teachingModelFactSchema.optional(),
   modelSource: z.enum(['school', 'personal']).optional(),
+  skillSource: teachingSkillLoadedSchema.optional(),
   createdAt: z.iso.datetime(),
 }).strict();
 export type TeachingMessage = z.infer<typeof teachingMessageSchema>;
@@ -176,9 +178,11 @@ export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({
 }).strict();
 export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events', 'switchModel',
   'capabilities', 'run', 'stop', 'continueRun', 'request', 'snapshot', 'assertCommandDispatch', 'assertModelDispatch',
-  'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt']);
+  'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt',
+  'skills.list', 'skills.import', 'skills.select', 'skills.disable', 'skills.read']);
 export const teachingAgentCallSchema = z.object({ version: z.literal(1), operation: teachingAgentOperationSchema,
-  identity: spaceIdentitySchema, activityId: z.uuid(), args: z.array(z.unknown()).max(4) }).strict();
+  identity: spaceIdentitySchema, activityId: z.uuid().optional(), args: z.array(z.unknown()).max(4) }).strict()
+  .refine(call => call.activityId !== undefined || call.operation.startsWith('skills.'), 'activity is required for conversation operations');
 
 export const teachingPreparedToolSchema = z.object({ version: z.literal(1), commandId: z.uuid(), name: z.string().min(1),
   arguments: z.record(z.string(), z.unknown()), effect: z.enum(['read', 'execute', 'input', 'stop', 'ask']), conflictKey: z.string().min(1),

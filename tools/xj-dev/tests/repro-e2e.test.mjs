@@ -58,8 +58,12 @@ test('capture before stale-editor save; restore actual code/data to another work
   const contextFile = join(root, 'context.json'), file = join(root, 'scene.zip');
   const body = { recoveryGeneration: generation, expectedWorkspaceRevision: attempt.workspaceRevision, clientId: 'stale-editor', clientSeq: 1,
     operations: [{ kind: 'create', clientFileKey: 'first', path: 'stale-editor.txt', text: 'first tab saved' }] };
+  // This acceptance may run while a dependency change is under review. Explicitly
+  // capture those conditions so the receiver sees the same approved dependency graph.
+  const dependencyChanges = ['package-lock.json', 'packages/learning-space/package.json']
+    .filter(path => git(worktree, ['status', '--porcelain', '--', path]).trim());
   const spec = { formatVersion: 'xj-repro-context/1',
-    code: { paths: [] },
+    code: { paths: dependencyChanges },
     data: { scope: { courseIds: ['synthetic-textscope-c'], userIds: ['synthetic-teacher', 'synthetic-student'], attemptIds: [before.attempt_id] } },
     scenario: { title: '旧编辑现场保存遇到版本冲突', start: 'before-trigger', expected: '旧版本不能覆盖较新的保存', observed: '第二个编辑现场返回 HTTP 409 VERSION_CONFLICT',
       capabilities: { execution: 'not-required', models: 'not-required' },

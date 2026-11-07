@@ -18,6 +18,8 @@ import type { createTeachingInputs } from './inputs.js';
 import { assembleTeachingAgent, retainTeachingAssembly, manifestFor, TeachingAssemblyError, toolContributions } from './assembly.js';
 import { compileOutputSchema } from '../model-connections/chat-native.js';
 import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/contracts/teaching-agent';
+import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
+import { teachingSkillContext } from './skill-runtime.js';
 
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
@@ -29,6 +31,7 @@ interface Plan {
   inputVersions?: { inputId: string; version: number; inputDigest: string }[];
   waitVersions?: { waitId: string; outcomeDigest: string }[];
   resolvedAgent?: ResolvedAgent;
+  skillState?: TeachingSkillState;
   contextHistory?: ContextMessage[];
   selectionVersion?: number;
   selectionPinId?: string;
@@ -66,6 +69,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   driverId: string;
   models: LearningModelPort;
   tools?: TeachingToolHost;
+  skillState?(scope: TeachingToolScope): Promise<TeachingSkillState>;
   definition?: AgentDefinition | ((scope: TeachingToolScope) => Promise<AgentDefinition>);
   studentQuestions: ReturnType<typeof createStudentQuestions>;
   inputs: ReturnType<typeof createTeachingInputs>;
@@ -244,11 +248,15 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         ...((target?.source.kind ?? priorPlan.modelSource) ? { modelSource: (target?.source.kind ?? priorPlan.modelSource)! } : {}),
         sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString(),
         ...(priorPlan.resolvedAgent ? { resolvedAgent: priorPlan.resolvedAgent } : {}),
+        ...(priorPlan.skillState ? { skillState: priorPlan.skillState } : {}),
         ...(priorPlan.contextHistory ? { contextHistory: priorPlan.contextHistory } : {}),
         ...(priorPlan.selectionVersion !== undefined ? { selectionVersion: priorPlan.selectionVersion } : {}),
         ...(priorPlan.selectionPinId ? { selectionPinId: priorPlan.selectionPinId } : {}) };
       if (transition) {
-        if (transition.assembly) plan.resolvedAgent = transition.assembly as ResolvedAgent;
+        if (transition.assembly) {
+          plan.resolvedAgent = transition.assembly as ResolvedAgent;
+          plan.skillState = plan.resolvedAgent.skills ?? { catalog: [], loaded: [] };
+        }
         plan.selectionVersion = Number(transition.selection_version);
         const source = (transition.create_body as { source: { pinId?: string } }).source;
         if (source.pinId) plan.selectionPinId = source.pinId;
@@ -269,16 +277,18 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         if (restored.assemblyId !== fixed.resolvedId) throw new StorageError('corrupt');
         plan.input.segmentId = restored.segmentId; plan.input.expectedSequence = restored.sequence;
         plan.model = restored.model; plan.resolvedAgent = fixed; plan.contextHistory = history;
+        if (fixed.skills) plan.skillState = fixed.skills;
         plan.selectionVersion = selectionVersion; plan.selectionPinId = body.source.pinId;
       } else if (segmentId === previous.segment_id && plan.resolvedAgent && plan.selectionVersion !== undefined && plan.selectionPinId) {
         const history = await owner.historyForAssembly(run.activityId);
         let next;
         try { next = await assembleTeachingAgent(scope, owner.tools, plan.model, history,
-          typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition); }
+          typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition, await owner.skillState?.(scope)); }
         catch (error) {
           if (!(error instanceof TeachingAssemblyError)) throw error;
           await pauseAssembly(run, generation, error); return null;
         }
+        if (next.skillState) plan.skillState = next.skillState;
         if (next.resolvedAgent.resolvedId !== plan.resolvedAgent.resolvedId) {
           await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, next.resolvedAgent); });
           const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
@@ -287,6 +297,13 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           if (segment.assemblyId !== next.resolvedAgent.resolvedId) throw new StorageError('conflict');
           plan.input.segmentId = segment.segmentId; plan.input.expectedSequence = segment.sequence;
           plan.resolvedAgent = next.resolvedAgent; plan.contextHistory = history;
+        }
+      }
+      if (owner.skillState && (segmentId !== previous.segment_id || received)) {
+        try { plan.skillState = await owner.skillState(scope); }
+        catch (error) {
+          if (!(error instanceof TeachingAssemblyError)) throw error;
+          await pauseAssembly(run, generation, error); return null;
         }
       }
     } else {
@@ -314,11 +331,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       let assembly;
       try {
         const receivedAgent = receivedTransition?.assembly as ResolvedAgent | undefined;
+        // The received assembly fixes the original segment, not current permission to load guidance.
+        const skillState = await owner.skillState?.(scope);
         assembly = receivedAgent ? { resolvedAgent: receivedAgent,
           context: buildContext(scope.activity, scope.input, history, { definition: receivedAgent.definition }),
-          tools: receivedAgent.tools.map(item => item.definition) }
+          tools: receivedAgent.tools.map(item => item.definition),
+          ...(skillState ? { skillState } : receivedAgent.skills ? { skillState: receivedAgent.skills } : {}) }
           : await assembleTeachingAgent(scope, owner.tools, model, history,
-            typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition);
+            typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition, skillState);
       }
       catch (error) {
         if (!(error instanceof TeachingAssemblyError)) throw error;
@@ -342,22 +362,34 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       plan = { input: { attemptId: run.runId, purpose: 'learning', segmentId: native.segmentId, expectedSequence: native.sequence,
         input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
         model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString(),
-        resolvedAgent, contextHistory: history, selectionVersion: selection.version, selectionPinId };
+        resolvedAgent, ...(assembly.skillState ? { skillState: assembly.skillState } : {}),
+        contextHistory: history, selectionVersion: selection.version, selectionPinId };
     }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
+    // Configuration/model transitions need a real current user turn without reopening provider reasoning.
+    // This is the accepted intent, not a new action; every original effect keeps its actual state.
+    if (previous && plan.input.segmentId !== previous.segment_id && !plan.input.input.text && !texts.length) {
+      const operations = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
+        name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
+      plan.input.input.text = '继续处理同一已接受问题。以下是原操作的固定状态，已完成项无需重做，未结项只核对原身份：\n'
+        + JSON.stringify(operations) + '\n\n当前固定学生意图与依据：\n' + fixedInputText(scope.input);
+    }
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
+    const skillText = teachingSkillContext(plan.skillState ?? plan.resolvedAgent?.skills);
+    if (skillText) plan.input.input.text = [skillText, plan.input.input.text].filter(Boolean).join('\n\n---\n\n');
     const policy = plan.resolvedAgent?.definition.contextPolicy;
     if (plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
       || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
+      const capacityInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
       await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
         { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
           inputChars: plan.input.input.text.length, policy,
-          requiredScope: { questions: fixedInputs.map(item => item.input.requestId),
-            references: fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.referenceId)),
-            works: fixedInputs.flatMap(item => item.input.works.map(work => work.contentId)),
-            workNames: [...new Set(fixedInputs.flatMap(item => item.input.works.map(work => work.name)))],
-            referenceNames: [...new Set(fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.sourceName)))] } } });
+          requiredScope: { questions: capacityInputs.map(input => input.requestId),
+            references: capacityInputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+            works: capacityInputs.flatMap(input => input.works.map(work => work.contentId)),
+            workNames: [...new Set(capacityInputs.flatMap(input => input.works.map(work => work.name)))],
+            referenceNames: [...new Set(capacityInputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] } } });
       return null;
     }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
@@ -416,6 +448,12 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, outputRemaining);
       plan.input.limits.timeoutMs = Math.min(plan.input.limits.timeoutMs ?? callRemaining, callRemaining, 2_147_483_647);
       if (plan.resolvedAgent) plan.contextFacts = await fixedContextFacts(tx, run, scope.activity, fixedInputs.map(item => item.inputId));
+      const priorSkills = (previous?.plan as Plan | undefined)?.skillState?.loaded ?? [];
+      for (const loaded of plan.skillState?.loaded ?? []) if (!priorSkills.some(prior => canonicalDigest(prior) === canonicalDigest(loaded)))
+        await event(tx, run.activityId, 'system-notice', { runId: run.runId, stepId, snapshotId, reason: 'skill-loaded',
+          skillId: loaded.skillId, version: loaded.version, source: loaded.source, packageVersion: loaded.packageVersion,
+          path: loaded.path, digest: loaded.digest, offset: loaded.offset, byteLength: loaded.byteLength, totalByteLength: loaded.totalByteLength,
+          loaded });
       await tx.query(`INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved,call_reserved_ms)
         VALUES($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10)`, [stepId, run.runId, number, attemptId,
         plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens, inputReserve, plan.input.limits.timeoutMs]);
@@ -457,6 +495,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     await owner.models.checks.receive(scope.identity, plan.input);
     const payload = await owner.models.checks.requestPayload(scope.identity, String(saved.attempt_id));
     const contextManifest = plan.resolvedAgent ? manifestFor(plan.resolvedAgent, payload, { ...plan.contextFacts!,
+      ...(plan.skillState ? { skills: plan.skillState } : {}),
       history: plan.contextHistory ?? [], observations: plan.input.input.observations ?? [],
       maxOutputTokens: plan.input.limits.maxOutputTokens }) : undefined;
     const snapshot = teachingSnapshotSchema.parse({ snapshotId: saved.snapshot_id, activityId: run.activityId, runId: run.runId,

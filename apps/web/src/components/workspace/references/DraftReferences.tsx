@@ -6,7 +6,8 @@ import type { ReliableActions } from '../../../reliable-workspace/actions'
 import { isExecutionAction } from '@xunjie/contracts/execution'
 import type { ActionInput } from '@xunjie/contracts/action-intents'
 import { snapshotReference, type ReferenceSelection, type ReferenceSource, type WorkspaceReference } from './model'
-import { ReferencesContext, type ReferencesController } from './WorkspaceReferences'
+import { ReferencesContext, type ReferencesController, type DraftSkillsController } from './WorkspaceReferences'
+import { composerView, rememberComposerView } from './composer-view'
 
 const sourceIdOf = (reference: QuestionReferenceInput) => reference.source.kind === 'work'
   ? reference.source.objectId : questionReferenceSourceId(reference.source)
@@ -17,19 +18,19 @@ function displayReferences(references: readonly QuestionReferenceInput[], worksp
     range: Object.freeze({ ...reference.range }) }))
 }
 export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode
-  delivery?: ActionInput['delivery']; deliveryReady?: boolean; onCreated?: () => void }
+  delivery?: ActionInput['delivery']; deliveryReady?: boolean; onCreated?: () => void; skillCatalog?: Omit<DraftSkillsController, 'selected' | 'choose'>; viewActive?: boolean }
 /** Production host consumes the common workspace; availability comes only from registered receivers. */
 export function DraftReferencesProvider(props: DraftReferencesProviderProps) {
   return <DraftReferencesSession key={props.workspaceKey} {...props} />
 }
-function DraftReferencesSession({ workspaceKey, draft, actions, children, delivery, deliveryReady = true, onCreated }: DraftReferencesProviderProps) {
+function DraftReferencesSession({ workspaceKey, draft, actions, children, delivery, deliveryReady = true, onCreated, skillCatalog, viewActive = true }: DraftReferencesProviderProps) {
   const state = useSyncExternalStore(draft.subscribe, draft.snapshot)
   const actionState = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const receiver = actionState.receivers.find(item => item.kind === 'question')
   const [busy, setBusy] = useState(false)
   const creating = useRef(false)
   const actionIds = useRef(new Map<string, string>())
-  const [open, setOpenState] = useState(false)
+  const [open, setOpenState] = useState(() => composerView(workspaceKey).open)
   const [pending, setPending] = useState<ReferenceSelection | null>(null)
   const [notice, setNotice] = useState('')
   const sources = useRef(new Map<string, ReferenceSource>())
@@ -84,6 +85,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     }
   }, [clearSelection])
   const setOpen = (value: boolean) => {
+    rememberComposerView(workspaceKey, { open: value })
     view.current.open = value
     setOpenState(value)
     view.current.pending = null
@@ -138,15 +140,20 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     if (!conflict) return
     const chosen = side === 'local' ? conflict.local : conflict.other
     try {
-      await draft.resolve(chosen.question, chosen.references.map(reference => ({ ...reference, range: { ...reference.range } })))
+      await draft.resolve(chosen.question, chosen.references.map(reference => ({ ...reference, range: { ...reference.range } })), chosen.bases, chosen.skills)
       setNotice(side === 'local' ? '已采用本页草稿，正在自动保存。' : '已采用另一版本，正在自动保存。')
     } catch { setNotice('草稿分歧尚未完成选择，请稍后重试。') }
   }
   const conflict = state.conflict ? {
-    local: { question: state.conflict.local.question, references: displayReferences(state.conflict.local.references, workspaceKey) },
-    other: { question: state.conflict.other.question, references: displayReferences(state.conflict.other.references, workspaceKey) },
+    local: { question: state.conflict.local.question, references: displayReferences(state.conflict.local.references, workspaceKey), skills: state.conflict.local.skills },
+    other: { question: state.conflict.other.question, references: displayReferences(state.conflict.other.references, workspaceKey), skills: state.conflict.other.skills },
   } : undefined
-  const value: ReferencesController = { workspaceKey, open, setOpen, question: state.question, setQuestion, references: refs,
+  const value: ReferencesController = { workspaceKey, open, setOpen, question: state.question, setQuestion, references: refs, viewActive,
+    ...(skillCatalog ? { skills: { ...skillCatalog, selected: state.skills ?? skillCatalog.defaults ?? [], explicit: state.skills !== undefined, choose: skills => {
+      const current = draft.snapshot()
+      if (!current.ready || draft.isReadOnly() || skillCatalog.loading || skillCatalog.error || skillCatalog.isCurrent?.() === false) return
+      draft.selectSkills(skills)
+    } } } : {}),
     pending, select, clearSelection, ask, remove, locate, register, submit, busy,
     notice, sendAvailable: !!receiver && actionState.ready && actionState.active, draftReady: state.ready, readOnly: draft.isReadOnly(),
     draftError: state.error, ...(conflict ? { draftConflict: conflict } : {}), draftConflictReady: state.conflictReady,

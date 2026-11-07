@@ -1,0 +1,86 @@
+{
+  "measuredAt": "2026-11-07T19:19:48.730Z",
+  "model": "deepseek-flash",
+  "capability": "fixed-skill-body-and-attachment",
+  "limits": {
+    "maxGenerations": 2,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 5108,
+        "outputTokens": 640,
+        "totalTokens": 5748,
+        "cachedTokens": 3072,
+        "reasoningTokens": 387
+      },
+      "answerSha256": "cc30a95da0a65a991f21d90730733bbca6e4506965253e884ee035229f19dc0e",
+      "assemblies": [
+        {
+          "resolvedId": "fb8e1389-acb3-4450-b96c-3a1febd0c754",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "2e350e44-5ca6-4d5b-b14e-a8d14ddcb030",
+          "payloadSha256": "9119ab071054a8a5029f7d4cf989d77fed3e9c3cbbe8c73775144859f75a3a69",
+          "contextManifestId": "f9f5fa48-272d-4e88-a6bc-e669490553e6",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "583b9224-d247-4feb-88d2-458e5d582c5f",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "22a7f67c-e3f9-4e36-9acf-636ee2c7475d",
+          "payloadSha256": "ec537800399b13aaea8c79666d07dc6a7d15d35b7996ac8c217ae82e2cbb1ab0",
+          "contextManifestId": "a231d033-f0b0-4756-a54d-44911b541860",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ],
+      "skill": {
+        "skillId": "aaee542f-0ccc-4d7e-818f-2362c48ce590",
+        "version": 1,
+        "packageDigest": "3ed98529cdce4cf03977588a14946dc8d294765f7f4da45e632e23ffb6904e7c",
+        "loadedPaths": [
+          "SKILL.md",
+          "references/observations.md"
+        ],
+        "scriptsExecuted": false,
+        "bodyAndAttachmentTransportMatched": true
+      }
+    }
+  ],
+  "generations": 2,
+  "requests": [
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 1419,
+      "payloadSha256": "9119ab071054a8a5029f7d4cf989d77fed3e9c3cbbe8c73775144859f75a3a69"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 3542,
+      "payloadSha256": "ec537800399b13aaea8c79666d07dc6a7d15d35b7996ac8c217ae82e2cbb1ab0"
+    }
+  ]
+}

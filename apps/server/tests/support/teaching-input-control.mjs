@@ -142,7 +142,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         ownedAgents.push(agent); return agent;
       };
       const agent = makeAgent();
-      return { agent, makeAgent, models, modelStorage, learning, tools, storage, identity,
+      return { agent, makeAgent, models, modelStorage, learning, spaces, courses, tools, storage, identity,
         async send(question, delivery, works = [], target = agent) {
           const input = actionInputSchema.parse({ requestId: randomUUID(), scope: { environmentId: identity.environmentId,
             spaceId: identity.spaceId, principalId: identity.principalId, activityId: activity.activityId },

@@ -10,6 +10,7 @@ const tables = ['teaching_sessions', 'teaching_requests', 'teaching_runs', 'teac
   'teaching_dependency_bindings', 'teaching_model_switches', 'teaching_inputs',
   'teaching_input_revisions', 'teaching_controls', 'teaching_run_input_selections',
   'teaching_agent_definitions', 'teaching_resolved_agents', 'teaching_segment_transitions',
+  'teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads',
   'agent_chunk_transfers', 'agent_chunk_parts'] as const;
 const terminal = new Set(['completed', 'failed', 'stopped']);
 type Row = Record<string, unknown>;
@@ -57,7 +58,7 @@ export async function collectTeachingBoundary(storage: OwnedStorage) {
   return { kind: teachingMaintenanceKind, unresolved, settled: runs.length - unresolved.length,
     // Physical model calls and executions are attested by their own owners. These are Agent facts.
     blocking: [] as { code: string; detail: string }[], retained: { resources: resources.length, checkpoints: 0 },
-    evidence: { formatVersion: 1, owner: storage.owner, tables: inventory, resources,
+    evidence: { formatVersion: 2, owner: storage.owner, tables: inventory, resources,
       pending: { commands: commands.length, waits: waits.length,
         inputs: rows('teaching_inputs').filter(row => ['pending', 'paused'].includes(String(row.state))).length,
         studentQuestions: rows('teaching_student_questions').filter(row => row.state === 'pending').length } } };
@@ -79,9 +80,15 @@ export async function validateTeachingBoundary(storage: OwnedStorage, material: 
   if (material.kind === 'xunjie.storage.boundary' && material.evidence === undefined) return;
   if (material.kind !== teachingMaintenanceKind) throw new StorageError('incompatible');
   if (!material.evidence || typeof material.evidence !== 'object'
-    || (material.evidence as { formatVersion?: unknown }).formatVersion !== 1) throw new StorageError('incompatible');
+    || ![1, 2].includes(Number((material.evidence as { formatVersion?: unknown }).formatVersion))) throw new StorageError('incompatible');
   const actual = await collectTeachingBoundary(storage);
   const { kind, unresolved, settled, retained, blocking, evidence } = material;
+  if ((material.evidence as { formatVersion: number }).formatVersion === 1) {
+    const skillTables = ['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads'];
+    if (skillTables.some(table => actual.evidence.tables[table]!.count !== 0)) throw new StorageError('corrupt');
+    actual.evidence.formatVersion = 1;
+    for (const table of skillTables) delete actual.evidence.tables[table];
+  }
   if (canonicalDigest({ kind, unresolved, settled, retained, blocking, evidence }) !== canonicalDigest(actual))
     throw new StorageError('corrupt');
 }

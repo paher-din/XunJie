@@ -42,6 +42,8 @@ test('configuration changes take effect after the original tool pair without rew
     assert.match(JSON.stringify(snapshots[1].payload), /V2/);
     assert.match(JSON.stringify(snapshots[1].payload), /37/);
     assert.doesNotMatch(JSON.stringify(snapshots[1].payload), /fixed-before-config-change/);
+    assert.equal(f.payloads[1].messages.at(-1).role, 'user', 'The new provider turn ends with the accepted student intent, not portable assistant facts.');
+    assert.match(JSON.stringify(f.payloads[1].messages.at(-1).content), /请先读取固定材料，再解释。/);
     const conversation = await agent.conversation(c.identity, activity.activityId);
     assert.equal(conversation.tools.length, 1); assert.equal(conversation.tools[0].outcome, 'completed');
     assert.equal(events.filter(event => event.kind.startsWith('model-switch-')).length, 0);
@@ -141,6 +143,41 @@ test('an oversized required input is retained with the exact range to reduce and
     const capacity = (await agent.events(c.identity, activity.activityId)).find(event => event.kind === 'capacity-paused');
     assert.equal(capacity.body.requiredScope.question, accepted.input.requestId);
     assert.equal(capacity.body.counting, 'unknown'); assert.equal(f.payloads.length, 0);
+  } finally { await f.close(); }
+});
+
+test('a new segment that cannot fit its adopted intent identifies the retained input and work', { timeout: 180000 }, async () => {
+  let version = 1;
+  const work = { objectId: randomUUID(), contentId: randomUUID(), name: '长期观测.txt', kind: 'text', encoding: 'utf8',
+    mediaType: 'text/plain', value: '原始观测为 37，完整依据必须保留。' };
+  const f = await fixture((_payload, response) => {
+    version = 2;
+    reply(response, { calls: [{ id: 'before-smaller-context', name: 'read_work',
+      arguments: { objectId: work.objectId, contentId: work.contentId } }] });
+  });
+  try {
+    const activity = await f.activity(), c = await f.controlled(activity);
+    await c.learning.works.sync(c.identity, activity.activityId, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    const agent = c.makeAgent({ definition: async () => {
+      const current = definition(version);
+      if (version === 2) current.contextPolicy.maxInputChars = 80;
+      return current;
+    } });
+    const accepted = await c.send('读取固定观测并解释。', undefined, [work], agent);
+    const run = await until(async () => {
+      const current = await agent.run(c.identity, activity.activityId, accepted.runId);
+      return current.state === 'paused' ? current : null;
+    }, 'The new context cannot fit the already adopted fixed input.');
+    assert.equal(run.reason, 'capacity-exceeded');
+    const capacity = (await agent.events(c.identity, activity.activityId)).find(event => event.kind === 'capacity-paused');
+    assert.deepEqual(capacity.body.requiredScope.questions, [accepted.input.requestId]);
+    assert.deepEqual(capacity.body.requiredScope.works, [work.contentId]);
+    assert.deepEqual(capacity.body.requiredScope.workNames, [work.name]);
+    const conversation = await agent.conversation(c.identity, activity.activityId);
+    assert.equal(conversation.inputs[0].input.draft.question, accepted.input.draft.question);
+    assert.deepEqual(conversation.inputs[0].input.works, [work]);
+    assert.equal(conversation.tools.length, 1); assert.equal(conversation.tools[0].outcome, 'completed');
+    assert.equal(f.payloads.length, 1, 'The new over-capacity attempt is never sent.');
   } finally { await f.close(); }
 });
 

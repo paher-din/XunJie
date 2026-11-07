@@ -19,7 +19,7 @@ import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mj
 const worktree = resolve(import.meta.dirname, '../../..'), cli = join(worktree, 'tools/xj-dev/xj-dev.mjs');
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'xj-repro-restore-review-'))), targets = [];
 const file = join(root, 'scene.zip'), preload = join(root, 'controlled-boundary.mjs');
-const codePaths = ['package-lock.json', 'package.json', 'tools/xj-dev/package.json', 'README.md'];
+const codePaths = ['package-lock.json', 'package.json', 'packages/learning-space/package.json', 'tools/xj-dev/package.json', 'README.md'];
 function ownedRegistrations() {
   const normalize = path => path.replaceAll('\\', '/');
   return git(worktree, ['worktree', 'list', '--porcelain']).split(/\r?\n\r?\n/)
@@ -36,7 +36,7 @@ before(async () => {
   try { attemptId = db.prepare("SELECT attempt_id FROM attempts WHERE course_id='synthetic-textscope-c'").get().attempt_id; } finally { db.close(); }
   const contextFile = join(root, 'context.json');
   writeFileSync(contextFile, JSON.stringify({ formatVersion: 'xj-repro-context/1',
-    code: { roots: codePaths },
+    code: { roots: codePaths, paths: codePaths.filter(path => git(worktree, ['status', '--porcelain', '--', path]).trim()) },
     data: { scope: { courseIds: ['synthetic-textscope-c'], userIds: ['synthetic-teacher', 'synthetic-student'], attemptIds: [attemptId] } },
     scenario: { title: 'restore ownership', start: 'before-trigger', expected: 'isolated environment', observed: 'inspect after recovery', steps: ['恢复后检查选中任务。'] } }));
   await captureRepro(context, { contextFile, out: file });

@@ -1,0 +1,7 @@
+{
+  "reportSource": "Exact report values captured from the successful scheduled-task runner stdout, exit code 0.",
+  "remoteOriginalReportPending": true,
+  "screenshots": "Existing before-final-review screenshots, application SHA256 4f36d24d5556ba9642eaad55930920b7b00bced81d5f5ecc9507cc4845f6cf18",
+  "reason": "New SSH sessions authenticate and are reset before opening a channel; final files and cleanup remain pending.",
+  "coordination": "Preserve active sibling jobs and existing Windows connections; do not restart sshd or Windows. This issue runner finished with exit code 0 and has no remaining SSH control handle."
+}

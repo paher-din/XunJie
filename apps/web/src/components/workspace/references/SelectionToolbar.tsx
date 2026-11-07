@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom'
 import { useWorkspaceReferences } from './WorkspaceReferences'
 
 export function SelectionToolbar() {
-  const { pending, open, ask, clearSelection, draftReady } = useWorkspaceReferences()
+  const { pending, open, ask, clearSelection, draftReady, viewActive = true } = useWorkspaceReferences()
   const button = useRef<HTMLButtonElement>(null)
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
   useEffect(() => {
-    if (!pending || open) { setPosition(null); return }
+    if (!pending || open || !viewActive) { setPosition(null); return }
     let frame = 0
     const update = () => {
       const rect = pending.anchor(), viewport = window.visualViewport
@@ -32,8 +32,8 @@ export function SelectionToolbar() {
     }
     document.addEventListener('keydown', key)
     return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', key) }
-  }, [pending, open, ask, clearSelection, draftReady])
-  if (!pending || open) return null
+  }, [pending, open, ask, clearSelection, draftReady, viewActive])
+  if (!pending || open || !viewActive) return null
   return createPortal(<div className="wr-toolbar" data-reference-ui style={{ left: position?.left ?? 8,
     top: position?.top ?? 8, visibility: position ? 'visible' : 'hidden' }}>
     <button ref={button} type="button" aria-keyshortcuts="Alt+Enter" disabled={draftReady === false}

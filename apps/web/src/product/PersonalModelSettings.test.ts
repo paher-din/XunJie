@@ -66,6 +66,7 @@ beforeEach(async () => {
   vi.stubGlobal('fetch', vi.fn(async (input: string, options: RequestInit = {}) => {
     const path = input.split('/models/')[1], method = options.method ?? 'GET'
     if (input === '/api/learning/agent-settings' && method === 'GET') return response({ version: 0, busyInputMode: 'steering' })
+    if (input === '/api/learning/skills' && method === 'GET') return response({ skills: [], selections: [] })
     if (method === 'GET') {
       const value = path === 'connections' ? [structuredClone(server)] : structuredClone(checks)
       await holdRead

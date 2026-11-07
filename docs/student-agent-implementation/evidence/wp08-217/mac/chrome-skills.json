@@ -1,0 +1,62 @@
+{
+  "issue": 217,
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "startedAt": "2026-11-07T20:11:50.106Z",
+  "headed": true,
+  "model": "controlled external transport; production Gateway and owners",
+  "distributionSha256": "ee6cd3f07e24cccc407d45ced63423838bb0cbb4e1aa200309c2b5c68338b870",
+  "applicationSha256": "e765621c7a32232c00d367e89c4b4c3fcbff96a6351ad3b8dcc40e7e994a2d4f",
+  "cases": [
+    {
+      "name": "Formal settings import preserves package paths and metadata",
+      "status": "passed"
+    },
+    {
+      "name": "Explicit Skill selection retains draft focus and selected text",
+      "status": "passed"
+    },
+    {
+      "name": "Settings and browser back-forward retain the original draft and caret",
+      "status": "passed"
+    },
+    {
+      "name": "Chrome composition Enter keeps Chinese input in the same draft",
+      "status": "passed",
+      "detail": "CDP IME composition path; no OS candidate-window claim"
+    },
+    {
+      "name": "Formal draft sends the fixed Skill through the production model and tool loop",
+      "status": "passed"
+    },
+    {
+      "name": "Settings update and disable plus a real process restart preserve the original source and answer",
+      "status": "passed"
+    },
+    {
+      "name": "Same-window settings refresh fixes the new default version when adding another Skill",
+      "status": "passed",
+      "detail": {
+        "selected": [
+          {
+            "skillId": "a13e9333-d724-4b68-a1c9-d3b5392f63d1",
+            "version": 2
+          },
+          {
+            "skillId": "f666a72c-a957-4a7d-a445-5c7a1bc3cf52",
+            "version": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "Dark narrow desktop remains usable",
+      "status": "passed"
+    }
+  ],
+  "status": "passed",
+  "chrome": "156.0.8078.80",
+  "finishedAt": "2026-11-07T20:12:16.772Z",
+  "modelRequests": 2
+}

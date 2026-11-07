@@ -31,3 +31,10 @@
 .wr-conflict-columns pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 140px; overflow: auto; margin: 4px 0 0; font: 400 12px/1.6 var(--font-sans); }
 .wr-conflict-question { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
 @media (max-width: 640px) { .wr-conflict-columns { grid-template-columns: 1fr; } }
+.wr-skills { margin: 12px 0; font-size: 13px; color: var(--ink-soft); }
+.wr-skills summary { cursor: pointer; }
+.wr-composer .wr-skill-option { display: flex; align-items: start; gap: 8px; margin: 12px 0; }
+.wr-skill-option input { margin-top: 4px; accent-color: var(--accent); }
+.wr-skill-option strong { font-weight: 500; }
+.wr-skill-option small { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.wr-skills > button { margin-right: 8px; }

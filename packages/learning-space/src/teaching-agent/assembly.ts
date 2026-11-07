@@ -6,6 +6,7 @@ import { buildContext, platformRules, runRules, type ContextMessage } from './co
 import { canonicalDigest, operationId } from './identity.js';
 import { studentAskDefinition } from './student-questions.js';
 import { platformToolContribution } from './tool-contributions.js';
+import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
 
 export const teachingAssemblyMigration: Migration = { version: 10, name: 'immutable-agent-assembly', sql: `
   CREATE TABLE teaching_agent_definitions(definition_id text NOT NULL,version integer NOT NULL,
@@ -40,7 +41,8 @@ export class TeachingAssemblyError extends Error {
 
 /** Shared by normal steps and explicit route switching. No persistence or model effects. */
 export async function assembleTeachingAgent(scope: TeachingToolScope, host: TeachingToolHost | undefined,
-  model: NonNullable<TeachingRun['model']>, history: ContextMessage[], definition: AgentDefinition = learningAgentDefinition) {
+  model: NonNullable<TeachingRun['model']>, history: ContextMessage[], definition: AgentDefinition = learningAgentDefinition,
+  skills?: TeachingSkillState) {
   definition = agentDefinitionSchema.parse(structuredClone(definition));
   const contributions: TeachingToolContribution[] = [{ definition: studentAskDefinition,
     source: { kind: 'platform', sourceId: 'platform.student', version: '1', contentDigest: canonicalDigest(studentAskDefinition) },
@@ -73,11 +75,17 @@ export async function assembleTeachingAgent(scope: TeachingToolScope, host: Teac
   const context = buildContext(scope.activity, scope.input, history, { definition });
   const scopeFact = { ...scope.input.scope, ...(scope.activity.course ? { releaseId: scope.activity.course.releaseId,
     courseDigest: scope.activity.course.contentDigest, helpPolicy: scope.activity.course.helpPolicy } : {}) };
+  // Progressive tool reads are step context, not a change of native prefix or executor configuration.
+  // Explicit/course guidance is part of the fixed assembly; later reads keep their original native pair.
+  const assemblySkills = skills ? { catalog: skills.catalog, loaded: skills.loaded.filter(loaded => loaded.path === 'SKILL.md'
+    && loaded.complete && skills.catalog.some(entry => entry.skillId === loaded.skillId && entry.version === loaded.version
+      && (entry.origin === 'course' || scope.input.draft.skills?.some(ref => ref.skillId === entry.skillId && ref.version === entry.version)))) } : undefined;
   const basis = { version: 1 as const, definition, definitionDigest: canonicalDigest(definition),
     mode: scope.activity.course ? 'course-tutoring' as const : 'self-study' as const,
-    scope: scopeFact, model, prompt: { system: context.system, layers: context.layers }, tools, unavailable };
+    scope: scopeFact, model, prompt: { system: context.system, layers: context.layers }, tools, unavailable,
+    ...(assemblySkills && (assemblySkills.catalog.length || assemblySkills.loaded.length) ? { skills: assemblySkills } : {}) };
   const resolvedAgent = resolvedAgentSchema.parse({ ...basis, resolvedId: operationId('resolved-agent:' + canonicalDigest(basis)) });
-  return { resolvedAgent, context, tools: tools.map(item => item.definition) };
+  return { resolvedAgent, context, tools: tools.map(item => item.definition), ...(skills ? { skillState: skills } : {}) };
 }
 
 export async function retainTeachingAssembly(tx: OwnedTransaction, resolved: ResolvedAgent) {
@@ -93,6 +101,7 @@ export async function retainTeachingAssembly(tx: OwnedTransaction, resolved: Res
 export function manifestFor(resolved: ResolvedAgent, payload: Record<string, unknown>, facts: {
   inputs: unknown[]; history?: ContextMessage[]; effects: unknown[]; waits: unknown[]; observations: unknown[];
   activity: TeachingToolScope['activity']; maxOutputTokens: number;
+  skills?: TeachingSkillState;
 }): ContextManifest {
   const items: ContextManifest['items'] = [];
   const add = (kind: ContextManifest['items'][number]['kind'], id: string, content: unknown, required: boolean,
@@ -104,6 +113,10 @@ export function manifestFor(resolved: ResolvedAgent, payload: Record<string, unk
   for (const layer of resolved.prompt.layers) add('rule', layer.kind, layer.content, true, String(resolved.definition.version));
   for (const input of facts.inputs) add('input', canonicalDigest(input), input, true);
   for (const tool of resolved.tools) add('tool-schema', tool.bindingId, tool, true, tool.source.version);
+  for (const skill of resolved.skills?.catalog ?? []) add('material', 'skill:' + skill.skillId, skill, skill.required, String(skill.version),
+    { access: 'skill-metadata', origin: skill.origin });
+  for (const loaded of facts.skills?.loaded ?? resolved.skills?.loaded ?? []) add('material', 'skill:' + loaded.skillId + ':' + loaded.path,
+    loaded, true, String(loaded.version), { access: 'fixed-skill-content' });
   for (const history of facts.history ?? []) add('history', history.source?.id ?? canonicalDigest(history), history, false);
   for (const effect of facts.effects) add('effect', canonicalDigest(effect), effect, true);
   for (const wait of facts.waits) add('wait', canonicalDigest(wait), wait, true);

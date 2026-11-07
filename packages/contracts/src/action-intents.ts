@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { workFilesSchema } from './learning-data.js';
-import { questionTextSchema, questionReferencesSchema, questionWorkBasisSchema } from './question-drafts.js';
+import { questionTextSchema, questionReferencesSchema, questionWorkBasisSchema, questionSkillsSchema } from './question-drafts.js';
 import { teachingInputDeliverySchema } from './teaching-inputs.js';
 
 export const actionReceiverSchema = z.object({ receiverId: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,159}$/),
   location: z.enum(['remote', 'local']), kind: z.enum(['question', 'submission', 'execution']) }).strict();
 export const actionDraftSchema = z.object({ token: z.string().min(1).max(200), question: questionTextSchema,
-  references: questionReferencesSchema, bases: z.array(questionWorkBasisSchema).max(64) }).strict();
+  references: questionReferencesSchema, bases: z.array(questionWorkBasisSchema).max(64), skills: questionSkillsSchema.optional() }).strict();
 /** References to existing evidence, never a fabricated observation or a mutable 'latest' alias. */
 export const actionEvidenceSchema = z.object({ ownerServiceId: z.uuid(), recordId: z.uuid(),
   revision: z.number().int().positive(), kind: z.enum(['observation', 'submission', 'guidance']) }).strict();

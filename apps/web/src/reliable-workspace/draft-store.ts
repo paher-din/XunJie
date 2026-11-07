@@ -1,7 +1,7 @@
 import { questionReferenceKey } from '@xunjie/contracts/question-drafts'
-import type { QuestionReferenceInput, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
+import type { QuestionReferenceInput, QuestionWorkBasis, QuestionSkill } from '@xunjie/contracts/question-drafts'
 
-export interface DraftContent { question: string; references: QuestionReferenceInput[]; bases?: QuestionWorkBasis[] }
+export interface DraftContent { question: string; references: QuestionReferenceInput[]; bases?: QuestionWorkBasis[]; skills?: QuestionSkill[] }
 export interface DraftConflict { source: 'local' | 'remote'; local: DraftContent; other: DraftContent
   at: number; remoteRevision: number; candidateId?: string }
 export interface DraftRecord extends DraftContent { key: string; draftId: string; localRevision: number
@@ -9,7 +9,7 @@ export interface DraftRecord extends DraftContent { key: string; draftId: string
   /** The owner refused this exact pending: keep its text, never resend it, until the content changes. */
   pendingRejected?: boolean }
 export interface DraftSync { requestId: string; draftId: string; baseRevision: number
-  question: string; references: QuestionReferenceInput[]; bases: QuestionWorkBasis[] }
+  question: string; references: QuestionReferenceInput[]; bases: QuestionWorkBasis[]; skills?: QuestionSkill[] }
 
 export class DraftLocalCompetition extends Error {
   constructor(public current: DraftRecord, public candidateId: string) { super('另一标签页修改了问题草稿，请比较并选择。') }
@@ -115,7 +115,7 @@ export class DraftStore {
 }
 const normalizedContent = (value: DraftContent) => JSON.stringify({ question: value.question,
   references: value.references.map(reference => ({ referenceId: reference.referenceId, identity: questionReferenceKey(reference), rangeKind: reference.range.kind,
-    copy: reference.copy, sourceName: reference.sourceName })) })
+    copy: reference.copy, sourceName: reference.sourceName })), ...(value.skills === undefined ? {} : { skills: value.skills }) })
 export const sameDraftContent = (a: DraftContent, b: DraftContent) =>
   normalizedContent(a) === normalizedContent(b)
 export function initialDraftRecord(key: string, draftId: string): DraftRecord {

@@ -1,0 +1,42 @@
+{
+  "issue": 217,
+  "measuredAt": "2026-11-07T19:33:45.874Z",
+  "platform": "darwin",
+  "status": "passed",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "stages": [
+    {
+      "name": "real-owner-backup-restored-inventory",
+      "status": "passed",
+      "counts": {
+        "teaching_skills": 1,
+        "teaching_skill_versions": 2,
+        "teaching_skill_selections": 1,
+        "teaching_skill_loads": 1
+      },
+      "backupId": "b352c975-6295-4ac9-8e84-3f6d618ddf4e",
+      "serviceId": "4fd5d2f2-ceb5-4658-93fe-c8a3d4e2a774",
+      "formatVersion": 2,
+      "tableDigests": {
+        "teaching_skills": "cb7ebc39c9e8d12bf7980bb8dabe236bd7fc7ffcd5b3ddd4293fd2e00bd4fdb0",
+        "teaching_skill_versions": "67baf55709f1b57e3da9b1784da413d96b885b9ae445b055a2e6271e299a47c3",
+        "teaching_skill_selections": "36a5df5f9f3c9f5e240d6488b891cd920ff443f844395a5279bf3f0569c2a7a9",
+        "teaching_skill_loads": "9880d49530c13804be415f1b6b2c3e5579ca669bf37d02758d4f58a55535bf10"
+      }
+    },
+    {
+      "name": "isolated-restore-and-restart-are-pure-read",
+      "status": "passed",
+      "newModelRequests": 0,
+      "newToolRecords": 0,
+      "historySnapshots": 2,
+      "versionValidation": "production restore validator and public owner inventory",
+      "publicAttachmentDigestVerified": true,
+      "maintenanceWriteStatus": 503,
+      "originalAttachmentSha256": "325cb6d80187ce1920fb88d8cc4028b283bb93d2a4bb5fbdc732f940affd9a45"
+    }
+  ],
+  "finishedAt": "2026-11-07T19:33:51.546Z",
+  "cleanup": "temporary runtimes and backup removed"
+}

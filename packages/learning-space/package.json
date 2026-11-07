@@ -24,6 +24,7 @@
     "ajv": "8.20.0",
     "openai": "7.42.0",
     "undici": "7.30.0",
+    "yaml": "2.8.2",
     "zod": "4.6.5"
   },
   "devDependencies": {

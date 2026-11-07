@@ -9,18 +9,30 @@ import { teachingAgentCallSchema, teachingAgentReceiverId, teachingConversationS
   teachingInputControlSchema, teachingInputControlReceiptSchema, teachingControlReceiptSchema, teachingContinueInputSchema,
   teachingModelSwitchInputSchema, teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent';
 import type { createTeachingAgent } from './index.js';
+import { teachingSkillCatalogEntrySchema, teachingSkillLoadedSchema, teachingSkillImportSchema,
+  teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillReferenceSchema, teachingSkillPathSchema,
+  teachingSkillListSchema } from '@xunjie/contracts/agent-skills';
 
 export type TeachingAgentPort = Pick<ReturnType<typeof createTeachingAgent>, 'receiver' | 'conversation' | 'events' | 'capabilities'
   | 'run' | 'stop' | 'continueRun' | 'request' | 'snapshot' | 'assertCommandDispatch' | 'assertModelDispatch'
-  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt' | 'switchModel'>;
+  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt' | 'switchModel' | 'skills'>;
 export type TeachingAgentCall = z.infer<typeof teachingAgentCallSchema>;
 const ids = (values: unknown[], count: number) => z.array(z.uuid()).length(count).parse(values);
 
 export function createTeachingAgentService(agent: TeachingAgentPort,
-  authorize: (identity: SpaceIdentity, activityId: string) => Promise<void>) {
+  authorize: (identity: SpaceIdentity, activityId?: string) => Promise<void>) {
   return async (value: unknown): Promise<unknown> => {
-    const call = teachingAgentCallSchema.parse(value), { identity, activityId, args } = call;
-    await authorize(identity, activityId);
+    const call = teachingAgentCallSchema.parse(value), { identity, args } = call;
+    await authorize(identity, call.activityId);
+    if (call.operation === 'skills.list') return agent.skills.list(identity, call.activityId);
+    if (call.operation === 'skills.import') return agent.skills.import(identity, teachingSkillImportSchema.parse(args[0]));
+    if (call.operation === 'skills.select') return agent.skills.select(identity, teachingSkillSelectSchema.parse(args[0]));
+    if (call.operation === 'skills.disable') return agent.skills.disable(identity, teachingSkillDisableSchema.parse(args[0]));
+    if (call.operation === 'skills.read') {
+      const ref = teachingSkillReferenceSchema.extend({ path: teachingSkillPathSchema }).strict().parse(args[0]);
+      return agent.skills.read(identity, z.uuid().parse(call.activityId), ref.skillId, ref.version, ref.path);
+    }
+    const activityId = z.uuid().parse(call.activityId);
     switch (call.operation) {
       case 'accept': {
         const input = actionInputSchema.parse(args[0]), hash = z.string().regex(/^[a-f0-9]{64}$/).parse(args[1]);
@@ -65,10 +77,18 @@ export function createTeachingAgentService(agent: TeachingAgentPort,
   };
 }
 
-export function createTeachingAgentClient(serviceId: string, identity: SpaceIdentity, activityId: string,
+export function createTeachingAgentClient(serviceId: string, identity: SpaceIdentity, activityId: string | undefined,
   call: (value: TeachingAgentCall) => Promise<unknown>): TeachingAgentPort {
-  const invoke = (operation: TeachingAgentCall['operation'], args: unknown[] = []) => call({ version: 1, operation, identity, activityId, args });
+  const invoke = (operation: TeachingAgentCall['operation'], args: unknown[] = [], activity = activityId) =>
+    call({ version: 1, operation, identity, ...(activity ? { activityId: activity } : {}), args });
   return {
+    skills: {
+      list: async (_identity, activity) => teachingSkillListSchema.parse(await invoke('skills.list', [], activity)),
+      import: async (_identity, input) => teachingSkillCatalogEntrySchema.parse(await invoke('skills.import', [input])),
+      select: async (_identity, input) => teachingSkillListSchema.parse(await invoke('skills.select', [input])),
+      disable: async (_identity, input) => teachingSkillCatalogEntrySchema.parse(await invoke('skills.disable', [input])),
+      read: async (_identity, activity, skillId, version, path) => teachingSkillLoadedSchema.parse(await invoke('skills.read', [{ skillId, version, path }], activity)),
+    },
     receiver: { identity: { receiverId: teachingAgentReceiverId(serviceId), kind: 'question', location: 'remote' },
       accept: async (input, hash) => actionReceiptSchema.parse(await invoke('accept', [input, hash])),
       query: async (id, hash) => actionReceiptSchema.nullable().parse(await invoke('query', [id, hash])),

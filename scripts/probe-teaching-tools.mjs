@@ -12,8 +12,8 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
   'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false },
-  'input-control': { type: 'boolean', default: false } } });
-if (values['student-ask'] && values['input-control']) throw new Error('Choose one acceptance scenario.');
+  'input-control': { type: 'boolean', default: false }, skills: { type: 'boolean', default: false } } });
+if ([values['student-ask'], values['input-control'], values.skills].filter(Boolean).length > 1) throw new Error('Choose one acceptance scenario.');
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
 if (values['provider-address'] && !net.isIP(values['provider-address'])) throw new Error('--provider-address must be an IP address.');
@@ -32,7 +32,7 @@ try {
 }
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
-  capability: values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
+  capability: values.skills ? 'fixed-skill-body-and-attachment' : values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
   limits: { maxGenerations: protocols.length * (values['input-control'] ? 4 : 2), maxPerProtocol: values['input-control'] ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
@@ -118,6 +118,16 @@ try {
           ? '先实际调用 student_ask 工具，只问一个关于“状态 3 加输入 2 后对 4 取余”的预测问题。给出简明来源，允许自由文字，可提供选项；不要把问题只作为普通文字输出。等我明确回应后，依据那份回应简短解释并结束。只提问一次，不读取作品或调用其他工具，不要求任何内部标识。'
           : `请先实际调用 read_work 工具读取 objectId=${work.objectId}、contentId=${work.contentId}，
 然后根据工具结果简短解释水位变化。必须先读取工具；不要再调用其他工具，不要修改作品。`, references: [], bases: [] }, works: values['student-ask'] ? [] : [work], evidence: [] };
+      let skill;
+      if (values.skills) {
+        skill = await api('skills/import', { requestId: randomUUID(), source: 'acceptance:alu-diagnosis:' + protocol, packageVersion: '1.0.0', files: [
+          { path: 'SKILL.md', encoding: 'utf8', content: '---\nname: alu-evidence-diagnosis\ndescription: 按固定观察解释 ALU 排查顺序\n---\n指导正文：先尊重学生本次问题，比较独立预测与实际观察；按需要读取 references/observations.md。只解释，不代改学生作品，不补写预测。' },
+          { path: 'references/observations.md', encoding: 'utf8', content: '固定观察代号 SKILL-EVIDENCE-37：A=15，B=1，Cin=0，加法的低四位为 0，第五位为 1。这是观察资料，不代表学生已经做出独立预测。' },
+          { path: 'scripts/inspect.sh', encoding: 'utf8', content: 'This script is inert and must never execute.' },
+        ] });
+        input.draft.skills = [{ skillId: skill.skillId, version: skill.version }]; input.works = [];
+        input.draft.question = `请实际调用 skill_read，读取我明确选择的 Skill ${skill.skillId} 版本 ${skill.version} 的 references/observations.md。先读附件，然后用两句话解释低四位和第五位，包含附件里的观察代号。只调用这一个工具，不修改作品，不把观察冒充我的预测。`;
+      }
       await api('intents/' + activity.activityId, input);
       const receipt = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       assert.equal(receipt.state, 'accepted');
@@ -184,14 +194,30 @@ try {
         assert.equal(snapshot.contextManifest.payloadSha256, snapshot.payloadSha256);
         assert.equal(payloadDigest(snapshot.payload), snapshot.payloadSha256);
         assert.ok(observed.some(request => request.payloadSha256 === snapshot.payloadSha256));
-        assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === 'read_work' && tool.executor.toolName === 'read_work'));
+        assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === (values.skills ? 'skill_read' : 'read_work')
+          && tool.executor.toolName === (values.skills ? 'skill_read' : 'read_work')));
       }
       item.assemblies = actualSnapshots.map(snapshot => ({ resolvedId: snapshot.resolvedAgent.resolvedId,
         definitionId: snapshot.resolvedAgent.definition.definitionId, definitionVersion: snapshot.resolvedAgent.definition.version,
         snapshotId: snapshot.snapshotId, payloadSha256: snapshot.payloadSha256,
         contextManifestId: snapshot.contextManifest.manifestId, counting: snapshot.contextManifest.capacity.counting,
         transportMatched: true }));
-      if (values['student-ask']) {
+      if (values.skills) {
+        assert.ok(conversation.tools.some(tool => tool.name === 'skill_read' && tool.outcome === 'completed'));
+        assert.match(answer, /SKILL-EVIDENCE-37/);
+        assert.ok(actualSnapshots[0].resolvedAgent.skills.loaded.some(loaded => loaded.path === 'SKILL.md'));
+        assert.ok(!JSON.stringify(actualSnapshots[0].payload).includes('SKILL-EVIDENCE-37'));
+        const loadedMaterials = actualSnapshots.at(-1).contextManifest.items.filter(entry => entry.selection.access === 'fixed-skill-content').map(entry => entry.content);
+        assert.ok(loadedMaterials.some(loaded => loaded.path === 'references/observations.md'));
+        assert.ok(JSON.stringify(actualSnapshots.at(-1).payload).includes('SKILL-EVIDENCE-37'));
+        item.skill = { skillId: skill.skillId, version: skill.version, packageDigest: skill.digest,
+          loadedPaths: loadedMaterials.map(loaded => loaded.path),
+          scriptsExecuted: false, bodyAndAttachmentTransportMatched: true };
+        const beforeRead = generations;
+        await api(`agent/${activity.activityId}/conversation`);
+        for (const snapshot of actualSnapshots) assert.deepEqual(await api(`agent/${activity.activityId}/snapshots/${snapshot.snapshotId}`), snapshot);
+        assert.equal(generations, beforeRead);
+      } else if (values['student-ask']) {
         assert.ok(explicitResponse, 'The real model must actually use student.ask.');
         assert.equal(conversation.questions.filter(question => question.runId === runId).length, 1);
         const events = await api(`agent/${activity.activityId}/events`);
