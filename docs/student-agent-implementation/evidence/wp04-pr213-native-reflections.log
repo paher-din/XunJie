@@ -1,0 +1,23 @@
+✔ works waits for the original case command and then retries the same immutable reflection (1129.564958ms)
+✔ ALU maintenance refuses a reported observation until its original result bytes are retained (1058.802542ms)
+✔ original runs and free observations retain explanations without creating a prediction or rerunning (1432.869167ms)
+✔ reflection, result references and maintenance agree on the original execution facts (1087.208791ms)
+✔ sync and fixed basis reject forged case identities without changing ordinary works (1147.446ms)
+✔ one sync accepts an out-of-order parent chain and rejects loops or another case as its parent (1539.131167ms)
+✔ a child-only question draft retries its original request after the parent work reaches PostgreSQL (1487.5595ms)
+✔ a note cannot be replaced through new content identities or a different media type (1521.004208ms)
+✔ trusted reads retain original explanations and actions after deletion and owner reopen (1236.291375ms)
+✔ recovery checks historical and fixed-only explanations against the real execution rows (1773.52975ms)
+✔ trusted reads reject rewritten fixed predictions, command text and receiver facts (1266.016ms)
+✔ a self-consistent received command still must be an ALU observation for this activity and principal (3500.240375ms)
+✔ concurrent fixed registrations cannot give a note object another content identity (4383.934958ms)
+✔ ordinary objects still retain multiple contents and fixed references after deletion (3134.232791ms)
+✔ trusted reads use the owned activity binding and verify its actual principal columns (1516.306375ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27514.569834

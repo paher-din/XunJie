@@ -4,7 +4,7 @@ import { learningRequest } from '../product/learningTransport'
 import { decodeBase64, detectDevice, fingerprint, hostVersion, missingFeatures, sha256 } from './device'
 import { preparationStore, withPreparationLock, type PreparationRecord, type PreparationStore } from './store'
 import type { PreparationTarget, PreparationSnapshot } from './preparation'
-import { selfCheckIcarus,icarusProfile,icarusManifest } from '../tool-execution/icarus-runtime'
+import { selfCheckIcarus,icarusProfile,supportsIcarus } from '../tool-execution/icarus-runtime'
 
 function manifestOf(target: PreparationTarget): ComponentRuntimeManifest {
   const manifest=target.binding.definition.manifest
@@ -102,7 +102,7 @@ export function createRuntimePreparation(options: {store?:PreparationStore; chec
       try {
         record.stage='detect'; await commit()
         if(m.runtime.adapterId!==icarusProfile.adapterId || m.runtime.adapterVersion!==icarusProfile.adapterVersion
-          || m.runtime.bundleIdentity!==icarusManifest.identity || m.runtime.operations.some(operation=>
+          || !supportsIcarus(m.runtime.bundleIdentity) || m.runtime.operations.some(operation=>
             !(icarusProfile.operationIds as readonly string[]).includes(operation.operationId)
             || operation.budgets.memoryMiB!==icarusProfile.memoryMiB))throw new Error('unsupported-version')
         if(missingFeatures(device,m.environment.requiredFeatures).length) throw new Error('device-feature-missing')

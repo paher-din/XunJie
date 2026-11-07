@@ -24,7 +24,8 @@ function writeFiles(fs, input) {
 }
 self.onmessage = async ({ data }) => {
   let stage = 'validate';
-  const diagnostics = [];
+  const diagnostics = [], output = [], flushers = [];
+  const flushText = () => { for (const flush of flushers) flush(); };
   try {
     const { task, bundle } = data;
     if (!['compile', 'simulate'].includes(task.kind)) fail('invalid-input', 'Unknown operation');
@@ -37,15 +38,14 @@ self.onmessage = async ({ data }) => {
       // Notify the owner immediately; it terminates this Worker on first result.
       if (!budgetNotified) {
         budgetNotified = true;
-        postMessage({ kind: 'result', status: 'budget-exceeded', code: 'output-budget', stage, message, diagnostics });
+        flushText();
+        postMessage({ kind: 'result', status: 'budget-exceeded', code: 'output-budget', stage, message, diagnostics, output });
       }
       fail('output-budget', message);
     };
-    const print = output => line => {
-      textBytes += encoder.encode(line).length + 1;
-      if (textBytes > 2 * 1024 * 1024) exceedOutput('Text output exceeds 2 MiB');
-      output.push(line);
-    };
+    // Count raw TTY bytes below, before Emscripten's newline buffer. Decoded callbacks
+    // only retain the bounded text; counting here again would charge each byte twice.
+    const print = lines => line => { lines.push(line); };
     // A run either reads the fixed files the calling owner already verified, or fetches them from the
     // package's own base URL. The two modes never mix: once a fixed byte set is declared, a file it
     // does not carry fails the run instead of quietly reaching the network.
@@ -88,6 +88,10 @@ self.onmessage = async ({ data }) => {
         const module = await factory({ wasmBinary: resources[1],
           locateFile: bundle.baseUrl ? file => new URL(file, bundle.baseUrl).href : file => file,
           print: print(output), printErr: print(diagnostics) });
+        flushers.push(() => {
+          const ttys = new Set([module.FS.getStream(1)?.tty, module.FS.getStream(2)?.tty]);
+          for (const tty of ttys) if (tty?.output?.length) tty.ops.fsync(tty);
+        });
         // Enforce the MEMFS file extent while native writes occur, including seek.
         // Emscripten syscalls dispatch through FS.write; checking only readback
         // would allow an unbounded VCD before the observer can react.
@@ -95,6 +99,10 @@ self.onmessage = async ({ data }) => {
         const extents = new Map(); let totalExtent = 0;
         module.FS.write = function (stream, buffer, offset, length, position, ...rest) {
           const start = position === undefined ? stream.position : position;
+          if (stream.tty) {
+            if (textBytes + length > 2 * 1024 * 1024) exceedOutput('Text output exceeds 2 MiB');
+            textBytes += length;
+          }
           if (module.FS.isFile(stream.node.mode)) {
             const previous = extents.get(stream.node.id) ?? 0;
             const extent = Math.max(previous, start + length);
@@ -145,7 +153,7 @@ self.onmessage = async ({ data }) => {
       if (artifact?.version !== 1 || artifact.bundleIdentity !== bundle.identity || !/^[a-f0-9]{64}$/.test(artifact.dependencyId) || !(artifact.program instanceof Uint8Array) || artifact.program.length > 8 * 1024 * 1024 || await hash(artifact.program) !== artifact.programSha256) fail('invalid-input', 'Incompatible or corrupt compilation artifact');
       const input = files(task.files ?? []), plusargs = task.plusargs ?? [];
       if (!Array.isArray(plusargs) || plusargs.length > 32 || plusargs.some(arg => typeof arg !== 'string' || !/^\+[a-zA-Z0-9_]+=.{0,256}$/.test(arg))) fail('invalid-input', 'Invalid plusargs');
-      const output = [], runtime = await load('vvp', output);
+      const runtime = await load('vvp', output);
       if (input.some(file => ['sim.vvp', 'trace.vcd', 'xunjie-observations.txt'].includes(file.path))) fail('invalid-input', 'Reserved program/output path');
       writeFiles(runtime.FS, input);
       runtime.FS.writeFile('/sim.vvp', artifact.program);
@@ -173,6 +181,7 @@ self.onmessage = async ({ data }) => {
     }
     postMessage({ kind: 'result', status: 'completed', stage, diagnostics, ...result });
   } catch (error) {
-    postMessage({ kind: 'result', status: 'failed', stage, code: error.code ?? 'tool-failed', message: String(error.message ?? error), diagnostics });
+    flushText();
+    postMessage({ kind: 'result', status: 'failed', stage, code: error.code ?? 'tool-failed', message: String(error.message ?? error), diagnostics, output });
   }
 };

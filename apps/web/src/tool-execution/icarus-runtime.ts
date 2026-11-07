@@ -1,5 +1,7 @@
 import manifest from '../../../../components/alu-icarus-runtime/manifest.json'
 import { createIcarusRuntime, type FixedFile } from '../../../../components/alu-icarus-runtime/index.mjs'
+import previousManifest from '../../../../components/alu-icarus-runtime/versions/0.3.0/manifest.json'
+import { createIcarusRuntime as createPreviousRuntime } from '../../../../components/alu-icarus-runtime/versions/0.3.0/index.mjs'
 import { sha256 } from '../component-preparation/device'
 import { acquireSlot } from './runner'
 
@@ -8,15 +10,21 @@ export { manifest as icarusManifest }
 export const aluOperationIds=['run-single','observe-enabled','check-all'] as const
 export type AluOperationId=typeof aluOperationIds[number]
 export const icarusProfile={adapterId:'icarus-alu',adapterVersion:1,operationIds:aluOperationIds,memoryMiB:256} as const
+const releases: Array<{ manifest: typeof manifest; create: typeof createIcarusRuntime }> = [
+  { manifest, create: createIcarusRuntime }, { manifest: previousManifest, create: createPreviousRuntime },
+]
+export const supportsIcarus = (identity: string) => releases.some(item => item.manifest.identity === identity)
 /** The product owns the controller code; all six executable assets are fixed, verified course resources. */
 export async function verifiedIcarus(identity: string, resources: Record<string, Uint8Array>) {
-  if (identity !== manifest.identity) throw new Error('unsupported-version')
-  for (const [name, asset] of Object.entries(manifest.assets)) {
+  const release = releases.find(item => item.manifest.identity === identity)
+  if (!release) throw new Error('unsupported-version')
+  const fixed = release.manifest
+  for (const [name, asset] of Object.entries(fixed.assets)) {
     const bytes = resources[name]
     if (!bytes || bytes.length !== asset.bytes || await sha256(bytes) !== asset.sha256) throw new Error('resource-corrupt')
   }
-  return createIcarusRuntime({ identity, assets: manifest.assets, adapters: manifest.adapters,
-    resources: Object.fromEntries(Object.keys(manifest.assets).map(name => [name, resources[name]])) })
+  return release.create({ identity, assets: fixed.assets, adapters: fixed.adapters,
+    resources: Object.fromEntries(Object.keys(fixed.assets).map(name => [name, resources[name]])) })
 }
 /** A separate instance, Worker and resource slot: no student state or observation can be produced here. */
 export async function selfCheckIcarus(identity: string, resources: Record<string, Uint8Array>, fixture: {

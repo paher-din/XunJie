@@ -1,0 +1,22 @@
+{
+  "baseline": false,
+  "cases": [
+    "original v3 import and repaired v4 import coexist without identity conflict",
+    "old approved activity executes original 0.3.0 identity in real product Chrome",
+    "new activity executes repaired 0.3.1 identity without upgrading old activity",
+    "same-result reference restores original tick 10 without a Worker",
+    "different-result reference opens original execution and range without rerunning",
+    "after refresh earliest of 10 observations and 9 checks reopen original resources without changing board or running",
+    "waveform reference survives refresh and reopens exact original range",
+    "10px numeric input padding renders in light/wide and dark/narrow layouts"
+  ],
+  "platform": "darwin",
+  "arch": "arm64",
+  "chrome": "156.0.8078.80",
+  "locatedTick": "10",
+  "history": {
+    "observations": 10,
+    "checks": 9
+  },
+  "status": "passed"
+}

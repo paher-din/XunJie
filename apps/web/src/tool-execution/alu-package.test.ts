@@ -4,13 +4,13 @@ import { createHash } from 'node:crypto'
 import { canonicalValue } from '@xunjie/contracts/execution'
 import { aluPackage, aluCoursePackage } from '../../../../components/alu-experiment/package.mjs'
 
-describe('ALU course package version 3', () => {
+describe('ALU course package version 4', () => {
   it('declares the three operations, the expanded state and a distinct check scaffold', async () => {
     const component = await aluPackage()
     const manifest = component.manifest
     if (manifest.formatVersion !== 3) throw new Error('ALU package is not a format 3 runtime')
     expect(manifest.formatVersion).toBe(3)
-    expect(manifest.version).toBe(3)
+    expect(manifest.version).toBe(4)
     expect(manifest.stateVersion).toBe(3)
     expect(manifest.runtime.operations.map(operation => operation.operationId))
       .toEqual(['run-single', 'observe-enabled', 'check-all'])

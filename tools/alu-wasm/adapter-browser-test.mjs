@@ -28,6 +28,9 @@ const server = createServer(async (req, res) => {
     if (req.url === '/') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>ALU runtime adapter engineering acceptance</title><p>Real Chrome Worker adapter test</p>'); return; }
     if (req.url === '/tampered/ivlpp.js') { res.setHeader('content-type', 'text/javascript'); res.end('untrusted bytes'); return; }
     const name = req.url.split('/').at(-1);
+    if (req.url.startsWith('/previous/') && [...adapterNames, 'manifest.json'].includes(name)) {
+      file = resolve(runtimeDir, 'versions/0.3.0', name); mime = name.endsWith('.json') ? 'application/json' : 'text/javascript';
+    }
     if ((req.url.startsWith('/assets/') || req.url.startsWith('/tampered/')) && resourceNames.includes(name)) { file = resolve(runtimeDir, name); mime = name.endsWith('.wasm') ? 'application/wasm' : 'text/javascript'; }
     if (['/adapter/index.mjs', '/adapter/worker.mjs', '/adapter/identity.mjs'].includes(req.url)) { file = resolve(process.env.XUNJIE_ALU_ADAPTER_ROOT ?? 'tools/alu-wasm/runtime', req.url.split('/').at(-1)); mime = 'text/javascript'; }
     if (!file) { res.writeHead(404); res.end(); return; }
@@ -137,10 +140,35 @@ try {
     check(timedOut.status === 'budget-exceeded', 'wall budget terminates synchronous Worker');
     const outputFlood = await runtime.compile({ top: 'tb', sources: [{ path: 'flood.sv', content: 'module tb; initial forever $display("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); endmodule' }] });
     const flood = await runtime.simulate({ artifact: outputFlood.artifact });
-    check(flood.code === 'output-budget', 'actual stdout flood hits output budget: ' + JSON.stringify(flood));
+    check(flood.code === 'output-budget', 'actual stdout flood hits output budget: ' + JSON.stringify(flood).slice(0, 200));
+    for (const channel of ['stdout', 'stderr']) for (const newline of [false, true]) {
+      const text = 'a'.repeat(64) + (newline ? '\\n' : '');
+      const statement = channel === 'stdout' ? `$write("${text}");` : `$fwrite(32'h80000002,"${text}");`;
+      const compiledFlood = await runtime.compile({ top: 'tb', sources: [{ path: 'raw-flood.sv',
+        content: `module tb; integer i; initial begin for(i=0;i<65536;i=i+1) ${statement} forever #1; end endmodule` }] });
+      check(compiledFlood.status === 'completed', `${channel}/${newline} flood compiles`);
+      const bounded = await runtime.simulate({ artifact: compiledFlood.artifact }, { timeoutMs: 3000 });
+      check(bounded.status === 'budget-exceeded' && bounded.code === 'output-budget',
+        `${channel} ${newline ? 'newline' : 'no-newline'} bytes stop at text budget`);
+      check(new TextEncoder().encode([...(bounded.output ?? []), ...(bounded.diagnostics ?? [])].join('\n')).length <= 2097152,
+        `${channel}/${newline} retained partial logs stay bounded`);
+    }
+    const fatalCompile = await runtime.compile({ top: 'tb', sources: [{ path: 'assertion.sv',
+      content: 'module tb; initial begin #1; $fatal(1,"ALU assertion failed: carry must be one"); end endmodule' }] });
+    const fatal = await runtime.simulate({ artifact: fatalCompile.artifact });
+    const fatalLog = [...(fatal.output ?? []), ...(fatal.diagnostics ?? [])].join('\n');
+    check(fatal.status === 'failed' && fatal.code === 'simulation-failed'
+      && fatalLog.includes('/assertion.sv:1: ALU assertion failed: carry must be one')
+      && /Time: 1\s+Scope: tb/.test(fatalLog), 'fatal failure retains message, source line, time and scope');
+    const logCompile = await runtime.compile({ top: 'tb', sources: [{ path: 'logs.sv',
+      content: 'module tb; initial begin $write("中文日志"); $warning("warning retained"); $error("error retained"); $finish; end endmodule' }] });
+    const logged = await runtime.simulate({ artifact: logCompile.artifact });
+    const logText = [...(logged.output ?? []), ...(logged.diagnostics ?? [])].join('\n');
+    check(logged.status === 'completed' && logText.includes('中文日志') && logText.includes('warning retained')
+      && logText.includes('error retained'), 'multibyte output, warning and error logs survive normal exit');
     const fileFlood = await runtime.compile({ top: 'tb', sources: [{ path: 'file.sv', content: 'module tb; integer fd; initial begin fd=$fopen("trace.vcd","w"); forever $fdisplay(fd,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); end endmodule' }] });
     const fileResult = await runtime.simulate({ artifact: fileFlood.artifact });
-    check(fileResult.code === 'output-budget', 'actual file growth is bounded during native writes: ' + JSON.stringify(fileResult));
+    check(fileResult.code === 'output-budget', 'actual file growth is bounded during native writes: ' + JSON.stringify(fileResult).slice(0, 200));
     const afterStarted = performance.now();
     const after = await runtime.simulate({ artifact: compiled.artifact, expectedIndices: indices });
     check(after.status === 'completed' && after.observationState === 'complete', 'normal simulation works after termination and output failures');
@@ -213,6 +241,16 @@ try {
     check(memoryResult.status !== 'completed', 'oversized-memory execution cannot report success');
     const final = await runtime.simulate({ artifact: compiled.artifact, expectedIndices: indices });
     check(final.observationState === 'complete', 'fresh normal task succeeds after memory-limit failure');
+    const previousManifest = await (await fetch('/previous/manifest.json')).json();
+    const { createIcarusRuntime: createPreviousRuntime } = await import('/previous/index.mjs');
+    const previous = await createPreviousRuntime({ ...previousManifest, baseUrl: location.origin + '/assets/' });
+    const previousCompiled = await previous.compile(request);
+    check(previousCompiled.status === 'completed' && previousCompiled.artifact.bundleIdentity === previousManifest.identity
+      && previousManifest.identity !== identity, 'old approved runtime compiles with its original immutable identity');
+    const previousRun = await previous.simulate({ artifact: previousCompiled.artifact, expectedIndices: indices });
+    check(previousRun.status === 'completed' && previousRun.observationState === 'complete'
+      && previousRun.observations.every((row, index) => row.f === first.observations[index].f && row.cout === first.observations[index].cout),
+      'old and repaired runtimes both produce the original 4096 observations');
     const raceStatuses = [];
     for (let index = 0; index < 5; index++) {
       const raceController = new AbortController();

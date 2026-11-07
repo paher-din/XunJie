@@ -2,6 +2,26 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { aluTeachingFixture, aluTeachingModel, aluChat, untilAlu } from './fixtures/alu-teaching.mjs';
+import { aluCoursePackage } from '../../../components/alu-experiment/package.mjs';
+
+test('the integrated tutoring release coexists with a fixed ALU release without rewriting its explicit help policy', { timeout: 120000 }, async t => {
+  const published = await aluCoursePackage();
+  assert.notEqual(published.requestId, '19200000-0000-4000-8000-000000000202');
+  assert.notEqual(published.release.releaseId, '19200000-0000-4000-8000-000000000203');
+  const previous = structuredClone(published);
+  previous.requestId = '19200000-0000-4000-8000-000000000185';
+  previous.release.releaseId = '19200000-0000-4000-8000-000000000186';
+  previous.release.helpPolicy = { version: 1, questions: 'disabled', scope: 'course', note: '此固定发布不启用 Agent 提问。' };
+  const f = await aluTeachingFixture(t, { priorCourse: previous });
+  const retained = await f.api('course-activities', { requestId: randomUUID(), releaseId: previous.release.releaseId });
+  assert.equal(retained.course.releaseId, previous.release.releaseId);
+  assert.deepEqual(retained.course.helpPolicy, previous.release.helpPolicy);
+  assert.equal(f.activity.course.releaseId, published.release.releaseId);
+  assert.match(f.activity.course.helpPolicy.note, /只解释/);
+  assert.equal(f.activity.course.components[0].definition.manifest.version, 4);
+  assert.equal(retained.course.components[0].definition.digest, f.activity.course.components[0].definition.digest);
+  assert.ok((await f.host.definitions(f.scope)).some(tool => tool.name === 'course_operation'));
+});
 
 test('the fixed ALU activity contributes only its approved verification operation to the real Agent host', { timeout: 120000 }, async t => {
   const f = await aluTeachingFixture(t);

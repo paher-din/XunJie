@@ -1,0 +1,18 @@
+{
+  "baseline": true,
+  "cases": [
+    "original v3 import",
+    "old approved activity executes original 0.3.0 identity in real product Chrome",
+    "baseline reproduces false-success locate with range still 20",
+    "baseline confirms both product history lists stop at eight"
+  ],
+  "platform": "darwin",
+  "arch": "arm64",
+  "chrome": "156.0.8078.80",
+  "locatedTick": "20",
+  "history": {
+    "observations": 8,
+    "checks": 8
+  },
+  "status": "passed"
+}

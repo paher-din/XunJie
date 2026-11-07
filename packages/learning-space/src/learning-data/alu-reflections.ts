@@ -81,7 +81,8 @@ function validation(storage: OwnedStorage, activity: LearningActivity) {
       if (!parent) {
         try { parent = await stored(parentId); }
         catch (error) {
-          if (error instanceof StorageError && error.code === 'missing') throw new StorageError('invalid');
+          // A selected revision can reach the draft owner before its parent work sync.
+          if (error instanceof StorageError && error.code === 'missing') throw new StorageError('unavailable');
           throw error;
         }
         sources.set(parentId, parent);

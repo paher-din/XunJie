@@ -326,7 +326,16 @@ export class ExecutionController {
       // Only what the service has not confirmed yet: a lost reply resumes this run's own resource
       // instead of re-sending a command the service already holds.
       const sent = await this.receiver.store.synced(this.scope, requestId).catch(() => undefined)
-      if (!sent?.command) await this.transport.accept(record.action, record.acceptance)
+      if (!sent?.command) {
+        try { await this.transport.accept(record.action, record.acceptance) }
+        catch (error) {
+          // Acceptance may already be durable while maintenance refuses another accept. Query
+          // that exact original identity so its stop, result and terminal facts can still settle.
+          const received = await this.transport.read(requestId)
+          if (!received || received.requestId !== record.requestId || received.inputDigest !== record.inputDigest
+            || received.executionRef !== record.executionRef) throw error
+        }
+      }
       const stopIds=new Set(sent?.stopIds??[])
       for(const stop of (await this.receiver.store.stops(this.scope)).filter(stop=>stop.requestId===requestId)) {
         if(stopIds.has(stop.stopId))continue

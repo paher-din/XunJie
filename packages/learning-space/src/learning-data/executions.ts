@@ -426,6 +426,11 @@ export function createExecutions(storage: OwnedStorage, options: {
       await options.native?.authorizeComponent?.(activity.identity, activity, action);
     } });
   return { agent, accept, read, history, artifact, report, stop, result, control, sessions,
+    /** Maintenance admission asks the owner; it never infers a browser command from an HTTP path. */
+    hasReceivedBrowserCommand: async (activityId: string, requestId: string) => {
+      if (channel && await channel.owns(activityId, requestId) || native && await native.owns(activityId, requestId)) return false;
+      return Boolean(await find(activityId, requestId));
+    },
     /** What the Linux restricted entry can enforce; `null` means it was not measured on this host. */
     linuxEntryIsolation: async () => native ? await native.linuxEntryIsolation() : null,
     /** Maintenance reclaims a session by its executor instance, not by a student's current eligibility. */
@@ -453,9 +458,15 @@ export function createExecutions(storage: OwnedStorage, options: {
       await native?.shutdown();
       // A service projection cannot terminate a disconnected browser Worker. Do not advertise
       // a safe maintenance stop while any received browser command lacks a confirmed terminal fact.
-      const { rows } = await storage.read(`SELECT request_id FROM execution_commands
-        WHERE state NOT IN ('succeeded','failed','cancelled') OR status_knowledge<>'confirmed' LIMIT 1`);
-      if (rows.length) throw new StorageError('unavailable');
+      const { rows } = await storage.read(`SELECT c.request_id FROM execution_commands c
+        LEFT JOIN execution_results r ON r.request_id=c.request_id
+        WHERE c.state NOT IN ('succeeded','failed','cancelled') OR c.status_knowledge<>'confirmed'
+          OR (c.output IS NOT NULL AND r.request_id IS NULL) LIMIT 1`);
+      if (rows.length) {
+        const error = new StorageError('unavailable');
+        error.message += `（原浏览器执行 ${String(rows[0]!.request_id)} 尚未确认结束或结果未同步。请保留原页面，核对或停止该执行，等待原结果同步后重试维护。）`;
+        throw error;
+      }
     } };
 }
 
@@ -478,6 +489,12 @@ export async function validateExecutions(storage: OwnedStorage) {
       } catch { return corrupt('command source'); }
     })();
     const { action, query: stored, body } = source;
+    // A browser can report its terminal query before the separate resource upload arrives.
+    // Maintenance must retain the named result, rather than backing up a dangling observation.
+    if (stored.output) {
+      const { rows: [result] } = await storage.read('SELECT content_id FROM execution_results WHERE request_id=$1', [stored.requestId]);
+      if (!result || result.content_id !== stored.output.contentId) corrupt('reported result not retained');
+    }
     const state = action.protocolVersion===2 ? action.execution.basis.state : null;
     if (state) {
       const { rows: [content] } = await storage.read(`SELECT activity_id,encoding,media_type FROM work_contents WHERE content_id=$1`,

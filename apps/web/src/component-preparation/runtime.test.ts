@@ -4,6 +4,7 @@ import {createRuntimePreparation,runtimeScope} from './runtime'
 import type {PreparationStore,PreparationRecord,CachedResource,ActiveEnvironment} from './store'
 import type {PreparationTarget} from './preparation'
 import {sha256} from './device'
+import previousRuntime from '../../../../components/alu-icarus-runtime/versions/0.3.0/manifest.json'
 const originalNavigator=globalThis.navigator
 afterEach(()=>{vi.unstubAllGlobals()})
 async function fixture() {
@@ -30,16 +31,27 @@ async function fixture() {
   return {store,resources,records,target,fetch,check}
 }
 describe('fixed runtime preparation',()=>{
-  it.each(['adapter','version','operation','memory'] as const)('refuses an unsupported %s before downloading or self-checking',async kind=>{
+  it.each(['adapter','version','identity','operation','memory'] as const)('refuses an unsupported %s before downloading or self-checking',async kind=>{
     const f=await fixture(),m=f.target.binding.definition.manifest
     if(m.formatVersion!==3)throw new Error('fixture')
     if(kind==='adapter')m.runtime.adapterId='unknown-runtime'
     if(kind==='version')m.runtime.adapterVersion++
+    if(kind==='identity')m.runtime.bundleIdentity='0'.repeat(64)
     if(kind==='operation')m.runtime.operations[0].operationId='unknown-operation'
     if(kind==='memory')m.runtime.operations[0].budgets.memoryMiB=16
     const result=await createRuntimePreparation({store:f.store,check:f.check}).prepare(f.target,crypto.randomUUID())
     expect(result.reason).toBe('protocol-unsupported');expect(result.status).not.toBe('ready')
     expect(f.check).not.toHaveBeenCalled();expect(f.fetch).not.toHaveBeenCalled()
+  })
+  it('prepares an approved old runtime instead of rejecting it before the version dispatcher',async()=>{
+    const f=await fixture(),m=f.target.binding.definition.manifest
+    if(m.formatVersion!==3)throw new Error('fixture')
+    m.runtime.bundleIdentity=previousRuntime.identity
+    f.target.binding.definition.digest=await sha256(new TextEncoder().encode(JSON.stringify(m)))
+    const result=await createRuntimePreparation({store:f.store,check:f.check}).prepare(f.target,crypto.randomUUID())
+    expect(result.status).toBe('ready')
+    expect(f.check).toHaveBeenCalledTimes(1)
+    expect(f.fetch).toHaveBeenCalled()
   })
   it('reuses confirmed checks, but repairs and rechecks corrupted binary cache under the original preparation identity',async()=>{
     const f=await fixture(),prepare=createRuntimePreparation({store:f.store,check:f.check})

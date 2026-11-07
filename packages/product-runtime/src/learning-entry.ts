@@ -500,6 +500,7 @@ export async function createProductLearningApplication(context: {
         'teaching.dependencies': dependencyCapability,
       } } } : {}),
       capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks, paired) },
+      ...(learning ? { hasReceivedBrowserExecution: learning.executions.hasReceivedBrowserCommand } : {}),
       ...(models ? { async modelTask(value: unknown) {
         const input = modelTaskRequest.parse(value);
         return input.operation === 'enqueue' ? models.deviceTasks.enqueue(input.identity, input.binding, input.task)

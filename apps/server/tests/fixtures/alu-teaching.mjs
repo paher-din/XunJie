@@ -12,7 +12,7 @@ import { createSpaces, createCourses, createLearningData, createTeachingTools,
 import { aluPackage, aluCoursePackage } from '../../../../components/alu-experiment/package.mjs';
 
 /** Production imports, eligibility and native PG owners; no simulation or model is substituted. */
-export async function aluTeachingFixture(t) {
+export async function aluTeachingFixture(t, { priorCourse } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'xj-alu-teaching-'));
   const storages = [];
   const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0',
@@ -38,6 +38,10 @@ export async function aluTeachingFixture(t) {
     return value;
   };
   const definition = await api('manage/component-import', await aluPackage());
+  if (priorCourse) {
+    priorCourse.release.components[0].definition = definition;
+    await api('manage/course-import', priorCourse);
+  }
   const published = await aluCoursePackage();
   published.release.components[0].definition = definition;
   await api('manage/course-import', published);

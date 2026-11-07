@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "name": "xunjie-icarus-worker",
-  "version": "0.3.0",
-  "identity": "f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd",
+  "version": "0.3.1",
+  "identity": "21a0a1ed4438143b33530efb293f83733dac84405b2f4c458b107a0b79358d4f",
   "assets": {
     "ivl.js": {
       "bytes": 72734,
@@ -35,16 +35,16 @@
       "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
     },
     "worker.mjs": {
-      "bytes": 12537,
-      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
+      "bytes": 13088,
+      "sha256": "f2f885ac605b08f6e66e5e34a957c49094a5e9531d3718e507242ad777cea415"
     },
     "identity.mjs": {
       "bytes": 1833,
       "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
     },
     "index.d.mts": {
-      "bytes": 2150,
-      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
+      "bytes": 2169,
+      "sha256": "3e1d376d8cb1b0d8640f5ffd2c4c373b5648e4526f94d262e6c9d1ec1d7a44ee"
     }
   },
   "files": {
@@ -81,16 +81,16 @@
       "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
     },
     "worker.mjs": {
-      "bytes": 12537,
-      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
+      "bytes": 13088,
+      "sha256": "f2f885ac605b08f6e66e5e34a957c49094a5e9531d3718e507242ad777cea415"
     },
     "identity.mjs": {
       "bytes": 1833,
       "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
     },
     "index.d.mts": {
-      "bytes": 2150,
-      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
+      "bytes": 2169,
+      "sha256": "3e1d376d8cb1b0d8640f5ffd2c4c373b5648e4526f94d262e6c9d1ec1d7a44ee"
     },
     "COPYING.icarus": {
       "bytes": 18092,
