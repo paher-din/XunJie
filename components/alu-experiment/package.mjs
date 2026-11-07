@@ -6,6 +6,9 @@ import { componentRuntimeManifestSchema } from '@xunjie/contracts/components';
 import { courseExecutionPlanBasis, canonicalValue } from '@xunjie/contracts/execution';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const id = n => `19200000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+const componentVersion = 4;
+// Resource identities belong to one immutable publication, including unchanged bytes.
+const resourceId = n => id(componentVersion * 100 + n);
 const runBudgets={compileTimeoutMs:30000,simulateTimeoutMs:5000,jobTimeoutMs:40000,memoryMiB:256,inputBytes:1048576,
   textBytes:2097152,vcdBytes:8388608,resultBytes:16777216};
 const controls = {type:'object',properties:Object.fromEntries(['A','B','M','S','Cin'].map(k=>[k,{type:'number'}]))};
@@ -54,29 +57,29 @@ export async function aluPackage() {
     const local = localScaffolds.includes(name);
     const source = await readFile(new URL(local ? name : `../alu-icarus-runtime/${name}`, import.meta.url));
     const bytes = local ? Buffer.from(source.toString('utf8').replaceAll('\r\n','\n')) : source;
-    const ref = { resourceId:id(20+index),path:name,sha256:hash(bytes),byteLength:bytes.length,
+    const ref = { resourceId:resourceId(20+index),path:name,sha256:hash(bytes),byteLength:bytes.length,
       role:name.endsWith('.wasm')?'toolchain-wasm':name.endsWith('.js')?'toolchain-script':local?'scaffold':'attachment',
       mediaType:name.endsWith('.wasm')?'application/wasm':name.endsWith('.js')?'text/javascript':name.endsWith('.gz')?'application/gzip':name.endsWith('.json')?'application/json':'text/plain' };
     resources.push(ref); runtimeResources.push({resourceId:ref.resourceId,contentBase64:bytes.toString('base64')});
   }
   const scaffold = path => resources.find(resource => resource.path===path).resourceId;
   for (const item of operations) item.observation.scaffoldResourceId = scaffold(item._scaffoldPath);
-  const manifest=componentRuntimeManifestSchema.parse({formatVersion:3,componentId:id(1),version:3,hostApiVersion:1,
-    preparationProtocolVersion:2,title:'ALU 实验',entry:{resourceId:id(2),sha256:hash(view),byteLength:view.length,mediaType:'text/html'},
+  const manifest=componentRuntimeManifestSchema.parse({formatVersion:3,componentId:id(1),version:componentVersion,hostApiVersion:1,
+    preparationProtocolVersion:2,title:'ALU 实验',entry:{resourceId:resourceId(2),sha256:hash(view),byteLength:view.length,mediaType:'text/html'},
     stateVersion:3,stateShape,initialState,requiredCapabilities:['workspace.read','workspace.change','execution.submit'],
     runtime:{adapterId:'icarus-alu',adapterVersion:1,bundleIdentity:runtime.identity,resources,
       operations:operations.map(({_scaffoldPath,...item})=>item)},
     environment:{preparationType:'browser',preparationProtocolVersion:2,selfTestVersion:1,requiredFeatures:['worker','webassembly','crypto-subtle','indexeddb','message-port','web-locks']},
     budget:{resourceCount:32,totalResourceBytes:16777216,preparationTimeoutMs:300000,selfTestTimeoutMs:60000,concurrentJobs:1,queuedJobs:1,cacheScope:'device-local'},
     selfTest:{selfTestVersion:1,fixture:{resourceId:resources.find(r=>r.path==='self-check.sv').resourceId,path:'self-check.sv',top:'self_check',expect:{result:'0101',carry:'0'}},timeoutMs:60000}});
-  return {requestId:id(104),manifest,contentBase64:view.toString('base64'),runtimeResources};
+  return {requestId:id(184),manifest,contentBase64:view.toString('base64'),runtimeResources};
 }
 export async function aluCoursePackage() {
   const component=await aluPackage(), definition={manifest:component.manifest,digest:hash(JSON.stringify(component.manifest))};
   const materials=[]; const resources=[];
   for(const [index,name] of ['learning.md','alu.sv'].entries()) {
     const bytes=Buffer.from((await readFile(new URL(name,import.meta.url),'utf8')).replaceAll('\r\n','\n'));
-    materials.push({materialId:id(60+index),title:name,path:name,mediaType:'text/plain',access:'student',sha256:hash(bytes),byteLength:bytes.length});
+    materials.push({materialId:resourceId(60+index),title:name,path:name,mediaType:'text/plain',access:'student',sha256:hash(bytes),byteLength:bytes.length});
     resources.push({path:name,contentBase64:bytes.toString('base64')});
   }
   const configuration={title:'ALU 实验',boardMapping:{version:1,inputs:{A:[3,2,1,0],B:[7,6,5,4],M:[8],S:[10,9],Cin:[11]},outputs:{F:[3,2,1,0],Cout:[4]}}};
@@ -85,12 +88,12 @@ export async function aluCoursePackage() {
     capabilities:['workspace.read','workspace.change','execution.submit'],resources:{browser:{features:['worker','webassembly','sandboxed-frame']},native:null},
     locations:['browser'],remote:null};
   executionPlan.planDigest=hash(JSON.stringify(courseExecutionPlanBasis(executionPlan)));
-  return {formatVersion:1,requestId:id(175),course:{courseId:id(71),name:'数字逻辑与部件设计'},task:{taskId:id(72),title:'设计并验证 4 位 ALU',
+  return {formatVersion:1,requestId:id(185),course:{courseId:id(71),name:'数字逻辑与部件设计'},task:{taskId:id(72),title:'设计并验证 4 位 ALU',
     summary:'公开五种操作，编辑 SystemVerilog，用虚拟板自由观察并运行完整的 4096 组真实行为检查。'},
-    release:{releaseId:id(176),objectives:['理解运算选择、固定位宽与进位','使用真实观察检验自己的实现','用完整输入域发现遗漏赋值和未知输出','用一条边界用例和一条操作区别用例说明自己的选择与观察'],
+    release:{releaseId:id(186),objectives:['理解运算选择、固定位宽与进位','使用真实观察检验自己的实现','用完整输入域发现遗漏赋值和未知输出','用一条边界用例和一条操作区别用例说明自己的选择与观察'],
       requirements:'编辑 alu.sv，实现公开的五种组合 ALU 操作。点击运行启用当时的作品；之后在虚拟板上改变 A/B/M/S/Cin 观察真实 F/Cout，或对已启用作品运行全部 4096 组输入检查。允许内置加法，保留组合必须归零。完整行为表、映射、采样与检查说明位于 ALU 实验的「公开行为与采样规则」，按需补学资料位于学习索引。Agent 只解释，不修改学生代码。',
-      materials,starterWorks:[{workId:id(74),title:'alu.sv',description:'仅含端口与 TODO 的学生骨架',materialId:id(61)}],
-      capabilities:[{kind:'component',objectId:component.manifest.componentId,version:3}],
+      materials,starterWorks:[{workId:resourceId(74),title:'alu.sv',description:'仅含端口与 TODO 的学生骨架',materialId:resourceId(61)}],
+      capabilities:[{kind:'component',objectId:component.manifest.componentId,version:component.manifest.version}],
       components:[{key:'alu',definition,configuration,materialIds:[]}],executionPlan},resources};
 }
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {

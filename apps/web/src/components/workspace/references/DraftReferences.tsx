@@ -31,6 +31,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   const [pending, setPending] = useState<ReferenceSelection | null>(null)
   const [notice, setNotice] = useState('')
   const sources = useRef(new Map<string, ReferenceSource>())
+  const locateSequence = useRef(0)
   const gestures = useRef(new WeakSet<object>())
   const refs = useMemo(() => displayReferences(state.references, workspaceKey), [state.references, workspaceKey])
   const view = useRef({ open, pending }); view.current = { open, pending }
@@ -99,11 +100,13 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
   }
   const setQuestion = (text: string) => { draft.change(text, inputs()) }
   const locate = async (reference: WorkspaceReference) => {
+    const sequence = ++locateSequence.current
     if (reference.workspaceKey !== workspaceKey || !reference.source) { setNotice('引用属于其他工作区，当前无法定位。'); return }
     try {
       const result = await sources.current.get(reference.sourceId)?.locate(reference)
+      if (sequence !== locateSequence.current) return
       setNotice(result?.ok ? '已定位引用来源。' : result?.reason ?? '来源当前不可用；引用副本仍然保留。')
-    } catch { setNotice('来源当前不可用；引用副本仍然保留。') }
+    } catch { if (sequence === locateSequence.current) setNotice('来源当前不可用；引用副本仍然保留。') }
   }
   const submit = async () => {
     if (!receiver || !actionState.ready) { setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。'); return }

@@ -16,6 +16,15 @@ function checkParameters(value:unknown) {
 }
 const textSize=(text:string)=>new TextEncoder().encode(text).length
 const roundIndex=(round:CheckRoundResult)=>round.round
+const logsOf=(result:{diagnostics?:string[];output?:string[]})=>[...(result.diagnostics??[]),...(result.output??[])]
+function failureLog(lines:string[], limit:number) {
+  const text=lines.join('\n'), bytes=new TextEncoder().encode(text)
+  if(bytes.length<=limit) return text
+  const suffix='\n[日志达到本次文本预算，后续内容未保留。]'
+  const suffixBytes=new TextEncoder().encode(suffix)
+  if(limit<suffixBytes.length) return new TextDecoder().decode(bytes.subarray(0,limit),{stream:true})
+  return new TextDecoder().decode(bytes.subarray(0,limit-suffixBytes.length),{stream:true})+suffix
+}
 
 function codeOf(action:ExecutionActionV3) {
   return action.execution.basis.works.filter(file=>file.kind==='code' && /\.(sv|v|svh|vh)$/.test(file.name))
@@ -28,12 +37,19 @@ function statusError(status:string, expired:boolean):ExecutionErrorCode {
 async function underBudget<T>(action:ExecutionActionV3, context:AdapterContext,
   task:(signal:AbortSignal, expired:()=>boolean)=>Promise<T>):Promise<T> {
   const {limits}=action.execution
-  const abort=new AbortController(); let expired=false
-  const stop=()=>abort.abort()
-  const timer=setTimeout(()=>{expired=true;stop()},limits.jobTimeoutMs)
+  const abort=new AbortController(); let cause:'stop'|'deadline'|undefined
+  const interrupted=new Promise<never>((_resolve,reject)=>abort.signal.addEventListener('abort',()=>reject(abort.signal.reason),{once:true}))
+  const stop=()=>{if(!cause){cause='stop';abort.abort(new ExecutionError('worker-terminated','用户请求停止。'))}}
+  const timer=setTimeout(()=>{if(!cause){cause='deadline';abort.abort(new ExecutionError('budget-exceeded','整体执行时间预算已用尽。',[
+    {name:'failure.json',mediaType:'application/json',text:JSON.stringify({stage:'job-deadline',jobTimeoutMs:limits.jobTimeoutMs,
+      operation:action.execution.operation.operationId})},
+  ]))}},limits.jobTimeoutMs)
   context.signal.addEventListener('abort',stop,{once:true})
   if(context.signal.aborted) stop()
-  try { return await task(abort.signal,()=>expired) }
+  try { return await Promise.race([Promise.resolve().then(()=>{
+    abort.signal.throwIfAborted()
+    return task(abort.signal,()=>cause==='deadline')
+  }),interrupted]) }
   finally { clearTimeout(timer);context.signal.removeEventListener('abort',stop) }
 }
 
@@ -56,9 +72,10 @@ function runtimeFor(identity:string,resources:Record<string,Uint8Array>) {
   return pending
 }
 async function compileAction(action:ExecutionActionV3, context:AdapterContext, load:RuntimeResourceLoader,
-  signal:AbortSignal):Promise<CompiledCheck> {
+  signal:AbortSignal, expired:()=>boolean):Promise<CompiledCheck> {
   const {basis,limits}=action.execution
   const resources=await load(action)
+  signal.throwIfAborted()
   await context.checkpoint()
   const runtime=await runtimeFor(basis.runtime.bundleIdentity,resources)
   const scaffoldRef=basis.runtime.resources.find(resource=>resource.resourceId===basis.observation.scaffoldResourceId)
@@ -70,10 +87,10 @@ async function compileAction(action:ExecutionActionV3, context:AdapterContext, l
   const compiled=await runtime.compile({top:basis.compile.top,sources,entryFiles:[...basis.compile.entryFiles,scaffoldRef.path],
     options:{includeDirs:basis.compile.includeDirs,strictExprWidth:basis.compile.strictExprWidth}},
     {signal,timeoutMs:limits.compileTimeoutMs})
-  if(compiled.status!=='completed') throw new ExecutionError(statusError(compiled.status,false),
-    ['编译未完成',...(compiled.diagnostics??[])].join('\n'),[
+  if(compiled.status!=='completed') throw new ExecutionError(statusError(compiled.status,expired()),
+    ['编译未完成',...logsOf(compiled)].join('\n'),[
       {name:'failure.json',mediaType:'application/json',text:JSON.stringify({stage:compiled.stage,operation:action.execution.operation.operationId})},
-      {name:'diagnostics.txt',mediaType:'text/plain',text:(compiled.diagnostics??[]).join('\n')}])
+      {name:'diagnostics.txt',mediaType:'text/plain',text:failureLog(logsOf(compiled),limits.textBytes)}])
   return {runtime,compiled,resources,scaffold:{path:scaffoldRef.path,content:scaffoldContent,sha256:scaffoldRef.sha256},
     diagnostics:compiled.diagnostics}
 }
@@ -161,21 +178,21 @@ async function checkResources(source:CheckSources):Promise<ResultResource[]> {
 async function runSingle(action:ExecutionActionV3, context:AdapterContext, load:RuntimeResourceLoader) {
   const inputs=aluControls(action.execution.parameters)
   return underBudget(action,context,async(signal,expired)=>{
-    const {runtime,compiled,diagnostics}=await compileAction(action,context,load,signal)
+    const {runtime,compiled,diagnostics}=await compileAction(action,context,load,signal,expired)
     await context.checkpoint()
     const {limits}=action.execution
     const result=await runtime.simulate({artifact:compiled.artifact,plusargs:Object.entries(inputs).map(([key,value])=>`+${key}=${value}`),
       expectedIndices:[0]},{signal,timeoutMs:limits.simulateTimeoutMs})
     if(result.status!=='completed') throw new ExecutionError(statusError(result.status,expired()),
-      ['仿真未完成',...(result.diagnostics??[])].join('\n'),[
+      ['仿真未完成',...logsOf(result)].join('\n'),[
         {name:'failure.json',mediaType:'application/json',text:JSON.stringify({stage:result.stage,code:result.code,inputs,operation:action.execution.operation.operationId})},
-        {name:'diagnostics.txt',mediaType:'text/plain',text:(result.diagnostics??[]).join('\n')}])
+        {name:'diagnostics.txt',mediaType:'text/plain',text:failureLog([...diagnostics,...logsOf(result)],limits.textBytes)}])
     // An explicit run may enable a four-state observation, but a missing/incomplete sample cannot.
     if(result.observationState!=='complete' && result.observationState!=='complete-with-unknown')
       throw new ExecutionError('algorithm-error','观察不完整，未取得可启用的采样。',[
         {name:'failure.json',mediaType:'application/json',text:JSON.stringify({stage:result.stage,inputs,
           observationState:result.observationState,operation:action.execution.operation.operationId})},
-        {name:'diagnostics.txt',mediaType:'text/plain',text:(result.diagnostics??[]).join('\n')}])
+        {name:'diagnostics.txt',mediaType:'text/plain',text:failureLog([...diagnostics,...logsOf(result)],limits.textBytes)}])
     const row=result.observations[0], output={f:row && !('invalid' in row)?row.f:'',cout:row && !('invalid' in row)?row.cout:'',
       observationState:result.observationState,...(action.execution.instance.stateVersion > 1
         ? {operationId:action.execution.operation.operationId,dependencyId:result.dependencyId} : {})}
@@ -192,7 +209,7 @@ async function runSingle(action:ExecutionActionV3, context:AdapterContext, load:
 
 async function runCheck(action:ExecutionActionV3, context:AdapterContext, load:RuntimeResourceLoader) {
   return underBudget(action,context,async(signal,expired)=>{
-    const compiled=await compileAction(action,context,load,signal)
+    const compiled=await compileAction(action,context,load,signal,expired)
     const {limits}=action.execution, indices=Array.from({length:4096},(_,index)=>index)
     const rounds:CheckRoundResult[]=[]
     for(const spec of CHECK_ROUNDS) {
@@ -202,6 +219,9 @@ async function runCheck(action:ExecutionActionV3, context:AdapterContext, load:R
         plusargs:[`+ROUND=${spec.precursor==='P1'?1:0}`,`+SAMPLE=${spec.sampleTime}`],expectedIndices:indices},
         {signal,timeoutMs:limits.simulateTimeoutMs})
       if(result.status!=='completed') {
+        rounds.push({round:spec.round,precursor:spec.precursor,sampleTime:spec.sampleTime,status:result.status,
+          observationState:'unavailable',rows:[],diagnostics:logsOf(result),
+          durationMs:Math.round(performance.now()-started),vcd:null})
         const analysis=analyzeCheck(rounds)
         const partial:ResultResource[]=[
           {name:'check-report.json',mediaType:'application/json',text:JSON.stringify({...reportOf({action,compiled,rounds,analysis,
@@ -209,19 +229,26 @@ async function runCheck(action:ExecutionActionV3, context:AdapterContext, load:R
             at:new Date().toISOString()}),reason:`第 ${spec.round+1} 轮未完成：${result.status}`})},
           {name:'check-observations.json',mediaType:'application/json',text:JSON.stringify(observationsOf({action,compiled,rounds,analysis,
             workDigests:[],at:new Date().toISOString()}))},
-          {name:'diagnostics.txt',mediaType:'text/plain',text:diagnosticsOf(compiled,rounds,analysis)},
+          {name:'diagnostics.txt',mediaType:'text/plain',text:failureLog([diagnosticsOf(compiled,rounds,analysis)],limits.textBytes)},
         ]
         throw new ExecutionError(statusError(result.status,expired()),
-          [`第 ${spec.round+1} 轮未完成`,...(result.diagnostics??[])].join('\n'),partial)
+          [`第 ${spec.round+1} 轮未完成`,...logsOf(result)].join('\n'),partial)
       }
       rounds.push({round:spec.round,precursor:spec.precursor,sampleTime:spec.sampleTime,status:'completed',
         observationState:result.observationState,rows:result.observations as CheckRoundResult['rows'],
-        diagnostics:result.diagnostics,durationMs:Math.round(performance.now()-started),vcd:result.vcd})
+        diagnostics:logsOf(result),durationMs:Math.round(performance.now()-started),vcd:result.vcd})
     }
     const analysis=analyzeCheck(rounds)
     const workDigests=await Promise.all(codeOf(action).map(async file=>({name:file.name,contentId:file.contentId,sha256:await sha256Text(file.value)})))
     const source:CheckSources={action,compiled,rounds,analysis,workDigests,at:new Date().toISOString()}
     const resources=await checkResources(source)
+    const diagnostics=resources.find(resource=>resource.name==='diagnostics.txt')!
+    if(textSize(diagnostics.text)>limits.textBytes) {
+      const partial=resources.filter(resource=>resource.name!=='check-traces.json').map(resource=>resource===diagnostics
+        ? {...resource,text:failureLog([resource.text],limits.textBytes)} : resource)
+      assertSizes(partial,limits)
+      throw new ExecutionError('budget-exceeded','累计日志超过文本预算；已保留报告、观察和预算内日志。',partial)
+    }
     assertSizes(resources,limits)
     const vcdBytes=rounds.reduce((total,round)=>total+(round.vcd?textSize(round.vcd):0),0)
     if(vcdBytes>limits.vcdBytes) {

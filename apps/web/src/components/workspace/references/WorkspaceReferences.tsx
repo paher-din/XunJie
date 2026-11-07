@@ -58,6 +58,7 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
   state.current = { open, question, references, pending }
   const revision = useRef(0), sequence = useRef(0), inFlight = useRef(false), alive = useRef(true)
   const sources = useRef(new Map<string, ReferenceSource>())
+  const locateSequence = useRef(0)
   const gestures = useRef(new WeakSet<object>())
   useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
   const add = useCallback((selection: ReferenceSelection) => {
@@ -128,11 +129,13 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
     revision.current++
   }
   const locate = async (reference: WorkspaceReference) => {
+    const sequence = ++locateSequence.current
     if (reference.workspaceKey !== workspaceKey) { setNotice('引用属于其他工作区，当前无法定位。'); return }
     try {
       const result = await sources.current.get(reference.sourceId)?.locate(reference)
+      if (sequence !== locateSequence.current) return
       setNotice(result?.ok ? '已定位引用来源。' : result?.reason ?? '来源当前不可用；引用副本仍然保留。')
-    } catch { setNotice('来源当前不可用；引用副本仍然保留。') }
+    } catch { if (sequence === locateSequence.current) setNotice('来源当前不可用；引用副本仍然保留。') }
   }
   const submit = async () => {
     if (inFlight.current || !state.current.question.trim()) return

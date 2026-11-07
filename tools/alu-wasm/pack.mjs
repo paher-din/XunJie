@@ -68,7 +68,7 @@ for (const name of [...resourceNames, 'checksums.txt', 'index.mjs', 'worker.mjs'
   files[name] = { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 const adapters = Object.fromEntries(adapterNames.map(name => [name, files[name]]));
-const manifest = { formatVersion: 1, name: 'xunjie-icarus-worker', version: '0.3.0',
+const manifest = { formatVersion: 1, name: 'xunjie-icarus-worker', version: '0.3.1',
   identity: await bundleIdentity(assets, adapters), assets, adapters, files, toolchain: lock,
   compilerConfiguration, license: { icarus: 'See COPYING.icarus and corresponding source notices',
     correspondingSource: 'source/iverilog.tar.gz', modifications: 'source/port.py', bundledRuntimeNotices: 'notices/' },

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ComponentBinding } from '@xunjie/contracts/components'
 import { ALU_REFLECTION_MEDIA_TYPE, aluCaseFromAction, aluReflectionName, isAluObservationAction, newAluCaseDraft, parseAluReflectionFile,
   type AluCaseDraft, type AluReflection } from '@xunjie/contracts/alu-learning'
-import type { AluWaveRange } from '@xunjie/contracts/alu-waveform'
+import { normalizeAluWaveRange, describeAluVcdRange, type AluWaveRange } from '@xunjie/contracts/alu-waveform'
 import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data'
-import { questionWorkBasisSchema, type QuestionReferenceRange } from '@xunjie/contracts/question-drafts'
+import { questionWorkBasisSchema, normalizeSemanticRange, questionReferenceRangeSchema, type QuestionReferenceRange } from '@xunjie/contracts/question-drafts'
 import { componentSource, useSemanticSource } from '../../components/workspace/references/SemanticSource'
+import type { LocateResult, ReferenceSnapshot } from '../../components/workspace/references/model'
 import { useWorkspaceReferences } from '../../components/workspace/references'
 import { useActivitySession } from '../../product/ActivitySession'
 import { stateLabel, type ExecutionRecord } from '../../tool-execution/ledger'
@@ -24,13 +25,15 @@ const describeInputs = (inputs: unknown) => Object.entries(inputs as Record<stri
 export function AluCaseEditor({ activity, binding, state, stateFile, records, enabled, canWrite, canCompare,
   writeState, onCompare }: CaseProps & { stateFile?: WorkFile; enabled?: ExecutionRecord; canCompare: boolean; onCompare(): void }) {
   const references = useWorkspaceReferences()
+  const host = useRef<HTMLElement>(null)
   const draft = readCaseDraft(state.caseDraft)
   const select = useSemanticSource({ source: stateFile ? componentSource(activity, binding, stateFile.objectId, stateFile.contentId) : null,
     title: 'ALU 预测用例', content: state, basis: stateFile && questionWorkBasisSchema.parse(stateFile),
-    locate: () => ({ ok: true }) })
+    locate: reference => reference.range.typeId === 'alu-case' && host.current
+      ? focusSource(host.current) : { ok: false, reason: '原用例暂不可定位；引用副本仍保留。' } })
   const change = (patch: Partial<AluCaseDraft>) => writeState(previous => editCase(previous, patch))
   const prior = enabled ? priorCaseSources(records, enabled, controlsOf(state)) : []
-  return <section className="alu-cases" aria-label="预测用例">
+  return <section ref={host} tabIndex={-1} className="alu-cases" aria-label="预测用例">
     <header className="alu-section-head"><h2>预测用例</h2><div className="execution-actions">
       <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={() => writeState(previous => ({ ...previous,
         feedbackPolicy: 'hold', caseRequestId: '', caseDraft: JSON.stringify(newAluCaseDraft(crypto.randomUUID(), crypto.randomUUID())) }))}>新用例</button>
@@ -76,13 +79,93 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const cases = records.filter(record => record.action.protocolVersion === 3 && aluCaseFromAction(record.action))
   const selected = records.find(record => record.requestId === state.selectedCase)
-  const record = selected ?? fallbackRecord
+  const record = state.selectedCase ? selected : fallbackRecord
   const capture = record?.action.protocolVersion === 3 ? aluCaseFromAction(record.action) : null
   const observation = !!record && isAluObservationAction(record.action)
   const recordLabel = record ? `${capture ? `用例 ${cases.length - cases.findIndex(item => item.requestId === record.requestId)}` : '观察'} · ${new Date(record.createdAt).toLocaleTimeString('zh-CN')}` : '原仿真波形'
   const [loaded, setLoaded] = useState<{ requestId: string; artifact: ResultRecord | null; loading: boolean; error: string }>(
     { requestId: '', artifact: null, loading: false, error: '' })
   const [notice, setNotice] = useState(''), saving = useRef(false)
+  const host = useRef<HTMLElement>(null)
+  const pending = useRef<{ requestId: string; contentId: string; typeId: string; noteFile?: WorkFile; wave?: AluWaveRange;
+    resolve(result: LocateResult): void } | null>(null)
+  const selectionKey = JSON.stringify([activity.activityId, binding.definition.digest, state.selectedCase, state.selectedObservation,
+    state.selectedCheck, state.waveSelection, state.feedbackPolicy, state.inputRevision, state.activationRevision])
+  const latest = useRef({ records, files: works.files, selectionKey }); latest.current = { records, files: works.files, selectionKey }
+  const locateRevision = useRef(0)
+  const alive = useRef(true)
+  useEffect(() => { alive.current = true; return () => {
+    alive.current = false
+    locateRevision.current++
+    pending.current?.resolve({ ok: false, reason: '来源视图已关闭；引用副本仍保留。' })
+  } }, [])
+  const locate = async (reference: ReferenceSnapshot, target: ExecutionRecord, noteFile?: WorkFile): Promise<LocateResult> => {
+    const unavailable: LocateResult = { ok: false, reason: '原结果或引用范围暂不可定位；引用副本仍保留，未重新运行。' }
+    const revision = ++locateRevision.current, initialSelection = latest.current.selectionKey
+    pending.current?.resolve(unavailable)
+    pending.current = null
+    try {
+      const range = questionReferenceRangeSchema.parse({ ...reference.range, kind: reference.kind })
+      if (range.kind !== 'semantic') return unavailable
+      const normalized = normalizeSemanticRange(range)
+      if (reference.source?.kind !== 'component' || reference.source.objectId !== (noteFile?.objectId ?? target.requestId)
+        || !noteFile && (reference.source.requestId !== target.requestId || reference.source.executionRef !== target.executionRef)) return unavailable
+      if (noteFile ? normalized.typeId !== 'alu-reflection' : !['alu-observation', 'alu-waveform'].includes(normalized.typeId)) return unavailable
+      const retained = await execution.artifact(target.requestId)
+      if (!retained || retained.requestId !== target.requestId || !alive.current || locateRevision.current !== revision
+        || latest.current.selectionKey !== initialSelection) return unavailable
+      const fresh = latest.current.records.find(item => item.requestId === target.requestId)
+      if (!fresh || fresh.query.statusKnowledge !== 'confirmed' || !fresh.query.output
+        || fresh.query.output.contentId !== target.query.output?.contentId || fresh.executionRef !== target.executionRef
+        || noteFile && !latest.current.files.some(file => file.objectId === noteFile.objectId && file.contentId === noteFile.contentId)) return unavailable
+      let wave: AluWaveRange | undefined
+      if (normalized.typeId === 'alu-waveform') {
+        const vcd = retained.resources?.find(resource => resource.name === 'trace.vcd')?.text
+        if (typeof vcd !== 'string') return unavailable
+        wave = normalizeAluWaveRange(vcd, { signalIds: normalized.target.signalIds as string[],
+          fromTick: normalized.target.fromTick as string, toTick: normalized.target.toTick as string })
+        const copy = JSON.parse(describeAluVcdRange(vcd, wave)) as { signals: { changes: unknown[] }[] }
+        if (wave.signalIds.length > 64 || copy.signals.reduce((sum, signal) => sum + signal.changes.length, 0) > 4096) return unavailable
+      }
+      return await new Promise<LocateResult>(resolve => {
+        pending.current = { requestId: target.requestId, contentId: fresh.query.output!.contentId, typeId: normalized.typeId, noteFile, wave, resolve }
+        if (!selectState(previous => ({ ...previous, selectedCase: target.action.protocolVersion === 3 && aluCaseFromAction(target.action) ? target.requestId : '',
+          selectedObservation: target.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
+          ...(wave ? { waveSelection: JSON.stringify({ requestId: target.requestId, range: wave }) } : {}) }), true)) {
+          pending.current = null
+          resolve(unavailable)
+        }
+      })
+    } catch { return unavailable }
+  }
+  useEffect(() => {
+    const request = pending.current
+    if (!request) return
+    if (suppressed || record?.requestId !== request.requestId || record.query.statusKnowledge !== 'confirmed'
+      || record.query.output?.contentId !== request.contentId
+      || request.noteFile && !works.files.some(file => file.objectId === request.noteFile!.objectId && file.contentId === request.noteFile!.contentId)) {
+      pending.current = null
+      request.resolve({ ok: false, reason: '来源选择已变化；引用副本仍保留。' })
+      return
+    }
+    if (loaded.requestId !== request.requestId || loaded.loading) return
+    const target = request.typeId === 'alu-waveform' ? host.current?.querySelector<HTMLElement>('.alu-waveform')
+      : request.typeId === 'alu-reflection' ? Array.from(host.current?.querySelectorAll<HTMLElement>('[data-note-id]') ?? []).find(item => item.dataset.noteId === request.noteFile?.objectId)
+      : host.current?.querySelector<HTMLElement>('table[aria-label="预测与实际比较"]')
+    let waveVisible = true
+    if (request.wave) {
+      try {
+        const text = loaded.artifact?.resources?.find(resource => resource.name === 'trace.vcd')?.text
+        const selectedWave = JSON.parse(state.waveSelection)
+        waveVisible = typeof text === 'string' && selectedWave.requestId === request.requestId
+          && JSON.stringify(selectedWave.range) === JSON.stringify(request.wave)
+          && JSON.stringify(normalizeAluWaveRange(text, request.wave)) === JSON.stringify(request.wave)
+      } catch { waveVisible = false }
+    }
+    pending.current = null
+    request.resolve(target && waveVisible && loaded.artifact && !loaded.error ? focusSource(target)
+      : { ok: false, reason: '原结果暂不可显示；引用副本仍保留，未重新运行。' })
+  })
   useEffect(() => {
     let active = true
     if (!record || !record.query.output || suppressed) return
@@ -98,9 +181,9 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   const output = record?.query.statusKnowledge === 'confirmed' ? record.query.output?.output as { f?: string; cout?: string; observationState?: string } | undefined : undefined
   const content = record ? { action: record.action, output: output ?? null, state: record.query.statusKnowledge === 'confirmed' ? record.query.state : 'unknown',
     resources: artifact?.resources ?? [], inputDigest: record.inputDigest, executionRef: record.executionRef } : null
-  const source = record?.query.statusKnowledge === 'confirmed' && record.query.output && artifact ? componentSource(activity, binding, record.requestId, record.query.output.contentId,
+  const source = !suppressed && record?.query.statusKnowledge === 'confirmed' && record.query.output && artifact ? componentSource(activity, binding, record.requestId, record.query.output.contentId,
     { requestId: record.requestId, executionRef: record.executionRef }) : null
-  const select = useSemanticSource({ source, title: 'ALU 实验观察', content, locate: () => ({ ok: true }) })
+  const select = useSemanticSource({ source, title: 'ALU 实验观察', content, locate: reference => record ? locate(reference, record) : { ok: false, reason: '原结果暂不可定位。' } })
   const add = (typeId: string, anchor: HTMLElement, target: Record<string, unknown> = {}) => {
     try { select(rangeOf(typeId, target), () => anchor.getBoundingClientRect()); references.ask(); setNotice('') }
     catch (error) { setNotice(error instanceof Error ? error.message : '当前范围无法引用，请缩小范围。') }
@@ -111,7 +194,9 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   for (const file of works.files) if (file.mediaType === ALU_REFLECTION_MEDIA_TYPE) {
     try { notes.push({ file, note: parseAluReflectionFile(file) }) } catch { /* The original owner's error remains visible in workspace status. */ }
   }
-  const selectedNotes = notes.filter(item => item.note.requestId === record?.requestId)
+  const ownedNotes = notes.filter(item => item.note.activityId === activity.activityId && item.note.bindingKey === binding.key
+    && item.note.instanceId === `${activity.activityId}:${binding.key}` && item.note.definitionDigest === binding.definition.digest)
+  const selectedNotes = ownedNotes.filter(item => item.note.requestId === record?.requestId)
   const reflectionTarget = records.find(item => item.requestId === state.reflectionFor) ?? (state.reflectionDraft ? undefined : record)
   const reflectionAllowed = !!reflectionTarget && isAluObservationAction(reflectionTarget.action)
   const saveReflection = async () => {
@@ -133,7 +218,16 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     } catch { setNotice('解释修订仍待本机保护或同步确认，请保留页面核对原记录。') }
     finally { saving.current = false }
   }
-  return <section className="alu-case-results" aria-label="比较与解释">
+  return <section ref={host} className="alu-case-results" aria-label="比较与解释">
+    {records.filter(item => isAluObservationAction(item.action) && item.query.statusKnowledge === 'confirmed' && item.query.output
+      && (!source || item.requestId !== record?.requestId)).map(item => <RetainedSource key={item.requestId}
+        source={componentSource(activity, binding, item.requestId, item.query.output!.contentId, { requestId: item.requestId, executionRef: item.executionRef })}
+        locate={reference => locate(reference, item)} />)}
+    {ownedNotes.filter(item => suppressed || item.note.requestId !== record?.requestId).map(item => {
+      const original = records.find(result => result.requestId === item.note.requestId)
+      return original && <RetainedSource key={item.file.objectId} source={componentSource(activity, binding, item.file.objectId, item.file.contentId)}
+        locate={reference => locate(reference, original, item.file)} />
+    })}
     <header className="alu-section-head"><h2>比较与解释</h2>
       {cases.length > 0 && <label>用例记录<select aria-label="用例记录" value={suppressed ? '' : state.selectedCase}
         onChange={event => selectState(previous => ({ ...previous, selectedCase: event.target.value, caseRequestId: '',
@@ -181,7 +275,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
         incomplete={!!record && (record.query.statusKnowledge !== 'confirmed' || record.query.state !== 'succeeded'
           || output?.observationState !== 'complete' && output?.observationState !== 'complete-with-unknown')} />
       {selectedNotes.map((item, index) => <Reflection key={item.note.noteId} {...{ activity, binding }} {...item}
-        action={record!.action} index={index} canWrite={canWrite} onRevise={() => writeState(previous => ({ ...previous,
+        action={record!.action} onLocate={reference => locate(reference, record!, item.file)} index={index} canWrite={canWrite} onRevise={() => writeState(previous => ({ ...previous,
           reflectionFor: item.note.requestId, reflectionParent: item.note.noteId, reflectionDraft: item.note.text }))} />)}
     </>}
     {observation && !suppressed && <label className="alu-case-reason">解释、仍未解决的问题或用例能发现的错误
@@ -198,18 +292,33 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   </section>
 }
 
-function Reflection({ activity, binding, file, note, action, index, canWrite, onRevise }: {
+function Reflection({ activity, binding, file, note, action, index, canWrite, onRevise, onLocate }: {
   activity: LearningActivity; binding: ComponentBinding; file: WorkFile; note: AluReflection;
-  action: ExecutionRecord['action']; index: number; canWrite: boolean; onRevise(): void
+  action: ExecutionRecord['action']; index: number; canWrite: boolean; onRevise(): void; onLocate(reference: ReferenceSnapshot): Promise<LocateResult>
 }) {
   const references = useWorkspaceReferences()
   const select = useSemanticSource({ source: componentSource(activity, binding, file.objectId, file.contentId),
-    title: `ALU 解释修订 ${index + 1}`, content: { note, action }, basis: questionWorkBasisSchema.parse(file), locate: () => ({ ok: true }) })
-  return <div className="alu-reflection"><p className="alu-hint">解释修订 {index + 1}</p><p>{note.text}</p>
+    title: `ALU 解释修订 ${index + 1}`, content: { note, action }, basis: questionWorkBasisSchema.parse(file), locate: onLocate })
+  return <div className="alu-reflection" data-note-id={file.objectId} tabIndex={-1}><p className="alu-hint">解释修订 {index + 1}</p><p>{note.text}</p>
     <div className="execution-actions"><button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={onRevise}>在此基础上修订</button>
       <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={event => {
         const anchor = event.currentTarget
         select(rangeOf('alu-reflection'), () => anchor.getBoundingClientRect()); references.ask()
       }}>解释加入问题</button></div>
   </div>
+}
+
+/** Register retained sources even while a different result is displayed. */
+function RetainedSource({ source, locate }: Pick<Parameters<typeof useSemanticSource>[0], 'source' | 'locate'>) {
+  useSemanticSource({ source, locate, title: 'ALU 原来源', content: null })
+  return null
+}
+
+function focusSource(target: HTMLElement): LocateResult {
+  for (let parent = target.parentElement; parent; parent = parent.parentElement)
+    if (parent instanceof HTMLDetailsElement) parent.open = true
+  target.tabIndex = -1
+  target.scrollIntoView?.({ block: 'center' })
+  target.focus({ preventScroll: true })
+  return document.activeElement === target ? { ok: true } : { ok: false, reason: '原来源暂不可聚焦；引用副本仍保留。' }
 }

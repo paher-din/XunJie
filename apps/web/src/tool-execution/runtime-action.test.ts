@@ -23,7 +23,7 @@ describe('fixed ALU execution through the shared receiver',()=>{
     const enabledBy={requestId:crypto.randomUUID(),inputDigest:'1'.repeat(64),executionRef:crypto.randomUUID()}
     const draft={...newAluCaseDraft(crypto.randomUUID(),crypto.randomUUID()),predictedF:'0000',predictedCout:'1',reason:'15 + 1 crosses the four-bit boundary'}
     const state:WorkFile={objectId:crypto.randomUUID(),contentId:crypto.randomUUID(),name:'components/alu.json',kind:'state',encoding:'json',mediaType:'application/vnd.xunjie.component-state+json',value:JSON.stringify({
-      formatVersion:1,instanceId:`${activity.activityId}:alu`,componentId:binding.definition.manifest.componentId,version:3,definitionDigest:binding.definition.digest,stateVersion:3,operationId:crypto.randomUUID(),
+      formatVersion:1,instanceId:`${activity.activityId}:alu`,componentId:binding.definition.manifest.componentId,version:binding.definition.manifest.version,definitionDigest:binding.definition.digest,stateVersion:3,operationId:crypto.randomUUID(),
       content:{...(binding.definition.manifest.initialState as Record<string,unknown>),A:15,B:1,M:1,feedbackPolicy:'hold',caseDraft:JSON.stringify(draft),enabledBasis:JSON.stringify({...enabledBy,definitionDigest:binding.definition.digest,activationRevision:1})}})}
     const workspace=new ReliableWorkspace(JSON.stringify(['test',identity.environmentId,identity.spaceId,identity.principalId,activity.activityId]),
       {read:async()=>({revision:1,files:[code,state]}),receipt:async()=>null,sync:async input=>({revision:2,files:input.files})})

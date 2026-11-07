@@ -21,17 +21,9 @@ import { editCase, isCurrentComparison, priorCaseSources, readCaseDraft } from '
 import { AluCaseEditor, AluCaseResults } from './AluCases'
 import { controlsOf, defaultAluState, encodeEnabledBasis, parseEnabledBasis, readAluState, sameControls,
   type AluControl, type AluState, type EnabledBasis } from './state'
+import { preparationMessage } from './preparation-message'
 import './alu.css'
 
-const preparationIssue: Record<string, string> = {
-  'resource-missing': '实验资源暂时无法读取，可在连接恢复后重试。',
-  'resource-corrupt': '实验资源校验不一致，未启用这份资源，请重试取得原版本。',
-  'protocol-unsupported': '当前产品不支持这份运行版本或操作，请更新兼容产品后重试。',
-  'device-feature-missing': '当前浏览器缺少实验所需能力，请使用支持的桌面 Chrome。',
-  'storage-unavailable': '浏览器本机存储不可用，未启用实验；已有作品和记录仍保留。',
-  'self-test-interrupted': '实验准备已中断或超时，可按原准备身份继续。',
-  'self-test-failed': '工具链自检未通过，已有作品和记录仍保留，可查看详情后重试。',
-}
 const operationName = (state: Pick<AluState, 'M' | 'S'>) => state.M === 0
   ? ['NOT A', 'A AND B', 'A OR B', 'A XOR B'][state.S] ?? '未知操作'
   : state.S === 0 ? 'A + B + Cin' : '保留组合（F/Cout 应为 0）'
@@ -77,6 +69,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   const [attempt, setAttempt] = useState(0)
   const [note, setNote] = useState('')
   const [observeTick, setObserveTick] = useState(0)
+  const [observationLimit, setObservationLimit] = useState(8)
+  const [checkLimit, setCheckLimit] = useState(8)
   const [reportState, setReportState] = useState<{ recordId: string; loading: boolean; error: string
     report: AluCheckReport | null; observations: AluCheckObservations | null; diagnostics: string | null
     resources: ExecutionRetainedResource[] }>(
@@ -99,12 +93,10 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     const target = { activity, binding, spaceKey, namespace }
     void runtimePreparation.prepare(target, crypto.randomUUID()).then(result => {
       if (!active) return
-      const quota = result.reason === 'storage-unavailable' && result.diagnostics.some(diagnostic => /quota/i.test(diagnostic.detail))
+      const message = preparationMessage(result)
       setReady(result.status === 'ready')
-      setPreparationNote(result.status === 'ready' ? '' : quota
-        ? '浏览器存储空间不足，未启用实验。请先保护或导出已有作品，再释放空间后重试。'
-        : preparationIssue[result.reason] ?? '实验能力尚未确认，可查看准备详情后重试。')
-      setPreparationDetails(result.diagnostics.map(diagnostic => `${diagnostic.stage}：${diagnostic.detail}`).join('\n'))
+      setPreparationNote(message.note)
+      setPreparationDetails(message.details)
     }).catch(error => { if (active) setPreparationNote(`实验准备未完成：${errorText(error)}`) })
     return () => { active = false }
   }, [activity, binding, spaceKey, namespace, authorized, workspace, attempt])
@@ -443,7 +435,12 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   const waitingForObservation = checkActive || !!activeCheck || !!activeObservation || !!activeRun || !!alu.pendingActivation
   // The board is driven only by a reading that still matches the current input and enabled basis.
   // A selected history record is shown in the readout, never wired back to the board.
-  const currentObservationRecord = observationCurrent ? selectedObservationRecord : undefined
+  const boardObservation = useRef<{ key: string; requestId: string } | null>(null)
+  const boardKey = JSON.stringify([alu.enabledBasis, alu.inputRevision, controls])
+  if (observationCurrent && selectedObservationRecord) boardObservation.current = { key: boardKey, requestId: selectedObservationRecord.requestId }
+  else if (boardObservation.current?.key !== boardKey) boardObservation.current = null
+  const currentObservationRecord = observationCurrent ? selectedObservationRecord
+    : observationHistory ? records.find(record => record.requestId === boardObservation.current?.requestId) : undefined
   const selectedCase = records.find(record => record.requestId === alu.selectedCase)
   const feedbackHeld = alu.feedbackPolicy === 'hold' && !isCurrentComparison(alu, selectedCase)
   const currentReading = feedbackHeld ? { state: 'none' as const } : readingOf(currentObservationRecord, waitingForObservation || (!currentObservationRecord && !!basis))
@@ -599,7 +596,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         <div className="alu-history-columns">
           <div><h3>观察</h3>
             {observations.length === 0 ? <p className="alu-hint">还没有自由观察或运行记录。</p>
-              : <ul>{observations.slice(0, 8).map(record => <li key={record.requestId}>
+              : <ul>{observations.slice(0, observationLimit).map(record => <li key={record.requestId}>
                 <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous,
                   selectedObservation: record.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
                   selectedCase: record.action.protocolVersion === 3 && aluCaseFromAction(record.action) ? record.requestId : '' }))}>查看</button>
@@ -607,15 +604,19 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
                 <span className="alu-mono">{Object.entries(record.action.execution.parameters as Record<string, number>).map(([key, value]) => `${key}=${value}`).join(' ')}</span>
                 <span>{new Date(record.createdAt).toLocaleTimeString('zh-CN')} · {record.query.state}</span>
               </li>)}</ul>}
+            {observations.length > observationLimit && <button type="button" className="ws-btn ghost"
+              onClick={() => setObservationLimit(limit => limit + 8)}>显示更多观察</button>}
           </div>
           <div><h3>检查</h3>
             {checks.length === 0 ? <p className="alu-hint">还没有全量检查记录。</p>
-              : <ul>{checks.slice(0, 8).map(record => <li key={record.requestId}>
+              : <ul>{checks.slice(0, checkLimit).map(record => <li key={record.requestId}>
                 <button type="button" className="ws-btn ghost" onClick={() => selectState(previous => ({ ...previous,
                   selectedCheck: record.requestId, selectedCheckBasis: basis?.requestId ?? '' }))}>查看</button>
                 <span>{new Date(record.createdAt).toLocaleTimeString('zh-CN')} · {record.query.state}</span>
                 <span>{enabledRecord && sameCodeBasis(record, enabledRecord) ? '当前启用作品' : '另一份作品'}</span>
               </li>)}</ul>}
+            {checks.length > checkLimit && <button type="button" className="ws-btn ghost"
+              onClick={() => setCheckLimit(limit => limit + 8)}>显示更多检查</button>}
           </div>
         </div>
       </details>}

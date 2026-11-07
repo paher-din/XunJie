@@ -279,7 +279,7 @@ test('one sync accepts an out-of-order parent chain and rejects loops or another
   await f.receive(source); await f.receive(otherCase);
   const missing = f.reflection(source, { parentNoteId: randomUUID() });
   await assert.rejects(f.works.sync(f.identity, f.current.activityId,
-    { requestId: randomUUID(), baseRevision: 0, files: [missing] }), { code: 'invalid' });
+    { requestId: randomUUID(), baseRevision: 0, files: [missing] }), { code: 'unavailable' });
   const first = f.reflection(source), second = f.reflection(source, { parentNoteId: first.objectId, text: 'Second explanation' });
   const third = f.reflection(source, { parentNoteId: second.objectId, text: 'Third explanation' });
   const saved = await f.works.sync(f.identity, f.current.activityId,
@@ -296,6 +296,36 @@ test('one sync accepts an out-of-order parent chain and rejects loops or another
   await f.works.registerBasis(f.identity, f.current.activityId, last);
   assert.equal((await f.works.read(f.identity, f.current.activityId)).revision, 1, 'retaining a fixed explanation never moves the head');
   await validateWorks(f.storage);
+});
+
+test('a child-only question draft retries its original request after the parent work reaches PostgreSQL', { timeout: 120000 }, async t => {
+  const { createQuestionDrafts, draftIdFor } = await import('../../../packages/learning-space/dist/learning-data/drafts.js');
+  const f = await fixture(t), source = f.caseOf();
+  await f.receive(source);
+  const parent = f.reflection(source), child = f.reflection(source, { parentNoteId: parent.objectId, text: 'A legitimate second revision.' });
+  const instance = source.action.execution.instance;
+  const copy = aluReferenceCopy('alu-reflection', {}, { note: JSON.parse(child.value), action: source.action });
+  const reference = { referenceId: randomUUID(), sourceName: 'ALU explanation',
+    source: { kind: 'component', formatVersion: 1, environmentId: f.identity.environmentId, spaceId: f.identity.spaceId,
+      principalId: f.identity.principalId, activityId: f.current.activityId, instanceId: instance.instanceId,
+      componentId: instance.componentId, componentVersion: instance.componentVersion, definitionDigest: instance.definitionDigest,
+      bindingKey: instance.key, objectId: child.objectId, contentId: child.contentId, origin: 'state', requestId: null, executionRef: null },
+    range: { kind: 'semantic', formatVersion: 1, typeId: 'alu-reflection', version: 1, target: {}, start: 0, end: copy.length }, copy };
+  const drafts = createQuestionDrafts(f.storage, { activity: async () => f.current, works: f.works,
+    courses: { verifyComponentReference: async () => {} } });
+  const input = { requestId: randomUUID(), draftId: draftIdFor(f.current.activityId), baseRevision: 0,
+    question: 'Keep this question and both original identities.', references: [reference], bases: [child] };
+  const original = structuredClone(input);
+  await assert.rejects(drafts.sync(f.identity, f.current.activityId, input), { code: 'unavailable' });
+  assert.equal(await drafts.receipt(f.identity, f.current.activityId, input.requestId), null);
+  await f.works.sync(f.identity, f.current.activityId, { requestId: randomUUID(), baseRevision: 0, files: [child, parent] });
+  const saved = await drafts.sync(f.identity, f.current.activityId, input);
+  assert.equal(saved.revision, 1);
+  assert.equal(saved.question, input.question);
+  assert.equal(saved.references[0].copy, copy);
+  assert.deepEqual(await drafts.receipt(f.identity, f.current.activityId, input.requestId), saved);
+  assert.deepEqual(await drafts.sync(f.identity, f.current.activityId, input), saved);
+  assert.deepEqual(input, original);
 });
 
 test('a note cannot be replaced through new content identities or a different media type', { timeout: 120000 }, async t => {

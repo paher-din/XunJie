@@ -21,7 +21,7 @@ export interface CompilationArtifact {
 }
 export interface Failure {
   status: 'failed' | 'stopped' | 'budget-exceeded';
-  stage: string; code?: string; message?: string; diagnostics?: string[];
+  stage: string; code?: string; message?: string; diagnostics?: string[]; output?: string[];
 }
 export interface Compiled { status: 'completed'; artifact: CompilationArtifact; diagnostics: string[]; stage: string }
 export interface SimulationRequest {
