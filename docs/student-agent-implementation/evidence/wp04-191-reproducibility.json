@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "sourceCommit": "c7530dbcc186de2f21eacde14fd28061b885924c",
+  "environment": "Ubuntu 24.04 Linux x64; tools/alu-wasm/ubuntu-packages.lock",
+  "emscripten": "3.1.64",
+  "cleanSourceDirectories": 2,
+  "method": "full independent builds, SHA-256 equality for every JS/WASM resource",
+  "assets": {
+    "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+    "ivl.wasm": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de",
+    "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+    "ivlpp.wasm": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3",
+    "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+    "vvp.wasm": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+  },
+  "finalRebuildEntry": "passed: tools/alu-wasm/rebuild.sh, including environment and SDK digest gates",
+  "fullCleanBuildRuns": 4,
+  "packagedManifestReproducibility": "all 27 candidate files and manifest match across distinct output directories",
+  "candidateIdentity": "d27007d2f8725b22fc5ff3b7f79b4179c12c103d7789c5bd318cb9be5aa86026"
+}

@@ -1,0 +1,68 @@
+{
+  "login": 200,
+  "activities": [
+    "c90d13b7-4a75-48db-bca5-d609936fb8d1",
+    "e4647db7-9b9f-47ea-8a12-eb719f50cc92"
+  ],
+  "responses": [
+    {
+      "a": 1,
+      "path": "/api/learning/workspaces/c90d13b7-4a75-48db-bca5-d609936fb8d1",
+      "status": 200
+    },
+    {
+      "a": 1,
+      "path": "/api/learning/workspaces/c90d13b7-4a75-48db-bca5-d609936fb8d1",
+      "status": 200
+    },
+    {
+      "a": 1,
+      "path": "/api/learning/workspaces/c90d13b7-4a75-48db-bca5-d609936fb8d1",
+      "status": 200
+    },
+    {
+      "a": 1,
+      "path": "/api/learning/workspaces/c90d13b7-4a75-48db-bca5-d609936fb8d1",
+      "status": 200
+    },
+    {
+      "a": 1,
+      "path": "/api/learning/workspaces/c90d13b7-4a75-48db-bca5-d609936fb8d1",
+      "status": 200
+    },
+    {
+      "a": 2,
+      "path": "/api/learning/workspaces/e4647db7-9b9f-47ea-8a12-eb719f50cc92",
+      "status": 200
+    },
+    {
+      "a": 2,
+      "path": "/api/learning/workspaces/e4647db7-9b9f-47ea-8a12-eb719f50cc92",
+      "status": 200
+    },
+    {
+      "a": 2,
+      "path": "/api/learning/workspaces/e4647db7-9b9f-47ea-8a12-eb719f50cc92",
+      "status": 200
+    },
+    {
+      "a": 2,
+      "path": "/api/learning/workspaces/e4647db7-9b9f-47ea-8a12-eb719f50cc92",
+      "status": 200
+    },
+    {
+      "a": 2,
+      "path": "/api/learning/workspaces/e4647db7-9b9f-47ea-8a12-eb719f50cc92",
+      "status": 200
+    },
+    {
+      "a": 2,
+      "path": "/api/learning/workspaces/e4647db7-9b9f-47ea-8a12-eb719f50cc92",
+      "status": 200
+    }
+  ],
+  "activity1Text": "首页\n学校空间\n学校连接\n模型设置\n未选用模型\n学校学习空间\n数字逻辑与部件设计\n设计并验证 4 位 ALU\n目标与材料\n询问 Agent\n活动\n作品\nALU ",
+  "activity2Text": "首页\n学校空间\n学校连接\n模型设置\n未选用模型\n学校学习空间\n数字逻辑与部件设计\n设计并验证 4 位 ALU\n目标与材料\n询问 Agent\n活动\n作品\nALU ",
+  "bad": [],
+  "status": "passed"
+}

@@ -8,6 +8,9 @@
     "dist"
   ],
   "exports": {
+    "./alu-learning": { "types": "./dist/alu-learning.d.ts", "import": "./dist/alu-learning.js" },
+    "./alu-references": { "types": "./dist/alu-references.d.ts", "import": "./dist/alu-references.js" },
+    "./alu-waveform": { "types": "./dist/alu-waveform.d.ts", "import": "./dist/alu-waveform.js" },
     "./components": { "types": "./dist/components.d.ts", "import": "./dist/components.js" },
     "./model-connections": { "types": "./dist/model-connections.d.ts", "import": "./dist/model-connections.js" },
     "./action-intents": { "types": "./dist/action-intents.d.ts", "import": "./dist/action-intents.js" },

@@ -11,6 +11,17 @@
 .execution-note { margin: 0 0 8px; font-size: 12px; background: var(--chip-bg); padding: 6px 8px; border-radius: 4px; }
 .execution-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .execution-actions .ws-btn { font-size: 12px; }
+.runtime-tool-full { height: 100%; max-height: none; overflow: auto; }
+.runtime-tool-compact { flex: none; max-height: none; overflow: visible; }
+.runtime-tool .execution-panel { max-height: none; margin-top: 16px; }
+.runtime-tool label { display: grid; gap: 4px; color: var(--ink-soft); font-size: 13px; }
+.runtime-tool select { height: 32px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; padding: 0 8px; }
+.runtime-tool .execution-actions { align-items: end; }
+.runtime-tool table { border-collapse: collapse; margin: 12px 0; font-size: 13px; color: var(--ink); }
+.runtime-tool td, .runtime-tool th { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left; }
+.runtime-tool details { margin-top: 8px; color: var(--ink); font-size: 13px; }
+.runtime-tool iframe { width: 100%; height: 80px; border: 0; }
+.runtime-tool pre { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-soft); }
 .native-session-empty { display: grid; gap: 8px; justify-items: start; }
 .native-session-observation { margin: 0 0 8px; font-size: 15px; font-variant-numeric: tabular-nums; }
 .native-session-input { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }

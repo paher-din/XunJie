@@ -1,0 +1,14 @@
+{
+  "Qoder CN": {
+    "expected": "false",
+    "actual": "false"
+  },
+  "System Settings": {
+    "expected": "true",
+    "actual": "true"
+  },
+  "inputSource": {
+    "expected": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "actual": "com.bytedance.inputmethod.doubaoime.pinyin"
+  }
+}

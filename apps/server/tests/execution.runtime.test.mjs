@@ -156,9 +156,20 @@ test('the execution owner keeps original acceptance, empty-reason stops and one 
     const stopped = await api(`${path}/${requestId}/stop`, { stopId, reason: '' }, headers);
     assert.equal(stopped.value.stopRequested, true);
     assert.equal((await api(`${path}/${requestId}/stop`, { stopId, reason: '' }, headers)).value.stopRequested, true);
+    await runtime.setCredential('execution-boundary-key', Buffer.alloc(32, 1).toString('base64'));
+    await assert.rejects(runtime.recovery.backup({ directory: root + '-backups',
+      recoveryKeyRef: 'execution-boundary-key', leaveClosed: true }));
+    assert.match((await runtime.status()).reason, /原浏览器执行.*核对或停止/);
+    assert.deepEqual((await runtime.recovery.catalog(root + '-backups')).backups, []);
+    assert.equal((await api(path, { action, acceptance }, headers)).status, 503, 'maintenance never reopens dispatch');
+    assert.equal((await api(`${path}/${requestId}`, undefined, headers)).status, 200, 'the original command remains queryable for settlement');
+    assert.equal((await api(`${path}/${requestId}/stop`, { stopId, reason: '' }, headers)).status, 200,
+      'the original stop can be confirmed while maintenance refuses new commands');
     const cancelled = { ...stopped.value, state: 'cancelled', confirmedSeq: 4,
       reason: { code: 'worker-terminated', detail: '用户请求停止。' } };
     assert.deepEqual((await api(`${path}/${requestId}/report`, cancelled, headers)).value, cancelled);
+    await runtime.recovery.resume();
+    await rm(root + '-backups', { recursive: true, force: true });
     // A confirmed terminal fact is never overwritten by a late or contradictory reply.
     assert.deepEqual((await api(`${path}/${requestId}/report`, { ...cancelled, state: 'succeeded', confirmedSeq: 9 }, headers)).value, cancelled);
 

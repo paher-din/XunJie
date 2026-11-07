@@ -94,6 +94,7 @@ const planDigest = (plan: Parameters<typeof courseExecutionPlanBasis>[0]) => dig
 
 /** The operations a bound component really declares, so a plan cannot hide or invent one. */
 function declaredOperations(manifest: ComponentBinding['definition']['manifest']): string[] {
+  if(manifest.formatVersion===3) return manifest.runtime.operations.map(item=>item.operationId);
   if (manifest.formatVersion !== 1) return [];
   return manifest.operations?.map(item => item.operationId) ?? (manifest.session ? [manifest.session.operation.operationId] : []);
 }
@@ -644,6 +645,17 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
     return components.dependencyContent(await components.verify(binding.definition), dependencyId);
   }
+  /**
+   * One runtime file, addressed by the relative path its own manifest declared. The path is resolved against
+   * the pinned definition, so an undeclared path is refused and no traversal reaches the storage root.
+   */
+  async function readComponentRuntimeResource(identity: SpaceIdentity, releaseId: string, key: string, path: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    return components.resourceContent(await components.verify(binding.definition), { path });
+  }
   /** A report is one device's diagnostic: submitting or reading it changes no eligibility and activates no environment. */
   async function submitComponentReport(identity: SpaceIdentity, releaseId: string, key: string, value: unknown) {
     const { content } = await authorizedRelease(identity, releaseId);
@@ -665,7 +677,8 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     const bundle = await readComponent(identity, input.releaseId, input.key);
     if (bundle.definition.digest !== input.definitionDigest) return fail('identity-conflict');
   }
-  return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency, submitComponentReport, readComponentReports,
+  return { verifyComponentReference, components, readComponent, readComponentAlgorithm, readComponentDependency,
+    readComponentRuntimeResource, submitComponentReport, readComponentReports,
     registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

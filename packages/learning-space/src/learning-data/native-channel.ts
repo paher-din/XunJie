@@ -85,6 +85,39 @@ function executionIdentity(query: ExecutionQuery) {
       supervisorEpoch: session.supervisorEpoch, executorInstanceId: session.executorInstanceId } };
 }
 
+/** The same authenticated exit facts govern both draining and the owner's exported boundary. */
+export async function readNativeChannelSettlement(storage: OwnedStorage) {
+  const { rows } = await storage.read(`SELECT s.command_text,s.observed_result,
+    (SELECT k.execution_identity FROM native_channel_cleanups k WHERE k.command_id=s.command_id
+      AND k.claim_id=s.claim_id AND k.node=s.claim_node AND k.node=s.target_node
+      AND k.generation=s.claim_generation AND k.generation=s.target_generation AND k.owner=$1::jsonb) AS cleaned_identity,
+    (SELECT COALESCE(jsonb_agg(c.result),'[]'::jsonb) FROM native_channel_commands c
+      WHERE c.connection_id=s.connection_id AND c.session_id=s.session_id AND c.state='reported'
+      AND c.claim_node=s.claim_node AND c.claim_generation=s.claim_generation
+      AND c.target_node=s.target_node AND c.target_generation=s.target_generation) AS facts
+    FROM native_channel_commands s WHERE s.operation='submit' AND s.claim_id IS NOT NULL`, [JSON.stringify(storage.owner)]);
+  const identities = new Set<string>();
+  let settled = 0;
+  for (const row of rows) {
+    const original = z.object({ execution: executionQuerySchema }).safeParse(JSON.parse(String(row.command_text)).payload);
+    if (!original.success) continue;
+    let identity: string;
+    try { identity = hash(executionIdentity(original.data.execution)); } catch { continue; }
+    const confirmed = row.cleaned_identity && hash(row.cleaned_identity) === identity
+      || [...row.facts as unknown[], row.observed_result].some(value => {
+        const fact = executionQuerySchema.safeParse(value);
+        if (!fact.success || fact.data.statusKnowledge !== 'confirmed' || !isTerminalExecutionState(fact.data.state)) return false;
+        try { assertObservationIdentity(original.data.execution, fact.data); }
+        catch { return false; }
+        return true;
+      });
+    if (confirmed) { identities.add(identity); settled++; }
+  }
+  return { claimed: rows.length, settled, confirms(query: ExecutionQuery) {
+    try { return identities.has(hash(executionIdentity(query))); } catch { return false; }
+  } };
+}
+
 /** 连接授权来自现有产品批准流程；通道只保存命令与固定节点，不保存连接密钥。 */
 export function createNativeChannel(storage: OwnedStorage, options: {
   authenticate(token: string, connectionId: string): Promise<SpaceIdentity>;
@@ -378,28 +411,8 @@ export function createNativeChannel(storage: OwnedStorage, options: {
     for (;;) {
       // Lease expiry proves loss of contact only. Each claimed submit needs a confirmed
       // terminal query from its original executor identity, even after a node replacement.
-      const { rows } = await storage.read(`SELECT s.command_text,s.observed_result,
-        (SELECT k.execution_identity FROM native_channel_cleanups k WHERE k.command_id=s.command_id
-          AND k.claim_id=s.claim_id AND k.node=s.claim_node AND k.node=s.target_node
-          AND k.generation=s.claim_generation AND k.generation=s.target_generation AND k.owner=$1::jsonb) AS cleaned_identity,
-        (SELECT COALESCE(jsonb_agg(c.result),'[]'::jsonb) FROM native_channel_commands c
-          WHERE c.connection_id=s.connection_id AND c.session_id=s.session_id AND c.state='reported'
-          AND c.claim_node=s.claim_node AND c.claim_generation=s.claim_generation
-          AND c.target_node=s.target_node AND c.target_generation=s.target_generation) AS facts
-        FROM native_channel_commands s WHERE s.operation='submit' AND s.claim_id IS NOT NULL`, [JSON.stringify(storage.owner)]);
-      const stopped = rows.every(row => {
-        const original = z.object({ execution: executionQuerySchema }).safeParse(JSON.parse(String(row.command_text)).payload);
-        if (!original.success) return false;
-        if (row.cleaned_identity && hash(row.cleaned_identity) === hash(executionIdentity(original.data.execution))) return true;
-        return [...row.facts as unknown[], row.observed_result].some(value => {
-          const fact = executionQuerySchema.safeParse(value);
-          if (!fact.success || fact.data.statusKnowledge !== 'confirmed' || !isTerminalExecutionState(fact.data.state)) return false;
-          try { assertObservationIdentity(original.data.execution, fact.data); }
-          catch { return false; }
-          return true;
-        });
-      });
-      if (stopped) return;
+      const boundary = await readNativeChannelSettlement(storage);
+      if (boundary.settled === boundary.claimed) return;
       if (Date.now() >= deadline) fail('unavailable');
       await new Promise(resolve => setTimeout(resolve, 25));
     }

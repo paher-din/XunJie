@@ -1,0 +1,32 @@
+{
+  "ticket": "#206",
+  "kind": "school-node-identity-conflict-diagnosis",
+  "recordedAt": "2026-11-06T14:57:00Z",
+  "status": "real-finding-registered-not-masked",
+  "observation": {
+    "symptom": "在同一个独立学校 HTTPS 节点上，首个课程活动的 workspace 同步正常；此后创建的任何活动在 /api/learning/workspaces/<activityId> 与 /api/learning/executions/<activityId> 的 POST 持续返回 HTTP 409 {\"error\":\"identity-conflict\"}，而同一路径的 GET（history / sessions / checkpoints）全部 200。",
+    "clientImpact": "真实桌面 Chrome Worker 运行、真实进位 F=0000/Cout=1、中文源码编辑、原 VCD 保留等浏览器侧用例仍然通过，但作品与执行结果无法同步到学校 owner，探针的 history 轮询与 refused 断言失败。",
+    "notAPlatformDifference": "Mac 客户端首次运行 8/8 通过；同一节点后续 Windows 客户端三次重跑（含独立学校成员账号）与 Mac 客户端重跑均在同一处失败。三端时钟同步（UTC 14:49:4x），Windows 到 8443 的 TCP 与 TLS 均正常。",
+    "notAnAccountConflict": "为 Windows 单独创建的学校成员（不同 principalId）重跑仍在同一处 409，排除账号级 workspace 所有权冲突。"
+  },
+  "sourceLocation": {
+    "route": "packages/learning-space/src/learning-entry/index.ts:376-385 (workspaces/ POST -> learning.works.sync)",
+    "conflictSites": [
+      "packages/learning-space/src/learning-data/works.ts:85 (幂等回执存在但本活动无 work_receipts 记录 -> identity-conflict)",
+      "packages/learning-space/src/learning-data/works.ts:99 (work_objects 中 objectId 归属其他 activityId -> identity-conflict)",
+      "packages/learning-space/src/learning-data/works.ts:102 (work_contents 中 contentId 归属其他 activityId -> identity-conflict)"
+    ],
+    "inference": "固定课程发布携带固定起始作品 objectId/contentId；work_objects / work_contents 以这些标识为全局主键并绑定首个 activityId，第二个活动复用同一固定标识时命中 identity-conflict 分支。此为依据返回码与源码分支的定位推断，未改动存储层，也未通过数据库内部状态逐行确证。"
+  },
+  "disposition": {
+    "principle": "保留原诊断，不以放宽断言、忽略 409 或伪造观察替代；#206 是验收票，本票未改动学习数据存储层实现。",
+    "crossMachineEvidence": "为让两个客户端各自取得完整取证，学校节点以同一 Linux 产品包与同一课程字节重新部署干净根：Mac 客户端在首个干净节点 8/8 通过，Windows 客户端在第二个干净节点 8/8 通过。两次部署的 distribution.json SHA-256 均为 4efce27d89b0787e0bc3f388b13feb171d57ff54229ea717ef92198dde9edb43。",
+    "remainingIssue": "同一学校节点上多个课程活动并发/先后写入仍会 identity-conflict；需由学习数据存储层工作包定位并修复，本票不宣称已解决。"
+  },
+  "evidence": [
+    "evidence/wp04-206-cross-mac-client.json (首个干净节点，8/8)",
+    "evidence/wp04-206-cross-windows-client.json (第二个干净节点，8/8)",
+    "evidence/wp04-206-identity-conflict-mac-diag.json (Mac 重跑 6/8，refused 含 409 body)",
+    "evidence/wp04-206-identity-conflict-windows-failure.png (Windows 失败现场)"
+  ]
+}

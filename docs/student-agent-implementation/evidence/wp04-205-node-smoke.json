@@ -1,0 +1,29 @@
+[
+  {
+    "mode": "correct",
+    "vectors": 4096,
+    "mismatches": 0,
+    "unknown": 0,
+    "diagnostics": [],
+    "rowsSha256": "3860148aec303b9db2ca17fb388e7f444e2b59ece58bd438b13e293bf38253c5",
+    "vcdBytes": 189470
+  },
+  {
+    "mode": "lost-carry",
+    "vectors": 4096,
+    "mismatches": 256,
+    "unknown": 0,
+    "diagnostics": [],
+    "rowsSha256": "f3199dca83ee0c9b2f8a781a894dcd1a5597117a4eab6d9fc6c17d7011a4be00",
+    "vcdBytes": 187838
+  },
+  {
+    "mode": "unknown",
+    "vectors": 4096,
+    "mismatches": 1536,
+    "unknown": 1536,
+    "diagnostics": [],
+    "rowsSha256": "5f2effbb518ac778345fa96dc5f560c0347d3912f168bd323680676264b3c48b",
+    "vcdBytes": 204820
+  }
+]

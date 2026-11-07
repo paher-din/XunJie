@@ -38,11 +38,15 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 | --- | --- |
 | [可复现的 ALU 浏览器运行包](https://github.com/paher-din/XunJie/issues/191) | 固定源码与补丁重建 Icarus/WASM，修正系统模块，真实 Worker 编译/仿真/VCD、四态与预算停止，并以正确实现和负对照验证运行包。 |
 | [正式活动中的 ALU 编辑与运行](https://github.com/paher-din/XunJie/issues/192) | 课程资料与起始作品导入、依赖准备、自检、正式工作区编辑运行、诊断、固定结果及保存同步；接通 WP03 公共执行与真实产品入口。 |
-| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开。 |
+| [虚拟板自由实验与 4096 组行为检查](https://github.com/paher-din/XunJie/issues/193) | 连续调整输入、真实输出与时序归属、完整行为检查及反例、未知/中止区分、输入与检查报告重开；[#193 设计与实施方案](wp04-alu-board-check.md) · [工作区交互设计](../wp04-193-workspace-design.md) · [审查修复与本机验收](../wp04-193-acceptance.md)。Mac/跨机 HTTPS/系统输入法已由 [#211](https://github.com/paher-din/XunJie/issues/211) 接续并逐条登记于[#211 验收记录](../wp04-211-acceptance.md)，未用转交抵扣通过。 |
 | [波形引用、预测用例与比较解释](https://github.com/paher-din/XunJie/issues/194) | 真实波形与范围引用、运行前预测与理由、比较和解释、已观察/缺项记录、不可变修订及问题草稿恢复。 |
 | [ALU 数据备份、隔离还原与恢复接管](https://github.com/paher-din/XunJie/issues/195) | ALU 作品、预测、检查、观察、VCD 与引用的维护和真实恢复；隔离试还原只读、正式接管拒绝旧安装、原身份查询且不自动重跑。 |
 
 每张功能票随实现完成自己的自动保存、日常重开、失败处理、正式 UI 接线及适用的 Windows/Mac 桌面 Chrome 验证；新增事实与资源同步接入所属维护机制。最后一票专门验收 ALU 的备份、隔离还原与恢复接管，不承接积压的产品整合。WP05 及 Flights 仍暂缓。
+
+#191 的运行包构建、公开适配与复跑入口见 [实施与交付记录](../wp04-191-runtime-plan.md)；Apple Silicon Mac 验收已完成并记录于 [Mac 验收记录](../wp04-205-mac-acceptance.md)，产品接线仍按后续实施票完成。
+
+正式活动编辑与运行的公共执行改造、固定多资源准备、单次实验、结果保留和分项验收见 [#192 设计与实施方案](wp04-alu-edit-run.md)及[交互设计](../wp04-192-workspace-design.md)。2026-11-06 的实际实现、产品包与普通 Web 结果见 [Windows 本机交付](../wp04-192-windows-acceptance.md)，Apple Silicon Mac 本机实跑与 #206 逐项登记见 [跨平台与剩余验收登记](../wp04-206-acceptance.md)及[#206](https://github.com/paher-din/XunJie/issues/206)；不将本机证据当作完整平台矩阵通过。
 
 ## WP07 实施子票
 

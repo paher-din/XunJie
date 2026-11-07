@@ -1,0 +1,95 @@
+.alu-waveform {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.5 var(--font-sans);
+}
+
+.alu-waveform__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  overflow-wrap: anywhere;
+}
+
+.alu-waveform__unit,
+.alu-waveform__message {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.alu-waveform__message { margin: 8px 0; }
+.alu-waveform__message[role='alert'] { color: var(--danger-deep); }
+.alu-waveform__incomplete { color: var(--status-pending-fg); }
+
+.alu-waveform__signals { margin: 12px 0; }
+.alu-waveform__signals fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 6px 12px;
+  max-height: 200px;
+  margin: 8px 0 0;
+  padding: 2px;
+  overflow: auto;
+  border: 0;
+}
+.alu-waveform__signals label { display: flex; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
+.alu-waveform__signals input { flex: none; margin: 4px 0 0; accent-color: var(--accent); }
+.alu-waveform__signals span { min-width: 0; }
+
+.alu-waveform__controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin: 12px 0; }
+.alu-waveform__controls label { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; }
+.alu-waveform__controls input,
+.alu-waveform__controls select,
+.alu-waveform__controls button {
+  box-sizing: border-box;
+  height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font: 13px/1.5 var(--font-sans);
+}
+.alu-waveform__controls input { width: 184px; max-width: 100%; padding: 4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.alu-waveform__controls select { padding: 4px 8px; }
+.alu-waveform__controls button { padding: 4px 16px; cursor: pointer; }
+.alu-waveform__controls button:hover:enabled { background: var(--hover-bg); }
+.alu-waveform__controls button:disabled { color: var(--muted); cursor: default; }
+
+.alu-waveform__bounds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0 8px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.alu-waveform__scroll { max-width: 100%; overflow: auto; }
+.alu-waveform__row { border-top: 1px solid var(--line); }
+.alu-waveform__name { margin: 6px 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.alu-waveform__point { margin: 8px 0; overflow-wrap: anywhere; }
+.alu-waveform__row svg { display: block; overflow: hidden; }
+
+.alu-waveform__trace { stroke: var(--chart-blue-4); fill: none; stroke-width: 1.5; }
+.alu-waveform__trace--unknown { stroke: var(--status-pending-fg); fill: var(--status-pending-bg); stroke-dasharray: 4 2; }
+.alu-waveform__trace--highz { stroke: var(--muted); fill: var(--sunken); stroke-dasharray: 2 2; }
+.alu-waveform__trace--missing { stroke: var(--muted); fill: var(--chart-neut-0); stroke-dasharray: 6 4; }
+.alu-waveform__trace text { stroke: none; fill: var(--ink-soft); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.alu-waveform__edge { stroke: var(--chart-blue-4); stroke-width: 1; }
+.alu-waveform__levels { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.alu-waveform__events { margin-top: 12px; }
+.alu-waveform summary { cursor: pointer; color: var(--ink-soft); }
+.alu-waveform__events table { width: 100%; border-collapse: collapse; table-layout: fixed; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.alu-waveform__events th { text-align: left; color: var(--muted); font-weight: 500; }
+.alu-waveform__events th,
+.alu-waveform__events td { padding: 6px 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; vertical-align: top; }
+.alu-waveform :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
 import { componentImportSchema, componentDefinitionSchema, componentDependencyContentSchema,
   componentPreparationReportSchema, componentPreparationReportSubmissionSchema, componentPreparationReportsSchema,
-  manifestDependencies, componentDependencyReference,
-  type ComponentDefinition, type ComponentPreparedManifest } from '@xunjie/contracts/components';
+  manifestDependencies, manifestResources, componentResourceReference, componentRuntimeResourceContentSchema,
+  type ComponentDefinition, type ComponentPreparedManifest, type ComponentRuntimeManifest } from '@xunjie/contracts/components';
 
 export const componentMigration: Migration = { version: 7, name: 'immutable-course-components', sql: `
   CREATE TABLE course_components(component_id uuid NOT NULL,version integer NOT NULL,definition jsonb NOT NULL,
@@ -35,8 +35,15 @@ function verifiedText(base64: string, expected: { sha256: string; byteLength: nu
     || digestOf(data) !== expected.sha256 || Buffer.from(data.toString('utf8')).compare(data) !== 0) throw new StorageError('invalid');
   return data;
 }
+/** Binary resources are verified as bytes: decoding a WASM module as UTF-8 would reject valid files. */
+function verifiedBytes(base64: string, expected: { sha256: string; byteLength: number }): Buffer {
+  const data = Buffer.from(base64, 'base64');
+  if (data.toString('base64') !== base64 || data.length !== expected.byteLength
+    || digestOf(data) !== expected.sha256) throw new StorageError('invalid');
+  return data;
+}
 /** Reports only exist for prepared components; a format 1 definition declares no preparation protocol. */
-function prepared(manifest: ComponentDefinition['manifest']): ComponentPreparedManifest {
+function prepared(manifest: ComponentDefinition['manifest']): ComponentPreparedManifest | ComponentRuntimeManifest {
   if (manifest.formatVersion === 1) throw new StorageError('invalid');
   return manifest;
 }
@@ -75,6 +82,26 @@ export function createComponents(storage: OwnedStorage) {
     return componentDependencyContentSchema.parse({ dependencyId, resourceId: dependency.resourceId, sha256: dependency.sha256,
       byteLength: dependency.byteLength, mediaType: dependency.mediaType, contentBase64: data.toString('base64') });
   }
+  /**
+   * Every non-entry resource of a definition, addressed by the identity its own manifest declared. A
+   * format 3 runtime is read this way: the host never fetches a course resource from a URL, and a
+   * file whose digest no longer matches is refused instead of being run.
+   */
+  function declaredResource(definition: ComponentDefinition, selector: { path?: string; resourceId?: string }) {
+    const found = manifestResources(definition.manifest).find(item => selector.path !== undefined
+      ? 'path' in item && item.path === selector.path : item.resourceId === selector.resourceId);
+    if (!found) throw new StorageError('missing');
+    return found;
+  }
+  async function resourceContent(definition: ComponentDefinition, selector: { path?: string; resourceId?: string }) {
+    const declared = declaredResource(definition, selector);
+    // Only a format 3 runtime file reaches this reader; the v1/v2 dependency protocol has its own.
+    if (declared.kind !== 'runtime') throw new StorageError('missing');
+    const data = await resource(declared);
+    return componentRuntimeResourceContentSchema.parse({ resourceId: declared.resourceId, path: declared.path,
+      role: declared.role, sha256: declared.sha256, byteLength: declared.byteLength, mediaType: declared.mediaType,
+      contentBase64: data.toString('base64') });
+  }
   async function register(value: unknown) {
     const input = componentImportSchema.parse(value), { manifest } = input;
     const definition = { manifest, digest: componentDigest(manifest) };
@@ -93,6 +120,16 @@ export function createComponents(storage: OwnedStorage) {
       if (base64 === undefined) throw new StorageError('invalid');
       uploads.push({ resource: dependency, data: verifiedText(base64, dependency), encoding: base64 });
     }
+    // A format 3 runtime pins WASM and passive attachments too: those are verified as bytes, never as text,
+    // and each one must be the exact file its own manifest names — a toolchain WASM included, because the six
+    // toolchain files are the definition's own resources, not something the host is assumed to already own.
+    const runtimeSubmitted = new Map((input.runtimeResources ?? []).map(item => [item.resourceId, item.contentBase64]));
+    for (const item of manifestResources(manifest)) {
+      if (item.kind !== 'runtime') continue;
+      const base64 = runtimeSubmitted.get(item.resourceId);
+      if (base64 === undefined) throw new StorageError('invalid');
+      uploads.push({ resource: item, data: verifiedBytes(base64, item), encoding: base64 });
+    }
     const previous = await storage.receipt(input.requestId, fingerprint);
     if (previous) return componentDefinitionSchema.parse(previous.result);
     const scope = `component/${manifest.componentId}/${manifest.version}`;
@@ -106,10 +143,9 @@ export function createComponents(storage: OwnedStorage) {
       const { rows: [row] } = await tx.query('SELECT definition FROM course_components WHERE component_id=$1 AND version=$2', [manifest.componentId, manifest.version]);
       if (!row || componentDefinitionSchema.parse(row.definition).digest !== definition.digest) throw new StorageError('identity-conflict');
       await tx.reference(scope, manifest.entry.resourceId);
-      if (manifest.formatVersion === 1 && manifest.algorithm) await tx.reference(`${scope}/algorithm`, manifest.algorithm.resource.resourceId);
       // Every resource of one version is retained together; a partial set is an unusable definition.
-      for (const dependency of manifestDependencies(manifest))
-        await tx.reference(componentDependencyReference(manifest.componentId, manifest.version, dependency.dependencyId), dependency.resourceId);
+      for (const item of manifestResources(manifest))
+        await tx.reference(componentResourceReference(manifest, item), item.resourceId);
       return definition;
     });
     return componentDefinitionSchema.parse(receipt.result);
@@ -118,9 +154,13 @@ export function createComponents(storage: OwnedStorage) {
     const actual = await read(expected.manifest.componentId, expected.manifest.version);
     if (actual.digest !== expected.digest || componentDigest(expected.manifest) !== expected.digest) throw new StorageError('identity-conflict');
     await bytes(actual);
-    // A pinned algorithm must still be the exact file the digest names.
-    if (actual.manifest.formatVersion === 1 && actual.manifest.algorithm) await resource(actual.manifest.algorithm.resource);
-    for (const dependency of manifestDependencies(actual.manifest)) await dependencyBytes(actual, dependency.dependencyId);
+    // Every pinned file must still be the exact bytes its digest names, and still be bound to this version.
+    for (const item of manifestResources(actual.manifest)) {
+      await resource(item);
+      const { rows: retained } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+        [componentResourceReference(actual.manifest, item)]);
+      if (retained.length !== 1 || retained[0]!.resource_id !== item.resourceId) throw new StorageError('corrupt');
+    }
     return actual;
   }
   async function assertEnabled(componentId: string, version: number) {
@@ -141,6 +181,8 @@ export function createComponents(storage: OwnedStorage) {
     const input = componentPreparationReportSubmissionSchema.parse(value), { report } = input;
     const definition = await read(report.componentId, report.version);
     if (definition.digest !== report.definitionDigest) throw new StorageError('identity-conflict');
+    // Both prepared formats own a self-test and a protocol version; which one a report may declare is
+    // decided by that manifest, so a v2 report cannot claim protocol 2 and a v3 one cannot fall back to 1.
     const manifest = prepared(definition.manifest);
     if (manifest.selfTest.selfTestVersion !== report.selfTestVersion
       || manifest.environment.preparationProtocolVersion !== report.preparationProtocolVersion) throw new StorageError('invalid');
@@ -169,19 +211,13 @@ export function createComponents(storage: OwnedStorage) {
       const definition = await read(String(row.component_id), Number(row.version));
       await bytes(definition);
       const scope = `component/${definition.manifest.componentId}/${row.version}`;
-      const expected: { reference: string; resource: { resourceId: string; sha256: string; byteLength: number } }[] =
-        [{ reference: scope, resource: definition.manifest.entry }];
-      if (definition.manifest.formatVersion === 1 && definition.manifest.algorithm) expected.push({ reference: `${scope}/algorithm`, resource: definition.manifest.algorithm.resource });
+      const expected = [{ reference: scope, resource: definition.manifest.entry },
+        ...manifestResources(definition.manifest).map(item => ({ reference: componentResourceReference(definition.manifest, item),
+          resource: item }))];
       for (const item of expected) {
         const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [item.reference]);
         if (links.length !== 1 || links[0]!.resource_id !== item.resource.resourceId) throw new StorageError('corrupt');
         await resource(item.resource);
-      }
-      for (const dependency of manifestDependencies(definition.manifest)) {
-        await dependencyBytes(definition, dependency.dependencyId);
-        const { rows: retained } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
-          [componentDependencyReference(String(row.component_id), Number(row.version), dependency.dependencyId)]);
-        if (retained.length !== 1 || retained[0]!.resource_id !== dependency.resourceId) throw new StorageError('corrupt');
       }
     }
     const { rows: reports } = await storage.read(`SELECT report_id,component_id,version,preparation_protocol_version,self_test_version,fingerprint,report
@@ -194,5 +230,5 @@ export function createComponents(storage: OwnedStorage) {
       if ((await read(report.componentId, report.version)).digest !== report.definitionDigest) throw new StorageError('corrupt');
     }
   }
-  return { read, bytes, resource, dependencyBytes, dependencyContent, register, verify, validate, assertEnabled, setStatus, submitReport, readReports };
+  return { read, bytes, resource, dependencyBytes, dependencyContent, resourceContent, register, verify, validate, assertEnabled, setStatus, submitReport, readReports };
 }

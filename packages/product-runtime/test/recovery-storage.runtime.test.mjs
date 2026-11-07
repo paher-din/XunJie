@@ -17,6 +17,34 @@ const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgres
     ?? fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } : {}),
   webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
 
+test('the product catalog diagnoses a failed first backup without a preconfigured schedule', { timeout: 120000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'xunjie-first-backup-'));
+  const root = join(directory, 'source'), serviceId = randomUUID();
+  const runtime = openProductRuntime({ root, resources });
+  let host;
+  try {
+    const installed = await runtime.install({ profile: 'remote', database: { mode: 'none' }, requiredServiceIds: [serviceId] });
+    host = await createProductRuntimeHost({ root, createRecoveryOwners: async () => [{
+      participant: { descriptor: { serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: [] },
+        async closeWrites() {}, async closeDispatch() {}, async drain() {}, async validate() {}, async resume() {} },
+      async material({ boundaryAt }) { return { formatVersion: 1, kind: 'test.unconfirmed-boundary', serviceId, boundaryAt,
+        source: { environmentId: installed.environment.environmentId, installationId: installed.environment.installationId },
+        schemaVersion: '1', coverage: 'service-received', unresolved: [], settled: 0,
+        retained: { resources: 0, checkpoints: 0 }, blocking: [{ code: 'unconfirmed', detail: 'No confirmed browser boundary' }] }; },
+      async export() { throw new Error('An incomplete boundary must never export'); }, async release() {},
+    }] });
+    await runtime.setCredential('test-backup-key', randomBytes(32).toString('base64'));
+    const backups = join(directory, 'backups');
+    await assert.rejects(runtime.recovery.backup({ directory: backups, recoveryKeyRef: 'test-backup-key', leaveClosed: true }));
+    const catalog = await runtime.recovery.catalog(backups);
+    assert.deepEqual(catalog.backups, []);
+    assert.equal(catalog.latest.phase, 'failed');
+    assert.equal(catalog.latest.kind, 'backup');
+    assert.match(catalog.latest.error, /boundary/);
+    await runtime.recovery.resume();
+  } finally { await host?.stop(); await rm(directory, { recursive: true, force: true }); }
+});
+
 test('failed native storage backup releases committed pins so unreferenced file bytes can be collected', { timeout: 120_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), '循阶 failed recovery GC '));
   const root = join(directory, 'source');

@@ -1,0 +1,91 @@
+{
+  "kind": "alu-school-https",
+  "ticket": "#192",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-school-dZ7EP6",
+  "publicIp": "192.168.3.39",
+  "certificatePin": "spki-sha256",
+  "cases": [
+    "a Windows school deployment listens on a non-loopback address over TLS",
+    "strict TLS is verified against the probe CA and the entry answers as the school profile",
+    "the fixed ALU component and course import through the school owner",
+    "a Chrome with no local product opens the school entry over pinned HTTPS",
+    "the fixed runtime resources are authorized, verified and self-checked from the school entry",
+    "a real Worker run over the school HTTPS entry produces a real carry observation",
+    "the school owner keeps the fixed basis, Chinese source and the original VCD"
+  ],
+  "traffic": [
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/history",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/checkpoints",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/1bd871df-429c-4c41-9caf-6a32c92d0d34/result",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/1bd871df-429c-4c41-9caf-6a32c92d0d34/report",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/4a802c0e-ceb3-4c7f-aff4-5cd74be5cf6a/result",
+      "status": 200
+    },
+    {
+      "path": "/api/learning/executions/ef6ad501-36db-45db-902a-9c052e3391a0/4a802c0e-ceb3-4c7f-aff4-5cd74be5cf6a/report",
+      "status": 200
+    }
+  ],
+  "refused": [
+    {
+      "path": "/courses/digital-logic.png",
+      "status": 404
+    }
+  ],
+  "status": "failed",
+  "endpoint": "https://192.168.3.39:56145",
+  "context": {
+    "profile": "school",
+    "clientNamespace": "xunjie.v1.bd40365b-7528-40dc-b5ff-6f9d8dbd0a36",
+    "readOnly": false,
+    "identities": []
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "ef6ad501-36db-45db-902a-9c052e3391a0",
+  "consoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://192.168.3.39:56145/favicon.ico"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "https://192.168.3.39:56145/courses/digital-logic.png"
+    }
+  ],
+  "pageHosts": [
+    "192.168.3.39:56145"
+  ],
+  "pageSchemes": [
+    "blob:",
+    "https:"
+  ],
+  "error": "AssertionError [ERR_ASSERTION]: refused requests must be none, saw [{\"path\":\"/courses/digital-logic.png\",\"status\":404}]\n+ actual - expected\n\n+ [\n+   {\n+     path: '/courses/digital-logic.png',\n+     status: 404\n+   }\n+ ]\n- []\n\n    at file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-school-https.mjs:175:10"
+}

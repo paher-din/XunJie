@@ -1,0 +1,538 @@
+{
+  "kind": "alu-school-211-cross-machine-client",
+  "ticket": "#211",
+  "label": "macos-arm64",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "endpoint": "https://101.201.141.133:8443",
+  "schoolHost": "101.201.141.133",
+  "schoolNodePlatform": "linux",
+  "schoolNodeArch": "x64",
+  "schoolNodeVersion": "v24.21.0",
+  "schoolDistributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3",
+  "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0=",
+  "clientAddresses": [
+    "127.0.0.1",
+    "::1",
+    "fe80::1",
+    "fe80::861:3cef:413:f6c1",
+    "192.168.3.39",
+    "fe80::e065:6ff:fe1f:1f03",
+    "fe80::e065:6ff:fe1f:1f03",
+    "fe80::28ce:7c85:5579:bdfe",
+    "fe80::f9dc:136a:4838:14ca",
+    "fe80::8683:3421:1b4b:eb15",
+    "fe80::ce81:b1c:bd2c:69e",
+    "198.18.0.1"
+  ],
+  "clientLocalProduct": false,
+  "studentTrafficUsesSsh": false,
+  "startedAt": "2026-11-06T18:38:30.494Z",
+  "cases": [
+    {
+      "id": "env-placement",
+      "name": "学校服务与 PostgreSQL 位于客户端之外的真实机器",
+      "status": "PASS",
+      "detail": {
+        "schoolHost": "101.201.141.133",
+        "schoolNodePlatform": "linux",
+        "schoolNodeArch": "x64",
+        "schoolNodeVersion": "v24.21.0",
+        "distributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3",
+        "clientAddressIsSchoolHost": false,
+        "localAddressCount": 12
+      }
+    },
+    {
+      "id": "tls-pin",
+      "name": "严格 TLS + SPKI 公钥固定生效，entry 为 school profile",
+      "status": "PASS",
+      "detail": {
+        "tlsAuthorized": true,
+        "spkiMatches": true,
+        "profile": "school",
+        "browser": "156.0.8078.80",
+        "readOnly": false
+      }
+    },
+    {
+      "id": "login-activity",
+      "name": "学校成员登录并创建固定 ALU 课程活动",
+      "status": "PASS",
+      "detail": {
+        "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+        "releaseId": "19200000-0000-4000-8000-000000000076",
+        "taskTitle": "设计并验证 4 位 ALU"
+      }
+    },
+    {
+      "id": "preparation",
+      "name": "正常组件/课程/准备/自检（真实网络资源与浏览器 Worker）",
+      "status": "PASS",
+      "detail": {
+        "preparationMs": 93428,
+        "reportCount": 4,
+        "readyCount": 4,
+        "latest": {
+          "status": "ready",
+          "stage": "activate",
+          "durationMs": 41436,
+          "cacheHit": false,
+          "resourceBytes": 6327922,
+          "device": "chrome",
+          "platform": "MacIntel",
+          "features": [
+            "message-port",
+            "crypto-subtle",
+            "indexeddb",
+            "sandboxed-iframe",
+            "worker",
+            "webassembly",
+            "web-locks"
+          ]
+        }
+      }
+    },
+    {
+      "id": "starter-observation",
+      "name": "起始作品运行得到真实 X 观察（不是假零）",
+      "status": "FAIL",
+      "error": "AssertionError [ERR_ASSERTION]: the school owner did not retain the starter run\n    at file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-211-school-client.mjs:279:12\n    at async runCase (file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-211-school-client.mjs:127:20)\n    at async file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-211-school-client.mjs:262:3"
+    },
+    {
+      "id": "correct-observation",
+      "name": "Monaco 输入正确 ALU 源码后运行，A=15/B=0/M=1/S=00/Cin=1 得到 F=0000/Cout=1",
+      "status": "SKIP"
+    },
+    {
+      "id": "offline-sync",
+      "name": "应用 API 阻断时本地自由观察仍可用，恢复后同步到学校 owner 且不重复执行",
+      "status": "SKIP"
+    },
+    {
+      "id": "check-pass",
+      "name": "完整检查通过：4096 组 / 16384 行 / 1536 保留输入，报告资源从学校 owner 可取",
+      "status": "SKIP"
+    },
+    {
+      "id": "check-fail",
+      "name": "固定丢进位实现检查失败：256 个唯一反例 / 1024 错误行",
+      "status": "SKIP"
+    },
+    {
+      "id": "refresh",
+      "name": "刷新后恢复已启用输入、观察与检查报告，不重算",
+      "status": "SKIP"
+    },
+    {
+      "id": "worker-stop",
+      "name": "真实零时间 Worker 停止；停止后正常实验与检查可继续",
+      "status": "SKIP"
+    },
+    {
+      "id": "second-activity",
+      "name": "同一身份第二活动不再 409 identity-conflict，且可正常准备/运行",
+      "status": "SKIP"
+    },
+    {
+      "id": "network-origin",
+      "name": "页面仅访问学校 origin，无 loopback/localhost/SSH 隧道，refused 已记录",
+      "status": "SKIP"
+    }
+  ],
+  "caseSummary": {
+    "pass": 4,
+    "fail": 1,
+    "skip": 8
+  },
+  "timings": {
+    "loginMs": 1115,
+    "preparationMs": 93428,
+    "starterRunMs": 840
+  },
+  "timestamps": {
+    "loginAt": "2026-11-06T18:38:31.985Z",
+    "preparationReadyAt": "2026-11-06T18:40:05.559Z",
+    "starterRunAt": "2026-11-06T18:40:06.626Z"
+  },
+  "traffic": [],
+  "apiPosts": [
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "preparation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/workspaces/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "starter-observation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    },
+    {
+      "path": "/api/learning/executions/1d27bc14-cffa-43a0-b049-358c4d094559",
+      "status": 409,
+      "step": "starter-observation",
+      "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+      "body": "{\"error\":\"identity-conflict\"}"
+    }
+  ],
+  "refused": [],
+  "status": "failed",
+  "tls": {
+    "authorized": true,
+    "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0=",
+    "protocol": "TLSv1.3",
+    "cipher": "TLS_AES_256_GCM_SHA384"
+  },
+  "browser": "156.0.8078.80",
+  "identity": {
+    "environmentId": "c5166ead-00ca-403f-b16d-b32f6d7cb9dc",
+    "spaceId": "d900ce5c-f7b1-4661-8af2-74bd37110c4c",
+    "principalId": "d042375b-3eb9-42bc-9871-ab10583abb68"
+  },
+  "activityId": "1d27bc14-cffa-43a0-b049-358c4d094559",
+  "preparation": {
+    "reportCount": 4,
+    "readyCount": 4,
+    "latest": {
+      "status": "ready",
+      "stage": "activate",
+      "durationMs": 41436,
+      "cacheHit": false,
+      "resourceBytes": 6327922,
+      "device": "chrome",
+      "platform": "MacIntel",
+      "features": [
+        "message-port",
+        "crypto-subtle",
+        "indexeddb",
+        "sandboxed-iframe",
+        "worker",
+        "webassembly",
+        "web-locks"
+      ]
+    }
+  },
+  "error": "AssertionError [ERR_ASSERTION]: the school owner did not retain the starter run\n    at file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-211-school-client.mjs:279:12\n    at async runCase (file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-211-school-client.mjs:127:20)\n    at async file:///Users/robertwu/Documents/Projects/AI+%E6%95%99%E8%82%B2%E5%88%9B%E6%96%B0%E6%8A%80%E8%83%BD%E5%A4%A7%E8%B5%9B/XunJie-worktrees/XunJie/scripts/probe-alu-211-school-client.mjs:262:3",
+  "visibleText": "首页\n学校空间\n学校连接\n模型设置\n未选用模型\n学校学习空间\n数字逻辑与部件设计\n设计并验证 4 位 ALU\n目标与材料\n询问 Agent\n活动\n作品\nALU 实验\n当前作品\n学习目标\n理解运算选择、固定位宽与进位\n使用真实观察检验自己的实现\n用完整输入域发现遗漏赋值和未知输出\n任务要求\n编辑 alu.sv，实现公开的五种组合 ALU 操作。点击运行启用当时的作品；之后在虚拟板上改变 A/B/M/S/Cin 观察真实 F/Cout，或对已启用作品运行全部 4096 组输入检查。允许内置加法，保留组合必须归零。完整行为表、映射、采样与检查说明位于 ALU 实验的「公开行为与采样规则」，按需补学资料位于学习索引。Agent 只解释，不修改学生代码。\n学习材料\nlearning.md\ntext/plain · 4.7 KB\nalu.sv\ntext/plain · 306 B\n起始作品\nalu.sv · 仅含端口与 TODO 的学生骨架\n课程工具详情\n可引用课程内容\n\n选择下面的文字或编辑区代码，可带着固定引用向 Agent 提问。\n\nlearning.md\n打开补学资料来源\n# 设计并观察 4 位 ALU\n\n使用 SystemVerilog 实现组合 ALU。允许使用内置 `+`，无需安装工具链或编写验证支架。先编辑 alu.sv，点「运行」启用当时的作品，再拨动虚拟板或运行全部输入检查。未完成或未知输出如实保留。\n\n输入 A、B 为无符号 4 位；M、Cin 为 1 位；S 为 2 位。F 为 4 位，Cout 为 1 位。\n\n## 公开行为\n\n| M | S | F | Cout |\n| --- | --- | --- | --- |\n| 0 | 00 | 4 位按位 NOT A | 0 |\n| 0 | 01 | A AND B | 0 |\n| 0 | 10 | A OR B | 0 |\n| 0 | 11 | A XOR B | 0 |\n| 1 | 00 | A + B + Cin 的低 4 位 | 完整和第 5 位 |\n| 1 | 01、10、11 | 0（保留组合） | 0 |\n\n逻辑模式忽略 Cin，NOT 还忽略 B。保留组合需要确定归零，不能当作 don't-care。X 表示未知，Z 表示高阻，均不当作零。这里没有减法、额外有符号标志位或动态扫描显示要求。\n\n可直接试的公开例子：\n\n| A / B / M / S / Cin | 预期 F / Cout | 说明 |\n| --- | --- | --- |\n| 1111 / 0000 / 1 / 00 / 1 | 0000 / 1 | 和是 10000，低 4 位为零，进位为 1 |\n| 1010 / 1100 / 0 / 01 / — | 1000 / 0 | A AND B |\n| 1010 / 1100 / 0 / 11 / — | 0110 / 0 | A XOR B |\n| 1111 / 1111 / 1 / 01 / 1 | 0000 / 0 | 保留组合，不能归零以外或当作无关项 |\n\n这些是公开预期，不是完整 HDL 答案。逻辑模式的 Cin 和 NOT 模式的 B 仍可操作，但会被忽略；界面不会悄悄改掉这些开关。\n\n## 虚拟板映射\n\n数字逻辑板按下列固定映射接入 A/B/M/S/Cin。位序均为高位在左、高有效；未列出的开关、按钮、复位和时钟在本活动不绑定。\n\n| 板卡控件或显示 | 信号 |\n| --- | --- |\n| SW3…SW0 | A[3:0] |\n| SW7…SW4 | B[3:0] |\n| SW8 | M |\n| SW10…SW9 | S[1:0] |\n| SW11 | Cin |\n| LED3…LED0 | F[3:0] |\n| LED4 | Cout |\n\n数码管和旁边的文本只读取实际 F/Cout，不需要编写扫描显示电路。混合 X/Z 会逐位保留原串，不会解码成零。\n\n## 自由观察\n\n「运行」会固定点击时的全部作品文件和输入，成功保留观察后才启用这份作品。再次修改代码不会自动生效；需要再点「运行」。输入变化会保存并等待短暂合并，然后对已启用作品发起真实仿真；等待新观察时不会把旧灯态冒充成新输入的结果。\n\n只读单次支架在 t=0 设置输入，t=1ns 采样 F/Cout，t=2ns 结束（1ns/1ps）。它只观察代码，不计算正确答案。取得一次观察不代表全部行为正确。\n\n## 全部 4096 组输入检查\n\n「检查全部输入」固定检查已启用的作品，不读取正在编辑的代码，也不改变虚拟板输入。输入索引为：\n\n`index = (M << 11) | (S << 9) | (A << 5) | (B << 1) | Cin`\n\n共 4096 组：逻辑模式 2048 组、加法 512 组、保留组合 1536 组。旧检查的 2800 组采样不能代替这里。\n\n检查用四轮真实采样：每个目标输入前先保持 1ns 的固定前驱 P0（A=0、B=0、M=1、S=00、Cin=0）或 P1（A=15、B=15、M=1、S=00、Cin=1），再施加目标输入，在 1ns 或 2ns 后记录 F/Cout。四轮分别是 P0/T1、P0/T2、P1/T1、P1/T2，计划 16384 条目标采样。同一输入在不同前驱/时刻下不一致，或结果含 X/Z、缺失、重复、格式错误，都不能通过。\n\n四轮是有限采样，不是所有可能前驱和时刻的形式化证明；完整检查通过只说明这份已启用作品符合本次公开检查。检查的执行状态「已完成」不等于「检查通过」，界面会分别显示。\n\n检查可以使用「停止检查」真实终止当前 Worker。停止、超时或预算中止后不会伪造通过，也不会自动重跑原检查；回到虚拟板后仍可观察当前输入。\n\n## 遇到障碍时补学\n\n来源为复旦 2026 数字逻辑前三节理论，原件及来源链接见仓库 course_matrial/README.md。页码从 PDF 第一页起计。\n\n- 位宽、低 4 位与进位：理论 01 第 23–24、41–42 页。[课程原文件](https://elearning.fudan.edu.cn/courses/114588/files/7174035?wrap=1)。\n- AND/OR/NOT/XOR：理论 02 第 3–18 页；表达式与波形：第 45–48 页。[课程原文件](https://elearning.fudan.edu.cn/courses/114588/files/7201449?wrap=1)。\n- 逻辑表达式化简（扩展阅读）：理论 03 第 4–18、46 页。[课程原文件](https://elearning.fudan.edu.cn/courses/114588/files/7408438?wrap=1)。\n\n原课程链接需要课程平台权限。本页是公开规则与短说明，不冒称完整 PDF 已缓存。旧 ALU PPT 的 aluSel 和 nf/zf/ovf/cf 不是本活动接口。\n\nAgent 只解释和协助验证，不修改学生代码，也不提供整份可提交答案。预测、用例解释和教师提交由后续能力接入；本阶段运行和检查不会发送问题草稿，也不会生成掌握结论或教师接收记录。\n\nalu.sv\nmodule alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nendmodule\n\nALU 实验\n\n实验使用上次运行的作品；代码未改动。\n\n访问资格已失效\n运行\n\n作品暂时不可用：作品同步无法继续：identity-conflict。内容仍保留，可复制或导出。\n\n已启用这次运行的作品；拨动开关会观察这份作品，检查也只针对它。\n\n4 位 ALU · 组合逻辑\n—\nF\n\nF xxxx\n\nCout x\n\n输出含 X/Z，不能当作零。\n\nF3 · LED3\nx\nF2 · LED2\nx\nF1 · LED1\nx\nF0 · LED0\nx\nCout · LED4\nx\nA\nA[3:0] · SW3 / SW2 / SW1 / SW0\nSW3\n0\nSW2\n0\nSW1\n0\nSW0\n0\nA=0\nB\nB[3:0] · SW7 / SW6 / SW5 / SW4\nSW7\n0\nSW6\n0\nSW5\n0\nSW4\n0\nB=0\nM\nM · SW8\nSW8\n0\nM=0\nS\nS[1:0] · SW10 / SW9\nSW10\n0\nSW9\n0\nS=0\nCin\nCin · SW11\nSW11\n0\nCin=0\n\nSW15、SW14、SW13、SW12、按钮、复位与时钟本活动未绑定，不参与实验。\n\n输入 A=0 B=0 M=0 S=0 Cin=0 · NOT A\n\nF=xxxx Cout=x\n\n输出含未知值 X 或高阻 Z，不能显示成十进制零。\n\n取消固定选择\n将该输入用于实验\n使用启用时的输入\n数值编辑\n\n与开关是同一份输入；非法或未完成的文本留在编辑框，不改变端口值，也不触发仿真。\n\nA（无符号 4 位）\n0–15 · 二进制 0000\nB（无符号 4 位）\n0–15 · 二进制 0000\nM（模式，0/1）\n0–1 · 二进制 0\nS（操作选择，0–3）\n0–3 · 二进制 00\nCin（进位输入，0/1）\n0–1 · 二进制 0\n公开行为、映射与采样规则\nM\tS\tF\tCout\n0\t00\tNOT A\t0\n0\t01\tA AND B\t0\n0\t10\tA OR B\t0\n0\t11\tA XOR B\t0\n1\t00\tA + B + Cin 的低 4 位\t完整和第 5 位\n1\t01 / 10 / 11\t0（保留组合）\t0\n\nA=SW3/SW2/SW1/SW0；B=SW7/SW6/SW5/SW4；M=SW8；S=SW10/SW9；Cin=SW11；F=LED3/LED2/LED1/LED0，Cout=LED4。逻辑模式忽略 Cin，NOT 忽略 B；保留组合必须归零，不能当作 don't-care。X 表示未知，Z 表示高阻，均不当作零。\n\n自由观察支架在 t=0 施加输入、t=1ns 采样、t=2ns 结束。全量检查按 index=(M<<11)|(S<<9)|(A<<5)|(B<<1)|Cin 枚举 0–4095，四轮分别使用 P0/P1 前驱并在 T1/T2 采样；它是有限采样，不是所有时刻的形式化证明。波形的后续能力由 #194 接入。\n\n运行和检查都不发送或清空问题草稿；检查通过不生成掌握结论或教师接收记录。\n\n全量行为检查\n\n检查已启用作品的全部 4096 组公开输入。\n\n检查全部输入\n\n先点「运行」启用作品。尚无启用依据时不会自动检查，也不会对当前编辑中的代码推断通过。\n\n观察与检查记录（选择历史不改变开关）\n运行记录\n\n还没有运行记录。在实验区设置输入后运行一次。\n\n学",
+  "finishedAt": "2026-11-06T18:40:07.090Z"
+}

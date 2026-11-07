@@ -5,6 +5,7 @@ import { executionAcceptanceSchema, executionActionSchema, type ExecutionAction 
 import type { ActionReceiverIdentity } from '@xunjie/contracts/action-intents'
 import { AlgorithmError } from './algorithm'
 import { ExecutionController } from './controller'
+import { createAdapterRegistry } from './adapters'
 import { BrowserExecutionReceiver } from './receiver'
 import { ExecutionStore } from './store'
 
@@ -154,7 +155,8 @@ describe('the execution controller owns the real worker lifetime', () => {
       signal.current = abort
       abort.addEventListener('abort', () => reject(new AlgorithmError('worker-terminated', '执行线程已终止。')))
     })
-    return new ExecutionController(scopeKey, receiver, actions, offline as never, provider, run as never)
+    return new ExecutionController(scopeKey, receiver, actions, offline as never,
+      createAdapterRegistry({ provider, run: run as never }))
   }
   /** A controller whose service can be cut and restored, to observe the local-first delivery ledger. */
   function resumable(scope: string,
@@ -170,7 +172,7 @@ describe('the execution controller owns the real worker lifetime', () => {
     const provider = { load: async () => ({ bytes: new ArrayBuffer(8), entry: 'aggregate', memoryPages: 1,
       result: { type: 'object', properties: { rows: { type: 'number' } } } as const }) }
     return { receiver, execution: new ExecutionController(scope, receiver, actions,
-      (transport ?? offline) as never, provider, run as never) }
+      (transport ?? offline) as never, createAdapterRegistry({ provider, run: run as never })) }
   }
   /** Each case keeps its own scope: `open()` flushes every record in a scope, and shared fixtures must not ride along. */
   const isolatedScope = () => JSON.stringify(['school', identity.environmentId, identity.spaceId, identity.principalId,
@@ -271,8 +273,8 @@ describe('the execution controller owns the real worker lifetime', () => {
     // Connectivity returns; the same run's own queue resumes without a new command.
     service.online = true
     await execution.open()
-    await until(async () => sent.includes('result'))
-    expect(sent).toEqual(['accept', 'report', 'result'])
+    await until(async () => (await receiver.store.synced(scope, requestId))?.result === true)
+    expect(sent).toEqual(['accept', 'result', 'report'])
     const synced = (await receiver.store.synced(scope, requestId))!
     expect([synced.command, synced.result]).toEqual([true, true])
     expect(synced.factSeq).toBe(finished.query.confirmedSeq)
@@ -281,7 +283,7 @@ describe('the execution controller owns the real worker lifetime', () => {
     await new Promise(resolve => setTimeout(resolve, 5))
     await execution.open()
     await until(async () => (await receiver.store.synced(scope, requestId))!.at > firstSyncAt)
-    expect(sent).toEqual(['accept', 'report', 'result'])
+    expect(sent).toEqual(['accept', 'result', 'report'])
     execution.dispose()
   })
 })

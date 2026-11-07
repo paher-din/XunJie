@@ -1,0 +1,17 @@
+{
+  "kind": "strict-assertions-over-retained-native-observations",
+  "results": [
+    {
+      "source": "wp04-211-win-ime-report.json",
+      "sourceSha256": "96dcc5385c6fe8c87484d256d4c6ab64f12c69f7e43815532db7cfa0d7f752d4",
+      "assertion": "afterText === beforeText after the real Escape and deferred tab switch",
+      "passed": true
+    },
+    {
+      "source": "wp04-211-mac-ime-fixed-report.json",
+      "sourceSha256": "1e6237d202401b9269cdb5939f5a3cd535aec40ec6d9b20513d4be735a5143cc",
+      "assertion": "afterText === beforeText after the real Escape and deferred tab switch",
+      "passed": true
+    }
+  ]
+}

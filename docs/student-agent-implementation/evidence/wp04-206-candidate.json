@@ -1,0 +1,104 @@
+{
+  "formatVersion": 1,
+  "ticket": "#206",
+  "parent": "#192",
+  "recordedAt": "2026-11-06T12:51:07.663Z",
+  "branch": "wp04",
+  "commit": "6a4cafac23e9781bdc60faa043bb46b2a3d91e52",
+  "commitShort": "6a4cafa",
+  "commitTitle": "docs(wp04): record the delivered push in the acceptance record",
+  "commitDate": "2026-11-06T20:06:56+08:00",
+  "originHeadMatches": true,
+  "obtainable": true,
+  "platform": {
+    "os": "darwin",
+    "release": "27.2.0",
+    "arch": "arm64",
+    "cpu": "Apple M5"
+  },
+  "chrome": "156.0.8078.80",
+  "node": {
+    "version": "24.21.0",
+    "archiveSha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057"
+  },
+  "postgres": {
+    "version": "18.6",
+    "distributionVersion": "18.6",
+    "archiveSha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6"
+  },
+  "runtime": {
+    "version": "0.3.0",
+    "identity": "f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd",
+    "adapterId": "icarus-alu",
+    "adapterVersion": 1,
+    "resourceCount": 25,
+    "resourceSha256": {
+      "ivl.js": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f",
+      "ivl.wasm": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de",
+      "ivlpp.js": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982",
+      "ivlpp.wasm": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3",
+      "vvp.js": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995",
+      "vvp.wasm": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430",
+      "checksums.txt": "0e495e931690f2a29e7d5b030bd7988865f92486e37d1ad9a52bd8561f30226b",
+      "COPYING.icarus": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "notices/Emscripten-LICENSE": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+      "notices/Emscripten-AUTHORS": "56f7df65203d4858dac19cafe3a84a8c49abaff56b67d32d2d463d5fef6e440b",
+      "notices/libcxx-LICENSE": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "notices/libcxxabi-LICENSE": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+      "notices/compiler-rt-LICENSE": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+      "notices/musl-COPYRIGHT": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+      "source/port.py": "489d118a901e5717c83338b63d53c47916d2c47d13177e6477b1fcc11438b356",
+      "source/build-port.sh": "079aad410dbe99ebbbd657af300445ccd5bc7f3ee81826ad93acc2d09800ed70",
+      "source/doctor.sh": "f5dd9cb60f220650050df09335c0f6709dbf81af4d17e0e1f2575e2fed85d441",
+      "source/rebuild.sh": "24afe9de631080e8983f70c61520781f3fb02bcdc7223de30e50edaf6e0b2795",
+      "source/verify-sdk.py": "0c560877a9d532861c198ed28419e437b6525a86b5b046a9f90224c9af7d1744",
+      "source/toolchain.lock.json": "e02bd0124e24f8e51f7a219b62e0d1875bdce1b8f99a9c3bc2fda61e0bcb41dd",
+      "source/ubuntu-packages.lock": "3fb404a05b522de07d18abfdcf6314475f01f1ee8857872fc2a0e4937871ee88",
+      "source/README.md": "54c15f8cae0ee762e304eba6b6b9e7d597c6445fbdac55a3274ca90ab5c9f09f",
+      "source/iverilog.tar.gz": "d5e0d83f7028e2c11c127e16aaa5ab35627b1f4f62abfa982defcf77e8959bc2",
+      "single.sv": "91aed970915d0d5cba388fabeca92e655cc6e24fb15212dfc7ae83bce49cc4a4",
+      "self-check.sv": "a14b80a6a3257facb05efc4cc4cc9e2ce3a193f83dadc0f6517faf3f259b8a84"
+    },
+    "adapterFilesSha256": {
+      "index.mjs": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8",
+      "worker.mjs": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73",
+      "identity.mjs": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da",
+      "index.d.mts": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
+    }
+  },
+  "component": {
+    "componentId": "19200000-0000-4000-8000-000000000001",
+    "manifestDigest": "f6e3fa33b715c55defc0e9d24fe329dabd7ac1ecdddc02510d93a3e1c966cee8"
+  },
+  "course": {
+    "courseId": "19200000-0000-4000-8000-000000000071",
+    "releaseId": "19200000-0000-4000-8000-000000000073",
+    "planId": "alu-browser",
+    "planDigest": "f7d9785c05b3d70acef788221418ce23c9a97660ffe902bc527b2aa5a35e7a26",
+    "materialSha256": {
+      "learning.md": "83852f0306fe00c563daf29981841c89ed2683d9ec2d01b95fa6d31ea38a6966",
+      "alu.sv": "279e81da3ca208729a273185faec40361bbf8b1b0446ab683493e1f0542441ff"
+    },
+    "starterWorkId": "19200000-0000-4000-8000-000000000074"
+  },
+  "windowsBaseline": {
+    "platform": "win32-x64",
+    "chrome": "156.0.8078.80",
+    "distributionSha256": "49f4620b9214b90ef02f4d0648269177e377dc44a51f844b698dfe0a7307d5a6",
+    "entries": 222,
+    "source": "evidence/wp04-192-windows-closeout.json"
+  },
+  "macCandidate": {
+    "path": "dist/product-darwin-arm64-wp04-206",
+    "distributionSha256": "e0307a701c7d7d7ff8a9389b4600d913b2dfa3b567048f6f7b2ed961edccd744",
+    "entryHashes": 221,
+    "status": "unsigned-candidate",
+    "createdAt": "2026-11-06T12:37:11.134Z",
+    "resourceCatalogSha256": "9d64fbd2179c045176c2b470ab59de320be1e5e4b05f7b557d7fbe96fc130608"
+  },
+  "rejectedOldLocalMacPackage": {
+    "path": "dist/product-darwin-arm64",
+    "distributionSha256": "7101b4431fd117ba74278850beaf3aa4b05e2339895866af76752fc8ef72f244",
+    "reason": "2026-11-03 旧构建，不含 #192 实现与 Windows 收口修复，不作为 #206 候选"
+  }
+}

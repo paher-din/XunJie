@@ -1,0 +1,33 @@
+{
+  "baseline": false,
+  "cases": [
+    "original v3 import and repaired v4 import coexist without identity conflict",
+    "old approved activity executes original 0.3.0 identity in real product Chrome",
+    "new activity executes repaired 0.3.1 identity without upgrading old activity",
+    "real HTTP draft submits only N2 before parent work and receives retryable unavailable",
+    "after real PostgreSQL work sync the unchanged original HTTP draft request retries and succeeds"
+  ],
+  "platform": "darwin",
+  "arch": "arm64",
+  "chrome": "156.0.8078.80",
+  "order": {
+    "attempts": [
+      {
+        "status": 503,
+        "requestId": "36865c84-cf62-4977-92c2-4b99990b81aa"
+      },
+      {
+        "status": 503,
+        "requestId": "36865c84-cf62-4977-92c2-4b99990b81aa"
+      },
+      {
+        "status": 200,
+        "requestId": "36865c84-cf62-4977-92c2-4b99990b81aa"
+      }
+    ],
+    "parentNoteId": "ccd8e945-d823-46cd-9f0b-cee70c4de98b",
+    "childNoteId": "49c4f2d0-27a1-437b-9385-cca610e783e4",
+    "preservedInput": true
+  },
+  "status": "passed"
+}

@@ -1,7 +1,7 @@
 import { actionInputSchema, actionViewSchema, actionScopeSchema, actionReceiptSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents'
 import type { ActionInput, ActionView, ActionReceiverIdentity, ActionReceiver, ActionReceipt } from '@xunjie/contracts/action-intents'
 import { executionAcceptanceSchema, fixedActionSchema, isExecutionAction, rejectedExecutionAcceptance } from '@xunjie/contracts/execution'
-import type { FixedAction, ExecutionAction, ExecutionAcceptance, ExecutionQuery } from '@xunjie/contracts/execution'
+import type { FixedAction, AnyExecutionAction, ExecutionAction, ExecutionActionV3, ExecutionAcceptance, ExecutionQuery } from '@xunjie/contracts/execution'
 import { ActionStore } from './action-store'
 import type { LocalAction } from './action-store'
 import type { ReliableQuestionDraft } from './draft'
@@ -19,7 +19,7 @@ export interface ActionTransport {
 /** The browser-side execution receiver seam: durable acceptance, original-identity query and a real stop. */
 export interface LocalExecutionReceiver {
   identity: ActionReceiverIdentity
-  accept(action: ExecutionAction, inputDigest: string): Promise<ExecutionAcceptance>
+  accept(action: AnyExecutionAction, inputDigest: string): Promise<ExecutionAcceptance>
   query(requestId: string, inputDigest: string): Promise<ExecutionQuery | null>
   cancel(requestId: string, inputDigest: string): Promise<ExecutionAcceptance | null>
   blocked(requestId: string, inputDigest: string): Promise<boolean>
@@ -135,15 +135,24 @@ export class ReliableActions {
    * It never reads, sends or clears the question draft, and later edits cannot widen it.
    */
   async createExecution(options: { requestId: string; receiver: ActionReceiverIdentity
-    execution: ExecutionAction['execution'] }) {
+    execution: AnyExecutionAction['execution']; protocolVersion?: 2 | 3 }) {
     // The host captured these exact bytes before hashing; never re-read the mutable workspace here.
     const execution = structuredClone(options.execution)
     const scope = scopeFromKey(this.key)
-    const state = execution.basis.state
-    const cited = state ? execution.basis.works.filter(file => file.name === state.name && file.contentId === state.contentId) : []
+    // A v3 basis cites the student's real source files, so every work it names is the fixed copy already
+    // hashed; a v2 basis cites only the one component-state file the run was assembled from.
+    if (options.protocolVersion === 3) {
+      const input = fixedActionSchema.parse({ protocolVersion: 3, kind: 'execution', requestId: options.requestId, scope,
+        receiver: options.receiver, execution: { ...(execution as ExecutionActionV3['execution']), basis: {
+          ...(execution as ExecutionActionV3['execution']).basis, works: (execution as ExecutionActionV3['execution']).basis.works } } })
+      return this.retainNew(input)
+    }
+    const basis = (execution as ExecutionAction['execution']).basis
+    const state = basis.state
+    const cited = state ? basis.works.filter(file => file.name === state.name && file.contentId === state.contentId) : []
     if (state && cited.length !== 1) throw new Error('运行时使用的组件状态副本不可读。')
     const input = fixedActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: options.requestId, scope,
-      receiver: options.receiver, execution: { ...execution, basis: { ...execution.basis, works: cited } } })
+      receiver: options.receiver, execution: { ...(execution as ExecutionAction['execution']), basis: { ...basis, works: cited } } })
     return this.retainNew(input)
   }
   private async retainNew(input: FixedAction) {
@@ -350,7 +359,7 @@ export class ReliableActions {
    * lost reply is retried as the same request instead of a new one. A durable pre-accept block
    * always wins over a late acceptance.
    */
-  private async advanceLocalExecution(item: LocalAction, action: ExecutionAction) {
+  private async advanceLocalExecution(item: LocalAction, action: AnyExecutionAction) {
     const receiver = this.executionReceivers.get(JSON.stringify(action.receiver))
     if (!receiver || this.stopped || this.accessDenied() || terminal(item) || item.history || this.cancellationRequests.has(action.requestId)) return
     const current = await this.store.change(this.key, action.requestId, saved => {

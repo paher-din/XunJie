@@ -1,0 +1,253 @@
+{
+  "kind": "windows-os-ime-acceptance",
+  "ticket": "#211",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "candidate": "C:\\Users\\h\\product-win32-x64-wp04-211c",
+  "startedAt": "2026-11-07T06:22:07.278Z",
+  "os": "Windows 10.0.26200.0",
+  "cases": [
+    {
+      "id": "A0",
+      "name": "an unlocked Windows interactive desktop owns the real product Chrome and native IME",
+      "status": "passed"
+    },
+    {
+      "id": "D1",
+      "name": "Monaco composition followed by ALU-tab switch and back keeps text and focus correct",
+      "status": "passed"
+    }
+  ],
+  "keySequences": [
+    {
+      "id": "D1",
+      "label": "monaco compose shuru before tab switch",
+      "keys": "s h u r u",
+      "nativeKeys": [
+        "s",
+        "h",
+        "u",
+        "r",
+        "u"
+      ]
+    },
+    {
+      "id": "D2",
+      "label": "monaco compose ceshi after tab switch",
+      "keys": "c e s h i Space",
+      "nativeKeys": [
+        "c",
+        "e",
+        "s",
+        "h",
+        "i",
+        " "
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "win-ime-12a-active-composition-before-switch",
+      "path": "C:\\Users\\h\\wp04-211\\client\\win-client-pack\\native-ime211\\output\\win-ime-12a-active-composition-before-switch.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12aa-requested-switch-keeps-composition",
+      "path": "C:\\Users\\h\\wp04-211\\client\\win-client-pack\\native-ime211\\output\\win-ime-12aa-requested-switch-keeps-composition.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12b-tool-switch-before-refocus",
+      "path": "C:\\Users\\h\\wp04-211\\client\\win-client-pack\\native-ime211\\output\\win-ime-12b-tool-switch-before-refocus.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    },
+    {
+      "name": "win-ime-12-tool-switch-editor",
+      "path": "C:\\Users\\h\\wp04-211\\client\\win-client-pack\\native-ime211\\output\\win-ime-12-tool-switch-editor.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    }
+  ],
+  "candidateWindows": [
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 570,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    },
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 534,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    }
+  ],
+  "texts": {
+    "monacoAfterToolSwitch": "测试module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nen"
+  },
+  "network": {
+    "draftSendRequests": [],
+    "executionRequests": [],
+    "quietPhases": [
+      {
+        "id": "Active composition and tool switch",
+        "executionsBefore": 0,
+        "executionsAfter": 0,
+        "questionSubmissions": 0
+      }
+    ]
+  },
+  "foregroundChecks": [
+    {
+      "at": "2026-11-07T06:22:24.464Z",
+      "sessionId": 1,
+      "foregroundProcessId": 13220,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T06:22:25.456Z",
+      "sessionId": 1,
+      "foregroundProcessId": 13220,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T06:22:32.918Z",
+      "sessionId": 1,
+      "foregroundProcessId": 13220,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 403,
+          "y": 570,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T06:22:36.860Z",
+      "sessionId": 1,
+      "foregroundProcessId": 13220,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T06:22:41.176Z",
+      "sessionId": 1,
+      "foregroundProcessId": 13220,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "ImeService",
+          "class": "OimeDirectUIWindow",
+          "processId": 6040,
+          "x": 403,
+          "y": 534,
+          "width": 606,
+          "height": 89
+        },
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "nativeInput": "System.Windows.Forms.SendKeys in the same Interactive desktop session as the probe Chrome; no CDP composition",
+  "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-alu-211-ime-e9p4EM",
+  "productNodeVersion": "24.21.0",
+  "distributionSha256": "66fd90c0c50a9eac3578c05eae63cea1d7ab5e77a73510b46d3de28ce835c621",
+  "endpoint": "http://127.0.0.1:65261",
+  "chromePid": 13220,
+  "browser": "156.0.8078.81",
+  "activityId": "cbbf0c5a-911a-48a3-8719-a4c924a49c44",
+  "toolSwitch": {
+    "beforeText": "module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nendmodule",
+    "afterText": "module alu (\n  input logic [3:0] A, B,\n  input logic M,\n  input logic [1:0] S,\n  input logic Cin,\n  output logic [3:0] F,\n  output logic Cout\n);\n  // TODO: implement the public behaviour table. Built-in + is allowed.\n  // Assign both outputs for every control combination in combinational logic.\nendmodule",
+    "focusBeforeManualRefocus": {
+      "connected": true,
+      "inEditor": false,
+      "role": "tab",
+      "label": "作品"
+    }
+  },
+  "finishedAt": "2026-11-07T06:22:44.317Z",
+  "caseCount": 2,
+  "passCount": 2,
+  "cleanup": "owned temporary installation deleted through the product owner"
+}

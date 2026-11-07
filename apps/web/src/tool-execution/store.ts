@@ -1,13 +1,14 @@
-import { advanceExecution, type ExecutionAction, type ExecutionAcceptance, type ExecutionQuery } from '@xunjie/contracts/execution'
+import { advanceExecution, type AnyExecutionAction, type ExecutionAcceptance, type ExecutionQuery } from '@xunjie/contracts/execution'
 import { openWorkspaceDatabase } from '../reliable-workspace/draft-store'
 import { recordKey, type ExecutionRecord } from './ledger'
+import type { ExecutionRetainedResource } from '@xunjie/contracts/execution'
 
 export interface PendingExecutionFact { scope: string; requestId: string; seq: number; query: ExecutionQuery; at: number }
 export interface StopRecord { scope: string; stopId: string; requestId: string; inputDigest: string; reason: string
   state: 'requested' | 'confirmed'; at: number }
 export interface ResultRecord { scope: string; executionRef: string; requestId: string; name: string; mediaType: string
-  sha256: string; byteLength: number; text: string; output: unknown; at: number }
-export interface SyncRecord { scope: string; requestId: string; command: boolean; factSeq: number; result: boolean; at: number }
+  sha256: string; byteLength: number; text: string; output: unknown; at: number; resources?:ExecutionRetainedResource[] }
+export interface SyncRecord { scope: string; requestId: string; command: boolean; factSeq: number; result: boolean; at: number; stopIds?:string[] }
 
 const done = (tx: IDBTransaction, resolve: () => void, reject: (error: unknown) => void, failure: () => unknown) => {
   tx.oncomplete = () => resolve()
@@ -41,8 +42,8 @@ export class ExecutionStore {
     })
   }
   /** Identical identity returns the original acceptance; different input under one request is refused. */
-  async accept(scope: string, action: ExecutionAction, inputDigest: string, acceptance: ExecutionAcceptance,
-    generation: number): Promise<ExecutionRecord> {
+  async accept(scope: string, action: AnyExecutionAction, inputDigest: string, acceptance: ExecutionAcceptance,
+    generation: number, canCommit: () => boolean = () => true): Promise<ExecutionRecord> {
     const db = await openWorkspaceDatabase()
     // The record is keyed by the same workspace scope every later read, list and result lookup uses.
     const key = recordKey(scope, action.requestId)
@@ -63,6 +64,10 @@ export class ExecutionStore {
           if (previous) {
             if (previous.inputDigest !== inputDigest) { failure = Object.assign(new Error('同一执行身份不能改变输入。'), { code: 'identity-conflict' }); tx.abort(); return }
             result = previous; return
+          }
+          if (!canCommit()) {
+            failure = Object.assign(new Error('候选输入已改变或反馈已暂停，未接收旧观察。'), { code: 'candidate-changed' })
+            tx.abort(); return
           }
           const query: ExecutionQuery = { requestId: action.requestId, inputDigest, scope: action.scope,
             executionRef: acceptance.execution!.executionRef, state: 'queued', statusKnowledge: 'confirmed',
@@ -185,7 +190,12 @@ export class ExecutionStore {
     const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
       const tx = db.transaction('executionResults', 'readwrite')
-      tx.objectStore('executionResults').put(value)
+      const store=tx.objectStore('executionResults'), request=store.get([value.scope,value.executionRef])
+      request.onsuccess=()=>{
+        const previous=request.result as ResultRecord|undefined
+        if(previous && (previous.sha256!==value.sha256 || previous.text!==value.text || JSON.stringify(previous.resources)!==JSON.stringify(value.resources))) {tx.abort();return}
+        if(!previous)store.put(value)
+      }
       done(tx, () => resolve(), reject, () => undefined)
     })
   }

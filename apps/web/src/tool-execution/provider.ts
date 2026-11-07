@@ -3,7 +3,7 @@ import type { ExecutionAction } from '@xunjie/contracts/execution'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { learningRequest } from '../product/learningTransport'
 import { AlgorithmError } from './algorithm'
-import type { AlgorithmProvider } from './controller'
+import type { AlgorithmProvider } from './adapters/aggregation'
 
 const hash = async (bytes: Uint8Array) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>)),
   byte => byte.toString(16).padStart(2, '0')).join('')

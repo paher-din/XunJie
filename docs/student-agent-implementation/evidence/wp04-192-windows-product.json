@@ -1,0 +1,25 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "root": "C:\\Users\\p3148\\AppData\\Local\\Temp\\xj-alu-product-gr9xiE",
+  "candidate": "D:/XunJie/.verification/wp04-192-candidate",
+  "cases": [
+    "packaged CLI reads confined relative files and imports the full runtime/source/material package",
+    "normal component and course imports",
+    "starter imported and actual Worker self-check enabled run",
+    "starter produced real unknown HDL output",
+    "real carry observation in formal editor and Worker",
+    "Chinese source text entered through Monaco survives compilation and fixed execution basis",
+    "PostgreSQL and retained resource API hold original VCD",
+    "prepared browser runs real HDL while application API is unavailable",
+    "refresh reads original observation without simulation",
+    "compile failure names original source and never replaces previous observation",
+    "actual zero-time Worker is stopped through the original execution controller",
+    "a new Worker remains usable after stop",
+    "narrow desktop and dark theme render the same activity and retained results",
+    "two real Chrome tabs preserve competing Chinese edits and require explicit resolution",
+    "real maintenance validation accepts fixed v3 works, result resources and pins and resumes after a source fence"
+  ],
+  "status": "passed",
+  "browser": "156.0.8078.80"
+}

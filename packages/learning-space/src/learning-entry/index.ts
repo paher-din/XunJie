@@ -122,7 +122,7 @@ export function createLearningEntry(options: {
       const readOnly = await isReadOnly();
       if (readOnly && (request.method !== 'GET' && !['login', 'logout'].includes(route)
         || /^(?:native-channel|client|connections|manage)(?:\/|$)/.test(route)
-        || route === 'execution-environment' || /\/(?:algorithm|dependencies)(?:\/|$)/.test(route)))
+        || route === 'execution-environment' || /\/(?:algorithm|dependencies|resources)(?:\/|$)/.test(route)))
         throw new StorageError('maintenance');
       if (options.requiresNamespace && request.method === 'POST'
         && !['login', 'logout'].includes(route) && !/^(?:manage|connections|native-channel)\//.test(route)
@@ -130,6 +130,10 @@ export function createLearningEntry(options: {
       const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
       // Fixed dependency and diagnostic routes only: no arbitrary path reaches a resource backend through these.
       const componentDependency = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/dependencies\/[a-z][a-z0-9-]{0,47}$/.test(route);
+      // A runtime file is addressed by the relative path its manifest declared; the segments are bounded and
+      // traversal-free, and the owner still resolves the path against the pinned definition.
+      const componentRuntimeResource = request.method === 'GET'
+        && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/resources\/(?:[a-zA-Z0-9_-][a-zA-Z0-9_.-]{0,199}\/){0,8}[a-zA-Z0-9_-][a-zA-Z0-9_.-]{0,199}$/.test(route);
       const componentReports = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/preparation-reports$/.test(route);
       const componentReport = request.method === 'POST' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/preparation-report$/.test(route);
       if (componentView) {
@@ -152,7 +156,8 @@ export function createLearningEntry(options: {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route === 'models/images' ? 360000 : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
+          route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
+            : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
             : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
@@ -219,7 +224,9 @@ export function createLearningEntry(options: {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
         if (route === 'manage/component-import') {
           if (!options.courses) throw new StorageError('forbidden');
-          result = await options.courses.components.register(await readLearningBody(request, 2000000));
+          // A format 3 definition pins its whole runtime file set: 16 MiB of raw resources is about 21.3 MiB
+          // once base64-encoded, plus the manifest. The bound follows that contract rather than a script's size.
+          result = await options.courses.components.register(await readLearningBody(request, 32 * 1024 * 1024));
         } else if (route === 'manage/component-status') {
           if (!options.courses) throw new StorageError('forbidden');
           result = await options.courses.components.setStatus(await readLearningBody(request));
@@ -294,6 +301,8 @@ export function createLearningEntry(options: {
           result = await options.courses.readMaterial(await current(request), parts[0]!, parts[2]!);
         } else if (componentDependency && parts.length === 5 && parts[1] === 'components' && parts[3] === 'dependencies') {
           result = await options.courses.readComponentDependency(identity, parts[0]!, parts[2]!, parts[4]!);
+        } else if (componentRuntimeResource && parts.length >= 5 && parts[1] === 'components' && parts[3] === 'resources') {
+          result = await options.courses.readComponentRuntimeResource(identity, parts[0]!, parts[2]!, parts.slice(4).join('/'));
         } else if (componentReports && parts.length === 4 && parts[1] === 'components') {
           result = await options.courses.readComponentReports(identity, parts[0]!, parts[2]!);
         } else if (componentReport && parts.length === 4 && parts[1] === 'components') {
@@ -339,7 +348,7 @@ export function createLearningEntry(options: {
         else if (parts.length === 4 && parts[3] === 'stop' && method === 'POST')
           result = await learning.executions.stop(identity, parts[1]!, parts[2]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[3] === 'result' && method === 'POST')
-          result = await learning.executions.result(identity, parts[1]!, parts[2]!, await readLearningBody(request, 8000000));
+          result = await learning.executions.result(identity, parts[1]!, parts[2]!, await readLearningBody(request, 32*1024*1024));
         else throw new StorageError('missing');
       } else if (route.startsWith('intents/')) {
         const identity = await current(request);

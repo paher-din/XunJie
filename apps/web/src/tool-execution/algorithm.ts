@@ -6,6 +6,7 @@
  * instead of manufacturing a number. The algorithm never reads this document.
  */
 import type { ExecutionAction, ExecutionLimits } from '@xunjie/contracts/execution'
+import { ExecutionError } from './errors'
 export interface AggregationTable { columns: string[]; rows: string[][] }
 export interface AggregationParameters { groupColumn: string; valueColumn: string; aggregate: 'count' | 'sum' | 'mean' }
 export interface AggregationGroup { key: string; count: number; value: number; sum: number; mean: number; min: number; max: number }
@@ -14,10 +15,8 @@ export interface AggregationResult { rows: number; aggregate: AggregationParamet
 export interface AggregationArtifact { name: string; mediaType: string; text: string }
 export interface AggregationOutcome { result: AggregationResult; artifact: AggregationArtifact }
 
-export class AlgorithmError extends Error {
-  constructor(readonly code: 'invalid-input' | 'input-too-large' | 'output-too-large' | 'budget-exceeded'
-    | 'algorithm-error' | 'resource-unavailable' | 'worker-terminated' | 'capability-unavailable', message: string) { super(message) }
-}
+/** The aggregation ABI's own failures; every code is a real published reason, never a fallback. */
+export class AlgorithmError extends ExecutionError {}
 
 /** What the worker really receives. The ABI's own mapping lives here, not in the generic executor. */
 export interface AlgorithmJob { bytes: ArrayBuffer; memoryPages: number; entry: string; table: AggregationTable

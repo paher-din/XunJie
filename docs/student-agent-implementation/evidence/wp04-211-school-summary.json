@@ -1,0 +1,299 @@
+{
+  "ticket": "#211",
+  "kind": "alu-school-211-cross-machine-client",
+  "script": {
+    "path": "scripts/probe-alu-211-school-client.mjs",
+    "sha256": "06bdf7a96144401b14590a2eaa69082dfcbe71e9956b1c7e767cfebc5780e3c0",
+    "bytes": 44962
+  },
+  "platforms": {
+    "macos-arm64": {
+      "report": ".verification/wp04-211/school-mac/report.json",
+      "status": "passed",
+      "caseSummary": {
+        "pass": 13,
+        "fail": 0,
+        "skip": 0
+      },
+      "cases": [
+        {
+          "id": "env-placement",
+          "status": "PASS"
+        },
+        {
+          "id": "tls-pin",
+          "status": "PASS"
+        },
+        {
+          "id": "login-activity",
+          "status": "PASS"
+        },
+        {
+          "id": "preparation",
+          "status": "PASS"
+        },
+        {
+          "id": "starter-observation",
+          "status": "PASS"
+        },
+        {
+          "id": "correct-observation",
+          "status": "PASS"
+        },
+        {
+          "id": "offline-sync",
+          "status": "PASS"
+        },
+        {
+          "id": "check-pass",
+          "status": "PASS"
+        },
+        {
+          "id": "check-fail",
+          "status": "PASS"
+        },
+        {
+          "id": "refresh",
+          "status": "PASS"
+        },
+        {
+          "id": "worker-stop",
+          "status": "PASS"
+        },
+        {
+          "id": "second-activity",
+          "status": "PASS"
+        },
+        {
+          "id": "network-origin",
+          "status": "PASS"
+        }
+      ],
+      "timings": {
+        "loginMs": 610,
+        "preparationMs": 42665,
+        "starterRunMs": 864,
+        "correctRunMs": 1004,
+        "lastInputToObservationMs": 829,
+        "offlineObservationMs": 312,
+        "checkPassMs": 1401,
+        "checkFailMs": 1401,
+        "refreshMs": 13221,
+        "stopMs": 222,
+        "secondActivityMs": 17345
+      },
+      "browser": "156.0.8078.80",
+      "platform": "darwin",
+      "arch": "arm64",
+      "node": "v24.21.0",
+      "schoolNodePlatform": "linux",
+      "schoolNodeArch": "x64",
+      "schoolNodeVersion": "v24.21.0",
+      "distributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3",
+      "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0="
+    },
+    "windows-x64": {
+      "report": ".verification/wp04-211/school-windows/report.json",
+      "status": "passed",
+      "caseSummary": {
+        "pass": 13,
+        "fail": 0,
+        "skip": 0
+      },
+      "cases": [
+        {
+          "id": "env-placement",
+          "status": "PASS"
+        },
+        {
+          "id": "tls-pin",
+          "status": "PASS"
+        },
+        {
+          "id": "login-activity",
+          "status": "PASS"
+        },
+        {
+          "id": "preparation",
+          "status": "PASS"
+        },
+        {
+          "id": "starter-observation",
+          "status": "PASS"
+        },
+        {
+          "id": "correct-observation",
+          "status": "PASS"
+        },
+        {
+          "id": "offline-sync",
+          "status": "PASS"
+        },
+        {
+          "id": "check-pass",
+          "status": "PASS"
+        },
+        {
+          "id": "check-fail",
+          "status": "PASS"
+        },
+        {
+          "id": "refresh",
+          "status": "PASS"
+        },
+        {
+          "id": "worker-stop",
+          "status": "PASS"
+        },
+        {
+          "id": "second-activity",
+          "status": "PASS"
+        },
+        {
+          "id": "network-origin",
+          "status": "PASS"
+        }
+      ],
+      "timings": {
+        "loginMs": 458,
+        "preparationMs": 67466,
+        "starterRunMs": 397,
+        "correctRunMs": 969,
+        "lastInputToObservationMs": 871,
+        "offlineObservationMs": 341,
+        "checkPassMs": 1467,
+        "checkFailMs": 1900,
+        "refreshMs": 14878,
+        "stopMs": 210,
+        "secondActivityMs": 20433
+      },
+      "browser": "156.0.8078.81",
+      "platform": "win32",
+      "arch": "x64",
+      "node": "v24.15.0",
+      "schoolNodePlatform": "linux",
+      "schoolNodeArch": "x64",
+      "schoolNodeVersion": "v24.21.0",
+      "distributionSha256": "4e6f6133b30b582c92e7821f0d68cdbf5e136ad376a796fca9a1cf79db49a7d3",
+      "spki": "REY2E/pMcJ2bIAFVOlij8HbrL1HD2XSt+m9s7CDGKU0="
+    }
+  },
+  "identityConflict": {
+    "reproducedOnFinalNode": false,
+    "secondActivity": {
+      "mac": {
+        "activityId": "6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+        "workRevision": 1,
+        "workspaceObjectId": "ea20e33c-91d9-4755-bd9d-debd1b44d48d",
+        "contentId": "e99d8752-b589-47eb-9c9a-9ddfc9b54566",
+        "firstActivityObjectId": "4df639ef-82a0-45c7-afe2-801934d2a9da",
+        "objectIdIsPerActivity": true,
+        "workspacePosts": [
+          {
+            "path": "/api/learning/workspaces/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+            "status": 200
+          }
+        ],
+        "executionPosts": [
+          {
+            "path": "/api/learning/executions/6955d5dd-0f69-4cd5-8b0d-c4d212c74550",
+            "status": 200
+          }
+        ],
+        "identityConflict": false,
+        "preparationMs": 17345
+      },
+      "windows": {
+        "activityId": "c83003dd-6f7f-4814-b106-9baddc62f9ff",
+        "workRevision": 1,
+        "workspaceObjectId": "bc8a50df-6dc4-4530-9bc8-3bfa0afc135e",
+        "contentId": "513c1973-f6c3-4a76-baeb-4f6505a95819",
+        "firstActivityObjectId": "93e90803-7aa3-4daa-9b58-06203f2eca36",
+        "objectIdIsPerActivity": true,
+        "workspacePosts": [
+          {
+            "path": "/api/learning/workspaces/c83003dd-6f7f-4814-b106-9baddc62f9ff",
+            "status": 200
+          }
+        ],
+        "executionPosts": [
+          {
+            "path": "/api/learning/executions/c83003dd-6f7f-4814-b106-9baddc62f9ff",
+            "status": 200
+          }
+        ],
+        "identityConflict": false,
+        "preparationMs": 20433
+      }
+    },
+    "staleBundleEvidence": ".verification/wp04-211/school-mac/attempt1-old-bundle/report.json"
+  },
+  "network": {
+    "mac": {
+      "pageHosts": [
+        "101.201.141.133:8443"
+      ],
+      "pageSchemes": [
+        "blob:",
+        "https:"
+      ],
+      "refused": [
+        {
+          "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd/42ffeb65-ff47-485e-86b8-ca4ec81da010/stop",
+          "status": 404,
+          "step": "worker-stop",
+          "body": "{\"error\":\"missing\"}"
+        },
+        {
+          "path": "/api/learning/executions/998e8c2c-485e-4b75-92a4-b19f388714cd",
+          "status": 400,
+          "step": "second-activity",
+          "body": "{\"error\":\"invalid\"}"
+        }
+      ],
+      "requestFailures": []
+    },
+    "windows": {
+      "pageHosts": [
+        "101.201.141.133:8443"
+      ],
+      "pageSchemes": [
+        "blob:",
+        "https:"
+      ],
+      "refused": [
+        {
+          "path": "/api/learning/executions/82758e6a-c713-4fc6-be74-d2e468d78aef",
+          "status": 400,
+          "step": "correct-observation",
+          "body": "{\"error\":\"invalid\"}"
+        },
+        {
+          "path": "/api/learning/executions/82758e6a-c713-4fc6-be74-d2e468d78aef",
+          "status": 400,
+          "step": "correct-observation",
+          "body": "{\"error\":\"invalid\"}"
+        },
+        {
+          "path": "/api/learning/executions/82758e6a-c713-4fc6-be74-d2e468d78aef",
+          "status": 400,
+          "step": "correct-observation",
+          "body": "{\"error\":\"invalid\"}"
+        },
+        {
+          "path": "/api/learning/executions/82758e6a-c713-4fc6-be74-d2e468d78aef",
+          "status": 400,
+          "step": "check-fail",
+          "body": "{\"error\":\"invalid\"}"
+        },
+        {
+          "path": "/api/learning/executions/82758e6a-c713-4fc6-be74-d2e468d78aef/e2c15f30-4761-4e35-b683-285bac9f2450/stop",
+          "status": 404,
+          "step": "worker-stop",
+          "body": "{\"error\":\"missing\"}"
+        }
+      ],
+      "requestFailures": []
+    }
+  }
+}

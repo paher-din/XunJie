@@ -1,0 +1,242 @@
+{
+  "passed": [
+    "correct compiles the real check scaffold",
+    "correct round 0 completes",
+    "correct round 0 returns 4096 rows",
+    "correct round 0 returns ordered indices",
+    "correct round 0 distinguishes four-state coverage",
+    "correct round 0 retains VCD",
+    "correct round 1 completes",
+    "correct round 1 returns 4096 rows",
+    "correct round 1 returns ordered indices",
+    "correct round 1 distinguishes four-state coverage",
+    "correct round 1 retains VCD",
+    "correct round 2 completes",
+    "correct round 2 returns 4096 rows",
+    "correct round 2 returns ordered indices",
+    "correct round 2 distinguishes four-state coverage",
+    "correct round 2 retains VCD",
+    "correct round 3 completes",
+    "correct round 3 returns 4096 rows",
+    "correct round 3 returns ordered indices",
+    "correct round 3 distinguishes four-state coverage",
+    "correct round 3 retains VCD",
+    "correct implementation matches the independent public rule on all 16384 sampled rows",
+    "correct implementation has no unknown rows",
+    "four rounds produce exactly 16384 target samples",
+    "carry example F=0000/Cout=1 is real",
+    "reserved combination is sampled and zero",
+    "drop-carry compiles the real check scaffold",
+    "drop-carry round 0 completes",
+    "drop-carry round 0 returns 4096 rows",
+    "drop-carry round 0 returns ordered indices",
+    "drop-carry round 0 distinguishes four-state coverage",
+    "drop-carry round 0 retains VCD",
+    "drop-carry round 1 completes",
+    "drop-carry round 1 returns 4096 rows",
+    "drop-carry round 1 returns ordered indices",
+    "drop-carry round 1 distinguishes four-state coverage",
+    "drop-carry round 1 retains VCD",
+    "drop-carry round 2 completes",
+    "drop-carry round 2 returns 4096 rows",
+    "drop-carry round 2 returns ordered indices",
+    "drop-carry round 2 distinguishes four-state coverage",
+    "drop-carry round 2 retains VCD",
+    "drop-carry round 3 completes",
+    "drop-carry round 3 returns 4096 rows",
+    "drop-carry round 3 returns ordered indices",
+    "drop-carry round 3 distinguishes four-state coverage",
+    "drop-carry round 3 retains VCD",
+    "drop-carry fixture produces 256 unique wrong inputs",
+    "drop-carry fixture produces 1024 wrong target rows over four rounds",
+    "x-reserved compiles the real check scaffold",
+    "x-reserved round 0 completes",
+    "x-reserved round 0 returns 4096 rows",
+    "x-reserved round 0 returns ordered indices",
+    "x-reserved round 0 distinguishes four-state coverage",
+    "x-reserved round 0 retains VCD",
+    "x-reserved round 1 completes",
+    "x-reserved round 1 returns 4096 rows",
+    "x-reserved round 1 returns ordered indices",
+    "x-reserved round 1 distinguishes four-state coverage",
+    "x-reserved round 1 retains VCD",
+    "x-reserved round 2 completes",
+    "x-reserved round 2 returns 4096 rows",
+    "x-reserved round 2 returns ordered indices",
+    "x-reserved round 2 distinguishes four-state coverage",
+    "x-reserved round 2 retains VCD",
+    "x-reserved round 3 completes",
+    "x-reserved round 3 returns 4096 rows",
+    "x-reserved round 3 returns ordered indices",
+    "x-reserved round 3 distinguishes four-state coverage",
+    "x-reserved round 3 retains VCD",
+    "X fixture produces 1536 unique unknown-input rows",
+    "X fixture produces 6144 unknown target rows over four rounds"
+  ],
+  "timings": [
+    {
+      "variant": "correct",
+      "stage": "compile",
+      "ms": 117,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-0",
+      "ms": 138
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-1",
+      "ms": 131
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-2",
+      "ms": 112
+    },
+    {
+      "variant": "correct",
+      "stage": "simulate-3",
+      "ms": 116
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "compile",
+      "ms": 85,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-0",
+      "ms": 118
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-1",
+      "ms": 121
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-2",
+      "ms": 111
+    },
+    {
+      "variant": "drop-carry",
+      "stage": "simulate-3",
+      "ms": 113
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "compile",
+      "ms": 98,
+      "status": "completed",
+      "cacheHit": false
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-0",
+      "ms": 125
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-1",
+      "ms": 117
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-2",
+      "ms": 135
+    },
+    {
+      "variant": "x-reserved",
+      "stage": "simulate-3",
+      "ms": 111
+    }
+  ],
+  "mismatches": 0,
+  "unknown": 0,
+  "badIndices": 256,
+  "badRows": 1024,
+  "unknownIndices": 1536,
+  "unknownRows": 6144,
+  "vcdBytes": 4249880,
+  "chrome": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+  "sample": {
+    "carry": {
+      "index": 2529,
+      "f": "0000",
+      "cout": "1"
+    },
+    "reserved": {
+      "index": 2560,
+      "f": "0000",
+      "cout": "0"
+    }
+  },
+  "startedAt": "2026-11-06T17:02:52.541Z",
+  "finishedAt": "2026-11-06T17:02:55.413Z",
+  "host": {
+    "platform": "win32",
+    "architecture": "x64",
+    "release": "10.0.26200",
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "cores": 16,
+    "totalMemoryBytes": 33601966080,
+    "loadAverage": [
+      0,
+      0,
+      0
+    ],
+    "chrome": "156.0.8078.80",
+    "headless": true
+  },
+  "identity": "f37a9589d6bc91fd91cce93f23cff5a02aad47ca4f0d32dde32162a0341e01cd",
+  "assets": {
+    "ivl.js": {
+      "bytes": 72734,
+      "sha256": "44df0e74bccebd7b75c09723c61f58af2523c9edb54918a1950b77606ddd014f"
+    },
+    "ivl.wasm": {
+      "bytes": 1771889,
+      "sha256": "4fb44c4ce552b459c99be1f870fbd0156c56db64dd72d5061d96394cd15397de"
+    },
+    "ivlpp.js": {
+      "bytes": 63593,
+      "sha256": "d9913e3c544d80d36207438b4bdbf220318c66f836a6cdd9c174d6597d382982"
+    },
+    "ivlpp.wasm": {
+      "bytes": 102963,
+      "sha256": "c0dd514775c3d6e25dfcd7c379d71194b5826702b18ecc4b3bdb3f376fbd93d3"
+    },
+    "vvp.js": {
+      "bytes": 71102,
+      "sha256": "04d4dfb6003f48eb641dfe454dd744a3e5e623e98f774e13da9853eb02f1f995"
+    },
+    "vvp.wasm": {
+      "bytes": 927158,
+      "sha256": "bd10d2dcb0ae2bf019bd4ca6a3b4a47d25b22f3f2e762a6e043a7ca7c170c430"
+    }
+  },
+  "adapters": {
+    "index.mjs": {
+      "bytes": 6508,
+      "sha256": "2eb1777af584b7310b5463751e2608ceeae13732d4d7af7e2f2357284be776e8"
+    },
+    "worker.mjs": {
+      "bytes": 12537,
+      "sha256": "482a694e08c218c6636277fdbe703533cd4961b212149259366f920e0fdc3a73"
+    },
+    "identity.mjs": {
+      "bytes": 1833,
+      "sha256": "c3ff263a062dfcb502f620c921af70a97c597f55d6a728e6403459ea366b48da"
+    },
+    "index.d.mts": {
+      "bytes": 2150,
+      "sha256": "ef4b93d773cdb7f824409e325c77b3bbd9d135f66f881aec488aa7190c753b27"
+    }
+  },
+  "scope": "Real desktop Chrome Worker and delivered runtime/scaffold; synthetic HDL; no product UI, account, database or teaching acceptance."
+}

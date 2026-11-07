@@ -1,0 +1,266 @@
+{
+  "date": "2026-11-07",
+  "baseline": "c8932ed8bc3c110b0d697e365f8cc441e0982941",
+  "branch": "wp04",
+  "committed": false,
+  "pushed": false,
+  "node": "24.21.0",
+  "sourceFiles": [
+    {
+      "path": "apps/server/tests/runtime-enabled-basis.runtime.test.mjs",
+      "bytes": 2789,
+      "sha256": "546a9909c8369b208e69621fcab0c59eaa3e3ebb37bd174ff79705d2cb9c8487"
+    },
+    {
+      "path": "apps/web/src/component-preparation/runtime.ts",
+      "bytes": 12549,
+      "sha256": "5c894b18fee862ab06db56c256728636d6a293fa768e0a58208116473e3abb65"
+    },
+    {
+      "path": "apps/web/src/components/workspace/CenterToolArea.tsx",
+      "bytes": 25812,
+      "sha256": "bc5bc06f18f431248928684c75171ffe6b56ca3bef58dde1c24744d8560ed07a"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/AluBoard.test.tsx",
+      "bytes": 3236,
+      "sha256": "b3a7271114ace4d40242f3c426aa6a41374df770ac67fdb11155a3e29ba61a42"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/AluBoard.tsx",
+      "bytes": 6101,
+      "sha256": "0bde82ff19df5ee879a3d8ff4ef17e665996204dacaf420c8cb5694a9e58e0eb"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/AluExperimentTool.test.tsx",
+      "bytes": 12699,
+      "sha256": "f4bd64687c2dd4399a22328b9fe12750252692d328560a0c44fff470c57acd10"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/AluExperimentTool.tsx",
+      "bytes": 42089,
+      "sha256": "5595c2511dadd5dc0905f1f32fe87f3da02fa6b490c19419b1278bd9844bfae1"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/CheckReport.tsx",
+      "bytes": 15135,
+      "sha256": "a3a4555937ba02e25bc6b1d41cbaea9524a7e14bc4704cd8a1736cdaea6035f1"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/LegacyAluExperimentTool.test.tsx",
+      "bytes": 7784,
+      "sha256": "ed03f215a66ad6aa767539b08dc18b646c144138a69c9082e102bb6065a84cba"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/LegacyAluExperimentTool.tsx",
+      "bytes": 8568,
+      "sha256": "340170829ead5e0a67576352688572f305c06f87a0d27b7220767ec6d401eb45"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/NumericEditor.tsx",
+      "bytes": 3412,
+      "sha256": "bb07fbbdec13712a5d4fc207cfc45ef0821e3548fe1d801f85f4e11d5aa1b120"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/alu.css",
+      "bytes": 10502,
+      "sha256": "903fde2d3398786ce895b1650451aae1e4012326b8570bd9a382cd945f696acd"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/check-report-reader.test.tsx",
+      "bytes": 6394,
+      "sha256": "09cf2653975dfe962d7dcf3ce9c21fefe7727acf3fa20b65c0579dd7c3d9a871"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/check-report-reader.ts",
+      "bytes": 11877,
+      "sha256": "c9839da0b867bab87a15e2dcf889c28069a0009a3ca57041d00770429a94ffe4"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/coordination.ts",
+      "bytes": 576,
+      "sha256": "2d81e87ac5148a79bbd00641eacdc9146b62ef37e43074692b2e4bed61ada28f"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/mapping.ts",
+      "bytes": 1693,
+      "sha256": "f3542ccbf7685bcb7f47983be47be795357ff8e9751e0140e7464a5a2d3dad72"
+    },
+    {
+      "path": "apps/web/src/course-tools/alu/state.ts",
+      "bytes": 4516,
+      "sha256": "c786a65887ea4323ab1b55aeeef9cce7a8c02835b71d475421ac19a340b72c15"
+    },
+    {
+      "path": "apps/web/src/product/ActivityReferences.tsx",
+      "bytes": 10760,
+      "sha256": "767cc9fd94a7882b085ea0232d1944769e4cb6069216e7af7441b756f6ff70f7"
+    },
+    {
+      "path": "apps/web/src/product/RuntimeTool.tsx",
+      "bytes": 1391,
+      "sha256": "e5d2995286def19b9424edb59b8b46ed8b8dabbfd79f247866a8d0cd8ec2f9ae"
+    },
+    {
+      "path": "apps/web/src/product/execution-presenters/alu.tsx",
+      "bytes": 4563,
+      "sha256": "ffad198352bc99063f4442c9c0715c9935ad2466d6debb9c42227608586914dd"
+    },
+    {
+      "path": "apps/web/src/tool-execution/adapters/alu-check.ts",
+      "bytes": 11004,
+      "sha256": "2b37c281fddfa6b770d15aa2024e1ad5b8a3632275608520b2b3236db1526fbd"
+    },
+    {
+      "path": "apps/web/src/tool-execution/adapters/alu.ts",
+      "bytes": 17787,
+      "sha256": "26c295cf860fb637d38364e938bfdf3ef4eef2aee03d8862f5a84393e88be1c0"
+    },
+    {
+      "path": "apps/web/src/tool-execution/alu-adapter.test.ts",
+      "bytes": 7206,
+      "sha256": "488ac38ca6810aa1eb699f49c2ce46ef8746968c0383d461b74a114b6a1c8114"
+    },
+    {
+      "path": "apps/web/src/tool-execution/alu-check.test.ts",
+      "bytes": 6853,
+      "sha256": "7b7b25ab45f75dd96991eeccd4b2cbbf9318054649eec619ce9a8c2855f6bd81"
+    },
+    {
+      "path": "apps/web/src/tool-execution/alu-package.test.ts",
+      "bytes": 4274,
+      "sha256": "94dbe91c71987271dea03ef5b95b63ab3935e57dbd355fbc8ca4c0215ac2d8f8"
+    },
+    {
+      "path": "apps/web/src/tool-execution/icarus-runtime.ts",
+      "bytes": 2954,
+      "sha256": "f7cc58cf02666b7273186ee207e1899f2696eaf16689e3444cc7b1232cadb101"
+    },
+    {
+      "path": "apps/web/src/tool-execution/receiver.ts",
+      "bytes": 5931,
+      "sha256": "da3b2ae7624e43464e4b96a7e1e2d9511f297a30a9aa177a208a1319548a9af9"
+    },
+    {
+      "path": "apps/web/src/tool-execution/runtime-action.test.ts",
+      "bytes": 3594,
+      "sha256": "d7ebe64ee56148a367c47f6e5864a45605ff3978b0ca554d3d3b7acff36b7b2a"
+    },
+    {
+      "path": "apps/web/src/tool-execution/runtime-action.ts",
+      "bytes": 6397,
+      "sha256": "f0cc7fe51e1131d207a381d78648f73c6a4511bbce670c00fb812d7572098d2e"
+    },
+    {
+      "path": "apps/web/src/tool-execution/store.ts",
+      "bytes": 12714,
+      "sha256": "3e401c11381b6a214e8237af83f88be1c46fe98b79a4f553c1c590f400c1bafb"
+    },
+    {
+      "path": "components/alu-experiment/README.md",
+      "bytes": 2180,
+      "sha256": "91f04d27ca81f819b97ad72299f8e9a0d10d4f123921722abf7007918d084e9f"
+    },
+    {
+      "path": "components/alu-experiment/check.sv",
+      "bytes": 1763,
+      "sha256": "2a2ab0a561f93bb9ae12136c699510af1fe8306f0e33d895b2e1a20a9b67e35f"
+    },
+    {
+      "path": "components/alu-experiment/learning.md",
+      "bytes": 4837,
+      "sha256": "c37c531c59d90f9e4a67a1efc6fb3fa040fd8a23b39ccbdcb2121ce11323bdb9"
+    },
+    {
+      "path": "components/alu-experiment/package.mjs",
+      "bytes": 9835,
+      "sha256": "bb6c0b1ce8b38f08fcaa7dc60743aee8a1ea48f604185d1aa865c19908eb5472"
+    },
+    {
+      "path": "components/alu-experiment/view.html",
+      "bytes": 377,
+      "sha256": "f903e765e57f164c083f03fef9821abe28c9894600766267ca51456df9d1c370"
+    },
+    {
+      "path": "packages/contracts/src/components.ts",
+      "bytes": 48468,
+      "sha256": "13d8a24f7ef6b65bc15c7d04319c42314b456abe793b1bca287eabbf7c0bf66d"
+    },
+    {
+      "path": "packages/contracts/src/execution.ts",
+      "bytes": 23308,
+      "sha256": "9c5c63fe1faf10319e02bfe67438d93ef5595140d66c1f615f81aab8af2c16e2"
+    },
+    {
+      "path": "packages/learning-space/src/learning-data/executions.ts",
+      "bytes": 36793,
+      "sha256": "63d4a3dd774134a289fbd274c47df6537b6784e79018095bc3296ae220dd78e3"
+    },
+    {
+      "path": "packages/learning-space/src/learning-data/runtime-basis.ts",
+      "bytes": 4455,
+      "sha256": "3994eef3630b4cfb3ae9ebef0f23581769aaadd1c128717ed532c84b706c4802"
+    },
+    {
+      "path": "scripts/probe-alu-board-check.mjs",
+      "bytes": 24127,
+      "sha256": "345317cf2bbbd41a0f4950f7d728d145cd86efb60912701d2f7a5bd3a0dcae2a"
+    },
+    {
+      "path": "tools/alu-wasm/check-browser-test.mjs",
+      "bytes": 14063,
+      "sha256": "2047c0f6021de359695b9500e65e1a75feed8efe279db6ce1de462a2e6a408a6"
+    }
+  ],
+  "checks": [
+    {
+      "command": "node scripts/build.mjs typecheck",
+      "status": "passed"
+    },
+    {
+      "command": "node scripts/build.mjs all",
+      "status": "passed"
+    },
+    {
+      "command": "vitest run --maxWorkers=4 --minWorkers=1",
+      "status": "passed",
+      "files": 83,
+      "passed": 935,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "node scripts/check-contracts-browser.mjs",
+      "status": "passed",
+      "publicExports": 13
+    },
+    {
+      "command": "node --test apps/server/tests/runtime-enabled-basis.runtime.test.mjs",
+      "status": "passed",
+      "passed": 3
+    },
+    {
+      "command": "node tools/alu-wasm/check-browser-test.mjs",
+      "status": "passed",
+      "assertions": 162
+    },
+    {
+      "command": "node scripts/probe-alu-board-check.mjs",
+      "status": "passed",
+      "cases": 22
+    },
+    {
+      "command": "node scripts/check-doc-links.mjs",
+      "status": "failed",
+      "failures": 48,
+      "scope": "All failures belong to pre-existing untracked .tmp Markdown files."
+    }
+  ],
+  "limitations": [
+    "Full npm test not rerun; prior tools/xj-dev baseline CLI timeout remains recorded.",
+    "Mac, independent school HTTPS, multiple machines and real system IME delegated to issue 211.",
+    "Two-tab product result is safe serial activation with bases 4,5 and final revision 6, not a forced same-base conflict.",
+    "200% screenshot is CSS content zoom; native browser/OS scaling and Worker peak memory are not measured.",
+    "Teaching effect not evaluated."
+  ]
+}

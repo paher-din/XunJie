@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { aluReferenceAdapters, aluReferenceCopy, normalizeAluReferenceTarget } from './alu-references.js';
 const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** UTF-16 half-open offsets in the selected source's original text. */
@@ -90,19 +91,23 @@ export type QuestionDraftSync = z.infer<typeof questionDraftSyncSchema>;
 const annotationTarget = z.object({ objectIds: z.array(z.uuid()).min(1).max(64) }).strict();
 const aggregationTarget = z.object({ groupKeys: z.array(z.string().max(4000)).min(1).max(200),
   fields: z.array(z.enum(['count', 'value', 'sum', 'mean', 'min', 'max'])).min(1).max(6) }).strict();
-export const semanticAdapters = {
+const arraySemanticAdapters = {
   'annotation-objects': { version: 1, origin: 'state', target: annotationTarget },
   'aggregation-groups': { version: 1, origin: 'execution-result', target: aggregationTarget },
 } as const;
-export function normalizeSemanticRange(range: z.infer<typeof semanticRangeSchema>) {
+export const semanticAdapters = { ...arraySemanticAdapters, ...aluReferenceAdapters } as const;
+export function normalizeSemanticRange(range: z.infer<typeof semanticRangeSchema>): { typeId: string; version: number; target: Record<string, unknown> } {
   const adapter = semanticAdapters[range.typeId as keyof typeof semanticAdapters];
   if (!adapter || range.version !== adapter.version) throw new Error('unsupported-version');
-  const target = adapter.target.parse(range.target);
+  if (Object.hasOwn(aluReferenceAdapters, range.typeId))
+    return { typeId: range.typeId, version: range.version, target: normalizeAluReferenceTarget(range.typeId, range.target) };
+  const target = arraySemanticAdapters[range.typeId as keyof typeof arraySemanticAdapters].target.parse(range.target);
   return { typeId: range.typeId, version: range.version, target: Object.fromEntries(Object.entries(target)
     .sort(([a], [b]) => a.localeCompare(b)).map(([key, values]) => [key, [...new Set(values)].sort()])) };
 }
 export function semanticReferenceCopy(range: z.infer<typeof semanticRangeSchema>, content: unknown): string {
   const { target } = normalizeSemanticRange(range);
+  if (Object.hasOwn(aluReferenceAdapters, range.typeId)) return aluReferenceCopy(range.typeId, target, content);
   if (range.typeId === 'annotation-objects') {
     const parsed = z.object({ annotations: z.array(z.object({ id: z.uuid(), quote: z.string().max(4000), note: z.string().max(4000) }).strict()).max(100) }).strict().parse(content);
     const selected = (target.objectIds as string[]).map(id => {
