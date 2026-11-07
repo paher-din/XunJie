@@ -1,4 +1,6 @@
 import { Ajv, type ValidateFunction } from 'ajv';
+import { Ajv2019 } from 'ajv/dist/2019.js';
+import { Ajv2020 } from 'ajv/dist/2020.js';
 import { StorageError } from '@xunjie/storage';
 import type { ModelTool, ModelToolIntent } from '@xunjie/contracts/model-connections';
 import { modelToolIntentSchema } from '@xunjie/contracts/model-connections';
@@ -10,14 +12,19 @@ export function compileOutputSchema(schema: Record<string, unknown>) {
   function check(value: unknown, depth = 0) {
     if (depth > 32) throw new StorageError('invalid');
     if (Array.isArray(value)) { for (const item of value) check(item, depth + 1); }
-    else if (value !== null && typeof value === 'object') for (const [key, item] of Object.entries(value)) {
-      // Only synchronous, bounded local validation. Regex/remote/async execution is outside this owner.
-      if (['$async', '$id', '$ref', 'pattern', 'patternProperties'].includes(key)) throw new StorageError('invalid');
-      check(item, depth + 1);
-    }
+    else if (value !== null && typeof value === 'object') for (const item of Object.values(value)) check(item, depth + 1);
   }
   if (Buffer.byteLength(JSON.stringify(schema)) > 16000) throw new StorageError('invalid'); check(schema);
-  try { return new Ajv({ strict: true, allErrors: false }).compile(schema); } catch { throw new StorageError('invalid'); }
+  try {
+    // Compile synchronously: local references and regex are JSON Schema, while unresolved
+    // external references fail here without fetching anything. Never mutate model inputs.
+    const Validator = schema.$schema === 'https://json-schema.org/draft/2020-12/schema' ? Ajv2020
+      : schema.$schema === 'https://json-schema.org/draft/2019-09/schema' ? Ajv2019 : Ajv;
+    const validate = new Validator({ strict: true, strictTypes: false, strictTuples: false, strictRequired: false,
+      allowMatchingProperties: true, allErrors: false }).compile(schema);
+    if ('$async' in validate && validate.$async) throw new StorageError('invalid');
+    return validate;
+  } catch { throw new StorageError('invalid'); }
 }
 export function toolValidators(tools: ModelTool[]) {
   if (new Set(tools.map(tool => tool.name)).size !== tools.length || Buffer.byteLength(JSON.stringify(tools)) > 24000) throw new StorageError('invalid');

@@ -8,11 +8,12 @@ import { join, resolve, dirname } from 'node:path';
 import { createServer } from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
-import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
+import { gunzipSync, brotliDecompressSync, inflateSync } from 'node:zlib';
+import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential } from '@xunjie/product-runtime';
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
   'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false },
-  'input-control': { type: 'boolean', default: false } } });
+  discovery: { type: 'boolean', default: false }, 'input-control': { type: 'boolean', default: false } } });
 if (values['student-ask'] && values['input-control']) throw new Error('Choose one acceptance scenario.');
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
@@ -32,8 +33,8 @@ try {
 }
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
-  capability: values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
-  limits: { maxGenerations: protocols.length * (values['input-control'] ? 4 : 2), maxPerProtocol: values['input-control'] ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
+  capability: values.discovery ? 'discover-load-read_material' : values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
+  limits: { maxGenerations: protocols.length * (values['input-control'] || values.discovery ? 4 : 2), maxPerProtocol: values['input-control'] || values.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
 let generations = 0, releaseInputControl = () => {}, responseGate = Promise.resolve();
@@ -55,11 +56,22 @@ const relay = createServer(async (request, response) => {
   request.on('end', () => { item.payloadSha256 = payloadDigest(JSON.parse(Buffer.concat(requestChunks))); });
   const started = Date.now();
   const upstream = https.request({ hostname: 'api.deepseek.com', servername: 'api.deepseek.com', path, method: 'POST',
-    headers: { ...request.headers, host: 'api.deepseek.com' }, timeout: report.limits.timeoutMs,
+    headers: { ...request.headers, host: 'api.deepseek.com' }, timeout: report.limits.timeoutMs, signal: AbortSignal.timeout(report.limits.timeoutMs),
     ...(values['provider-address'] ? { lookup: (_host, _options, callback) => callback(null,
       [{ address: values['provider-address'], family: net.isIP(values['provider-address']) }]) } : {}),
   }, async result => {
     item.status = result.statusCode;
+    if (result.statusCode >= 400) {
+      const errorChunks = [];
+      result.on('data', chunk => { if (errorChunks.reduce((size, item) => size + item.length, 0) < 4096) errorChunks.push(chunk); });
+      result.on('end', () => { try { let bytes = Buffer.concat(errorChunks);
+        if (result.headers['content-encoding'] === 'gzip') bytes = gunzipSync(bytes);
+        else if (result.headers['content-encoding'] === 'br') bytes = brotliDecompressSync(bytes);
+        else if (result.headers['content-encoding'] === 'deflate') bytes = inflateSync(bytes);
+        const value = JSON.parse(bytes);
+        item.providerError = String(value.error?.message ?? value.message ?? value.error?.code ?? 'upstream-error').replaceAll(provider.key, '[redacted]').slice(0, 500);
+      } catch { item.providerError = 'non-json-error'; } });
+    }
     await responseGate;
     if (response.destroyed) { result.destroy(); return; }
     response.writeHead(result.statusCode, result.headers);
@@ -85,11 +97,32 @@ let host;
 try {
   await runtime.install({ profile: 'local' });
   host = await createProductRuntimeHost({ root, createApplication: createProductLearningApplication });
+  let currentHeaders = { 'x-xj-space': 'personal' };
   const api = async (route, body) => {
-    const response = await fetch(host.endpoint + '/api/learning/' + route, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+    const response = await fetch(host.endpoint + '/api/learning/' + route, { headers: { 'content-type': 'application/json', ...currentHeaders },
       ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
     const value = await response.json(); if (!response.ok) throw new Error('Production boundary: ' + response.status + ':' + value.error); return value;
   };
+  let releaseId, materialId;
+  async function configureDiscoveryCourse() {
+    const courseId = randomUUID(), password = randomUUID(), loginName = 'wp08-216-' + randomUUID();
+    releaseId = randomUUID(); materialId = randomUUID();
+    const bytes = Buffer.from('本课程的实际记录：水位从 12 cm 增加到 37 cm。这是固定观测，不是学生预测。');
+    currentHeaders = { authorization: 'Bearer ' + await resolveCredential(root, 'control') };
+    await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '工具发现实际材料' },
+      task: { taskId: randomUUID(), title: '按来源读取观测', summary: '' }, release: { releaseId,
+        helpPolicy: { version: 1, questions: 'allowed', scope: 'course' }, objectives: ['核对固定来源与实际观察'],
+        requirements: '只依据实际读过的材料解释，不改作品，不补学生预测。', starterWorks: [], capabilities: [], components: [],
+        materials: [{ materialId, title: '水位实际观察', path: 'observation.txt', mediaType: 'text/plain', access: 'student',
+          sha256: createHash('sha256').update(bytes).digest('hex'), byteLength: bytes.length }] },
+      resources: [{ path: 'observation.txt', contentBase64: bytes.toString('base64') }] });
+    const member = await api('manage/members', { requestId: randomUUID(), loginName, password });
+    await api('manage/course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true });
+    const login = await fetch(host.endpoint + '/api/learning/login', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ loginName, password }) });
+    assert.equal(login.status, 200);
+    currentHeaders = { 'x-xj-space': 'school', cookie: login.headers.get('set-cookie').split(';')[0] };
+  }
   let selectionVersion = 0;
   for (const protocol of protocols) {
     const item = { protocol, sdk: protocol === 'messages' ? '@anthropic-ai/sdk@1.1.0' : 'openai@7.42.0',
@@ -97,6 +130,7 @@ try {
     report.results.push(item);
     const before = generations;
     try {
+      if (values.discovery) { await configureDiscoveryCourse(); selectionVersion = 0; }
       if (values['input-control']) responseGate = new Promise(resolve => { releaseInputControl = resolve; });
       const connectionId = randomUUID(), grantId = randomUUID();
       const prefix = protocol === 'messages' ? '/anthropic' : '/v1';
@@ -108,16 +142,18 @@ try {
       await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
       const selection = await api('models/selection', { requestId: randomUUID(), expectedVersion: selectionVersion,
         source: { kind: 'personal', connectionId, grantId } }); selectionVersion = selection.version;
-      const activity = await api('activities', { requestId: randomUUID(), goal: values['student-ask'] ? '依据明确预测解释四态累加' : '核对固定资料与实际工具来源', question: '', references: [] });
+      const activity = values.discovery ? await api('course-activities', { requestId: randomUUID(), releaseId }) : await api('activities', { requestId: randomUUID(), goal: values['student-ask'] ? '依据明确预测解释四态累加' : '核对固定资料与实际工具来源', question: '', references: [] });
       const receiver = (await api(`agent/${activity.activityId}/capabilities`)).receiver;
       const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'observation.txt', kind: 'text', encoding: 'utf8',
         mediaType: 'text/plain', value: '本次实际记录：水位从 12 cm 增加到 37 cm。此文件是固定观测材料，不是学生掌握程度的证明。' };
       const input = { requestId: randomUUID(), scope: { environmentId: activity.identity.environmentId, spaceId: activity.identity.spaceId,
         principalId: activity.identity.principalId, activityId: activity.activityId }, receiver,
-        draft: { token: randomUUID(), question: values['student-ask']
+        draft: { token: randomUUID(), question: values.discovery
+          ? `请严格按以下步骤真实查证：先调用 discover_tools，purpose=read_material、source=platform.learning、object=null、cursor=null、pageSize=2；再把返回的 bindingId 交给 load_tools。等新工具定义出现，再调用 read_material，materialId=${materialId}。最后只依据实际读到的材料，简短说明水位增加了多少 cm，并说明课程材料来源。不要读取作品、不要跳过发现和加载，也不要只复述步骤。`
+          : values['student-ask']
           ? '先实际调用 student_ask 工具，只问一个关于“状态 3 加输入 2 后对 4 取余”的预测问题。给出简明来源，允许自由文字，可提供选项；不要把问题只作为普通文字输出。等我明确回应后，依据那份回应简短解释并结束。只提问一次，不读取作品或调用其他工具，不要求任何内部标识。'
           : `请先实际调用 read_work 工具读取 objectId=${work.objectId}、contentId=${work.contentId}，
-然后根据工具结果简短解释水位变化。必须先读取工具；不要再调用其他工具，不要修改作品。`, references: [], bases: [] }, works: values['student-ask'] ? [] : [work], evidence: [] };
+然后根据工具结果简短解释水位变化。必须先读取工具；不要再调用其他工具，不要修改作品。`, references: [], bases: [] }, works: values['student-ask'] || values.discovery ? [] : [work], evidence: [] };
       await api('intents/' + activity.activityId, input);
       const receipt = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       assert.equal(receipt.state, 'accepted');
@@ -206,7 +242,17 @@ try {
         await api(`agent/${activity.activityId}/conversation`); await api(`agent/${activity.activityId}/conversation`);
         assert.equal(generations, beforeHistory);
       } else {
-        assert.ok(conversation.tools.some(tool => tool.name === 'read_work' && tool.outcome === 'completed'));
+        if (values.discovery) {
+          for (const name of ['discover_tools', 'load_tools', 'read_material'])
+            assert.ok(conversation.tools.some(tool => tool.name === name && tool.outcome === 'completed'), name);
+          const events = await api(`agent/${activity.activityId}/events`);
+          const snapshots = await Promise.all(events.filter(event => event.kind === 'context-assembled' && event.body.runId === runId)
+            .map(event => api(`agent/${activity.activityId}/snapshots/${event.body.snapshotId}`)));
+          assert.ok(!snapshots[0].resolvedAgent.tools.some(tool => tool.executor.toolName === 'read_material'));
+          assert.ok(snapshots.at(-1).resolvedAgent.tools.some(tool => tool.executor.toolName === 'read_material'));
+          assert.notEqual(snapshots[0].segmentId, snapshots.at(-1).segmentId);
+          item.discovery = { materialId, snapshotDigests: snapshots.map(snapshot => snapshot.payloadSha256), newDefinition: true, segmentChanged: true };
+        } else assert.ok(conversation.tools.some(tool => tool.name === 'read_work' && tool.outcome === 'completed'));
         assert.match(answer, /25|二十五/);
         if (values['input-control']) {
           assert.equal(conversation.runs.length, 2);

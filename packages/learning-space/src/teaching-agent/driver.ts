@@ -16,6 +16,8 @@ import { studentAskDefinition, prepareStudentAsk, type createStudentQuestions } 
 import { studentResponseObservations } from './student-response-context.js';
 import type { createTeachingInputs } from './inputs.js';
 import { assembleTeachingAgent, retainTeachingAssembly, manifestFor, TeachingAssemblyError, toolContributions } from './assembly.js';
+import { projectToolOutcome, readToolResult, readToolResultDefinition } from './tool-results.js';
+import { discoveryContributions, discoveryOutcome, permittedContributions, loadedTools } from './tool-discovery.js';
 import { compileOutputSchema } from '../model-connections/chat-native.js';
 import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/contracts/teaching-agent';
 
@@ -49,6 +51,8 @@ const defaultLimits: TeachingRunLimits = { maxModelSteps: 16, maxToolCommands: 6
 export class TeachingBudgetError extends Error {}
 const terminal = (state: unknown) => ['completed', 'failed', 'stopped', 'paused'].includes(String(state));
 const pending = (outcome: TeachingToolOutcome) => outcome.state === 'accepted' || outcome.state === 'unknown';
+const registryCommand = (command: TeachingPreparedTool) =>
+  (command.basis.executorBinding as AgentToolBinding | undefined)?.source?.sourceId === 'platform.tools';
 const unsent = (reason: string): TeachingToolOutcome => ({ state: 'not-dispatched',
   feedback: { outcome: 'not-executed', text: reason, images: [] }, result: { reason }, source: { label: '平台执行检查' } });
 
@@ -184,10 +188,24 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       if (binding.source.contentDigest !== canonicalDigest(studentAskDefinition)) throw new StorageError('forbidden');
       return;
     }
-    const current = await toolContributions(owner.tools, scope);
-    if (!current.some(item => item.source.sourceId === binding.source.sourceId
-      && item.source.version === binding.source.version && item.source.contentDigest === binding.source.contentDigest
-      && canonicalDigest(item.executor) === canonicalDigest(binding.executor))) throw new StorageError('forbidden');
+    const internal = [...discoveryContributions(scope), ...discoveryContributions(scope, [readToolResultDefinition])];
+    const current = binding.source.sourceId === 'platform.tools' ? internal : await toolContributions(owner.tools, scope);
+    if (!current.some(item => canonicalDigest(item) === binding.bindingId)) throw new StorageError('forbidden');
+  }
+  async function internalToolOutcome(scope: TeachingToolScope, command: TeachingPreparedTool, definition: AgentDefinition) {
+    if (command.name === 'read_tool_result') {
+      const { rows: [original] } = await storage.read(`SELECT c.binding_id,s.plan FROM teaching_commands c
+        JOIN teaching_steps s USING(step_id) WHERE c.command_id=$1 AND c.run_id=$2`, [command.arguments.commandId, scope.runId]);
+      const binding = (original?.plan as Plan | undefined)?.resolvedAgent?.tools.find(item => item.bindingId === original?.binding_id);
+      if (!binding) throw new StorageError('forbidden');
+      await assertCurrentBinding(scope, binding);
+      return readToolResult(storage, scope, command.arguments);
+    }
+    const outcome = await discoveryOutcome(storage, scope, command.name, command.arguments,
+      permittedContributions(await toolContributions(owner.tools, scope), definition));
+    if (command.basis.frozenOutcome && canonicalDigest(outcome) !== canonicalDigest(command.basis.frozenOutcome))
+      throw new StorageError('identity-conflict');
+    return outcome;
   }
   async function pause(run: TeachingRun, generation: number, reason: string, model = run.model) {
     const current = owner.toRun(await owner.runRow(run.runId));
@@ -274,7 +292,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         const history = await owner.historyForAssembly(run.activityId);
         let next;
         try { next = await assembleTeachingAgent(scope, owner.tools, plan.model, history,
-          typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition); }
+          typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition, await loadedTools(storage, scope)); }
         catch (error) {
           if (!(error instanceof TeachingAssemblyError)) throw error;
           await pauseAssembly(run, generation, error); return null;
@@ -318,7 +336,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           context: buildContext(scope.activity, scope.input, history, { definition: receivedAgent.definition }),
           tools: receivedAgent.tools.map(item => item.definition) }
           : await assembleTeachingAgent(scope, owner.tools, model, history,
-            typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition);
+            typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition, await loadedTools(storage, scope));
       }
       catch (error) {
         if (!(error instanceof TeachingAssemblyError)) throw error;
@@ -343,6 +361,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
         model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString(),
         resolvedAgent, contextHistory: history, selectionVersion: selection.version, selectionPinId };
+    }
+    // A fresh native segment starts a new user turn. Portable assistant facts are
+    // evidence, never an open provider reasoning turn or a substitute for the fixed intent.
+    if (previous && plan.input.segmentId !== previous.segment_id && !plan.input.input.text) {
+      const settled = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
+        name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
+      plan.input.input.text = '同一已接受问题的后续步骤；以下已完成操作不要重跑，请从尚未完成处继续：\n'
+        + JSON.stringify(settled) + '\n\n当前固定学生意图与依据：\n' + fixedInputText(scope.input);
     }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
@@ -571,17 +597,25 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const binding = resolved?.tools.find(item => item.modelName === intent.name);
       let command: TeachingPreparedTool, outcome: TeachingToolOutcome | null = null;
       try {
+        if (stopped) throw new StorageError('forbidden');
         if (resolved && !binding) throw new StorageError('forbidden');
         if (binding && !compileOutputSchema(binding.definition.inputSchema)(intent.arguments)) throw new StorageError('invalid');
         if (binding) await assertCurrentBinding(scope, binding);
         const fixedIntent = binding ? { ...intent, name: binding.executor.toolName } : intent;
         if (fixedIntent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, fixedIntent, commandId);
+        else if (binding?.source.sourceId === 'platform.tools') {
+          const frozenOutcome = fixedIntent.name === 'read_tool_result' ? undefined : await discoveryOutcome(storage, scope, fixedIntent.name, fixedIntent.arguments,
+            permittedContributions(await toolContributions(owner.tools, scope), resolved!.definition));
+          command = { version: 1, commandId, name: fixedIntent.name,
+            arguments: structuredClone(fixedIntent.arguments), effect: 'read', location: 'owner', conflictKey: run.activityId,
+            basis: { executorBinding: binding, ...(frozenOutcome ? { frozenOutcome } : {}), scope: { identity: scope.identity, activityId: run.activityId, runId: run.runId } } };
+        }
         else {
           if (!owner.tools) throw new StorageError('forbidden');
           command = await owner.tools.prepare(scope, fixedIntent, commandId);
         }
       } catch (error) {
-        if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict'].includes(error.code)) throw error;
+        if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict', 'unavailable'].includes(error.code)) throw error;
         command = { version: 1, commandId, name: teachingExplanationText(scope.activity, intent.name) === intent.name ? intent.name : 'unsupported_tool',
           arguments: teachingPublicArguments(scope.activity, intent.arguments), effect: 'read',
           conflictKey: run.activityId, location: 'owner', basis: { rejected: error.code } };
@@ -653,6 +687,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   async function saveOutcome(run: TeachingRun, saved: Row, row: Row, outcome: TeachingToolOutcome,
     generation?: number) {
     const command = row.command as unknown as TeachingPreparedTool;
+    outcome = projectToolOutcome(outcome, command.commandId);
     const bytes = Buffer.from(JSON.stringify(outcome));
     const uploadId = operationId('tool-result:' + command.commandId + ':' + canonicalDigest(outcome));
     const resource = await storage.stageResource({ uploadId, scope: 'teaching-tool:' + command.commandId,
@@ -733,7 +768,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           });
           continue;
         }
-        if (!owner.tools) throw new StorageError('forbidden');
+        if (!owner.tools && !registryCommand(command)) throw new StorageError('forbidden');
         await assertDispatch(run, generation);
         let permitted = false;
         await transaction(run, generation, async tx => {
@@ -770,7 +805,11 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           }
         }
         let outcome: TeachingToolOutcome;
-        try { outcome = await owner.tools.dispatch(scope, command); }
+        try {
+          if (registryCommand(command)) {
+            outcome = await internalToolOutcome(scope, command, (saved.plan as Plan).resolvedAgent!.definition);
+          } else outcome = await owner.tools!.dispatch(scope, command);
+        }
         catch (error) {
           // A failed source read has no mutating effect to reconcile. An effectful operation's
           // exception may instead be a lost acceptance reply and must keep its original identity.
@@ -785,7 +824,16 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await saveOutcome(run, saved, row, outcome, generation);
       } else if (row.state === 'dispatching') {
         // A previous worker could have lost its reply. Only read the original command identity.
-        const known = await owner.tools?.reconcile(scope, command);
+        let known: TeachingToolOutcome | null | undefined;
+        if (registryCommand(command)) {
+          if (stopped) known = unsent('run-stopped-before-read-recovery');
+          else try { known = await internalToolOutcome(scope, command, (saved.plan as Plan).resolvedAgent!.definition); }
+          catch (error) {
+            if (!(error instanceof StorageError)) throw error;
+            known = { state: 'failed', feedback: { outcome: 'error', text: error.code, images: [] },
+              result: { reason: error.code }, source: { label: '固定目录或原件读取' } };
+          }
+        } else known = await owner.tools?.reconcile(scope, command);
         await saveOutcome(run, saved, row, known ?? { state: 'unknown', feedback: { outcome: 'error',
           text: '原命令效果尚未确认；查无记录不作为重跑依据。', images: [] },
           result: { commandId: command.commandId, reason: 'original-command-unknown' }, source: { label: '原命令核对' } }, generation);
@@ -1034,14 +1082,16 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     return [...awakened];
   }
   async function records(activityId: string) {
-    const { rows } = await storage.read(`SELECT c.*,s.snapshot_id FROM teaching_commands c JOIN teaching_steps s USING(step_id)
+    const { rows } = await storage.read(`SELECT c.*,s.snapshot_id,s.plan AS step_plan FROM teaching_commands c JOIN teaching_steps s USING(step_id)
       JOIN teaching_runs r ON r.run_id=c.run_id WHERE r.activity_id=$1 ORDER BY c.created_at,c.ordinal`, [activityId]);
     return rows.map(row => {
       const command = row.command as unknown as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome | null;
+      const binding = (row.step_plan as Plan).resolvedAgent?.tools.find(item => item.bindingId === row.binding_id);
       return teachingToolRecordSchema.parse({ commandId: row.command_id, runId: row.run_id, stepId: row.step_id,
         snapshotId: row.snapshot_id, callId: row.call_id, name: command.name, version: command.version, state: row.state,
         effect: command.effect, location: command.location, arguments: command.arguments,
-        basis: Object.fromEntries(Object.entries(command.basis).filter(([key]) => key !== 'scope')),
+        basis: { ...Object.fromEntries(Object.entries(command.basis).filter(([key]) => !['scope', 'frozenOutcome'].includes(key))),
+          ...(binding ? { capability: { bindingId: binding.bindingId, source: binding.source, executor: binding.executor } } : {}) },
         outcome: outcome?.state ?? null, feedback: outcome?.feedback.text ?? '', result: outcome?.result ?? null,
         source: outcome?.source ?? null, createdAt: new Date(row.created_at as string).toISOString(), updatedAt: new Date(row.updated_at as string).toISOString() });
     });

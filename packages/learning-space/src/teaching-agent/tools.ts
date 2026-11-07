@@ -81,7 +81,8 @@ export function createTeachingTools(options: {
   }
   async function prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string, fixed?: AnyExecutionAction): Promise<TeachingPreparedTool> {
     await authorize(scope); z.uuid().parse(commandId);
-    const definition = teachingDefinitions(scope).find(item => item.name === intent.name);
+    const definition = teachingContributions(scope).find(item => item.definition.name === intent.name
+      && (intent.name !== 'course_operation' || item.source.componentKey === intent.arguments.componentKey))?.definition;
     if (!definition || !compileOutputSchema(definition.inputSchema)(intent.arguments)) fail('invalid');
     for (const key of ['objectId', 'contentId', 'referenceId', 'materialId', 'requestId'])
       if (Object.hasOwn(intent.arguments, key) && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');

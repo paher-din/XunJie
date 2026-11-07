@@ -1,6 +1,5 @@
 import type { StateShape } from '@xunjie/contracts/components';
 import type { ModelTool } from '@xunjie/contracts/model-connections';
-import { toolValidators } from '../model-connections/chat-native.js';
 import { plannedExecutionScope } from '@xunjie/contracts/execution';
 import type { TeachingToolScope } from './tool-types.js';
 import { aluVerificationSchema } from './alu-tools.js';
@@ -49,7 +48,6 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
     tool('execution_stop', 'Stop only an execution originally started by this Agent run.', objectSchema({ requestId: uuid }))];
   if (operations.length) definitions.push(tool('course_operation', 'Run one declared component operation. start_session initializes a native session; later inputs require its requestId and last observed expectedSeq.',
     { type: 'object', anyOf: operations }));
-  toolValidators(definitions);
   return definitions;
 }
 
@@ -66,7 +64,8 @@ export function teachingContributions(scope: TeachingToolScope): TeachingToolCon
       });
       if (!operations.length) return [];
       const owned = { ...definition, inputSchema: { type: 'object', anyOf: operations } };
-      return [{ definition: owned, source: { kind: 'course' as const,
+      return [{ definition: owned, purpose: owned.description,
+        resultSchema: { type: 'object', properties: { query: { type: 'object' }, artifact: { type: 'object' } }, additionalProperties: true }, source: { kind: 'course' as const,
         sourceId: 'course:' + scope.activity.course!.releaseId + ':' + binding.key,
         version: binding.definition.digest, contentDigest: canonicalDigest({ definition: binding.definition, tool: owned }),
         releaseId: scope.activity.course!.releaseId, componentKey: binding.key },

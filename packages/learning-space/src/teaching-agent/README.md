@@ -27,11 +27,13 @@
 
 ## 版本化装配与执行
 
+按需目录、固定绑定加载及大结果范围读取见 [#216 实施说明](../../../../docs/student-agent-implementation/wp08-216-tool-discovery.md)。它们沿原 Command、原生配对、预算及资源保留边界，不新增运行循环；小结果反馈保持原字段位置。
+
 `assembly.ts` 是普通步骤与显式换模型共同使用的装配入口。`AgentDefinition` 固定目的、Prompt 模板、能力引用、上下文策略、输出契约和预算规则；`ResolvedAgent` 固定实际交集、模型、分层规则、工具完整定义和 executor 绑定。同逻辑名称的不同来源产生稳定协议别名，调用只按已保存绑定进入原 executor。生产工具 host 从实际平台与课程贡献生成装配，跨 owner 的 `tool.contributions` 保留同一来源；执行前重新核对当前来源、版本、对象资格和原 Run 许可。
 
 新步骤使用快照 v2，内含完整 `resolvedAgent` 与 `contextManifest`；旧 v1 继续可读。清单保存已采用输入、规则、原效果、Command/Wait、实际观察与原生 payload 的固定内容、范围、摘要及容量未知项。旧请求查询只读已保留的 JSON 和资源，不重新装配、检索或调用模型。未消费 queue 不进入装配；steering 仍按原顺序采用。
 
-`segments.ts` 的 `receive` / `advance` 接口由原 Run 或模型切换的持久权限推进，记录原操作身份后才接触模型 owner。接管核对同一段、前缀与路线；父权限代际改变时不能被旧的内部 lease 阻塞。未闭合原生工具配对拒绝换段，accepted 已闭合配对可保留原 Wait。配置变化不伪造学生换模型事件，换段不重置预算或重新派发工具。后续工具发现、Skills 和压缩沿这个入口追加其真实变化事实。
+`segments.ts` 的 `receive` / `advance` 接口由原 Run 或模型切换的持久权限推进，记录原操作身份后才接触模型 owner。接管核对同一段、前缀与路线；父权限代际改变时不能被旧的内部 lease 阻塞。未闭合原生工具配对拒绝换段，accepted 已闭合配对可保留原 Wait。配置变化不伪造学生换模型事件，换段不重置预算或重新派发工具。工具发现与加载沿这个入口追加真实变化；Skills 和压缩继续复用同一边界。
 
 运行中补充与排队由同一 owner 的迁移 8 保存：`teaching_inputs` 是当前输入投影，`teaching_input_revisions` 保留不可变版本，`teaching_controls` 保存原控制回执，`teaching_run_input_selections` 固定显式续接选择。短元数据事务共用持久顺序屏障；外部调用不持锁。步骤计划固定本次输入版本和所观察的 Wait 结果，接收、采纳、许可和收尾竞争有统一顺序。正常完整轮只自动推进明确 queue；失败、停止或预算到期暂停未消费输入。可恢复的非终态续原 Run，终态后须明确选择输入建立关联后继。详见 [#200 实施选择](../../../../docs/student-agent-implementation/specs/wp07-input-control.md)。
 

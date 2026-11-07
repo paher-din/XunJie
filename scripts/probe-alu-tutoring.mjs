@@ -16,7 +16,7 @@ import { createAluImeProduct } from './lib/alu-ime-product.mjs';
 
 const { values } = parseArgs({ options: { product: { type: 'string' }, packages: { type: 'string' },
   school: { type: 'string' }, 'credentials-file': { type: 'string' }, output: { type: 'string' },
-  label: { type: 'string' }, controlled: { type: 'boolean' } } });
+  label: { type: 'string' }, controlled: { type: 'boolean' }, discovery: { type: 'boolean' } } });
 assert.ok(values.output && Boolean(values.product) !== Boolean(values.school), 'Select a product or independent school and --output.');
 assert.ok(!values.controlled || values.product, 'Controlled model timing belongs to the local-product engineering path.');
 const output = resolve(values.output), label = values.label ?? `${process.platform}-${values.school ? 'school' : 'product'}`;
@@ -154,7 +154,10 @@ async function ask(question, parameters, { editAfterSend, readReferences = true,
   await openDiscussion();
   const draft = await api(`drafts/${activity.activityId}`), works = await local();
   const fixedCode = works.works.find(file => file.name === 'alu.sv'); assert.ok(fixedCode);
+  if (values.discovery) question += '\n请先用 discover_tools 按用途 course_operation 发现当前课程工具，再把返回的 bindingId 交给 load_tools；等定义可见后真实调用。不要跳过发现与加载。';
   if (values.controlled) phase = { cursor: 0, calls: [
+    ...(values.discovery ? [{ name: 'discover_tools', arguments: { purpose: 'course_operation', source: 'course:', object: null, cursor: null, pageSize: 2 } },
+      { name: 'load_tools', arguments: null }] : []),
     { name: 'read_work', arguments: { objectId: fixedCode.objectId, contentId: fixedCode.contentId } },
     ...(readReferences ? draft.references.map(reference => ({ name: 'read_reference', arguments: { referenceId: reference.referenceId } })) : []),
     { name: 'course_operation', arguments: { componentKey: binding.key, operationId: 'run-single', parameters } },
@@ -214,6 +217,8 @@ async function ask(question, parameters, { editAfterSend, readReferences = true,
   }, T.model);
   const tools = conversation.tools.filter(item => item.runId === runId);
   const verification = tools.find(item => item.name === 'course_operation');
+  if (values.discovery) for (const name of ['discover_tools', 'load_tools'])
+    assert.ok(tools.some(item => item.name === name && item.outcome === 'completed'), 'formal ALU uses ' + name);
   const answer = conversation.messages.filter(message => message.runId === runId && message.role === 'assistant').at(-1);
   assert.ok(answer?.text.trim()); assert.doesNotMatch(answer.text, /\bmodule\s+alu\s*\(|\bendmodule\b/);
   if (!requireVerification && !verification) return { runId, tools, answer };
@@ -305,7 +310,13 @@ try {
         const chunks = []; for await (const chunk of request) chunks.push(chunk);
         const payload = JSON.parse(Buffer.concat(chunks)); report.modelCalls.push({ payloadSha256: hash(payload), at: new Date().toISOString() });
         assert.ok(phase && phase.cursor < 12, 'bounded deterministic model timing');
-        const call = phase.calls[phase.cursor++];
+        let call = phase.calls[phase.cursor++];
+        if (call?.name === 'load_tools') {
+          const pair = payload.messages.filter(message => message.role === 'tool').at(-1);
+          const discovered = (JSON.parse(pair.content).result ?? JSON.parse(pair.content)).entries;
+          assert.ok(discovered.length && discovered[0].source.componentKey === binding.key);
+          call = { ...call, arguments: { bindingIds: [discovered[0].bindingId] } };
+        }
         chat(response, call ? { call: { id: 'alu-' + phase.cursor, ...call } } : {
           text: '已读取固定依据与真实结果。单次验证只对应原代码和这组输入；请比较低四位与第5位进位，再由你修改作品并观察。' });
       });
@@ -317,12 +328,12 @@ try {
       report.providerTransport = 'holder-local byte relay to TLS-verified api.deepseek.com';
       report.providerRequests = [];
       upstream = createServer((request, response) => {
-        if (request.method !== 'POST' || request.url !== '/v1/chat/completions' || report.providerRequests.length >= 48) {
+        if (request.method !== 'POST' || request.url !== '/v1/chat/completions' || report.providerRequests.length >= (values.discovery ? 24 : 48)) {
           response.writeHead(429); response.end(); return;
         }
         const record = { startedAt: new Date().toISOString(), status: null, tlsVerified: false }; report.providerRequests.push(record);
         const remote = https.request({ hostname: 'api.deepseek.com', servername: 'api.deepseek.com', path: request.url,
-          method: 'POST', headers: { ...request.headers, host: 'api.deepseek.com' }, timeout: 60000 }, result => {
+          method: 'POST', headers: { ...request.headers, host: 'api.deepseek.com' }, timeout: values.discovery ? 30000 : 60000, ...(values.discovery ? { signal: AbortSignal.timeout(30000) } : {}) }, result => {
           record.status = result.statusCode; record.tlsVerified = result.socket.authorized === true;
           response.writeHead(result.statusCode, result.headers); result.pipe(response);
           result.on('end', () => { record.elapsedMs = Date.now() - Date.parse(record.startedAt); });
@@ -341,7 +352,7 @@ try {
     await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: '#202 ALU acceptance',
       protocol: 'chat-completions', baseUrl: upstream ? `http://127.0.0.1:${upstream.address().port}/v1` : 'https://api.deepseek.com/v1',
       path: '/chat/completions', modelId: values.controlled ? 'alu-controlled' : 'deepseek-flash', dialect: values.controlled ? 'standard' : 'deepseek',
-      parameterMode: values.controlled ? 'plain' : 'thinking', enabled: true, contextWindow: 262144, maxOutputTokens: 4096,
+      parameterMode: values.controlled ? 'plain' : 'thinking', enabled: true, contextWindow: 262144, maxOutputTokens: values.discovery ? 2048 : 4096,
       credential: { action: 'replace', value: provider.key } });
     await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
     const selection = await api('models/selection');
