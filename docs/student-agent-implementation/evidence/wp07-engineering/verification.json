@@ -1,0 +1,3052 @@
+{
+  "format": "xunjie/wp07-engineering-verification-v1",
+  "generatedAt": "2026-11-07T08:46:45.315Z",
+  "branch": "wp07",
+  "base": "923d50a2fd2d24c244ccfc021c9e4a8b3616267a",
+  "finalTestSource": "58a229a17547eae2e352faa1f6da23399b7a5ded",
+  "noPullRequest": true,
+  "original20": {
+    "total": 20,
+    "resolved": 20,
+    "tasks": [
+      {
+        "name": "tools/i0-cloud/backup-retained.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "5470a05e8dd36cb841702e9dea31c01e9345f23cf4069084e37b1b6b36cd4027"
+      },
+      {
+        "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "e4367da7b38e12eac2b061ffc7722e89a6239e532392f9ea66b11376b9e56340"
+      },
+      {
+        "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "b530ca3a344942911e7bf1bcab76b5594bbc287fa8c024390fce8fca3d6a9bb8"
+      },
+      {
+        "name": "tools/i0-cloud/deploy-artifact.test.py",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "ef6720754015fc7caaa116e245cbb7899829a4f59db2f640a60e3b2973b22442"
+      },
+      {
+        "name": "tools/xj-dev-access/package-service.test.mjs",
+        "windowsInitial": {
+          "status": "failed",
+          "exitCode": 1
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "8882dd91a9d473888edacb93c6740ca106be3f24406a3ae2818a2034de3ca80b"
+      },
+      {
+        "name": "packages/product-runtime/test/recovery-files.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "b1ebcdbd373003a44551ee548e5dc3d112e7022628319b73ead182f90ce4058c"
+      },
+      {
+        "name": "tools/xj-dev-access/server.test.mjs",
+        "windowsInitial": {
+          "status": "failed",
+          "exitCode": 1
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "6371f3e78712bd88280486961f7b8ea3558d8e7f805131faa47933acbb77c970"
+      },
+      {
+        "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+        "windowsInitial": {
+          "status": "failed",
+          "exitCode": 1
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "e2b170342971de9ec53785cba29356c8ece95e5b2bd564fffa44f900b2bd25d4"
+      },
+      {
+        "name": "packages/storage/test/blobs.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "8497a52a1e78feb75284211629333e4cb766cdaed7d5258226ada1f33fe91cdc"
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "86e4d182d9538fbf4dee5808c0aa6ffbfd95874b273cd6816c43cbadf9d24727"
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "92332a82038a3cc1e72d268593c67f45d2c84c0e2beb742b59995d781cca3cf4"
+      },
+      {
+        "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "5b1a5e2952e68b5067f32d17ac15016cdcdb33e9195c516a1783a42988420d03"
+      },
+      {
+        "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "d65ce2e634996b87185d9585dafe5f6685046e9a93ac1bfd24facee753b90804"
+      },
+      {
+        "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+        "windowsInitial": {
+          "status": "failed",
+          "exitCode": 1
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "027cb91bb6bc93190cddce2c3a774ef9144e365903de4e818b1a054a7e877967"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "2be7488232bc212e192a0fe25a4ad34b18339dc5ce341a5178015257c12f2d7c"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "f0f5c3d3e33ff9a0f9a0a88ea744d79593c3773e297fea85bee34b782d59456a"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "5c026ff15574c235b9ebb7d710c7ca92bbf92cdda3b5f420700745918a95e401"
+      },
+      {
+        "name": "tools/xj-dev/tests/repro.test.mjs",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "97d8ebc0fffe38f80eafe5c90097e95f06c3be99cf5f280b9485e04addb0b68f"
+      },
+      {
+        "name": "apps/server/tests/account-control.test.ts",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "0c6470edfc8ec1a1ce1c1a2de1711db2d9336a18f79558f6bf67591845f5d359"
+      },
+      {
+        "name": "apps/server/tests/application-database.test.ts",
+        "windowsInitial": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "windowsFinal": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "linux": {
+          "status": "passed",
+          "exitCode": 0
+        },
+        "sourceSha256": "2d202c62ea3a443a640d438a5499fdf4cbb7e19f62d956f99e62dfa5883f4c77"
+      }
+    ]
+  },
+  "windowsFull": {
+    "status": "failed",
+    "exitCode": 1,
+    "startedAt": "2026-11-07T06:49:49.062Z",
+    "finishedAt": "2026-11-07T07:57:13.000Z",
+    "node": "v24.21.0",
+    "jobs": 4,
+    "testsCached": false,
+    "nodeTestForceExitFlag": false,
+    "total": 168,
+    "passed": 160,
+    "failed": 8,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "typecheck",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 85985
+          },
+          {
+            "name": "build",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 74775
+          },
+          {
+            "name": "check:contracts:browser",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2351
+          },
+          {
+            "name": "check:docs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2221
+          }
+        ]
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "build:test",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 7670
+          }
+        ]
+      },
+      {
+        "name": "unit",
+        "status": "failed",
+        "tasks": [
+          {
+            "name": "scripts/build.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 71943
+          },
+          {
+            "name": "scripts/check-contracts-browser.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 9472
+          },
+          {
+            "name": "scripts/check-doc-links.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 7713
+          },
+          {
+            "name": "scripts/ci-build-artifact.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 10037
+          },
+          {
+            "name": "scripts/package-product.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 516
+          },
+          {
+            "name": "scripts/test-discovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1027
+          },
+          {
+            "name": "scripts/test-scheduler.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 14789
+          },
+          {
+            "name": "scripts/verify.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 43084
+          },
+          {
+            "name": "web",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 123789
+          },
+          {
+            "name": "packages/contracts/test/execution-plan.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1002
+          },
+          {
+            "name": "packages/contracts/test/teaching-event.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 990
+          },
+          {
+            "name": "packages/product-runtime/test/connections-installation.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 7006
+          },
+          {
+            "name": "packages/product-runtime/test/host-facts.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 12080
+          },
+          {
+            "name": "packages/product-runtime/test/io.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 15384
+          },
+          {
+            "name": "packages/product-runtime/test/learning-drain.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8203
+          },
+          {
+            "name": "packages/product-runtime/test/lifecycle.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 230416
+          },
+          {
+            "name": "packages/product-runtime/test/maintenance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 727
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites-cli.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 673
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 708
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 740
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 103954
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-files.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3019
+          },
+          {
+            "name": "packages/product-runtime/test/recovery.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 1067149
+          },
+          {
+            "name": "packages/product-runtime/test/school-client.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 10286
+          },
+          {
+            "name": "packages/product-runtime/test/service-routing.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 17243
+          },
+          {
+            "name": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5286
+          },
+          {
+            "name": "packages/product-runtime/test/ssh-recovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4416
+          },
+          {
+            "name": "packages/storage/test/blobs.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5048
+          },
+          {
+            "name": "packages/product-runtime/test/connections.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 7667
+          }
+        ]
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "apps/server/runner/alu-check.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1037
+          },
+          {
+            "name": "apps/server/runner/control.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1000
+          },
+          {
+            "name": "apps/server/runner/course.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1005
+          },
+          {
+            "name": "apps/server/runner/editor-diagnostics.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 850
+          },
+          {
+            "name": "apps/server/runner/hdl-clock.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 798
+          },
+          {
+            "name": "apps/server/runner/hdl-profile.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 808
+          },
+          {
+            "name": "apps/server/runner/node-files.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 672
+          },
+          {
+            "name": "apps/server/runner/report.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 876
+          },
+          {
+            "name": "apps/server/runner/result-files.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 783
+          },
+          {
+            "name": "apps/server/runner/run-snapshot.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 667
+          },
+          {
+            "name": "apps/server/runner/snapshot.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1129
+          },
+          {
+            "name": "apps/server/runner/verify.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2541
+          },
+          {
+            "name": "apps/server/server/app/deployment-identity.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2215
+          },
+          {
+            "name": "apps/server/server/app/digital-logic.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 882
+          },
+          {
+            "name": "apps/server/server/app/execution-nodes.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 32609
+          },
+          {
+            "name": "apps/server/server/app/i0-readiness.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 33634
+          },
+          {
+            "name": "apps/server/server/app/i0-tutoring.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 31661
+          },
+          {
+            "name": "apps/server/server/app/i0.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 49598
+          },
+          {
+            "name": "apps/server/server/app/main-readiness-compatibility.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2067
+          },
+          {
+            "name": "apps/server/server/app/model-budget.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 59163
+          },
+          {
+            "name": "apps/server/server/app/personal-models.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 18702
+          },
+          {
+            "name": "apps/server/server/app/pr53-56-readiness.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8988
+          },
+          {
+            "name": "apps/server/server/app/response-metrics.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5279
+          },
+          {
+            "name": "apps/server/server/personal-agent/integration.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 9651
+          },
+          {
+            "name": "apps/server/server/personal-agent/model-budget.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1628
+          },
+          {
+            "name": "apps/server/server/personal-agent/student-tasks.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4607
+          },
+          {
+            "name": "apps/server/server/records/records.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 818
+          },
+          {
+            "name": "apps/server/server/records/teaching-projection.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 31980
+          },
+          {
+            "name": "apps/server/server/records/teaching-review.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 37434
+          },
+          {
+            "name": "apps/server/server/records/teaching.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 26758
+          },
+          {
+            "name": "apps/server/server/tutoring/test/deepseek-sdk.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1365
+          },
+          {
+            "name": "apps/server/server/tutoring/test/hdl-help.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 851
+          },
+          {
+            "name": "apps/server/server/tutoring/test/index.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1382
+          },
+          {
+            "name": "apps/server/server/tutoring/test/learner-analysis.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 20704
+          },
+          {
+            "name": "apps/server/server/tutoring/test/openai-compatible.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1359
+          },
+          {
+            "name": "apps/server/server/tutoring/test/real-model-support.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 7538
+          },
+          {
+            "name": "apps/server/server/tutoring/test/student-help.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 56280
+          },
+          {
+            "name": "apps/server/server/workspace/a5-consumption.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6324
+          },
+          {
+            "name": "apps/server/server/workspace/editor-diagnostics.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5819
+          },
+          {
+            "name": "apps/server/server/workspace/hdl.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 26205
+          },
+          {
+            "name": "apps/server/server/workspace/integration.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 43032
+          },
+          {
+            "name": "apps/server/server/workspace/job-composition.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 12467
+          },
+          {
+            "name": "apps/server/server/workspace/limited-check.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 24494
+          },
+          {
+            "name": "apps/server/server/workspace/review.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 13876
+          },
+          {
+            "name": "apps/server/server/workspace/runs.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1474
+          },
+          {
+            "name": "apps/server/server/workspace/submissions.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 35490
+          },
+          {
+            "name": "apps/server/server/workspace/workspace.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1263
+          },
+          {
+            "name": "apps/server/tests/a5-feedback.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 47399
+          },
+          {
+            "name": "apps/server/tests/a5-followup.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 9007
+          },
+          {
+            "name": "apps/server/tests/access.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 85852
+          },
+          {
+            "name": "apps/server/tests/account-control.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 9512
+          },
+          {
+            "name": "apps/server/tests/app.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1372
+          },
+          {
+            "name": "apps/server/tests/application-database.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8278
+          },
+          {
+            "name": "apps/server/tests/design-activities.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 58548
+          },
+          {
+            "name": "apps/server/tests/design-agent.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 66805
+          },
+          {
+            "name": "apps/server/tests/design-checks.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1022
+          },
+          {
+            "name": "apps/server/tests/design-draft.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1210
+          },
+          {
+            "name": "apps/server/tests/design-material.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1096
+          },
+          {
+            "name": "apps/server/tests/design-projection.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1297
+          },
+          {
+            "name": "apps/server/tests/design-storage.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 44144
+          },
+          {
+            "name": "apps/server/tests/display-metadata.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6557
+          },
+          {
+            "name": "apps/server/tests/dl-a-app.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 57258
+          },
+          {
+            "name": "apps/server/tests/dl-a-hdl-help.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 27928
+          },
+          {
+            "name": "apps/server/tests/durability.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3239
+          },
+          {
+            "name": "apps/server/tests/errors.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1621
+          },
+          {
+            "name": "apps/server/tests/execution-nodes.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1321
+          },
+          {
+            "name": "apps/server/tests/local-socket.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 742
+          },
+          {
+            "name": "apps/server/tests/model-capability-images.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5500
+          },
+          {
+            "name": "apps/server/tests/model-consumer.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 30085
+          },
+          {
+            "name": "apps/server/tests/model-messages-review.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3116
+          },
+          {
+            "name": "apps/server/tests/model-network-policy.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1414
+          },
+          {
+            "name": "apps/server/tests/model-progress.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 488
+          },
+          {
+            "name": "apps/server/tests/model-protocol-review.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 9904
+          },
+          {
+            "name": "apps/server/tests/model-sensitive-boundary.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3496
+          },
+          {
+            "name": "apps/server/tests/native-isolation.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8093
+          },
+          {
+            "name": "apps/server/tests/native-session.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 14643
+          },
+          {
+            "name": "apps/server/tests/records-adapter-performance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4782
+          },
+          {
+            "name": "apps/server/tests/records-adapter.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 17408
+          },
+          {
+            "name": "apps/server/tests/review.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 183949
+          },
+          {
+            "name": "apps/server/tests/semantic-references.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2007
+          },
+          {
+            "name": "apps/server/tests/session-checkpoints.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2340
+          },
+          {
+            "name": "apps/server/tests/session-store.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1116
+          },
+          {
+            "name": "apps/server/tests/startup.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4533
+          },
+          {
+            "name": "apps/server/tests/teacher-design-budget.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1334
+          },
+          {
+            "name": "apps/server/tests/teacher-workflow.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 27961
+          },
+          {
+            "name": "apps/server/tests/transaction.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 973
+          },
+          {
+            "name": "apps/server/tests/validation.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2322
+          },
+          {
+            "name": "apps/server/tests/workspace-hydration-performance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 11805
+          },
+          {
+            "name": "apps/server/tests/workspace-scope-performance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 16838
+          }
+        ]
+      },
+      {
+        "name": "tools",
+        "status": "failed",
+        "tasks": [
+          {
+            "name": "tools/i0-cloud/backup-retained.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 57498
+          },
+          {
+            "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5544
+          },
+          {
+            "name": "tools/i0-cloud/capacity-analysis.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 888
+          },
+          {
+            "name": "tools/i0-cloud/capacity-collect.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 626
+          },
+          {
+            "name": "tools/i0-cloud/capacity-metrics.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 771
+          },
+          {
+            "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 346640
+          },
+          {
+            "name": "tools/i0-cloud/capacity-workflow.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 17664
+          },
+          {
+            "name": "tools/i0-cloud/deploy-artifact.test.py",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 27307
+          },
+          {
+            "name": "tools/i0-cloud/prepare-demo-data.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 10095
+          },
+          {
+            "name": "tools/i0-hdl/editor-source.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8679
+          },
+          {
+            "name": "tools/i0-hdl/receive-frozen-images.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 770
+          },
+          {
+            "name": "tools/xj-dev-access/access.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4831
+          },
+          {
+            "name": "tools/xj-dev-access/adapters.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 847
+          },
+          {
+            "name": "tools/xj-dev-access/deployment.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 12862
+          },
+          {
+            "name": "tools/xj-dev-access/entrypoints.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 770
+          },
+          {
+            "name": "tools/xj-dev-access/github-login.e2e.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 973
+          },
+          {
+            "name": "tools/xj-dev-access/github-login.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2737
+          },
+          {
+            "name": "tools/xj-dev-access/lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 745
+          },
+          {
+            "name": "tools/xj-dev-access/oss-storage.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2578
+          },
+          {
+            "name": "tools/xj-dev-access/package-cleanup.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1128
+          },
+          {
+            "name": "tools/xj-dev-access/package-service.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 79169
+          },
+          {
+            "name": "tools/xj-dev-access/packages.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1248
+          },
+          {
+            "name": "tools/xj-dev-access/server.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 70640
+          },
+          {
+            "name": "tools/xj-dev-access/tls.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 921
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-recovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 58215
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 770053
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-unstarted.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 9290
+          },
+          {
+            "name": "tools/xj-dev/tests/certificates.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 67273
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2087338
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 30505
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 17286
+          },
+          {
+            "name": "tools/xj-dev/tests/env-removal.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 173464
+          },
+          {
+            "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 244468
+          },
+          {
+            "name": "tools/xj-dev/tests/integration.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 149951
+          },
+          {
+            "name": "tools/xj-dev/tests/local-status.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 183936
+          },
+          {
+            "name": "tools/xj-dev/tests/managed-modes.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6678
+          },
+          {
+            "name": "tools/xj-dev/tests/operation-lock.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8454
+          },
+          {
+            "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 2582665
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-code-batch.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 13464
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 461884
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 259455
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 84064
+          },
+          {
+            "name": "tools/xj-dev/tests/repro.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 49588
+          },
+          {
+            "name": "tools/xj-dev/tests/unit.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 15448
+          },
+          {
+            "name": "tools/xj-dev/tests/workspace-dependencies.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2138
+          }
+        ]
+      }
+    ],
+    "sourceProvenance": {
+      "setupCommit": "578a29144605abc7b574e1b1303792294a263dd2",
+      "updatedBeforeTests": "ec66c6a8",
+      "observedCheckoutAtEvidenceCapture": "ec66c6a8",
+      "basis": "Setup log prints 578a2914. The checkout was fast-forwarded during dependency preparation before verification began at 06:49:49 UTC. The actual checkout was observed as ec66c6a8. Per-task source hashes were not captured for this initial run."
+    },
+    "rawArchive": "final-windows-raw.tar.gz",
+    "rawArchiveSha256": "3dfca1ae1154ef5c842f3d89c77d5c6193e884543e56c6ae61df9f2b1b2c328e",
+    "manuallyTerminatedFiles": [
+      {
+        "name": "packages/product-runtime/test/recovery.test.mjs",
+        "reason": "An actual cleanup failure left listeners open; the completed file was terminated and retained as failed. Final full-file follow-up exits naturally."
+      },
+      {
+        "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+        "reason": "The slow serial file was stopped to reschedule all 29 cases in four groups; incomplete initial results were retained."
+      }
+    ],
+    "note": "Initial full batch retained, not reported as green. A completed recovery file required termination after a cleanup failure left listeners open; its final full-file follow-up exits naturally. The slow serial transfer file was interrupted, all 29 original cases were rerun in four groups, and the sole failed locking fixture was then corrected and independently reverified."
+  },
+  "windowsFollowup": {
+    "status": "failed",
+    "exitCode": 1,
+    "startedAt": "2026-11-07T07:05:01.799Z",
+    "finishedAt": "2026-11-07T07:47:00.687Z",
+    "node": "v24.21.0",
+    "jobs": 2,
+    "testsCached": false,
+    "nodeTestForceExitFlag": false,
+    "total": 7,
+    "passed": 6,
+    "failed": 1,
+    "stages": [
+      {
+        "name": "unit",
+        "status": "failed",
+        "tasks": [
+          {
+            "name": "scripts/build.test.mjs",
+            "status": "failed",
+            "exitCode": 1,
+            "durationMs": 97947
+          },
+          {
+            "name": "scripts/verify.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 42386
+          },
+          {
+            "name": "packages/product-runtime/test/lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 163963
+          }
+        ]
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "tools/xj-dev-access/package-service.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 340997
+          },
+          {
+            "name": "tools/xj-dev-access/server.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 227734
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2060986
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2079903
+          }
+        ]
+      }
+    ],
+    "sourceProvenance": {
+      "initialCommit": "3fe50329",
+      "updatesDuringRun": [
+        {
+          "commit": "2411ab07",
+          "files": [
+            "scripts/build.test.mjs"
+          ],
+          "note": "Cleanup retry only; the earlier failed task is superseded by its later full-file rerun."
+        },
+        {
+          "commit": "7dded025",
+          "files": [
+            "tools/xj-dev/tests/baseline-team.test.mjs"
+          ],
+          "note": "Parent test timeout only; committed before this task started at 07:12:15 UTC."
+        },
+        {
+          "commit": "1a7e53e4",
+          "files": [
+            "packages/product-runtime/test/recovery.test.mjs"
+          ],
+          "note": "Listener cleanup only; this file was not selected in this seven-task batch and has its own later full-file run."
+        }
+      ],
+      "perTaskSourceHashesCaptured": false
+    },
+    "rawArchive": "windows-followup-raw.tar.gz",
+    "rawArchiveSha256": "460ecda32fd2f5bc03ea5d6b6994f6079d7279d2cd9a21e027be417be6e5b692",
+    "note": "Original results retained; build.test is superseded only by the separate final full-file run. Production implementation did not change during this batch."
+  },
+  "windowsSupplemental": [
+    {
+      "name": "scripts/build.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": 21,
+      "passed": 20,
+      "skipped": 1,
+      "log": "build-final-followup.log",
+      "logSha256": "84b1c5ebccbded8e37f96e5a1611c5292bea6b7faf60e57a3ee8ad1b2b19b919",
+      "naturalExit": true
+    },
+    {
+      "name": "packages/product-runtime/test/recovery.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": 47,
+      "passed": 47,
+      "skipped": 0,
+      "log": "recovery-final-followup.log",
+      "logSha256": "23847f5ac68bff93db2a3f263d919e6546bb166cb5f9ba3a5f5e9c9f2f53b633",
+      "naturalExit": true
+    },
+    {
+      "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "sourceCommit": "58a229a17547eae2e352faa1f6da23399b7a5ded",
+      "sourceSha256": "027cb91bb6bc93190cddce2c3a774ef9144e365903de4e818b1a054a7e877967",
+      "originalGroupedSource": {
+        "commit": "1a7e53e47d20cc7a5641fb0fd33c6cfa1d905ea2",
+        "sha256": "9ef3a213c61a1c704e571458d377155d47139a889cabf2fdabad4e7e825d7046"
+      },
+      "registeredTopLevelCases": 29,
+      "tests": 29,
+      "passed": 27,
+      "skipped": 2,
+      "workers": 4,
+      "naturalExit": true,
+      "wholeFileSingleProcess": false,
+      "testsCached": false,
+      "rawArchive": "windows-transfer-raw.tar.gz",
+      "rawArchiveSha256": "88e667bb515d41e18e8e979f32aa2e1fc4901888b72abdd250c1220b513f50f1",
+      "note": "All original cases have exact coverage; the sole failed locking case was revised to cross-probe the same real OS mutex without holding HTTP open during slow native permission checks. Production deadlines are unchanged.",
+      "cases": [
+        {
+          "name": "CRC64/XZ uses unsigned decimal BigInt values from official check vectors",
+          "shard": 1,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a lost completion response exposes safe recovery information and reuses the already published record",
+          "shard": 1,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "cold receiver downloads and reauthorizes a complete partial without business dependencies",
+          "shard": 1,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "an interrupted download resumes with Range and If-Match from the bytes actually received",
+          "shard": 1,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a competing process cannot operate the same member transfer namespace; the permanent mutex survives release",
+          "shard": 1,
+          "initial": "failed",
+          "final": "passed",
+          "followup": {
+            "name": "a competing process cannot operate the same member transfer namespace; the permanent mutex survives release",
+            "sourceCommit": "58a229a17547eae2e352faa1f6da23399b7a5ded",
+            "sourceSha256": "027cb91bb6bc93190cddce2c3a774ef9144e365903de4e818b1a054a7e877967",
+            "startedAt": "2026-11-07T08:30:02.732Z",
+            "naturalExit": true,
+            "testsCached": false,
+            "log": "transfer-lock-final-58.log",
+            "finishedAt": "2026-11-07T08:35:07.944Z",
+            "exitCode": 0,
+            "counts": {
+              "tests": 1,
+              "pass": 1,
+              "fail": 0,
+              "cancelled": 0,
+              "skipped": 0
+            },
+            "observed": [
+              "a competing process cannot operate the same member transfer namespace; the permanent mutex survives release"
+            ],
+            "status": "passed",
+            "logSha256": "6231c7e5c3f3727957abf9969a986c3b6a110ef8314c38387a788b7394bec03a"
+          }
+        },
+        {
+          "name": "authorization rejects unsafe hosts, redirects and unbound headers; expiry retries are bounded and secret-free",
+          "shard": 1,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a corrupt ready cache can be explicitly deleted and the same ID fetched again without touching other content",
+          "shard": 1,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "cache repair refuses broad permissions and foreign symlinks even when the contents fail validation",
+          "shard": 1,
+          "initial": "skipped",
+          "final": "skipped"
+        },
+        {
+          "name": "publishing freezes an inspected ZIP, uses real device proofs and returns a stable ID without signed URLs",
+          "shard": 2,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a stable idempotency key cannot publish different content; capability denial preserves the frozen file",
+          "shard": 2,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "cold restore reports dependency preparation and preserves the target and existing state",
+          "shard": 2,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "412 discards the stale partial before one bounded resolve and fresh download",
+          "shard": 2,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "multipart resumes without repeating confirmed 8MiB content and checks every part MD5 and size",
+          "shard": 2,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "broad permissions and symlinked transfer state are rejected before network or foreign-file changes",
+          "shard": 2,
+          "initial": "skipped",
+          "final": "skipped"
+        },
+        {
+          "name": "a full-length corrupt partial has a public cleanup and fresh download recovery path",
+          "shard": 2,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a lost upload registration response retries the same idempotency key and frozen content",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "expired object authorization is renewed once with fresh device proof; revoked devices cannot use saved state",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "cold downloads still reject Node, tool, lock algorithm and checkout lock mismatches",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "200, wrong Content-Range and wrong ETag are rejected before appending any body",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a changed frozen file or service-confirmed MD5 mismatch fails before further upload or publication",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "explicit cache deletion reauthorizes and verifies one ready ZIP, preserves frozen uploads and can fetch again",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "deleting one stable ID preserves a shared digest still referenced by another ID",
+          "shard": 3,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "a lost PUT response resumes from service-confirmed parts, preserving the original frozen file",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "download authenticates, verifies complete SHA and compatibility, then authorizes and rechecks each cache hit",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "downloaded schema remains unverified and prepared restore rejects mismatch before changing target or cache",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "corrupt downloaded bytes and a damaged ready cache never become usable packages",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "wrong digest, malformed ZIP and incompatible manifest fail without being presented as usable",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "cache deletion preserves revoked, partial and unknown local contents",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        },
+        {
+          "name": "repairing corrupt shared bytes preserves other IDs and lets each fetch recover under current authorization",
+          "shard": 4,
+          "initial": "passed",
+          "final": "passed"
+        }
+      ],
+      "shards": [
+        {
+          "index": 1,
+          "selected": [
+            "CRC64/XZ uses unsigned decimal BigInt values from official check vectors",
+            "a lost completion response exposes safe recovery information and reuses the already published record",
+            "cold receiver downloads and reauthorizes a complete partial without business dependencies",
+            "an interrupted download resumes with Range and If-Match from the bytes actually received",
+            "a competing process cannot operate the same member transfer namespace; the permanent mutex survives release",
+            "authorization rejects unsafe hosts, redirects and unbound headers; expiry retries are bounded and secret-free",
+            "a corrupt ready cache can be explicitly deleted and the same ID fetched again without touching other content",
+            "cache repair refuses broad permissions and foreign symlinks even when the contents fail validation"
+          ],
+          "observed": [
+            "CRC64/XZ uses unsigned decimal BigInt values from official check vectors",
+            "a lost completion response exposes safe recovery information and reuses the already published record",
+            "cold receiver downloads and reauthorizes a complete partial without business dependencies",
+            "an interrupted download resumes with Range and If-Match from the bytes actually received",
+            "a competing process cannot operate the same member transfer namespace; the permanent mutex survives release",
+            "authorization rejects unsafe hosts, redirects and unbound headers; expiry retries are bounded and secret-free",
+            "a corrupt ready cache can be explicitly deleted and the same ID fetched again without touching other content",
+            "cache repair refuses broad permissions and foreign symlinks even when the contents fail validation"
+          ],
+          "coverage": true,
+          "exitCode": 1,
+          "counts": {
+            "tests": 8,
+            "pass": 6,
+            "fail": 1,
+            "cancelled": 0,
+            "skipped": 1
+          },
+          "status": "failed",
+          "logSha256": "e14a601efd565a95828f981c4d9516b92994d321055537aaa5ea9621ed3e5e73"
+        },
+        {
+          "index": 2,
+          "selected": [
+            "publishing freezes an inspected ZIP, uses real device proofs and returns a stable ID without signed URLs",
+            "a stable idempotency key cannot publish different content; capability denial preserves the frozen file",
+            "cold restore reports dependency preparation and preserves the target and existing state",
+            "412 discards the stale partial before one bounded resolve and fresh download",
+            "multipart resumes without repeating confirmed 8MiB content and checks every part MD5 and size",
+            "broad permissions and symlinked transfer state are rejected before network or foreign-file changes",
+            "a full-length corrupt partial has a public cleanup and fresh download recovery path"
+          ],
+          "observed": [
+            "publishing freezes an inspected ZIP, uses real device proofs and returns a stable ID without signed URLs",
+            "a stable idempotency key cannot publish different content; capability denial preserves the frozen file",
+            "cold restore reports dependency preparation and preserves the target and existing state",
+            "412 discards the stale partial before one bounded resolve and fresh download",
+            "multipart resumes without repeating confirmed 8MiB content and checks every part MD5 and size",
+            "broad permissions and symlinked transfer state are rejected before network or foreign-file changes",
+            "a full-length corrupt partial has a public cleanup and fresh download recovery path"
+          ],
+          "coverage": true,
+          "exitCode": 0,
+          "counts": {
+            "tests": 7,
+            "pass": 6,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 1
+          },
+          "status": "passed",
+          "logSha256": "7cc2f569adc29e31a14a85ce1be6b7857da0fff1f52dfafcbca5406633551aef"
+        },
+        {
+          "index": 3,
+          "selected": [
+            "a lost upload registration response retries the same idempotency key and frozen content",
+            "expired object authorization is renewed once with fresh device proof; revoked devices cannot use saved state",
+            "cold downloads still reject Node, tool, lock algorithm and checkout lock mismatches",
+            "200, wrong Content-Range and wrong ETag are rejected before appending any body",
+            "a changed frozen file or service-confirmed MD5 mismatch fails before further upload or publication",
+            "explicit cache deletion reauthorizes and verifies one ready ZIP, preserves frozen uploads and can fetch again",
+            "deleting one stable ID preserves a shared digest still referenced by another ID"
+          ],
+          "observed": [
+            "a lost upload registration response retries the same idempotency key and frozen content",
+            "expired object authorization is renewed once with fresh device proof; revoked devices cannot use saved state",
+            "cold downloads still reject Node, tool, lock algorithm and checkout lock mismatches",
+            "200, wrong Content-Range and wrong ETag are rejected before appending any body",
+            "a changed frozen file or service-confirmed MD5 mismatch fails before further upload or publication",
+            "explicit cache deletion reauthorizes and verifies one ready ZIP, preserves frozen uploads and can fetch again",
+            "deleting one stable ID preserves a shared digest still referenced by another ID"
+          ],
+          "coverage": true,
+          "exitCode": 0,
+          "counts": {
+            "tests": 7,
+            "pass": 7,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0
+          },
+          "status": "passed",
+          "logSha256": "2bdd557a355c0d6965d2ab6372cb7bc3812368c24f952a8cf39a98dbf6243cbd"
+        },
+        {
+          "index": 4,
+          "selected": [
+            "a lost PUT response resumes from service-confirmed parts, preserving the original frozen file",
+            "download authenticates, verifies complete SHA and compatibility, then authorizes and rechecks each cache hit",
+            "downloaded schema remains unverified and prepared restore rejects mismatch before changing target or cache",
+            "corrupt downloaded bytes and a damaged ready cache never become usable packages",
+            "wrong digest, malformed ZIP and incompatible manifest fail without being presented as usable",
+            "cache deletion preserves revoked, partial and unknown local contents",
+            "repairing corrupt shared bytes preserves other IDs and lets each fetch recover under current authorization"
+          ],
+          "observed": [
+            "a lost PUT response resumes from service-confirmed parts, preserving the original frozen file",
+            "download authenticates, verifies complete SHA and compatibility, then authorizes and rechecks each cache hit",
+            "downloaded schema remains unverified and prepared restore rejects mismatch before changing target or cache",
+            "corrupt downloaded bytes and a damaged ready cache never become usable packages",
+            "wrong digest, malformed ZIP and incompatible manifest fail without being presented as usable",
+            "cache deletion preserves revoked, partial and unknown local contents",
+            "repairing corrupt shared bytes preserves other IDs and lets each fetch recover under current authorization"
+          ],
+          "coverage": true,
+          "exitCode": 0,
+          "counts": {
+            "tests": 7,
+            "pass": 7,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0
+          },
+          "status": "passed",
+          "logSha256": "b240ca7c6c49aa365be653252b0ab0fb57cc2cc9cb0ddbd1786b2a37cf3895a7"
+        }
+      ]
+    }
+  ],
+  "windowsUnresolvedAfterFollowup": [],
+  "linuxFull": {
+    "sourceCommit": "1a7e53e47d20cc7a5641fb0fd33c6cfa1d905ea2",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-07T07:36:10.376Z",
+    "finishedAt": "2026-11-07T07:52:49.028Z",
+    "node": "v24.21.0",
+    "jobs": 2,
+    "testsCached": false,
+    "nodeTestForceExitFlag": false,
+    "total": 168,
+    "passed": 168,
+    "failed": 0,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "typecheck",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 21019
+          },
+          {
+            "name": "build",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 372
+          },
+          {
+            "name": "check:contracts:browser",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 661
+          },
+          {
+            "name": "check:docs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 742
+          }
+        ]
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "build:test",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3517
+          }
+        ]
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "scripts/build.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 13862
+          },
+          {
+            "name": "scripts/check-contracts-browser.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1864
+          },
+          {
+            "name": "scripts/check-doc-links.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1008
+          },
+          {
+            "name": "scripts/ci-build-artifact.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 512
+          },
+          {
+            "name": "scripts/package-product.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 205
+          },
+          {
+            "name": "scripts/test-discovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 409
+          },
+          {
+            "name": "scripts/test-scheduler.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5815
+          },
+          {
+            "name": "scripts/verify.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 16616
+          },
+          {
+            "name": "web",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 48925
+          },
+          {
+            "name": "packages/contracts/test/execution-plan.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 532
+          },
+          {
+            "name": "packages/contracts/test/teaching-event.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 528
+          },
+          {
+            "name": "packages/product-runtime/test/connections-installation.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2612
+          },
+          {
+            "name": "packages/product-runtime/test/host-facts.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2250
+          },
+          {
+            "name": "packages/product-runtime/test/io.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5451
+          },
+          {
+            "name": "packages/product-runtime/test/learning-drain.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1515
+          },
+          {
+            "name": "packages/product-runtime/test/lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 28231
+          },
+          {
+            "name": "packages/product-runtime/test/maintenance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 290
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites-cli.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 23655
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1537
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 278
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 13131
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-files.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1200
+          },
+          {
+            "name": "packages/product-runtime/test/recovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 19029
+          },
+          {
+            "name": "packages/product-runtime/test/school-client.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2260
+          },
+          {
+            "name": "packages/product-runtime/test/service-routing.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4479
+          },
+          {
+            "name": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1478
+          },
+          {
+            "name": "packages/product-runtime/test/ssh-recovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 906
+          },
+          {
+            "name": "packages/storage/test/blobs.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2388
+          },
+          {
+            "name": "packages/product-runtime/test/connections.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3614
+          }
+        ]
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "apps/server/runner/alu-check.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 429
+          },
+          {
+            "name": "apps/server/runner/control.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 887
+          },
+          {
+            "name": "apps/server/runner/course.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 383
+          },
+          {
+            "name": "apps/server/runner/editor-diagnostics.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 295
+          },
+          {
+            "name": "apps/server/runner/hdl-clock.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 305
+          },
+          {
+            "name": "apps/server/runner/hdl-profile.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 314
+          },
+          {
+            "name": "apps/server/runner/node-files.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 691
+          },
+          {
+            "name": "apps/server/runner/report.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 240
+          },
+          {
+            "name": "apps/server/runner/result-files.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 331
+          },
+          {
+            "name": "apps/server/runner/run-snapshot.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 350
+          },
+          {
+            "name": "apps/server/runner/snapshot.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 293
+          },
+          {
+            "name": "apps/server/runner/verify.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 304
+          },
+          {
+            "name": "apps/server/server/app/deployment-identity.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 552
+          },
+          {
+            "name": "apps/server/server/app/digital-logic.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 406
+          },
+          {
+            "name": "apps/server/server/app/execution-nodes.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 22450
+          },
+          {
+            "name": "apps/server/server/app/i0-readiness.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 28613
+          },
+          {
+            "name": "apps/server/server/app/i0-tutoring.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 27155
+          },
+          {
+            "name": "apps/server/server/app/i0.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 39849
+          },
+          {
+            "name": "apps/server/server/app/main-readiness-compatibility.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 484
+          },
+          {
+            "name": "apps/server/server/app/model-budget.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 44556
+          },
+          {
+            "name": "apps/server/server/app/personal-models.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 11327
+          },
+          {
+            "name": "apps/server/server/app/pr53-56-readiness.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4957
+          },
+          {
+            "name": "apps/server/server/app/response-metrics.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2681
+          },
+          {
+            "name": "apps/server/server/personal-agent/integration.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6480
+          },
+          {
+            "name": "apps/server/server/personal-agent/model-budget.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 451
+          },
+          {
+            "name": "apps/server/server/personal-agent/student-tasks.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2890
+          },
+          {
+            "name": "apps/server/server/records/records.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 317
+          },
+          {
+            "name": "apps/server/server/records/teaching-projection.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 30450
+          },
+          {
+            "name": "apps/server/server/records/teaching-review.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 36658
+          },
+          {
+            "name": "apps/server/server/records/teaching.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 24186
+          },
+          {
+            "name": "apps/server/server/tutoring/test/deepseek-sdk.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 707
+          },
+          {
+            "name": "apps/server/server/tutoring/test/hdl-help.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 577
+          },
+          {
+            "name": "apps/server/server/tutoring/test/index.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 602
+          },
+          {
+            "name": "apps/server/server/tutoring/test/learner-analysis.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 28387
+          },
+          {
+            "name": "apps/server/server/tutoring/test/openai-compatible.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 790
+          },
+          {
+            "name": "apps/server/server/tutoring/test/real-model-support.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6449
+          },
+          {
+            "name": "apps/server/server/tutoring/test/student-help.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 62164
+          },
+          {
+            "name": "apps/server/server/workspace/a5-consumption.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4536
+          },
+          {
+            "name": "apps/server/server/workspace/editor-diagnostics.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4350
+          },
+          {
+            "name": "apps/server/server/workspace/hdl.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 34943
+          },
+          {
+            "name": "apps/server/server/workspace/integration.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 44313
+          },
+          {
+            "name": "apps/server/server/workspace/job-composition.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6711
+          },
+          {
+            "name": "apps/server/server/workspace/limited-check.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 16619
+          },
+          {
+            "name": "apps/server/server/workspace/review.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 12994
+          },
+          {
+            "name": "apps/server/server/workspace/runs.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 355
+          },
+          {
+            "name": "apps/server/server/workspace/submissions.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 23815
+          },
+          {
+            "name": "apps/server/server/workspace/workspace.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 415
+          },
+          {
+            "name": "apps/server/tests/a5-feedback.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 33449
+          },
+          {
+            "name": "apps/server/tests/a5-followup.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5516
+          },
+          {
+            "name": "apps/server/tests/access.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 55548
+          },
+          {
+            "name": "apps/server/tests/account-control.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5044
+          },
+          {
+            "name": "apps/server/tests/app.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 325
+          },
+          {
+            "name": "apps/server/tests/application-database.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4494
+          },
+          {
+            "name": "apps/server/tests/design-activities.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 37597
+          },
+          {
+            "name": "apps/server/tests/design-agent.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 45902
+          },
+          {
+            "name": "apps/server/tests/design-checks.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 308
+          },
+          {
+            "name": "apps/server/tests/design-draft.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 290
+          },
+          {
+            "name": "apps/server/tests/design-material.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 280
+          },
+          {
+            "name": "apps/server/tests/design-projection.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 313
+          },
+          {
+            "name": "apps/server/tests/design-storage.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 28046
+          },
+          {
+            "name": "apps/server/tests/display-metadata.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3707
+          },
+          {
+            "name": "apps/server/tests/dl-a-app.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 39194
+          },
+          {
+            "name": "apps/server/tests/dl-a-hdl-help.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 18018
+          },
+          {
+            "name": "apps/server/tests/durability.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1871
+          },
+          {
+            "name": "apps/server/tests/errors.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 489
+          },
+          {
+            "name": "apps/server/tests/execution-nodes.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 414
+          },
+          {
+            "name": "apps/server/tests/local-socket.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 551
+          },
+          {
+            "name": "apps/server/tests/model-capability-images.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1432
+          },
+          {
+            "name": "apps/server/tests/model-consumer.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 19170
+          },
+          {
+            "name": "apps/server/tests/model-messages-review.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1426
+          },
+          {
+            "name": "apps/server/tests/model-network-policy.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 494
+          },
+          {
+            "name": "apps/server/tests/model-progress.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 143
+          },
+          {
+            "name": "apps/server/tests/model-protocol-review.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4333
+          },
+          {
+            "name": "apps/server/tests/model-sensitive-boundary.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 791
+          },
+          {
+            "name": "apps/server/tests/native-isolation.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4874
+          },
+          {
+            "name": "apps/server/tests/native-session.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5834
+          },
+          {
+            "name": "apps/server/tests/records-adapter-performance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1822
+          },
+          {
+            "name": "apps/server/tests/records-adapter.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 8114
+          },
+          {
+            "name": "apps/server/tests/review.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 99024
+          },
+          {
+            "name": "apps/server/tests/semantic-references.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 309
+          },
+          {
+            "name": "apps/server/tests/session-checkpoints.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 349
+          },
+          {
+            "name": "apps/server/tests/session-store.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 330
+          },
+          {
+            "name": "apps/server/tests/startup.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 970
+          },
+          {
+            "name": "apps/server/tests/teacher-design-budget.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 374
+          },
+          {
+            "name": "apps/server/tests/teacher-workflow.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 19390
+          },
+          {
+            "name": "apps/server/tests/transaction.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 321
+          },
+          {
+            "name": "apps/server/tests/validation.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 429
+          },
+          {
+            "name": "apps/server/tests/workspace-hydration-performance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3307
+          },
+          {
+            "name": "apps/server/tests/workspace-scope-performance.test.ts",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 7731
+          }
+        ]
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": [
+          {
+            "name": "tools/i0-cloud/backup-retained.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2536
+          },
+          {
+            "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 751
+          },
+          {
+            "name": "tools/i0-cloud/capacity-analysis.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 244
+          },
+          {
+            "name": "tools/i0-cloud/capacity-collect.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 184
+          },
+          {
+            "name": "tools/i0-cloud/capacity-metrics.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 248
+          },
+          {
+            "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 27358
+          },
+          {
+            "name": "tools/i0-cloud/capacity-workflow.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 15353
+          },
+          {
+            "name": "tools/i0-cloud/deploy-artifact.test.py",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 5003
+          },
+          {
+            "name": "tools/i0-cloud/prepare-demo-data.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 4889
+          },
+          {
+            "name": "tools/i0-hdl/editor-source.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 857
+          },
+          {
+            "name": "tools/i0-hdl/receive-frozen-images.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 259
+          },
+          {
+            "name": "tools/xj-dev-access/access.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 915
+          },
+          {
+            "name": "tools/xj-dev-access/adapters.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1483
+          },
+          {
+            "name": "tools/xj-dev-access/deployment.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 756
+          },
+          {
+            "name": "tools/xj-dev-access/entrypoints.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 741
+          },
+          {
+            "name": "tools/xj-dev-access/github-login.e2e.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 12825
+          },
+          {
+            "name": "tools/xj-dev-access/github-login.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2502
+          },
+          {
+            "name": "tools/xj-dev-access/lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3890
+          },
+          {
+            "name": "tools/xj-dev-access/oss-storage.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 646
+          },
+          {
+            "name": "tools/xj-dev-access/package-cleanup.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 715
+          },
+          {
+            "name": "tools/xj-dev-access/package-service.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2668
+          },
+          {
+            "name": "tools/xj-dev-access/packages.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 939
+          },
+          {
+            "name": "tools/xj-dev-access/server.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2669
+          },
+          {
+            "name": "tools/xj-dev-access/tls.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1199
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-recovery.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 41835
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 25517
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-unstarted.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 6209
+          },
+          {
+            "name": "tools/xj-dev/tests/certificates.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 27924
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 18607
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 191
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 291
+          },
+          {
+            "name": "tools/xj-dev/tests/env-removal.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 53974
+          },
+          {
+            "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 49119
+          },
+          {
+            "name": "tools/xj-dev/tests/integration.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 42177
+          },
+          {
+            "name": "tools/xj-dev/tests/local-status.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 52869
+          },
+          {
+            "name": "tools/xj-dev/tests/managed-modes.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 2316
+          },
+          {
+            "name": "tools/xj-dev/tests/operation-lock.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3127
+          },
+          {
+            "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 36821
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-code-batch.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 1100
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 121746
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 88260
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 10531
+          },
+          {
+            "name": "tools/xj-dev/tests/repro.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 3500
+          },
+          {
+            "name": "tools/xj-dev/tests/unit.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 582
+          },
+          {
+            "name": "tools/xj-dev/tests/workspace-dependencies.test.mjs",
+            "status": "passed",
+            "exitCode": 0,
+            "durationMs": 375
+          }
+        ]
+      }
+    ],
+    "rawArchive": "final-linux-r3-raw.tar.gz",
+    "rawArchiveSha256": "0b8fc33d94ee45f094de8f18fd9f62f29933e741acded7bc46ea4d762876449d"
+  },
+  "linuxSupplemental": [
+    {
+      "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "sourceCommit": "58a229a17547eae2e352faa1f6da23399b7a5ded",
+      "sourceSha256": "027cb91bb6bc93190cddce2c3a774ef9144e365903de4e818b1a054a7e877967",
+      "tests": 29,
+      "passed": 29,
+      "skipped": 0,
+      "naturalExit": true,
+      "testsCached": false,
+      "sourceExport": "git archive of the committed source, with an independent fixture Git repository",
+      "log": "transfer-linux-followup.log",
+      "logSha256": "8c0eef408fad01401ee4b1ea4487d444c329ceadd38fd1e6c38e167ec2f96abc"
+    }
+  ],
+  "platformBoundaries": {
+    "windows": "Real file symlinks, private-file DACL checks, CLI/TLS/proofs/storage/business integration. Test-only HTTP pipe OS adapter.",
+    "linux": "Existing Ubuntu: real Unix owner endpoints, process lifecycle/permissions, and all 34 Linux deployment/publication cases.",
+    "skips": "Platform-only skipped cases remain skipped, not passed. Windows Python file runs the portable Git Bash publication case and skips 33 Linux-host cases.",
+    "macAndTrueCrossMachine": "Not executed; existing handoff https://github.com/paher-din/XunJie/issues/212"
+  },
+  "developerMode": {
+    "enabledWithExplicitApproval": true,
+    "previousPropertyAbsent": true,
+    "restoreScript": ".verification/wp07-engineering/developer-mode.ps1 -Restore"
+  },
+  "browser": {
+    "status": "blocked",
+    "browser": "Google Chrome 157.0.8103.38",
+    "target": "https://127.0.0.1:25956",
+    "nativeChromeLaunched": true,
+    "pageObserved": false,
+    "reason": "Computer Use stopped because it could not determine the current browser URL on Windows with enough confidence to enforce policy.",
+    "furtherBrowserInputStopped": true,
+    "completedBusinessAcceptance": false,
+    "cliStatus": {
+      "url": "https://127.0.0.1:25956",
+      "serving": true,
+      "apiReady": true
+    },
+    "testInstanceStoppedAndDeleted": true
+  },
+  "linuxClock": {
+    "initial60SecondObservation": [
+      {
+        "kind": "wall-clock-reversal",
+        "deltaMs": -3518,
+        "monotonicDeltaMs": 1.1672200000029989
+      },
+      {
+        "observedSeconds": 60,
+        "reversals": 1,
+        "worstMs": -3518
+      }
+    ],
+    "afterStop60SecondObservation": [
+      {
+        "observedSeconds": 60,
+        "reversals": 0,
+        "worstMs": 0
+      }
+    ],
+    "finalRun": [
+      {
+        "kind": "wall-clock-reversal",
+        "deltaMs": -3518,
+        "monotonicDeltaMs": 5.235916999998153
+      },
+      {
+        "kind": "wall-clock-reversal",
+        "deltaMs": -451,
+        "monotonicDeltaMs": 5.612629999995988
+      },
+      {
+        "kind": "wall-clock-reversal",
+        "deltaMs": -2497,
+        "monotonicDeltaMs": 5.632154000006267
+      },
+      {
+        "observedSeconds": 1005.393319872,
+        "reversals": 3,
+        "worstMs": -3518
+      }
+    ],
+    "treatmentCheckpoint": {
+      "hostCheckpointUtc": "2026-11-07T07:38:58.5537681Z",
+      "service": "inactive",
+      "reversalsAfterStop": 3
+    },
+    "originalService": "active/enabled",
+    "restoredService": "ActiveState=active\nUnitFileState=enabled",
+    "reversalsAfterTreatment": 0,
+    "note": "The final run observed three reversals before the service was stopped again after a WSL restart; no new reversal was observed after the recorded treatment checkpoint. Original active/enabled service state was restored."
+  },
+  "finalLinuxTimeService": "ActiveState=active\r\nUnitFileState=enabled",
+  "teachingEffect": {
+    "status": "not-evaluated"
+  },
+  "reviews": {
+    "standardsUnresolved": 0,
+    "specUnresolved": 0
+  },
+  "rawLogs": ".verification/wp07-engineering/",
+  "cleanup": {
+    "linuxCompleted": true,
+    "windowsCompleted": true,
+    "protectedDevelopmentProcess": 35488,
+    "notes": "Only completed task-owned Linux and Windows verification directories were removed after process auditing. Raw evidence remains in the ignored workspace directory.",
+    "protectedProcessPresent": true,
+    "otherWorktreesPreserved": true
+  }
+}
