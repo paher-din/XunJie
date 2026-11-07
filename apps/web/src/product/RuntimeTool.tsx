@@ -19,7 +19,7 @@ export function RuntimeTool({ activity, binding, spaceKey, namespace, authorized
   if (binding.definition.manifest.formatVersion !== 3) return null
   if (binding.definition.manifest.stateVersion === 1)
     return <LegacyAluExperimentTool {...{ activity, binding, spaceKey, namespace, authorized, compact }} />
-  if (binding.definition.manifest.stateVersion !== 2)
+  if (![2, 3].includes(binding.definition.manifest.stateVersion))
     return <p role="alert">当前产品不支持这份实验状态版本；原作品和记录仍保留，请使用兼容产品。</p>
   return <AluExperimentTool activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace}
     authorized={authorized} compact={compact} />

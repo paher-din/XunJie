@@ -15,6 +15,10 @@ import { NumericEditor } from './NumericEditor'
 import { aluAdmission } from './coordination'
 import { parseAluBoardMapping } from './mapping'
 import { readCheckArtifact } from './check-report-reader'
+import { protectCompositionNavigation } from '../../components/workspace/compositionNavigation'
+import { aluCaseFromAction, newAluCaseDraft } from '@xunjie/contracts/alu-learning'
+import { editCase, isCurrentComparison, priorCaseSources, readCaseDraft } from './cases'
+import { AluCaseEditor, AluCaseResults } from './AluCases'
 import { controlsOf, defaultAluState, encodeEnabledBasis, parseEnabledBasis, readAluState, sameControls,
   type AluControl, type AluState, type EnabledBasis } from './state'
 import './alu.css'
@@ -62,6 +66,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   const runs = useSyncExternalStore(execution.subscribe, execution.snapshot)
   const actionFacts = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const manifest = binding.definition.manifest
+  const toolHost = useRef<HTMLElement>(null)
+  useEffect(() => { if (toolHost.current && manifest.stateVersion === 3) return protectCompositionNavigation(toolHost.current) }, [manifest.stateVersion])
   const instanceId = `${activity.activityId}:${binding.key}`
   const admission = useMemo(() => aluAdmission(workspace, instanceId), [workspace, instanceId])
   const mapping = useMemo(() => parseAluBoardMapping(binding.configuration.boardMapping), [binding.configuration])
@@ -133,27 +139,30 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
 
   // A pointer names a local or historical record. If the service still has it, query once; never rerun.
   useEffect(() => {
-    for (const requestId of [basis?.requestId, alu.pendingActivation, alu.selectedObservation, alu.selectedCheck].filter(Boolean) as string[]) {
+    for (const requestId of [basis?.requestId, alu.pendingActivation, alu.selectedObservation, alu.selectedCheck,
+      alu.selectedCase, alu.reflectionFor].filter(Boolean) as string[]) {
       if (records.some(record => record.requestId === requestId) || queried.current.has(requestId)) continue
       queried.current.add(requestId)
       void execution.query(requestId).catch(() => { /* The original pointer stays; the user may retry. */ })
     }
-  }, [basis?.requestId, alu.pendingActivation, alu.selectedObservation, alu.selectedCheck, records, execution])
+  }, [basis?.requestId, alu.pendingActivation, alu.selectedObservation, alu.selectedCheck, alu.selectedCase, alu.reflectionFor, records, execution])
 
-  const writeState = (change: (state: AluState) => AluState, quiet = false) => {
+  const contentForBinding = (state: AluState) => manifest.stateShape.type === 'object'
+    ? Object.fromEntries(Object.keys(manifest.stateShape.properties).map(key => [key, state[key as keyof AluState]])) : state
+  const writeState = (change: (state: AluState) => AluState, quiet = false, additions: WorkFile[] = []) => {
     try {
       const fresh = readComponentState(workspace, binding, instanceId)
       const previous = readAluState(fresh.content)
       const next = change(previous)
-      if (next === previous) return true
+      if (next === previous && !additions.length) return true
       const file = fresh.file
       workspace.change([...workspace.snapshot().files.filter(item => item.objectId !== file?.objectId), {
         objectId: file?.objectId ?? crypto.randomUUID(), contentId: crypto.randomUUID(),
         name: componentStateName(binding.key), kind: 'state', encoding: 'json', mediaType: componentStateMediaType,
         value: JSON.stringify({ formatVersion: 1, instanceId, componentId: manifest.componentId, version: manifest.version,
           definitionDigest: binding.definition.digest, stateVersion: manifest.stateVersion,
-          operationId: crypto.randomUUID(), content: next }),
-      }])
+          operationId: crypto.randomUUID(), content: contentForBinding(next) }),
+      }, ...additions])
       if (!quiet) setNote('')
       return true
     } catch (error) {
@@ -170,7 +179,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         name: componentStateName(binding.key), kind: 'state', encoding: 'json', mediaType: componentStateMediaType,
         value: JSON.stringify({ formatVersion: 1, instanceId, componentId: manifest.componentId, version: manifest.version,
           definitionDigest: binding.definition.digest, stateVersion: manifest.stateVersion,
-          operationId: crypto.randomUUID(), content: defaultAluState }),
+          operationId: crypto.randomUUID(), content: contentForBinding(defaultAluState) }),
       }])
       setNote('已重建实验输入状态；作品、运行记录和检查报告均未删除。')
     } catch (error) { setNote(`未能重建实验输入状态：${errorText(error)}`) }
@@ -180,12 +189,16 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     const max = control === 'A' || control === 'B' ? 15 : control === 'S' ? 3 : 1
     if (!Number.isInteger(value) || value < 0 || value > max) return
     if (stateRef.current?.[control] === value) return
-    writeState(previous => ({ ...previous, [control]: value, inputRevision: previous.inputRevision + 1,
+    writeState(previous => ({ ...(manifest.stateVersion === 3 && previous.feedbackPolicy === 'hold' ? editCase(previous) : previous),
+      [control]: value, inputRevision: previous.inputRevision + 1, caseRequestId: '',
+      selectedCase: previous.feedbackPolicy === 'live' ? '' : previous.selectedCase,
       selectedObservation: '', selectedObservationRevision: -1 }))
   }
   const useInputs = (inputs: { A: number; B: number; M: number; S: number; Cin: number }) => {
     if (!canWrite) return
-    writeState(previous => ({ ...previous, ...inputs, inputRevision: previous.inputRevision + 1,
+    writeState(previous => ({ ...(manifest.stateVersion === 3 && previous.feedbackPolicy === 'hold' ? editCase(previous) : previous),
+      ...inputs, inputRevision: previous.inputRevision + 1, caseRequestId: '',
+      selectedCase: '',
       selectedObservation: '', selectedObservationRevision: -1 }))
     setNote('已复制该输入；实际读数仍要等对应观察返回。')
   }
@@ -266,7 +279,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           definitionDigest: binding.definition.digest, activationRevision: previous.activationRevision + 1 }
         activation.outcome = 'activated'
         const preserveHistory = !!previous.selectedObservation && previous.selectedObservationRevision === -1
-        return { ...previous, enabledBasis: encodeEnabledBasis(enabled), activationRevision: previous.activationRevision + 1,
+        return { ...previous, enabledBasis: encodeEnabledBasis(enabled), activationRevision: previous.activationRevision + 1, caseRequestId: '',
           pendingActivation: '', pendingActivationRevision: 0, pendingActivationBase: 0,
           selectedObservation: preserveHistory ? previous.selectedObservation : inputStill && previous.inputRevision === clickRevision ? record.requestId : '',
           selectedObservationRevision: preserveHistory ? -1 : inputStill && previous.inputRevision === clickRevision ? previous.inputRevision : -1 }
@@ -334,6 +347,30 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       setNote(`全量检查未提交：${errorText(error)}`)
     } finally { admission.busy = false; if (alive.current) setObserveTick(value => value + 1) }
   }
+  const compare = async () => {
+    const click = stateRef.current, enabled = enabledRecordRef.current
+    if (!click || !enabled || !canAct || !enabledUsable || admission.busy || busy || activeCheck || activeObservation) return
+    admission.busy = true
+    const draft = readCaseDraft(click.caseDraft) ?? newAluCaseDraft(crypto.randomUUID(), crypto.randomUUID())
+    const fixed = { ...draft, revisionId: crypto.randomUUID(), priorSources: priorCaseSources(records, enabled, controlsOf(click)) }
+    try {
+      const action = await runtimeAction(workspace, activity, binding, execution.receiver.identity.receiverId, {
+        requestId: crypto.randomUUID(), operationId: 'observe-enabled', parameters: controlsOf(click),
+        basisWorks: codeOf(enabled.action.execution.basis.works),
+        enabledBy: { requestId: enabled.requestId, inputDigest: enabled.inputDigest, executionRef: enabled.executionRef }, caseDraft: fixed,
+      })
+      await workspace.trackInput(execution.submit(action))
+      // This result may select only the draft it captured. A later edit or history choice wins.
+      writeState(previous => previous.caseDraft === click.caseDraft && previous.inputRevision === click.inputRevision
+        && previous.enabledBasis === click.enabledBasis && previous.selectedCase === click.selectedCase
+        && previous.feedbackPolicy === click.feedbackPolicy && previous.caseRequestId === click.caseRequestId
+        && previous.selectedObservation === click.selectedObservation && previous.selectedObservationRevision === click.selectedObservationRevision
+        ? { ...previous, caseDraft: JSON.stringify(fixed), caseRequestId: action.requestId, selectedCase: action.requestId,
+          feedbackPolicy: 'hold', selectedObservation: action.requestId, selectedObservationRevision: click.inputRevision } : previous, true)
+      setNote('比较依据已在本机固定；结果归入原用例，期间的新草稿继续保留。')
+    } catch (error) { setNote(`比较尚未确认：${errorText(error)}。请核对原动作，不要重跑取回旧结果。`) }
+    finally { admission.busy = false; if (alive.current) setObserveTick(value => value + 1) }
+  }
   const stopCheck = async (record: ExecutionRecord | undefined) => {
     if (!record) return
     const stopId = stopIds.current.get(record.requestId) ?? crypto.randomUUID()
@@ -393,7 +430,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   // The board is driven only by a reading that still matches the current input and enabled basis.
   // A selected history record is shown in the readout, never wired back to the board.
   const currentObservationRecord = observationCurrent ? selectedObservationRecord : undefined
-  const feedbackHeld = alu.feedbackPolicy === 'hold'
+  const selectedCase = records.find(record => record.requestId === alu.selectedCase)
+  const feedbackHeld = alu.feedbackPolicy === 'hold' && !isCurrentComparison(alu, selectedCase)
   const currentReading = feedbackHeld ? { state: 'none' as const } : readingOf(currentObservationRecord, waitingForObservation || (!currentObservationRecord && !!basis))
   const shownReading = feedbackHeld ? { state: 'none' as const } : observationHistory ? readingOf(selectedObservationRecord, false) : currentReading
   const readingRecord = observationHistory ? selectedObservationRecord : currentObservationRecord
@@ -407,7 +445,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     ? <p className="alu-readout-value"><b>F={shownReading.f}</b><span> </span><b>Cout={shownReading.cout}</b></p>
     : <p className="alu-readout-value alu-muted">{shownReading.state === 'waiting' ? '等待观察' : shownReading.state === 'incomplete' ? '观察不完整' : '尚未取得观察'}</p>
 
-  return <section className={`execution-panel runtime-tool alu-tool ${compact ? 'runtime-tool-compact' : 'runtime-tool-full'}`} aria-label="ALU 实验">
+  return <section ref={toolHost} className={`execution-panel runtime-tool alu-tool ${compact ? 'runtime-tool-compact' : 'runtime-tool-full'}`} aria-label="ALU 实验">
     <header className="alu-tool-head">
       <div>
         <h2>ALU 实验</h2>
@@ -467,6 +505,10 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         <p className="alu-hint">{operationName(alu)} · {alu.feedbackPolicy === 'hold' ? '预测编辑中，候选不自动观察' : '输入变化会自动观察已启用作品'}</p>
       </div>
     </div> : <>
+      {manifest.stateVersion === 3 && <AluCaseEditor activity={activity} binding={binding} state={alu}
+        stateFile={current.file} records={records} enabled={enabledRecord} canWrite={canWrite}
+        canCompare={canAct && enabledUsable && !busy && !activeCheck && !activeObservation && !admission.busy}
+        writeState={writeState} onCompare={() => void compare()} />}
       {mapping && <AluBoard values={controls} reading={currentReading} mapping={mapping} disabled={!canWrite} waiting={waitingForObservation}
         onChange={changeInput} />}
       <section className="alu-readout" aria-label="当前读数">
@@ -498,6 +540,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         </div>
       </section>
       <NumericEditor values={controls} disabled={!canWrite} onChange={changeInput} />
+      {manifest.stateVersion === 3 && <AluCaseResults activity={activity} binding={binding} state={alu} records={records}
+        fallbackRecord={readingRecord} suppressed={feedbackHeld} canWrite={canWrite} writeState={writeState} />}
       <details className="alu-rules" open>
         <summary>公开行为、映射与采样规则</summary>
         <table><thead><tr><th>M</th><th>S</th><th>F</th><th>Cout</th></tr></thead><tbody>
@@ -507,7 +551,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           <tr><td>1</td><td>01 / 10 / 11</td><td>0（保留组合）</td><td>0</td></tr>
         </tbody></table>
         <p>{mapping ? <>{Object.entries(mapping.inputs).map(([signal, pins]) => `${signal}=${pins.map(pin => `SW${pin}`).join('/')}`).join('；')}；F={mapping.outputs.F.map(pin => `LED${pin}`).join('/')}，Cout=LED{mapping.outputs.Cout[0]}。</> : '课程板卡映射不可用。'}逻辑模式忽略 Cin，NOT 忽略 B；保留组合必须归零，不能当作 don't-care。X 表示未知，Z 表示高阻，均不当作零。</p>
-        <p>自由观察支架在 t=0 施加输入、t=1ns 采样、t=2ns 结束。全量检查按 index=(M&lt;&lt;11)|(S&lt;&lt;9)|(A&lt;&lt;5)|(B&lt;&lt;1)|Cin 枚举 0–4095，四轮分别使用 P0/P1 前驱并在 T1/T2 采样；它是有限采样，不是所有时刻的形式化证明。波形的后续能力由 #194 接入。</p>
+        <p>自由观察支架在 t=0 施加输入、t=1ns 采样、t=2ns 结束。全量检查按 index=(M&lt;&lt;11)|(S&lt;&lt;9)|(A&lt;&lt;5)|(B&lt;&lt;1)|Cin 枚举 0–4095，四轮分别使用 P0/P1 前驱并在 T1/T2 采样；它是有限采样，不是所有时刻的形式化证明。</p>
         <p className="alu-hint">运行和检查都不发送或清空问题草稿；检查通过不生成掌握结论或教师接收记录。</p>
       </details>
       {activeCheck && (!displayCheckRecord || displayCheckRecord.requestId !== activeCheck.requestId) &&
@@ -533,13 +577,18 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         onStop={() => void stopCheck(displayCheckRecord ?? activeCheck)}
         onQuery={() => void queryRecord(displayCheckRecord ?? activeCheck)} />}
       {feedbackHeld && activeCheck && <button className="ws-btn ghost" onClick={() => void stopCheck(activeCheck)}>停止检查</button>}
+      {feedbackHeld && (activeObservation || activeRun) && <div className="execution-actions">
+        <button type="button" className="ws-btn ghost" onClick={() => void stopCheck(activeObservation ?? activeRun)}>停止原执行</button>
+        <button type="button" className="ws-btn ghost" onClick={() => void queryRecord(activeObservation ?? activeRun)}>核对原执行</button>
+      </div>}
       {!feedbackHeld && <details className="alu-history"><summary>观察与检查记录（选择历史不改变开关）</summary>
         <div className="alu-history-columns">
           <div><h3>观察</h3>
             {observations.length === 0 ? <p className="alu-hint">还没有自由观察或运行记录。</p>
               : <ul>{observations.slice(0, 8).map(record => <li key={record.requestId}>
                 <button type="button" className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous,
-                  selectedObservation: record.requestId, selectedObservationRevision: -1 }))}>查看</button>
+                  selectedObservation: record.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
+                  selectedCase: record.action.protocolVersion === 3 && aluCaseFromAction(record.action) ? record.requestId : '' }))}>查看</button>
                 <span>{record.action.execution.operation.operationId === 'run-single' ? '显式运行' : '自由观察'}</span>
                 <span className="alu-mono">{Object.entries(record.action.execution.parameters as Record<string, number>).map(([key, value]) => `${key}=${value}`).join(' ')}</span>
                 <span>{new Date(record.createdAt).toLocaleTimeString('zh-CN')} · {record.query.state}</span>

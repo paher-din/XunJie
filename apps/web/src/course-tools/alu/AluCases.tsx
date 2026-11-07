@@ -1,0 +1,215 @@
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { ComponentBinding } from '@xunjie/contracts/components'
+import { ALU_REFLECTION_MEDIA_TYPE, aluCaseFromAction, aluReflectionName, isAluObservationAction, newAluCaseDraft, parseAluReflectionFile,
+  type AluCaseDraft, type AluReflection } from '@xunjie/contracts/alu-learning'
+import type { AluWaveRange } from '@xunjie/contracts/alu-waveform'
+import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data'
+import { questionWorkBasisSchema, type QuestionReferenceRange } from '@xunjie/contracts/question-drafts'
+import { componentSource, useSemanticSource } from '../../components/workspace/references/SemanticSource'
+import { useWorkspaceReferences } from '../../components/workspace/references'
+import { useActivitySession } from '../../product/ActivitySession'
+import { stateLabel, type ExecutionRecord } from '../../tool-execution/ledger'
+import type { ResultRecord } from '../../tool-execution/store'
+import { AluWaveform } from './AluWaveform'
+import { comparisonText, editCase, priorCaseSources, readCaseDraft } from './cases'
+import { controlsOf, type AluState } from './state'
+
+type WriteState = (change: (state: AluState) => AluState, quiet?: boolean, additions?: WorkFile[]) => boolean
+type CaseProps = { activity: LearningActivity; binding: ComponentBinding; state: AluState; records: ExecutionRecord[];
+  canWrite: boolean; writeState: WriteState }
+const rangeOf = (typeId: string, target: Record<string, unknown> = {}): Extract<QuestionReferenceRange, { kind: 'semantic' }> =>
+  ({ kind: 'semantic', formatVersion: 1, typeId, version: 1, target, start: 0, end: 1 })
+const describeInputs = (inputs: unknown) => Object.entries(inputs as Record<string, number>).map(([key, value]) => `${key}=${value}`).join(' ')
+
+export function AluCaseEditor({ activity, binding, state, stateFile, records, enabled, canWrite, canCompare,
+  writeState, onCompare }: CaseProps & { stateFile?: WorkFile; enabled?: ExecutionRecord; canCompare: boolean; onCompare(): void }) {
+  const references = useWorkspaceReferences()
+  const draft = readCaseDraft(state.caseDraft)
+  const select = useSemanticSource({ source: stateFile ? componentSource(activity, binding, stateFile.objectId, stateFile.contentId) : null,
+    title: 'ALU 预测用例', content: state, basis: stateFile && questionWorkBasisSchema.parse(stateFile),
+    locate: () => ({ ok: true }) })
+  const change = (patch: Partial<AluCaseDraft>) => writeState(previous => editCase(previous, patch))
+  const prior = enabled ? priorCaseSources(records, enabled, controlsOf(state)) : []
+  return <section className="alu-cases" aria-label="预测用例">
+    <header className="alu-section-head"><h2>预测用例</h2><div className="execution-actions">
+      <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={() => writeState(previous => ({ ...previous,
+        feedbackPolicy: 'hold', caseRequestId: '', caseDraft: JSON.stringify(newAluCaseDraft(crypto.randomUUID(), crypto.randomUUID())) }))}>新用例</button>
+      {draft && state.feedbackPolicy === 'live' && <button type="button" className="ws-btn ghost" disabled={!canWrite}
+        onClick={() => change({})}>编辑预测</button>}
+      {state.feedbackPolicy === 'hold' && <button type="button" className="ws-btn ghost" disabled={!canWrite}
+        onClick={() => writeState(previous => ({ ...previous, feedbackPolicy: 'live', caseRequestId: '', selectedCase: '',
+          selectedObservation: '', selectedObservationRevision: -1 }))}>恢复自由观察</button>}
+    </div></header>
+    {!draft ? <p className="alu-hint">可先记录一条进位或边界用例，再选一条能区分操作的用例；预测也可留空。</p> : <>
+      <div className="alu-case-fields">
+        <label>用例目的<select aria-label="用例目的" value={draft.purpose} disabled={!canWrite}
+          onChange={event => change({ purpose: event.target.value as AluCaseDraft['purpose'] })}>
+          <option value="unspecified">自由选择</option><option value="boundary">进位 / 边界</option>
+          <option value="operation">操作区别</option><option value="custom">其他</option>
+        </select></label>
+        <label>预测 F<input aria-label="预测 F" placeholder="4 位二进制，可留空" value={draft.predictedF} maxLength={32}
+          disabled={!canWrite} onChange={event => change({ predictedF: event.target.value })} /></label>
+        <label>预测 Cout<input aria-label="预测 Cout" placeholder="0 或 1，可留空" value={draft.predictedCout} maxLength={32}
+          disabled={!canWrite} onChange={event => change({ predictedCout: event.target.value })} /></label>
+      </div>
+      <label className="alu-case-reason">选择这组输入的理由<textarea aria-label="选择这组输入的理由" rows={2} value={draft.reason} maxLength={4000}
+        disabled={!canWrite} onChange={event => change({ reason: event.target.value })} /></label>
+      <label className="alu-case-help"><input type="checkbox" checked={draft.helpReported} disabled={!canWrite}
+        onChange={event => change({ helpReported: event.target.checked })} />我已获得帮助或在其他地方看过相关答案</label>
+      {prior.length > 0 && <p className="alu-hint">应用内已有同一作品的{prior.some(source => source.kind === 'work-check') ? '检查或观察' : '相同输入观察'}来源，本次会保留来源，不作为独立预测；无法判断应用外见过的答案。</p>}
+      <div className="execution-actions">
+        <button type="button" className="ws-btn solid" disabled={!canCompare} onClick={onCompare}>运行并比较</button>
+        <button type="button" className="ws-btn ghost" disabled={!canWrite || !stateFile} onClick={event => {
+          const anchor = event.currentTarget
+          select(rangeOf('alu-case'), () => anchor.getBoundingClientRect()); references.ask()
+        }}>用例加入问题</button>
+        <span className="alu-hint">输入使用下方开关；可留空直接观察，草稿随输入保护。</span>
+      </div>
+    </>}
+  </section>
+}
+
+export function AluCaseResults({ activity, binding, state, records, fallbackRecord, suppressed, canWrite, writeState }: CaseProps & {
+  fallbackRecord?: ExecutionRecord; suppressed: boolean
+}) {
+  const { execution, workspace } = useActivitySession(), references = useWorkspaceReferences()
+  const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
+  const cases = records.filter(record => record.action.protocolVersion === 3 && aluCaseFromAction(record.action))
+  const selected = records.find(record => record.requestId === state.selectedCase)
+  const record = selected ?? fallbackRecord
+  const capture = record?.action.protocolVersion === 3 ? aluCaseFromAction(record.action) : null
+  const observation = !!record && isAluObservationAction(record.action)
+  const recordLabel = record ? `${capture ? `用例 ${cases.length - cases.findIndex(item => item.requestId === record.requestId)}` : '观察'} · ${new Date(record.createdAt).toLocaleTimeString('zh-CN')}` : '原仿真波形'
+  const [loaded, setLoaded] = useState<{ requestId: string; artifact: ResultRecord | null; loading: boolean; error: string }>(
+    { requestId: '', artifact: null, loading: false, error: '' })
+  const [notice, setNotice] = useState(''), saving = useRef(false)
+  useEffect(() => {
+    let active = true
+    if (!record || !record.query.output || suppressed) return
+    setLoaded({ requestId: record.requestId, artifact: null, loading: true, error: '' })
+    void execution.artifact(record.requestId).then(artifact => {
+      if (active) setLoaded({ requestId: record.requestId, artifact, loading: false,
+        error: artifact ? '' : '原结果资源暂不可读；未重新编译或运行。' })
+    }).catch(() => { if (active) setLoaded({ requestId: record.requestId, artifact: null, loading: false,
+      error: '原结果资源暂不可读；原选择仍保留，未重新运行。' }) })
+    return () => { active = false }
+  }, [record?.requestId, record?.query.output, execution, suppressed])
+  const artifact = loaded.requestId === record?.requestId ? loaded.artifact : null
+  const output = record?.query.statusKnowledge === 'confirmed' ? record.query.output?.output as { f?: string; cout?: string; observationState?: string } | undefined : undefined
+  const content = record ? { action: record.action, output: output ?? null, state: record.query.statusKnowledge === 'confirmed' ? record.query.state : 'unknown',
+    resources: artifact?.resources ?? [], inputDigest: record.inputDigest, executionRef: record.executionRef } : null
+  const source = record?.query.statusKnowledge === 'confirmed' && record.query.output && artifact ? componentSource(activity, binding, record.requestId, record.query.output.contentId,
+    { requestId: record.requestId, executionRef: record.executionRef }) : null
+  const select = useSemanticSource({ source, title: 'ALU 实验观察', content, locate: () => ({ ok: true }) })
+  const add = (typeId: string, anchor: HTMLElement, target: Record<string, unknown> = {}) => {
+    try { select(rangeOf(typeId, target), () => anchor.getBoundingClientRect()); references.ask(); setNotice('') }
+    catch (error) { setNotice(error instanceof Error ? error.message : '当前范围无法引用，请缩小范围。') }
+  }
+  let selection: AluWaveRange | null = null
+  try { const saved = JSON.parse(state.waveSelection); if (saved.requestId === record?.requestId) selection = saved.range } catch { /* No selection yet. */ }
+  const notes: { file: WorkFile; note: AluReflection }[] = []
+  for (const file of works.files) if (file.mediaType === ALU_REFLECTION_MEDIA_TYPE) {
+    try { notes.push({ file, note: parseAluReflectionFile(file) }) } catch { /* The original owner's error remains visible in workspace status. */ }
+  }
+  const selectedNotes = notes.filter(item => item.note.requestId === record?.requestId)
+  const reflectionTarget = records.find(item => item.requestId === state.reflectionFor) ?? (state.reflectionDraft ? undefined : record)
+  const reflectionAllowed = !!reflectionTarget && isAluObservationAction(reflectionTarget.action)
+  const saveReflection = async () => {
+    if (!canWrite || !reflectionTarget || !reflectionAllowed || saving.current || !state.reflectionDraft.trim()) return
+    saving.current = true
+    const original = state.reflectionDraft, requestId = reflectionTarget.requestId
+    const noteId = crypto.randomUUID()
+    const note: AluReflection = { formatVersion: 1, kind: 'alu-reflection', noteId, activityId: activity.activityId,
+      bindingKey: binding.key, instanceId: `${activity.activityId}:${binding.key}`, definitionDigest: binding.definition.digest,
+      requestId, inputDigest: reflectionTarget.inputDigest, executionRef: reflectionTarget.executionRef,
+      parentNoteId: state.reflectionParent || null, text: original }
+    const file: WorkFile = { objectId: noteId, contentId: noteId, name: aluReflectionName(binding.key, noteId), kind: 'state',
+      encoding: 'json', mediaType: ALU_REFLECTION_MEDIA_TYPE, value: JSON.stringify(note) }
+    try {
+      if (!writeState(previous => previous.reflectionDraft === original && (!previous.reflectionFor || previous.reflectionFor === requestId)
+        ? { ...previous, reflectionFor: '', reflectionParent: '', reflectionDraft: '' } : previous, true, [file])) return
+      await workspace.leave()
+      setNotice('解释修订已在本机保护；由原作品通道同步，原预测和观察保持不变。')
+    } catch { setNotice('解释修订仍待本机保护或同步确认，请保留页面核对原记录。') }
+    finally { saving.current = false }
+  }
+  return <section className="alu-case-results" aria-label="比较与解释">
+    <header className="alu-section-head"><h2>比较与解释</h2>
+      {cases.length > 0 && <label>用例记录<select aria-label="用例记录" value={suppressed ? '' : state.selectedCase}
+        onChange={event => writeState(previous => ({ ...previous, selectedCase: event.target.value, caseRequestId: '',
+          selectedObservation: event.target.value, selectedObservationRevision: -1, feedbackPolicy: 'live' }))}>
+        <option value="">当前观察</option>{cases.map((item, index) => <option key={item.requestId} value={item.requestId}>
+          {cases.length - index} · {new Date(item.createdAt).toLocaleTimeString('zh-CN')} · {stateLabel(item.query)}
+        </option>)}
+      </select></label>}
+    </header>
+    {suppressed ? <p className="alu-hint">候选编辑中，实际值、旧比较和波形暂不展示。</p> : <>
+      {record && <p className="alu-hint">{recordLabel} · {describeInputs(record.action.execution.parameters)}
+        {record.action.protocolVersion === 3 && ` · ${{ student: '学生发起', agent: 'Agent 验证', 'self-check': '独立自检', 'teacher-preview': '教师预览' }[record.action.execution.initiator.kind]}`}</p>}
+      {observation ? <>
+        {(record?.query.statusKnowledge !== 'confirmed' || record.query.state !== 'succeeded') && <p role="status" className="alu-hint">
+          {record?.query.statusKnowledge !== 'confirmed' ? '原执行状态待核实，实际值保持缺项。'
+            : record.query.state === 'failed' || record.query.state === 'cancelled' ? '本次执行未完成，未填造实际值。' : '正在等待原执行结果。'}
+        </p>}
+        <table aria-label="预测与实际比较"><thead><tr><th>信号</th><th>固定预测</th><th>实际观察</th><th>比较依据</th></tr></thead><tbody>
+          <tr><th>F</th><td>{capture?.draft.predictedF || '未填写'}</td><td>{output?.f || '未取得'}</td><td>{comparisonText(capture?.draft.predictedF ?? '', output?.f, 4)}</td></tr>
+          <tr><th>Cout</th><td>{capture?.draft.predictedCout || '未填写'}</td><td>{output?.cout || '未取得'}</td><td>{comparisonText(capture?.draft.predictedCout ?? '', output?.cout, 1)}</td></tr>
+        </tbody></table>
+        <p className="alu-case-original">选择理由：{capture?.draft.reason || '未填写'}</p>
+        {capture ? <p className="alu-hint">{capture.draft.priorSources.length ? `保留 ${capture.draft.priorSources.length} 个已有观察 / 检查来源；不作为独立预测。` : '应用内未保留同一作品 / 输入的已知观察来源。'}
+          {capture.draft.helpReported && ' 学生已报告获得帮助。'} 环境自检用于确认工具链，不证明学生掌握。</p>
+          : <p className="alu-hint">本次直接观察没有固定预测，缺项保留。</p>}
+        {capture && <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={() => writeState(previous => editCase({ ...previous,
+          ...capture.inputs, inputRevision: previous.inputRevision + 1, selectedObservation: '', selectedObservationRevision: -1,
+          caseDraft: JSON.stringify(capture.draft) }))}>以该用例继续编辑</button>}
+      </> : <p className="alu-hint">运行或比较后，在这里查看实际值与解释。</p>}
+      {record && <>
+        <div className="execution-actions">
+          <button type="button" className="ws-btn ghost" disabled={!canWrite || !source} onClick={event => add('alu-observation', event.currentTarget)}>结果加入问题</button>
+          <button type="button" className="ws-btn ghost" onClick={() => void execution.query(record.requestId)}>核对原结果</button>
+        </div>
+        <details><summary>本次作品与输入</summary><p className="alu-hint">执行标识：{record.requestId}</p>
+          {record.action.execution.basis.works.filter(file => file.kind === 'code').map(file =>
+          <details key={file.contentId}><summary>{file.name} · {file.contentId.slice(0, 8)}</summary><pre>{file.value}</pre></details>)}</details>
+      </>}
+      <AluWaveform vcdText={artifact?.resources?.find(resource => resource.name === 'trace.vcd')?.text ?? null}
+        selection={selection} onChange={range => writeState(previous => ({ ...previous,
+          waveSelection: range && record ? JSON.stringify({ requestId: record.requestId, range }) : '' }), true)}
+        onReference={canWrite && source ? (range, anchor) => add('alu-waveform', anchor, range) : undefined}
+        sourceLabel={record ? `${recordLabel} · ${describeInputs(record.action.execution.parameters)}` : '原仿真波形'}
+        loading={loaded.requestId === record?.requestId && loaded.loading} error={loaded.requestId === record?.requestId ? loaded.error : ''}
+        incomplete={!!record && (record.query.statusKnowledge !== 'confirmed' || record.query.state !== 'succeeded'
+          || output?.observationState !== 'complete' && output?.observationState !== 'complete-with-unknown')} />
+      {selectedNotes.map((item, index) => <Reflection key={item.note.noteId} {...{ activity, binding }} {...item}
+        action={record!.action} index={index} canWrite={canWrite} onRevise={() => writeState(previous => ({ ...previous,
+          reflectionFor: item.note.requestId, reflectionParent: item.note.noteId, reflectionDraft: item.note.text }))} />)}
+    </>}
+    {observation && !suppressed && <label className="alu-case-reason">解释、仍未解决的问题或用例能发现的错误
+      <textarea aria-label="实验解释" rows={3} value={state.reflectionDraft} maxLength={8000} disabled={!canWrite}
+        onChange={event => writeState(previous => ({ ...previous, reflectionDraft: event.target.value,
+          reflectionFor: previous.reflectionFor || record!.requestId,
+          reflectionParent: previous.reflectionFor ? previous.reflectionParent : selectedNotes.at(-1)?.note.noteId ?? '' }), true)} />
+    </label>}
+    {state.reflectionDraft && state.reflectionFor && state.reflectionFor !== record?.requestId
+      && <p className="alu-hint">解释草稿仍对应另一条原观察，切换用例不会改挂到新结果。</p>}
+    {state.reflectionDraft && <button type="button" className="ws-btn ghost" disabled={!canWrite || !reflectionAllowed}
+      onClick={() => void saveReflection()}>保存解释修订</button>}
+    {notice && <p role="status" className="alu-hint">{notice}</p>}
+  </section>
+}
+
+function Reflection({ activity, binding, file, note, action, index, canWrite, onRevise }: {
+  activity: LearningActivity; binding: ComponentBinding; file: WorkFile; note: AluReflection;
+  action: ExecutionRecord['action']; index: number; canWrite: boolean; onRevise(): void
+}) {
+  const references = useWorkspaceReferences()
+  const select = useSemanticSource({ source: componentSource(activity, binding, file.objectId, file.contentId),
+    title: `ALU 解释修订 ${index + 1}`, content: { note, action }, basis: questionWorkBasisSchema.parse(file), locate: () => ({ ok: true }) })
+  return <div className="alu-reflection"><p className="alu-hint">解释修订 {index + 1}</p><p>{note.text}</p>
+    <div className="execution-actions"><button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={onRevise}>在此基础上修订</button>
+      <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={event => {
+        const anchor = event.currentTarget
+        select(rangeOf('alu-reflection'), () => anchor.getBoundingClientRect()); references.ask()
+      }}>解释加入问题</button></div>
+  </div>
+}

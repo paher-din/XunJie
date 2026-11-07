@@ -14,10 +14,12 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { chromium } from '@playwright/test';
 import { createAluImeProduct } from './lib/alu-ime-product.mjs';
+import { probeAluLearningIme } from './lib/alu-learning-ime.mjs';
 
 const { values } = parseArgs({ options: {
   'product-root': { type: 'string' }, packages: { type: 'string' }, output: { type: 'string' },
   'only-tool-switch': { type: 'boolean', default: false },
+  learning: { type: 'boolean', default: false },
 } });
 for (const name of ['product-root', 'packages', 'output']) if (!values[name]) throw new Error('usage: --product-root=DIR --packages=DIR --output=DIR');
 assert.equal(process.platform, 'win32');
@@ -27,7 +29,7 @@ const helper = join(dirname(fileURLToPath(import.meta.url)), 'probe-alu-ime-wind
 const wait = ms => new Promise(done => setTimeout(done, ms));
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim();
 const report = {
-  kind: 'windows-os-ime-acceptance', ticket: '#211', platform: process.platform, arch: process.arch,
+  kind: 'windows-os-ime-acceptance', ticket: values.learning ? '#194' : '#211', platform: process.platform, arch: process.arch,
   node: process.version, candidate: packageRoot, startedAt: new Date().toISOString(),
   os: 'Windows ' + run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '[Environment]::OSVersion.Version.ToString()']),
   cases: [], keySequences: [], screenshots: [], candidateWindows: [], texts: {},
@@ -442,6 +444,8 @@ try {
 
   }
 
+  if (values.learning) await probeAluLearningIme({ page, key, candidateEvidence, shot, passed, wait,
+    executionSubmissions, questionSubmissions });
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.error = String(error?.stack ?? error);

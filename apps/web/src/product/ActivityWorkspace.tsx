@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
+import { ALU_REFLECTION_MEDIA_TYPE } from '@xunjie/contracts/alu-learning'
 import { CodeReferenceSource } from '../components/workspace/references'
 import { FileTabs } from '../components/workspace/FileTabs'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
@@ -41,7 +42,8 @@ export function ActivityWorkspace({ activity, namespace,spaceKey,authorized }: {
     const [name, setName] = useState('')
     const [rename, setRename] = useState('')
     const [merged, setMerged] = useState('')
-    const file = state.files.find(f => f.objectId === selected) ?? state.files[0]
+    const visibleFiles = state.files.filter(f => f.mediaType !== ALU_REFLECTION_MEDIA_TYPE)
+    const file = visibleFiles.find(f => f.objectId === selected) ?? visibleFiles[0]
     const latestRun=runs.records.find(r=>r.action.protocolVersion===3)
     const failed=latestRun?.query.state==='failed'?latestRun:undefined
     const basis=file&&failed?.action.execution.basis.works.find(f=>f.objectId===file.objectId&&f.name===file.name&&f.value===file.value)
@@ -82,7 +84,7 @@ export function ActivityWorkspace({ activity, namespace,spaceKey,authorized }: {
             <button type="button" className="ws-btn ghost" disabled={!!state.conflict || readOnly} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
           </form>}
         </WorkspacePopover>
-        <FileTabs files={state.files.map(f => ({ id: f.objectId, name: f.name }))} activeId={file?.objectId ?? null}
+        <FileTabs files={visibleFiles.map(f => ({ id: f.objectId, name: f.name }))} activeId={file?.objectId ?? null}
           onOpen={id => { setSelected(id); setRename('') }} />
         </nav>
         {file ? <>

@@ -8,7 +8,9 @@ import { componentInstanceId, componentStateName } from '@xunjie/contracts/compo
 import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcceptanceSchema, anyExecutionActionSchema as executionActionSchema,
   executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { AnyExecutionAction as ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
-import { verifyRuntimeBasis, verifyEnabledRuntimeSource } from './runtime-basis.js';
+import { executionQueryFromRow, parseExecutionActivity, parseExecutionSource } from './execution-source.js';
+import { verifyRuntimeBasis, verifyEnabledRuntimeSource, verifyAluCasePriorSource } from './runtime-basis.js';
+import { aluCaseFromAction } from '@xunjie/contracts/alu-learning';
 import { executionRetainedResourceSchema, type ExecutionRetainedResource } from '@xunjie/contracts/execution';
 import { executionHistoryPageSchema, executionArtifactSchema } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
@@ -53,11 +55,7 @@ const fail: (code: 'missing' | 'forbidden' | 'invalid' | 'corrupt' | 'identity-c
 const componentStateMediaType = 'application/vnd.xunjie.component-state+json';
 
 function query(row: Record<string, unknown>): ExecutionQuery {
-  const body = executionActionSchema.parse(row.body);
-  return executionQuerySchema.parse({ requestId: row.request_id, inputDigest: row.input_digest, scope: body.scope,
-    executionRef: row.execution_ref, state: row.state, statusKnowledge: row.status_knowledge,
-    stopRequested: row.stop_requested, confirmedSeq: Number(row.confirmed_seq), reason: row.reason ?? null,
-    output: row.output ?? null });
+  return executionQueryFromRow(row, executionActionSchema.parse(row.body));
 }
 function sameIdentity(left: { requestId: string; inputDigest: string; executionRef: string }, right: ExecutionQuery) {
   return left.requestId === right.requestId && left.inputDigest === right.inputDigest && left.executionRef === right.executionRef;
@@ -172,6 +170,11 @@ export function createExecutions(storage: OwnedStorage, options: {
       const { rows: retained } = await storage.read('SELECT request_id FROM execution_results WHERE activity_id=$1 AND request_id=$2',
         [activityId, action.execution.basis.enabledBy!.requestId]);
       if (!retained.length) fail('invalid');
+    }
+    if(action.protocolVersion===3) for(const prior of aluCaseFromAction(action)?.draft.priorSources??[]) {
+      const source=await find(activityId,prior.requestId);
+      if(!source) throw new StorageError('unavailable');
+      verifyAluCasePriorSource(action,prior,executionActionSchema.parse(source.row.body),source.query);
     }
     for (const file of action.execution.basis.works) await works.registerBasis(identity, activityId, file);
     const begun: ExecutionQuery = executionQuerySchema.parse({ requestId: action.requestId, inputDigest,
@@ -406,29 +409,15 @@ export async function validateExecutions(storage: OwnedStorage) {
   };
   const { rows } = await storage.read('SELECT * FROM execution_commands');
   for (const row of rows) {
-    const stored = query(row), action = executionActionSchema.parse(row.body);
-    let inputDigest = digest(action);
-    if (row.action_text !== null && row.action_text !== undefined) {
-      if (typeof row.action_text !== 'string') corrupt('command text type');
-      let original: unknown;
-      try { original = JSON.parse(row.action_text as string); }
-      catch { corrupt('command text JSON'); }
-      const parsed = executionActionSchema.safeParse(original);
-      if (!parsed.success || canonicalDigest(original) !== canonicalDigest(action)
-        || canonicalDigest(parsed.data) !== canonicalDigest(action)) corrupt('command text projection');
-      inputDigest = createHash('sha256').update(row.action_text as string).digest('hex');
-    }
-    if (inputDigest !== stored.inputDigest) corrupt('command input digest');
-    const acceptance = executionAcceptanceSchema.parse(row.acceptance);
-    const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
-    const body = activity?.body as LearningActivity | undefined, scope = action.scope;
-    if (!body || scope.activityId !== row.activity_id || scope.environmentId !== body.identity.environmentId
-      || scope.spaceId !== body.identity.spaceId || scope.principalId !== body.identity.principalId
-      || acceptance.receipt.requestId !== stored.requestId
-      || acceptance.receipt.inputDigest !== stored.inputDigest || acceptance.receipt.state !== 'accepted'
-      || !acceptance.execution || acceptance.execution.executionRef !== stored.executionRef
-      || acceptance.execution.acceptedSeq > stored.confirmedSeq
-      || JSON.stringify(acceptance.receipt.receiver) !== JSON.stringify(action.receiver)) corrupt('command identity or receipt');
+    const { rows: [activity] } = await storage.read(
+      'SELECT id,body,space_environment_id,space_id,principal_id FROM activities WHERE id=$1', [row.activity_id]);
+    const source = (() => {
+      try {
+        const body = parseExecutionActivity(activity, storage.owner);
+        return { ...parseExecutionSource(row, body), body };
+      } catch { return corrupt('command source'); }
+    })();
+    const { action, query: stored, body } = source;
     const state = action.protocolVersion===2 ? action.execution.basis.state : null;
     if (state) {
       const { rows: [content] } = await storage.read(`SELECT activity_id,encoding,media_type FROM work_contents WHERE content_id=$1`,
@@ -452,6 +441,12 @@ export async function validateExecutions(storage: OwnedStorage) {
         const { rows: [source] } = await storage.read('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2',
           [row.activity_id, action.execution.basis.enabledBy.requestId]);
         verifyEnabledRuntimeSource(action, source ? executionActionSchema.parse(source.body) : undefined, source ? query(source) : undefined);
+      }
+      for(const prior of aluCaseFromAction(action)?.draft.priorSources??[]) {
+        const {rows:[source]}=await storage.read('SELECT * FROM execution_commands WHERE activity_id=$1 AND request_id=$2',
+          [row.activity_id,prior.requestId]);
+        try { verifyAluCasePriorSource(action,prior,source?executionActionSchema.parse(source.body):undefined,source?query(source):undefined); }
+        catch { corrupt('ALU case source identity'); }
       }
       for(const file of action.execution.basis.works) {
         const bytes=Buffer.from(await storage.readResource(file.contentId));

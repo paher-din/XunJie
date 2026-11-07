@@ -6,7 +6,9 @@ import { workFileSchema, workSyncSchema, workViewSchema } from '@xunjie/contract
 import type { WorkFile, WorkView, WorkSync } from '@xunjie/contracts/learning-data';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { activitySchema } from '@xunjie/contracts/learning-data';
+import { ALU_REFLECTION_MEDIA_TYPE } from '@xunjie/contracts/alu-learning';
 import { validateComponentFiles } from './component-state.js';
+import { validateAluReflectionFiles, validateAluReflectionRegistration, validateRetainedAluReflections } from './alu-reflections.js';
 
 export const workMigration: Migration = { version: 2, name: 'reliable-activity-works', sql: `
   CREATE TABLE work_heads(activity_id uuid PRIMARY KEY REFERENCES activities(id),revision integer NOT NULL,files jsonb NOT NULL);
@@ -36,6 +38,8 @@ export async function validateWorks(storage: OwnedStorage) {
     const view = await materialize(storage, Number(row.revision), row.files as ManifestFile[]);
     const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
     validateComponentFiles(activitySchema.parse(activity?.body), view.files);
+    try { await validateAluReflectionFiles(storage, activitySchema.parse(activity?.body), view.files); }
+    catch { throw new StorageError('corrupt'); }
     for (const f of view.files) {
       const { rows: [content] } = await storage.read('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [f.contentId]);
       if (!content || content.activity_id !== row.activity_id || content.object_id !== f.objectId
@@ -57,6 +61,8 @@ export async function validateWorks(storage: OwnedStorage) {
     const { rows: [version] } = await storage.read('SELECT files FROM work_versions WHERE activity_id=$1 AND revision=$2', [receipt.activity_id, result?.revision ?? -1]);
     if (!version || JSON.stringify(version.files) !== JSON.stringify(result?.files)) throw new StorageError('corrupt');
   }
+  try { await validateRetainedAluReflections(storage); }
+  catch { throw new StorageError('corrupt'); }
 }
 /** Whole-workspace optimistic revision; all files and their immutable resource references commit together. */
 export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceIdentity, activityId: string) => Promise<unknown>) {
@@ -78,6 +84,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
     const activity = await authorize(identity, activityId);
     const input = workSyncSchema.parse(value);
     validateComponentFiles(activitySchema.parse(activity), input.files);
+    await validateAluReflectionFiles(storage, activitySchema.parse(activity), input.files);
     const fingerprint = digest({ identity, activityId, input });
     const previous = await storage.receipt(input.requestId, fingerprint);
     if (previous) {
@@ -97,6 +104,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
         await tx.query('INSERT INTO work_objects(object_id,activity_id,kind) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [f.objectId, activityId, f.kind]);
         const { rows: [object] } = await tx.query('SELECT activity_id,kind,deleted FROM work_objects WHERE object_id=$1', [f.objectId]);
         if (object!.deleted || object!.activity_id !== activityId || object!.kind !== f.kind) throw new StorageError('identity-conflict');
+        await validateAluReflectionRegistration(tx, activityId, f);
         await tx.query('INSERT INTO work_contents VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [f.contentId, activityId, f.objectId, f.encoding, f.mediaType]);
         const { rows: [stored] } = await tx.query('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [f.contentId]);
         if (stored!.activity_id !== activityId || stored!.object_id !== f.objectId || stored!.encoding !== f.encoding
@@ -134,8 +142,9 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
    * that was never published, or was replaced by later edits; its bytes are retained independently.
    */
   async function registerBasis(identity: SpaceIdentity, activityId: string, value: unknown) {
-    await authorize(identity, activityId); z.uuid().parse(activityId);
+    const activity = await authorize(identity, activityId); z.uuid().parse(activityId);
     const file: WorkFile = workFileSchema.parse(value);
+    if (file.mediaType === ALU_REFLECTION_MEDIA_TYPE) await validateAluReflectionFiles(storage, activitySchema.parse(activity), [file]);
     const uploaded = bytes(file);
     await storage.stageResource({ uploadId: file.contentId, scope: `works/${activityId}/${file.objectId}`,
       bytes: uploaded, mediaType: file.mediaType, contentVersion: 1 });
@@ -156,6 +165,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
         [file.objectId, activityId, file.kind]);
       const { rows: [object] } = await tx.query('SELECT activity_id,kind,deleted FROM work_objects WHERE object_id=$1 FOR UPDATE', [file.objectId]);
       if (!object || object.activity_id !== activityId || object.kind !== file.kind) throw new StorageError('identity-conflict');
+      await validateAluReflectionRegistration(tx, activityId, file);
       const { rows: [known] } = await tx.query('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [file.contentId]);
       if (!known) {
         // A retained selection can arrive after the current object was deleted.

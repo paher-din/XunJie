@@ -25,3 +25,5 @@
 ## 非文本引用（#172）
 
 组件状态和真实执行结果通过注册语义范围生成固定副本，复用 drafts/intents 和 owner 内的资源引用。创建时核对当前课程 authority；保存后的未知适配只读恢复。历史修订、固定动作和资源 pin 参与恢复验证，不修改原迁移。具体格式、保留责任与验证见 [#172 交付](../../../../docs/student-agent-implementation/wp03-semantic-references.md)。
+
+ALU 的 `alu-case`、`alu-observation`、`alu-waveform`、`alu-reflection` 沿同一边界接入。固定预测来自原执行 state basis，实际值与 VCD 来自执行结果资源，解释修订是作品 owner 的不可变专用状态资源；服务重读原资源、归属和范围后生成副本。原命令 / 结果未到达时返回 `unavailable`，允许浏览器保留待同步引用，不重跑旧观察。作品和执行的维护校验覆盖解释父链、固定来源、同身份字节和资源 pin；没有新增表或独立保存队列。接口与范围见 [#194 方案](../../../../docs/student-agent-implementation/specs/wp04-alu-learning.md)。

@@ -5,8 +5,13 @@ import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 import { digestOf, readComponentState } from './action'
 import { aluControls } from './adapters/alu'
+import { aluCaseDraftSchema, aluCaseFromAction, type AluCaseDraft } from '@xunjie/contracts/alu-learning'
+import { componentStateMediaType } from '@xunjie/contracts/components'
 
 export interface RuntimeActionOptions {
+  requestId?: string
+  /** An explicit comparison freezes student text beside its input, in this command's own state basis. */
+  caseDraft?: AluCaseDraft
   operationId?: string
   parameters?: unknown
   /**
@@ -21,6 +26,7 @@ export interface RuntimeActionOptions {
 export async function runtimeAction(workspace:ReliableWorkspace, activity:LearningActivity, binding:ComponentBinding,
   receiverId:string, options:RuntimeActionOptions = {}) {
   const manifest=structuredClone(binding.definition.manifest), files=structuredClone(workspace.snapshot().files)
+  const requestId=options.requestId??crypto.randomUUID()
   if(manifest.formatVersion!==3 || !activity.course?.executionPlan) throw new Error('capability-unavailable')
   const operationId=options.operationId??manifest.runtime.operations[0]?.operationId
   const operation=manifest.runtime.operations.find(item=>item.operationId===operationId)
@@ -40,11 +46,21 @@ export async function runtimeAction(workspace:ReliableWorkspace, activity:Learni
   const citedCode=enabled??currentCode
   if(!citedCode.some(file=>file.name===operation.compile.entryFiles[0]))
     throw new Error(`缺少固定编译入口 ${operation.compile.entryFiles[0]}；请恢复该文件后重试。`)
-  const works=[...citedCode,...(includeState&&state.file?[structuredClone(state.file)]:[])]
+  let stateFile=state.file&&structuredClone(state.file)
+  if(manifest.stateVersion===3) {
+    const fixedCase=options.caseDraft&&aluCaseDraftSchema.parse(options.caseDraft)
+    if(fixedCase && (operationId!=='observe-enabled'||!options.enabledBy)) throw new Error('invalid-case')
+    stateFile={objectId:stateFile?.objectId??crypto.randomUUID(),contentId:crypto.randomUUID(),name:`components/${binding.key}.json`,
+      kind:'state',encoding:'json',mediaType:componentStateMediaType,value:JSON.stringify({formatVersion:1,instanceId,
+        componentId:manifest.componentId,version:manifest.version,definitionDigest:binding.definition.digest,stateVersion:manifest.stateVersion,
+        operationId:crypto.randomUUID(),content:{...stateContent,caseRequestId:fixedCase?requestId:'',
+          ...(fixedCase?{caseDraft:JSON.stringify(fixedCase),feedbackPolicy:'hold'}:{})}})}
+  } else if(options.caseDraft) throw new Error('unsupported-case-version')
+  const works=[...citedCode,...(includeState&&stateFile?[stateFile]:[])]
   if(works.some(file=>file.name===manifest.runtime.resources.find(resource=>resource.resourceId===operation.observation.scaffoldResourceId)?.path))
     throw new Error('invalid-input')
   const scope=actionScopeFromWorkspaceKey(workspace.key)
-  return executionActionV3Schema.parse({protocolVersion:3,kind:'execution',requestId:crypto.randomUUID(),scope,
+  return executionActionV3Schema.parse({protocolVersion:3,kind:'execution',requestId,scope,
     receiver:{receiverId,location:'local',kind:'execution'},execution:{
       instance:{instanceId,key:binding.key,componentId:manifest.componentId,componentVersion:manifest.version,
         definitionDigest:binding.definition.digest,hostApiVersion:1,stateVersion:manifest.stateVersion},
@@ -53,7 +69,7 @@ export async function runtimeAction(workspace:ReliableWorkspace, activity:Learni
         adapterId:manifest.runtime.adapterId,adapterVersion:manifest.runtime.adapterVersion,bundleIdentity:manifest.runtime.bundleIdentity,resources:manifest.runtime.resources},
         compile:operation.compile,observation:operation.observation,course:{releaseId:activity.course.releaseId,
           behaviorRuleDigest:await digestOf(activity.course.requirements),planDigest:activity.course.executionPlan.planDigest},
-        expected:{stateContentId:includeState&&state.file?state.file.contentId:null}},
+        expected:{stateContentId:includeState&&stateFile?stateFile.contentId:null}},
       limits:{...operation.budgets,concurrentJobs:manifest.budget.concurrentJobs,queuedJobs:manifest.budget.queuedJobs},
       plan:{planId:activity.course.executionPlan.planId,planVersion:activity.course.executionPlan.planVersion,
         planDigest:activity.course.executionPlan.planDigest,location:'browser',kind:'job'},initiator:{kind:'student',principalId:scope.principalId}}})
@@ -66,6 +82,9 @@ export function runtimeCandidateIsCurrent(workspace: ReliableWorkspace, activity
     if (workspace.snapshot().conflict || workspace.isReadOnly() || workspace.accessDenied()) return false
     const binding = activity.course?.components?.find(item => item.key === action.execution.instance.key)
     if (!binding || binding.definition.digest !== action.execution.instance.definitionDigest) return false
+    // A comparison is an explicit click-time command. Editing after the click creates a new draft,
+    // while this already protected command keeps the original prediction and original enabled work.
+    if (aluCaseFromAction(action)) return true
     const current = readComponentState(workspace, binding, action.execution.instance.instanceId).content as Record<string, unknown>
     const fixedFile = action.execution.basis.works.find(file => file.contentId === action.execution.basis.expected.stateContentId && file.kind === 'state')
     if (!fixedFile) return false

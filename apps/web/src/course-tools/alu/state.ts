@@ -19,6 +19,13 @@ export interface AluState {
   selectedCheck: string
   selectedCheckBasis: string
   feedbackPolicy: 'live' | 'hold'
+  caseDraft: string
+  caseRequestId: string
+  selectedCase: string
+  reflectionFor: string
+  reflectionParent: string
+  reflectionDraft: string
+  waveSelection: string
 }
 
 export interface EnabledBasis {
@@ -34,6 +41,8 @@ export const defaultAluState: AluState = {
   pendingActivationRevision: 0, pendingActivationBase: 0,
   selectedObservation: '', selectedObservationRevision: -1, selectedCheck: '', selectedCheckBasis: '',
   feedbackPolicy: 'live',
+  caseDraft: '', caseRequestId: '', selectedCase: '', reflectionFor: '', reflectionParent: '', reflectionDraft: '',
+  waveSelection: '',
 }
 
 const integer = (value: unknown, fallback: number) => Number.isInteger(value) ? value as number : fallback
@@ -59,6 +68,10 @@ export function readAluState(content: unknown): AluState {
     selectedCheck: text(value.selectedCheck, 64),
     selectedCheckBasis: text(value.selectedCheckBasis, 64),
     feedbackPolicy: value.feedbackPolicy === 'hold' ? 'hold' : 'live',
+    caseDraft: text(value.caseDraft, 16000), caseRequestId: text(value.caseRequestId, 64),
+    selectedCase: text(value.selectedCase, 64), reflectionFor: text(value.reflectionFor, 64),
+    reflectionParent: text(value.reflectionParent, 64),
+    reflectionDraft: text(value.reflectionDraft, 8000), waveSelection: text(value.waveSelection, 4000),
   }
 }
 

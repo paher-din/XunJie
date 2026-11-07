@@ -23,11 +23,13 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from '@playwright/test';
 import { createAluImeProduct } from './lib/alu-ime-product.mjs';
+import { probeAluLearningIme } from './lib/alu-learning-ime.mjs';
 
 const { values } = parseArgs({ options: {
   state: { type: 'string' }, output: { type: 'string' }, 'input-source': { type: 'string' },
   'product-root': { type: 'string' }, packages: { type: 'string' },
   'only-tool-switch': { type: 'boolean', default: false },
+  learning: { type: 'boolean', default: false },
 } });
 if (!values.output || !values.state && !values['product-root']) throw new Error('usage: --output=DIR (--state=FILE | --product-root=DIR --packages=DIR)');
 if (values['product-root'] && !values.packages) throw new Error('--product-root requires --packages');
@@ -90,7 +92,7 @@ const candidateWindows = () => parseWindows().filter(item =>
 
 const osVersion = run('sw_vers', ['-productVersion']);
 const report = {
-  kind: 'macos-os-ime-acceptance', ticket: '#211', platform: process.platform, arch: process.arch,
+  kind: 'macos-os-ime-acceptance', ticket: values.learning ? '#194' : '#211', platform: process.platform, arch: process.arch,
   os: `macOS ${osVersion}`, node: process.version, desiredInputSource: desired,
   startedAt: new Date().toISOString(), cases: [], keySequences: [], screenshots: [], candidateWindows: [],
   texts: {}, network: { draftSendRequests: [], executionRequests: [] }, foregroundChecks: [], status: 'running',
@@ -551,6 +553,8 @@ end tell`]).trim();
   report.network.draftSendRequests = questionSubmissions().map(item => ({ method: item.method, path: new URL(item.url).pathname }));
 
   }
+  if (values.learning) await probeAluLearningIme({ page, key, candidateEvidence, shot, passed, wait,
+    executionSubmissions, questionSubmissions });
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.error = String(error?.stack ?? error);

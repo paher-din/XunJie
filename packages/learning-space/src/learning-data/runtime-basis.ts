@@ -3,6 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import { acceptsState, type ComponentBinding } from '@xunjie/contracts/components';
 import { canonicalValue, type ExecutionActionV3, type AnyExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
+import { aluCaseFromAction, aluCodeIdentity, sameAluInputs, type AluCaseDraft } from '@xunjie/contracts/alu-learning';
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 const same=(a:unknown,b:unknown)=>hash(a)===hash(b);
 /** Re-derive every runtime fact from the activity's authorised fixed release, never a live workspace head. */
@@ -32,6 +33,26 @@ export function verifyRuntimeBasis(activity:LearningActivity,binding:ComponentBi
   if(code.some(f=>f.encoding!=='utf8'||! /\.(sv|v|svh|vh)$/.test(f.name))
     || code.reduce((n,f)=>n+Buffer.byteLength(f.value,'utf8'),0)>action.execution.limits.inputBytes)return fail();
   if(b.expected.stateContentId!==null && !b.works.some(f=>f.kind==='state'&&f.contentId===b.expected.stateContentId))return fail();
+  if(m.stateVersion===3) {
+    const state=b.works.find(file=>file.contentId===b.expected.stateContentId);
+    let fixed: {content?:{caseRequestId?:unknown}};
+    try { fixed=JSON.parse(state?.value??'{}'); } catch { return fail(); }
+    if(fixed.content?.caseRequestId && !aluCaseFromAction(action)) return fail();
+  }
+}
+
+/** Student-entered prediction text is not an attestation of having observed a different run. */
+export function verifyAluCasePriorSource(action: ExecutionActionV3, prior: AluCaseDraft['priorSources'][number],
+  source: AnyExecutionAction | undefined, confirmed: ExecutionQuery | undefined) {
+  const invalid=():never=>{throw new StorageError('invalid');};
+  if(!source || source.protocolVersion!==3 || !confirmed || source.requestId===action.requestId
+    || prior.requestId!==source.requestId || confirmed.requestId!==source.requestId
+    || prior.inputDigest!==confirmed.inputDigest || prior.executionRef!==confirmed.executionRef
+    || confirmed.statusKnowledge!=='confirmed' || !confirmed.output || !same(source.scope,action.scope)
+    || !same(source.execution.instance,action.execution.instance)
+    || aluCodeIdentity(source)!==aluCodeIdentity(action)) return invalid();
+  if(prior.kind==='work-check' ? source.execution.operation.operationId!=='check-all'
+    : source.execution.operation.operationId==='check-all' || !sameAluInputs(source.execution.parameters,action.execution.parameters)) return invalid();
 }
 
 /** Compare retained facts, not an editable client activation flag or current workspace head. */
