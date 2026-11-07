@@ -90,7 +90,7 @@
       "passed": 8,
       "total": 8,
       "report": "windows/chrome-skills.json",
-      "capture": "Runner stdout; final file fetch pending, see windows/capture.json"
+      "capture": "Original final report and screenshots copied after SSH recovery; verified against runner stdout, see windows/capture.json"
     }
   },
   "realModels": {
@@ -111,5 +111,9 @@
     "report": "maintenance-runtime.json"
   },
   "teachingEffect": "not evaluated",
-  "remoteCloseout": "Final Windows report/screenshots and cleanup pending SSH channel recovery; preserve sibling jobs, no service restart"
+  "remoteCloseout": {
+    "status": "passed",
+    "report": "final-cleanup.json",
+    "pendingItems": 0
+  }
 }

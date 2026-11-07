@@ -34,4 +34,4 @@
 
 Windows 对应[个人设置](windows/win32-settings-after.png)、[问题草稿](windows/win32-draft-after.png)、[固定来源](windows/win32-skill-source.png)及[深色窄桌面](windows/win32-dark-narrow.png)。
 
-Windows 最终 8/8 的报告数值已由成功 runner 的 stdout 保存；原报告文件和最终截图暂因新 SSH 会话被复位而未取回。现有 Windows 图片来自此前 7/7 候选，具体来源及待处理项见 [capture 记录](windows/capture.json)，不把旧图片称为最终候选截图。
+Windows 最终 8/8 的原报告、截图及桌面会话事实已在 SSH 恢复后取回，并与成功 runner stdout 核对一致，见 [capture 记录](windows/capture.json)。[最终清理](final-cleanup.json)确认本票临时目录、相关进程和计划任务均已清除；没有重启 Windows/sshd 或改动兄弟作业。此前跨机清理快照为 UI 保留的共享候选也已移除。本地仅保留 `dist/wp08-217-macos-reviewed` 与 `dist/wp08-217-windows-reviewed` 两个可运行交付候选及有意保存的验证日志，旧候选和无用辅助文件已删。

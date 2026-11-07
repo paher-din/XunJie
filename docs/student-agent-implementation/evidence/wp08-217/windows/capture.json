@@ -1,10 +1,11 @@
 {
-  "reportSource": "Exact report values captured from the successful scheduled-task runner stdout, exit code 0.",
-  "remoteOriginalReportPending": true,
-  "screenshots": "Existing before-final-review screenshots, application SHA256 4f36d24d5556ba9642eaad55930920b7b00bced81d5f5ecc9507cc4845f6cf18",
-  "reason": "New SSH sessions authenticate and are reset before opening a channel; final files and cleanup remain pending.",
+  "reportSource": "Original final report file copied via SCP after SSH recovered; all report values match the successful runner stdout.",
+  "remoteOriginalReportPending": false,
+  "screenshots": "Final reviewed candidate actual Windows screenshots, application SHA256 e765621c7a32232c00d367e89c4b4c3fcbff96a6351ad3b8dcc40e7e994a2d4f",
+  "reason": "New SSH sessions temporarily reset after authentication. Access recovered without restarting Windows/sshd; final files were then copied and task-owned resources removed.",
   "coordination": "Preserve active sibling jobs and existing Windows connections; do not restart sshd or Windows. This issue runner finished with exit code 0 and has no remaining SSH control handle.",
-  "pendingFiles": {
+  "finalCleanupReport": "../final-cleanup.json",
+  "files": {
     "root": "C:/Users/h/AppData/Local/Temp/xj-wp08-217-chrome",
     "report": "evidence/chrome-skills.json",
     "desktop": "desktop.json",
@@ -15,12 +16,12 @@
       "evidence/win32-dark-narrow.png"
     ]
   },
-  "cleanupAfterCopy": {
+  "removedResources": {
     "temporaryHarness": "C:/Users/h/AppData/Local/Temp/xj-wp08-217-chrome",
     "sharedCandidate": "C:/Users/h/.verification/wp08-217-cross-ywisqryz",
     "failedUninstalledRoots": "C:/Users/h/AppData/Local/Temp/xj-wp08-217-ui-*",
     "scheduledTask": "XunJie-WP08-217-SkillsChrome-01a1b761",
-    "taskUnregistration": "Runner finally returned successfully; independent readback pending",
+    "taskUnregistration": "Read back absent after final cleanup",
     "precondition": "Confirm no process uses these task-owned paths; touch no sibling or user data."
   }
 }
