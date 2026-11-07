@@ -103,9 +103,15 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       } });
     await channel.register(grant.token, node);
     let droppedCheckpoint = false;
+    let blockedStopReportId, stopReportInterrupted = false, stopAcknowledged = false;
     worker = createNativeChannelWorker({ root: join(fixture.root, 'device'), node, native,
       call: async (operation, input) => {
+        if (operation === 'report' && input.commandId === blockedStopReportId && !stopReportInterrupted) {
+          stopReportInterrupted = true;
+          throw new Error('stop exit report unavailable before ACK');
+        }
         const reply = await (operation === 'cleanup' ? channel.cleanup(input) : channel[operation](grant.token, input));
+        if (operation === 'report' && input.commandId === blockedStopReportId) stopAcknowledged = reply.state === 'reported';
         if (cleanupBoundary === 'checkpoint' && operation === 'report' && input.result?.checkpoint && !droppedCheckpoint) {
           droppedCheckpoint = true; throw new Error('checkpoint report accepted; reply lost');
         }
@@ -328,21 +334,62 @@ async function approvedLocalProcess(t, cleanupBoundary = 'revocation') {
       }, executions: originalOwner }), courses: {} });
       const command = await tools.prepare(scope, { callId: 'stop-original', name: 'execution_stop', arguments: { requestId } }, randomUUID());
       const requested = await tools.dispatch(scope, command);
-      assert.equal(requested.state, 'accepted', 'the node has not claimed the stop or ended the process');
+      assert.equal(requested.state, 'unknown', 'the original node has not yet confirmed the stop effect');
+      assert.equal(requested.result.query.statusKnowledge, 'unknown');
       assert.equal(requested.result.operationCompleted, false);
       assert.equal(requested.result.query.stopRequested, true);
       assert.equal(requested.result.query.state, 'running');
       assert.equal(children[0].exitFact, null);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const waiting = await tools.reconcile(scope, command);
+        assert.equal(waiting.state, 'unknown', 'old running observations cannot confirm an unclaimed stop');
+        assert.equal(waiting.result.query.statusKnowledge, 'unknown');
+        assert.equal(waiting.result.operationCompleted, false);
+        assert.equal(waiting.result.query.stopRequested, true);
+        assert.equal(waiting.result.query.state, 'running');
+        assert.deepEqual(fixed(waiting.result.query), fixed(accepted));
+        assert.equal(children[0].exitFact, null);
+      }
+      const stopId = requested.result.stopId;
+      const pendingStop = await channel.query(identity, stopId);
+      assert.equal(pendingStop.state, 'pending',
+        'owner cleanup must deliver the original stop to the live node, not only mark the school projection unknown');
+      assert.equal(pendingStop.statusKnowledge, 'unknown', 'queue receipt does not confirm the stop effect');
+      assert.deepEqual((await tools.dispatch(scope, command)).result.query, requested.result.query,
+        'retrying the original stop before ACK must preserve its unknown execution');
+      const stopCommand = { commandId: stopId, activityId, sessionId: accepted.executionRef, operation: 'stop',
+        payload: { requestId, executionRef: accepted.executionRef, stop: { stopId, reason: '' } } };
+      assert.equal((await channel.enqueue(identity, node.connectionId, stopCommand)).state, 'pending',
+        'the normal outbox must recover the same cleanup stop if enqueue succeeded before its reply was saved');
+      blockedStopReportId = stopId;
+      await assert.rejects(worker.tick(), /stop exit report unavailable before ACK/);
+      assert.equal(children[0].exitFact.confirmed, true, 'the actual process exited before its stop report was delivered');
+      assert.equal(stopAcknowledged, false);
+      assert.equal((await channel.query(identity, stopId)).state, 'claimed');
+      const unacknowledged = await tools.reconcile(scope, command);
+      assert.equal(unacknowledged.state, 'unknown', 'an undelivered exit report is not an acknowledged stop');
+      assert.equal(unacknowledged.result.operationCompleted, false);
+      assert.equal(unacknowledged.result.query.statusKnowledge, 'unknown');
+      assert.equal(unacknowledged.result.query.stopRequested, true);
+      assert.deepEqual(fixed(unacknowledged.result.query), fixed(accepted));
       await worker.tick();
+      assert.equal(stopAcknowledged, true);
+      const stopFact = await channel.query(identity, stopId);
+      assert.equal(stopFact.state, 'reported');
+      assert.equal(stopFact.result.statusKnowledge, 'confirmed');
+      assert.equal(stopFact.result.state, 'cancelled');
+      assert.deepEqual(fixed(stopFact.result), fixed(accepted));
       const completed = await tools.reconcile(scope, command);
       assert.equal(completed.state, 'completed');
       assert.equal(completed.result.operationCompleted, true);
       assert.equal(completed.result.query.state, 'cancelled');
+      assert.equal(completed.result.query.statusKnowledge, 'confirmed');
       assert.equal(completed.result.query.executionRef, accepted.executionRef);
       assert.equal(completed.result.sessionOngoing, false);
       assert.equal(children[0].exitFact.confirmed, true);
       assert.deepEqual(await tools.reconcile(scope, command), completed);
       assert.equal(children.length, 1, 'reconciliation never creates another process');
+      await validateChannelExecutions(data);
       return;
     }
     const stop = { stopId: randomUUID(), reason: '' };

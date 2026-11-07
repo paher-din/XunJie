@@ -9,6 +9,7 @@ import { teachingEventKindSchema, teachingIgnorableExtensionSchema, teachingSnap
 import type { LearningModelPort } from '../model-connections/service.js';
 import { cleanupScopeFor } from './tools-execution.js';
 import { buildContext, type ContextMessage } from './context.js';
+import { teachingExplanationText, teachingPublicArguments } from './help-policy.js';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
 import { studentAskDefinition, prepareStudentAsk, type createStudentQuestions } from './student-questions.js';
@@ -367,7 +368,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if (fact.state === 'completed' && !fact.resultRef) {
       await pause(run, generation, 'native-result-unavailable'); return false;
     }
-    const summary = fact.state === 'completed' ? await owner.models.checks.summary?.(scope.identity, fact.attemptId) : null;
+    const originalSummary = fact.state === 'completed' ? await owner.models.checks.summary?.(scope.identity, fact.attemptId) : null;
+    const summary = originalSummary ? { ...originalSummary, text: teachingExplanationText(scope.activity, originalSummary.text) } : null;
+    const publicText = teachingExplanationText(scope.activity, fact.text);
     const stopped = owner.toRun(await owner.runRow(run.runId)).stopRequested;
     const intents = fact.state === 'completed' && fact.resultRef && fact.toolIntents?.length ? fact.toolIntents : [];
     if (!intents.length) {
@@ -376,8 +379,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const extras: Event[] = [];
       if (summary) extras.push({ kind: 'native-summary', body: { runId: run.runId, attemptId: saved.attempt_id,
         resultRef: fact.resultRef, ...summary } });
-      if (fact.text) extras.push({ kind: 'assistant', body: { runId: run.runId, attemptId: saved.attempt_id,
-        segmentId: saved.segment_id, resultRef: fact.resultRef, text: fact.text, usage: fact.usage,
+      if (publicText) extras.push({ kind: 'assistant', body: { runId: run.runId, attemptId: saved.attempt_id,
+        segmentId: saved.segment_id, resultRef: fact.resultRef, text: publicText, usage: fact.usage,
         model: (saved.plan as unknown as Plan).model, modelSource: fact.source?.kind ?? (saved.plan as unknown as Plan).modelSource,
         state: state === 'completed' ? 'settled' : state === 'stopped' ? 'stopped' : 'failed' } });
       extras.push({ kind: state === 'completed' ? 'run-completed' : state === 'stopped' ? 'run-stopped' : 'run-failed',
@@ -403,7 +406,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         }
       } catch (error) {
         if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict'].includes(error.code)) throw error;
-        command = { version: 1, commandId, name: intent.name, arguments: intent.arguments, effect: 'read',
+        command = { version: 1, commandId, name: teachingExplanationText(scope.activity, intent.name) === intent.name ? intent.name : 'unsupported_tool',
+          arguments: teachingPublicArguments(scope.activity, intent.arguments), effect: 'read',
           conflictKey: run.activityId, location: 'owner', basis: { rejected: error.code } };
         outcome = unsent(error.code);
       }

@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-11-07T10:20:00Z",
+  "provider": "api.deepseek.com",
+  "localDns": [
+    "198.18.0.91"
+  ],
+  "reservedFakeIpRefusedByOwner": true,
+  "authenticatedModelsStatus": 200,
+  "flashAvailable": true,
+  "minimalProductionGatewayViaTlsByteRelay": {
+    "report": "minimal-real-chat.json",
+    "generations": 2,
+    "completed": true
+  },
+  "productPolicyChanged": false
+}

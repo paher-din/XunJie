@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { componentInstanceId, componentStateName, matchesComponentState } from '@xunjie/contracts/components';
-import { canonicalValue, decideExecutionPlacement, defaultExecutionLimits, executionActionSchema, executionControlSchema, isTerminalExecutionState,
-  type ExecutionAction, type ExecutionDevice, type ExecutionQuery } from '@xunjie/contracts/execution';
+import { canonicalValue, decideExecutionPlacement, defaultExecutionLimits, executionActionSchema, anyExecutionActionSchema, executionControlSchema, isTerminalExecutionState,
+  type AnyExecutionAction, type ExecutionDevice, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { ModelToolIntent } from '@xunjie/contracts/model-connections';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
@@ -13,6 +13,7 @@ import type { AgentExecutionContext, AgentExecutionOrigin } from '../learning-da
 import { verifyPlannedExecution } from '../learning-data/plan.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
 import { teachingDefinitions } from './tools-schema.js';
+import { aluVerificationAction } from './alu-tools.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-images.js';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
@@ -78,7 +79,7 @@ export function createTeachingTools(options: {
     }
     return learning().executions.agent.read(scope.identity, scope.activity.activityId, context(scope, command), requestId);
   }
-  async function prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string, fixedAction?: ExecutionAction): Promise<TeachingPreparedTool> {
+  async function prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string, fixed?: AnyExecutionAction): Promise<TeachingPreparedTool> {
     await authorize(scope); z.uuid().parse(commandId);
     const definition = teachingDefinitions(scope).find(item => item.name === intent.name);
     if (!definition || !compileOutputSchema(definition.inputSchema)(intent.arguments)) fail('invalid');
@@ -111,9 +112,21 @@ export function createTeachingTools(options: {
       const binding = scope.activity.course?.components?.find(item => item.key === args.componentKey);
       if (!binding || !scope.activity.course) fail('forbidden');
       const manifest = binding.definition.manifest;
-      if (manifest.formatVersion !== 1) fail('invalid');
       await options.courses.verifyComponentReference(scope.identity, { releaseId: scope.activity.course.releaseId,
         key: binding.key, definitionDigest: binding.definition.digest });
+      if (manifest.formatVersion === 3) {
+        const action = aluVerificationAction(scope, binding, commandId, String(args.operationId), args.parameters);
+        for (const file of action.execution.basis.works) {
+          const original = await learning().works.content(scope.identity, scope.activity.activityId, file.contentId);
+          if (original.objectId !== file.objectId || original.value !== file.value || original.kind !== file.kind
+            || original.encoding !== file.encoding || original.mediaType !== file.mediaType) fail('corrupt');
+        }
+        return freeze(structuredClone({ version: 1, commandId, name, arguments: args, effect: 'execute' as const,
+          location: 'browser' as const, conflictKey: conflictKey + ':component:' + binding.key,
+          basis: { scope: scopeBasis(scope), binding, action, requestId: commandId } }));
+      }
+      if (manifest.formatVersion !== 1) fail('invalid');
+      const fixedAction = fixed?.protocolVersion === 2 ? fixed : undefined;
       const native = !!manifest.session;
       const operationId = native ? manifest.session!.operation.operationId : String(args.operationId);
       const declared = manifest.operations?.find(item => item.operationId === operationId);
@@ -187,7 +200,7 @@ export function createTeachingTools(options: {
     await authorize(scope);
     if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
     const fresh = await prepare(scope, { callId: command.commandId, name: command.name, arguments: command.arguments }, command.commandId,
-      command.basis.action ? executionActionSchema.parse(command.basis.action) : undefined);
+      command.basis.action ? anyExecutionActionSchema.parse(command.basis.action) : undefined);
     // Publication metadata was observed at preparation, not a condition that can replace or
     // invalidate the approved bytes when a later edit moves the head.
     const comparable = command.name === 'read_work'

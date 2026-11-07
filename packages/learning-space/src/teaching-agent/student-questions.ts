@@ -8,6 +8,7 @@ import { teachingStudentAskInputSchema, teachingStudentQuestionSchema, teachingS
   type TeachingStudentResponseReceipt } from '@xunjie/contracts/teaching-agent';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingPreparedTool, TeachingToolOutcome, TeachingToolScope } from './tool-types.js';
+import { teachingPublicArguments } from './help-policy.js';
 
 type Row = Record<string, unknown>;
 const terminal = (state: unknown) => ['completed', 'failed', 'stopped', 'paused'].includes(String(state));
@@ -39,6 +40,7 @@ export const studentAskDefinition: ModelTool = {
 export function prepareStudentAsk(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string): TeachingPreparedTool {
   const parsed = teachingStudentAskInputSchema.safeParse(intent.arguments);
   if (!parsed.success) throw new StorageError('invalid');
+  if (teachingPublicArguments(scope.activity, parsed.data) !== parsed.data) throw new StorageError('forbidden');
   if (scope.activity.status !== 'open' || scope.activity.course && scope.activity.course.helpPolicy?.questions !== 'allowed')
     throw new StorageError('forbidden');
   return { version: 1, commandId, name: studentAskDefinition.name, arguments: parsed.data, effect: 'ask', location: 'owner',

@@ -79,7 +79,8 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
   const record = selected ?? fallbackRecord
   const capture = record?.action.protocolVersion === 3 ? aluCaseFromAction(record.action) : null
   const observation = !!record && isAluObservationAction(record.action)
-  const recordLabel = record ? `${capture ? `用例 ${cases.length - cases.findIndex(item => item.requestId === record.requestId)}` : '观察'} · ${new Date(record.createdAt).toLocaleTimeString('zh-CN')}` : '原仿真波形'
+  const recordLabel = record ? `${record.action.execution.initiator.kind === 'agent' ? 'Agent 验证'
+    : capture ? `用例 ${cases.length - cases.findIndex(item => item.requestId === record.requestId)}` : '观察'} · ${new Date(record.createdAt).toLocaleTimeString('zh-CN')}` : '原仿真波形'
   const [loaded, setLoaded] = useState<{ requestId: string; artifact: ResultRecord | null; loading: boolean; error: string }>(
     { requestId: '', artifact: null, loading: false, error: '' })
   const [notice, setNotice] = useState(''), saving = useRef(false)
@@ -133,7 +134,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     } catch { setNotice('解释修订仍待本机保护或同步确认，请保留页面核对原记录。') }
     finally { saving.current = false }
   }
-  return <section className="alu-case-results" aria-label="比较与解释">
+  return <section className="alu-case-results" aria-label="比较与解释" data-execution-request-id={record?.requestId} tabIndex={-1}>
     <header className="alu-section-head"><h2>比较与解释</h2>
       {cases.length > 0 && <label>用例记录<select aria-label="用例记录" value={suppressed ? '' : state.selectedCase}
         onChange={event => writeState(previous => ({ ...previous, selectedCase: event.target.value, caseRequestId: '',
@@ -158,7 +159,9 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
         <p className="alu-case-original">选择理由：{capture?.draft.reason || '未填写'}</p>
         {capture ? <p className="alu-hint">{capture.draft.priorSources.length ? `保留 ${capture.draft.priorSources.length} 个已有观察 / 检查来源；不作为独立预测。` : '应用内未保留同一作品 / 输入的已知观察来源。'}
           {capture.draft.helpReported && ' 学生已报告获得帮助。'} 环境自检用于确认工具链，不证明学生掌握。</p>
-          : <p className="alu-hint">本次直接观察没有固定预测，缺项保留。</p>}
+          : <p className="alu-hint">{record?.action.execution.initiator.kind === 'agent'
+            ? '这是 Agent 发起的验证，没有学生预测，也不作为学生独立理解的证据。'
+            : '本次直接观察没有固定预测，缺项保留。'}</p>}
         {capture && <button type="button" className="ws-btn ghost" disabled={!canWrite} onClick={() => writeState(previous => editCase({ ...previous,
           ...capture.inputs, inputRevision: previous.inputRevision + 1, selectedObservation: '', selectedObservationRevision: -1,
           caseDraft: JSON.stringify(capture.draft) }))}>以该用例继续编辑</button>}

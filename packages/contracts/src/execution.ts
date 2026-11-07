@@ -239,12 +239,12 @@ export const agentBrowserAcceptanceInputSchema = z.object({ browserId: agentBrow
   acceptance: executionAcceptanceSchema }).strict();
 export type AgentBrowserAcceptanceInput = z.infer<typeof agentBrowserAcceptanceInputSchema>;
 /** Returned by pending delivery and by a successful claim of the same original command. */
-export const agentBrowserCommandSchema = z.object({ action: executionActionSchema,
+export const agentBrowserCommandSchema = z.object({ action: anyExecutionActionSchema,
   association: agentExecutionAssociationSchema }).strict();
 export type AgentBrowserCommand = z.infer<typeof agentBrowserCommandSchema>;
 export const agentBrowserPendingSchema = z.array(agentBrowserCommandSchema);
 export const agentBrowserStopSchema = z.object({ requestId: z.uuid(), association: agentExecutionAssociationSchema,
-  action: executionActionSchema.optional(), stop: executionStopSchema }).strict();
+  action: anyExecutionActionSchema.optional(), stop: executionStopSchema }).strict();
 export type AgentBrowserStop = z.infer<typeof agentBrowserStopSchema>;
 export const agentBrowserStopsSchema = z.array(agentBrowserStopSchema);
 

@@ -1,0 +1,65 @@
+{
+  "status": "observed-confirmed-cancellation",
+  "cause": "The probe allowed a second claim before page closure during slow Wait checks; all claim confirmations are now withheld until the old page closes.",
+  "commandId": "71ce6733-a557-44a2-bbae-b1be35895bbf",
+  "result": {
+    "query": {
+      "scope": {
+        "spaceId": "adc5fd82-ab2f-4f4b-b75c-cf6c28954e69",
+        "activityId": "a4f28351-2583-404a-940f-570d41df3e04",
+        "principalId": "b4ec4efc-5092-4157-8783-8e090be3223c",
+        "environmentId": "113a46ef-618d-4098-ae94-6da731674508"
+      },
+      "state": "cancelled",
+      "output": {
+        "output": null,
+        "artifact": {
+          "name": "failure.json",
+          "sha256": "78a0d16607e0f0d81f6d2a5151064a8fba16d86b4af620f3c93139c2e5ac617a",
+          "mediaType": "application/json",
+          "byteLength": 45
+        },
+        "contentId": "d01994ac-3cee-4751-9ffa-a082e8ee2584"
+      },
+      "reason": {
+        "code": "worker-terminated",
+        "detail": "编译未完成"
+      },
+      "requestId": "71ce6733-a557-44a2-bbae-b1be35895bbf",
+      "inputDigest": "00d9bc23a3e0cbef7272a852a949f552bd3ad6b5fe2d27fdb7b9361b7daabb8f",
+      "confirmedSeq": 3,
+      "executionRef": "fa4a1755-f6c7-4501-bd87-3128d3df76d6",
+      "stopRequested": false,
+      "statusKnowledge": "confirmed"
+    },
+    "artifact": {
+      "name": "failure.json",
+      "text": "{\"stage\":\"starting\",\"operation\":\"run-single\"}",
+      "scope": {
+        "spaceId": "adc5fd82-ab2f-4f4b-b75c-cf6c28954e69",
+        "activityId": "a4f28351-2583-404a-940f-570d41df3e04",
+        "principalId": "b4ec4efc-5092-4157-8783-8e090be3223c",
+        "environmentId": "113a46ef-618d-4098-ae94-6da731674508"
+      },
+      "output": null,
+      "sha256": "78a0d16607e0f0d81f6d2a5151064a8fba16d86b4af620f3c93139c2e5ac617a",
+      "mediaType": "application/json",
+      "requestId": "71ce6733-a557-44a2-bbae-b1be35895bbf",
+      "resources": [
+        {
+          "name": "diagnostics.txt",
+          "text": "",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "contentId": "7709c2d5-baea-40c2-b554-290116c67257",
+          "mediaType": "text/plain",
+          "byteLength": 0
+        }
+      ],
+      "byteLength": 45,
+      "executionRef": "fa4a1755-f6c7-4501-bd87-3128d3df76d6"
+    },
+    "sessionOngoing": false,
+    "operationCompleted": false
+  },
+  "passedAsNormalObservation": false
+}

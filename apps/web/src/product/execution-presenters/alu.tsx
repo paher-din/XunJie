@@ -34,7 +34,7 @@ function AluRecord({ record }: { record: ExecutionRecord }) {
   const output = (record.query.statusKnowledge === 'confirmed' ? record.query.output?.output : undefined) as Record<string, unknown> | undefined
   const isCheck = operation === 'check-all'
   return <>
-    <p className="execution-hint">{operationLabel[operation] ?? operation} · {isCheck
+    <p className="execution-hint">{record.action.execution.initiator.kind === 'agent' ? 'Agent 验证' : operationLabel[operation] ?? operation} · {isCheck
       ? '固定检查已启用作品的全部 4096 组输入'
       : `该次输入：${Object.entries(parameters).map(([key, value]) => `${key}=${value}`).join('，')}`}</p>
     {record.query.statusKnowledge === 'unknown' && <p role="status">执行结果尚未确认，请核对原状态；未将上次状态当作本次检查通过。</p>}

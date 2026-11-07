@@ -1,0 +1,30 @@
+{
+  "attempts": [
+    {
+      "label": "mac-school-1",
+      "status": "failed",
+      "completedAt": "2026-11-07T11:11:30.148Z",
+      "failedCases": [
+        {
+          "id": "formal-entry",
+          "status": "failed",
+          "error": "expect(locator).toBeEnabled() failed\n\nLocator:  locator('.runtime-tool-full.alu-tool').getByRole('button', { name: '运行', exact: true })\nExpected: enabled\nReceived: disabled\nTimeout:  300000ms\n\nCall log:\n  - Expect \"toBeEnabled\" locator('.runtime-tool-full.alu-tool').getByRole('button', { name: '运行', exact: true }) with timeout 300000ms\n  - waiting for locator('.runtime-tool-full.alu-tool').getByRole('button', { name: '运行', exact: true })\n    600 × locator resolved to <button disabled type=\"button\" class=\"ws-btn solid\">运行</button>\n        - unexpected value \"disabled\"\n"
+        }
+      ],
+      "countedAsPassed": false
+    },
+    {
+      "label": "windows-final-real-reviewed",
+      "status": "failed",
+      "completedAt": "2026-11-07T11:52:30.653Z",
+      "failedCases": [
+        {
+          "id": "normal-input-real-agent",
+          "status": "failed",
+          "error": "Agent failed: upstream-http"
+        }
+      ],
+      "countedAsPassed": false
+    }
+  ]
+}

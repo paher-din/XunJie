@@ -3,6 +3,7 @@ import type { ModelTool } from '@xunjie/contracts/model-connections';
 import { toolValidators } from '../model-connections/chat-native.js';
 import { plannedExecutionScope } from '@xunjie/contracts/execution';
 import type { TeachingToolScope } from './tool-types.js';
+import { aluVerificationSchema } from './alu-tools.js';
 export const uuid = { type: 'string', minLength: 36, maxLength: 36 };
 export const objectSchema = (properties: Record<string, unknown>) => ({ type: 'object', properties,
   required: Object.keys(properties), additionalProperties: false });
@@ -18,6 +19,8 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
   const operations: Record<string, unknown>[] = [];
   for (const binding of scope.activity.course?.components ?? []) {
     const manifest = binding.definition.manifest;
+    const alu = aluVerificationSchema(scope, binding);
+    if (alu) operations.push(alu);
     if (manifest.formatVersion !== 1) continue;
     const base = { componentKey: { type: 'string', const: binding.key } };
     for (const op of manifest.operations ?? []) {

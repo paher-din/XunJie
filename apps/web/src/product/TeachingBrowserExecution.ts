@@ -73,19 +73,28 @@ export class TeachingBrowserExecution extends BrowserExecutionReceiver {
     // The base receiver emits the controller's start notification only after the server reply.
     return super.accept(action, inputDigest)
   }
+  /** Receipt archival is not a dispatch permit: recheck the original Run and browser at execution time. */
+  override async beforeRun(action: AnyExecutionAction): Promise<void> {
+    if (action.execution.initiator.kind !== 'agent') return
+    this.assertOpen(); this.verify(action)
+    const record = await this.store.read(this.scope, action.requestId)
+    if (!record) throw new Error('missing')
+    if (record.inputDigest !== await actionDigest(action) || record.inputDigest !== await actionDigest(record.action))
+      throw new Error('identity-conflict')
+    const remote = await this.transport.accept(action, record.acceptance)
+    this.assertOpen()
+    if (remote.requestId !== action.requestId || remote.inputDigest !== record.inputDigest || remote.executionRef !== record.executionRef)
+      throw new Error('identity-conflict')
+    if (remote.stopRequested || record.query.stopRequested) {
+      await this.requestStop(record, '原 Agent 已请求停止。', action.requestId)
+      throw new AlgorithmError('worker-terminated', '原 Agent 已请求停止，未启动新的计算。')
+    }
+    // Archival can finish after revocation; only a fresh claim can authorize the next effect.
+    await this.claimCommand(action)
+  }
   withProvider(provider: AlgorithmProvider): AlgorithmProvider {
     return { load: async action => {
-      if (action.execution.initiator.kind === 'agent') {
-        await this.claimCommand(action)
-        const record = await this.store.read(this.scope, action.requestId)
-        if (!record) throw new Error('missing')
-        const remote = await this.transport.accept(action, record.acceptance)
-        this.assertOpen()
-        if (remote.stopRequested) {
-          await this.requestStop(record, '原 Agent 已请求停止。', action.requestId)
-          throw new AlgorithmError('worker-terminated', '原 Agent 已请求停止，未启动新的计算。')
-        }
-      }
+      await this.beforeRun(action)
       return provider.load(action)
     } }
   }

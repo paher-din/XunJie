@@ -360,24 +360,27 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       fingerprint: canonicalHash({ action, stop }) }, async tx => {
       const { rows: [locked] } = await tx.query('SELECT execution FROM channel_executions WHERE request_id=$1 FOR UPDATE', [action.requestId]);
       if (!locked) fail('missing');
-      const cancelled = await cancelledBeforeEnqueue(tx, action, executionQuerySchema.parse(locked.execution));
-      if (!cancelled) return null;
-      const command = { commandId: stop.stopId, activityId: action.scope.activityId, sessionId: cancelled.executionRef,
-        operation: 'stop', payload: { requestId: action.requestId, executionRef: cancelled.executionRef, stop } };
+      const latest = executionQuerySchema.parse(locked.execution);
+      const cancelled = await cancelledBeforeEnqueue(tx, action, latest);
+      const command = { commandId: stop.stopId, activityId: action.scope.activityId, sessionId: latest.executionRef,
+        operation: 'stop', payload: { requestId: action.requestId, executionRef: latest.executionRef, stop } };
       await tx.query(`INSERT INTO channel_execution_intents(command_id,request_id,command,command_text)
         VALUES($1,$2,$3,$4) ON CONFLICT(command_id) DO NOTHING`,
         [stop.stopId, action.requestId, JSON.stringify(command), JSON.stringify(command)]);
       const { rows: [saved] } = await tx.query('SELECT request_id,command FROM channel_execution_intents WHERE command_id=$1', [stop.stopId]);
       if (!saved || saved.request_id !== action.requestId || canonicalHash(saved.command) !== canonicalHash(command)) fail('identity-conflict');
-      await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1', [action.requestId, JSON.stringify(cancelled)]);
+      await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1',
+        [action.requestId, JSON.stringify(cancelled ?? { ...latest, stopRequested: true })]);
       return cancelled;
     });
     if (unqueued.result) return executionQuerySchema.parse(unqueued.result);
-    const observed = await options.channel.reclaimOriginal(action.requestId, current);
+    const observed = await options.channel.reclaimOriginal(action.requestId, current, stop);
     const saved = await storage.request({ requestId: 'channel-reclaim:' + randomUUID(), fingerprint: hash({ requestId: action.requestId, observed }) }, async tx => {
       const { rows: [latest] } = await tx.query('SELECT execution FROM channel_executions WHERE request_id=$1 FOR UPDATE', [action.requestId]);
       if (!latest) fail('missing');
       const next = advanceExecution(executionQuerySchema.parse(latest.execution), observed);
+      if (!isTerminalExecutionState(observed.state)) await tx.query(
+        'UPDATE channel_execution_intents SET dispatched=true WHERE command_id=$1', [stop.stopId]);
       await tx.query('UPDATE channel_executions SET execution=$2 WHERE request_id=$1', [action.requestId, JSON.stringify(next)]);
       return next;
     });

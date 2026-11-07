@@ -4,11 +4,14 @@ import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage
 import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
-import { canonicalValue, executionActionSchema, executionAcceptanceSchema, executionControlSchema, executionStopSchema,
+import { componentInstanceId } from '@xunjie/contracts/components';
+import { canonicalValue, anyExecutionActionSchema as executionActionSchema, executionAcceptanceSchema, executionControlSchema, executionStopSchema,
   agentExecutionAssociationSchema as associationSchema, agentBrowserIdSchema, agentBrowserCommandSchema,
   agentBrowserPendingSchema, agentBrowserStopsSchema, isTerminalExecutionState, executionQuerySchema,
-  type AgentExecutionAssociation, type ExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution';
+  type AgentExecutionAssociation, type AnyExecutionAction as ExecutionAction, type ExecutionActionV3, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { createWorks } from './works.js';
+import { verifyRuntimeBasis } from './runtime-basis.js';
+import { verifyPlannedExecution } from './plan.js';
 
 export const agentExecutionMigration: Migration = { version: 17, name: 'trusted-agent-execution-commands', sql: `
   CREATE TABLE agent_execution_commands(command_id uuid PRIMARY KEY,request_id uuid NOT NULL,
@@ -46,6 +49,23 @@ const actionScope = (identity: SpaceIdentity, activityId: string) => ({ environm
   spaceId: identity.spaceId, principalId: identity.principalId, activityId });
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'invalid' | 'identity-conflict' | 'missing' | 'corrupt'): never { throw new StorageError(code); }
+
+/** Agent runs verify fixed question code; they never activate work or carry student prediction state. */
+export function verifyAgentRuntimeBasis(activity: LearningActivity, action: ExecutionActionV3) {
+  const { instance, basis, operation } = action.execution;
+  if (operation.operationId !== 'run-single' || basis.enabledBy !== undefined
+    || basis.expected.stateContentId !== null || basis.works.some(file => file.kind !== 'code')) fail('invalid');
+  const binding = activity.course?.components?.find(item => item.key === instance.key);
+  if (!binding || binding.definition.digest !== instance.definitionDigest
+    || binding.definition.manifest.componentId !== instance.componentId
+    || binding.definition.manifest.version !== instance.componentVersion
+    || binding.definition.manifest.stateVersion !== instance.stateVersion
+    || binding.definition.manifest.hostApiVersion !== instance.hostApiVersion
+    || componentInstanceId(activity.activityId, instance.key) !== instance.instanceId) fail('identity-conflict');
+  verifyPlannedExecution(activity, { key: instance.key, definitionDigest: instance.definitionDigest,
+    operationId: operation.operationId, location: 'browser' });
+  verifyRuntimeBasis(activity, binding, action);
+}
 
 /** Read persisted owner facts only. A monitor must never reconcile a supervisor through a different host handle. */
 async function terminalFact(storage: OwnedStorage, activityId: string, requestId: string): Promise<boolean> {
@@ -407,6 +427,9 @@ export async function validateAgentExecutionCommands(storage: OwnedStorage) {
     if (!owned || action.requestId !== row.request_id || action.execution.initiator.kind !== 'agent'
       || hash(action.scope) !== hash(actionScope(owned.identity, String(row.activity_id)))
       || row.claimed && action.execution.plan.location !== 'browser') fail('corrupt');
+    if (action.protocolVersion === 3) {
+      try { verifyAgentRuntimeBasis(owned, action); } catch { fail('corrupt'); }
+    }
     for (const file of action.execution.basis.works) {
       const { rows: refs } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
         [`agent-execution/${row.command_id}/work/${file.contentId}`]);

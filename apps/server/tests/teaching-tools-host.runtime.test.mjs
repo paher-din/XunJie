@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 import { provisionStorage, openStorage, createFileBackend, StorageError } from '@xunjie/storage';
 import { createExecutions, executionMigration, executionActionTextMigration } from '../../../packages/learning-space/dist/learning-data/executions.js';
@@ -238,10 +239,10 @@ test('browser handoff survives owner reconstruction, requires a live permit and 
     assert.equal((await reopened.agent.pendingBrowser(f.identity, f.activity.activityId)).length, 0);
     assert.equal((await reopened.agent.acceptBrowser(f.identity, f.activity.activityId, action.requestId, browserId, acceptance, async () => {})).executionRef, accepted.executionRef);
     // Run the actual browser adapter and the package's actual Wasm bytes, with no canned tool result.
-    const ts = await import('../../../packages/learning-space/node_modules/typescript/lib/typescript.js');
-    const { readFile } = await import('node:fs/promises');
-    const source = await readFile(new URL('../../../apps/web/src/tool-execution/algorithm.ts', import.meta.url), 'utf8');
-    const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+    const { build } = await import('esbuild');
+    const bundled = await build({ entryPoints: [fileURLToPath(new URL('../../../apps/web/src/tool-execution/algorithm.ts', import.meta.url))],
+      bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022' });
+    const js = bundled.outputFiles[0].text;
     const algorithm = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
     const job = algorithm.jobFromAction(action, action.execution.limits);
     const computed = algorithm.runAggregation({ ...job, bytes: Buffer.from(published.algorithmBase64, 'base64'),

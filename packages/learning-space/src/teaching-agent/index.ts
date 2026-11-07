@@ -16,6 +16,7 @@ import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot,
 } from '@xunjie/contracts/teaching-agent';
 import { buildContext, type ContextMessage } from './context.js';
+import { requiresExplanationReview } from './help-policy.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
 import { teachingDeploymentMigration, validateTeachingDependencyBindings, type TeachingDispatchAuthority } from './remote-state.js';
@@ -615,10 +616,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   async function awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttemptFact): Promise<ModelAttemptFact> {
     let fact = initial ?? await options.models.checks.read(identity, attemptId);
+    const bufferProgress = requiresExplanationReview(await options.activity(identity, run.activityId));
     const known = await lastProgressEvent(run.activityId, attemptId);
     let lastHeartbeat = Date.now(), unknownReads = 0, lastRevision = known.revision, lastLength = known.length;
     async function publishProgress() {
-      if (fact.physicalRequestEnded) return;
+      if (bufferProgress || fact.physicalRequestEnded) return;
       const live = await options.models.checks.progress(identity, attemptId).catch(() => null);
       if (!live || live.revision <= lastRevision || live.text.length <= lastLength) return;
       const delta = live.text.slice(lastLength);

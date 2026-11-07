@@ -15,6 +15,8 @@ export class BrowserExecutionReceiver {
     private candidateIsCurrent: (action: AnyExecutionAction) => boolean = () => true) {}
   /** The controller observes real acceptances, not a polled guess about them. */
   onAccept(listener: (requestId: string) => void) { this.acceptListeners.add(listener); return () => { this.acceptListeners.delete(listener) } }
+  /** Revalidate any trusted dispatch authority immediately before an adapter may produce effects. */
+  async beforeRun(_action: AnyExecutionAction): Promise<void> {}
   async accept(action: AnyExecutionAction, inputDigest: string): Promise<ExecutionAcceptance> {
     if (!this.canAccept()) throw Object.assign(new Error('forbidden'), { code: 'forbidden' })
     const receipt = actionReceiptSchema.parse({ requestId: action.requestId, inputDigest, receiver: action.receiver,

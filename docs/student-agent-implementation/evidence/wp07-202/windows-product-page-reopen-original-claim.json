@@ -1,0 +1,10 @@
+{
+  "requestId": "56861dbd-1733-48ec-b369-25237606eb88",
+  "association": {
+    "runId": "c3b0da28-c264-4b6e-99a7-e4ce481d3553",
+    "stepId": "a883b6e8-5cff-4df9-8a14-0de8dd8f1c7b",
+    "commandId": "56861dbd-1733-48ec-b369-25237606eb88",
+    "snapshotId": "c060bcb3-a89c-4770-ad55-66fb0996eb37"
+  },
+  "closedBeforeStart": true
+}

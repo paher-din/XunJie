@@ -1,5 +1,6 @@
 import type { ActionInput } from '@xunjie/contracts/action-intents';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
+import { teachingExplanationRules } from './help-policy.js';
 
 export interface ContextMessage { role: 'student' | 'assistant'; text: string; source?: ContextSource }
 export interface ContextSource { kind: 'platform' | 'run' | 'course' | 'input' | 'history' | 'material' | 'student-response'; id?: string; label: string }
@@ -82,6 +83,7 @@ export function buildContext(activity: LearningActivity, input: ActionInput, his
     runRules,
     `活动信息：\n目标：${activity.goal || '（未填写）'}\n初始问题：${activity.question || '（未填写）'}`,
     courseRules(activity),
+    teachingExplanationRules(activity),
   ].filter(Boolean);
   const system = sections.join('\n\n---\n\n');
   // Fixed works and citations belong to this request, not to the stable system prefix.

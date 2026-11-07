@@ -1,0 +1,252 @@
+{
+  "issue": 202,
+  "label": "mac-school-held-final-202",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "headed": true,
+  "model": "deepseek-flash",
+  "startedAt": "2026-11-07T11:50:20.155Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:50:20.157Z",
+      "result": {
+        "endpoint": "https://101.201.141.133:9443",
+        "releaseId": "19200000-0000-4000-8000-000000000203",
+        "definitionDigest": "3aa6995ccc7127563527d5a49ccfe32cb9d78ab5e49eda4c51750016d074881d"
+      },
+      "elapsedMs": 59573
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:51:19.731Z",
+      "result": {
+        "requestId": "efd4a521-24b2-401b-8ea6-f227e40a16eb",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "e3c63e18d57f49e2ca6d406299d4f2a5650bbee5e8a1f68d9016d258410a0877",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 10002
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:51:29.733Z",
+      "result": {
+        "requestId": "22ab7c97-5ff7-4699-8799-bcff1189f8ec",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 14217
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:51:43.950Z",
+      "result": {
+        "requestId": "4b4a6d89-dba6-4c7c-9736-08cbdc69c082",
+        "referenceId": "b1eba572-2331-48fa-8058-52fb9ef16089",
+        "index": 2079
+      },
+      "elapsedMs": 10955
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:51:54.906Z",
+      "result": {
+        "runId": "dc5991bd-0267-48c9-b04d-94842192d93a",
+        "commandId": "9959a697-9043-4b44-94cd-2733334bdf0d",
+        "originalCodeVerifiedAfterEdit": true,
+        "answerSha256": "1ea01d9d9eee0054302d45a024166eb3718153aaea0629a0bf0ea55c426fdb38"
+      },
+      "elapsedMs": 120692
+    },
+    {
+      "id": "student-correction-real-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:53:55.599Z",
+      "result": {
+        "requestId": "f5a66d11-8b9c-4776-a216-3cd68c49d2ba",
+        "output": {
+          "f": "0000",
+          "cout": "1",
+          "operationId": "run-single",
+          "dependencyId": "ef81c45574ef2fe3a01b0d9693a15b8fc5fa78cdab7a829cc0a671d3349072d6",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 9238
+    },
+    {
+      "id": "normal-input-real-agent",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:54:04.845Z",
+      "result": {
+        "runId": "a7863251-0aed-4aa1-8c10-8cfd26e3d282",
+        "commandId": "9ce2ef54-7616-4481-947c-2b501a1b7709",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "ef81c45574ef2fe3a01b0d9693a15b8fc5fa78cdab7a829cc0a671d3349072d6",
+          "observationState": "complete"
+        },
+        "answerSha256": "4b7d8951ccf09a78a05e4d4543df7672c03dd2dff7cfb2354b5d876657f59552"
+      },
+      "elapsedMs": 109591
+    },
+    {
+      "id": "help-policy-with-tool-output-instructions",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:55:54.436Z",
+      "result": {
+        "runId": "328d86ef-48f5-4dc8-bc8a-d439204c1d55",
+        "codeUnchanged": true,
+        "studentPredictionUnchanged": true,
+        "answerSha256": "af602102009b798b92ad64e06934c0741af75685676337052f4a10428bbe078f"
+      },
+      "elapsedMs": 36322
+    },
+    {
+      "id": "daily-reopen-and-source-retention",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:56:30.758Z",
+      "result": {
+        "retainedRuns": 3,
+        "originalAgentCommands": 2
+      },
+      "elapsedMs": 18014
+    },
+    {
+      "id": "desktop-layout-and-provenance",
+      "status": "passed",
+      "startedAt": "2026-11-07T11:56:48.773Z",
+      "result": {
+        "workerCount": 1,
+        "codeAndResourceOwner": "existing WP03/WP04",
+        "teachingEffect": "not-evaluated"
+      },
+      "elapsedMs": 305
+    }
+  ],
+  "modelCalls": [
+    {
+      "runId": "dc5991bd-0267-48c9-b04d-94842192d93a",
+      "attemptId": "9114cbf8-fc7f-48f6-b8fb-26fc89f6a094",
+      "snapshotId": "12ffa516-6a52-48e6-ac45-8a66785ec186",
+      "payloadSha256": "d1c0f097173cda13764062ea2919496aebd6db7524253979b1e75576ff8b7b54",
+      "model": {
+        "connectionId": "70ec7353-ffb5-4cab-8ebe-e7a4533e1092",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "dc5991bd-0267-48c9-b04d-94842192d93a",
+      "attemptId": "53db496e-8d6d-4762-8d5d-a69111f97c56",
+      "snapshotId": "cb1645fc-5f25-4748-9ccc-807f29708ff3",
+      "payloadSha256": "04cbb8f720ad605f8ac2869915dfc8c1aaf6f97aaa8e8abedc8250ae6a5cbb99",
+      "model": {
+        "connectionId": "70ec7353-ffb5-4cab-8ebe-e7a4533e1092",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "dc5991bd-0267-48c9-b04d-94842192d93a",
+      "attemptId": "d2929a5e-eb9c-48d8-85a9-748f9744cb85",
+      "snapshotId": "18786471-f3cb-40e9-9e72-ff924a22ce57",
+      "payloadSha256": "4468c9fefe07872cea124ecc3441a7d50fb18c7d3a7760a9a3df5b8d75b15aba",
+      "model": {
+        "connectionId": "70ec7353-ffb5-4cab-8ebe-e7a4533e1092",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a7863251-0aed-4aa1-8c10-8cfd26e3d282",
+      "attemptId": "aab05ba5-e045-4246-9de9-3c79d4bbc70c",
+      "snapshotId": "8407ce41-992b-4ef1-9601-7a17d509e3ba",
+      "payloadSha256": "fb68b4e0a04f3c290b405982db195ca9f5e58a35cca3a21cd96ad5e7f82b0a62",
+      "model": {
+        "connectionId": "70ec7353-ffb5-4cab-8ebe-e7a4533e1092",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "a7863251-0aed-4aa1-8c10-8cfd26e3d282",
+      "attemptId": "577fca36-87c0-424b-8130-a85f43634de6",
+      "snapshotId": "7a4a6fcb-a59d-4a17-8970-a57ea509a0a7",
+      "payloadSha256": "8a76700e8d9e4660a514a64fba819e5373083c38b787c098ae9ffcdc86597b42",
+      "model": {
+        "connectionId": "70ec7353-ffb5-4cab-8ebe-e7a4533e1092",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    }
+  ],
+  "workers": [
+    "https://101.201.141.133:9443/assets/worker-AqHx1oS1.js"
+  ],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "temporary Chrome profile removed"
+  ],
+  "status": "passed",
+  "tls": {
+    "strict": true,
+    "spki": "+9SMvhg+eP1STv6FtfKFsijXc2FQJZ1EsQxiQd5dy0c=",
+    "addresses": [
+      "101.201.141.133"
+    ]
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "0d071ee9-5e1d-42ed-8536-8a6d119e7dc0",
+  "providerConfiguration": {
+    "connectionId": "70ec7353-ffb5-4cab-8ebe-e7a4533e1092",
+    "protocol": "chat-completions",
+    "modelId": "deepseek-flash",
+    "baseUrl": "https://api.deepseek.com/v1"
+  },
+  "origins": [
+    "https://101.201.141.133:9443"
+  ],
+  "completedAt": "2026-11-07T11:56:49.793Z"
+}

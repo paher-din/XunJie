@@ -21,14 +21,14 @@ import { GuidancePresentation } from '../components/workspace/guidance/GuidanceP
 import { AgentInputMode } from './AgentInteraction'
 
 async function focusLocation(root: HTMLDivElement | null, selector: string) {
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < 120; attempt++) {
     const target = root?.querySelector<HTMLElement>(selector)
     if (target) { target.focus(); target.scrollIntoView({ block: 'nearest' }); return { ok: true as const } }
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   }
   return { ok: false as const, reason: '原位置当前无法打开，固定依据和结果仍保留。' }
 }
-import { RuntimeTool } from './RuntimeTool'
+import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error }: {
@@ -47,6 +47,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const root = useRef<HTMLDivElement>(null)
   const [tool, setTool] = useState<ToolKey>('design')
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
+  const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
   const scope = workspaceScope(namespace, activity)
   const [pendingQuestion, setPendingQuestion] = useState<TeachingStudentQuestion | null>(null)
@@ -110,6 +111,13 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         if (seq && seq > 0) selector += ` [data-observation-seq="${seq}"]`
         await sessions.select(requestId)
       }
+      if (requestId && binding.definition.manifest.formatVersion === 3) {
+        setComponentLocation({ key: binding.key, requestId, token: crypto.randomUUID(),
+          ...(reference.success ? { range: reference.data.range } : {}) })
+        if (reference.success && reference.data.range.kind === 'semantic' && reference.data.range.typeId === 'alu-counterexample'
+          && typeof reference.data.range.target.index === 'number')
+          selector = `[data-check-request-id="${CSS.escape(requestId)}"] [data-alu-counterexample-index="${reference.data.range.target.index}"]`
+      }
       setTool(`component:${binding.key}`)
       return focusLocation(root.current, selector)
     }
@@ -128,7 +136,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   // record, query and stop in this area instead of inside the opaque view.
   const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
     (binding.definition.manifest.formatVersion === 3
-      ? <RuntimeTool key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>
+      ? <RuntimeTool key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+        location={componentLocation?.key === binding.key ? componentLocation : undefined}/>
       : binding.definition.manifest.formatVersion === 1 && binding.definition.manifest.session
       ? <div key={binding.key} className="component-tool" data-component-key={binding.key} tabIndex={-1}>
         <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />

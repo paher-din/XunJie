@@ -66,7 +66,7 @@ function bitText(f: string | null, cout: string | null) {
 }
 
 export function CheckReportTool({ record, active, canStart, report, observations, diagnostics, resources, loading, error,
-  onUseInput, onRecheck, onStop, onQuery }: {
+  onUseInput, onRecheck, onStop, onQuery, onReference, location }: {
   record: ExecutionRecord | undefined
   active: boolean
   canStart: boolean
@@ -80,6 +80,8 @@ export function CheckReportTool({ record, active, canStart, report, observations
   onRecheck: () => void
   onStop: () => void
   onQuery: () => void
+  onReference?: (counterexample: CheckCounterexample, anchor: HTMLElement) => void
+  location?: { index: number; token: string }
 }) {
   const [filter, setFilter] = useState<'all' | CounterexampleReason>('all')
   const [page, setPage] = useState(0)
@@ -93,6 +95,12 @@ export function CheckReportTool({ record, active, canStart, report, observations
   const current = filtered.slice(page * pageSize, (page + 1) * pageSize)
   useEffect(() => { setPage(0) }, [filter, report, observations])
   useEffect(() => { if (page >= pages) setPage(pages - 1) }, [page, pages])
+  useEffect(() => {
+    if (!location) return
+    const position = all.findIndex(item => item.index === location.index)
+    if (position < 0) return
+    setFilter('all'); setPage(Math.floor(position / pageSize))
+  }, [location, report, observations])
   if (!record) {
     return <section className="alu-check" aria-label="全量行为检查">
       <header className="alu-section-head"><div><h2>全量行为检查</h2><p>检查已启用作品的全部 4096 组公开输入。</p></div>
@@ -104,7 +112,7 @@ export function CheckReportTool({ record, active, canStart, report, observations
   }
   const stateLabel = active ? (record.query.statusKnowledge === 'unknown' ? '检查状态待核实' : record.query.state === 'queued' ? '已接收，等待执行槽' : '正在检查已启用作品…')
     : record.query.state === 'succeeded' ? '检查执行完成' : record.query.state === 'cancelled' ? '检查已停止' : record.query.state === 'failed' ? '检查未完成' : '检查记录'
-  return <section className="alu-check" aria-label="全量行为检查">
+  return <section className="alu-check" aria-label="全量行为检查" data-check-request-id={record.requestId}>
     <header className="alu-section-head">
       <div><h2>全量行为检查</h2><p>覆盖全部 4096 组输入，含 1536 组保留控制组合；四轮真实采样，不以执行完成代替检查通过。</p></div>
       <div className="alu-check-actions">
@@ -166,7 +174,7 @@ export function CheckReportTool({ record, active, canStart, report, observations
               aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === 'all' ? '全部' : reasonLabel[value]}</button>)}
         </div>
         {current.length === 0 ? <p className="alu-hint">{all.length ? '当前筛选没有反例。' : '没有可读取的反例；若检查不完整，不能据此声称“没有错误”。'}</p>
-          : <ol className="alu-counter-list">{current.map(item => <li key={item.index}>
+          : <ol className="alu-counter-list">{current.map(item => <li key={item.index} data-alu-counterexample-index={item.index} tabIndex={-1}>
             <div className="alu-counter-title"><b>index {item.index}</b>
               <span>{item.reasons.map(reason => reasonLabel[reason]).join(' · ')}</span></div>
             <p className="alu-mono">A={item.inputs.A} B={item.inputs.B} M={item.inputs.M} S={item.inputs.S} Cin={item.inputs.Cin}</p>
@@ -177,6 +185,8 @@ export function CheckReportTool({ record, active, canStart, report, observations
               <span>{round.state === 'binary' ? '二值' : round.state === 'unknown' ? '含 X/Z' : round.state === 'missing' ? '缺行' : '格式错误'}</span>
             </li>)}</ul>
             <button type="button" className="ws-btn ghost" onClick={() => onUseInput(item.inputs)}>将该输入用于实验</button>
+            {onReference && <button type="button" className="ws-btn ghost"
+              onClick={event => onReference(item, event.currentTarget)}>反例加入问题</button>}
           </li>)}</ol>}
         {pages > 1 && <div className="alu-pager">
           <button type="button" className="ws-btn ghost" disabled={page === 0} onClick={() => setPage(value => Math.max(0, value - 1))}>上一页</button>

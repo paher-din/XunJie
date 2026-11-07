@@ -78,7 +78,7 @@
 .alu-numeric h3 { margin: 0; font-size: 13px; color: var(--ink-soft); }
 .alu-numeric-grid { display: flex; flex-wrap: wrap; gap: 10px 14px; }
 .alu-numeric-field { display: grid; gap: 4px; min-width: 112px; color: var(--ink-soft); font-size: 12px; }
-.alu-numeric-field input { width: 100%; height: 32px; box-sizing: border-box; padding: 0 9px; border: 1px solid var(--line-strong);
+.alu-numeric-field input { width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--line-strong);
   border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; }
 .alu-numeric-field input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .alu-numeric-field input[aria-invalid='true'] { border-color: var(--danger-deep); }

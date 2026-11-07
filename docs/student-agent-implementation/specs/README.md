@@ -58,7 +58,7 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 | [Agent 提问与学生明确回应](https://github.com/paher-din/XunJie/issues/199) | 固定学生提问、明确回应入口、一次消费、超时与晚回应处理、重启恢复，同步接入对话和 IP。[实现选择](wp07-student-ask.md) · [实现与验收](../wp07-199-student-ask.md)。 |
 | [运行中引导、排队与暂停后继续](https://github.com/paher-din/XunJie/issues/200) | 默认 steering 与可选 queue、派发竞争裁决、FIFO 与输入修订、学生 Wait 取代、暂停项与关联后继，接入设置和实际对话。[实现选择](wp07-input-control.md)。 |
 | [切换模型并延续学习](https://github.com/paher-din/XunJie/issues/201) | 获准边界的模型/协议切换、原生段封存与跨 owner 来源、原结果保留、预算连续及失败恢复。 |
-| [ALU 的真实 Agent 辅导](https://github.com/paher-din/XunJie/issues/202) | 消费 WP04 的正式编辑、观察及用例能力，围绕真实代码/反例/波形求助与验证；只解释、不代改，Agent 验证与学生预测分别保留。 |
+| [ALU 的真实 Agent 辅导](https://github.com/paher-din/XunJie/issues/202) | 消费 WP04 的正式编辑、观察及用例能力，围绕真实代码/反例/波形求助与验证；只解释、不代改，Agent 验证与学生预测分别保留。[实现选择](wp07-alu-tutoring.md) · [交付与验收](../wp07-202-alu-tutoring.md)。 |
 | [Agent 独立部署与真实跨机对话](https://github.com/paher-din/XunJie/issues/203) | teaching-agent 正式装配与配对、本机/学校/真实跨机混合路径、原 owner 查询、断线撤权及重启恢复。 |
 | [学习对话的备份、还原与接管](https://github.com/paher-din/XunJie/issues/204) | 会话/请求快照与未结 Run/命令/Wait/预算的跨安装备份恢复、隔离只读还原、正式接管和旧实例失权。[实施选择](wp07-conversation-recovery.md) · [交付与验收](../wp07-204-conversation-recovery.md)。 |
 

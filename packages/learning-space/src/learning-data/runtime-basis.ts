@@ -3,7 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import { acceptsState, type ComponentBinding } from '@xunjie/contracts/components';
 import { canonicalValue, type ExecutionActionV3, type AnyExecutionAction, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
-import { aluCaseFromAction, aluCodeIdentity, sameAluInputs, type AluCaseDraft } from '@xunjie/contracts/alu-learning';
+import { aluCaseFromAction, aluCodeIdentity, isAluCodeWork, sameAluInputs, type AluCaseDraft } from '@xunjie/contracts/alu-learning';
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 const same=(a:unknown,b:unknown)=>hash(a)===hash(b);
 /** Re-derive every runtime fact from the activity's authorised fixed release, never a live workspace head. */
@@ -30,7 +30,7 @@ export function verifyRuntimeBasis(activity:LearningActivity,binding:ComponentBi
   if(Object.entries(op.budgets).some(([key,max])=>action.execution.limits[key as keyof typeof op.budgets]>max)
     || action.execution.limits.concurrentJobs>m.budget.concurrentJobs || action.execution.limits.queuedJobs>m.budget.queuedJobs)return fail();
   const code=b.works.filter(f=>f.kind==='code');
-  if(code.some(f=>f.encoding!=='utf8'||! /\.(sv|v|svh|vh)$/.test(f.name))
+  if(code.some(f=>f.encoding!=='utf8'||!isAluCodeWork(f))
     || code.reduce((n,f)=>n+Buffer.byteLength(f.value,'utf8'),0)>action.execution.limits.inputBytes)return fail();
   if(b.expected.stateContentId!==null && !b.works.some(f=>f.kind==='state'&&f.contentId===b.expected.stateContentId))return fail();
   if(m.stateVersion===3) {
@@ -70,7 +70,7 @@ export function verifyEnabledRuntimeSource(action: ExecutionActionV3, source: An
     || original.operation.operationId !== 'run-single' || !same(source.scope, action.scope)
     || !same(original.instance, a.instance) || !same(original.basis.runtime, a.basis.runtime)
     || !same(original.basis.course, a.basis.course)
-    || !same(original.basis.works.filter(f => f.kind === 'code'), a.basis.works.filter(f => f.kind === 'code'))
+    || !same(original.basis.works.filter(isAluCodeWork), a.basis.works.filter(isAluCodeWork))
     || !output || !/^[01xz]{4}$/.test(output.f ?? '') || !/^[01xz]$/.test(output.cout ?? '')
     || !['complete', 'complete-with-unknown'].includes(output.observationState ?? '')) return invalid();
 }

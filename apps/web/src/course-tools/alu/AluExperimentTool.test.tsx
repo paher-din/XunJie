@@ -109,7 +109,8 @@ async function experiment(patch: Partial<AluState> = {}, split = false, version 
           parentNoteId: index ? noteIds[0] : null, text: `已有解释 ${index + 1}` }) }))
       workspace.change([...snapshot.files, ...files]); return noteIds
     },
-    complete: () => {
+    complete: async () => {
+      await vi.waitFor(() => expect(submitted).toHaveLength(1), { timeout: 2000, interval: 10 })
       const action = submitted.at(-1)!
       runs = { ...runs, records: [{ ...enabled, requestId: action.requestId, action,
         query: { ...enabled.query, output: { ...enabled.query.output!, output: { f: '1000', cout: '0', observationState: 'complete' } } } }, ...runs.records] }

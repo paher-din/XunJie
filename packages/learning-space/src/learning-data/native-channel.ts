@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
-import { advanceExecution, canonicalValue, executionActionSchema, executionQuerySchema, isTerminalExecutionState, agentExecutionAssociationSchema } from '@xunjie/contracts/execution';
+import { advanceExecution, canonicalValue, executionActionSchema, executionQuerySchema, executionStopSchema, isTerminalExecutionState, agentExecutionAssociationSchema } from '@xunjie/contracts/execution';
 import type { ExecutionQuery } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { AgentExecutionContext } from './agent-executions.js';
@@ -196,11 +196,15 @@ export function createNativeChannel(storage: OwnedStorage, options: {
           [session.command_id, JSON.stringify(cancellation)]);
       }
       await tx.query(`INSERT INTO native_channel_commands(command_id,connection_id,activity_id,session_id,operation,command,command_text,input_digest,state,target_node,target_generation)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10)`, [command.commandId, connectionId, command.activityId, command.sessionId,
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10) ON CONFLICT(command_id) DO NOTHING`, [command.commandId, connectionId, command.activityId, command.sessionId,
         command.operation, JSON.stringify(command), JSON.stringify(command), hash(command), JSON.stringify(targetNode), session?.target_generation ?? storage.generation]);
+      const { rows: [saved] } = await tx.query('SELECT * FROM native_channel_commands WHERE command_id=$1', [command.commandId]);
+      if (!saved || saved.connection_id !== connectionId || saved.input_digest !== hash(command)
+        || hash(saved.target_node) !== hash(targetNode)
+        || saved.target_generation !== (session?.target_generation ?? storage.generation)) return fail('identity-conflict');
       if (cancellation) await tx.query("UPDATE native_channel_commands SET state='cancelled',result=$2 WHERE command_id=$1",
         [command.commandId, JSON.stringify(cancellation)]);
-      return { commandId: command.commandId, state: cancellation ? 'cancelled' : 'pending' };
+      return { commandId: command.commandId, state: cancellation ? 'cancelled' : String(saved.state) };
     });
     return receipt.result;
   }
@@ -441,7 +445,9 @@ export function createNativeChannel(storage: OwnedStorage, options: {
     }
     return { commandId, state: row.state,
       result: projected,
-      statusKnowledge: row.state === 'claimed' && !observation.success || unavailable ? 'unknown' : 'confirmed' };
+      // Queue acceptance proves receipt only; a pending stop has no confirmed execution effect.
+      statusKnowledge: row.operation === 'stop' && row.state === 'pending'
+        || row.state === 'claimed' && !observation.success || unavailable ? 'unknown' : 'confirmed' };
   }
   async function nodes(identity: SpaceIdentity) {
     const { rows } = await storage.read('SELECT * FROM native_channel_nodes WHERE owner_generation=$1 AND lease_until>clock_timestamp() ORDER BY node_id,connection_id', [storage.generation]);
@@ -466,9 +472,10 @@ export function createNativeChannel(storage: OwnedStorage, options: {
       await new Promise(resolve => setTimeout(resolve, 25));
     }
   }
-  async function reclaimOriginal(commandId: string, expected: ExecutionQuery) {
+  async function reclaimOriginal(commandId: string, expected: ExecutionQuery, value: unknown) {
     z.uuid().parse(commandId); executionQuerySchema.parse(expected);
-    const receipt = await storage.request({ requestId: 'native-channel-reclaim:' + randomUUID(), fingerprint: hash({ commandId, expected }) }, async tx => {
+    const stop = executionStopSchema.parse(value);
+    const receipt = await storage.request({ requestId: 'native-channel-reclaim:' + randomUUID(), fingerprint: hash({ commandId, expected, stop }) }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM native_channel_commands WHERE command_id=$1 FOR UPDATE', [commandId]);
       if (!row || row.operation !== 'submit') return fail('missing');
       const original = z.object({ execution: executionQuerySchema }).parse(JSON.parse(String(row.command_text)).payload).execution;
@@ -483,8 +490,21 @@ export function createNativeChannel(storage: OwnedStorage, options: {
         await tx.query("UPDATE native_channel_commands SET state='cancelled',result=$2 WHERE command_id=$1", [commandId, JSON.stringify(cancelled)]);
         return cancelled;
       }
+      // Cleanup may outlive current eligibility, but can only stop this exact original
+      // session on its original node/generation. It must not merely wait for lease expiry.
+      const command = commandSchema.parse({ commandId: stop.stopId, activityId: row.activity_id,
+        sessionId: row.session_id, operation: 'stop',
+        payload: { requestId: expected.requestId, executionRef: expected.executionRef, stop } });
+      await tx.query(`INSERT INTO native_channel_commands(command_id,connection_id,activity_id,session_id,operation,
+        command,command_text,input_digest,state,target_node,target_generation)
+        VALUES($1,$2,$3,$4,'stop',$5,$6,$7,'pending',$8,$9) ON CONFLICT(command_id) DO NOTHING`,
+      [stop.stopId, row.connection_id, row.activity_id, row.session_id, JSON.stringify(command), JSON.stringify(command),
+        hash(command), JSON.stringify(row.target_node), row.target_generation]);
+      const { rows: [saved] } = await tx.query('SELECT * FROM native_channel_commands WHERE command_id=$1', [stop.stopId]);
+      if (!saved || saved.connection_id !== row.connection_id || saved.input_digest !== hash(command)
+        || hash(saved.target_node) !== hash(row.target_node) || saved.target_generation !== row.target_generation) fail('identity-conflict');
       return executionQuerySchema.parse({ ...expected, statusKnowledge: 'unknown', stopRequested: true,
-        reason: { code: 'resource-unavailable', detail: '原节点已领取；等待原实例通过撤权清理通道确认退出。' } });
+        reason: { code: 'resource-unavailable', detail: '已请求原节点停止；等待原实例确认退出。' } });
     });
     return executionQuerySchema.parse(receipt.result);
   }

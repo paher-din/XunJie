@@ -1,0 +1,51 @@
+{
+  "measuredAt": "2026-11-07T10:19:21.675Z",
+  "model": "deepseek-flash",
+  "capability": "read_work",
+  "limits": {
+    "maxGenerations": 2,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3263,
+        "outputTokens": 666,
+        "totalTokens": 3929,
+        "cachedTokens": 2688,
+        "reasoningTokens": 249
+      },
+      "answerSha256": "6ee4893af35871265d6a7b1e282491597de6c2748e4ad6fabf8080aa4c00ade0"
+    }
+  ],
+  "generations": 2,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1251
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 4977
+    }
+  ]
+}

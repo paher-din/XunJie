@@ -252,8 +252,14 @@ export class ExecutionController {
         const adapter = this.adapters.resolve(record.action)
         let outcome
         try {
+          const checkpoint = async () => {
+            await this.receiver.beforeRun(record.action)
+            await this.observeStop(requestId, abort)
+            abort.signal.throwIfAborted()
+          }
+          await checkpoint()
           outcome = await adapter.run(record.action, { signal: abort.signal,
-            checkpoint: async () => { await this.observeStop(requestId, abort); abort.signal.throwIfAborted() } })
+            checkpoint })
         } catch (error) {
           // Diagnostics of a failed run are still the run's own facts; the terminal reason keeps them.
           if (error instanceof ExecutionError) throw error

@@ -20,7 +20,7 @@ import type { NativeSessionOptions } from './native-sessions.js';
 import { readSessionCheckpointPage } from './session-checkpoints.js';
 import { createChannelExecutions } from './channel-executions.js';
 import type { createNativeChannel } from './native-channel.js';
-import { createAgentExecutions, validateAgentExecutionCommands } from './agent-executions.js';
+import { createAgentExecutions, validateAgentExecutionCommands, verifyAgentRuntimeBasis } from './agent-executions.js';
 export { agentExecutionMigration } from './agent-executions.js';
 
 /**
@@ -382,8 +382,8 @@ export function createExecutions(storage: OwnedStorage, options: {
   const agent = createAgentExecutions(storage, { activity: authorize, works, accept: acceptTrusted, read, control, stop,
     reclaim: async (action, value) => {
       const activityId = action.scope.activityId, requestId = action.requestId;
-      if (channel && await channel.owns(activityId, requestId)) return channel.reclaimOriginal(action, value);
-      if (native && await native.owns(activityId, requestId)) {
+      if (action.protocolVersion === 2 && channel && await channel.owns(activityId, requestId)) return channel.reclaimOriginal(action, value);
+      if (action.protocolVersion === 2 && native && await native.owns(activityId, requestId)) {
         const { rows: [row] } = await storage.read('SELECT session_ref,action FROM native_sessions WHERE activity_id=$1 AND request_id=$2', [activityId, requestId]);
         if (!row || canonicalDigest(row.action) !== canonicalDigest(action)) fail('identity-conflict');
         return native.reclaim(String(row.session_ref));
@@ -402,8 +402,12 @@ export function createExecutions(storage: OwnedStorage, options: {
         || binding.definition.manifest.stateVersion !== instance.stateVersion
         || componentInstanceId(activity.activityId, instance.key) !== instance.instanceId) fail('identity-conflict');
       const manifest = binding.definition.manifest;
-      if (manifest.formatVersion !== 1) fail('invalid');
       if (activity.course?.helpPolicy?.questions === 'disabled') fail('forbidden');
+      if (action.protocolVersion === 3) {
+        verifyAgentRuntimeBasis(activity, action);
+        return;
+      }
+      if (manifest.formatVersion !== 1) fail('invalid');
       verifyState(action);
       const state = action.execution.basis.state;
       const stateFile = state ? action.execution.basis.works.find(item => item.contentId === state.contentId) : undefined;

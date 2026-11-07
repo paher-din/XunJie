@@ -2,6 +2,11 @@ import { z } from 'zod';
 import type { ExecutionActionV3, AnyExecutionAction } from './execution.js';
 import type { WorkFile } from './learning-data.js';
 
+/** HDL sources and include files share one selection rule across preparation, execution and references. */
+export function isAluCodeWork(file: { kind: string; name: string }): boolean {
+  return file.kind === 'code' && /\.(sv|v|svh|vh)$/i.test(file.name);
+}
+
 export const aluInputsSchema = z.object({ A: z.number().int().min(0).max(15), B: z.number().int().min(0).max(15),
   M: z.number().int().min(0).max(1), S: z.number().int().min(0).max(3), Cin: z.number().int().min(0).max(1) }).strict();
 export type AluInputs = z.infer<typeof aluInputsSchema>;
@@ -72,7 +77,7 @@ export function aluCodeIdentity(action: ExecutionActionV3): string {
   return JSON.stringify({ runtime: action.execution.basis.runtime.bundleIdentity,
     compile: { entryFiles: action.execution.basis.compile.entryFiles,
       includeDirs: action.execution.basis.compile.includeDirs, strictExprWidth: action.execution.basis.compile.strictExprWidth },
-    files: action.execution.basis.works.filter(file => file.kind === 'code')
+    files: action.execution.basis.works.filter(isAluCodeWork)
       .map(file => ({ name: file.name, encoding: file.encoding, value: file.value })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0) });
 }
 export const sameAluInputs = (left: unknown, right: unknown) => {

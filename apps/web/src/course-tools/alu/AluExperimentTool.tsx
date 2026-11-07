@@ -9,6 +9,7 @@ import { runtimeAction } from '../../tool-execution/runtime-action'
 import { componentStateMediaType, readComponentState } from '../../tool-execution/action'
 import type { ExecutionRecord } from '../../tool-execution/ledger'
 import { ExecutionPanel } from '../../product/ExecutionPanel'
+import type { ComponentResultLocation } from '../../product/RuntimeTool'
 import { AluBoard, type AluReading } from './AluBoard'
 import { CheckReportTool, type AluCheckObservations, type AluCheckReport } from './CheckReport'
 import { NumericEditor } from './NumericEditor'
@@ -19,6 +20,8 @@ import { protectCompositionNavigation } from '../../components/workspace/composi
 import { aluCaseFromAction, newAluCaseDraft } from '@xunjie/contracts/alu-learning'
 import { editCase, isCurrentComparison, priorCaseSources, readCaseDraft } from './cases'
 import { AluCaseEditor, AluCaseResults } from './AluCases'
+import { componentSource, useSemanticSource } from '../../components/workspace/references/SemanticSource'
+import { useWorkspaceReferences } from '../../components/workspace/references'
 import { controlsOf, defaultAluState, encodeEnabledBasis, parseEnabledBasis, readAluState, sameControls,
   type AluControl, type AluState, type EnabledBasis } from './state'
 import './alu.css'
@@ -53,13 +56,14 @@ function readingOf(record: ExecutionRecord | undefined, waiting: boolean): AluRe
   return { state: 'incomplete', f: f || undefined, cout: cout || undefined }
 }
 
-export function AluExperimentTool({ activity, binding, spaceKey, namespace, authorized, compact = false }: {
+export function AluExperimentTool({ activity, binding, spaceKey, namespace, authorized, compact = false, location }: {
   activity: LearningActivity
   binding: ComponentBinding
   spaceKey: string
   namespace: string
   authorized: boolean
   compact?: boolean
+  location?: ComponentResultLocation
 }) {
   const { workspace, execution, actions } = useActivitySession()
   const work = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
@@ -79,8 +83,10 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   const [observeTick, setObserveTick] = useState(0)
   const [reportState, setReportState] = useState<{ recordId: string; loading: boolean; error: string
     report: AluCheckReport | null; observations: AluCheckObservations | null; diagnostics: string | null
-    resources: ExecutionRetainedResource[] }>(
-    { recordId: '', loading: false, error: '', report: null, observations: null, diagnostics: null, resources: [] })
+    resources: ExecutionRetainedResource[]; primary: { name: string; mediaType: string; text: string } | null }>(
+    { recordId: '', loading: false, error: '', report: null, observations: null, diagnostics: null, resources: [], primary: null })
+  const references = useWorkspaceReferences()
+  const [counterexampleLocation, setCounterexampleLocation] = useState<{ index: number; token: string }>()
 
   // The click-time guards are kept beside the state so a reload can finish the same pending activation.
   const stateRef = useRef<AluState | null>(null)
@@ -170,6 +176,21 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       return false
     }
   }
+  const located = useRef<string | null>(null)
+  useEffect(() => {
+    if (!location || compact || !work.ready || work.conflict || located.current === location.token) return
+    const original = records.find(record => record.requestId === location.requestId)
+    if (!original) { void execution.query(location.requestId).catch(() => {}); return }
+    located.current = location.token
+    if (workspace.isReadOnly()) return
+    writeState(previous => original.action.execution.operation.operationId === 'check-all'
+      ? { ...previous, selectedCheck: original.requestId, feedbackPolicy: 'live',
+        selectedCheckBasis: original.action.protocolVersion === 3 ? original.action.execution.basis.enabledBy?.requestId ?? '' : '' }
+      : { ...previous, selectedObservation: original.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
+        selectedCase: original.action.protocolVersion === 3 && aluCaseFromAction(original.action) ? original.requestId : '',
+        ...(location.range?.kind === 'semantic' && location.range.typeId === 'alu-waveform'
+          ? { waveSelection: JSON.stringify({ requestId: original.requestId, range: location.range.target }) } : {}) })
+  }, [location, compact, work.ready, work.conflict, records, execution, workspace])
   const resetState = () => {
     try {
       const files = workspace.snapshot().files
@@ -394,30 +415,48 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
 
   useEffect(() => {
     if (!displayCheckRecord || !settled(displayCheckRecord)) {
-      if (reportState.recordId) setReportState({ recordId: '', loading: false, error: '', report: null, observations: null, diagnostics: null, resources: [] })
+      if (reportState.recordId) setReportState({ recordId: '', loading: false, error: '', report: null, observations: null, diagnostics: null, resources: [], primary: null })
       return
     }
     let active = true
     setReportState(previous => ({ ...previous, recordId: displayCheckRecord.requestId, loading: true, error: '',
-      report: null, observations: null, diagnostics: null, resources: [] }))
+      report: null, observations: null, diagnostics: null, resources: [], primary: null }))
     void execution.artifact(displayCheckRecord.requestId).then(artifact => {
       if (!active) return
       if (!artifact) {
         setReportState({ recordId: displayCheckRecord.requestId, loading: false,
           error: '本机没有这次检查的结果资源；结果只在发起检查的浏览器或原服务中保留，不会重新仿真。',
-          report: null, observations: null, diagnostics: null, resources: [] })
+          report: null, observations: null, diagnostics: null, resources: [], primary: null })
         return
       }
       setReportState({ recordId: displayCheckRecord.requestId, loading: false,
+        primary: { name: artifact.name, mediaType: artifact.mediaType, text: artifact.text },
         ...readCheckArtifact(artifact) })
     }).catch(error => {
       if (!active) return
       setReportState({ recordId: displayCheckRecord.requestId, loading: false,
         error: `原检查报告暂时不可读：${errorText(error)}。原选择与元信息保留，不会重新仿真或替换成另一个报告。`,
-        report: null, observations: null, diagnostics: null, resources: [] })
+        report: null, observations: null, diagnostics: null, resources: [], primary: null })
     })
     return () => { active = false }
   }, [displayCheckRecord?.requestId, displayCheckRecord?.query.state, displayCheckRecord?.query.output, execution])
+
+  const counterexampleSource = displayCheckRecord?.query.statusKnowledge === 'confirmed' && displayCheckRecord.query.output
+    && reportState.recordId === displayCheckRecord.requestId && reportState.primary && !reportState.error && !reportState.loading
+    ? componentSource(activity, binding, displayCheckRecord.requestId, displayCheckRecord.query.output.contentId,
+      { requestId: displayCheckRecord.requestId, executionRef: displayCheckRecord.executionRef }) : null
+  const selectCounterexample = useSemanticSource({ source: counterexampleSource, title: 'ALU 检查反例',
+    content: displayCheckRecord ? { action: displayCheckRecord.action, output: displayCheckRecord.query.output?.output,
+      state: displayCheckRecord.query.statusKnowledge === 'confirmed' ? displayCheckRecord.query.state : 'unknown',
+      ...reportState.primary, resources: reportState.resources } : null,
+    locate: reference => {
+      const index = reference.kind === 'semantic' ? reference.range.target?.index : undefined
+      if (typeof index !== 'number') return { ok: false, reason: '原反例范围不可用，固定副本仍保留。' }
+      setCounterexampleLocation({ index, token: crypto.randomUUID() }); return { ok: true }
+    } })
+  const locatedCounterexample = location?.requestId === displayCheckRecord?.requestId
+    && location?.range?.kind === 'semantic' && location.range.typeId === 'alu-counterexample'
+    && typeof location.range.target.index === 'number' ? { index: location.range.target.index, token: location.token } : counterexampleLocation
 
   const selectedObservationRecord = alu.selectedObservation ? records.find(record => record.requestId === alu.selectedObservation) : undefined
   const observationHistory = alu.selectedObservationRevision === -1 && !!selectedObservationRecord
@@ -445,7 +484,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     ? <p className="alu-readout-value"><b>F={shownReading.f}</b><span> </span><b>Cout={shownReading.cout}</b></p>
     : <p className="alu-readout-value alu-muted">{shownReading.state === 'waiting' ? '等待观察' : shownReading.state === 'incomplete' ? '观察不完整' : '尚未取得观察'}</p>
 
-  return <section ref={toolHost} className={`execution-panel runtime-tool alu-tool ${compact ? 'runtime-tool-compact' : 'runtime-tool-full'}`} aria-label="ALU 实验">
+  return <section ref={toolHost} className={`execution-panel runtime-tool alu-tool ${compact ? 'runtime-tool-compact' : 'runtime-tool-full'}`}
+    aria-label="ALU 实验" data-component-key={binding.key} tabIndex={-1}>
     <header className="alu-tool-head">
       <div>
         <h2>ALU 实验</h2>
@@ -518,7 +558,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           <p className="alu-hint">
             {readingState === 'failed' ? `观察未完成：${readingRecord?.query.reason?.detail ?? '真实执行失败'}`
               : readingState === 'cancelled' ? '观察已停止；没有自动重试原输入。'
-              : observationHistory ? '历史观察：显示原输入和当时结果，不接成当前板卡读数。'
+              : observationHistory ? `${readingRecord?.action.execution.initiator.kind === 'agent' ? 'Agent 验证' : '历史观察'}：显示原输入和当时结果，不接成当前板卡读数。`
               : shownReading.state === 'binary' ? '已取得观察；不等同于“正确”。'
               : shownReading.state === 'unknown' ? '输出含未知值 X 或高阻 Z，不能显示成十进制零。'
               : shownReading.state === 'incomplete' ? '这次观察不完整，不能当作成功。'
@@ -574,6 +614,14 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         loading={reportState.recordId === displayCheckRecord?.requestId && reportState.loading}
         error={reportState.recordId === displayCheckRecord?.requestId ? reportState.error : ''}
         onUseInput={useInputs} onRecheck={() => void check()}
+        location={locatedCounterexample}
+        onReference={canWrite && counterexampleSource ? (item, anchor) => {
+          try {
+            selectCounterexample({ kind: 'semantic', formatVersion: 1, typeId: 'alu-counterexample', version: 1,
+              target: { index: item.index }, start: 0, end: 1 }, () => anchor.getBoundingClientRect())
+            references.ask()
+          } catch (error) { setNote(`原反例暂时无法引用：${errorText(error)}`) }
+        } : undefined}
         onStop={() => void stopCheck(displayCheckRecord ?? activeCheck)}
         onQuery={() => void queryRecord(displayCheckRecord ?? activeCheck)} />}
       {feedbackHeld && activeCheck && <button className="ws-btn ghost" onClick={() => void stopCheck(activeCheck)}>停止检查</button>}
@@ -589,7 +637,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
                 <button type="button" className="ws-btn ghost" onClick={() => writeState(previous => ({ ...previous,
                   selectedObservation: record.requestId, selectedObservationRevision: -1, feedbackPolicy: 'live',
                   selectedCase: record.action.protocolVersion === 3 && aluCaseFromAction(record.action) ? record.requestId : '' }))}>查看</button>
-                <span>{record.action.execution.operation.operationId === 'run-single' ? '显式运行' : '自由观察'}</span>
+                <span>{record.action.execution.initiator.kind === 'agent' ? 'Agent 验证'
+                  : record.action.execution.operation.operationId === 'run-single' ? '显式运行' : '自由观察'}</span>
                 <span className="alu-mono">{Object.entries(record.action.execution.parameters as Record<string, number>).map(([key, value]) => `${key}=${value}`).join(' ')}</span>
                 <span>{new Date(record.createdAt).toLocaleTimeString('zh-CN')} · {record.query.state}</span>
               </li>)}</ul>}

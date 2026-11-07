@@ -5,7 +5,7 @@ import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 import { digestOf, readComponentState } from './action'
 import { aluControls } from './adapters/alu'
-import { aluCaseDraftSchema, aluCaseFromAction, type AluCaseDraft } from '@xunjie/contracts/alu-learning'
+import { aluCaseDraftSchema, aluCaseFromAction, isAluCodeWork, type AluCaseDraft } from '@xunjie/contracts/alu-learning'
 import { componentStateMediaType } from '@xunjie/contracts/components'
 
 export interface RuntimeActionOptions {
@@ -33,8 +33,7 @@ export async function runtimeAction(workspace:ReliableWorkspace, activity:Learni
   if(!operation) throw new Error('capability-unavailable')
   if (operationId !== 'run-single' && (!options.enabledBy || !options.basisWorks)) throw new Error('缺少成功运行的启用依据。')
   const instanceId=`${activity.activityId}:${binding.key}`, state=readComponentState(workspace,binding,instanceId)
-  const code=(source:WorkFile[])=>source.filter(file=>file.kind==='code' && /\.(sv|v|svh|vh)$/i.test(file.name))
-  const currentCode=code(files), enabled=options.basisWorks?code(structuredClone(options.basisWorks)):undefined
+  const currentCode=files.filter(isAluCodeWork), enabled=options.basisWorks?structuredClone(options.basisWorks).filter(isAluCodeWork):undefined
   const stateContent=state.content as Record<string,unknown>
   const parameters=options.parameters!==undefined?structuredClone(options.parameters)
     : operationId==='check-all'?{}

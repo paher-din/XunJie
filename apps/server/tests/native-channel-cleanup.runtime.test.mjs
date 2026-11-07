@@ -161,6 +161,7 @@ test('offline cleanup survives a new worker epoch and retries the original claim
       goal: '确认原实例已退出', question: '', references: [], status: 'open', createdAt: new Date().toISOString(),
       course: { associationId: randomUUID(), courseId: randomUUID(), courseName: '清理恢复', taskId: randomUUID(), taskTitle: '原生会话',
         releaseId: randomUUID(), contentDigest: 'b'.repeat(64), objectives: ['确认退出'], requirements: '观察',
+        helpPolicy: { version: 1, questions: 'allowed', scope: 'course' },
         materials: [], starterWorks: [], capabilities: [], components: [{ key: 'accumulator',
           definition: { digest: definitionDigest, manifest }, configuration: { title: '原实例退出确认' }, materialIds: [] }] } });
     const requestId = randomUUID(), executionRef = randomUUID();
