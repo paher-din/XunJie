@@ -1,0 +1,187 @@
+{
+  "measuredAt": "2026-11-07T18:13:19.390Z",
+  "model": "deepseek-flash",
+  "capability": "read_work",
+  "limits": {
+    "maxGenerations": 6,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3336,
+        "outputTokens": 720,
+        "totalTokens": 4056,
+        "cachedTokens": 2816,
+        "reasoningTokens": 212
+      },
+      "answerSha256": "ff8a60f088a4960ba652b67d3d9a58759488368b1556a4c3fb3ecbd70e568439",
+      "assemblies": [
+        {
+          "resolvedId": "616df491-862d-48b8-aa15-407cf333339e",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "bbc62999-0bc6-48e9-9965-febd4ef58b96",
+          "payloadSha256": "917a820ae394c603af4e00099e3dfeee0c3f33225a57ea26ae44daea4c63bf2c",
+          "contextManifestId": "6391e2bc-3617-4942-ae62-ab0e3e5447f5",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "616df491-862d-48b8-aa15-407cf333339e",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "99dae240-348c-49f9-9415-98e5d4877b90",
+          "payloadSha256": "ebeaff2d5c285d1ce1dc06bae57cc8c311534180eb37b2f22847e8a51e02c3aa",
+          "contextManifestId": "65f1c951-d932-44d1-8f3d-518c714d03ef",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ]
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 3318,
+        "outputTokens": 733,
+        "totalTokens": 4051,
+        "cachedTokens": 2688,
+        "reasoningTokens": 149
+      },
+      "answerSha256": "bc1467ebda2fd4aa07a609d94d83978df77efeaf674e31769a62fcd96ed8b986",
+      "assemblies": [
+        {
+          "resolvedId": "e3c9ea1f-0ead-4af4-a6d6-c349f673f75f",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "984e2a63-b110-4ef1-8243-137902159215",
+          "payloadSha256": "786f9db11a36c7443c0e0bae023c1a69b711e98115ad152080bd0093b062965d",
+          "contextManifestId": "54c9acda-5287-4f11-bf42-e150e71bf6c1",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "e3c9ea1f-0ead-4af4-a6d6-c349f673f75f",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "d4adc500-f421-405d-b356-c4b769ad5f94",
+          "payloadSha256": "51ab6f972d3671255680f094f02c27cd63e665469bbd89eecae8032ad4038109",
+          "contextManifestId": "693115cc-1ba4-4a76-b916-978702e9248d",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ]
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "end_turn",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 626,
+        "outputTokens": 671,
+        "cachedTokens": 2688
+      },
+      "answerSha256": "5dc079a1df8c5d8bcd32dd73f9730a2d4bf1b019e3ece526f5655544cd4166a4",
+      "assemblies": [
+        {
+          "resolvedId": "a31a2a6f-a5a5-443b-96ea-db4bb99feea0",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "ed8b689f-7491-4d79-a228-927ebfdad508",
+          "payloadSha256": "9c4b0fe0830eccdef0d135cc5e0d325846a29c1f443afdc0192ab9930325bfbe",
+          "contextManifestId": "7bbebfad-e51f-4a77-95b4-a72ba45713f4",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "a31a2a6f-a5a5-443b-96ea-db4bb99feea0",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "c67e03ca-bc66-41b7-84eb-2584d08b4f2d",
+          "payloadSha256": "526c41a481cf85572a8775a8255f161d3fc4d2ae0c796a0c60a13f5c04689cc6",
+          "contextManifestId": "4b35ad7a-8b3a-4b11-ba20-f2a7096d8c19",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ]
+    }
+  ],
+  "generations": 6,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1504,
+      "payloadSha256": "917a820ae394c603af4e00099e3dfeee0c3f33225a57ea26ae44daea4c63bf2c"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 4248,
+      "payloadSha256": "ebeaff2d5c285d1ce1dc06bae57cc8c311534180eb37b2f22847e8a51e02c3aa"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 969,
+      "payloadSha256": "786f9db11a36c7443c0e0bae023c1a69b711e98115ad152080bd0093b062965d"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 5059,
+      "payloadSha256": "51ab6f972d3671255680f094f02c27cd63e665469bbd89eecae8032ad4038109"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1421,
+      "payloadSha256": "9c4b0fe0830eccdef0d135cc5e0d325846a29c1f443afdc0192ab9930325bfbe"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 4431,
+      "payloadSha256": "526c41a481cf85572a8775a8255f161d3fc4d2ae0c796a0c60a13f5c04689cc6"
+    }
+  ]
+}

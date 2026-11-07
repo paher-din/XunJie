@@ -264,3 +264,16 @@ test('a transfer confirmed absent at its original owner keeps its ID when a succ
   assert.equal(after.transferId, before.transferId); assert.notEqual(after.origin.grantId, before.origin.grantId);
   assert.equal(f.effects, 1);
 });
+
+test('a consumed capability-contribution reply cannot keep a revoked executor eligible for the next assembly', { timeout: 60000 }, async t => {
+  let eligible = true;
+  const original = [{ sourceId: 'platform.learning', version: '1', executorId: 'teaching-tools:read_work' }];
+  const f = await fixture(t, () => eligible ? original : []);
+  const base = payload(), input = { ...base, operation: 'tool.contributions', args: [{
+    runId: base.authority.runId, activityId: base.authority.activityId, stepId: randomUUID(), snapshotId: randomUUID(),
+  }] };
+  assert.deepEqual(await f.client()(input), original);
+  eligible = false;
+  assert.deepEqual(await f.client()(input), [], 'the same saved step rechecks the actual owner after revocation');
+  assert.deepEqual(await f.client()(input), [], 'a reopened client keeps current eligibility');
+});

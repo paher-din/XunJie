@@ -5,6 +5,7 @@ import type { TeachingToolHost, TeachingToolScope, TeachingToolContribution } fr
 import { buildContext, platformRules, runRules, type ContextMessage } from './context.js';
 import { canonicalDigest, operationId } from './identity.js';
 import { studentAskDefinition } from './student-questions.js';
+import { platformToolContribution } from './tool-contributions.js';
 
 export const teachingAssemblyMigration: Migration = { version: 10, name: 'immutable-agent-assembly', sql: `
   CREATE TABLE teaching_agent_definitions(definition_id text NOT NULL,version integer NOT NULL,
@@ -30,11 +31,7 @@ export const learningAgentDefinition: AgentDefinition = agentDefinitionSchema.pa
 export async function toolContributions(host: TeachingToolHost | undefined, scope: TeachingToolScope): Promise<TeachingToolContribution[]> {
   if (!host) return [];
   if (host.contributions) return host.contributions(scope);
-  return (await host.definitions(scope)).map(definition => ({ definition,
-    source: { kind: 'platform', sourceId: 'platform.learning', version: '1', contentDigest: canonicalDigest(definition) },
-    executor: { executorId: 'teaching-tools:' + definition.name, toolName: definition.name, version: '1' },
-    effect: definition.name === 'execution_stop' ? 'stop' : definition.name === 'course_operation' ? 'execute' : 'read',
-    resourceScope: { identity: scope.identity, activityId: scope.activity.activityId } }));
+  return (await host.definitions(scope)).map(definition => platformToolContribution(definition, scope));
 }
 
 export class TeachingAssemblyError extends Error {

@@ -143,3 +143,68 @@ test('an oversized required input is retained with the exact range to reduce and
     assert.equal(capacity.body.counting, 'unknown'); assert.equal(f.payloads.length, 0);
   } finally { await f.close(); }
 });
+
+for (const lost of ['close','create']) test(`an in-Run ${lost} receipt loss resumes the received V2 assembly even after V3 is configured`, { timeout: 180000 }, async () => {
+  const { StorageError } = await import('@xunjie/storage');
+  let version = 1, armed = false, drop = true;
+  const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'original.txt', kind: 'text', encoding: 'utf8', mediaType: 'text/plain', value: '原效果依据为 37。' };
+  const f = await fixture((_payload, response, index) => {
+    if (index === 1) { version = 2; armed = true; reply(response, { calls: [{ id: 'in-run-before-change', name: 'read_work',
+      arguments: { objectId: work.objectId, contentId: work.contentId } }] }); }
+    else reply(response, { text: '沿原效果继续解释 37。' });
+  });
+  try {
+    const activity = await f.activity(), c = await f.controlled(activity);
+    await c.learning.works.sync(c.identity, activity.activityId, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    const models = { ...c.models, segments: { ...c.models.segments,
+      async close(...args) { const result = await c.models.segments.close(...args);
+        if (armed && drop && lost === 'close') { drop = false; throw new StorageError('resource-busy'); } return result; },
+      async create(...args) { const result = await c.models.segments.create(...args);
+        if (armed && drop && lost === 'create') { drop = false; throw new StorageError('resource-busy'); } return result; },
+    } };
+    const first = c.makeAgent({ models, definition: async () => definition(version) });
+    const accepted = await c.send('读原件，然后继续。', undefined, [work], first);
+    await until(async () => (await first.run(c.identity, activity.activityId, accepted.runId)).state === 'paused', 'The in-Run transition loses its acknowledgement.');
+    first.close(); await first.drain(); version = 3;
+    const reopened = c.makeAgent({ models, definition: async () => definition(version) });
+    await reopened.continueRun(c.identity, activity.activityId, accepted.runId, { version: 2, requestId: randomUUID(), inputs: [] });
+    await until(async () => (await reopened.run(c.identity, activity.activityId, accepted.runId)).state === 'completed', 'The fixed original transition resumes.');
+    const events = await reopened.events(c.identity, activity.activityId);
+    const last = events.filter(event => event.kind === 'context-assembled').at(-1);
+    const snapshot = await reopened.snapshot(c.identity, activity.activityId, last.body.snapshotId);
+    assert.equal(snapshot.resolvedAgent.definition.version, 2);
+    assert.match(JSON.stringify(snapshot.payload), /V2/); assert.doesNotMatch(JSON.stringify(snapshot.payload), /V3/);
+    assert.equal(snapshot.resolvedAgent.prompt.system, snapshot.payload.messages[0].content);
+    assert.equal((await reopened.conversation(c.identity, activity.activityId)).tools.length, 1);
+    assert.equal(f.payloads.length, 2);
+  } finally { await f.close(); }
+});
+
+test('steering beyond the fixed input policy pauses with the full supplement before another model request', { timeout: 180000 }, async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'original.txt', kind: 'text', encoding: 'utf8', mediaType: 'text/plain', value: '原件 37。' };
+  const f = await fixture(async (_payload, response, index) => {
+    if (index === 1) { await gate; reply(response, { calls: [{ id: 'before-steering', name: 'read_work',
+      arguments: { objectId: work.objectId, contentId: work.contentId } }] }); }
+    else reply(response, { text: '不应外发这条超限补充。' });
+  });
+  try {
+    const activity = await f.activity(), c = await f.controlled(activity), config = definition(1);
+    config.contextPolicy.maxInputChars = 1000;
+    await c.learning.works.sync(c.identity, activity.activityId, { requestId: randomUUID(), baseRevision: 0, files: [work] });
+    const agent = c.makeAgent({ definition: config });
+    const first = await c.send('读取原件。', undefined, [work], agent);
+    await until(() => f.payloads.length === 1, 'The original native generation starts.');
+    const text = '完整中文补充'.repeat(400);
+    const supplement = await c.send(text, { version: 1, mode: 'steering', basis: { source: 'explicit', preferenceVersion: 0 } }, [], agent);
+    assert.equal(supplement.runId, first.runId); release();
+    const terminal = await until(async () => {
+      const run = await agent.run(c.identity, activity.activityId, first.runId); return ['paused','completed','failed'].includes(run.state) ? run : null;
+    }, 'The next assembly checks its fixed capacity policy.');
+    assert.equal(terminal.state, 'paused'); assert.equal(terminal.reason, 'capacity-exceeded');
+    const input = (await agent.conversation(c.identity, activity.activityId)).inputs.find(input => input.inputId === supplement.inputId);
+    assert.equal(input.input.draft.question, text); assert.equal(input.state, 'paused');
+    assert.equal(f.payloads.length, 1, 'an over-limit adopted supplement is never sent or truncated');
+  } finally { release(); await f.close(); }
+});

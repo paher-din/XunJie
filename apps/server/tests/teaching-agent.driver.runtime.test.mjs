@@ -1,226 +1,163 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
-import { createFileBackend, openStorage, provisionStorage, StorageError } from '@xunjie/storage';
-import { createTeachingAgent, teachingAgentMigrations } from '@xunjie/learning-space';
-import { teachingAgentReceiverId } from '@xunjie/contracts/teaching-agent';
-import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
+import { randomUUID } from 'node:crypto';
+import { StorageError } from '@xunjie/storage';
+import { fixture, reply, until } from './support/teaching-input-control.mjs';
 
-const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
-if (!postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
-const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
-  webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
-  windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
-const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 test('two drivers racing on one run keep one effective dispatch through generation fencing', { timeout: 180000 }, async () => {
-  const root = await mkdtemp(join(tmpdir(), 'xj-teaching-drivers-'));
-  const runtime = openProductRuntime({ root, resources });
-  const agents = [];
   let releaseReceive;
-  let storage;
+  const receiveGate = new Promise(resolve => { releaseReceive = resolve; });
+  const f = await fixture((_payload, response) => reply(response, { text: '单一回答' }));
   try {
-    await runtime.install({ profile: 'local' }); await runtime.start();
-    const { credentialRef, ...connection } = await runtime.database();
-    const admin = { ...connection, password: await resolveCredential(root, credentialRef) };
-    const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
-    const binding = await provisionStorage({ admin, owner, password: randomUUID(), migrations: teachingAgentMigrations });
-    storage = await openStorage({ binding, migrations: teachingAgentMigrations,
-      backend: createFileBackend({ id: 'teaching-driver', root: join(root, 'driver-files') }) });
-    const environmentId = storage.owner.environmentId, activityId = randomUUID();
-    const identity = { environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '两推进者测试' };
-    const connectionFact = { connectionId: randomUUID(), version: 1, name: '驱动测试模型', protocol: 'chat-completions',
-      modelId: 'fixture-driver', contextWindow: 262144, maxOutputTokens: 1024 };
-    const dispatched = [], cancelled = [], receivedIds = [], attempts = new Map();
-    let receives = 0;
-    const gate = new Promise(resolve => { releaseReceive = resolve; });
-    const models = {
-      selection: {
-        read: async () => ({ version: 1, selected: connectionFact }),
-        snapshot: async () => ({ choice: { connection: connectionFact },
-          source: { kind: 'personal', ownerScope: 'self', feeSource: 'self' } }),
+    const activity = await f.activity('单一推进权'), c = await f.controlled(activity);
+    const receivedIds = [], dispatched = [], cancelled = [];
+    const models = { ...c.models, checks: { ...c.models.checks,
+      async receive(who, input) {
+        const fact = await c.models.checks.receive(who, input);
+        assert.equal(fact.state, 'accepted');
+        receivedIds.push(fact.attemptId);
+        // The real Gateway has durably received the request; only reply delivery is delayed.
+        await receiveGate;
+        return fact;
       },
-      segments: {
-        read: async () => ({ closed: false, pending: false, sequence: 0 }),
-        create: async () => {}, close: async () => {},
+      async dispatch(who, attemptId) {
+        dispatched.push(attemptId);
+        return c.models.checks.dispatch(who, attemptId);
       },
-      checks: {
-        receive: async (_identity, input) => {
-          receives++;
-          receivedIds.push(input.attemptId);
-          if (!attempts.has(input.attemptId)) attempts.set(input.attemptId,
-            { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: false,
-              text: '', usage: { state: 'unknown' }, reason: '' });
-          await gate;
-          return attempts.get(input.attemptId);
-        },
-        requestPayload: async () => ({ model: 'fixture-driver', messages: [] }),
-        dispatch: async (_identity, attemptId) => {
-          const accepted = attempts.get(attemptId);
-          assert.equal(accepted?.state, 'accepted', 'only a received, undispatched attempt can be sent');
-          dispatched.push(attemptId);
-          const completed = { ...accepted, physicalRequestEnded: true, state: 'completed', resultRef: randomUUID(), text: '单一回答',
-            usage: { state: 'final', inputTokens: 1, outputTokens: 1, totalTokens: 2 } };
-          attempts.set(attemptId, completed);
-          return completed;
-        },
-        cancel: async (_identity, attemptId) => { cancelled.push(attemptId); },
-        read: async (_identity, attemptId) => {
-          if (!attempts.has(attemptId)) throw new StorageError('missing');
-          return attempts.get(attemptId);
-        },
+      async cancel(who, attemptId) {
+        cancelled.push(attemptId);
+        return c.models.checks.cancel(who, attemptId);
       },
-    };
-    const activity = { activityId, goal: '单一推进权', question: '', references: [], status: 'open',
-      createdAt: new Date().toISOString(), identity };
-    const options = { authorize: async () => {}, identityFor: async () => identity, activity: async () => activity,
-      models, leaseMs: 250, scanIntervalMs: 60_000, start: false };
-    const first = createTeachingAgent(storage, { ...options, driverId: 'driver-a' });
-    const second = createTeachingAgent(storage, { ...options, driverId: 'driver-b' });
-    agents.push(first, second);
-    const input = { requestId: randomUUID(), scope: { environmentId, spaceId: identity.spaceId,
-      principalId: identity.principalId, activityId }, receiver: { receiverId: teachingAgentReceiverId(owner.serviceId),
-      location: 'remote', kind: 'question' }, draft: { token: randomUUID(), question: '哪一个推进者会真正外发？',
-      references: [], bases: [] }, works: [], evidence: [] };
-    const receipt = await first.receiver.accept(input, digest(input));
-    assert.equal(receipt.state, 'accepted');
-    const runId = JSON.parse(receipt.detail).runId;
+    } };
+    const leaseMs = 1000;
+    const first = c.makeAgent({ models, driverId: 'driver-a', leaseMs });
+    const second = c.makeAgent({ models, driverId: 'driver-b', leaseMs });
+    const accepted = await c.send('哪一个推进者会真正外发？', undefined, [], first);
+    assert.equal(accepted.receipt.state, 'accepted');
     first.resume();
-    const receiveDeadline = Date.now() + 3000;
-    while (!receives && Date.now() < receiveDeadline) await new Promise(resolve => setTimeout(resolve, 20));
-    assert.equal(receives, 1, 'the first driver durably receives the original attempt');
-    // A healthy driver renews while an owner RPC is pending. A slow accepted request does not
-    // by itself give another driver permission to dispatch it.
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await until(() => receivedIds.length === 1, 'The first driver receives the original attempt at the real Gateway.');
+    // The original owner renews for longer than one lease while its receive RPC is delayed.
+    await delay(leaseMs + 200);
     second.resume();
-    await new Promise(resolve => setTimeout(resolve, 100));
-    assert.equal(receives, 1, 'a live driver keeps its lease during a slow owner RPC');
-    // Losing the original process/dispatch authority stops renewal. Its late receive reply
-    // still arrives below, after the second generation has acquired the original attempt.
+    await delay(200);
+    assert.equal(receivedIds.length, 1, 'a live driver keeps its lease during a slow owner RPC');
+    assert.equal(f.payloads.length, 0);
     first.closeDispatch();
-    await new Promise(resolve => setTimeout(resolve, 400));
-    second.resume();
-    const deadline = Date.now() + 3000;
-    while (receives < 2 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));
-    assert.equal(receives, 2, 'the second driver takes over after the lease expires');
+    await until(() => receivedIds.length === 2, 'The second driver takes over after the original lease expires.');
     assert.equal(new Set(receivedIds).size, 1, 'both generations receive the same durable planned attempt');
+    // This public permit proves the successor really owns generation 2 while both replies are delayed.
+    await second.assertModelDispatch(c.identity, activity.activityId, { runId: accepted.runId, activityId: activity.activityId,
+      driverId: 'driver-b', generation: 2, attemptId: receivedIds[0], dispatch: false });
+    assert.equal((await c.models.checks.read(c.identity, receivedIds[0])).state, 'accepted');
     releaseReceive();
-    let run;
-    for (let count = 0; count < 200; count++) {
-      run = await first.run(identity, activityId, runId);
-      if (run.state === 'completed') break;
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    assert.equal(run.state, 'completed');
-    assert.equal(dispatched.length, 1,'only one driver dispatches the prepared attempt');
-    assert.deepEqual(dispatched, [receivedIds[0]]);
-    assert.equal(cancelled.length, 0,'losing authority cannot cancel the shared original attempt');
-    const events = await first.events(identity, activityId);
+    const completed = await until(async () => {
+      const value = await second.run(c.identity, activity.activityId, accepted.runId);
+      return value.state === 'completed' ? value : null;
+    }, 'The successor completes the original attempt.');
+    await first.drain();
+    assert.equal(completed.attemptId, receivedIds[0]);
+    assert.deepEqual(dispatched, [receivedIds[0]], 'only one driver dispatches the prepared attempt');
+    assert.equal(cancelled.length, 0, 'losing authority cannot cancel the shared original attempt');
+    assert.equal(f.payloads.length, 1, 'generation fencing allows one actual upstream request');
+    assert.deepEqual(completed.usage, { state: 'final', inputTokens: 20, outputTokens: 10, totalTokens: 30 });
+    const events = await second.events(c.identity, activity.activityId);
     assert.equal(events.filter(event => event.kind === 'attempt-dispatched').length, 1);
     assert.equal(events.filter(event => event.kind === 'assistant').length, 1);
     assert.equal(events.filter(event => event.kind === 'run-completed').length, 1);
-    first.close(); second.close();
-  } finally {
-    releaseReceive?.();
-    for (const agent of agents) { agent.closeDispatch(); agent.close(); }
-    await Promise.allSettled(agents.map(agent => agent.drain()));
-    await storage?.close(); await runtime.stop();
-    await rm(root, { recursive: true, force: true });
-  }
+  } finally { releaseReceive(); await f.close(); }
 });
 
-test('the same driver reconciles a lost model acceptance reply without a second attempt or dispatch', { timeout: 30000 }, async () => {
-  const fixture = await nativeFixture(); let storage, agent;
+test('the same driver reconciles a lost model acceptance reply without a second attempt or dispatch', { timeout: 180000 }, async () => {
+  const f = await fixture((_payload, response) => reply(response, { text: '原请求已完成' }));
   try {
-    const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
-    const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: teachingAgentMigrations });
-    storage = await openStorage({ binding, migrations: teachingAgentMigrations,
-      backend: createFileBackend({ id: 'lost-reply', root: join(fixture.root, 'objects') }) });
-    const identity = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '原请求' };
-    const activityId = randomUUID(), connection = { connectionId: randomUUID(), version: 1, name: '原模型',
-      protocol: 'chat-completions', modelId: 'fixture', contextWindow: 262144, maxOutputTokens: 1024 };
-    const activity = { activityId, identity, goal: '查询原接收', question: '', references: [], status: 'open', createdAt: new Date().toISOString() };
-    const attempts = new Map(), received = [], dispatched = [];
-    const models = {
-      selection: { read: async () => ({ version: 1, selected: connection }), snapshot: async () => ({ choice: { connection }, source: { kind: 'personal', ownerScope: 'self', feeSource: 'self' } }) },
-      segments: { read: async () => ({ closed: false, pending: false, sequence: 0 }), create: async () => {} },
-      checks: {
-        async receive(_identity, input) {
-          received.push(input.attemptId);
-          if (!attempts.has(input.attemptId)) {
-            attempts.set(input.attemptId, { attemptId: input.attemptId, state: 'accepted', physicalRequestEnded: true,
-              text: '', usage: { state: 'unknown' }, reason: '' });
-            throw new StorageError('unavailable'); // owner committed; only its response was lost
-          }
-          return attempts.get(input.attemptId);
-        },
-        requestPayload: async () => ({ model: 'fixture', messages: [] }),
-        async read(_identity, id) { if (!attempts.has(id)) throw new StorageError('missing'); return attempts.get(id); },
-        async dispatch(_identity, id) {
-          dispatched.push(id);
-          const result = { ...attempts.get(id), state: 'completed', physicalRequestEnded: true, text: '原请求已完成',
-            resultRef: randomUUID(), usage: { state: 'final', inputTokens: 1, outputTokens: 1, totalTokens: 2 } };
-          attempts.set(id, result); return result;
-        },
+    const activity = await f.activity('查询原接收'), c = await f.controlled(activity);
+    const received = [], dispatched = [], receipts = [];
+    const models = { ...c.models, checks: { ...c.models.checks,
+      async receive(who, input) {
+        const fact = await c.models.checks.receive(who, input);
+        received.push(fact.attemptId); receipts.push(fact);
+        if (received.length === 1) throw new StorageError('unavailable'); // owner committed; only its response was lost
+        return fact;
       },
-    };
-    agent = createTeachingAgent(storage, { models, authorize: async () => {}, identityFor: async () => identity,
-      activity: async () => activity, driverId: 'same-live-process', leaseMs: 200, scanIntervalMs: 40 });
-    const input = { requestId: randomUUID(), scope: { environmentId: identity.environmentId, spaceId: identity.spaceId,
-      principalId: identity.principalId, activityId }, receiver: agent.receiver.identity,
-      draft: { token: randomUUID(), question: '原回包丢失后继续', references: [], bases: [] }, works: [], evidence: [] };
-    const receipt = await agent.receiver.accept(input, digest(input)), runId = JSON.parse(receipt.detail).runId;
-    let run; const until = Date.now() + 4000;
-    do { run = await agent.run(identity, activityId, runId); if (run.state === 'completed') break;
-      await new Promise(resolve => setTimeout(resolve, 30)); } while (Date.now() < until);
-    assert.equal(run.state, 'completed');
+      async dispatch(who, attemptId) {
+        dispatched.push(attemptId);
+        return c.models.checks.dispatch(who, attemptId);
+      },
+    } };
+    const agent = c.makeAgent({ models, driverId: 'same-live-process', leaseMs: 500 });
+    agent.resume();
+    const accepted = await c.send('原回包丢失后继续', undefined, [], agent);
+    const completed = await until(async () => {
+      const value = await agent.run(c.identity, activity.activityId, accepted.runId);
+      return value.state === 'completed' ? value : null;
+    }, 'The same live driver reconciles the original accepted request.');
     assert.equal(received.length, 2); assert.equal(new Set(received).size, 1);
+    assert.equal(completed.attemptId, received[0]);
+    assert.deepEqual(receipts[1], receipts[0], 'the retry receives the same real durable acceptance');
     assert.deepEqual(dispatched, [received[0]]);
-    assert.equal((await agent.events(identity, activityId)).filter(event => event.kind === 'assistant').length, 1);
-  } finally { agent?.close(); await agent?.drain(); await storage?.close(); await fixture.close(); }
+    const native = await c.models.checks.read(c.identity, received[0]);
+    assert.equal(native.state, 'completed'); assert.equal(native.physicalRequestEnded, true);
+    assert.equal(native.requestRef, receipts[0].requestRef, 'recovery retains the actual original model request');
+    assert.equal(f.payloads.length, 1, 'a lost acceptance reply never creates another physical request');
+    const events = await agent.events(c.identity, activity.activityId);
+    assert.equal(events.filter(event => event.kind === 'context-assembled').length, 1);
+    assert.equal(events.filter(event => event.kind === 'attempt-dispatched').length, 1);
+    assert.equal(events.filter(event => event.kind === 'assistant').length, 1);
+    assert.equal(events.filter(event => event.kind === 'run-completed').length, 1);
+  } finally { await f.close(); }
 });
 
-test('stop committed while a remote model permit waits for its transaction prevents the permit', { timeout: 30000 }, async () => {
-  const fixture = await nativeFixture(); let storage, agent, releaseReceive, releasePermit;
+test('stop committed while a remote model permit waits for its transaction prevents the permit', { timeout: 180000 }, async () => {
+  let releaseReceive, releasePermit;
+  const receiveGate = new Promise(resolve => { releaseReceive = resolve; });
+  const permitGate = new Promise(resolve => { releasePermit = resolve; });
+  const f = await fixture();
   try {
-    const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
-    const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: teachingAgentMigrations });
-    storage = await openStorage({ binding, migrations: teachingAgentMigrations,
-      backend: createFileBackend({ id: 'stop-permit', root: join(fixture.root, 'objects') }) });
-    const identity = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'personal', name: '停止检查' };
-    const activityId = randomUUID(), activity = { activityId, identity, goal: '原请求停止', question: '', references: [], status: 'open', createdAt: new Date().toISOString() };
-    const connection = { connectionId: randomUUID(), version: 1, name: '原模型', protocol: 'chat-completions', modelId: 'fixture', contextWindow: 262144, maxOutputTokens: 1024 };
-    let notifyReceive, notifyPermit;
-    const received = new Promise(resolve => { notifyReceive = resolve; });
-    const permitEntered = new Promise(resolve => { notifyPermit = resolve; });
-    const receiveGate = new Promise(resolve => { releaseReceive = resolve; });
-    const permitGate = new Promise(resolve => { releasePermit = resolve; });
-    const guarded = { ...storage, async request(input, effect) {
-      if (input.requestId.startsWith('teaching-verify-permit:')) { notifyPermit(); await permitGate; }
-      return storage.request(input, effect);
+    const activity = await f.activity('原请求停止'), c = await f.controlled(activity);
+    let receivedAttempt, permitEntered = false;
+    const dispatched = [];
+    // Delay the existing storage boundary, before its transaction starts, so stop can
+    // commit after the permit's optimistic checks and before its authoritative recheck.
+    const guarded = { ...c.storage, async request(input, effect) {
+      if (input.requestId.startsWith('teaching-verify-permit:')) { permitEntered = true; await permitGate; }
+      return c.storage.request(input, effect);
     } };
-    const models = {
-      selection: { read: async () => ({ version: 1, selected: connection }), snapshot: async () => ({ choice: { connection }, source: { kind: 'personal', ownerScope: 'self', feeSource: 'self' } }) },
-      segments: { read: async () => ({ closed: false, pending: false, sequence: 0 }), create: async () => {} },
-      checks: { async receive(_identity, input) { notifyReceive(input.attemptId); await receiveGate; throw new StorageError('unavailable'); }, cancel: async () => {} },
-    };
-    agent = createTeachingAgent(guarded, { models, authorize: async () => {}, identityFor: async () => identity,
-      activity: async () => activity, driverId: 'permit-driver', leaseMs: 5000 });
-    const input = { requestId: randomUUID(), scope: { environmentId: identity.environmentId, spaceId: identity.spaceId,
-      principalId: identity.principalId, activityId }, receiver: agent.receiver.identity,
-      draft: { token: randomUUID(), question: '停止原请求', references: [], bases: [] }, works: [], evidence: [] };
-    const receipt = await agent.accept(input, digest(input)), runId = JSON.parse(receipt.detail).runId;
-    const attemptId = await received;
-    const permit = agent.assertModelDispatch(identity, activityId, { runId, activityId, driverId: 'permit-driver', generation: 1, attemptId, dispatch: false });
+    const models = { ...c.models, checks: { ...c.models.checks,
+      async receive(who, input) {
+        const fact = await c.models.checks.receive(who, input);
+        receivedAttempt = fact.attemptId;
+        await receiveGate;
+        return fact;
+      },
+      async dispatch(who, attemptId) {
+        dispatched.push(attemptId);
+        return c.models.checks.dispatch(who, attemptId);
+      },
+    } };
+    const agent = c.makeAgent({ models, driverId: 'permit-driver', leaseMs: 5000 }, guarded);
+    const accepted = await c.send('停止原请求', undefined, [], agent);
+    await until(() => receivedAttempt, 'The real model owner accepts the original attempt without dispatch.');
+    assert.equal((await c.models.checks.read(c.identity, receivedAttempt)).state, 'accepted');
+    const permit = agent.assertModelDispatch(c.identity, activity.activityId, { runId: accepted.runId, activityId: activity.activityId,
+      driverId: 'permit-driver', generation: 1, attemptId: receivedAttempt, dispatch: false });
     const denied = assert.rejects(permit, { code: 'forbidden' });
-    await permitEntered;
-    await agent.stop(identity, activityId, runId, { requestId: randomUUID() });
+    await until(() => permitEntered, 'The original permit reaches the delayed transaction boundary.');
+    await agent.stop(c.identity, activity.activityId, accepted.runId, { requestId: randomUUID() });
+    assert.equal((await agent.run(c.identity, activity.activityId, accepted.runId)).stopRequested, true);
     releasePermit(); await denied;
-    assert.equal((await agent.run(identity, activityId, runId)).stopRequested, true);
-  } finally { releasePermit?.(); releaseReceive?.(); agent?.close(); await agent?.drain(); await storage?.close(); await fixture.close(); }
+    releaseReceive();
+    const stopped = await until(async () => {
+      const value = await agent.run(c.identity, activity.activityId, accepted.runId); return value.state === 'stopped' ? value : null;
+    }, 'The original accepted attempt stops without any physical request.');
+    assert.equal(stopped.attemptId, receivedAttempt);
+    const native = await c.models.checks.read(c.identity, receivedAttempt);
+    assert.equal(native.state, 'cancelled'); assert.equal(native.dispatched, false);
+    assert.equal(dispatched.length, 0); assert.equal(f.payloads.length, 0);
+    const events = await agent.events(c.identity, activity.activityId);
+    assert.equal(events.filter(event => event.kind === 'attempt-dispatched').length, 0);
+    assert.equal(events.filter(event => event.kind === 'assistant').length, 0);
+    assert.equal(events.filter(event => event.kind === 'run-stopped').length, 1);
+  } finally { releasePermit(); releaseReceive(); await f.close(); }
 });

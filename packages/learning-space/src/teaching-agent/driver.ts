@@ -22,6 +22,7 @@ import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/c
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
 type Model = NonNullable<TeachingRun['model']>;
+interface ContextFacts { inputs: unknown[]; effects: unknown[]; waits: unknown[]; activity: LearningActivity }
 interface Plan {
   input: ModelLearningInput; model: Model; modelSource?: 'school' | 'personal'; sources: TeachingSnapshot['sources']; createdAt: string;
   inputBasis?: ActionInput; inputSequence?: number;
@@ -31,6 +32,7 @@ interface Plan {
   contextHistory?: ContextMessage[];
   selectionVersion?: number;
   selectionPinId?: string;
+  contextFacts?: ContextFacts;
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
@@ -82,7 +84,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
     choice: Awaited<ReturnType<LearningModelPort['selection']['snapshot']>>,
     selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string):
-    Promise<{ segmentId: string; sequence: number; model: Model }>;
+    Promise<{ segmentId: string; sequence: number; model: Model; assemblyId?: string | null }>;
   awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttempt): Promise<ModelAttempt>;
   finish(run: TeachingRun, generation: number, state: TeachingRun['state'], reason: string, usage: ModelUsage,
@@ -148,6 +150,15 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       WHERE w.run_id=$1 AND w.purpose='result' AND w.state='consumed' AND w.observed_step_id IS NULL
       ORDER BY w.consumed_at,w.wait_id`, [run.runId]);
     return rows;
+  }
+  async function fixedContextFacts(tx: OwnedTransaction, run: TeachingRun, activity: LearningActivity, inputIds: string[]): Promise<ContextFacts> {
+    const { rows: inputs } = await tx.query(`SELECT i.input_id,i.version,i.seq,v.body FROM teaching_inputs i
+      JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
+      WHERE i.adopted_run_id=$1 OR i.input_id=ANY($2::uuid[]) ORDER BY i.seq`, [run.runId, inputIds]);
+    const { rows: effects } = await tx.query(`SELECT command_id,call_id,command,outcome FROM teaching_commands
+      WHERE run_id=$1 AND outcome IS NOT NULL ORDER BY step_id,ordinal`, [run.runId]);
+    const { rows: waits } = await tx.query('SELECT * FROM teaching_waits WHERE run_id=$1 ORDER BY wait_id', [run.runId]);
+    return JSON.parse(JSON.stringify({ inputs, effects, waits, activity })) as ContextFacts;
   }
   function outcomeObservations(row: Row) {
     const outcome = row.outcome as TeachingToolOutcome;
@@ -242,13 +253,25 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         const source = (transition.create_body as { source: { pinId?: string } }).source;
         if (source.pinId) plan.selectionPinId = source.pinId;
       }
-      if (plan.resolvedAgent && plan.selectionVersion !== undefined && plan.selectionPinId) {
+      const { rows: [received] } = await storage.read(`SELECT t.*,a.body AS assembly FROM teaching_segment_transitions t
+        JOIN teaching_resolved_agents a ON a.resolved_id::text=t.assembly_id
+        WHERE t.activity_id=$1 AND t.reason<>'model-switch' AND t.state='accepted'`, [run.activityId]);
+      if (received) {
+        const fixed = received.assembly as ResolvedAgent;
+        const body = received.create_body as { source: { pinId?: string }; portable: { role?: 'user' | 'assistant'; text: string }[] };
+        if (!body.source.pinId) throw new StorageError('corrupt');
+        const history: ContextMessage[] = body.portable.map(message => ({
+          role: message.role === 'assistant' ? 'assistant' : 'student', text: message.text }));
+        const selectionVersion = Number(received.selection_version);
+        const choice = await owner.models.selection.pinned(scope.identity, body.source.pinId, selectionVersion);
+        const restored = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selectionVersion,
+          fixed.prompt.system, history, generation, fixed.tools.map(item => item.definition), fixed.resolvedId, body.source.pinId);
+        if (restored.assemblyId !== fixed.resolvedId) throw new StorageError('corrupt');
+        plan.input.segmentId = restored.segmentId; plan.input.expectedSequence = restored.sequence;
+        plan.model = restored.model; plan.resolvedAgent = fixed; plan.contextHistory = history;
+        plan.selectionVersion = selectionVersion; plan.selectionPinId = body.source.pinId;
+      } else if (segmentId === previous.segment_id && plan.resolvedAgent && plan.selectionVersion !== undefined && plan.selectionPinId) {
         const history = await owner.historyForAssembly(run.activityId);
-        const { rows: outstanding } = await storage.read(`SELECT c.command_id,c.command,c.outcome,w.wait_id,w.state AS wait_state,w.reason,w.deadline
-          FROM teaching_commands c LEFT JOIN teaching_waits w USING(command_id)
-          WHERE c.run_id=$1 AND (c.outcome->>'state' IN ('accepted','unknown') OR w.state='pending') ORDER BY c.step_id,c.ordinal`, [run.runId]);
-        if (outstanding.length) history.push({ role: 'assistant', text: '原操作与未结等待的固定事实（只核对原身份，不是新派发指令）：' + JSON.stringify(outstanding),
-          source: { kind: 'history', id: run.runId, label: '未结 Command/Wait 与已接受效果' } });
         let next;
         try { next = await assembleTeachingAgent(scope, owner.tools, plan.model, history,
           typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition); }
@@ -261,6 +284,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
           const segment = await owner.ensureSegment(scope.identity, scope.activity, run, choice, plan.selectionVersion,
             next.context.system, history, generation, next.tools, next.resolvedAgent.resolvedId, plan.selectionPinId);
+          if (segment.assemblyId !== next.resolvedAgent.resolvedId) throw new StorageError('conflict');
           plan.input.segmentId = segment.segmentId; plan.input.expectedSequence = segment.sequence;
           plan.resolvedAgent = next.resolvedAgent; plan.contextHistory = history;
         }
@@ -307,7 +331,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
           { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded',
             requiredScope: { question: scope.input.requestId, references: scope.input.draft.references.map(ref => ref.referenceId),
-              works: scope.input.works.map(work => work.contentId) },
+              works: scope.input.works.map(work => work.contentId), workNames: scope.input.works.map(work => work.name),
+              referenceNames: scope.input.draft.references.map(ref => ref.sourceName) },
             systemChars: context.system.length, inputChars: context.userText.length,
             outputReserve: connection.maxOutputTokens, contextWindow: model.contextWindow, counting: 'unknown' } }); return null;
       }
@@ -322,7 +347,19 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
-    if (plan.input.input.text.length > 1000000) { await pause(run, generation, 'capacity-exceeded'); return null; }
+    const policy = plan.resolvedAgent?.definition.contextPolicy;
+    if (plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
+      || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
+      await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
+        { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
+          inputChars: plan.input.input.text.length, policy,
+          requiredScope: { questions: fixedInputs.map(item => item.input.requestId),
+            references: fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.referenceId)),
+            works: fixedInputs.flatMap(item => item.input.works.map(work => work.contentId)),
+            workNames: [...new Set(fixedInputs.flatMap(item => item.input.works.map(work => work.name)))],
+            referenceNames: [...new Set(fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.sourceName)))] } } });
+      return null;
+    }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
     plan.inputSequence = Math.max((previous?.plan as Plan | undefined)?.inputSequence ?? 0, ...fixedInputs.map(item => item.sequence));
     plan.inputVersions = fixedInputs.map(({ inputId, version, inputDigest }) => ({ inputId, version, inputDigest }));
@@ -378,6 +415,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       if (callRemaining < 250) { exhausted = Number(budget!.remaining_ms) < 250 ? 'run-deadline-exceeded' : 'model-call-budget-exhausted'; return; }
       plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, outputRemaining);
       plan.input.limits.timeoutMs = Math.min(plan.input.limits.timeoutMs ?? callRemaining, callRemaining, 2_147_483_647);
+      if (plan.resolvedAgent) plan.contextFacts = await fixedContextFacts(tx, run, scope.activity, fixedInputs.map(item => item.inputId));
       await tx.query(`INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved,call_reserved_ms)
         VALUES($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10)`, [stepId, run.runId, number, attemptId,
         plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens, inputReserve, plan.input.limits.timeoutMs]);
@@ -407,16 +445,20 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   async function receiveModel(run: TeachingRun, generation: number, saved: Row, scope: TeachingToolScope) {
     const plan = saved.plan as unknown as Plan;
     await assertDispatch(run, generation);
+    // Older planned records did not freeze continuity facts. Append them once before
+    // the first snapshot write; subsequent retries always read the same retained data.
+    if (plan.resolvedAgent && !plan.contextFacts) await transaction(run, generation, async tx => {
+      const { rows: [current] } = await tx.query('SELECT plan FROM teaching_steps WHERE step_id=$1 FOR UPDATE', [saved.step_id]);
+      const original = current!.plan as Plan;
+      plan.contextFacts = original.contextFacts ?? await fixedContextFacts(tx, run, scope.activity, []);
+      if (!original.contextFacts) await tx.query('UPDATE teaching_steps SET plan=$2 WHERE step_id=$1',
+        [saved.step_id, JSON.stringify({ ...original, contextFacts: plan.contextFacts })]);
+    });
     await owner.models.checks.receive(scope.identity, plan.input);
     const payload = await owner.models.checks.requestPayload(scope.identity, String(saved.attempt_id));
-    const { rows: adoptedInputs } = await storage.read(`SELECT i.input_id,i.version,i.seq,v.body FROM teaching_inputs i
-      JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
-      WHERE i.adopted_run_id=$1 ORDER BY i.seq`, [run.runId]);
-    const { rows: effects } = await storage.read('SELECT command_id,call_id,command,outcome FROM teaching_commands WHERE run_id=$1 AND outcome IS NOT NULL ORDER BY step_id,ordinal', [run.runId]);
-    const { rows: waits } = await storage.read('SELECT * FROM teaching_waits WHERE run_id=$1 ORDER BY wait_id', [run.runId]);
-    const contextManifest = plan.resolvedAgent ? manifestFor(plan.resolvedAgent, payload, { inputs: adoptedInputs,
-      history: plan.contextHistory ?? [], effects, waits, observations: plan.input.input.observations ?? [],
-      activity: scope.activity, maxOutputTokens: plan.input.limits.maxOutputTokens }) : undefined;
+    const contextManifest = plan.resolvedAgent ? manifestFor(plan.resolvedAgent, payload, { ...plan.contextFacts!,
+      history: plan.contextHistory ?? [], observations: plan.input.input.observations ?? [],
+      maxOutputTokens: plan.input.limits.maxOutputTokens }) : undefined;
     const snapshot = teachingSnapshotSchema.parse({ snapshotId: saved.snapshot_id, activityId: run.activityId, runId: run.runId,
       attemptId: saved.attempt_id, segmentId: saved.segment_id, assemblyVersion: plan.resolvedAgent ? 2 : 1, model: plan.model,
       maxOutputTokens: plan.input.limits.maxOutputTokens, ...(plan.model.contextWindow ? { contextWindow: plan.model.contextWindow } : {}),

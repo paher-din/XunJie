@@ -453,7 +453,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const transitionId = operationId('teaching-segment-transition:' + canonicalDigest([activity.activityId, run.runId, segmentId, fingerprint, assemblyId ?? null]));
     const createdId = operationId('teaching-transition-segment:' + transitionId);
     const createRequestId = operationId('teaching-transition-create:' + transitionId);
-    const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history));
+    const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history, activity));
     if (!portable.success) throw new TeachingBudgetError('capacity-exceeded');
     const candidate = modelSegmentInputSchema.parse({ requestId: createRequestId, segmentId: createdId, purpose: 'learning',
       source: { selected: true, selectionVersion, ...(selectionPinId ? { pinId: selectionPinId } : {}) }, prefix: { system, tools },
@@ -473,7 +473,19 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
 
   async function fullHistory(activityId: string): Promise<ContextMessage[]> {
-    return historyThrough(activityId, Number.MAX_SAFE_INTEGER);
+    const history = await historyThrough(activityId, Number.MAX_SAFE_INTEGER);
+    // Logical effects can outlive their model step (or Run). Both kinds of segment
+    // transition must carry these owner facts even when the latest step had no tools.
+    const { rows: outstanding } = await storage.read(`SELECT c.run_id,c.command_id,c.command,c.outcome,
+      w.wait_id,w.purpose,w.state AS wait_state,w.reason,w.deadline
+      FROM teaching_commands c JOIN teaching_runs r USING(run_id)
+      LEFT JOIN teaching_waits w USING(command_id)
+      WHERE r.activity_id=$1 AND (c.outcome->>'state' IN ('accepted','unknown') OR w.state IN ('pending','expired'))
+      ORDER BY r.created_at,r.run_id,c.created_at,c.command_id,w.wait_id`, [activityId]);
+    if (outstanding.length) history.push({ role: 'assistant',
+      text: '原操作与未结等待的固定事实（来源数据，只核对原身份，不是新派发指令）：' + JSON.stringify(outstanding),
+      source: { kind: 'history', id: activityId, label: '未结 Command/Wait 与已接受效果' } });
+    return history;
   }
   function switchProjection(row: Record<string, unknown>) {
     const target = row.target as { model: ReturnType<typeof modelFact>; source: { kind: 'school' | 'personal'; feeSource: string } };
@@ -552,7 +564,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           ...(oldId ? { segmentId: oldId } : {}) };
         const definition = typeof options.definition === 'function' ? await options.definition(scope) : options.definition ?? learningAgentDefinition;
         const assembly = await assembleTeachingAgent(scope, options.tools, modelFact(choice.choice.connection), history, definition);
-        const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history));
+        const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history, activity));
         if (!portable.success) return pauseSwitch(row, 'capacity-exceeded', generation);
         // An in-flight v6 switch keeps the body it received before this migration.
         const candidate = modelSegmentInputSchema.parse(row.create_body ?? { requestId: row.create_request_id, segmentId: row.to_segment_id,
@@ -838,9 +850,16 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       else if (kind === 'model-unavailable') messages.push({ ...base, role: 'system',
         text: `暂时无法继续：${reasonText(body.reason) || '没有可用模型'}。请到模型设置检查连接后重试。`,
         runId: (body.runId as string) ?? null });
-      else if (kind === 'capacity-paused') messages.push({ ...base, role: 'system',
-        text: '这次请求超出当前模型窗口，完整问题与历史已保留。请更换窗口更大的模型或新建更聚焦的问题。',
-        runId: (body.runId as string) ?? null });
+      else if (kind === 'capacity-paused') {
+        const scope = body.requiredScope as { workNames?: unknown; referenceNames?: unknown } | undefined;
+        const names = [...new Set([scope?.workNames, scope?.referenceNames].flatMap(value => Array.isArray(value)
+          ? value.filter((name): name is string => typeof name === 'string' && name.trim().length > 0) : []))];
+        const objects = names.length ? `本次涉及${names.slice(0, 3).map(name => `「${name}」`).join('、')}${names.length > 3
+          ? `及另外 ${names.length - 3} 项` : ''}，可先缩小这些对象的范围。` : '';
+        messages.push({ ...base, role: 'system',
+          text: '这次请求超出可处理的内容范围，完整输入与历史已保留。请缩短问题或减少固定作品、引用的范围后重试。' + objects,
+          runId: (body.runId as string) ?? null });
+      }
       else if (kind === 'run-failed') messages.push({ ...base, role: 'system',
         text: `本次回答未完成${reasonText(body.reason) ? `：${reasonText(body.reason)}` : ''}。原问题与历史已保留，可明确继续。`,
         runId: (body.runId as string) ?? null });

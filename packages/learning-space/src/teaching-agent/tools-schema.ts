@@ -6,6 +6,7 @@ import type { TeachingToolScope } from './tool-types.js';
 import { aluVerificationSchema } from './alu-tools.js';
 import { canonicalDigest } from './identity.js';
 import type { TeachingToolContribution } from './tool-types.js';
+import { platformToolContribution } from './tool-contributions.js';
 export const uuid = { type: 'string', minLength: 36, maxLength: 36 };
 export const objectSchema = (properties: Record<string, unknown>) => ({ type: 'object', properties,
   required: Object.keys(properties), additionalProperties: false });
@@ -57,10 +58,7 @@ export function teachingContributions(scope: TeachingToolScope): TeachingToolCon
   return teachingDefinitions(scope).flatMap<TeachingToolContribution>(definition => {
     const resourceScope = { identity: scope.identity, activityId: scope.activity.activityId,
       releaseId: scope.activity.course?.releaseId ?? null };
-    if (definition.name !== 'course_operation') return [{ definition,
-      source: { kind: 'platform' as const, sourceId: 'platform.learning', version: '1', contentDigest: canonicalDigest(definition) },
-      executor: { executorId: 'teaching-tools:' + definition.name, toolName: definition.name, version: '1' },
-      effect: definition.name === 'execution_stop' ? 'stop' as const : 'read' as const, resourceScope }];
+    if (definition.name !== 'course_operation') return [platformToolContribution(definition, scope)];
     return (scope.activity.course?.components ?? []).flatMap(binding => {
       const operations = (definition.inputSchema.anyOf as Record<string, unknown>[]).filter(operation => {
         const properties = operation.properties as Record<string, { const?: string }>;

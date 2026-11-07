@@ -1,0 +1,154 @@
+{
+  "engineering": {
+    "status": "passed",
+    "startedAt": "2026-11-07T18:44:52.694Z",
+    "finishedAt": "2026-11-07T18:47:58.305Z",
+    "nodeVersion": "v24.21.0",
+    "exitCode": 0,
+    "group": "full",
+    "jobs": 4,
+    "testsCached": false,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "taskCount": 4,
+        "failed": []
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "taskCount": 1,
+        "failed": []
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "taskCount": 35,
+        "failed": []
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "taskCount": 92,
+        "failed": []
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "taskCount": 45,
+        "failed": []
+      }
+    ],
+    "scope": "Complete engineering verification; native PostgreSQL Agent regression is reported separately."
+  },
+  "snapshotRecovery": {
+    "status": "passed",
+    "testFile": "apps/server/tests/teaching-agent.snapshot-recovery.runtime.test.mjs",
+    "tests": 1,
+    "pass": 1,
+    "fail": 0,
+    "originalFailure": "identity-conflict after pending/accepted facts changed to consumed/completed between resource commit and recovery",
+    "retryUploads": [
+      {
+        "uploadId": "7e964c93-0620-415e-981c-c5707de43dcd",
+        "sha256": "483aae2eeedf4cda934a80e68a9b46f89d5fa89a508b8190289160587494eb67",
+        "waits": [
+          "pending"
+        ],
+        "effects": [
+          "accepted"
+        ]
+      },
+      {
+        "uploadId": "7e964c93-0620-415e-981c-c5707de43dcd",
+        "sha256": "483aae2eeedf4cda934a80e68a9b46f89d5fa89a508b8190289160587494eb67",
+        "waits": [
+          "pending"
+        ],
+        "effects": [
+          "accepted"
+        ]
+      }
+    ],
+    "beforeFixUploadAttempts": [
+      {
+        "uploadId": "cdebafed-54e5-4ff3-93cc-72e7850c554f",
+        "sha256": "4d3746767827bfb8090a10fe2c8ce1d2589a83371ae317186e666e8f472fba89",
+        "waits": [
+          "pending"
+        ],
+        "effects": [
+          "accepted"
+        ]
+      },
+      {
+        "uploadId": "cdebafed-54e5-4ff3-93cc-72e7850c554f",
+        "sha256": "d0e7665163aaeadd780ad6d4b0225eb06514501ebc0b53fc888ddb2c6ff32860",
+        "waits": [
+          "consumed"
+        ],
+        "effects": [
+          "completed"
+        ]
+      }
+    ]
+  },
+  "review": {
+    "standards": {
+      "findings": 0
+    },
+    "spec": {
+      "findings": 0
+    }
+  },
+  "chromeConversation": {
+    "status": "passed",
+    "tests": 4,
+    "source": "apps/web/e2e/teachingConversation.spec.ts",
+    "platform": "darwin-arm64",
+    "browser": "installed headed Chrome",
+    "scope": [
+      "first question and follow-up",
+      "refresh",
+      "stop",
+      "course conversation",
+      "process restart"
+    ],
+    "candidate": "Before final snapshot-recovery delta; final delta covered by native PostgreSQL regression."
+  },
+  "cleanup": {
+    "macTaskProductPackagesRemoved": true,
+    "testKeysRemoved": true,
+    "windowsTaskAndTemporaryDirectoryRemoved": true,
+    "windowsScopedFirewallRuleRemoved": true,
+    "environments": "Both cross-owner temporary environments stopped, deleted and removed as recorded in cross-owner.json."
+  },
+  "docs": {
+    "status": "passed",
+    "markdownFiles": 260,
+    "localTargets": 2568,
+    "failures": 0
+  },
+  "nativeAgentRegression": {
+    "status": "passed",
+    "nodeVersion": "v24.21.0",
+    "postgresVersion": "18.6",
+    "testFiles": 16,
+    "tests": 132,
+    "pass": 132,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "durationMs": 496966.058917,
+    "scope": [
+      "all teaching-agent runtime files except separately reported snapshot-recovery",
+      "teaching-tools-host.runtime.test.mjs",
+      "agent-transfer-recovery.runtime.test.mjs"
+    ],
+    "warnings": [
+      "Existing fixture accumulation emitted MaxListenersExceededWarning; no test failed."
+    ]
+  }
+}

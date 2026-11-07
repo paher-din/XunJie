@@ -291,7 +291,9 @@ test('long histories, large inputs and saved 1M windows are used without probe l
     assert.equal(received.length, 10);
     const tenth = received[9];
     assert.ok(tenth.messages.length >= 20, 'more than eight conversation groups stay in the native context');
-    assert.equal(tenth.messages.filter(message => message.role === 'user').length, 10);
+    const studentQuestionNumbers = payload => payload.messages.filter(message => message.role === 'user')
+      .flatMap(message => [...JSON.stringify(message.content).matchAll(/第 (\d+) 个问题/g)].map(match => Number(match[1])));
+    assert.deepEqual(studentQuestionNumbers(tenth), [1,2,3,4,5,6,7,8,9,10], 'all original student questions keep their order');
     assert.equal(tenth.max_tokens, 8192);
     const tenthUser = tenth.messages.at(-1).content;
     const text = Array.isArray(tenthUser) ? tenthUser.map(part => part.text ?? '').join('') : tenthUser;
@@ -311,10 +313,12 @@ test('long histories, large inputs and saved 1M windows are used without probe l
     assert.equal(snapshot.contextWindow, 1048576);
     const roles = received[10].messages.map(message => message.role);
     assert.equal(roles[0], 'system');
-    assert.equal(roles.filter(role => role === 'user').length, 11, 'a sealed segment keeps prior student turns with their native role');
+    assert.deepEqual(studentQuestionNumbers(received[10]), [1,2,3,4,5,6,7,8,9,10], 'a sealed segment keeps prior student turns with their native role');
     assert.equal(roles.filter(role => role === 'assistant').length, 10, 'a sealed segment keeps prior Agent turns with their native role');
-    assert.ok(received[10].messages[1].content.endsWith('第 1 个问题。'));
-    assert.ok(received[10].messages[1].content.includes(big.value), 'portable history retains the first adopted fixed material');
+    const firstQuestion = received[10].messages.find(message => message.role === 'user'
+      && typeof message.content === 'string' && message.content.endsWith('第 1 个问题。'));
+    assert.ok(firstQuestion?.content.includes(big.value), 'portable history retains the first adopted fixed material');
+    assert.match(JSON.stringify(received[10].messages.at(-1).content), /更换窗口后继续/);
   } catch (error) { failure = error; }
   finally {
     try { await runtime.stop(); } catch (error) { failure = failure ? new AggregateError([failure, error]) : error; }
