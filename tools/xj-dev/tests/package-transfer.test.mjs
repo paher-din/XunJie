@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { before, after, test } from 'node:test';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { getCACertificates, setDefaultCACertificates } from 'node:tls';
-import { pathToFileURL } from 'node:url';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
 import { environmentId, environmentPaths, PINNED_NODE, TOOL_VERSION } from '../src/paths.mjs';
 import { ACCESS_PROTOCOL, digest as hexDigest, publicKey, verifyProof, writePrivateJson } from '../src/enrollment-protocol.mjs';
@@ -403,21 +403,48 @@ test('corrupt downloaded bytes and a damaged ready cache never become usable pac
 
 test('a competing process cannot operate the same member transfer namespace; the permanent mutex survives release', async t => {
   const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
-  let entered, release;
-  const pending = new Promise(done => entered = done); f.controls.releaseGET = new Promise(done => release = done);
-  f.controls.pauseGET = () => entered();
-  const download = fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
-  await pending;
-  try {
-    await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'LOCK_HELD' });
-    const script = `import {fetchRepro} from ${JSON.stringify(pathToFileURL(join(import.meta.dirname, '../src/package-transfer.mjs')).href)};
-      try {await fetchRepro(JSON.parse(process.argv[1]),JSON.parse(process.argv[2]));process.exitCode=1;} catch(e) {console.log(e.code);}`;
-    const child = spawn(process.execPath, ['--input-type=module', '-e', script, JSON.stringify(f.context), JSON.stringify({ deviceFile: f.deviceFile, reproId: source.reproId })], { stdio: ['ignore', 'pipe', 'pipe'] });
-    let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.resume();
-    assert.equal(await new Promise(done => child.once('close', done)), 0); assert.equal(output.trim(), 'LOCK_HELD');
-  } finally { release(); await download; }
   const namespace = join(f.context.home, 'transfers', readdirSync(join(f.context.home, 'transfers'))[0]);
-  assert.ok(lstatSync(join(namespace, 'operation-lock', 'mutex.sqlite')).isFile());
+  const mutex = join(namespace, 'operation-lock', 'mutex.sqlite'), original = lstatSync(mutex);
+  const script = `import {acquireLock} from ${JSON.stringify(new URL('../src/state.mjs', import.meta.url).href)};
+    let lock;
+    process.on('message', action => {
+      try {
+        if (action === 'release') { lock.release(); lock = undefined; process.send('released'); return; }
+        lock = acquireLock({root: process.argv[1], lockFile: process.argv[2]});
+        if (action === 'probe') { lock.release(); lock = undefined; }
+        process.send('acquired');
+      } catch (error) { process.send(error.code); }
+    });
+    process.send('ready');`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', script, namespace, dirname(mutex)], {
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  });
+  let childError;
+  child.on('error', error => { childError = error; });
+  const stopped = new Promise(done => child.once('close', done));
+  const next = () => childError ? Promise.reject(childError)
+    : once(child, 'message', { signal: AbortSignal.timeout(10000) }).then(([message]) => message);
+  const ask = action => { const response = next(); child.send(action); return response; };
+  try {
+    assert.equal(await next(), 'ready');
+    let entered, release;
+    const pending = new Promise(done => entered = done); f.controls.releaseGET = new Promise(done => release = done);
+    f.controls.pauseGET = () => entered();
+    const download = fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+    const settled = download.then(value => ({ value }), error => ({ error }));
+    try {
+      await Promise.race([pending, settled.then(({ error }) => { throw error ?? new Error('download missed the GET barrier'); })]);
+      // Probe the public download's real mutex quickly, before the unchanged
+      // HTTP deadline. Slow native permission checks run in the second phase.
+      assert.equal(await ask('probe'), 'LOCK_HELD');
+    } finally { release(); await download; }
+    assert.equal(await ask('hold'), 'acquired');
+    await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'LOCK_HELD' });
+    await assert.rejects(() => fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId }), { code: 'LOCK_HELD' });
+    assert.equal(await ask('release'), 'released');
+  } finally { if (child.exitCode === null && child.signalCode === null) child.kill(); await stopped; }
+  const retained = lstatSync(mutex);
+  assert.ok(retained.isFile()); assert.equal(retained.ino, original.ino); assert.equal(retained.dev, original.dev);
   assert.equal((await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId })).cacheHit, true);
 });
 
