@@ -48,7 +48,7 @@ async function fixture(protocol, handler, options = {}) {
     const payload = protocol === 'responses' ? { model: 'fixture', stream: true, input: 'fixture', ...options.payload }
       : { model: 'fixture', stream: true, messages: [{ role: 'user', content: 'fixture' }], ...options.payload };
     const result = await (protocol === 'responses' ? runResponses : runChat)(configuration,
-      options.key ?? 'synthetic-review-key', payload, controller.signal, 2000, tools, undefined,
+      options.key ?? 'synthetic-review-key', payload, controller.signal, options.timeoutMs ?? 2000, tools, undefined,
       async (input, init) => { injectedRequests++; return fetch(input, init); });
     assert.equal(requests, 1, 'generation is never retried');
     if (options.checkFetch) assert.equal(injectedRequests, 1, 'owner fetch must carry the request');
@@ -184,7 +184,8 @@ for (const protocol of ['chat-completions', 'responses']) {
   for (const kind of ['comment', 'unfinished', 'small-events']) test(`${protocol} raw byte cap includes ${kind}`, async () => {
     const padding = kind === 'comment' ? ':' + 'x'.repeat(2_100_000) + '\n\n'
       : kind === 'unfinished' ? 'data: ' + 'x'.repeat(2_100_000) : ': padding\n\n'.repeat(210_001);
-    const result = await fixture(protocol, response => response.end(padding));
+    // The byte-limit verdict must not depend on parsing 210,001 comments within two seconds.
+    const result = await fixture(protocol, response => response.end(padding), { timeoutMs: 10_000 });
     assert.equal(result.state, 'incomplete'); assert.equal(result.reason, 'response-limit'); assert.deepEqual(result.toolIntents, []);
   });
 }
