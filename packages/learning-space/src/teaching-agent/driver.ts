@@ -1004,8 +1004,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await tx.query('UPDATE teaching_commands SET outcome=$2,resource_id=$3,updated_at=clock_timestamp() WHERE command_id=$1',
           [command.commandId, JSON.stringify(updated), resource.resourceId]);
         await tx.reference('teaching-tool-cleanup:' + uploadId, resource.resourceId);
-        await event(tx, run.activityId, 'tool-result', { runId: run.runId, commandId: command.commandId,
-          phase: 'stop-original-execution', outcome: stopped });
+        await event(tx, run.activityId, 'tool-result', { runId: run.runId, stepId: row.step_id,
+          commandId: command.commandId, callId: row.call_id, resourceId: resource.resourceId,
+          phase: 'stop-original-execution', outcome: updated });
       }
       if (pending(stopped)) await createWait(tx, run, row, command, stopped, 'cleanup');
       else {

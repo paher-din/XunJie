@@ -20,7 +20,8 @@ const { values } = parseArgs({ options: { product: { type: 'string' }, packages:
 assert.ok(values.output && Boolean(values.product) !== Boolean(values.school), 'Select a product or independent school and --output.');
 assert.ok(!values.controlled || values.product, 'Controlled model timing belongs to the local-product engineering path.');
 const output = resolve(values.output), label = values.label ?? `${process.platform}-${values.school ? 'school' : 'product'}`;
-const report = { issue: 202, label, platform: process.platform, arch: process.arch, node: process.version,
+const issue = values.discovery ? 216 : 202;
+const report = { issue, label, platform: process.platform, arch: process.arch, node: process.version,
   headed: true, model: values.controlled ? 'controlled external transport; real tools' : 'deepseek-flash',
   startedAt: new Date().toISOString(), cases: [], modelCalls: [], workers: [], errors: [], cleanup: [], status: 'running' };
 const hash = value => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
@@ -349,7 +350,7 @@ try {
       : JSON.parse(await readFile(resolve(values['credentials-file']), 'utf8')).providers.find(item => /deepseek/i.test(item.name ?? item.preset ?? '') && item.key);
     assert.ok(provider?.key, 'authorised provider credential exists');
     const connectionId = randomUUID(), grantId = randomUUID();
-    await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: '#202 ALU acceptance',
+    await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: `#${issue} ALU acceptance`,
       protocol: 'chat-completions', baseUrl: upstream ? `http://127.0.0.1:${upstream.address().port}/v1` : 'https://api.deepseek.com/v1',
       path: '/chat/completions', modelId: values.controlled ? 'alu-controlled' : 'deepseek-flash', dialect: values.controlled ? 'standard' : 'deepseek',
       parameterMode: values.controlled ? 'plain' : 'thinking', enabled: true, contextWindow: 262144, maxOutputTokens: 4096,

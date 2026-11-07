@@ -241,7 +241,7 @@ test('the closed owner rejects a mismatched inventory and unsupported mandatory 
     wrongCount.evidence.tables.teaching_runs.count = 0;
     await assert.rejects(validateTeachingBoundary(c.storage, wrongCount), error => error.code === 'corrupt');
     const future = structuredClone(evidence);
-    future.evidence.formatVersion = 2;
+    future.evidence.formatVersion = 3;
     await assert.rejects(validateTeachingBoundary(c.storage, future), error => error.code === 'incompatible');
   } finally { await f.close(); }
 });
