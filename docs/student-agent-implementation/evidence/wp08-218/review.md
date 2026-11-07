@@ -1,10 +1,10 @@
-# #218 双轴审查
+# [WP08：PDF 添加、按页阅读与固定引用](https://github.com/paher-din/XunJie/issues/218)双轴审查
 
-固定基线 `cb104e33604cbfcb8c5c4f294dd5c745e723834c`，实现候选 `78432257227c30878a6418fd372adf203cd520b5`。两个独立审查分别核对规范与 #218 / #214 的适用要求，排除 `docs/archive/`。
+固定基线 `cb104e33604cbfcb8c5c4f294dd5c745e723834c`，实现候选 `78432257227c30878a6418fd372adf203cd520b5`。两个独立审查分别核对规范与 [WP08：PDF 添加、按页阅读与固定引用](https://github.com/paher-din/XunJie/issues/218) / [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) 的适用要求，排除 `docs/archive/`。
 
 ## Standards
 
-[审查记录](standards-final.json)：没有仍需修复的规范问题。沿用原产品布局、组件、设计 token、owner 与公共契约；文档中的产品包复现命令已更正为在仓库根目录使用包内 Node 运行。第三方许可保留上游原文。
+[审查记录](standards-final.json)：没有仍需修复的规范问题。沿用原产品布局、组件、设计 token、owner 与公共契约；文档中的产品包复现命令已更正为在仓库根目录使用包内 Node 运行，面向用户的议题引用采用完整标题链接。第三方许可保留上游原文。
 
 ## Spec
 
