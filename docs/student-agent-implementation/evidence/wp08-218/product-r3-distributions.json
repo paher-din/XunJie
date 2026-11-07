@@ -183,8 +183,11 @@
   },
   "remoteRetention": {
     "root": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449",
-    "keepForAquinasChromeAndCross": true,
-    "cleanupOwner": "main after Aquinas finishes"
+    "keepForAquinasChromeAndCross": false,
+    "cleanupOwner": "main",
+    "cleanupState": "completed",
+    "verifiedAt": "2026-11-07T20:37:14.884873+00:00",
+    "evidence": "windows-cleanup.json"
   },
   "committedByThisTask": false
 }

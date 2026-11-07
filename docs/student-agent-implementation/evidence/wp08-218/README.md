@@ -18,6 +18,7 @@
 | Chrome 可靠草稿 | [Mac](darwin-durable.json)、[Windows](windows-ui-r2-durable.json)：丢上传回执、原身份核对、相邻页、真实区域裁切、中文组合输入、同名版本、重启与浏览器前后退；Windows [交互 session](windows-ui-r2-session.json) / [系统](windows-ui-r2-system.json) |
 | Windows Chrome 模型完整链 | [实际交互用户验收](windows-model-chrome.json)：Windows Chrome → LAN HTTPS → Mac 最终 r3 资料/模型宿主；正式上传、引用、实际 PNG 入模、追问、点击来源、宿主重启后原读取复现，重读无新增模型调用；凭据只留 Mac |
 | 实际跨机 owner | [跨机证据](cross-owner.json)：Windows Agent 与 Mac 学校资料/模型 owner，直接 LAN HTTPS；实际页图入模、断线不重派、原身份恢复和纯重读 |
+| 临时环境清理 | [Windows 清理核对](windows-cleanup.json)：SSH 恢复后正常停止本票旧 UI PostgreSQL，三个临时目录已删除，测试防火墙规则与残留进程均为 0；本地仅保留两端最终 r3 包和验收证据 |
 
 ## 可复现入口
 

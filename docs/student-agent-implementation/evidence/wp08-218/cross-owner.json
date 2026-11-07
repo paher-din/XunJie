@@ -427,12 +427,11 @@
       "rootRemoved": true
     },
     "distributionHandoff": {
-      "state": "unconfirmed",
+      "state": "completed",
       "owner": "main",
-      "reason": "SSH connection reset by peer during final distribution cleanup; no further verification per owner instruction.",
-      "remoteRoot": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449",
-      "crossTemporaryRoot": "C:/Users/h/AppData/Local/Temp/wp08-218-cross-r3-20f46fd8",
-      "firewallRule": "XunJie-WP08-218-CrossOwner-r3"
+      "verifiedAt": "2026-11-07T20:37:14.884873+00:00",
+      "evidence": "windows-cleanup.json",
+      "note": "After SSH recovery, removed distribution and cross temporary roots plus the exact temporary firewall rule. The old r2 UI PostgreSQL was stopped normally and its temporary data removed."
     },
     "macTemporaryCertificatesRemoved": true
   },
