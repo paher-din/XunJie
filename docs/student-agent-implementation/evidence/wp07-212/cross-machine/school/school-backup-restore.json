@@ -1,0 +1,86 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "backup-restore",
+  "measuredAt": "2026-11-07T09:40:34.910Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the school produced a held formal backup with owner boundary material",
+      "detail": {
+        "backupId": "a75040e2-56c7-47ea-9acc-8f331a1605cb",
+        "boundaryAt": "2026-11-07T09:40:35.109Z",
+        "services": [
+          {
+            "kind": "xunjie.runtime.boundary",
+            "serviceId": "586b0482-d5d9-42e8-9af0-69c0c6f43b6a"
+          },
+          {
+            "kind": "xunjie.storage.boundary",
+            "serviceId": "bbb7ddca-cf9b-42aa-9967-7572dbe7f0f2"
+          },
+          {
+            "kind": "xunjie.learning-data.boundary",
+            "serviceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2"
+          },
+          {
+            "kind": "xunjie.storage.boundary",
+            "serviceId": "9d3a5227-bd20-4829-a7f9-a305f3a991b9"
+          },
+          {
+            "kind": "xunjie.teaching-agent.boundary",
+            "serviceId": "7f42b3cb-9126-4623-a141-fd039b72b347"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the isolated school target restores read-only on a separate HTTPS port",
+      "detail": {
+        "root": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp07-212/school-target",
+        "endpoint": "https://192.168.3.39:9445",
+        "state": "maintenance",
+        "installationId": "02ac2127-b11e-47fe-ba29-a1d19c61e164"
+      }
+    }
+  ],
+  "facts": {
+    "backup": {
+      "backupId": "a75040e2-56c7-47ea-9acc-8f331a1605cb",
+      "boundaryAt": "2026-11-07T09:40:35.109Z",
+      "services": [
+        {
+          "kind": "xunjie.runtime.boundary",
+          "serviceId": "586b0482-d5d9-42e8-9af0-69c0c6f43b6a"
+        },
+        {
+          "kind": "xunjie.storage.boundary",
+          "serviceId": "bbb7ddca-cf9b-42aa-9967-7572dbe7f0f2"
+        },
+        {
+          "kind": "xunjie.learning-data.boundary",
+          "serviceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2"
+        },
+        {
+          "kind": "xunjie.storage.boundary",
+          "serviceId": "9d3a5227-bd20-4829-a7f9-a305f3a991b9"
+        },
+        {
+          "kind": "xunjie.teaching-agent.boundary",
+          "serviceId": "7f42b3cb-9126-4623-a141-fd039b72b347"
+        }
+      ]
+    },
+    "target": {
+      "root": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/wp07-212/school-target",
+      "endpoint": "https://192.168.3.39:9445",
+      "state": "maintenance",
+      "installationId": "02ac2127-b11e-47fe-ba29-a1d19c61e164"
+    }
+  },
+  "status": "passed"
+}

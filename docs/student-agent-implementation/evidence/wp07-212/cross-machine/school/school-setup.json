@@ -1,0 +1,117 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "setup",
+  "measuredAt": "2026-11-07T09:39:47.765Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the Mac school installed and started from the real darwin-arm64 package over LAN HTTPS",
+      "detail": "https://192.168.3.39:9443"
+    },
+    {
+      "name": "the school holds the real member, course, activity and controlled model facts",
+      "detail": {
+        "courseId": "d5b1052d-29d0-4ac4-bb8c-bdf55ff52a97",
+        "releaseId": "97e5886f-b625-44cd-affe-76e1fb2764f5",
+        "activityId": "3d8aef8e-e208-45b6-a205-5795b8c94c8a"
+      }
+    }
+  ],
+  "facts": {
+    "endpoint": "https://192.168.3.39:9443",
+    "environment": {
+      "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+      "installationId": "8f7de44c-2784-4910-966c-c5d9272b2fa2",
+      "profile": "school",
+      "services": [
+        {
+          "unit": "client",
+          "serviceId": "586b0482-d5d9-42e8-9af0-69c0c6f43b6a"
+        },
+        {
+          "unit": "space-course",
+          "serviceId": "bbb7ddca-cf9b-42aa-9967-7572dbe7f0f2"
+        },
+        {
+          "unit": "learning-data",
+          "serviceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2"
+        },
+        {
+          "unit": "model-connection",
+          "serviceId": "9d3a5227-bd20-4829-a7f9-a305f3a991b9"
+        },
+        {
+          "unit": "teaching-agent",
+          "serviceId": "7f42b3cb-9126-4623-a141-fd039b72b347"
+        }
+      ]
+    },
+    "member": {
+      "loginName": "wp07-212-student",
+      "principalId": "cba2a55b-6c37-4723-b80d-4e0d4635d855",
+      "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e"
+    },
+    "model": {
+      "connectionId": "613c0268-75d5-4b5a-9f6f-e1c984dded3d",
+      "version": 1
+    },
+    "course": {
+      "courseId": "d5b1052d-29d0-4ac4-bb8c-bdf55ff52a97",
+      "releaseId": "97e5886f-b625-44cd-affe-76e1fb2764f5",
+      "activityId": "3d8aef8e-e208-45b6-a205-5795b8c94c8a"
+    },
+    "activity": {
+      "activityId": "3d8aef8e-e208-45b6-a205-5795b8c94c8a",
+      "identity": {
+        "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+        "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+        "principalId": "cba2a55b-6c37-4723-b80d-4e0d4635d855",
+        "kind": "school",
+        "name": "学校学习空间"
+      },
+      "target": {
+        "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+        "serviceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2",
+        "version": 1
+      },
+      "goal": "核对跨机备份恢复与原问题回应",
+      "question": "",
+      "references": [],
+      "status": "open",
+      "createdAt": "2026-11-07T09:39:48.271Z",
+      "course": {
+        "associationId": "ceba6d1d-2e37-43a9-ba63-735bb1534a3b",
+        "courseId": "d5b1052d-29d0-4ac4-bb8c-bdf55ff52a97",
+        "courseName": "WP07 跨机学习对话恢复",
+        "taskId": "3410da19-572d-40e3-8117-2532bdf19f1f",
+        "taskTitle": "核对跨机备份恢复与原问题回应",
+        "releaseId": "97e5886f-b625-44cd-affe-76e1fb2764f5",
+        "contentDigest": "8cda9d41a0af849189046b1bcdd1579de9d5c5410055cd9985c6e9bf9736b79f",
+        "objectives": [
+          "核对真实跨机恢复"
+        ],
+        "requirements": "保留原对话事实，按明确回应继续。",
+        "materials": [],
+        "starterWorks": [],
+        "capabilities": [],
+        "components": [],
+        "helpPolicy": {
+          "version": 1,
+          "questions": "allowed",
+          "scope": "course"
+        }
+      }
+    },
+    "package": {
+      "distributionSha256": "81a060bc5ec47af72fb3ba07f8e077986332f28ce913760d38ee97d9d4d01183",
+      "createdAt": "2026-11-07T09:31:27.108Z",
+      "platform": "darwin-arm64"
+    }
+  },
+  "status": "passed"
+}

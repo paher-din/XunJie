@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: formal backup accounts for a student Wait and revised queue, then re-derives the same owner facts in isolation
+ok 1 - formal backup accounts for a student Wait and revised queue, then re-derives the same owner facts in isolation
+  ---
+  duration_ms: 17752.626459
+  type: 'test'
+  ...
+# Subtest: a paused Run with an unconfirmed real physical model call remains unknown in owner maintenance
+ok 2 - a paused Run with an unconfirmed real physical model call remains unknown in owner maintenance
+  ---
+  duration_ms: 4810.828417
+  type: 'test'
+  ...
+# Subtest: a complete native result before Agent association survives formal restore and seals its original segment
+ok 3 - a complete native result before Agent association survives formal restore and seals its original segment
+  ---
+  duration_ms: 23025.824667
+  type: 'test'
+  ...
+# Subtest: the closed owner rejects a mismatched inventory and unsupported mandatory evidence version
+ok 4 - the closed owner rejects a mismatched inventory and unsupported mandatory evidence version
+  ---
+  duration_ms: 5117.396125
+  type: 'test'
+  ...
+# Subtest: an unclaimed real WP03 command survives independent restore; an unconfirmed live browser blocks backup
+ok 5 - an unclaimed real WP03 command survives independent restore; an unconfirmed live browser blocks backup
+  ---
+  duration_ms: 21857.89425
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 73286.10025

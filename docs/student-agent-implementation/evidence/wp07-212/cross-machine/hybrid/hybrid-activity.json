@@ -1,0 +1,48 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "activity",
+  "measuredAt": "2026-11-07T10:58:24.162Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the paired device created a course activity bound to its local learning-data owner",
+      "detail": {
+        "activityId": "6fddc1cd-eeea-4e9f-a33b-906571a569df",
+        "identity": {
+          "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+          "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+          "principalId": "8e52088e-f63d-4eea-a618-443e978e3e22",
+          "kind": "school",
+          "name": "学校学习空间"
+        },
+        "target": {
+          "environmentId": "dbcd94f0-7014-4a29-8b56-55c989eb52b6",
+          "serviceId": "3db1f233-9809-4df0-bfa0-5882d459cebe",
+          "version": 1
+        }
+      }
+    }
+  ],
+  "facts": {
+    "activityId": "6fddc1cd-eeea-4e9f-a33b-906571a569df",
+    "identity": {
+      "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+      "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+      "principalId": "8e52088e-f63d-4eea-a618-443e978e3e22",
+      "kind": "school",
+      "name": "学校学习空间"
+    },
+    "target": {
+      "environmentId": "dbcd94f0-7014-4a29-8b56-55c989eb52b6",
+      "serviceId": "3db1f233-9809-4df0-bfa0-5882d459cebe",
+      "version": 1
+    }
+  },
+  "status": "passed"
+}

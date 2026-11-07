@@ -1,0 +1,51 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "backup-restore",
+  "measuredAt": "2026-11-07T11:03:54.189Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the device produced a held formal backup naming the Mac school client as fence receiver",
+      "detail": {
+        "backupId": "fbd7a3cc-3d20-4acf-85a2-d835acd32071",
+        "boundaryAt": "2026-11-07T11:03:55.737Z",
+        "receiverIds": [
+          "f69b48b6-2329-4396-8fe7-78d73da985d4/586b0482-d5d9-42e8-9af0-69c0c6f43b6a"
+        ]
+      }
+    },
+    {
+      "name": "the isolated device target restores read-only on a separate HTTPS port",
+      "detail": {
+        "root": "C:\\Users\\h\\.verification\\wp07-212\\device-target",
+        "endpoint": "https://127.0.0.1:9449",
+        "state": "maintenance",
+        "installationId": "e838063a-8eb5-4bc2-9d6b-e799c73e9aff",
+        "clientNamespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6.recovery.84280b1b-1ef6-4b52-a725-c5353f80fedf"
+      }
+    }
+  ],
+  "facts": {
+    "backup": {
+      "backupId": "fbd7a3cc-3d20-4acf-85a2-d835acd32071",
+      "boundaryAt": "2026-11-07T11:03:55.737Z",
+      "receiverIds": [
+        "f69b48b6-2329-4396-8fe7-78d73da985d4/586b0482-d5d9-42e8-9af0-69c0c6f43b6a"
+      ]
+    },
+    "target": {
+      "root": "C:\\Users\\h\\.verification\\wp07-212\\device-target",
+      "endpoint": "https://127.0.0.1:9449",
+      "state": "maintenance",
+      "installationId": "e838063a-8eb5-4bc2-9d6b-e799c73e9aff",
+      "clientNamespace": "xunjie.v1.dbcd94f0-7014-4a29-8b56-55c989eb52b6.recovery.84280b1b-1ef6-4b52-a725-c5353f80fedf"
+    }
+  },
+  "status": "passed"
+}

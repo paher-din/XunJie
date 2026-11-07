@@ -1,0 +1,76 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "new-activity",
+  "measuredAt": "2026-11-07T09:54:48.692Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the active school prepared a fresh course activity for the independent Agent scenario",
+      "detail": "e00dff7c-f5bb-4677-837e-cd85b82bd1fa"
+    }
+  ],
+  "facts": {
+    "endpoint": "https://192.168.3.39:9445",
+    "schoolEnvironmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+    "schoolInstallationId": "02ac2127-b11e-47fe-ba29-a1d19c61e164",
+    "learningDataDescriptor": {
+      "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+      "serviceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2",
+      "unit": "learning-data",
+      "endpoint": "https://192.168.3.39:9445",
+      "protocolVersion": 1,
+      "capabilities": [
+        "runtime.status",
+        "teaching.dependencies"
+      ]
+    },
+    "activity": {
+      "activityId": "e00dff7c-f5bb-4677-837e-cd85b82bd1fa",
+      "identity": {
+        "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+        "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+        "principalId": "cba2a55b-6c37-4723-b80d-4e0d4635d855",
+        "kind": "school",
+        "name": "学校学习空间"
+      },
+      "target": {
+        "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+        "serviceId": "11243feb-f2cd-4624-9434-bf6c6a1debd2",
+        "version": 1
+      },
+      "goal": "核对跨机备份恢复与原问题回应",
+      "question": "",
+      "references": [],
+      "status": "open",
+      "createdAt": "2026-11-07T09:54:49.013Z",
+      "course": {
+        "associationId": "c28cc30f-8dad-4de0-ae12-63480ac55044",
+        "courseId": "d5b1052d-29d0-4ac4-bb8c-bdf55ff52a97",
+        "courseName": "WP07 跨机学习对话恢复",
+        "taskId": "3410da19-572d-40e3-8117-2532bdf19f1f",
+        "taskTitle": "核对跨机备份恢复与原问题回应",
+        "releaseId": "97e5886f-b625-44cd-affe-76e1fb2764f5",
+        "contentDigest": "8cda9d41a0af849189046b1bcdd1579de9d5c5410055cd9985c6e9bf9736b79f",
+        "objectives": [
+          "核对真实跨机恢复"
+        ],
+        "requirements": "保留原对话事实，按明确回应继续。",
+        "materials": [],
+        "starterWorks": [],
+        "capabilities": [],
+        "components": [],
+        "helpPolicy": {
+          "version": 1,
+          "questions": "allowed",
+          "scope": "course"
+        }
+      }
+    }
+  },
+  "status": "passed"
+}

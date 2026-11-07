@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "platform": "darwin",
+  "osRelease": "27.2.0",
+  "source": "independent-full-package",
+  "stages": [
+    {
+      "name": "bundled-or-source-cli-start",
+      "passed": true,
+      "fact": {
+        "state": "ready"
+      }
+    },
+    {
+      "name": "isolated-history",
+      "passed": true,
+      "fact": {
+        "runId": "8893860f-77f2-4343-b079-f3d253f42e08",
+        "inputId": "8745cf75-c0c8-4d80-81e6-514a315449c2",
+        "calls": 1
+      }
+    },
+    {
+      "name": "chrome-readonly",
+      "passed": true,
+      "fact": {
+        "calls": 1,
+        "noResponseSubmitted": true
+      }
+    },
+    {
+      "name": "takeover-and-old-client-rejection",
+      "passed": true,
+      "fact": {
+        "oldClientRejected": true
+      }
+    },
+    {
+      "name": "chrome-active-original-response-and-fifo",
+      "passed": true,
+      "fact": {
+        "calls": 3,
+        "revisedQueueVisibleAsAdopted": true,
+        "runs": [
+          {
+            "runId": "8893860f-77f2-4343-b079-f3d253f42e08",
+            "state": "completed"
+          },
+          {
+            "runId": "b9019695-bf5b-48a9-af3c-f9c213ea9348",
+            "state": "completed"
+          }
+        ]
+      }
+    }
+  ],
+  "modelCalls": 3,
+  "cleanup": "completed",
+  "nodeVersion": "v24.21.0",
+  "postgresVersion": "postgres (PostgreSQL) 18.6",
+  "chromeVersion": "156.0.8078.80"
+}

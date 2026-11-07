@@ -1,0 +1,42 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "pair-complete",
+  "measuredAt": "2026-11-07T10:57:45.163Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the device completed the WP01 pairing and bound the school authority over cross-machine HTTPS",
+      "detail": {
+        "requestId": "75af40d3-9639-49ce-bd85-fcab4d33cbb1",
+        "runtimeConnectionId": "6406d724-9613-4872-a1fd-6240fefd6fc1",
+        "identity": {
+          "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+          "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+          "principalId": "8e52088e-f63d-4eea-a618-443e978e3e22",
+          "kind": "school",
+          "name": "学校学习空间"
+        },
+        "space": "school:75af40d3-9639-49ce-bd85-fcab4d33cbb1"
+      }
+    }
+  ],
+  "facts": {
+    "requestId": "75af40d3-9639-49ce-bd85-fcab4d33cbb1",
+    "runtimeConnectionId": "6406d724-9613-4872-a1fd-6240fefd6fc1",
+    "identity": {
+      "environmentId": "f69b48b6-2329-4396-8fe7-78d73da985d4",
+      "spaceId": "eef33e82-51aa-42c6-8a37-80c3bd94db6e",
+      "principalId": "8e52088e-f63d-4eea-a618-443e978e3e22",
+      "kind": "school",
+      "name": "学校学习空间"
+    },
+    "space": "school:75af40d3-9639-49ce-bd85-fcab4d33cbb1"
+  },
+  "status": "passed"
+}

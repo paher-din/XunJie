@@ -1,0 +1,38 @@
+{
+  "kind": "cross-machine-recovery-agent",
+  "phase": "backup-restore",
+  "measuredAt": "2026-11-07T09:55:55.832Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.15.0"
+  },
+  "checks": [
+    {
+      "name": "the Agent produced a held formal backup",
+      "detail": "0595d214-8367-48c8-9bb0-22f24042e81f"
+    },
+    {
+      "name": "the Agent target restores isolated read-only with the same fixed owner",
+      "detail": {
+        "root": "C:\\Users\\h\\.verification\\wp07-212\\agent-target",
+        "phase": "isolated",
+        "backupId": "0595d214-8367-48c8-9bb0-22f24042e81f"
+      }
+    }
+  ],
+  "facts": {
+    "backup": {
+      "backupId": "0595d214-8367-48c8-9bb0-22f24042e81f",
+      "boundaryAt": "2026-11-07T09:55:56.717Z"
+    },
+    "target": {
+      "root": "C:\\Users\\h\\.verification\\wp07-212\\agent-target",
+      "phase": "isolated",
+      "backupId": "0595d214-8367-48c8-9bb0-22f24042e81f"
+    }
+  },
+  "status": "passed"
+}

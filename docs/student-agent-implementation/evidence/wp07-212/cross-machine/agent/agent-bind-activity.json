@@ -1,0 +1,22 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "bind-activity",
+  "measuredAt": "2026-11-07T09:54:49.250Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the school bound a fresh course activity to the existing independent Agent connection",
+      "detail": "e00dff7c-f5bb-4677-837e-cd85b82bd1fa"
+    }
+  ],
+  "facts": {
+    "activityId": "e00dff7c-f5bb-4677-837e-cd85b82bd1fa",
+    "connectionId": "3f611a80-070b-4bc3-8c4b-5630cd371018"
+  },
+  "status": "passed"
+}

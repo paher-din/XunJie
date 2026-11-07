@@ -1,0 +1,26 @@
+{
+  "kind": "cross-machine-recovery-hybrid",
+  "phase": "pair-start",
+  "measuredAt": "2026-11-07T10:56:32.585Z",
+  "host": {
+    "hostname": "LAPTOP-S7A4IQFU",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "checks": [
+    {
+      "name": "the device began the WP01 pairing handshake toward the Mac school over HTTPS",
+      "detail": {
+        "requestId": "75af40d3-9639-49ce-bd85-fcab4d33cbb1",
+        "authorizationUrl": "https://192.168.3.39:9445/?authorize=75af40d3-9639-49ce-bd85-fcab4d33cbb1"
+      }
+    }
+  ],
+  "facts": {
+    "requestId": "75af40d3-9639-49ce-bd85-fcab4d33cbb1",
+    "authorizationUrl": "https://192.168.3.39:9445/?authorize=75af40d3-9639-49ce-bd85-fcab4d33cbb1"
+  },
+  "status": "passed"
+}

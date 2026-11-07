@@ -1,0 +1,23 @@
+{
+  "kind": "cross-machine-recovery-school",
+  "phase": "hybrid-approve",
+  "measuredAt": "2026-11-07T10:57:08.773Z",
+  "host": {
+    "hostname": "Robert-Wu-MacBook-Air.local",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "27.2.0"
+  },
+  "checks": [
+    {
+      "name": "the school approved the device pairing and authorized learning.authority for the device installation",
+      "detail": "7b544687-e789-46bb-b014-f1a8f62590c2"
+    }
+  ],
+  "facts": {
+    "approved": true,
+    "grantId": "7b544687-e789-46bb-b014-f1a8f62590c2",
+    "clientServiceId": "586b0482-d5d9-42e8-9af0-69c0c6f43b6a"
+  },
+  "status": "passed"
+}
