@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * #211 macOS acceptance: real operating-system Chinese IME in the real school product page.
+ * #211 macOS acceptance: real operating-system Chinese IME in the formal local or school product page.
  *
  * The candidate window, candidate selection, commit (Space), cancel (Escape) and focus changes
  * are produced by the operating system input method through Carbon Text Input Sources plus real
@@ -22,12 +22,16 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from '@playwright/test';
+import { createAluImeProduct } from './lib/alu-ime-product.mjs';
 
 const { values } = parseArgs({ options: {
   state: { type: 'string' }, output: { type: 'string' }, 'input-source': { type: 'string' },
+  'product-root': { type: 'string' }, packages: { type: 'string' },
+  'only-tool-switch': { type: 'boolean', default: false },
 } });
-for (const name of ['state', 'output']) if (!values[name]) throw new Error('usage: --state=FILE --output=DIR [--input-source=ID]');
-const state = JSON.parse(await readFile(resolve(values.state), 'utf8'));
+if (!values.output || !values.state && !values['product-root']) throw new Error('usage: --output=DIR (--state=FILE | --product-root=DIR --packages=DIR)');
+if (values['product-root'] && !values.packages) throw new Error('--product-root requires --packages');
+let state = values.state ? JSON.parse(await readFile(resolve(values.state), 'utf8')) : null;
 const output = resolve(values.output);
 await mkdir(output, { recursive: true });
 const desired = values['input-source'] ?? 'com.bytedance.inputmethod.doubaoime.pinyin';
@@ -47,6 +51,7 @@ func idOf(_ s: TISInputSource) -> String {
 let arr = TISCreateInputSourceList(nil, false)!.takeRetainedValue()
 let sources = arr as! [TISInputSource]
 let desired = CommandLine.arguments.dropFirst().first ?? "com.bytedance.inputmethod.doubaoime.pinyin"
+if desired == "--current" { print("CURRENT \\(idOf(TISCopyCurrentKeyboardInputSource().takeRetainedValue()))"); exit(0) }
 if let target = sources.first(where: { idOf($0) == desired }) { print("SELECTED \\(TISSelectInputSource(target)) \\(desired)") }
 else { print("NOT_FOUND \\(desired)"); exit(2) }
 print("CURRENT \\(idOf(TISCopyCurrentKeyboardInputSource().takeRetainedValue()))")
@@ -89,7 +94,7 @@ const report = {
   os: `macOS ${osVersion}`, node: process.version, desiredInputSource: desired,
   startedAt: new Date().toISOString(), cases: [], keySequences: [], screenshots: [], candidateWindows: [],
   texts: {}, network: { draftSendRequests: [], executionRequests: [] }, foregroundChecks: [], status: 'running',
-  desktopNote: 'A first run at 02:43 was invalidated: the Qoder CN desktop app took the foreground, so its own IME candidate window was captured instead of the probe. Qoder CN was hidden with System Events before this run and restored afterwards; every real key sequence is guarded by a foreground-is-Chrome assertion.',
+  desktopNote: 'Every physical key sequence checks the probe Chrome foreground process; the prior input source and background-app visibility are restored afterwards.',
 };
 const passed = (id, name, evidence) => {
   report.cases.push({ id, name, status: 'passed', ...(evidence ? { evidence } : {}) });
@@ -106,9 +111,6 @@ const shot = (name, region) => {
   return path;
 };
 const frontApp = () => run('osascript', ['-e', 'tell application "System Events" to get name of first application process whose frontmost is true']);
-const chromePids = () => execFileSync('bash', ['-lc',
-  `ps -axo pid,command | grep "Google Chrome --disable-field-trial-config" | grep -v grep | awk '{print $1}'`],
-  { encoding: 'utf8' }).trim().split(/\s+/).filter(Boolean);
 const assertChromeFront = async page => {
   // Raise the exact Playwright Chrome process, not just "Google Chrome": the owner also has a
   // normal Chrome window, and app-level activation can leave that window as the key window.
@@ -128,6 +130,8 @@ const assertChromeFront = async page => {
   const frontWindow = parseWindows().find(item => item.owner === 'Google Chrome' && item.layer === 0);
   report.foregroundChecks.push({ at: new Date().toISOString(), front,
     ...(frontWindow ? { frontWindow: { x: frontWindow.x, y: frontWindow.y, width: frontWindow.width, height: frontWindow.height } } : {}) });
+  const frontPid = Number(run('osascript', ['-e', 'tell application "System Events" to get unix id of first application process whose frontmost is true']));
+  assert.equal(frontPid, report.chromePid, 'native input must target the exact probe Chrome process');
   assert.equal(front, 'Google Chrome', `the probe Chrome is not the foreground app (saw ${front}); refusing to send real keys`);
 };
 const key = async (page, codes) => {
@@ -169,8 +173,14 @@ const singleInsertion = (before, after) => {
   return inserted;
 };
 
-let browser;
+let browser, browserServer, product;
 try {
+  if (values['product-root']) {
+    product = await createAluImeProduct({ productRoot: values['product-root'], packages: values.packages });
+    state = product.state;
+    Object.assign(report, product.provenance);
+  }
+  assert.ok(state, 'a real product or school connection is required');
   // Keep the display awake; a sleeping display makes screencapture return a black image.
   const wake = spawn('caffeinate', ['-u', '-t', '900'], { detached: true, stdio: 'ignore' });
   wake.unref();
@@ -178,7 +188,13 @@ try {
 
   // Qoder CN is the owner's persistent app and must not be killed. It is only hidden while the
   // probe owns the desktop so its input box cannot take our real keystrokes; restored in finally.
-  const visibleOf = name => run('osascript', ['-e', `tell application "System Events" to get visible of process "${name}"`]).trim();
+  const visibleOf = name => run('osascript', ['-e', `tell application "System Events"
+if exists process "${name}" then
+return visible of process "${name}"
+else
+return false
+end if
+end tell`]).trim();
   report.backgroundAppsBefore = { qoder: visibleOf('Qoder CN'), systemSettings: visibleOf('System Settings') };
   // Qoder CN is the owner's persistent app and must not be killed. System Settings opened during
   // a run and stole focus; both are only hidden while the probe owns the desktop and restored in finally.
@@ -186,11 +202,10 @@ try {
     if (visibleOf(name) === 'true') osa(`tell application "System Events" to set visible of process "${name}" to false`);
   }
   await wait(500);
-  const pidsBefore = new Set(chromePids());
-  browser = await chromium.launch({ channel: 'chrome', headless: false,
-    args: [`--ignore-certificate-errors-spki-list=${state.spki}`, '--window-position=0,0', '--window-size=1470,956'] });
-  const launchedPids = chromePids().filter(pid => !pidsBefore.has(pid));
-  report.chromePid = launchedPids.length === 1 ? Number(launchedPids[0]) : (launchedPids.length ? Number(launchedPids[launchedPids.length - 1]) : null);
+  browserServer = await chromium.launchServer({ channel: 'chrome', headless: false,
+    args: [...(state.spki ? [`--ignore-certificate-errors-spki-list=${state.spki}`] : []), '--window-position=0,0', '--window-size=1470,956'] });
+  report.chromePid = browserServer.process().pid;
+  browser = await chromium.connect(browserServer.wsEndpoint());
   report.browser = browser.version();
   const context = await browser.newContext({ viewport: { width: 1440, height: 860 }, ignoreHTTPSErrors: false });
   assert.equal((await context.request.post(state.endpoint + '/api/learning/login',
@@ -203,8 +218,24 @@ try {
   const page = await context.newPage();
   page.on('pageerror', error => console.log('PAGE ERROR ' + error.message));
   const requests = [];
-  page.on('request', request => requests.push({ method: request.method(), url: request.url(),
-    body: request.postData()?.slice(0, 1000) ?? '' }));
+  page.on('request', request => {
+    let payload;
+    try { payload = request.postDataJSON(); } catch { /* non-JSON request */ }
+    requests.push({ method: request.method(), url: request.url(), payload });
+  });
+  const executionSubmissions = () => requests.filter(item => item.method === 'POST'
+    && /\/api\/learning\/executions\/[^/]+$/.test(new URL(item.url).pathname));
+  const questionSubmissions = () => requests.filter(item => item.method === 'POST'
+    && (item.payload?.receiver?.kind === 'question'
+      || /\/api\/learning\/(?:tutor|help|messages|questions|send)(?:\/|$)/i.test(new URL(item.url).pathname)));
+  report.network.quietPhases = [];
+  const assertQuietPhase = (id, before) => {
+    const after = executionSubmissions().length;
+    report.network.quietPhases.push({ id, executionsBefore: before, executionsAfter: after,
+      questionSubmissions: questionSubmissions().length });
+    assert.equal(after, before, `${id}: native IME input must not run a simulation`);
+    assert.equal(questionSubmissions().length, 0, `${id}: native IME input must not send a question`);
+  };
   await page.goto(state.endpoint + '?space=school&activity=' + activity.activityId);
   await page.bringToFront();
   await page.locator('.monaco-editor').first().waitFor({ state: 'visible', timeout: 120000 });
@@ -214,6 +245,7 @@ try {
   await wait(600);
   report.pageUrl = state.endpoint;
 
+  report.inputSourceBefore = run(selectSource, ['--current']).replace(/^CURRENT /, '');
   const selection = run(selectSource, [desired]);
   report.inputSourceSelection = selection;
   assert.ok(selection.includes('CURRENT ' + desired), `input source not active: ${selection}`);
@@ -221,6 +253,60 @@ try {
   report.activeInputSource = run(selectSource, [desired]).split('\n').pop();
   passed('A0', 'the real macOS Chinese input method is selected through Text Input Sources');
 
+  const exerciseToolSwitch = async () => {
+
+  await page.getByRole('tab', { name: '作品', exact: true }).click();
+  await editor(page).focus();
+  const beforeToolInput = executionSubmissions().length;
+  const beforeSwitch = await editorText(page);
+  sequence('D1', 'monaco compose shuru before tab switch', [1, 4, 32, 15, 32], 's h u r u');
+  await key(page, [1, 4, 32, 15, 32]);
+  await wait(1300);
+  await candidateEvidence(page);
+  shot('mac-ime-12a-active-composition-before-switch');
+  await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
+  assert.equal(await page.getByRole('tab', { name: 'ALU 实验', exact: true }).getAttribute('aria-selected'), 'false',
+    'tool navigation must wait for the active IME composition to settle');
+  assert.ok(await editorFocused(page), 'requesting a tool change must not blur an unfinished composition');
+  shot('mac-ime-12aa-requested-switch-keeps-composition');
+  await key(page, [53]);
+  await page.waitForFunction(() => [...document.querySelectorAll('[role=tab]')]
+    .some(tab => tab.textContent?.trim() === 'ALU 实验' && tab.getAttribute('aria-selected') === 'true'));
+  await page.getByRole('tab', { name: '作品', exact: true }).click();
+  await wait(500);
+  const afterSwitch = await editorText(page);
+  const focusAfterSwitch = await page.evaluate(() => {
+    const element = document.activeElement;
+    return { connected: !!element?.isConnected, inEditor: !!element?.closest('.monaco-editor'),
+      role: element?.getAttribute('role'), label: element?.textContent?.trim() };
+  });
+  report.toolSwitch = { beforeText: beforeSwitch, afterText: afterSwitch, focusBeforeManualRefocus: focusAfterSwitch };
+  assert.equal(afterSwitch, beforeSwitch, 'Escape must cancel the composition and preserve the entire original work');
+  assert.ok(focusAfterSwitch.connected && (focusAfterSwitch.inEditor
+    || (focusAfterSwitch.role === 'tab' && focusAfterSwitch.label === '作品')),
+  'returning to the work tab must leave focus on its tab control or the editor, not a hidden field');
+  shot('mac-ime-12b-tool-switch-before-refocus');
+  await editor(page).focus();
+  sequence('D2', 'monaco compose ceshi after tab switch', [8, 14, 1, 4, 34, 49], 'c e s h i Space');
+  await key(page, [8, 14, 1, 4, 34]);
+  await wait(1300);
+  await candidateEvidence(page);
+  await key(page, [49]);
+  await wait(700);
+  const afterSwitchCommit = await editorText(page);
+  report.texts.monacoAfterToolSwitch = afterSwitchCommit.slice(0, 300);
+  const switchInserted = singleInsertion(afterSwitch, afterSwitchCommit);
+  assert.ok(/^[\u4e00-\u9fff]{2}$/.test(switchInserted), 'post-switch commit must insert one Chinese candidate');
+  assert.ok(await editorFocused(page), 'focus must be in the Monaco editor after switching back');
+  shot('mac-ime-12-tool-switch-editor');
+  passed('D1', 'Monaco composition followed by ALU-tab switch and back keeps text and focus correct');
+  assertQuietPhase('Active composition and tool switch', beforeToolInput);
+
+  };
+  if (values['only-tool-switch']) {
+    await exerciseToolSwitch();
+  } else {
+  const beforeMonacoInput = executionSubmissions().length;
   /* ---------------- A. Monaco editor ---------------- */
   const initialText = await editorText(page);
   report.texts.initialEditor = initialText.slice(0, 300);
@@ -277,6 +363,7 @@ try {
   assert.ok(!/shuru|shu'ru/i.test(afterCancel), 'cancel must not leave romanised pinyin behind');
   assert.ok(await editorFocused(page), 'focus must remain in the Monaco editor after cancel');
   passed('A3', 'a real Escape cancel leaves no pinyin, no lost or duplicated text, and focus remains in Monaco');
+  assertQuietPhase('Monaco composition/selection/commit/cancel', beforeMonacoInput);
 
   // Replace the incomplete starter with a correct ALU so run + full check are real end-to-end work.
   const correct = `// correct ALU for #211 IME acceptance\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin; default:begin F=0;Cout=0;end endcase end endmodule`;
@@ -296,6 +383,7 @@ try {
   }
   report.draftSelectorUsed = draftSelectorUsed;
   assert.equal(await draft.count(), 1, 'the question draft textarea is not present');
+  const beforeDraftInput = executionSubmissions().length;
   await draft.focus();
   sequence('B1', 'draft compose ceshi', [8, 14, 1, 4, 34], 'c e s h i');
   await key(page, [8, 14, 1, 4, 34]);
@@ -322,6 +410,19 @@ try {
   shot('mac-ime-07-draft-committed');
   passed('B1', 'real pinyin composition and Space commit fill the question draft exactly once without dropped characters', { value: draftValue, first: draftFirst });
 
+  sequence('B-cancel', 'draft compose shuru then Escape', [1, 4, 32, 15, 32, 53], 's h u r u Escape');
+  await key(page, [1, 4, 32, 15, 32]);
+  await wait(1000);
+  await candidateEvidence(page);
+  shot('mac-ime-07b-draft-before-cancel');
+  await key(page, [53]);
+  await wait(700);
+  assert.equal(await draft.inputValue(), draftValue, 'Escape must preserve the existing question draft without pinyin residue');
+  assert.ok(await draft.evaluate(element => document.activeElement === element), 'draft must retain focus after Escape');
+  shot('mac-ime-07c-draft-after-cancel');
+  assertQuietPhase('Question draft composition/commit/cancel', beforeDraftInput);
+  passed('B-cancel', 'a real Escape cancels question-draft composition without changing text, sending or running');
+
   // Run and full check while the draft stays in the page; no question may be sent.
   await page.getByRole('button', { name: '打开对话' }).count().catch(() => 0);
   const aluTab = page.getByRole('tab', { name: 'ALU 实验', exact: true });
@@ -339,21 +440,16 @@ try {
   const checkButton = page.getByRole('button', { name: '检查全部输入', exact: true });
   await checkButton.waitFor({ state: 'visible', timeout: 30000 });
   await checkButton.click();
-  await page.getByText('4096 组检查通过', { exact: true }).waitFor({ state: 'visible', timeout: 240000 }).catch(async () => {
-    // A real failing check is still a real check; record the visible verdict instead of hiding it.
-    const body = await page.locator('body').innerText();
-    assert.ok(/检查未通过|检查未完成|检查结果未完整核实/.test(body), 'no check verdict appeared');
-  });
+  await page.getByText('4096 组检查通过', { exact: true }).waitFor({ state: 'visible', timeout: 240000 });
+  report.checkVerdict = '4096-input-pass';
   const draftAfter = await draft.inputValue();
   report.texts.draftAfterRunAndCheck = draftAfter;
-  const actionsWindow = requests.filter(item => item.method === 'POST' &&
-    /\/api\/learning\/(?:intents|actions|executions|tutor|help|messages|questions)/i.test(new URL(item.url).pathname));
-  report.network.draftSendRequests = actionsWindow.filter(item =>
-    /tutor|help|messages|questions|send/i.test(item.url) || item.body.includes('测试输入'));
+  report.network.draftSendRequests = questionSubmissions().map(item => ({ method: item.method, path: new URL(item.url).pathname }));
   report.network.executionRequests = requests.filter(item => /\/api\/learning\/executions\//.test(item.url)).map(item => ({
     method: item.method, path: new URL(item.url).pathname }));
   shot('mac-ime-08-draft-after-run-check');
   assert.equal(draftAfter, draftValue, 'run and full check must not clear or alter the question draft');
+  assert.equal(questionSubmissions().length, 0, 'run and full check must not send the question draft');
   passed('B4', 'running and the full check never clear or send the question draft', { draft: draftAfter, sendRequests: report.network.draftSendRequests.length });
 
   /* ---------------- C. Numeric invalid draft ---------------- */
@@ -411,53 +507,29 @@ try {
   await key(page, [49]);
   await wait(500);
   const chineseDraft = await numericA.inputValue();
-  assert.ok(/[\u4e00-\u9fff]/.test(chineseDraft), `expected a committed Chinese draft in the numeric field, saw ${JSON.stringify(chineseDraft)}`);
+  assert.match(chineseDraft, /^[\u4e00-\u9fff]{2}$/, 'numeric commit must contain exactly one complete Chinese candidate');
   assert.equal(await numericA.getAttribute('aria-invalid'), 'true', 'a Chinese numeric draft must be marked invalid');
   assert.equal(await page.locator('.alu-readout-value').innerText(), readoutBefore, 'a Chinese numeric draft must not change the port reading');
   passed('C3', 'a committed Chinese candidate in the numeric field is invalid and triggers no simulation', { value: chineseDraft });
+  assertQuietPhase('Illegal numeric draft composition/cancel/commit', executionCountBefore);
+  shot('mac-ime-11b-numeric-after-chinese-commit');
 
   // Restore a valid value so later focus checks start from a clean numeric state.
   await numericA.fill('0');
   await numericA.blur();
-  await wait(300);
+  await wait(1600);
 
   /* ---------------- D. Focus and tool switching ---------------- */
-  await page.getByRole('tab', { name: '作品', exact: true }).click();
-  await editor(page).focus();
-  const beforeSwitch = await editorText(page);
-  sequence('D1', 'monaco compose shuru before tab switch', [1, 4, 32, 15, 32], 's h u r u');
-  await key(page, [1, 4, 32, 15, 32]);
-  await wait(1300);
-  await candidateEvidence(page);
-  await key(page, [53]);
-  await wait(500);
-  await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
-  await wait(800);
-  await page.getByRole('tab', { name: '作品', exact: true }).click();
-  await editor(page).focus();
-  const afterSwitch = await editorText(page);
-  assert.equal(afterSwitch, beforeSwitch, 'switching tools must not change protected editor text');
-  sequence('D2', 'monaco compose ceshi after tab switch', [8, 14, 1, 4, 34, 49], 'c e s h i Space');
-  await key(page, [8, 14, 1, 4, 34]);
-  await wait(1300);
-  await candidateEvidence(page);
-  await key(page, [49]);
-  await wait(700);
-  const afterSwitchCommit = await editorText(page);
-  report.texts.monacoAfterToolSwitch = afterSwitchCommit.slice(0, 300);
-  const switchInserted = singleInsertion(afterSwitch, afterSwitchCommit);
-  assert.ok(/^[\u4e00-\u9fff]{2}$/.test(switchInserted), 'post-switch commit must insert one Chinese candidate');
-  assert.ok(await editorFocused(page), 'focus must be in the Monaco editor after switching back');
-  shot('mac-ime-12-tool-switch-editor');
-  passed('D1', 'Monaco composition followed by ALU-tab switch and back keeps text and focus correct');
+  await exerciseToolSwitch();
 
   // Numeric input and question draft must not leak characters into each other.
   const numericValueBefore = await numericA.inputValue().catch(() => '');
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
   await numericA.fill('7');
   await numericA.blur();
-  await wait(300);
+  await wait(1600);
   await draft.focus();
+  const beforeFocusInput = executionSubmissions().length;
   const draftBeforeNumericSwitch = await draft.inputValue();
   sequence('D3', 'draft compose nihao', [45, 34, 4, 0, 31, 49], 'n i h a o Space');
   await key(page, [45, 34, 4, 0, 31]);
@@ -472,25 +544,34 @@ try {
   report.texts.numericAfterDraftSwitch = numericAfterDraft;
   shot('mac-ime-13-numeric-draft-switch');
   assert.ok(draftAfterNumericSwitch.startsWith(draftBeforeNumericSwitch), 'draft must keep its earlier text');
-  assert.ok(draftAfterNumericSwitch.length > draftBeforeNumericSwitch.length, 'the drafted Chinese text must be appended to the draft');
+  assert.match(draftAfterNumericSwitch.slice(draftBeforeNumericSwitch.length), /^[\u4e00-\u9fff]{2}$/, 'append exactly one Chinese candidate without pinyin residue');
   assert.equal(numericAfterDraft, '7', 'typing in the question draft must not change the numeric input');
   passed('D2', 'switching between the numeric input and the question draft does not leak or leave text behind');
+  assertQuietPhase('Numeric-to-question focus switch', beforeFocusInput);
+  report.network.draftSendRequests = questionSubmissions().map(item => ({ method: item.method, path: new URL(item.url).pathname }));
 
+  }
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.error = String(error?.stack ?? error);
   throw error;
 } finally {
-  // Restore ABC so the probe does not leave the owner's keyboard in Chinese mode.
-  try { run(selectSource, ['com.apple.keylayout.ABC']); } catch { /* best effort */ }
+  // Restore the input source that was selected before the probe.
+  try { if (report.inputSourceBefore) run(selectSource, [report.inputSourceBefore]); } catch { /* best effort */ }
   // Restore the owner's persistent Qoder app and System Settings; both were only hidden, never killed.
   for (const name of ['Qoder CN', 'System Settings']) {
-    try { osa(`tell application "System Events" to set visible of process "${name}" to true`); } catch { /* best effort */ }
+    try { const prior = name === 'Qoder CN' ? report.backgroundAppsBefore?.qoder : report.backgroundAppsBefore?.systemSettings;
+      if (prior !== undefined) osa(`tell application "System Events"\nif exists process "${name}" then set visible of process "${name}" to ${prior}\nend tell`); } catch { /* best effort */ }
   }
   report.finishedAt = new Date().toISOString();
   report.caseCount = report.cases.length;
   report.passCount = report.cases.filter(item => item.status === 'passed').length;
   await browser?.close().catch(() => undefined);
+  await browserServer?.close().catch(() => undefined);
+  if (product) {
+    try { await product.close(); report.cleanup = 'owned temporary installation deleted through the product owner'; }
+    catch (error) { report.cleanupError = String(error); report.status = 'failed'; process.exitCode = 1; }
+  }
   await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({ status: report.status, cases: report.cases.length, pass: report.passCount, error: report.error ?? null }));
 }

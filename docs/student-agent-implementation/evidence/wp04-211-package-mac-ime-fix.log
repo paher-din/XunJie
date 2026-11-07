@@ -1,0 +1,175 @@
+
+> @xunjie/workspace@0.0.0 package:product
+> node scripts/package-product.mjs --platform darwin-arm64 --out dist/product-darwin-arm64-wp04-211c
+
+
+> @xunjie/web@0.1.0 build:runtime
+> node ../../scripts/build.mjs web:runtime -- --outDir /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/dist/.product-2x6oTH/web
+
+[build] HIT contracts
+[build] HIT web:src
+[build] RUN web:runtime
+vite v7.3.6 building client environment for production...
+transforming...
+../../node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 1327 modules transformed.
+rendering chunks...
+computing gzip size...
+../../dist/.product-2x6oTH/web/index.html                                            0.41 kB │ gzip:   0.30 kB
+../../dist/.product-2x6oTH/web/assets/worker-B_5653QL.js                             4.99 kB
+../../dist/.product-2x6oTH/web/assets/worker-AqHx1oS1.js                             8.26 kB
+../../dist/.product-2x6oTH/web/assets/codicon-DF1abBS2.ttf                         153.23 kB
+../../dist/.product-2x6oTH/web/assets/editor.worker-CHzQTjO0.js                    275.63 kB
+../../dist/.product-2x6oTH/web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2           837.18 kB
+../../dist/.product-2x6oTH/web/assets/aria-BQ0Fa-r7.css                              0.05 kB │ gzip:   0.07 kB
+../../dist/.product-2x6oTH/web/assets/link-Daoow6VB.css                              0.12 kB │ gzip:   0.09 kB
+../../dist/.product-2x6oTH/web/assets/keybindingLabels-Dtk8vS2d.css                  0.13 kB │ gzip:   0.11 kB
+../../dist/.product-2x6oTH/web/assets/register-YdNSa6b7.css                          0.17 kB │ gzip:   0.13 kB
+../../dist/.product-2x6oTH/web/assets/findController-As3NhRJO.css                    0.22 kB │ gzip:   0.14 kB
+../../dist/.product-2x6oTH/web/assets/register-BNgPRG2T.css                          0.37 kB │ gzip:   0.24 kB
+../../dist/.product-2x6oTH/web/assets/keybindingCancellation-HhictitA.css            0.56 kB │ gzip:   0.24 kB
+../../dist/.product-2x6oTH/web/assets/register-z3ZdYKDr.css                          0.88 kB │ gzip:   0.37 kB
+../../dist/.product-2x6oTH/web/assets/register-VvSvELY2.css                          1.18 kB │ gzip:   0.24 kB
+../../dist/.product-2x6oTH/web/assets/keybinding-CIhNjqFS.css                        1.45 kB │ gzip:   0.39 kB
+../../dist/.product-2x6oTH/web/assets/register-C7vgbc7H.css                          1.48 kB │ gzip:   0.52 kB
+../../dist/.product-2x6oTH/web/assets/register-_-S9DiMO.css                          1.61 kB │ gzip:   0.43 kB
+../../dist/.product-2x6oTH/web/assets/messageController-Do3a81JH.css                 1.77 kB │ gzip:   0.49 kB
+../../dist/.product-2x6oTH/web/assets/DiagnosticsPage-Cs5Df5_P.css                   2.35 kB │ gzip:   0.99 kB
+../../dist/.product-2x6oTH/web/assets/observableCodeEditor-BCZ0orMO.css              2.48 kB │ gzip:   0.61 kB
+../../dist/.product-2x6oTH/web/assets/sash-CnFYCDYW.css                              2.57 kB │ gzip:   0.61 kB
+../../dist/.product-2x6oTH/web/assets/hoverWidget-BFdtlATq.css                       3.53 kB │ gzip:   0.99 kB
+../../dist/.product-2x6oTH/web/assets/findInput-VW5HTh3_.css                         4.24 kB │ gzip:   1.08 kB
+../../dist/.product-2x6oTH/web/assets/button-CA-6CJJs.css                            4.39 kB │ gzip:   0.85 kB
+../../dist/.product-2x6oTH/web/assets/register-BE89dlG2.css                          4.44 kB │ gzip:   1.02 kB
+../../dist/.product-2x6oTH/web/assets/findWidget-M2a9gl0R.css                        5.58 kB │ gzip:   1.32 kB
+../../dist/.product-2x6oTH/web/assets/actionViewItems-CvhnUcyN.css                   7.69 kB │ gzip:   1.58 kB
+../../dist/.product-2x6oTH/web/assets/toolbar-DoTYWObY.css                           9.06 kB │ gzip:   1.89 kB
+../../dist/.product-2x6oTH/web/assets/register-HJbRf0Hl.css                         11.17 kB │ gzip:   2.28 kB
+../../dist/.product-2x6oTH/web/assets/actionWidget-DtLPlGY3.css                     14.80 kB │ gzip:   2.90 kB
+../../dist/.product-2x6oTH/web/assets/register-CyWn7XZ4.css                         17.55 kB │ gzip:   3.19 kB
+../../dist/.product-2x6oTH/web/assets/editor-sRB6dmGb.css                           51.93 kB │ gzip:   7.49 kB
+../../dist/.product-2x6oTH/web/assets/runtime-CasJ-C1K.css                         196.17 kB │ gzip:  35.86 kB
+../../dist/.product-2x6oTH/web/assets/dialogs-BIF7RGvl.js                            0.09 kB │ gzip:   0.10 kB
+../../dist/.product-2x6oTH/web/assets/clipboardService-BYOp1v5W.js                   0.09 kB │ gzip:   0.10 kB
+../../dist/.product-2x6oTH/web/assets/languageFeatures-pVm3mn6_.js                   0.10 kB │ gzip:   0.11 kB
+../../dist/.product-2x6oTH/web/assets/editorCommon-BwOdCC1S.js                       0.10 kB │ gzip:   0.08 kB
+../../dist/.product-2x6oTH/web/assets/workspaceTrust-gnpOkEgz.js                     0.10 kB │ gzip:   0.12 kB
+../../dist/.product-2x6oTH/web/assets/editor.worker-C0Ec0Cbg.js                      0.11 kB │ gzip:   0.12 kB
+../../dist/.product-2x6oTH/web/assets/contextView-B5d5ckIc.js                        0.12 kB │ gzip:   0.12 kB
+../../dist/.product-2x6oTH/web/assets/accessibility-X10htBGS.js                      0.15 kB │ gzip:   0.14 kB
+../../dist/.product-2x6oTH/web/assets/textModelDefaults-jwCPjDQ2.js                  0.22 kB │ gzip:   0.17 kB
+../../dist/.product-2x6oTH/web/assets/extensions-DPbG0wzx.js                         0.24 kB │ gzip:   0.19 kB
+../../dist/.product-2x6oTH/web/assets/indentUtils-D7uFROOx.js                        0.25 kB │ gzip:   0.19 kB
+../../dist/.product-2x6oTH/web/assets/trustedTypes-kT3NYhwx.js                       0.27 kB │ gzip:   0.18 kB
+../../dist/.product-2x6oTH/web/assets/editOperation-9gMD_fLO.js                      0.33 kB │ gzip:   0.19 kB
+../../dist/.product-2x6oTH/web/assets/tabFocus-7SSNp0Xe.js                           0.38 kB │ gzip:   0.22 kB
+../../dist/.product-2x6oTH/web/assets/indentation-BUPEkbvE.js                        0.41 kB │ gzip:   0.29 kB
+../../dist/.product-2x6oTH/web/assets/register-B3Ib2Dy5.js                           0.47 kB │ gzip:   0.31 kB
+../../dist/.product-2x6oTH/web/assets/editorBrowser-Ca_egve_.js                      0.47 kB │ gzip:   0.25 kB
+../../dist/.product-2x6oTH/web/assets/notification-B4MmM1na.js                       0.58 kB │ gzip:   0.34 kB
+../../dist/.product-2x6oTH/web/assets/opener-95CB-cX3.js                             0.58 kB │ gzip:   0.34 kB
+../../dist/.product-2x6oTH/web/assets/jsonContributionRegistry-DfgOu-UK.js           0.60 kB │ gzip:   0.35 kB
+../../dist/.product-2x6oTH/web/assets/marshalling-BAucfTd4.js                        0.63 kB │ gzip:   0.39 kB
+../../dist/.product-2x6oTH/web/assets/quickInput-CsyOmr9X.js                         0.75 kB │ gzip:   0.39 kB
+../../dist/.product-2x6oTH/web/assets/_.contribution-BTbQMrvI.js                     0.76 kB │ gzip:   0.40 kB
+../../dist/.product-2x6oTH/web/assets/autorun-CZun5-62.js                            0.77 kB │ gzip:   0.34 kB
+../../dist/.product-2x6oTH/web/assets/register-CSjhqA8K.js                           0.80 kB │ gzip:   0.50 kB
+../../dist/.product-2x6oTH/web/assets/aria-IqFvR9v7.js                               0.83 kB │ gzip:   0.40 kB
+../../dist/.product-2x6oTH/web/assets/cursorColumns-NI5P0Viq.js                      0.89 kB │ gzip:   0.44 kB
+../../dist/.product-2x6oTH/web/assets/contextkeys-DHRrpHP4.js                        0.91 kB │ gzip:   0.42 kB
+../../dist/.product-2x6oTH/web/assets/register-C0Mzs7-D.js                           0.99 kB │ gzip:   0.53 kB
+../../dist/.product-2x6oTH/web/assets/markdownRenderer-DUHL6HNB.js                   1.35 kB │ gzip:   0.74 kB
+../../dist/.product-2x6oTH/web/assets/mime-CELncaOB.js                               1.48 kB │ gzip:   0.73 kB
+../../dist/.product-2x6oTH/web/assets/objects-CCXi9cv4.js                            1.50 kB │ gzip:   0.71 kB
+../../dist/.product-2x6oTH/web/assets/quickAccess-C8QtJD_7.js                        1.79 kB │ gzip:   0.82 kB
+../../dist/.product-2x6oTH/web/assets/link-DOGNm2I7.js                               1.98 kB │ gzip:   0.95 kB
+../../dist/.product-2x6oTH/web/assets/hover-CPHvP3SP.js                              2.06 kB │ gzip:   0.93 kB
+../../dist/.product-2x6oTH/web/assets/model-DNcBvKv8.js                              2.11 kB │ gzip:   0.82 kB
+../../dist/.product-2x6oTH/web/assets/selection-Cv4KLdDw.js                          2.11 kB │ gzip:   0.64 kB
+../../dist/.product-2x6oTH/web/assets/register-DAnSE5Ht.js                           2.11 kB │ gzip:   1.05 kB
+../../dist/.product-2x6oTH/web/assets/hoverWidget-JbYik-1O.js                        2.19 kB │ gzip:   0.90 kB
+../../dist/.product-2x6oTH/web/assets/register-CAWkBH8q.js                           2.28 kB │ gzip:   0.82 kB
+../../dist/.product-2x6oTH/web/assets/wordCharacterClassifier-DuQGOcub.js            2.32 kB │ gzip:   0.88 kB
+../../dist/.product-2x6oTH/web/assets/register-Bf-8pghu.js                           2.40 kB │ gzip:   1.02 kB
+../../dist/.product-2x6oTH/web/assets/register-B5McILbo.js                           2.64 kB │ gzip:   1.19 kB
+../../dist/.product-2x6oTH/web/assets/register-0e8uOvX-.js                           2.70 kB │ gzip:   1.21 kB
+../../dist/.product-2x6oTH/web/assets/register-BifiyMmL.js                           2.75 kB │ gzip:   1.21 kB
+../../dist/.product-2x6oTH/web/assets/replaceCommand-Cq_qwpcl.js                     2.97 kB │ gzip:   0.79 kB
+../../dist/.product-2x6oTH/web/assets/viewModelDecoration-CDltqxcs.js                3.36 kB │ gzip:   1.53 kB
+../../dist/.product-2x6oTH/web/assets/stableEditorScroll-Dvj07c7y.js                 3.41 kB │ gzip:   1.41 kB
+../../dist/.product-2x6oTH/web/assets/markdown-BFxVWTOG.js                           3.65 kB │ gzip:   1.34 kB
+../../dist/.product-2x6oTH/web/assets/iconRegistry-BsaijO2U.js                       4.05 kB │ gzip:   1.67 kB
+../../dist/.product-2x6oTH/web/assets/messageController-tvtsiUDH.js                  4.22 kB │ gzip:   1.64 kB
+../../dist/.product-2x6oTH/web/assets/keybindingCancellation-CYPlNaLr.js             4.86 kB │ gzip:   1.90 kB
+../../dist/.product-2x6oTH/web/assets/defaultStyles-B9e-3ad2.js                      4.93 kB │ gzip:   1.58 kB
+../../dist/.product-2x6oTH/web/assets/button-DoclfJ76.js                             5.15 kB │ gzip:   1.68 kB
+../../dist/.product-2x6oTH/web/assets/cpp-BbWJElDN.js                                5.16 kB │ gzip:   2.04 kB
+../../dist/.product-2x6oTH/web/assets/range-COSjiKwM.js                              5.37 kB │ gzip:   1.18 kB
+../../dist/.product-2x6oTH/web/assets/nativeEditContextRegistry-AXP4aNCF.js          5.62 kB │ gzip:   2.42 kB
+../../dist/.product-2x6oTH/web/assets/register-D8bd4RNo.js                           5.79 kB │ gzip:   1.94 kB
+../../dist/.product-2x6oTH/web/assets/python-c0TuXHtj.js                             6.10 kB │ gzip:   2.50 kB
+../../dist/.product-2x6oTH/web/assets/DiagnosticsPage-QJRLJydX.js                    6.17 kB │ gzip:   2.54 kB
+../../dist/.product-2x6oTH/web/assets/register-DbQ2Zor5.js                           6.47 kB │ gzip:   2.38 kB
+../../dist/.product-2x6oTH/web/assets/register-BYBQ9_cM.js                           6.88 kB │ gzip:   2.37 kB
+../../dist/.product-2x6oTH/web/assets/editorContextKeys-dqniairc.js                  7.04 kB │ gzip:   1.71 kB
+../../dist/.product-2x6oTH/web/assets/systemverilog-Bs9z6M-B.js                      7.47 kB │ gzip:   2.70 kB
+../../dist/.product-2x6oTH/web/assets/register-Ct2Kpt_-.js                           7.61 kB │ gzip:   1.95 kB
+../../dist/.product-2x6oTH/web/assets/storage-DbB16Le2.js                            7.66 kB │ gzip:   2.16 kB
+../../dist/.product-2x6oTH/web/assets/register-BCMe4kS6.js                           7.71 kB │ gzip:   3.01 kB
+../../dist/.product-2x6oTH/web/assets/sash-C1IjcDEc.js                               8.15 kB │ gzip:   2.31 kB
+../../dist/.product-2x6oTH/web/assets/workspace-VK4zdFdS.js                          8.20 kB │ gzip:   2.34 kB
+../../dist/.product-2x6oTH/web/assets/register-Ir2Bw_z4.js                           8.25 kB │ gzip:   2.96 kB
+../../dist/.product-2x6oTH/web/assets/actionbar-DdRY9XKI.js                          9.07 kB │ gzip:   2.63 kB
+../../dist/.product-2x6oTH/web/assets/register-BbqJaxYy.js                          10.79 kB │ gzip:   3.56 kB
+../../dist/.product-2x6oTH/web/assets/lineTokens-Dk1yWC6Q.js                        10.83 kB │ gzip:   3.11 kB
+../../dist/.product-2x6oTH/web/assets/register-DnLjAd4q.js                          10.90 kB │ gzip:   3.35 kB
+../../dist/.product-2x6oTH/web/assets/markdownHoverParticipant-CywSgLSr.js          11.41 kB │ gzip:   3.99 kB
+../../dist/.product-2x6oTH/web/assets/keybindingLabels-DTMP2EiD.js                  12.69 kB │ gzip:   4.03 kB
+../../dist/.product-2x6oTH/web/assets/autoIndent-BpbmB4wC.js                        12.81 kB │ gzip:   3.71 kB
+../../dist/.product-2x6oTH/web/assets/cursorMoveCommands-D3O55em4.js                14.93 kB │ gzip:   3.46 kB
+../../dist/.product-2x6oTH/web/assets/color-CK6dxYC2.js                             15.32 kB │ gzip:   4.09 kB
+../../dist/.product-2x6oTH/web/assets/register-CeMoug4p.js                          15.85 kB │ gzip:   4.80 kB
+../../dist/.product-2x6oTH/web/assets/register-M7ST5m-G.js                          21.10 kB │ gzip:   5.68 kB
+../../dist/.product-2x6oTH/web/assets/cursorWordOperations-CCQhsnpd.js              25.04 kB │ gzip:   6.55 kB
+../../dist/.product-2x6oTH/web/assets/editorExtensions-C3eBJWSs.js                  25.39 kB │ gzip:   7.81 kB
+../../dist/.product-2x6oTH/web/assets/findController--eizBYnI.js                    27.85 kB │ gzip:   6.98 kB
+../../dist/.product-2x6oTH/web/assets/register-oc6MGeDW.js                          29.55 kB │ gzip:   7.69 kB
+../../dist/.product-2x6oTH/web/assets/findInput-ChGy53_U.js                         29.57 kB │ gzip:   7.59 kB
+../../dist/.product-2x6oTH/web/assets/languageConfigurationRegistry-Rl6LHyT9.js     33.83 kB │ gzip:  10.19 kB
+../../dist/.product-2x6oTH/web/assets/register-Ey341iW3.js                          35.14 kB │ gzip:  10.05 kB
+../../dist/.product-2x6oTH/web/assets/observableCodeEditor-ClR3xCte.js              37.61 kB │ gzip:  10.67 kB
+../../dist/.product-2x6oTH/web/assets/register-BCCzrpig.js                          42.05 kB │ gzip:  12.69 kB
+../../dist/.product-2x6oTH/web/assets/register-BNl2MZMy.js                          44.71 kB │ gzip:  11.95 kB
+../../dist/.product-2x6oTH/web/assets/keybinding-Bbs6vGjI.js                        46.13 kB │ gzip:  11.24 kB
+../../dist/.product-2x6oTH/web/assets/coreCommands-CnwWAufH.js                      48.52 kB │ gzip:  11.44 kB
+../../dist/.product-2x6oTH/web/assets/findWidget-BO_Uy1OT.js                        53.25 kB │ gzip:  13.34 kB
+../../dist/.product-2x6oTH/web/assets/editorColorRegistry-Bgb0IUaH.js               55.78 kB │ gzip:  12.85 kB
+../../dist/.product-2x6oTH/web/assets/actionWidget-CFhFk6hs.js                      61.68 kB │ gzip:  16.18 kB
+../../dist/.product-2x6oTH/web/assets/markdownRenderer-C2YUmC4i.js                  91.99 kB │ gzip:  32.20 kB
+../../dist/.product-2x6oTH/web/assets/actionViewItems-6agXuMD4.js                  102.82 kB │ gzip:  24.25 kB
+../../dist/.product-2x6oTH/web/assets/editorOptions-BkUIZjyq.js                    106.33 kB │ gzip:  27.03 kB
+../../dist/.product-2x6oTH/web/assets/toolbar-BnQ20pms.js                          187.78 kB │ gzip:  45.57 kB
+../../dist/.product-2x6oTH/web/assets/register-CaJTBuvz.js                         204.70 kB │ gzip:  52.83 kB
+../../dist/.product-2x6oTH/web/assets/textModel-D_cPzfEi.js                        264.22 kB │ gzip:  68.05 kB
+../../dist/.product-2x6oTH/web/assets/actions-CawZG6aD.js                          281.54 kB │ gzip:  87.10 kB
+../../dist/.product-2x6oTH/web/assets/editor.api-BirLMsiP.js                       557.54 kB │ gzip: 146.83 kB
+../../dist/.product-2x6oTH/web/assets/register-alUCNR_f.js                         702.45 kB │ gzip: 174.43 kB
+../../dist/.product-2x6oTH/web/assets/runtime-CrB92lhy.js                        1,069.25 kB │ gzip: 320.67 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.06s
+Unsigned product candidate: /Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie-worktrees/XunJie/dist/product-darwin-arm64-wp04-211c

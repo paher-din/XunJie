@@ -1,0 +1,114 @@
+{
+  "kind": "windows-os-ime-acceptance",
+  "ticket": "#211",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.15.0",
+  "candidate": "C:\\Users\\h\\product-win32-x64-wp04-211",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-alu-211-ime-Yii8yj",
+  "startedAt": "2026-11-07T06:13:41.013Z",
+  "os": "Windows 10.0.26200.0",
+  "distributionSha256": "b7db2a5c5636cbbd79172c29a097d10affe5e94c1e8f7c16fdc351d5551fb787",
+  "cases": [
+    {
+      "id": "A0",
+      "name": "an unlocked Windows interactive desktop owns the real product Chrome and native IME",
+      "status": "passed"
+    }
+  ],
+  "keySequences": [
+    {
+      "id": "D1",
+      "label": "monaco compose shuru before tab switch",
+      "keys": "s h u r u",
+      "nativeKeys": [
+        "s",
+        "h",
+        "u",
+        "r",
+        "u"
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "win-ime-12a-active-composition-before-switch",
+      "path": "C:\\Users\\h\\wp04-211\\client\\win-client-pack\\native-ime211\\output\\win-ime-12a-active-composition-before-switch.png",
+      "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display"
+    }
+  ],
+  "candidateWindows": [
+    {
+      "owner": "ImeService",
+      "class": "OimeDirectUIWindow",
+      "processId": 6040,
+      "x": 403,
+      "y": 570,
+      "width": 606,
+      "height": 89
+    },
+    {
+      "owner": "TextInputHost",
+      "class": "Windows.UI.Core.CoreWindow",
+      "processId": 18076,
+      "x": 0,
+      "y": 0,
+      "width": 1560,
+      "height": 1040
+    }
+  ],
+  "texts": {},
+  "network": {
+    "draftSendRequests": [],
+    "executionRequests": [],
+    "quietPhases": []
+  },
+  "foregroundChecks": [
+    {
+      "at": "2026-11-07T06:13:54.090Z",
+      "sessionId": 1,
+      "foregroundProcessId": 47004,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    },
+    {
+      "at": "2026-11-07T06:13:55.095Z",
+      "sessionId": 1,
+      "foregroundProcessId": 47004,
+      "keyboardLayout": "8040804",
+      "candidateWindows": [
+        {
+          "owner": "TextInputHost",
+          "class": "Windows.UI.Core.CoreWindow",
+          "processId": 18076,
+          "x": 0,
+          "y": 0,
+          "width": 1560,
+          "height": 1040
+        }
+      ]
+    }
+  ],
+  "status": "failed",
+  "nativeInput": "System.Windows.Forms.SendKeys in the same Interactive desktop session as the probe Chrome; no CDP composition",
+  "capture": "FFmpeg Desktop Duplication (ddagrab) of the OS-composited display",
+  "endpoint": "http://127.0.0.1:62717",
+  "chromePid": 47004,
+  "browser": "156.0.8078.81",
+  "activityId": "cd759fb0-7dcc-4634-926c-5621b402a80a",
+  "error": "AssertionError [ERR_ASSERTION]: requesting a tool change must not blur an unfinished composition\n    at exerciseToolSwitch (file:///C:/Users/h/wp04-211/client/win-client-pack/native-ime211/probe-alu-ime-windows-211.mjs:183:10)\n    at async file:///C:/Users/h/wp04-211/client/win-client-pack/native-ime211/probe-alu-ime-windows-211.mjs:221:5",
+  "finishedAt": "2026-11-07T06:13:59.949Z",
+  "caseCount": 1,
+  "passCount": 1,
+  "cleanup": "owned temporary installation deleted through the product owner"
+}
