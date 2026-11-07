@@ -28,6 +28,14 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root?.unmount()); container.remove(); vi.unstubAllGlobals() })
 
+async function compare(button: HTMLButtonElement, submitted: AnyExecutionAction[]) {
+  const expected = submitted.length + 1
+  await act(async () => {
+    button.click()
+    await vi.waitFor(() => expect(submitted).toHaveLength(expected))
+  })
+}
+
 async function experiment(patch: Partial<AluState> = {}, split = false, version = 2) {
   const componentId = crypto.randomUUID(), scaffoldResourceId = crypto.randomUUID(), checkScaffoldId = crypto.randomUUID()
   const ports = { type: 'object', properties: Object.fromEntries(['A', 'B', 'M', 'S', 'Cin'].map(key => [key, { type: 'number' }])) }
@@ -133,7 +141,7 @@ describe('ALU view coordination and result ownership', () => {
     const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!
     for (let index = 0; index < 2; index++) {
       await act(async () => button('新用例').click())
-      await act(async () => button('运行并比较').click())
+      await compare(button('运行并比较'), env.submitted)
       await act(async () => env.release())
       await act(async () => env.complete())
     }
@@ -151,7 +159,7 @@ describe('ALU view coordination and result ownership', () => {
     const env = await experiment({}, false, 3)
     const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!
     await act(async () => button('新用例').click())
-    await act(async () => button('运行并比较').click())
+    await compare(button('运行并比较'), env.submitted)
     await act(async () => button('恢复自由观察').click())
     expect(env.read().feedbackPolicy).toBe('live')
     await act(async () => env.release())
@@ -179,7 +187,7 @@ describe('ALU view coordination and result ownership', () => {
     const env = await experiment({}, false, 3)
     const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!
     await act(async () => button('新用例').click())
-    await act(async () => button('运行并比较').click())
+    await compare(button('运行并比较'), env.submitted)
     await act(async () => env.release())
     await act(async () => env.complete())
     let noteIds: string[] = []
@@ -206,7 +214,7 @@ describe('ALU view coordination and result ownership', () => {
     const env = await experiment({}, false, 3)
     const button = (label: string) => [...container.querySelectorAll('button')].find(node => node.textContent === label)!
     await act(async () => button('新用例').click())
-    await act(async () => button('运行并比较').click())
+    await compare(button('运行并比较'), env.submitted)
     await act(async () => env.release())
     await act(async () => env.complete())
     expect(container.querySelector('[aria-label="预测与实际比较"]')?.textContent).toContain('1000')
@@ -229,15 +237,37 @@ describe('ALU view coordination and result ownership', () => {
     await input('我想检查边界')
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
     expect(env.submitted).toHaveLength(0)
-    await act(async () => button('运行并比较').click())
-    expect(env.submitted).toHaveLength(1)
-    const action = env.submitted[0]!
-    expect(action.protocolVersion === 3 && aluCaseFromAction(action)?.draft.reason).toBe('我想检查边界')
-    await input('接收期间的新草稿')
-    await act(async () => env.release())
-    expect(reason.value).toBe('接收期间的新草稿')
-    expect(env.read().selectedCase).toBe('')
-    expect(action.protocolVersion === 3 && aluCaseFromAction(action)?.draft.reason).toBe('我想检查边界')
+    const originalDigest = webcrypto.subtle.digest.bind(webcrypto.subtle)
+    let releaseDigest!: () => void
+    // The real digest may finish after React's click turn, as on the CI runner.
+    const digestBarrier = new Promise<void>(resolve => { releaseDigest = resolve })
+    const digest = vi.spyOn(webcrypto.subtle, 'digest').mockImplementation(async (...args) => {
+      await digestBarrier
+      return originalDigest(...args)
+    })
+    try {
+      expect(button('运行并比较').disabled).toBe(false)
+      await act(async () => button('运行并比较').click())
+      expect(digest).toHaveBeenCalled()
+      expect(env.submitted).toHaveLength(0)
+      await act(async () => {
+        releaseDigest()
+        await vi.waitFor(() => expect(env.submitted).toHaveLength(1))
+      })
+      const action = env.submitted[0]!
+      expect(action.protocolVersion === 3 && aluCaseFromAction(action)?.draft.reason).toBe('我想检查边界')
+      await input('接收期间的新草稿')
+      await act(async () => env.release())
+      expect(reason.value).toBe('接收期间的新草稿')
+      expect(env.read().selectedCase).toBe('')
+      expect(action.protocolVersion === 3 && aluCaseFromAction(action)?.draft.reason).toBe('我想检查边界')
+    } finally {
+      digest.mockRestore()
+      await act(async () => {
+        releaseDigest(); env.release()
+        await vi.waitFor(() => expect(env.submitted).toHaveLength(1))
+      })
+    }
   })
   it('admits one candidate when editor and board views are simultaneously mounted', async () => {
     const env = await experiment({ inputRevision: 1 }, true)
