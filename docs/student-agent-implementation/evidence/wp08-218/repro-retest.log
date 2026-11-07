@@ -1,0 +1,26 @@
+▶ capture before stale-editor save; restore actual code/data to another worktree and reproduce VERSION_CONFLICT
+  ✔ a successful sync captured before a same-clientSeq retry preserves its original receipt and aliases (30087.494583ms)
+  ✔ compatibility, digest and missing-resource failures preserve the receiving worktree (8273.147292ms)
+  ✔ JSON membership references fail closed and secret source/data never get silently shared (7243.534291ms)
+  ✔ after-incident and uncertain external scenes remain unverified; queued source jobs cannot resume in restored data (20728.656083ms)
+  ✔ immutable baseline publish/list/use preserve both the previous environment and other members (9287.277333ms)
+✔ capture before stale-editor save; restore actual code/data to another worktree and reproduce VERSION_CONFLICT (136788.423083ms)
+✔ a real captured scene restores from a cold checkout only after explicit dependency preparation (17582.754333ms)
+✔ public missing-dependency recovery prepares local from selected cloud and preserves its scene (21044.965041ms)
+✔ public missing-dependency recovery prepares local from selected cloud-api and preserves its scene (28454.6705ms)
+✔ same-target restores preserve the winner (same CLI homes) (2273.72675ms)
+✔ same-target restores preserve the winner (different CLI homes) (1808.837417ms)
+✔ source write failure after worktree add removes only its own partial worktree and metadata (2180.744666ms)
+✔ public CLI inspect/restore/verify reject a rechecksummed package with empty steps (329.354833ms)
+✔ environment publication failure rolls back its own data/worktree; a newly appearing foreign environment survives (4051.405958ms)
+﹣ Windows restores to a fresh task-owned drive-root target with matching canonical path and environment ID (0.36ms) # SKIP
+✔ verified bundle lock contents must match conditions before any target/environment/Git metadata is published (2142.581834ms)
+✔ actual CRLF bundle locks satisfy LF conditions while their source digests preserve raw bytes (1719.699833ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 220412.721959

@@ -1,0 +1,56 @@
+{
+  "at": "2026-11-07T19:33:17.474Z",
+  "platform": "darwin",
+  "product": "source-build",
+  "limits": {
+    "perProtocol": 3,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "payloadSha256": "dc8353e5181f7987821412caf9bb6d006a098d490abd514abd30828c6991b5fc",
+      "status": 200,
+      "imageSha256": []
+    },
+    {
+      "path": "/v1/chat/completions",
+      "payloadSha256": "c108fe2dcf7e1c7af73ce9d88e4be223fbf48fe4498116783c5ce0837077c439",
+      "status": 200,
+      "imageSha256": [
+        "73303a4887028727c154a88254349af7ac2ddd36a4ae8bebd4a6598fd03db72e"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "passed": true,
+      "chrome": {
+        "version": "156.0.8078.80",
+        "formalUpload": true,
+        "draftQuote": true,
+        "modelSend": true
+      },
+      "answer": "**已读取（一次 read_reference，固定版本 citation 2df3254c…）**\n\n事实（来自本次读取的返回与页图）：\n- PDF 实际页序：**第 2 页**（1-based，针对当前固定版本）\n- 该页打印标签：**7**\n- 页图上的可见文字：`Fixed evidence: 37 volts` —— 也就是该页显示的电压数值为 **37 volts（37 V）**\n- 文字来源：整页**原生文字层**（native），**未执行 OCR**；页图长边 2048 px\n\n推断（请自行核对）：\n- 页图与文字层一致，只有这一行文字，没有看到插图、表格或电路符号。因此，这一页本身只提供了一个电压数值，没有可解释的电路结构。\n- 标签 7 与实际第 2 页不一致，说明该 PDF 的打印标签（可能是课件原页码的一部分）与文件页序有偏移。引用、翻页时应以**实际页序**为准，否则会定位到错误一页。\n\n未知：\n- 标签 1–6 对应哪些实际页、偏移量是否恒定，这些信息在本次读取范围内无法确定；需要读取相邻页才能判断。\n- 37 V 在这个电路中对应哪个节点或元件，当前教师课程材料此页未说明。\n\n下一步建议：若你的“电路与扫描”任务是确定某个节点的电压，请把该页前后的实际页（例如第 1、3 页）一并纳入引用，这样可同时核对标签偏移和电路图上下文；这些页需要你在界面里固定引用后我再读取。",
+      "snapshots": [
+        {
+          "snapshotId": "c849134b-1e2f-4b09-977e-737e08629087",
+          "payloadSha256": "dc8353e5181f7987821412caf9bb6d006a098d490abd514abd30828c6991b5fc"
+        },
+        {
+          "snapshotId": "962eb668-1a74-4122-84af-7339bf17a80a",
+          "payloadSha256": "c108fe2dcf7e1c7af73ce9d88e4be223fbf48fe4498116783c5ce0837077c439"
+        }
+      ],
+      "source": {
+        "documentId": "15922ce3-5ac2-4b09-8dce-c6130f893419",
+        "readingId": "04023b52-8b12-4960-9afa-87be21c7575f",
+        "sha256": "c7efb3855bcc90f5c14205cce7a8273c2fbbd47f2383c835023cbf02818bf0f9",
+        "imageSha256": "73303a4887028727c154a88254349af7ac2ddd36a4ae8bebd4a6598fd03db72e"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "platform": "win32",
+  "product": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449/product-win32-x64-218-final-r2",
+  "checks": [
+    "lost-upload-confirmation-reload-original-identity",
+    "Chrome-IME-composition-Enter-does-not-send",
+    "adjacent-pages-region-real-crop-single-draft",
+    "same-name-refresh-opens-original-rendition",
+    "host-restart-pure-fixed-reading",
+    "browser-back-preserves-question-and-fixed-references"
+  ],
+  "ime": null,
+  "probeSourceSha256": "c25a513d9bde6c890372571a1a3046102d2291ea72f3ead37b21aa5918ffd681",
+  "transport": "InteractiveToken/Limited ScheduledTask; SSH control only",
+  "compositionCoverage": "Chrome CDP only; OS IME not tested",
+  "distributionSha256": "12727d6cb0cc02ffdcfcdebafcd141a9f3f5c21bc35e9b2b3d1367411563ac7e",
+  "windows": {
+    "nodePid": 13032,
+    "sessionId": 1,
+    "os": "Microsoft Windows 11 ��ͥ�� ���İ�",
+    "version": "10.0.26200",
+    "build": "26200",
+    "chromeProcesses": [
+      {
+        "pid": 30852,
+        "sessionId": 1
+      }
+    ]
+  },
+  "chrome": "156.0.8078.81",
+  "passed": true
+}

@@ -1,0 +1,16 @@
+{
+  "caption": "Microsoft Windows 11 家庭版 中文版",
+  "version": "10.0.26200",
+  "build": "26200",
+  "architecture": "64 位",
+  "interactiveSessionId": 1,
+  "chromeVersion": "156.0.8078.81",
+  "chromeProcesses": [
+    {
+      "pid": 30852,
+      "sessionId": 1
+    }
+  ],
+  "compositionCoverage": "Chrome CDP only; OS IME not tested",
+  "distributionSha256": "12727d6cb0cc02ffdcfcdebafcd141a9f3f5c21bc35e9b2b3d1367411563ac7e"
+}

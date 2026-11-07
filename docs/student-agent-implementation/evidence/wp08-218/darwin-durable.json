@@ -1,0 +1,15 @@
+{
+  "platform": "darwin",
+  "product": "/Users/robertwu/.codex/worktrees/f50c/XunJie/dist/product-darwin-arm64-218-final-r2",
+  "checks": [
+    "lost-upload-confirmation-reload-original-identity",
+    "Chrome-IME-composition-Enter-does-not-send",
+    "adjacent-pages-region-real-crop-single-draft",
+    "same-name-refresh-opens-original-rendition",
+    "host-restart-pure-fixed-reading",
+    "browser-back-preserves-question-and-fixed-references"
+  ],
+  "ime": null,
+  "chrome": "156.0.8078.80",
+  "passed": true
+}
