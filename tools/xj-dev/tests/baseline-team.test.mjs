@@ -89,9 +89,7 @@ async function fixture(t) {
       return end.call(this, bytes, ...args);
     };
   });
-  if (process.platform === 'win32') {
-    await new Promise((accept, reject) => { service.publicServer.once('error', reject); service.publicServer.listen(0, '127.0.0.1', accept); });
-  } else await service.listen();
+  await service.listen();
   config.endpoint = `https://127.0.0.1:${service.publicServer.address().port}`;
   const enroll = async (label, capabilities) => {
     const invite = await admin('invite', { label, teamRole: 'developer', appRole: 'student', courseId: 'course', capabilities, ttlSeconds: 60 });
