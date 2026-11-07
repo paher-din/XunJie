@@ -1,0 +1,83 @@
+✔ chat-completions: full local schema survives projection and rejects invalid tool arguments (9167.107875ms)
+✔ chat-completions: schema dialect constraints are validated instead of dropped (5902.480209ms)
+✔ chat-completions: unsupported schema and unverified native strict refuse before sending (3294.1225ms)
+✔ responses: full local schema survives projection and rejects invalid tool arguments (6295.298667ms)
+✔ responses: schema dialect constraints are validated instead of dropped (6105.088417ms)
+✔ responses: unsupported schema and unverified native strict refuse before sending (4560.857708ms)
+✔ messages: full local schema survives projection and rejects invalid tool arguments (7903.118708ms)
+✔ messages: schema dialect constraints are validated instead of dropped (5117.069833ms)
+✔ messages: unsupported schema and unverified native strict refuse before sending (4599.265333ms)
+✔ configuration changes take effect after the original tool pair without rewriting the original step (9338.449625ms)
+✔ a missing required capability preserves the input and explains its source before any model request (5013.057667ms)
+✔ revocation between model generation and preparation cannot dispatch a formerly resolved executor (5169.102458ms)
+✔ same logical names from different sources retain distinct schemas and invoke the fixed original executor (5149.982667ms)
+✔ an oversized required input is retained with the exact range to reduce and never silently truncated (4992.943458ms)
+✔ an in-Run close receipt loss resumes the received V2 assembly even after V3 is configured (6819.625667ms)
+✔ an in-Run create receipt loss resumes the received V2 assembly even after V3 is configured (7807.054667ms)
+✔ steering beyond the fixed input policy pauses with the full supplement before another model request (5826.300208ms)
+▶ model-switch carries course facts and an earlier accepted operation after steering
+  ✔ the actual successor request retains the earlier Command and Wait (0.730292ms)
+  ✔ course facts remain user data while the fixed help policy remains a system rule (0.17875ms)
+✔ model-switch carries course facts and an earlier accepted operation after steering (8544.783042ms)
+▶ assembly-change carries course facts and an earlier accepted operation after steering
+  ✔ the actual successor request retains the earlier Command and Wait (0.139667ms)
+  ✔ course facts remain user data while the fixed help policy remains a system rule (0.0695ms)
+✔ assembly-change carries course facts and an earlier accepted operation after steering (7711.913167ms)
+✔ initial segment receipt loss and Agent restart reuse the original segment before any model dispatch (6271.510625ms)
+✔ a fenced Agent with a delayed create receipt cannot overwrite its successor or dispatch another model call (5180.468958ms)
+✔ close receipt loss resumes the fixed model switch under competing Agents without reassembly (4947.961875ms)
+✔ create receipt loss resumes the fixed model switch under competing Agents without reassembly (5081.90825ms)
+✔ a paired accepted student Wait keeps its original command, deadline and Run budget through a switch and restart (5264.924ms)
+✖ an assembly-change close receipt loss keeps the received definition when configuration changes again (5981.728458ms)
+✖ an assembly-change create receipt loss keeps the received definition when configuration changes again (5275.802958ms)
+✔ a switch requested while the first assembly is resolving seals the segment actually reached at the boundary (4347.351917ms)
+✔ a lost snapshot upload acknowledgement retains its original context when an earlier operation completes before recovery (7684.838125ms)
+ℹ Snapshot resource boundary attempts: [{"uploadId":"57097235-93d0-4932-ac6c-8ccc50604933","sha256":"8dfd1fac7de6afbbb787e549e2fc52164c5f9c09b386d7c7f350306f50bb4ea8","waits":["pending"],"effects":["accepted"]},{"uploadId":"57097235-93d0-4932-ac6c-8ccc50604933","sha256":"8dfd1fac7de6afbbb787e549e2fc52164c5f9c09b386d7c7f350306f50bb4ea8","waits":["pending"],"effects":["accepted"]}]
+✔ Agent reads the granted immutable work through a real tool and continues the native call pair (16336.729ms)
+✔ responses continues the same native tool pair with the real fixed source (5682.275083ms)
+✔ messages continues the same native tool pair with the real fixed source (4747.38425ms)
+✔ truncated model output cannot dispatch a tool (3185.40625ms)
+✔ invalid-arguments model output cannot dispatch a tool (3529.464708ms)
+✔ missing-terminal model output cannot dispatch a tool (2366.210333ms)
+✔ a valid native call cannot read an unapproved work from another activity (2877.488041ms)
+✔ an unsupported fixed binary source reports unavailable without an unknown-effect Wait (2977.54775ms)
+✔ trusted execution owner runs an agent session, preserves prior input, fences student and cancelled dispatch (3245.113334ms)
+✔ tool host freezes an approved work and runs manifest-declared stateful operations through the actual owner (2314.112625ms)
+✔ browser handoff survives owner reconstruction, requires a live permit and retains a true Wasm result (1651.806ms)
+✔ PNG work evidence uses the fixed verified WP06 route and durable image resource without base64 feedback (1812.236541ms)
+✔ the original native node rechecks the Agent permit at claim and a durable stop cancels its unclaimed start (1464.86ms)
+✔ revocation cleanup reclaims the original real native process without granting current activity access (2013.959ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 44
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117328.537375
+
+✖ failing tests:
+
+test at apps/server/tests/teaching-agent.segments.runtime.test.mjs:172:41
+✖ an assembly-change close receipt loss keeps the received definition when configuration changes again (5981.728458ms)
+  Error [StorageError]: Storage operation failed: conflict
+      at Object.continueRun (file:///Users/robertwu/.codex/worktrees/164f/XunJie/packages/learning-space/dist/teaching-agent/index.js:1038:19)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teaching-agent.segments.runtime.test.mjs:201:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'conflict',
+    requestId: undefined
+  }
+
+test at apps/server/tests/teaching-agent.segments.runtime.test.mjs:172:41
+✖ an assembly-change create receipt loss keeps the received definition when configuration changes again (5275.802958ms)
+  Error [StorageError]: Storage operation failed: conflict
+      at Object.continueRun (file:///Users/robertwu/.codex/worktrees/164f/XunJie/packages/learning-space/dist/teaching-agent/index.js:1038:19)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teaching-agent.segments.runtime.test.mjs:201:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'conflict',
+    requestId: undefined
+  }

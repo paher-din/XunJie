@@ -1,0 +1,342 @@
+{
+  "issue": 202,
+  "label": "wp08-216-mac-real-discovery-4096",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "headed": true,
+  "model": "deepseek-flash",
+  "startedAt": "2026-11-07T20:04:51.335Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:04:51.337Z",
+      "result": {
+        "endpoint": "http://127.0.0.1:53586",
+        "releaseId": "19200000-0000-4000-8000-000000000205",
+        "definitionDigest": "6f9c2da7c7deffa13904692866a23f071948b8d900533ccfa6a9fdbfb102169e"
+      },
+      "elapsedMs": 5520
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:04:56.857Z",
+      "result": {
+        "requestId": "ba22c668-15b6-4742-914a-f135eb045b7f",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "451437ac575c152b408c4acbc344178fc4f2fef0bc89eb897967bd882a7a44f8",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 3720
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:05:00.578Z",
+      "result": {
+        "requestId": "64f896f2-de9c-4031-9d19-d062d0c3eabf",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 3879
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:05:04.457Z",
+      "result": {
+        "requestId": "33d698d4-d7a7-4ad3-8114-3c3e38f381f4",
+        "referenceId": "f232dae6-1892-43dd-be10-db05a3604479",
+        "index": 2079
+      },
+      "elapsedMs": 3240
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:05:07.697Z",
+      "result": {
+        "runId": "3936a2e9-3dcf-40c8-a503-0859869fb491",
+        "commandId": "ce14bfe6-74a5-4838-916c-615c0e7b8a3f",
+        "originalCodeVerifiedAfterEdit": true,
+        "answerSha256": "c2c9452a86fb856a182e4d1a0d848584eb065ebecf86a4fc45b1c16e267d800d"
+      },
+      "elapsedMs": 38353
+    },
+    {
+      "id": "student-correction-real-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:05:46.050Z",
+      "result": {
+        "requestId": "741bde00-9ea8-4392-b581-91f06c04d5e6",
+        "output": {
+          "f": "0000",
+          "cout": "1",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 1127
+    },
+    {
+      "id": "normal-input-real-agent",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:05:47.177Z",
+      "result": {
+        "runId": "47894e61-a661-440d-a8fc-660a30e04042",
+        "commandId": "025a3752-9123-4da9-92f3-4052bc3e0408",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        },
+        "answerSha256": "fd5c68690c894149560c8ac18e2b55c12cf47b8536eb7e34c4fde505be1acce2"
+      },
+      "elapsedMs": 26982
+    },
+    {
+      "id": "help-policy-with-tool-output-instructions",
+      "status": "failed",
+      "startedAt": "2026-11-07T20:06:14.159Z",
+      "error": "the same Agent Run consumes a real ALU result\n\nthe same Agent Run consumes a real ALU result\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\nCall Log:\n- Timeout 240000ms exceeded while waiting on the predicate",
+      "elapsedMs": 240837
+    }
+  ],
+  "modelCalls": [
+    {
+      "runId": "3936a2e9-3dcf-40c8-a503-0859869fb491",
+      "attemptId": "f2931055-1641-4a51-a966-e1c0c2fbafe9",
+      "snapshotId": "22900eda-b608-49bd-86bd-16d89d371656",
+      "payloadSha256": "3013dc55b6bb3eb10f920dbf64500a6cac43d5a37c832993a7a35528dfa2803d",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "3936a2e9-3dcf-40c8-a503-0859869fb491",
+      "attemptId": "11f5aa32-d45d-4ed9-af6b-3ae1a8f7c36f",
+      "snapshotId": "7658c1c3-6437-4a23-90f5-34d717e13857",
+      "payloadSha256": "98a9c34654775527f8f83eed42b982d2654d0e81fc3921ac1c08e3e2e70bed90",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "3936a2e9-3dcf-40c8-a503-0859869fb491",
+      "attemptId": "21f42fd8-7959-495f-8bb4-833355abeee5",
+      "snapshotId": "0e484179-6e89-4e71-841c-3b6ce8a66d94",
+      "payloadSha256": "517bfc2e12726c50c12498461430b0a9ae3a7840318a5a0d9883da7fca56de4c",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "3936a2e9-3dcf-40c8-a503-0859869fb491",
+      "attemptId": "163557eb-e38f-4fba-840d-7191ddc8284c",
+      "snapshotId": "5989751b-b3b2-4162-89f1-faff453beacb",
+      "payloadSha256": "87ae7af3cd403c71fd94e64d7ecbfe1758497f5117a39148022725847164fd2e",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "47894e61-a661-440d-a8fc-660a30e04042",
+      "attemptId": "02b7a549-ae29-44dc-9dba-c3908fa9dd66",
+      "snapshotId": "446a4017-a54d-4a81-bb11-935b6362661b",
+      "payloadSha256": "9919394861dc2483dd43afcc87bea77ccbf7cfdc240a76df467f6f91dc53748f",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "47894e61-a661-440d-a8fc-660a30e04042",
+      "attemptId": "86207633-6424-4623-a6e8-c3186bc71236",
+      "snapshotId": "865db33c-8514-40ad-a416-94663a687983",
+      "payloadSha256": "d53fa3b9aa5871d67b8c06cccb55f1b4df1f2b2452a58d2a93f784023138c5b6",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "47894e61-a661-440d-a8fc-660a30e04042",
+      "attemptId": "844ec080-4f05-45ef-9ff1-3e3bcbd575c2",
+      "snapshotId": "d7f073c1-a588-4f77-b3a2-ece5e47000a5",
+      "payloadSha256": "06e864862faba7684d865eeb35837757f85461a4ee902896b85d74c314db796b",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "47894e61-a661-440d-a8fc-660a30e04042",
+      "attemptId": "d7e9f9ae-7901-4614-b912-036374f6bc80",
+      "snapshotId": "61c5b0fe-4c94-46f0-86a4-188acb5e8dd8",
+      "payloadSha256": "c46f82b47eb2355ea5f9a400562dd17f5701a2f90572062e9cd2a2b2b488c2f4",
+      "model": {
+        "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    }
+  ],
+  "workers": [],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "status": "failed",
+  "product": {
+    "candidate": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-darwin-arm64",
+    "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-211-ime-AdDmHl",
+    "productNodeVersion": "24.21.0",
+    "distributionSha256": "57a007f2c3b33700f3354eaca03f5e94f792cc802b397e0c6c639bea8dec7cb7"
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "4948424c-6125-4697-a7a2-328971580764",
+  "providerTransport": "holder-local byte relay to TLS-verified api.deepseek.com",
+  "providerRequests": [
+    {
+      "startedAt": "2026-11-07T20:05:09.461Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 4126
+    },
+    {
+      "startedAt": "2026-11-07T20:05:14.768Z",
+      "status": 200,
+      "tlsVerified": true
+    },
+    {
+      "startedAt": "2026-11-07T20:05:16.474Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 816
+    },
+    {
+      "startedAt": "2026-11-07T20:05:22.917Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 22175
+    },
+    {
+      "startedAt": "2026-11-07T20:05:47.977Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 3335
+    },
+    {
+      "startedAt": "2026-11-07T20:05:51.920Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 577
+    },
+    {
+      "startedAt": "2026-11-07T20:05:53.074Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 716
+    },
+    {
+      "startedAt": "2026-11-07T20:06:02.895Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 10396
+    },
+    {
+      "startedAt": "2026-11-07T20:06:15.302Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 7391
+    },
+    {
+      "startedAt": "2026-11-07T20:06:23.521Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1282
+    },
+    {
+      "startedAt": "2026-11-07T20:06:25.409Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 2567
+    }
+  ],
+  "providerConfiguration": {
+    "connectionId": "79b3bf5b-3d77-4da4-8cfe-545c0d307ec8",
+    "protocol": "chat-completions",
+    "modelId": "deepseek-flash",
+    "baseUrl": "http://127.0.0.1:53657/v1",
+    "limits": {
+      "maxOutputTokens": 4096,
+      "timeoutMs": 30000,
+      "maxGenerations": 24,
+      "retries": 0
+    }
+  },
+  "failure": "the same Agent Run consumes a real ALU result\n\nthe same Agent Run consumes a real ALU result\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\nCall Log:\n- Timeout 240000ms exceeded while waiting on the predicate",
+  "failureStack": "Error: the same Agent Run consumes a real ALU result\n\nthe same Agent Run consumes a real ALU result\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false",
+  "completedAt": "2026-11-07T20:10:17.739Z"
+}

@@ -1,0 +1,3074 @@
+{
+  "status": "passed",
+  "startedAt": "2026-11-07T20:09:07.165Z",
+  "finishedAt": "2026-11-07T20:21:52.414Z",
+  "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+  "nodeVersion": "v24.21.0",
+  "logFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/verify.log",
+  "summaryFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/summary.json",
+  "exitCode": 0,
+  "group": "full",
+  "shard": null,
+  "jobs": 2,
+  "testsCached": false,
+  "stages": [
+    {
+      "name": "prepare",
+      "status": "passed",
+      "logFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/01-prepare.log",
+      "tasks": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "typecheck"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-07T20:09:07.169Z",
+          "finishedAt": "2026-11-07T20:09:15.877Z",
+          "durationMs": 8708,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "build",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "all"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-07T20:09:15.878Z",
+          "finishedAt": "2026-11-07T20:09:39.943Z",
+          "durationMs": 24065,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "check:contracts:browser",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/check-contracts-browser.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-07T20:09:39.949Z",
+          "finishedAt": "2026-11-07T20:09:40.514Z",
+          "durationMs": 565,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "check:docs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/check-doc-links.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-07T20:09:40.515Z",
+          "finishedAt": "2026-11-07T20:09:41.168Z",
+          "durationMs": 653,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-07T20:09:07.169Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-07T20:09:41.171Z",
+      "durationMs": 34002
+    },
+    {
+      "name": "build:test",
+      "status": "passed",
+      "logFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/02-build-test.log",
+      "tasks": [
+        {
+          "name": "build:test",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "test"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:41.186Z",
+          "finishedAt": "2026-11-07T20:09:43.207Z",
+          "durationMs": 2025,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-07T20:09:41.182Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-07T20:09:43.208Z",
+      "durationMs": 2026
+    },
+    {
+      "name": "unit",
+      "status": "passed",
+      "logFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/03-unit.log",
+      "tasks": [
+        {
+          "name": "scripts/build.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/build.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:43.209Z",
+          "finishedAt": "2026-11-07T20:09:56.390Z",
+          "durationMs": 13181,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/check-contracts-browser.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/check-contracts-browser.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:45.161Z",
+          "finishedAt": "2026-11-07T20:09:48.843Z",
+          "durationMs": 3682,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/check-doc-links.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/check-doc-links.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:50.211Z",
+          "finishedAt": "2026-11-07T20:09:51.689Z",
+          "durationMs": 1478,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/ci-build-artifact.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/ci-build-artifact.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:52.204Z",
+          "finishedAt": "2026-11-07T20:09:53.911Z",
+          "durationMs": 1707,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/package-product.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/package-product.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:54.419Z",
+          "finishedAt": "2026-11-07T20:09:54.630Z",
+          "durationMs": 211,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/test-discovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/test-discovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:55.171Z",
+          "finishedAt": "2026-11-07T20:09:55.548Z",
+          "durationMs": 377,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/test-scheduler.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/test-scheduler.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:56.392Z",
+          "finishedAt": "2026-11-07T20:10:04.522Z",
+          "durationMs": 8130,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/verify.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts/verify.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:13.304Z",
+          "finishedAt": "2026-11-07T20:10:29.399Z",
+          "durationMs": 16095,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "web",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/node_modules/vitest/vitest.mjs",
+            "run",
+            "--maxWorkers=1",
+            "--minWorkers=1",
+            "--no-file-parallelism"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/web",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:19.221Z",
+          "finishedAt": "2026-11-07T20:11:37.876Z",
+          "durationMs": 78655,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/alu-counterexample.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts/test/alu-counterexample.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:39.488Z",
+          "finishedAt": "2026-11-07T20:10:40.039Z",
+          "durationMs": 551,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/alu-references.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts/test/alu-references.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:41.211Z",
+          "finishedAt": "2026-11-07T20:10:41.955Z",
+          "durationMs": 744,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/alu-waveform.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts/test/alu-waveform.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:42.573Z",
+          "finishedAt": "2026-11-07T20:10:42.906Z",
+          "durationMs": 333,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/component-formats.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts/test/component-formats.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:44.018Z",
+          "finishedAt": "2026-11-07T20:10:44.536Z",
+          "durationMs": 518,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/execution-plan.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts/test/execution-plan.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:46.070Z",
+          "finishedAt": "2026-11-07T20:10:46.561Z",
+          "durationMs": 491,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/teaching-event.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts/test/teaching-event.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:49.230Z",
+          "finishedAt": "2026-11-07T20:10:49.599Z",
+          "durationMs": 369,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/connections-installation.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/connections-installation.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:08.420Z",
+          "finishedAt": "2026-11-07T20:11:10.988Z",
+          "durationMs": 2568,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/host-facts.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/host-facts.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:37.878Z",
+          "finishedAt": "2026-11-07T20:11:39.334Z",
+          "durationMs": 1456,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/io.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/io.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:40.370Z",
+          "finishedAt": "2026-11-07T20:11:44.693Z",
+          "durationMs": 4323,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/learning-drain.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/learning-drain.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:57.342Z",
+          "finishedAt": "2026-11-07T20:11:58.384Z",
+          "durationMs": 1042,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:59.236Z",
+          "finishedAt": "2026-11-07T20:12:26.439Z",
+          "durationMs": 27203,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/maintenance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/maintenance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:26.704Z",
+          "finishedAt": "2026-11-07T20:12:26.960Z",
+          "durationMs": 256,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/model-origin-recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/model-origin-recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:39.171Z",
+          "finishedAt": "2026-11-07T20:12:39.934Z",
+          "durationMs": 763,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/prerequisites-cli.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/prerequisites-cli.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:44.987Z",
+          "finishedAt": "2026-11-07T20:12:58.451Z",
+          "durationMs": 13464,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/prerequisites-lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:56.617Z",
+          "finishedAt": "2026-11-07T20:12:58.077Z",
+          "durationMs": 1460,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/prerequisites.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/prerequisites.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:59.144Z",
+          "finishedAt": "2026-11-07T20:12:59.395Z",
+          "durationMs": 251,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/recovery-connections.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:01.711Z",
+          "finishedAt": "2026-11-07T20:13:13.890Z",
+          "durationMs": 12179,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery-files.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/recovery-files.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:22.216Z",
+          "finishedAt": "2026-11-07T20:13:22.839Z",
+          "durationMs": 623,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:26.624Z",
+          "finishedAt": "2026-11-07T20:13:54.544Z",
+          "durationMs": 27920,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/resource-response.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/resource-response.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:54.553Z",
+          "finishedAt": "2026-11-07T20:13:54.901Z",
+          "durationMs": 348,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/school-client.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/school-client.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:07.498Z",
+          "finishedAt": "2026-11-07T20:14:10.075Z",
+          "durationMs": 2577,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/service-routing.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/service-routing.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:15.032Z",
+          "finishedAt": "2026-11-07T20:14:19.791Z",
+          "durationMs": 4759,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/shutdown-sockets.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:20.549Z",
+          "finishedAt": "2026-11-07T20:14:21.973Z",
+          "durationMs": 1424,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/ssh-recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/ssh-recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:25.725Z",
+          "finishedAt": "2026-11-07T20:14:26.435Z",
+          "durationMs": 710,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/storage/test/blobs.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/storage/test/blobs.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/storage",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:53.991Z",
+          "finishedAt": "2026-11-07T20:14:56.422Z",
+          "durationMs": 2431,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/connections.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime/test/connections.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/packages/product-runtime",
+          "exclusive": true,
+          "startedAt": "2026-11-07T20:21:49.353Z",
+          "finishedAt": "2026-11-07T20:21:52.413Z",
+          "durationMs": 3060,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-07T20:09:43.209Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-07T20:21:52.414Z",
+      "durationMs": 729205
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "logFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/04-server.log",
+      "tasks": [
+        {
+          "name": "apps/server/runner/alu-check.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/alu-check.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:43.210Z",
+          "finishedAt": "2026-11-07T20:09:43.495Z",
+          "durationMs": 285,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/control.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/control.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:48.844Z",
+          "finishedAt": "2026-11-07T20:09:49.134Z",
+          "durationMs": 290,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/course.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/course.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:51.699Z",
+          "finishedAt": "2026-11-07T20:09:51.994Z",
+          "durationMs": 295,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/editor-diagnostics.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/editor-diagnostics.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:53.930Z",
+          "finishedAt": "2026-11-07T20:09:54.197Z",
+          "durationMs": 267,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/hdl-clock.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/hdl-clock.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:54.634Z",
+          "finishedAt": "2026-11-07T20:09:54.919Z",
+          "durationMs": 285,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/hdl-profile.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/hdl-profile.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:55.550Z",
+          "finishedAt": "2026-11-07T20:09:55.830Z",
+          "durationMs": 280,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/node-files.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/node-files.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:04.523Z",
+          "finishedAt": "2026-11-07T20:10:04.773Z",
+          "durationMs": 250,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/report.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/report.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:14.311Z",
+          "finishedAt": "2026-11-07T20:10:14.588Z",
+          "durationMs": 277,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/result-files.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/result-files.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:29.400Z",
+          "finishedAt": "2026-11-07T20:10:29.695Z",
+          "durationMs": 295,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/run-snapshot.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/run-snapshot.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:40.042Z",
+          "finishedAt": "2026-11-07T20:10:40.333Z",
+          "durationMs": 291,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/snapshot.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/snapshot.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:41.956Z",
+          "finishedAt": "2026-11-07T20:10:42.323Z",
+          "durationMs": 367,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/verify.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/runner/verify.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:42.910Z",
+          "finishedAt": "2026-11-07T20:10:43.222Z",
+          "durationMs": 312,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/deployment-identity.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/deployment-identity.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:44.537Z",
+          "finishedAt": "2026-11-07T20:10:45.076Z",
+          "durationMs": 539,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/digital-logic.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/digital-logic.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:46.562Z",
+          "finishedAt": "2026-11-07T20:10:46.842Z",
+          "durationMs": 280,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/execution-nodes.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/execution-nodes.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:49.600Z",
+          "finishedAt": "2026-11-07T20:11:07.916Z",
+          "durationMs": 18316,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/i0-readiness.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/i0-readiness.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:10.989Z",
+          "finishedAt": "2026-11-07T20:11:31.344Z",
+          "durationMs": 20355,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/i0-tutoring.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/i0-tutoring.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:39.336Z",
+          "finishedAt": "2026-11-07T20:11:55.376Z",
+          "durationMs": 16040,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/i0.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/i0.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:44.695Z",
+          "finishedAt": "2026-11-07T20:12:16.124Z",
+          "durationMs": 31429,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/main-readiness-compatibility.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/main-readiness-compatibility.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:58.389Z",
+          "finishedAt": "2026-11-07T20:11:58.832Z",
+          "durationMs": 443,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/model-budget.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/model-budget.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:16.125Z",
+          "finishedAt": "2026-11-07T20:12:51.991Z",
+          "durationMs": 35866,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/personal-models.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/personal-models.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:26.963Z",
+          "finishedAt": "2026-11-07T20:12:36.997Z",
+          "durationMs": 10034,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/pr53-56-readiness.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/pr53-56-readiness.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:39.935Z",
+          "finishedAt": "2026-11-07T20:12:44.538Z",
+          "durationMs": 4603,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/response-metrics.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/app/response-metrics.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:51.992Z",
+          "finishedAt": "2026-11-07T20:12:54.847Z",
+          "durationMs": 2855,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/personal-agent/integration.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/personal-agent/integration.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:58.082Z",
+          "finishedAt": "2026-11-07T20:13:01.710Z",
+          "durationMs": 3628,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/personal-agent/model-budget.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/personal-agent/model-budget.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:59.396Z",
+          "finishedAt": "2026-11-07T20:12:59.726Z",
+          "durationMs": 330,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/personal-agent/student-tasks.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/personal-agent/student-tasks.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:13.895Z",
+          "finishedAt": "2026-11-07T20:13:15.592Z",
+          "durationMs": 1697,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/records.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/records/records.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:22.840Z",
+          "finishedAt": "2026-11-07T20:13:23.068Z",
+          "durationMs": 228,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/teaching-projection.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/records/teaching-projection.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:30.490Z",
+          "finishedAt": "2026-11-07T20:13:46.155Z",
+          "durationMs": 15665,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/teaching-review.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/records/teaching-review.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:54.902Z",
+          "finishedAt": "2026-11-07T20:14:14.738Z",
+          "durationMs": 19836,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/teaching.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/records/teaching.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:10.090Z",
+          "finishedAt": "2026-11-07T20:14:25.723Z",
+          "durationMs": 15633,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/deepseek-sdk.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/deepseek-sdk.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:19.793Z",
+          "finishedAt": "2026-11-07T20:14:20.225Z",
+          "durationMs": 433,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/hdl-help.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/hdl-help.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:21.974Z",
+          "finishedAt": "2026-11-07T20:14:22.596Z",
+          "durationMs": 622,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/index.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/index.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:26.438Z",
+          "finishedAt": "2026-11-07T20:14:26.997Z",
+          "durationMs": 559,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/learner-analysis.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/learner-analysis.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:56.311Z",
+          "finishedAt": "2026-11-07T20:15:17.907Z",
+          "durationMs": 21596,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/openai-compatible.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/openai-compatible.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:17.908Z",
+          "finishedAt": "2026-11-07T20:15:18.283Z",
+          "durationMs": 375,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/real-model-support.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/real-model-support.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:24.998Z",
+          "finishedAt": "2026-11-07T20:15:27.323Z",
+          "durationMs": 2325,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/student-help.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/tutoring/test/student-help.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:28.453Z",
+          "finishedAt": "2026-11-07T20:16:12.017Z",
+          "durationMs": 43564,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/a5-consumption.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/a5-consumption.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:59.769Z",
+          "finishedAt": "2026-11-07T20:16:02.863Z",
+          "durationMs": 3094,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/editor-diagnostics.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/editor-diagnostics.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:16:12.036Z",
+          "finishedAt": "2026-11-07T20:16:16.088Z",
+          "durationMs": 4052,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/hdl.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/hdl.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:16:20.070Z",
+          "finishedAt": "2026-11-07T20:16:39.616Z",
+          "durationMs": 19546,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/integration.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/integration.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:16:53.155Z",
+          "finishedAt": "2026-11-07T20:17:15.502Z",
+          "durationMs": 22347,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/job-composition.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/job-composition.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:18:44.144Z",
+          "finishedAt": "2026-11-07T20:18:46.634Z",
+          "durationMs": 2490,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/limited-check.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/limited-check.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:01.812Z",
+          "finishedAt": "2026-11-07T20:19:12.821Z",
+          "durationMs": 11009,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/review.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/review.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:12.842Z",
+          "finishedAt": "2026-11-07T20:19:19.271Z",
+          "durationMs": 6429,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/runs.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/runs.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:16.293Z",
+          "finishedAt": "2026-11-07T20:19:16.625Z",
+          "durationMs": 332,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/submissions.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/submissions.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:17.301Z",
+          "finishedAt": "2026-11-07T20:19:30.098Z",
+          "durationMs": 12797,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/workspace.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/server/workspace/workspace.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:19.281Z",
+          "finishedAt": "2026-11-07T20:19:19.578Z",
+          "durationMs": 297,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/a5-feedback.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/a5-feedback.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:19.605Z",
+          "finishedAt": "2026-11-07T20:19:36.950Z",
+          "durationMs": 17345,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/a5-followup.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/a5-followup.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:30.105Z",
+          "finishedAt": "2026-11-07T20:19:33.057Z",
+          "durationMs": 2952,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/access.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/access.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:33.077Z",
+          "finishedAt": "2026-11-07T20:20:05.579Z",
+          "durationMs": 32502,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/account-control.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/account-control.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:36.964Z",
+          "finishedAt": "2026-11-07T20:19:40.706Z",
+          "durationMs": 3742,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/alu-reflection-retry.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/alu-reflection-retry.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:40.710Z",
+          "finishedAt": "2026-11-07T20:19:41.117Z",
+          "durationMs": 407,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/app.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/app.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:41.125Z",
+          "finishedAt": "2026-11-07T20:19:41.388Z",
+          "durationMs": 263,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/application-database.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/application-database.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:41.393Z",
+          "finishedAt": "2026-11-07T20:19:44.420Z",
+          "durationMs": 3027,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-activities.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-activities.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:44.421Z",
+          "finishedAt": "2026-11-07T20:20:08.232Z",
+          "durationMs": 23811,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-agent.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-agent.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:05.581Z",
+          "finishedAt": "2026-11-07T20:20:32.894Z",
+          "durationMs": 27313,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-checks.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-checks.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:08.234Z",
+          "finishedAt": "2026-11-07T20:20:08.501Z",
+          "durationMs": 267,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-draft.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-draft.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:08.531Z",
+          "finishedAt": "2026-11-07T20:20:08.775Z",
+          "durationMs": 244,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-material.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-material.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:08.776Z",
+          "finishedAt": "2026-11-07T20:20:09.049Z",
+          "durationMs": 273,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-projection.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-projection.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:09.050Z",
+          "finishedAt": "2026-11-07T20:20:09.301Z",
+          "durationMs": 251,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-storage.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/design-storage.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:09.312Z",
+          "finishedAt": "2026-11-07T20:20:27.269Z",
+          "durationMs": 17957,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/display-metadata.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/display-metadata.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:27.273Z",
+          "finishedAt": "2026-11-07T20:20:29.426Z",
+          "durationMs": 2153,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/dl-a-app.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/dl-a-app.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:29.435Z",
+          "finishedAt": "2026-11-07T20:20:49.539Z",
+          "durationMs": 20104,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/dl-a-hdl-help.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/dl-a-hdl-help.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:32.896Z",
+          "finishedAt": "2026-11-07T20:20:42.503Z",
+          "durationMs": 9607,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/durability.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/durability.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:42.504Z",
+          "finishedAt": "2026-11-07T20:20:43.926Z",
+          "durationMs": 1422,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/errors.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/errors.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:43.926Z",
+          "finishedAt": "2026-11-07T20:20:44.227Z",
+          "durationMs": 301,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/execution-nodes.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/execution-nodes.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:44.227Z",
+          "finishedAt": "2026-11-07T20:20:44.441Z",
+          "durationMs": 214,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/learning-admission-policy.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/learning-admission-policy.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:44.442Z",
+          "finishedAt": "2026-11-07T20:20:44.656Z",
+          "durationMs": 214,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/local-socket.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/local-socket.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:44.661Z",
+          "finishedAt": "2026-11-07T20:20:44.954Z",
+          "durationMs": 293,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-capability-images.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-capability-images.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:44.955Z",
+          "finishedAt": "2026-11-07T20:20:45.464Z",
+          "durationMs": 509,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-consumer.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-consumer.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:45.464Z",
+          "finishedAt": "2026-11-07T20:20:55.039Z",
+          "durationMs": 9575,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-messages-review.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-messages-review.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:49.543Z",
+          "finishedAt": "2026-11-07T20:20:50.113Z",
+          "durationMs": 570,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-network-policy.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-network-policy.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:50.114Z",
+          "finishedAt": "2026-11-07T20:20:50.347Z",
+          "durationMs": 233,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-progress.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-progress.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:50.347Z",
+          "finishedAt": "2026-11-07T20:20:50.482Z",
+          "durationMs": 135,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-protocol-review.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-protocol-review.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:50.483Z",
+          "finishedAt": "2026-11-07T20:20:52.587Z",
+          "durationMs": 2104,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-sensitive-boundary.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/model-sensitive-boundary.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:52.589Z",
+          "finishedAt": "2026-11-07T20:20:53.054Z",
+          "durationMs": 465,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/native-isolation.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/native-isolation.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:53.055Z",
+          "finishedAt": "2026-11-07T20:20:58.755Z",
+          "durationMs": 5700,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/native-session.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/native-session.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:55.039Z",
+          "finishedAt": "2026-11-07T20:21:00.651Z",
+          "durationMs": 5612,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/records-adapter-performance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/records-adapter-performance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:58.756Z",
+          "finishedAt": "2026-11-07T20:20:59.387Z",
+          "durationMs": 631,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/records-adapter.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/records-adapter.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:20:59.388Z",
+          "finishedAt": "2026-11-07T20:21:03.300Z",
+          "durationMs": 3912,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/review.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/review.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:00.657Z",
+          "finishedAt": "2026-11-07T20:21:49.349Z",
+          "durationMs": 48692,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/semantic-references.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/semantic-references.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:03.304Z",
+          "finishedAt": "2026-11-07T20:21:03.550Z",
+          "durationMs": 247,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/session-checkpoints.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/session-checkpoints.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:03.551Z",
+          "finishedAt": "2026-11-07T20:21:03.794Z",
+          "durationMs": 243,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/session-store.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/session-store.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:03.798Z",
+          "finishedAt": "2026-11-07T20:21:03.979Z",
+          "durationMs": 181,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/startup.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/startup.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:03.985Z",
+          "finishedAt": "2026-11-07T20:21:04.535Z",
+          "durationMs": 550,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/teacher-design-budget.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teacher-design-budget.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:04.543Z",
+          "finishedAt": "2026-11-07T20:21:04.807Z",
+          "durationMs": 264,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/teacher-workflow.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teacher-workflow.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:04.807Z",
+          "finishedAt": "2026-11-07T20:21:13.813Z",
+          "durationMs": 9006,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/teaching-agent.dependency-authorization.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teaching-agent.dependency-authorization.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:13.814Z",
+          "finishedAt": "2026-11-07T20:21:14.183Z",
+          "durationMs": 369,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/transaction.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/transaction.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:14.189Z",
+          "finishedAt": "2026-11-07T20:21:14.382Z",
+          "durationMs": 193,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/validation.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/validation.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:14.384Z",
+          "finishedAt": "2026-11-07T20:21:14.634Z",
+          "durationMs": 250,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/workspace-hydration-performance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/workspace-hydration-performance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:14.635Z",
+          "finishedAt": "2026-11-07T20:21:16.253Z",
+          "durationMs": 1618,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/workspace-scope-performance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/workspace-scope-performance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:21:16.253Z",
+          "finishedAt": "2026-11-07T20:21:20.197Z",
+          "durationMs": 3944,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-07T20:09:43.210Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-07T20:21:49.352Z",
+      "durationMs": 726142
+    },
+    {
+      "name": "tools",
+      "status": "passed",
+      "logFile": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/2026-11-07T20-09-07-160Z-rM76rw/05-tools.log",
+      "tasks": [
+        {
+          "name": "tools/i0-cloud/backup-retained.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/backup-retained.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:43.496Z",
+          "finishedAt": "2026-11-07T20:09:45.059Z",
+          "durationMs": 1563,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/build-runtime-artifact.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:49.136Z",
+          "finishedAt": "2026-11-07T20:09:50.199Z",
+          "durationMs": 1063,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-analysis.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/capacity-analysis.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:52.000Z",
+          "finishedAt": "2026-11-07T20:09:52.203Z",
+          "durationMs": 203,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-collect.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/capacity-collect.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:54.198Z",
+          "finishedAt": "2026-11-07T20:09:54.418Z",
+          "durationMs": 220,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-metrics.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/capacity-metrics.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:54.920Z",
+          "finishedAt": "2026-11-07T20:09:55.170Z",
+          "durationMs": 250,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/capacity-run-failure.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:09:55.831Z",
+          "finishedAt": "2026-11-07T20:10:13.303Z",
+          "durationMs": 17472,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-workflow.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/capacity-workflow.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:04.774Z",
+          "finishedAt": "2026-11-07T20:10:14.304Z",
+          "durationMs": 9530,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/deploy-artifact.test.py",
+          "status": "passed",
+          "command": "python3",
+          "args": [
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/deploy-artifact.test.py"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:14.590Z",
+          "finishedAt": "2026-11-07T20:10:19.220Z",
+          "durationMs": 4630,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/prepare-demo-data.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-cloud/prepare-demo-data.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:29.696Z",
+          "finishedAt": "2026-11-07T20:10:39.486Z",
+          "durationMs": 9790,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-hdl/editor-source.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-hdl/editor-source.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:40.334Z",
+          "finishedAt": "2026-11-07T20:10:41.210Z",
+          "durationMs": 876,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-hdl/receive-frozen-images.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/i0-hdl/receive-frozen-images.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:42.324Z",
+          "finishedAt": "2026-11-07T20:10:42.572Z",
+          "durationMs": 248,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/access.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/access.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:43.223Z",
+          "finishedAt": "2026-11-07T20:10:44.017Z",
+          "durationMs": 794,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/adapters.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/adapters.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:45.077Z",
+          "finishedAt": "2026-11-07T20:10:46.068Z",
+          "durationMs": 991,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/deployment.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/deployment.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:10:46.872Z",
+          "finishedAt": "2026-11-07T20:10:49.229Z",
+          "durationMs": 2357,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/entrypoints.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/entrypoints.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:07.917Z",
+          "finishedAt": "2026-11-07T20:11:08.414Z",
+          "durationMs": 497,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/github-login.e2e.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/github-login.e2e.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:31.346Z",
+          "finishedAt": "2026-11-07T20:11:39.788Z",
+          "durationMs": 8442,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/github-login.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/github-login.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:39.790Z",
+          "finishedAt": "2026-11-07T20:11:40.369Z",
+          "durationMs": 579,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:55.377Z",
+          "finishedAt": "2026-11-07T20:11:57.341Z",
+          "durationMs": 1964,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/oss-storage.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/oss-storage.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:11:58.833Z",
+          "finishedAt": "2026-11-07T20:11:59.235Z",
+          "durationMs": 402,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/package-cleanup.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/package-cleanup.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:26.441Z",
+          "finishedAt": "2026-11-07T20:12:26.703Z",
+          "durationMs": 262,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/package-service.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/package-service.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:37.001Z",
+          "finishedAt": "2026-11-07T20:12:39.170Z",
+          "durationMs": 2169,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/packages.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/packages.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:44.540Z",
+          "finishedAt": "2026-11-07T20:12:44.986Z",
+          "durationMs": 446,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/server.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/server.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:54.848Z",
+          "finishedAt": "2026-11-07T20:12:56.616Z",
+          "durationMs": 1768,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/tls.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev-access/tls.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:58.452Z",
+          "finishedAt": "2026-11-07T20:12:59.143Z",
+          "durationMs": 691,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/baseline-recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/baseline-recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:12:59.727Z",
+          "finishedAt": "2026-11-07T20:13:22.215Z",
+          "durationMs": 22488,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/baseline-team.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:15.593Z",
+          "finishedAt": "2026-11-07T20:13:30.489Z",
+          "durationMs": 14896,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/baseline-unstarted.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/baseline-unstarted.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:23.070Z",
+          "finishedAt": "2026-11-07T20:13:26.623Z",
+          "durationMs": 3553,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/certificates.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/certificates.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:46.167Z",
+          "finishedAt": "2026-11-07T20:13:57.390Z",
+          "durationMs": 11223,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/enrollment-client.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:13:57.392Z",
+          "finishedAt": "2026-11-07T20:14:07.481Z",
+          "durationMs": 10089,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/enrollment-protocol.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:14.739Z",
+          "finishedAt": "2026-11-07T20:14:15.026Z",
+          "durationMs": 287,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/enrollment-ssh.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:20.227Z",
+          "finishedAt": "2026-11-07T20:14:20.548Z",
+          "durationMs": 321,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/env-removal.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/env-removal.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:22.600Z",
+          "finishedAt": "2026-11-07T20:14:56.306Z",
+          "durationMs": 33706,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:27.007Z",
+          "finishedAt": "2026-11-07T20:14:53.986Z",
+          "durationMs": 26979,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/integration.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/integration.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:14:56.424Z",
+          "finishedAt": "2026-11-07T20:15:24.977Z",
+          "durationMs": 28553,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/local-status.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/local-status.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:18.284Z",
+          "finishedAt": "2026-11-07T20:15:56.413Z",
+          "durationMs": 38129,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/managed-modes.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/managed-modes.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:27.339Z",
+          "finishedAt": "2026-11-07T20:15:28.434Z",
+          "durationMs": 1095,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/operation-lock.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/operation-lock.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:15:56.441Z",
+          "finishedAt": "2026-11-07T20:15:59.743Z",
+          "durationMs": 3302,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/package-transfer.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:16:02.874Z",
+          "finishedAt": "2026-11-07T20:16:53.145Z",
+          "durationMs": 50271,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-code-batch.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/repro-code-batch.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:16:16.099Z",
+          "finishedAt": "2026-11-07T20:16:20.064Z",
+          "durationMs": 3965,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/repro-e2e.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:16:39.624Z",
+          "finishedAt": "2026-11-07T20:19:01.810Z",
+          "durationMs": 142186,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/repro-restore.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:17:15.504Z",
+          "finishedAt": "2026-11-07T20:18:44.132Z",
+          "durationMs": 88628,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/repro-secrets.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:18:46.650Z",
+          "finishedAt": "2026-11-07T20:19:06.052Z",
+          "durationMs": 19402,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/repro.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:06.059Z",
+          "finishedAt": "2026-11-07T20:19:15.563Z",
+          "durationMs": 9504,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/unit.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/unit.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:15.574Z",
+          "finishedAt": "2026-11-07T20:19:16.289Z",
+          "durationMs": 715,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/workspace-dependencies.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/.codex/worktrees/164f/XunJie/tools/xj-dev/tests/workspace-dependencies.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/.codex/worktrees/164f/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-07T20:19:16.630Z",
+          "finishedAt": "2026-11-07T20:19:17.277Z",
+          "durationMs": 647,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-07T20:09:43.496Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-07T20:19:17.277Z",
+      "durationMs": 573781
+    }
+  ],
+  "durationMs": 765254
+}

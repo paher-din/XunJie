@@ -1,0 +1,445 @@
+{
+  "issue": 216,
+  "measuredAt": "2026-11-07T20:01:33.568Z",
+  "status": "passed",
+  "limits": {
+    "maxGenerations": 4,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "topology": {
+    "mac": {
+      "ip": "192.168.3.39",
+      "host": "Robert-Wu-MacBook-Air.local",
+      "platform": "darwin",
+      "port": 38265
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "port": 38266,
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "transport": "direct LAN HTTPS; SSH control only; provider credentials remain on Mac"
+  },
+  "stages": [
+    {
+      "name": "mac-school-direct-https",
+      "status": "passed",
+      "fact": {
+        "environmentId": "80858bf3-0e16-41a2-9565-4826c63a1fad",
+        "installationId": "ff151aaf-060e-4e4a-909e-df25b2a1398f",
+        "endpoint": "https://192.168.3.39:38265",
+        "units": [
+          "client",
+          "learning-data",
+          "model-connection",
+          "space-course",
+          "teaching-agent"
+        ]
+      }
+    },
+    {
+      "name": "windows-independent-agent-direct-https",
+      "status": "passed",
+      "fact": {
+        "state": "degraded",
+        "endpoint": "https://192.168.3.8:38266",
+        "environmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+        "installationId": "d78b604e-b5af-4a1a-aaf1-ae0c5b0a5224",
+        "target": {
+          "environmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+          "serviceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+          "unit": "teaching-agent",
+          "endpoint": "https://192.168.3.8:38266",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.agent"
+          ]
+        },
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "platform": "win32",
+        "host": "LAPTOP-S7A4IQFU",
+        "osRelease": "10.0.26200",
+        "package": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "9f028159d1c07e21fd85083498dc1b74abd4a35640744388b019731448930494",
+          "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+          "nodeVersion": "v24.21.0"
+        },
+        "probeSha256": "32fe322dad70a95d04f86688f37c51dee52d41ad0d6286681bbe6fc36e886cd8"
+      }
+    },
+    {
+      "name": "bidirectional-runtime-authority-and-binding",
+      "status": "passed",
+      "fact": {
+        "schoolDataOwner": {
+          "environmentId": "80858bf3-0e16-41a2-9565-4826c63a1fad",
+          "serviceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70"
+        },
+        "agentOwner": {
+          "environmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+          "serviceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5"
+        },
+        "agentConnectionId": "8a79697a-1cc6-49fe-b08b-29b38312f44a",
+        "dependencyConnectionId": "b3567425-1bad-4cbf-9d6d-099bb745d42c",
+        "acceptGrantId": "eae30f72-ae50-4738-bd2a-85415602d25f",
+        "dependencyGrantId": "18f15173-3c3d-421b-b3a6-6613524f3cc7"
+      }
+    },
+    {
+      "name": "mac-only-real-provider-configuration",
+      "status": "passed",
+      "fact": {
+        "model": "deepseek-flash",
+        "protocol": "chat-completions",
+        "connectionId": "32acb4f4-9d40-4561-bf56-9dac2f15f84a",
+        "credentialOwner": "Mac",
+        "credentialExported": false
+      }
+    },
+    {
+      "name": "revoked-dependency-refuses-new-operation-without-replay",
+      "status": "passed",
+      "fact": {
+        "dependencyGrantId": "18f15173-3c3d-421b-b3a6-6613524f3cc7",
+        "operationHttpStatus": 403,
+        "operationError": "forbidden",
+        "requestId": "4b97c4b1-d5ac-40b5-a58d-9c9b400f3c11",
+        "inputSha256": "ddbf74edec7a2d9d3800c19bb50501def69af2c5585531ae3cb618ac4bc49763",
+        "actionState": "dispatched",
+        "modelRequests": 0
+      }
+    },
+    {
+      "name": "fresh-grant-resumes-the-original-action-identity",
+      "status": "passed",
+      "fact": {
+        "requestId": "4b97c4b1-d5ac-40b5-a58d-9c9b400f3c11",
+        "runId": "a39afe8c-56dd-4e12-8ffa-5a3601851939",
+        "inputSha256": "ddbf74edec7a2d9d3800c19bb50501def69af2c5585531ae3cb618ac4bc49763",
+        "dependencyConnectionId": "b3567425-1bad-4cbf-9d6d-099bb745d42c",
+        "dependencyGrantId": "6c398afc-b788-48ab-8473-0f4290ac9c47"
+      }
+    },
+    {
+      "name": "windows-discovery-load-mac-work-and-four-real-model-calls",
+      "status": "passed",
+      "fact": {
+        "runId": "a39afe8c-56dd-4e12-8ffa-5a3601851939",
+        "requestId": "4b97c4b1-d5ac-40b5-a58d-9c9b400f3c11",
+        "activityId": "c54377dc-af2d-4545-8031-610aaa613980",
+        "toolCommandId": "56e90174-e0f8-488e-9694-6e8762250e44",
+        "workContentSha256": "2d51de090ef0c721ccfa9d3ec83101ea81a78280cf5403c63a2f602adf3cb064",
+        "modelRequests": 4,
+        "contributionTransfers": 8,
+        "toolDispatches": 1,
+        "completedTools": [
+          "discover_tools",
+          "load_tools",
+          "read_work"
+        ]
+      }
+    },
+    {
+      "name": "public-snapshots-match-actual-transport-and-fixed-assembly",
+      "status": "passed",
+      "fact": {
+        "runId": "a39afe8c-56dd-4e12-8ffa-5a3601851939",
+        "snapshots": [
+          {
+            "snapshotId": "620bbbc6-48b2-47f2-a347-7c657494be82",
+            "attemptId": "5fbe44bf-4358-4b1a-bff9-a70e3acbed86",
+            "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+            "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+            "definitionId": "xunjie.learning",
+            "definitionVersion": 2,
+            "contextManifestId": "b6444c84-af22-4aa1-98a6-63c87bf3ee61",
+            "payloadSha256": "d6936a9f2be5986034517e0dc3f1bd38901f253ad6a086f2145d40b2e1dfb74e",
+            "counting": "unknown"
+          },
+          {
+            "snapshotId": "65a84048-9e45-4b9d-add6-9756e1ebc85b",
+            "attemptId": "427704b6-8708-4ecd-95fa-5d89e5515e6a",
+            "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+            "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+            "definitionId": "xunjie.learning",
+            "definitionVersion": 2,
+            "contextManifestId": "e3a938b0-a9a1-452b-9ca3-c1e301764b0c",
+            "payloadSha256": "a80f81c1b9900fdd5cf2faf00e6c0a42005bc6e7804a91b700fa95652ea52d38",
+            "counting": "unknown"
+          },
+          {
+            "snapshotId": "fe5bd299-7cbe-4aaf-a3c4-9721bd2bb9a9",
+            "attemptId": "6c0b7b64-df7f-4235-97c5-a42c6ec146d4",
+            "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+            "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+            "definitionId": "xunjie.learning",
+            "definitionVersion": 2,
+            "contextManifestId": "bc2b457d-14dc-4220-9d53-c1792993793a",
+            "payloadSha256": "bd2934a97b76a7ffec18fd76975c5f7e4b5e0d1388a26deaa2946280bc3bdbfc",
+            "counting": "unknown"
+          },
+          {
+            "snapshotId": "93957fec-f748-431c-a179-400c4131e0aa",
+            "attemptId": "d71b94e2-28d8-4c01-86fd-bf8eac71c217",
+            "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+            "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+            "definitionId": "xunjie.learning",
+            "definitionVersion": 2,
+            "contextManifestId": "4fcd183f-187e-4897-a579-e7535297bdd2",
+            "payloadSha256": "6772ec8a746c6720ee459e3bdd913a8de3341a47e43690933c73d901bf79df91",
+            "counting": "unknown"
+          }
+        ],
+        "pureReads": true
+      }
+    },
+    {
+      "name": "windows-process-restart-retains-original-request-without-model-or-tool",
+      "status": "passed",
+      "fact": {
+        "environmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+        "agentServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+        "runId": "a39afe8c-56dd-4e12-8ffa-5a3601851939",
+        "requestId": "4b97c4b1-d5ac-40b5-a58d-9c9b400f3c11",
+        "conversationSha256": "ee7022cb84231f8630faa4452be6a03279b53734224653da79a33256fd908e73",
+        "modelRequests": 0,
+        "newToolOperations": 0
+      }
+    }
+  ],
+  "engineering": "owned-by-main",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "packages": {
+    "mac": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "57a007f2c3b33700f3354eaca03f5e94f792cc802b397e0c6c639bea8dec7cb7",
+      "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+      "nodeVersion": "v24.21.0"
+    },
+    "windows": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "9f028159d1c07e21fd85083498dc1b74abd4a35640744388b019731448930494",
+      "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+      "nodeVersion": "v24.21.0"
+    }
+  },
+  "probeSha256": "32fe322dad70a95d04f86688f37c51dee52d41ad0d6286681bbe6fc36e886cd8",
+  "conversationSha256": "ee7022cb84231f8630faa4452be6a03279b53734224653da79a33256fd908e73",
+  "wire": [
+    {
+      "operation": "tool.contributions",
+      "transferId": "2e02c184-d08c-45af-87b6-97d807052dee",
+      "inputSha256": "3729762de54c552d4636c4e308acfc6952e7babcfcfe703bcccabca260953947",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "55076f9a-4993-4157-a926-5353fa17cb59",
+      "inputSha256": "3defeb6a14b13cbec3a2ff383d0a5e57611adcfa921a74ab609f8fd8c47d1c1c",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "809d22fb-499c-46b6-a454-f2eeda387baf",
+      "inputSha256": "3defeb6a14b13cbec3a2ff383d0a5e57611adcfa921a74ab609f8fd8c47d1c1c",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "1e13f484-a4bc-4b4c-ace1-dc90a77a00f8",
+      "inputSha256": "fa1919049703fc971c41b0abbbdb34e9c08baf74416e2ecf38452a0616c0928b",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "66bc88f4-79c5-4fc2-b69d-b687781b0011",
+      "inputSha256": "fa1919049703fc971c41b0abbbdb34e9c08baf74416e2ecf38452a0616c0928b",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "86f0a5a6-b46c-4859-b298-b52369f81e74",
+      "inputSha256": "40b74038ccfcc2da7c1e37b5cca27f2d2d87725e6584ffbee0a2a87dee6f8dfe",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "515a9ffe-de19-490b-b1b9-25c50808607b",
+      "inputSha256": "40b74038ccfcc2da7c1e37b5cca27f2d2d87725e6584ffbee0a2a87dee6f8dfe",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    },
+    {
+      "operation": "tool.dispatch",
+      "transferId": "e00b9c14-234b-4eb6-899a-9920015e29d0",
+      "inputSha256": "3b4b93e7828b580720157c8809ef56342deccab89552183a22f190e981820838",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed",
+      "commandId": "56e90174-e0f8-488e-9694-6e8762250e44"
+    },
+    {
+      "operation": "tool.contributions",
+      "transferId": "4cdb4ea6-eeff-4d3b-a969-38704a126455",
+      "inputSha256": "40b74038ccfcc2da7c1e37b5cca27f2d2d87725e6584ffbee0a2a87dee6f8dfe",
+      "sourceEnvironmentId": "3dc73c5a-0a3d-46fb-af75-f659d336f8a3",
+      "sourceServiceId": "6feb6a4e-f9d4-4b8a-9206-788137e96fa5",
+      "targetServiceId": "7233bbc8-8a8c-4f26-b4cf-695152447d70",
+      "state": "completed"
+    }
+  ],
+  "work": {
+    "objectId": "33c44621-0dea-4c88-9df9-0092912b9f23",
+    "contentId": "9529412a-2db4-447d-9349-de69d8da5006",
+    "contentSha256": "2d51de090ef0c721ccfa9d3ec83101ea81a78280cf5403c63a2f602adf3cb064",
+    "commandId": "56e90174-e0f8-488e-9694-6e8762250e44"
+  },
+  "snapshots": [
+    {
+      "snapshotId": "620bbbc6-48b2-47f2-a347-7c657494be82",
+      "attemptId": "5fbe44bf-4358-4b1a-bff9-a70e3acbed86",
+      "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+      "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+      "definitionId": "xunjie.learning",
+      "definitionVersion": 2,
+      "contextManifestId": "b6444c84-af22-4aa1-98a6-63c87bf3ee61",
+      "payloadSha256": "d6936a9f2be5986034517e0dc3f1bd38901f253ad6a086f2145d40b2e1dfb74e",
+      "counting": "unknown"
+    },
+    {
+      "snapshotId": "65a84048-9e45-4b9d-add6-9756e1ebc85b",
+      "attemptId": "427704b6-8708-4ecd-95fa-5d89e5515e6a",
+      "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+      "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+      "definitionId": "xunjie.learning",
+      "definitionVersion": 2,
+      "contextManifestId": "e3a938b0-a9a1-452b-9ca3-c1e301764b0c",
+      "payloadSha256": "a80f81c1b9900fdd5cf2faf00e6c0a42005bc6e7804a91b700fa95652ea52d38",
+      "counting": "unknown"
+    },
+    {
+      "snapshotId": "fe5bd299-7cbe-4aaf-a3c4-9721bd2bb9a9",
+      "attemptId": "6c0b7b64-df7f-4235-97c5-a42c6ec146d4",
+      "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+      "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+      "definitionId": "xunjie.learning",
+      "definitionVersion": 2,
+      "contextManifestId": "bc2b457d-14dc-4220-9d53-c1792993793a",
+      "payloadSha256": "bd2934a97b76a7ffec18fd76975c5f7e4b5e0d1388a26deaa2946280bc3bdbfc",
+      "counting": "unknown"
+    },
+    {
+      "snapshotId": "93957fec-f748-431c-a179-400c4131e0aa",
+      "attemptId": "d71b94e2-28d8-4c01-86fd-bf8eac71c217",
+      "segmentId": "9921aada-e9aa-4441-92ab-1254c5a4b7b7",
+      "resolvedId": "978805a8-ebe8-45e2-9451-602c4ccc917c",
+      "definitionId": "xunjie.learning",
+      "definitionVersion": 2,
+      "contextManifestId": "4fcd183f-187e-4897-a579-e7535297bdd2",
+      "payloadSha256": "6772ec8a746c6720ee459e3bdd913a8de3341a47e43690933c73d901bf79df91",
+      "counting": "unknown"
+    }
+  ],
+  "providerRequests": [
+    {
+      "index": 1,
+      "payloadSha256": "d6936a9f2be5986034517e0dc3f1bd38901f253ad6a086f2145d40b2e1dfb74e",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "55aadb9b657f4b94e796b66fb84cb2d62d4856ef75835b6ba27525466907efc6",
+      "elapsedMs": 2069
+    },
+    {
+      "index": 2,
+      "payloadSha256": "a80f81c1b9900fdd5cf2faf00e6c0a42005bc6e7804a91b700fa95652ea52d38",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "55aadb9b657f4b94e796b66fb84cb2d62d4856ef75835b6ba27525466907efc6",
+      "elapsedMs": 753
+    },
+    {
+      "index": 3,
+      "payloadSha256": "bd2934a97b76a7ffec18fd76975c5f7e4b5e0d1388a26deaa2946280bc3bdbfc",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "55aadb9b657f4b94e796b66fb84cb2d62d4856ef75835b6ba27525466907efc6",
+      "elapsedMs": 1398
+    },
+    {
+      "index": 4,
+      "payloadSha256": "6772ec8a746c6720ee459e3bdd913a8de3341a47e43690933c73d901bf79df91",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "55aadb9b657f4b94e796b66fb84cb2d62d4856ef75835b6ba27525466907efc6",
+      "elapsedMs": 1111
+    }
+  ],
+  "providerRefusals": [],
+  "dependencyOperations": {
+    "authorize": 353,
+    "activity": 108,
+    "model.selection.read": 2,
+    "identityFor": 1,
+    "model.selection.pin": 1,
+    "tool.contributions": 8,
+    "model.segments.read": 5,
+    "model.segments.create": 1,
+    "model.checks.receive": 4,
+    "model.checks.requestPayload": 4,
+    "model.checks.read": 11,
+    "model.checks.dispatch": 4,
+    "model.checks.progress": 7,
+    "model.checks.summary": 4,
+    "model.segments.settle": 3,
+    "model.results.retain": 4,
+    "tool.prepare": 1,
+    "tool.dispatch": 1
+  },
+  "cleanup": {
+    "providerRelayClosed": true,
+    "windows": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    },
+    "controlProcessExited": true,
+    "mac": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    }
+  },
+  "finishedAt": "2026-11-07T20:03:59.759Z"
+}

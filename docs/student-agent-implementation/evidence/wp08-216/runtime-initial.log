@@ -1,0 +1,121 @@
+✔ chat-completions: discovery loads a fixed executor into the next segment and calls the real original (3452.608ms)
+✔ responses: discovery loads a fixed executor into the next segment and calls the real original (3573.908958ms)
+✔ messages: discovery loads a fixed executor into the next segment and calls the real original (3769.142333ms)
+✔ bounded discovery loads a fixed approved executor only after its native pair and survives reopening (3599.232334ms)
+✖ repeated pages are stable, changed catalogs reject old cursors and discovered versions do not grant permission (4520.389542ms)
+✖ the page ceiling cannot be bypassed by editing the public cursor and directory failure never becomes an empty success (6537.03675ms)
+✔ a retained binding without newly added metadata still invokes the unchanged approved executor after upgrade (5423.913417ms)
+✔ only a permitted discovery command reads the real catalog when eight intents share one remaining tool slot (5493.892375ms)
+✔ two loads in one native step share the same 32-tool ceiling before their pair is adopted (11716.280791ms)
+✔ a segment continuation that exceeds capacity identifies the original adopted question and work without pending input (4333.083375ms)
+✔ a restored independent Agent continues its original student Wait through the existing learning-data route (57100.905792ms)
+✔ a restored independent Agent continues its original tool Wait through the existing learning-data route (97242.76475ms)
+✔ large tool results keep a complete original and bounded native feedback, then read the same bytes after restart (7278.713291ms)
+✔ stopping before a completed model read intent is associated forbids a new result read, including after reopening (6314.196ms)
+✔ a large structured reference is reconstructed as valid canonical JSON from bounded production reads (7799.504208ms)
+✔ revoking the original tool contribution forbids reading its retained result through the still-available platform reader (5464.716375ms)
+✔ a derived result cannot expose revoked ancestor bytes through another platform read (4780.716542ms)
+✖ the accepted result version stays byte-identical after the same real course command completes; an unknown hash never selects latest (10424.791875ms)
+✔ knowing an original command does not authorize its bytes in another Run or activity (8917.697833ms)
+✔ model switching recovers lost owner replies across driver instances without repeating effects (5422.715042ms)
+✔ an expired switch lease is taken over and a late old driver cannot overwrite completion (5473.035ms)
+✔ published WP07 owner migrations upgrade populated Runs and grants without replacing their histories (4398.078958ms)
+✔ an accepted unsent model attempt is cancelled at the fixed Run deadline without leaving a native slot (8370.232166ms)
+✔ a completed model result observed after the deadline retains its original Run reference (9222.012875ms)
+(node:8465) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ switching at a paired tool boundary keeps the same Run and its cumulative budgets (97215.210041ms)
+✔ a reserved model-step budget survives restart and prevents another paid continuation (6236.944417ms)
+✔ exhausting the reserved tool budget pairs not-executed and pauses before another model step (7310.09225ms)
+✔ saved native result survives loss before association, rereads the original attempt and reads the immutable real work (7376.12075ms)
+✔ lost real native-input receipt reconciles the original command exactly once before the next stateful input (16117.235208ms)
+✔ two real driver generations share the saved attempt and only the winner reads and settles its native call (7670.52ms)
+✔ stop after a persisted tool permit prevents the true native host from creating any execution (5817.236958ms)
+✔ stopping a later model step stops the Agent ongoing native session and preserves a student independent session (7851.567708ms)
+✔ pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run (9276.66975ms)
+▶ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+  ✔ paused (15577.721958ms)
+  ✔ stopped (9256.726417ms)
+✔ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane (24835.214833ms)
+✔ a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run (7677.370875ms)
+✔ tool RPC fences a delayed Driver while an unaccepted native command cannot start (7458.152333ms)
+✔ tool RPC fences a delayed Driver while an accepted browser command remains claimable (7147.451583ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable (5888.653375ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable after an interrupted enqueue (6667.496375ms)
+✔ closed activity rejects fresh model dispatch authority without changing the original attempt (4780.842791ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 39
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 355682.677041
+
+✖ failing tests:
+
+test at apps/server/tests/teaching-agent.discovery.runtime.test.mjs:62:1
+✖ repeated pages are stable, changed catalogs reject old cursors and discovered versions do not grant permission (4520.389542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+      'completed',
+      'completed',
+      'completed',
+  +   'failed',
+  +   'failed',
+  +   'failed'
+  -   'not-dispatched',
+  -   'not-dispatched',
+  -   'not-dispatched'
+    ]
+
+      at TestContext.<anonymous> (file:///Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teaching-agent.discovery.runtime.test.mjs:93:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'completed', 'completed', 'completed', 'failed', 'failed', 'failed' ],
+    expected: [ 'completed', 'completed', 'completed', 'not-dispatched', 'not-dispatched', 'not-dispatched' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at apps/server/tests/teaching-agent.discovery.runtime.test.mjs:100:1
+✖ the page ceiling cannot be bypassed by editing the public cursor and directory failure never becomes an empty success (6537.03675ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  0 !== 2
+
+      at TestContext.<anonymous> (file:///Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teaching-agent.discovery.runtime.test.mjs:143:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at apps/server/tests/teaching-agent.tool-results.runtime.test.mjs:378:1
+✖ the accepted result version stays byte-identical after the same real course command completes; an unknown hash never selects latest (10424.791875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + undefined
+  - 'missing'
+
+      at file:///Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/teaching-agent.tool-results.runtime.test.mjs:407:14
+      at Server.<anonymous> (file:///Users/robertwu/.codex/worktrees/164f/XunJie/apps/server/tests/support/teaching-input-control.mjs:48:37)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'missing',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

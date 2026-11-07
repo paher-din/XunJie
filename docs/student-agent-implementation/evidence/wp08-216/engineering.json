@@ -1,0 +1,153 @@
+{
+  "issue": 216,
+  "status": "passed",
+  "baseCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c",
+  "implementationCommits": [
+    "8cdd22bf8d6cc17d059f977cb6ba0a0f0fe21817",
+    "2342fa3f3b2cafb0c49c15497d52f0b4f80f7aac",
+    "95f0a9ebd82188229b9a46a392ea45f8a118f03b",
+    "b6a0b40461828b93e9494162e180946b5f2f1b7b",
+    "688268502d143106eed286fed891a5a87d3e2da4"
+  ],
+  "fullVerification": {
+    "command": "rtk bypass npm run verify -- --jobs 2",
+    "status": "passed",
+    "startedAt": "2026-11-07T21:19:38.091Z",
+    "finishedAt": "2026-11-07T21:24:44.954Z",
+    "durationMs": 306863,
+    "exitCode": 0,
+    "stageTasks": {
+      "prepare": 4,
+      "build:test": 1,
+      "unit": 35,
+      "server": 92,
+      "tools": 45
+    },
+    "summary": "engineering-full-summary.json",
+    "sourceCommit": "b6a0b40"
+  },
+  "productionRuntime": {
+    "initial": {
+      "cases": 42,
+      "passed": 39,
+      "failed": 3,
+      "log": "runtime-initial.log",
+      "explanation": "two expected not-dispatched assertions moved to permitted dispatch failure; one Chat error-envelope decoder assertion needed update"
+    },
+    "discoveryFinal": {
+      "cases": 7,
+      "passed": 7,
+      "log": "runtime-discovery-final.log"
+    },
+    "resultsFinal": {
+      "cases": 7,
+      "passed": 7,
+      "confirmation": "runtime-results-worker.json"
+    },
+    "affectedInitial": {
+      "cases": 46,
+      "passed": 44,
+      "failed": 2,
+      "log": "runtime-affected-initial.log",
+      "explanation": "segment tests attempted to register changed definition v2 over newly-default immutable v2"
+    },
+    "segmentsFinal": {
+      "cases": 8,
+      "passed": 8,
+      "log": "runtime-segments-final.log"
+    },
+    "nativeRecoveryFinal": {
+      "cases": 23,
+      "passed": 23,
+      "log": "runtime-tools-recovery-final.log",
+      "sourceCommit": "b6a0b40"
+    },
+    "maintenanceRecoveryFinal": {
+      "cases": 5,
+      "passed": 5,
+      "log": "runtime-recovery-final.log"
+    },
+    "physicalCleanupContextFinal": {
+      "cases": 1,
+      "passed": 1,
+      "log": "runtime-cleanup-context-final.log",
+      "sourceCommit": "b6a0b40",
+      "redLog": "runtime-cleanup-context-red.log"
+    }
+  },
+  "realProtocols": {
+    "status": "passed",
+    "report": "real-model-discovery-final.json",
+    "protocols": 3,
+    "http200": 12
+  },
+  "desktop": {
+    "mac": {
+      "status": "passed",
+      "passed": 10,
+      "total": 10,
+      "model": "real DeepSeek",
+      "summary": "mac-summary.json"
+    },
+    "windows": {
+      "status": "passed",
+      "passed": 10,
+      "total": 10,
+      "model": "controlled external transport; real product tools",
+      "summary": "windows-summary.json"
+    }
+  },
+  "crossOwner": {
+    "status": "passed",
+    "passed": 9,
+    "total": 9,
+    "model": "real DeepSeek on Mac; independent Windows Agent",
+    "report": "windows-cross-owner.json"
+  },
+  "teachingEffect": "not-assessed",
+  "finalCodeCommit": "688268502d143106eed286fed891a5a87d3e2da4",
+  "postFullVerificationDelta": {
+    "description": "Legacy stop-only events do not establish original operation state: operationState remains null. Spec static review passed; physical execution and dispatch are unchanged.",
+    "status": "passed",
+    "typecheckAndBuildLog": "runtime-compat-build-final.log",
+    "nativeCleanupContext": {
+      "cases": 1,
+      "passed": 1,
+      "log": "runtime-compat-context-final.log"
+    },
+    "fullSuiteRepeated": false,
+    "legacyStopOnlyRuntimeCase": "not separately executed; verified by source review"
+  },
+  "review": {
+    "standards": {
+      "hard": 0,
+      "judgement": 0
+    },
+    "spec": {
+      "remainingFindings": 0,
+      "scopeCreep": false
+    },
+    "report": "review.md"
+  },
+  "platformEvidenceSource": {
+    "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+    "subsequentProductionDeltas": [
+      "cleanup immutable-event indexing",
+      "bounded physical cleanup history for following questions",
+      "legacy operation state remains unknown"
+    ],
+    "validation": "native owner recovery and maintenance runtime plus full engineering gate; platform/supplier matrix not repeated after those deltas"
+  },
+  "localCleanup": {
+    "removedOwnedTemporaryCandidates": [
+      "product-darwin-arm64",
+      "product-win32-x64",
+      "alu-packages",
+      "mac-alu",
+      "mac-alu-4096",
+      "mac-alu-final"
+    ],
+    "retained": "committed evidence plus verification logs and final raw Mac acceptance artifacts",
+    "otherWorktreesTouched": false
+  }
+}

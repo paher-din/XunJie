@@ -1,0 +1,34 @@
+✔ model switching recovers lost owner replies across driver instances without repeating effects (2114.513209ms)
+✔ an expired switch lease is taken over and a late old driver cannot overwrite completion (1948.004667ms)
+✔ published WP07 owner migrations upgrade populated Runs and grants without replacing their histories (1526.292125ms)
+✔ an accepted unsent model attempt is cancelled at the fixed Run deadline without leaving a native slot (3743.602333ms)
+✔ a completed model result observed after the deadline retains its original Run reference (3980.196708ms)
+(node:65122) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ switching at a paired tool boundary keeps the same Run and its cumulative budgets (31517.466458ms)
+✔ a reserved model-step budget survives restart and prevents another paid continuation (1935.269625ms)
+✔ exhausting the reserved tool budget pairs not-executed and pauses before another model step (2291.150167ms)
+✔ saved native result survives loss before association, rereads the original attempt and reads the immutable real work (3427.985625ms)
+✔ lost real native-input receipt reconciles the original command exactly once before the next stateful input (4601.594083ms)
+✔ two real driver generations share the saved attempt and only the winner reads and settles its native call (3495.305541ms)
+✔ stop after a persisted tool permit prevents the true native host from creating any execution (2056.728125ms)
+✔ stopping a later model step stops the Agent ongoing native session and preserves a student independent session (3018.070709ms)
+✔ pending cleanup of completed native inputs survives Agent restart without reviving the stopped Run (4811.41225ms)
+▶ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane
+  ✔ paused (4083.905125ms)
+  ✔ stopped (3984.792542ms)
+✔ expired Waits archive a late real Wasm result once, preserve paused or stopped Runs and release the component lane (8069.115125ms)
+✔ a real Wasm result arriving after stopped terminal is archived and consumed once without reviving the Run (3319.101291ms)
+✔ tool RPC fences a delayed Driver while an unaccepted native command cannot start (2564.974458ms)
+✔ tool RPC fences a delayed Driver while an accepted browser command remains claimable (2810.088792ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable (2663.921291ms)
+✔ tool RPC fences a delayed Driver while an accepted native outbox command remains claimable after an interrupted enqueue (2661.860291ms)
+✔ closed activity rejects fresh model dispatch authority without changing the original attempt (1799.728625ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94559.632541
