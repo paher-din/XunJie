@@ -38,7 +38,15 @@ function owner(serviceId, initial = 'confirmed request / unknown external effect
 }
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), '循阶 recovery '));
-  t.after(() => rm(directory, { recursive: true, force: true }));
+  const cleanups = [];
+  t.after(async () => {
+    // Run every server cleanup before removing the fixture. An NTFS cleanup
+    // failure must not prevent later hooks from closing their live listeners.
+    const results = await Promise.allSettled(cleanups.map(cleanup => cleanup()));
+    await rm(directory, { recursive: true, force: true, maxRetries: 3 });
+    const failed = results.find(result => result.status === 'rejected');
+    if (failed) throw failed.reason;
+  });
   const root = join(directory, 'source'); await mkdir(root);
   const serviceId = randomUUID();
   const environmentId = randomUUID();
@@ -49,7 +57,8 @@ async function fixture(t) {
   const maintenance = createMaintenanceCoordinator({ requiredServiceIds: [serviceId], record: async () => {} });
   maintenance.register(a.participant);
   const manager = createRecoveryManager({ root, environment, maintenance, owners: [a], requiredServiceIds: [serviceId] });
-  return { directory, root, serviceId, environment, a, maintenance, manager, key: randomBytes(32) };
+  return { directory, root, serviceId, environment, a, maintenance, manager, key: randomBytes(32),
+    beforeRemove: cleanup => cleanups.push(cleanup) };
 }
 
 async function pinnedFixture(t, { count = 2, timeoutMs = 1_000 } = {}) {
@@ -291,7 +300,7 @@ async function takeoverFixture(t, { receiverCount = 1, handler = value => value 
         if (!handled) { response.writeHead(404); response.end(); }
       }).catch(() => response.destroy());
     });
-    t.after(async () => {
+    f.beforeRemove(async () => {
       if (!server.listening) return;
       const closed = once(server, 'close');
       server.close(); server.closeAllConnections(); await closed;
