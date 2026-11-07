@@ -4,7 +4,7 @@
 
 当前云端共享数据和部分服务是尽量小的开发协作环境，用于减少成员设备、环境与数据差异造成的调试难以复现；它不决定产品运行拓扑或存储选型。教师仍设计课程运行方案，尽量由学生本地执行。依据见[需求与决策记录 L7](student-agent-decisions.md#开发协作与产品运行边界l7)。
 
-本目录集中保存架构、需求、实施总览、ADR、已有组件规范、Wayfinder 决议，以及研究与验证附件。后续本轮工作包规范放在 `specs/`。
+本目录集中保存架构、需求、实施总览、ADR、已有组件规范、Wayfinder 决议，以及研究与验证附件。后续本轮工作包以 GitHub 规范母票为审阅与拆票入口，`specs/` 保留索引及已有实施文档。
 
 最终结论从[Wayfinder 本地决议索引](wayfinder/student-agent/README.md)读取，包含完整决议、后续确认及研究附件入口。讨论与原始确认保留在 [GitHub 决策地图：学生端 Agent 与工作区重新设计](https://github.com/paher-din/XunJie/issues/112)。本地决议索引不复制 Issue 的动态认领或实施状态；实施工作包的边界与 `blocked by` 见总览，具体规范和实施票随后逐包形成。
 
@@ -27,6 +27,7 @@
 | WP03 第四项的 Apple Silicon 收口：Seatbelt 隔离、回收与预算、产品包与桌面 Chrome 验收 | [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md) |
 | #175 已完成：课程运行方案固定、按操作判定执行位置、Linux 受限会话入口、学校节点真实原生会话与撤权/旧安装失权 | [#175 课程运行方案与学校节点执行](wp03-course-execution-plan.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
+| WP07 的持久运行、session log、请求重建及正式学习对话 | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) · [实施子票](specs/README.md#wp07-实施子票) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |
@@ -62,6 +63,7 @@
 | 本机调试、选定案例共享与开源发布边界 | [本机 Phoenix 与调试包协作](references/2026-10-27-agent-evaluation-integration.md) |
 | 个人本地、学校与混合部署的产品参照 | [Open WebUI、Dify、Immich 与 Supabase 部署研究](references/2026-10-27-deployment-patterns-research.md) |
 | 自有循环、Pi core/durable 与 DeepSeek Harness 的当前事实 | [Agent 内核复用研究](references/2026-10-27-agent-kernel-reuse-research.md) |
+| DeepSeek Harness 的 session log、上下文投影、持久屏障与 WP07 取舍 | [Session log 源码研究](references/2026-11-05-harness-session-log-research.md) |
 | 内核比较的可复现代码、故障情形与实际结果 | [隔离接入探针](references/probes/2026-10-27-agent-kernel/README.md) |
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
 | 已确认的学生主动性设置与无扰检测路线、验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |

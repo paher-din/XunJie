@@ -9,6 +9,7 @@
 | WP03 | [课程组件宿主与公共执行](wp03-course-components-and-execution.md) | [WP03：课程组件宿主与公共执行](https://github.com/paher-din/XunJie/issues/162) | 固定组件与动态宿主、独立实例与语义引用、依赖准备和自检、有限作业/持续会话、真实结果与恢复、正式产品接线 |
 | WP04 | ALU 浏览器实验能力（完整规范见母票） | [WP04：ALU 浏览器实验能力](https://github.com/paher-din/XunJie/issues/190) | 可复现 Icarus/WASM、正式编辑/虚拟板/波形接线、预测用例与真实观察、4096 组行为、版本归属及 Windows/Mac 桌面 Chrome 恢复；WP05 暂缓 |
 | WP06 | [三协议模型连接](wp06-model-connections.md) | [WP06：三协议模型连接](https://github.com/paher-din/XunJie/issues/163) | 学校/个人模型配置与正式设置接入、三协议直接 SDK、能力证据、图像、持久调用结果、原生续接及错误/用量未知 |
+| WP07 | 持久 Agent 与学习对话（完整规范见母票） | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) | 持久 RunDriver、跨 Run 的 session log 与请求重建、真实学习对话、steering/queue、工具/Wait、预算、取消恢复及既有 UI 接线；验收三协议真实模型/工具、两平台 Chrome 和跨机组合 |
 
 WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#further-notes)；实施前沿以[规范母票](https://github.com/paher-din/XunJie/issues/163)的原生子议题及阻塞关系为准。
 
@@ -45,6 +46,25 @@ WP06 [#167：Anthropic Messages 完整接入](https://github.com/paher-din/XunJi
 #191 的运行包构建、公开适配与复跑入口见 [实施与交付记录](../wp04-191-runtime-plan.md)；Apple Silicon Mac 验收已完成并记录于 [Mac 验收记录](../wp04-205-mac-acceptance.md)，产品接线仍按后续实施票完成。
 
 正式活动编辑与运行的公共执行改造、固定多资源准备、单次实验、结果保留和分项验收见 [#192 设计与实施方案](wp04-alu-edit-run.md)及[交互设计](../wp04-192-workspace-design.md)。2026-11-06 的实际实现、产品包与普通 Web 结果见 [Windows 本机交付](../wp04-192-windows-acceptance.md)，Apple Silicon Mac 本机实跑与 #206 逐项登记见 [跨平台与剩余验收登记](../wp04-206-acceptance.md)及[#206](https://github.com/paher-din/XunJie/issues/206)；不将本机证据当作完整平台矩阵通过。
+
+## WP07 实施子票
+
+负责人于 2026-11-05 确认以下八项交付边界，后续开发使用 `wp07` 分支。完整验收要求见各实施票；认领、完成状态与阻塞关系以 [WP07 规范母票](https://github.com/paher-din/XunJie/issues/196)的原生子议题及依赖为准，本页只保留范围与入口。
+
+| 实施票 | 完整交付边界 |
+| --- | --- |
+| [可恢复的基础学习对话](https://github.com/paher-din/XunJie/issues/197) | 可靠首问与无课程活动、持久 RunDriver、session log、可重建请求快照、三协议真实文本问答、基本预算与单一推进权，接入正式对话及日常恢复。 |
+| [Agent 读取作品、调用课程工具并解释结果](https://github.com/paher-din/XunJie/issues/198) | 固定作品与资料、受控工具往返、业务命令与持久 Wait、真实有限作业/有状态会话、停止及未知效果核对，接入工具记录与课程求助。 |
+| [Agent 提问与学生明确回应](https://github.com/paher-din/XunJie/issues/199) | 固定学生提问、明确回应入口、一次消费、超时与晚回应处理、重启恢复，同步接入对话和 IP。 |
+| [运行中引导、排队与暂停后继续](https://github.com/paher-din/XunJie/issues/200) | 默认 steering 与可选 queue、派发竞争裁决、FIFO 与输入修订、学生 Wait 取代、暂停项与关联后继，接入设置和实际对话。 |
+| [切换模型并延续学习](https://github.com/paher-din/XunJie/issues/201) | 获准边界的模型/协议切换、原生段封存与跨 owner 来源、原结果保留、预算连续及失败恢复。 |
+| [ALU 的真实 Agent 辅导](https://github.com/paher-din/XunJie/issues/202) | 消费 WP04 的正式编辑、观察及用例能力，围绕真实代码/反例/波形求助与验证；只解释、不代改，Agent 验证与学生预测分别保留。 |
+| [Agent 独立部署与真实跨机对话](https://github.com/paher-din/XunJie/issues/203) | teaching-agent 正式装配与配对、本机/学校/真实跨机混合路径、原 owner 查询、断线撤权及重启恢复。 |
+| [学习对话的备份、还原与接管](https://github.com/paher-din/XunJie/issues/204) | 会话/请求快照与未结 Run/命令/Wait/预算的跨安装备份恢复、隔离只读还原、正式接管和旧实例失权。 |
+
+每张功能票随实现完成正式接线、日常恢复、资源保留与维护登记，以及适用的工程、真实模型/工具和 Windows/Mac 桌面 Chrome 验证。备份还原票专门验证跨安装恢复，不承接积压的保存或 UI 接线。
+
+ALU 辅导票必须等全部原生 blocker 完成，且所需 WP04 公开能力已在实施基线中可实际调用后才开工；缺少编辑、观察或用例执行能力时保持阻塞，不用 mock、研究页或旧执行路径绕过。通用 Agent 路径以 WP03 样例独立推进，WP05/Flights 不属于本轮前置。
 
 ## WP02 子票实施方案
 
