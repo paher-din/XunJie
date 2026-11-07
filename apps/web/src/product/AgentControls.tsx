@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { teachingControlReceiptSchema, isRecoverableTeachingPause } from '@xunjie/contracts/teaching-agent'
 import type { TeachingInput, TeachingRun } from '@xunjie/contracts/teaching-agent'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
@@ -33,11 +33,11 @@ const pauseReasons: Record<string, string> = {
 function useAgentControl(scope: string, target: string, readOnly: boolean, request: Request, confirmed: () => Promise<void>) {
   const { workspace } = useActivitySession()
   const key = JSON.stringify([scope, 'agent-control', target])
+  const protection = useSyncExternalStore(workspace.subscribe, () => workspace.inputProtection(key))
   const [record, setRecord] = useState<LocalAgentControl | null>(null)
-  const [protectedDraft, setProtectedDraft] = useState(true)
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const alive = useRef(false), writable = useRef(!readOnly), delivering = useRef(false), revision = useRef(0)
-  const writes = useRef<Promise<unknown>>(Promise.resolve()), onConfirmed = useRef(confirmed)
+  const alive = useRef(false), writable = useRef(!readOnly), delivering = useRef(false)
+  const onConfirmed = useRef(confirmed)
   writable.current = !readOnly; onConfirmed.current = confirmed
   const deliver = useCallback(async (pending: PendingAgentOperation) => {
     if (!alive.current || !writable.current || delivering.current) return
@@ -72,24 +72,26 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
     void agentControlStore.read(key).then(saved => {
       if (!alive.current) return
       if (saved && saved.scope !== scope) throw new Error('记录不属于当前空间。')
-      setRecord(saved ?? { key, scope })
+      const retained = workspace.retainedInput<LocalAgentControl>(key)
+      setRecord(retained ? { ...(saved ?? retained), draft: retained.draft, selected: retained.selected } : saved ?? { key, scope })
       if (saved?.pending && writable.current) void deliver(saved.pending)
-    }).catch(() => { if (alive.current) setError('本机保护暂不可用，请保留或复制输入后重试。') })
+    }).catch(() => { if (alive.current) {
+      setRecord(workspace.retainedInput<LocalAgentControl>(key) ?? null)
+      setError('本机保护暂不可用，请保留或复制输入后重试。')
+    } })
     return () => { alive.current = false }
-  }, [key, scope, deliver])
+  }, [key, scope, deliver, workspace])
   const change = (patch: Partial<Pick<LocalAgentControl, 'draft' | 'selected'>>) => {
     if (!record || !writable.current || record.pending) return
-    const version = ++revision.current
-    setProtectedDraft(false)
-    setRecord({ ...record, ...patch })
-    writes.current = workspace.trackInput(writes.current.catch(() => {}).then(() => agentControlStore.change(key, saved => ({ ...(saved ?? record), ...patch }))))
-    void writes.current.then(() => { if (alive.current && revision.current === version) { setError(''); setProtectedDraft(true) } })
-      .catch(() => { if (alive.current) setError('草稿尚未在本机可靠保留，请复制后重试。') })
+    const value = { ...record, ...patch }
+    setRecord(value); setError('')
+    void workspace.retainInput(key, value, input => agentControlStore.change(key, saved => ({ ...(saved ?? input),
+      draft: input.draft, selected: input.selected }))).catch(() => {})
   }
   const submit = async (route: string, body: Record<string, unknown>) => {
     if (!record || !writable.current || busy) return
     try {
-      await writes.current
+      await workspace.protectInput(key)
       if (!alive.current || !writable.current) return
       const current = await agentControlStore.read(key)
       if (current?.pending) { await deliver(current.pending); return }
@@ -100,7 +102,8 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
       setRecord(saved); await deliver(pending)
     } catch { if (alive.current) setError('操作尚未在本机可靠保留，原内容仍在这里。') }
   }
-  return { record, error, busy, protectedDraft, change, submit, retry: () => record?.pending && void deliver(record.pending) }
+  return { record, error: error || (protection === 'failed' ? '草稿尚未在本机可靠保留，请复制后重试。' : ''), busy,
+    protectedDraft: protection === 'protected', change, submit, retry: () => record?.pending && void deliver(record.pending) }
 }
 
 export function AgentInputRecord({ input, scope, readOnly, request, onConfirmed }: {

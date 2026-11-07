@@ -63,6 +63,10 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 `chunk-channel.ts` 在有界 WP01 JSON 通道上传递较大的固定输入、快照和工具结果，分片及回复由实际 owner 持久保留并校验资源引用。未知回包按原业务身份查询，分片通道不会重放未知外部效果；维护和恢复同样验证这些资源。
 
+正式 `createAgentConnection` 将业务关联、固定内容摘要和预分配 transfer ID 写入 runtime 私有 journal；driver/generation 仅更新当前资格，不改变原传输。小请求同样预分配 ID，较大回复不会因首个回包丢失而失联。完整回复先持久接受，再 ACK 释放接收端资源；ACK 丢失、进程重开和授权换发都沿原记录恢复。`unknown` 不执行、不 ACK。恢复到旧授权命名空间只允许已有传输；原 owner 明确返回 missing 后，可保留同一 ID 在当前授权下首次交付。派发授权等纯读恢复旧回复后必须再核验当前资格。
+
+`recover` 控制操作按原来源分页返回最多 16 个传输 ID、状态和输入摘要，不返回正文；以 `after` 续页。当前 grant 的同安装来源可查询旧 grant，跨安装须由宿主验证退休继任链。维护方可对确认未执行的 `receiving` 显式 ACK；`completed` 先恢复并持久接受原回复；`unknown` 保留原身份向领域 owner 核对。旧 namespace 不能创建新传输来绕过容量。runtime schema 2 备份将 journal 按记录保存为独立加密认证附件，包含完整未消费回复；旧 runtime 拒绝此版本，新 runtime 仍可隔离核对不含新事实的 schema 1 备份。
+
 固定依赖描述允许仅轮换 `credentialRef`；持久原描述和 owner、能力及传输地址继续核对。正式跨安装恢复由 WP01 接管证明确认安装继任，新安装仍须重新取得真实授权，不能凭继任记录重用源 token。
 
 ## 跨安装维护与恢复

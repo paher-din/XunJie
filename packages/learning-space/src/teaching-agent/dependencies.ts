@@ -31,6 +31,9 @@ export function createTeachingDependencyClient(call: (input: TeachingDependencyC
   };
   return { tools,
     async authorize(identity: SpaceIdentity) { await invoke('authorize', identity); },
+    async authorizeActivity(identity: SpaceIdentity, activityId: string) {
+      z.object({ authorized: z.literal(true) }).strict().parse(await call({ version: 1, operation: 'authorize', identity, activityId, args: [] }));
+    },
     async identityFor(scope: z.infer<typeof scopeSchema> & { activityId?: string }) {
       const { environmentId, spaceId, principalId } = scope;
       return spaceIdentitySchema.parse(await call({ version: 1, operation: 'identityFor', scope: { environmentId, spaceId, principalId },
@@ -58,7 +61,10 @@ export function createTeachingDependencyService(options: {
     }
     const identity = spaceIdentitySchema.parse(input.identity);
     await options.authorize(identity);
-    if (input.operation === 'authorize') return { authorized: true };
+    if (input.operation === 'authorize') {
+      if (input.activityId) await options.activity(identity, input.activityId);
+      return { authorized: true };
+    }
     if (input.operation === 'activity') return options.activity(identity, z.uuid().parse(input.args[0]));
     if (input.operation === 'model') {
       const request = learningModelRequestSchema.parse(input.args[0]);

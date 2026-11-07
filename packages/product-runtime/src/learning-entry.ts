@@ -27,6 +27,7 @@ import { verifyWindowsSessionHelper } from './prerequisites.js';
 import { createNativeChannelClients } from './native-channel-clients.js';
 import { isInstallationRetired } from './retired-installations.js';
 import { isRecoverySuccessor, hasRecoverySuccession } from './recovery-successions.js';
+import { withModelOriginRecovery, createModelRecipientRecovery } from './model-origin-authority.js';
 import { createStandaloneAgentApplication } from './agent-application.js';
 import { createAgentConnection } from './agent-connections.js';
 import type { CapabilityHandler } from './connections.js';
@@ -162,6 +163,7 @@ export async function createProductLearningApplication(context: {
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
     const agentBindings = createMemberAgentBindings(space.storage, spaces.authorize);
     const models = model ? await createModelGateway(model.storage, {
+      ...(configuration.learningAdmissionPolicy ? { learningAdmissionPolicy: configuration.learningAdmissionPolicy } : {}),
       holder: environment.profile === 'school' ? 'school' : 'device',
       async authorize(identity) {
         await agentDependencyAuthorization.getStore()?.(identity);
@@ -264,6 +266,9 @@ export async function createProductLearningApplication(context: {
     const paired = model && models ? createPairedLearningModels(model.storage, models, {
       authorize: spaces.authorize,
       authorizeBinding: async (identity, binding) => { await spaces.authorizeConnection(identity, binding.connectionId); },
+      recipientSuccessions: createModelRecipientRecovery(root, environment.services[0]!, async (identity, connectionId) => {
+        await spaces.authorizeConnection(identity, connectionId);
+      }),
       async authorizeOrigin(identity, origin, request) {
         await spaces.authorize(identity);
         if (!sourceAuthority) throw new StorageError('unavailable');
@@ -484,7 +489,9 @@ export async function createProductLearningApplication(context: {
               () => agentDependencyAuthorization.run(scopedAdmission,
                 () => agentDependencyFreshAuthorization.run(admitted.guard, () => dependencyService(payload))));
           } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
-        }, { authorize: async payload => {
+        }, { successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
+          && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
+        authorize: async payload => {
           // Initial admission and reply/chunk reads always perform a fresh authorization.
           admission = { key: payloadKey(payload), ...await authorize(payload) };
         } })(value, source);
@@ -499,7 +506,8 @@ export async function createProductLearningApplication(context: {
       ...(data && dependencyService ? { serviceCapabilities: { [data.storage.owner.serviceId]: {
         'teaching.dependencies': dependencyCapability,
       } } } : {}),
-      capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks, paired) },
+      capabilities: { 'learning.authority': createLearningAuthority(spaces, courses, models?.deviceTasks,
+        paired && models ? withModelOriginRecovery(root, paired, models) : paired) },
       ...(learning ? { hasReceivedBrowserExecution: learning.executions.hasReceivedBrowserCommand } : {}),
       ...(models ? { async modelTask(value: unknown) {
         const input = modelTaskRequest.parse(value);

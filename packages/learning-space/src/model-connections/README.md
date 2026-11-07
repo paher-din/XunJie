@@ -21,6 +21,8 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 
 ## 学校默认和个人引用
 
+正式产品宿主可在 `openProductRuntime().install({ learningAdmissionPolicy })` 固定 learning 准入策略，保存到安装配置并随 runtime 备份还原；浏览器不能提交该策略。同一策略版本不能对应不同数值，变更值须使用新版本。省略时采用本模块的有限默认值，原 attempt 保留接收时的策略与费用来源。SDK 已在本地结束与上游计算已确认结束分别记录；未知上游保留物理槽，未知 usage 保留费用预留。需要在一个未知调用未清账时开始另一个独立请求的部署，应显式配置相应的有限主体并发，不能通过换 Run、grant 或安装重置旧占用。
+
 学校维护者使用 `xunjie school-model --root <学校环境> --file <私有 JSON>`，其输入为 `schoolModelInputSchema`：正常连接保存字段、`requestId/expectedVersion/credential`，以及 `policy: { checksAllowed, maxChecksPerHour, maxOutputTokens, timeoutMs }`。首次版本为 0；更新用返回版本；`enabled:false` 停用，`credential.action:"clear"` 显式清除。凭据放私有文件，命令只输出脱敏配置；管理凭据由产品在本机解析，学生不能调用管理写入。没有“管理员允许个人模型”开关。
 
 正式设置通过 `models/selection` 读取学校默认、本人及本机持有的选项。个人选项的“授权并选用”先用 `models/grants` 为**当前已认证主体**建立引用，再以选择版本 CAS 提交；`owner:device` 只由安装客户端证明本机持有者。学校网页的个人连接由该网页所在持有方保管，跨组件的本机模型由安装客户端持有。不存在以账号同名、请求中的主体 ID 或连接 ID 借用密钥的入口。
@@ -65,7 +67,7 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 
 原生请求不含认证；完整原生响应由 owner 保存，公开文本再次脱敏。只有结果资源与结果引用可靠提交后才发布完成。HTTP、流内错误、畸形数据、截断、缺终态、超时、取消和未知状态分别记录。累计 usage 以最后实际值替换，未知不补零，真实零值保留。
 
-维护先关闭新准入/派发，等待已接收检查结果落盘，再封存储写。真实进程崩溃后不重新生成；仅在主机/PID/进程出生身份能确认旧本机处理者已结束时回收其本机物理槽，未知 usage 不变。无法确认远端处理者死亡时继续保守占用；跨机接管由后续子票补齐。
+维护先关闭新准入/派发，等待已接收检查结果落盘，再封存储写。真实进程崩溃后不重新生成；仅在主机/PID/进程出生身份能确认旧本机处理者已结束时确认其本地 SDK 已结束，未知 usage 不变。无法确认远端处理者死亡时继续保守占用；跨机接管由后续子票补齐。
 
 ## 恢复与验证
 
@@ -143,3 +145,13 @@ system 为顶层字段，thinking 模式明确编码；DeepSeek 忽略 budget_to
 Chat 先补齐同一组全部工具回复，再追加用户图片消息；每张工具图携带原 callId 与固定资源版本。Messages 截断工具 JSON 时继续读取有界终态与用量，合法空 end_turn 可完成；半截参数始终不产生工具意图。设置页后台读取不会清除操作失败；冲突时保留草稿与密钥意图，显式读取/核对后重试；未知提交使用原 requestId 与原 payload 核对。
 
 定向单测见 [协议](../../../../apps/server/tests/model-protocol-review.test.mjs)、[Messages](../../../../apps/server/tests/model-messages-review.test.mjs)、[网络政策](../../../../apps/server/tests/model-network-policy.test.mjs)、[能力和图片](../../../../apps/server/tests/model-capability-images.test.mjs)。真实 PostgreSQL、宿主权限、持久化和重启回归见 [model-review.runtime.test.mjs](../../../../apps/server/tests/model-review.runtime.test.mjs)；修复矩阵与实际验收见 [PR #177 修复记录](../../../../docs/student-agent-implementation/wp06-pr177-review-fixes.md)。
+
+## Learning 共享准入（R9）
+
+`learning-admission.ts` 在模型 owner 的持久事务中按稳定 attempt 接收顺序保存队列、政策版本、费用来源、跨活动主体资格、费用预留及物理槽。默认 `learning-token-budget-v1` 为每费用来源滚动 24 小时 1000 万 token、owner 并发 8、费用来源并发 4、主体并发 1；可信宿主可通过 `learningAdmissionPolicy` 配置有限政策，新参数必须使用新版本。Learning 不消费探针每小时次数；其共享预算、物理并发与 Run 自身预算分别成立。
+
+预留为原生请求 UTF-8 字节数、4096 token 帧开销余量及实际输出上限之和；最终费用按 input/output 总量核对，cache/reasoning 细项不重复累计。服务商报告的更高 total 以实际值结算，超出预留的差额保留在共享账中，后续请求继续受预算约束。最终 usage 和结果引用同事务结算一次，未知费用持续占预留，跨预算窗口也不退款。确认调用结束但 usage 未知只释放物理槽；取消、断流和旧 dispatcher 结束不会证明上游结束，继续保留费用与物理槽。`ModelAttempt.physicalRequestEnded` 保持本地 SDK 结束的原语义；ledger 的独立 `upstream_ended` 才授权释放 `physical_held`。本地结束后逻辑 stop、维护排空和备份可以完成，未知上游占用随账本恢复并继续限制新准入。确定外发前取消或未发送的 claim 才能撤销预留。
+
+缺少资格时 attempt 保持 `accepted` 和原输入，`reason` 分别说明主体并发、费用来源并发、owner 物理容量、费用预算、单请求超预算或公平队列等待。仅已请求派发的请求进入公平队列，按原接收顺序选取当前合格者。派发在慢预检前持久标记 ticket，资源等待保留 ticket；授权或预检失败时撤回未预留的 ticket，保留原 attempt 与输入。撤回事务失败或提交未知时向上传播存储错误，由 Run 沿原 attempt 重试确认后再报告原授权失败；ticket 身份防止旧失败回包撤回较新并发重试；尚未请求派发或已失去资格的旧请求不能阻塞其他主体。`LIMIT 20` 仅是教学端扫描批次；准入上限由政策和持久占用决定。迁移 19 保存这些准入事实；教学端等待释放逻辑执行者，后台重试同一 attempt，并轮转扫描等待的 Run。
+
+[原生 PostgreSQL 准入测试](../../../../apps/server/tests/learning-admission.runtime.test.mjs) 使用实际 owner 事务与 SDK、受控 fetch 计数，核对竞争、等待、重启、未知调用和一次结算；[政策源码测试](../../../../apps/server/tests/learning-admission-policy.test.mjs) 核对有限配置与真实 usage 核算。

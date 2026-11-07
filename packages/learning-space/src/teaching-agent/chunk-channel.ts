@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
+import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
 
 export const chunkChannelLimits = Object.freeze({ controlBytes: 1024 * 1024, chunkBytes: 256 * 1024,
   messageBytes: 16 * 1024 * 1024, sourceTransfers: 16, sourceBytes: 64 * 1024 * 1024 });
@@ -23,21 +24,26 @@ CREATE TABLE agent_chunk_parts (
 
 /** Structural equivalent of the host's trusted ConnectionSource plus grant; never read from payload. */
 export interface ChunkConnectionSource {
-  grantId: string; sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string;
+  grantId: string; sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string | undefined;
   assertAuthorized?(): Promise<void>;
 }
 export type ChunkHandler = (payload: unknown, source: Readonly<ChunkConnectionSource>) => unknown | Promise<unknown>;
 export type ChunkCall = (payload: unknown) => Promise<unknown>;
 export interface ChunkChannelOptions {
   authorize?: (payload: unknown, source: Readonly<ChunkConnectionSource>) => Promise<void>;
+  /** The host verifies retirement/succession; the current connection must still be authorized. */
+  successor?: (original: ChunkConnectionSource, current: Readonly<ChunkConnectionSource>) => Promise<boolean>;
 }
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const sourceSchema = z.object({ grantId: z.uuid(), sourceEnvironmentId: z.uuid(), sourceServiceId: z.uuid(), sourceInstallationId: z.uuid().optional() });
 const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const sizeSchema = z.number().int().min(1).max(chunkChannelLimits.messageBytes);
 const indexSchema = z.number().int().min(0).max(63);
-const base = { chunkChannel: z.literal(1), transferId: z.uuid() };
+const base = { chunkChannel: z.literal(1), transferId: z.uuid(), origin: sourceSchema.optional(),
+  authority: teachingDispatchAuthoritySchema.optional() };
 const wireSchema = z.discriminatedUnion('operation', [
+  z.object({ ...base, operation: z.literal('invoke'), value: z.unknown() }).strict(),
+  z.object({ ...base, operation: z.literal('recover'), after: z.uuid().optional() }).strict(),
   z.object({ ...base, operation: z.literal('begin'), byteLength: sizeSchema, sha256: digestSchema }).strict(),
   z.object({ ...base, operation: z.literal('put'), index: indexSchema, data: z.string().max(349528) }).strict(),
   z.object({ ...base, operation: z.literal('get'), index: indexSchema }).strict(),
@@ -140,8 +146,9 @@ export function createChunkChannel(storage: OwnedStorage) {
       // Whitelist only the durable identity; preserve the original trusted object (including
       // its non-enumerable live assertAuthorized hook) for every handler and authorization call.
       const source = trusted;
-      const key = sha(Buffer.from(JSON.stringify([parsedSource.grantId, parsedSource.sourceEnvironmentId,
-        parsedSource.sourceServiceId, parsedSource.sourceInstallationId ?? null])));
+      const keyFor = (actor: z.infer<typeof sourceSchema>) => sha(Buffer.from(JSON.stringify([actor.grantId,
+        actor.sourceEnvironmentId, actor.sourceServiceId, actor.sourceInstallationId ?? null])));
+      let key = keyFor(parsedSource);
       control(value);
       if (!value || typeof value !== 'object' || !('chunkChannel' in value)) {
         // Compatibility calls use business Action/attempt/command identities for idempotency and
@@ -181,12 +188,65 @@ export function createChunkChannel(storage: OwnedStorage) {
       const parsed = wireSchema.safeParse(value);
       if (!parsed.success) throw new StorageError('invalid');
       const call = parsed.data, id = call.transferId;
+      await source.assertAuthorized?.();
+      if (call.origin) {
+        const origin = call.origin;
+        if (origin.sourceEnvironmentId !== source.sourceEnvironmentId || origin.sourceServiceId !== source.sourceServiceId
+          || origin.sourceInstallationId !== source.sourceInstallationId && !await options.successor?.(origin, source))
+          throw new StorageError('forbidden');
+        key = keyFor(origin);
+      }
+      const currentInput = (input: unknown) => {
+        if (!call.authority) return input;
+        const guard = input as { operation?: string; args?: Array<Record<string, unknown>> };
+        const argument = guard.args?.[0];
+        if (guard.operation === 'assertModelDispatch' && argument) {
+          if (argument.runId !== call.authority.runId || argument.activityId !== call.authority.activityId)
+            throw new StorageError('identity-conflict');
+          return { ...guard, args: [{ ...argument, driverId: call.authority.driverId, generation: call.authority.generation }, ...guard.args!.slice(1)] };
+        }
+        if (guard.operation === 'assertCommandDispatch' && argument?.authority) {
+          const original = teachingDispatchAuthoritySchema.parse(argument.authority);
+          if (original.runId !== call.authority.runId || original.activityId !== call.authority.activityId)
+            throw new StorageError('identity-conflict');
+          return { ...guard, args: [{ ...argument, authority: call.authority }, ...guard.args!.slice(1)] };
+        }
+        if (!input || typeof input !== 'object' || !('authority' in input)) throw new StorageError('invalid');
+        const original = teachingDispatchAuthoritySchema.parse(input.authority);
+        if (original.runId !== call.authority.runId || original.activityId !== call.authority.activityId)
+          throw new StorageError('identity-conflict');
+        return { ...input, authority: call.authority };
+      };
+      if (call.operation === 'recover') {
+        // No body or result is disclosed. An authorized installation can locate its legacy
+        // orphan IDs and explicitly ack receiving (never executed) transfers to regain capacity.
+        const { rows } = await storage.read<Row & { transfer_id: string }>(`SELECT * FROM agent_chunk_transfers
+          WHERE source_key=$1 AND state<>'acknowledged' AND ($2::uuid IS NULL OR transfer_id>$2::uuid)
+          ORDER BY transfer_id LIMIT 16`, [key, call.after ?? null]);
+        return { chunkChannel: 1, transferId: id, transfers: rows.map(row => ({ ...metadata(row.transfer_id, row),
+          input: { byteLength: row.input_bytes, sha256: row.input_sha } })) };
+      }
+      if (call.operation === 'invoke') {
+        const bytes = encode(call.value);
+        // The explicit control shapes below deliberately omit the invoke-only value.
+        const fields = { chunkChannel: 1, transferId: id, ...(call.origin ? { origin: call.origin } : {}),
+          ...(call.authority ? { authority: call.authority } : {}) };
+        await wrapped({ ...fields, operation: 'begin', byteLength: bytes.length, sha256: sha(bytes) }, trusted);
+        const existing = await read(key, id);
+        if (existing.state === 'receiving') for (let index = 0; index < partCount(bytes.length); index++)
+          await wrapped({ ...fields, operation: 'put', index,
+            data: bytes.subarray(index * chunkChannelLimits.chunkBytes, (index + 1) * chunkChannelLimits.chunkBytes).toString('base64') }, trusted);
+        return wrapped({ ...fields, operation: 'execute' }, trusted);
+      }
       if (call.operation === 'begin') return mutate(key, async tx => {
         const { rows: [old] } = await tx.query<Row>('SELECT * FROM agent_chunk_transfers WHERE source_key=$1 AND transfer_id=$2', [key, id]);
         if (old) {
           if (old.input_bytes !== call.byteLength || old.input_sha !== call.sha256) throw new StorageError('identity-conflict');
           return metadata(id, old);
         }
+        // A current credential can resume/clean its real predecessor records. It cannot
+        // invent historical grant namespaces to create fresh quota or new effects.
+        if (key !== keyFor(parsedSource)) throw new StorageError('forbidden');
         await budget(tx, key, call.byteLength, true);
         await tx.query(`INSERT INTO agent_chunk_transfers(source_key,transfer_id,input_bytes,input_sha,state,reserved_bytes)
           VALUES($1,$2,$3,$4,'receiving',$3)`, [key, id, call.byteLength, call.sha256]);
@@ -205,7 +265,7 @@ export function createChunkChannel(storage: OwnedStorage) {
         if (row.state !== 'completed') throw new StorageError('conflict');
         // Reconstruct the original authorization scope on every read, including after reopen.
         // A still-valid service grant does not establish the original member's current rights.
-        await options.authorize?.(await assemble(key, id, 'input', row.input_bytes, row.input_sha), source);
+        await options.authorize?.(currentInput(await assemble(key, id, 'input', row.input_bytes, row.input_sha)), source);
         const { rows: [part] } = await storage.read(`SELECT resource_id FROM agent_chunk_parts WHERE source_key=$1 AND transfer_id=$2 AND direction='reply' AND part_index=$3`, [key, id, call.index]);
         if (!part?.resource_id) throw new StorageError('missing');
         return { chunkChannel: 1, transferId: id, index: call.index, data: Buffer.from(await storage.readResource(part.resource_id as string)).toString('base64') };
@@ -220,7 +280,7 @@ export function createChunkChannel(storage: OwnedStorage) {
         return metadata(id, await read(key, id, tx));
       });
       if (row.state !== 'receiving') return metadata(id, row);
-      const input = await assemble(key, id, 'input', row.input_bytes, row.input_sha);
+      const input = currentInput(await assemble(key, id, 'input', row.input_bytes, row.input_sha));
       // Definitive authorization rejection precedes the execution claim and the unknown catch.
       await options.authorize?.(input, source);
       const claimed = await mutate(key, async tx => {
@@ -276,11 +336,14 @@ export function createChunkChannel(storage: OwnedStorage) {
  * Inline small calls rely on business idempotency; their large replies are downloaded and acked.
  */
 export function createChunkClient(call: ChunkCall) {
-  return async (value: unknown, options: { transferId?: string; acknowledge?: boolean; inline?: boolean } = {}): Promise<unknown> => {
+  return async (value: unknown, options: { transferId?: string; acknowledge?: boolean; inline?: boolean;
+    origin?: ChunkConnectionSource; authority?: z.infer<typeof teachingDispatchAuthoritySchema>;
+    /** Persist the complete decoded reply before authorizing server-side resource release. */
+    receive?: (reply: unknown) => Promise<void>; durable?: boolean } = {}): Promise<unknown> => {
     const bytes = encode(value);
     let transferId = z.uuid().parse(options.transferId ?? randomUUID());
     let status: z.infer<typeof metadataSchema> | undefined;
-    const inlined = options.inline === true && bytes.length <= chunkChannelLimits.controlBytes;
+    const inlined = !options.durable && options.inline === true && bytes.length <= chunkChannelLimits.controlBytes;
     if (inlined) {
       let reply: unknown;
       try { reply = await call(value); }
@@ -295,7 +358,9 @@ export function createChunkClient(call: ChunkCall) {
       transferId = status.transferId;
     }
     const send = async (operation: string, fields: Record<string, unknown> = {}) => {
-      const payload = { chunkChannel: 1, operation, transferId, ...fields };
+      const payload = { chunkChannel: 1, operation, transferId,
+        ...(options.origin ? { origin: sourceSchema.parse(options.origin) } : {}),
+        ...(options.authority ? { authority: options.authority } : {}), ...fields };
       control(payload);
       let reply: unknown;
       try { reply = await call(payload); }
@@ -306,7 +371,8 @@ export function createChunkClient(call: ChunkCall) {
       if (!reply || typeof reply !== 'object' || !('transferId' in reply) || reply.transferId !== transferId) throw new StorageError('corrupt');
       return reply;
     };
-    status ??= metadataSchema.parse(await send('begin', { byteLength: bytes.length, sha256: sha(bytes) }));
+    const invoke = options.durable && bytes.length < chunkChannelLimits.controlBytes - 4096;
+    status ??= metadataSchema.parse(await (invoke ? send('invoke', { value }) : send('begin', { byteLength: bytes.length, sha256: sha(bytes) })));
     if (!inlined && status.state === 'receiving') {
       for (let index = 0; index < partCount(bytes.length); index++) await send('put', { index,
         data: bytes.subarray(index * chunkChannelLimits.chunkBytes, (index + 1) * chunkChannelLimits.chunkBytes).toString('base64') });
@@ -322,6 +388,7 @@ export function createChunkClient(call: ChunkCall) {
     const output = Buffer.concat(parts);
     if (output.length !== status.reply.byteLength || sha(output) !== status.reply.sha256) throw new StorageError('corrupt');
     const result = decode(output);
+    await options.receive?.(result);
     if (inlined || options.acknowledge) await send('ack');
     return result;
   };

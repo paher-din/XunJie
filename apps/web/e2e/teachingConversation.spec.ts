@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, mkdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,7 +17,8 @@ let upstream: ReturnType<typeof createServer>
 let endpoint = '', root = ''
 const replies: string[] = []
 
-test.beforeAll(async () => {
+test.beforeEach(async () => {
+  replies.length = 0
   await mkdir(output, { recursive: true })
   upstream = createServer(async (request, response) => {
     for await (const _chunk of request) { /* consume the native payload */ }
@@ -52,9 +53,10 @@ test.beforeAll(async () => {
   host = await createProductRuntimeHost({ root, createApplication: context => createProductLearningApplication(context) })
   endpoint = host.endpoint
 })
-test.afterAll(async () => {
+test.afterEach(async () => {
   await host?.stop(); await runtime?.stop()
   upstream?.closeAllConnections(); if (upstream) await new Promise(resolve => upstream.close(resolve))
+  if (root) await rm(root, { recursive: true, force: true })
 })
 
 async function configureModel(request: import('@playwright/test').APIRequestContext,
@@ -202,7 +204,8 @@ test('a course activity asks through the fixed help policy in the formal convers
   await page.screenshot({ path: join(output, `teaching-course-${process.platform}.png`), fullPage: false })
 })
 
-test('a product process restart reopens the persisted conversation in the same Chrome session', async ({ page }) => {
+test('a product process restart reopens the persisted conversation in the same Chrome session', async ({ page, request }) => {
+  await configureModel(request)
   const expected = '界面回答' + (replies.length + 1)
   await page.goto(endpoint)
   await page.getByLabel('学习目标', { exact: true }).fill('重启恢复对话')

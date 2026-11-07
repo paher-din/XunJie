@@ -19,7 +19,8 @@ import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
-import { modelDeviceTaskSchema, routeModels, ModelCapabilityError, createLearningModelService } from '@xunjie/learning-space';
+import { modelDeviceTaskSchema, routeModels, ModelCapabilityError, createLearningModelService,
+  modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema, modelGrantInputSchema, modelGrantSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
@@ -31,6 +32,8 @@ import { boundedJsonResponse, runtimeResourcePathPattern, runtimeResourceRespons
   runtimeResourceRoute } from './resource-response.js';
 import { createOutboundConnection, RuntimeConnectionError } from './connections.js';
 import type { InstalledConfiguration } from './runtime.js';
+import type { RecoveryManifest } from './recovery-types.js';
+import type { RetirementProof } from './recovery.js';
 import { resolveCredential } from './postgres.js';
 
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
@@ -60,6 +63,27 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
   const cleanupPath = (id: string) => join(root, 'native-channel', z.uuid().parse(id), 'endpoint.json');
+  async function recipientRecovery() {
+    const file = join(root, 'recovery-state.json');
+    if (!local?.modelTarget || !await exists(file)) return undefined;
+    // Only the local recovery controller writes this file. An active takeover has already
+    // verified the authenticated snapshot, source retirement, receiver fences and owner data.
+    const recovered = await readJson<{ phase: string; legacy?: boolean; manifest: RecoveryManifest; proof?: RetirementProof }>(file);
+    const manifest = recovered.manifest, proof = recovered.proof;
+    const modelOwner = { environmentId: local.modelTarget.environmentId, serviceId: local.modelTarget.serviceId };
+    const owns = (service: { environmentId: string; serviceId: string }) => service.environmentId === modelOwner.environmentId
+      && service.serviceId === modelOwner.serviceId;
+    if (recovered.phase !== 'active' || recovered.legacy === true || !manifest || !proof
+      || environment.environmentId !== modelOwner.environmentId || manifest.source?.environmentId !== modelOwner.environmentId
+      || manifest.source.installationId === environment.installationId
+      || !manifest.source.services?.some(owns) || !environment.services.some(owns)
+      || !manifest.services?.some(service => service.serviceId === modelOwner.serviceId)
+      || proof.sourceEnvironmentId !== manifest.source.environmentId || proof.sourceInstallationId !== manifest.source.installationId
+      || proof.targetInstallationId !== environment.installationId || proof.backupId !== manifest.backupId
+      || typeof proof.retiredAt !== 'string' || !Number.isFinite(Date.parse(proof.retiredAt))) throw new StorageError('identity-conflict');
+    return { formatVersion: 1 as const, backupId: manifest.backupId, modelOwner,
+      sourceInstallationId: manifest.source.installationId, targetInstallationId: environment.installationId };
+  }
   async function rememberCleanupDestination(connection: Connection) {
     const destination = cleanupDestinationSchema.parse({ connectionId: connection.requestId, schoolEndpoint: connection.schoolEndpoint });
     const path = cleanupPath(connection.requestId);
@@ -447,11 +471,12 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
                 ...(task.origin.authority ? { runId: task.origin.authority.runId, activityId: task.origin.authority.activityId }
                   : task.origin.activityId ? { activityId: task.origin.activityId } : {}) }
               : { ...task.origin, formatVersion: 1 };
-            const checkPermit = async () => {
-              z.object({ authorized: z.literal(true) }).strict().parse(
+            const checkPermit = async () => z.object({ authorized: z.literal(true),
+              successions: z.array(modelOriginSuccessionSchema).max(64).optional() }).strict().parse(
                 await authorityCall(connection, runtimeConnectionId, 'modelTaskPermit', { taskId: task.taskId }));
-            };
-            const checkJournal = () => local.models!.origins.assert(identity, associationId, fixedOrigin);
+            const recoveryOperation = modelOriginRecoveryOperationSchema.safeParse(task.request.operation);
+            const checkJournal = () => local.models!.origins.assert(identity, associationId, fixedOrigin,
+              recoveryOperation.success ? recoveryOperation.data : undefined);
             const assertOrigin = () => {
               if (subject(task.origin.identity) !== subject(identity) || subject(task.request.identity) !== subject(identity))
                 throw new StorageError('forbidden');
@@ -462,16 +487,30 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
             try {
               assertOrigin();
               await checkAccess();
-              await checkPermit();
+              const permit = await checkPermit();
+              const bindOrigin = async () => {
+                const saved = await local.models!.origins.read(identity, associationId).catch(error => {
+                  if (!(error instanceof StorageError) || error.code !== 'missing') throw error;
+                  return undefined;
+                });
+                const start = permit.successions?.findIndex(fact => fact.sourceInstallationId === saved?.installationId) ?? -1;
+                const successions = saved && task.formatVersion === 2 && saved.installationId !== task.origin.installationId && start >= 0
+                  ? permit.successions!.slice(start) : undefined;
+                const recipient = saved && saved.recoveryGeneration !== task.origin.recoveryGeneration && recoveryOperation.success
+                  ? await recipientRecovery() : undefined;
+                const recovery = recoveryOperation.success && (successions || recipient)
+                  ? { operation: recoveryOperation.data, ...(successions ? { successions } : {}), ...(recipient ? { recipient } : {}) } : undefined;
+                await local.models!.origins.bind(identity, associationId, fixedOrigin, recovery);
+              };
               // Import a journal from older candidates once, then retain all ownership facts
               // in the model owner's migration/snapshot boundary. No new runtime journal is written.
               const legacyPath = join(root, 'native-channel', connection.requestId, 'model-learning', associationId + '.json');
               if (await exists(legacyPath)) {
                 const old = z.record(z.string(), z.unknown()).parse(await readJson(legacyPath));
                 await local.models!.origins.bind(identity, associationId, { ...old, formatVersion: task.formatVersion });
-                await local.models!.origins.bind(identity, associationId, fixedOrigin);
+                await bindOrigin();
                 await unlink(legacyPath);
-              } else await local.models!.origins.bind(identity, associationId, fixedOrigin);
+              } else await bindOrigin();
               const assertCurrent = async () => {
                 if (!isOpen()) throw new StorageError('maintenance');
                 assertOrigin();

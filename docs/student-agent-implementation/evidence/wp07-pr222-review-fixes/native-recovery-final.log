@@ -1,0 +1,17 @@
+✔ R10 host-verified successors query and cancel accepted, in-flight and completed original attempts without another SDK call (8450.903666ms)
+✔ R10 original model-owner maintenance and isolated backup restore retain successor proof without restoring dispatch authority (1542.737584ms)
+✔ R10 migration upgrades populated same-installation authorizations without changing provenance (686.674ms)
+✔ R10 restored model recipients admit original reads only after formal takeover and retain ancestor provenance (11280.377125ms)
+✔ R10 formal Root transfers only original attempt recovery access to a fenced successor through the real device poller (19727.485584ms)
+✔ a restored independent Agent continues its original student Wait through the existing learning-data route (41165.236042ms)
+✔ a restored independent Agent continues its original tool Wait through the existing learning-data route (56286.793042ms)
+✔ R10 host permit uses real retired predecessors, never a new credential alone (80.909792ms)
+✔ R10 recovery evidence rejects cycles and ambiguous predecessor histories (115.6025ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 139809.041

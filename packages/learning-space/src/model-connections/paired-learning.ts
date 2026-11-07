@@ -8,6 +8,7 @@ import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/space
 import { modelDeviceIdentitySchema as deviceSchema, modelDeviceBindingSchema } from './device-choices.js';
 export { modelDeviceBindingSchema } from './device-choices.js';
 import { modelScopeOf } from './selection.js';
+import { modelOriginRecoveryOperationSchema, modelOriginSuccessionSchema } from './origins.js';
 import { modelDeviceTaskSchema, modelRunAuthoritySchema } from './device-tasks.js';
 import { learningModelRequestSchema, learningModelReplySchema, parseLearningModelResult,
   createLearningModelService, type LearningModelRequest, type LearningModelReply } from './service.js';
@@ -33,6 +34,8 @@ export interface PairedLearningOptions {
   authorizeBinding(identity: SpaceIdentity, binding: ModelDeviceBinding | z.infer<typeof bindModelDeviceSchema>): Promise<void>;
   /** Host verifies authenticated Agent service/installation/runtime grant and real lease authority for receive/dispatch. */
   authorizeOrigin(identity: SpaceIdentity, origin: PairedModelOrigin, request: LearningModelRequest): Promise<void>;
+  /** Trusted host returns its fenced recipient chain only after current member/WP01 authorization. */
+  recipientSuccessions?(identity: SpaceIdentity, original: ModelDeviceBinding, current: ModelDeviceBinding): Promise<z.infer<typeof modelOriginSuccessionSchema>[] | null>;
   assertWritable(): void;
   timeoutMs?: number;
   pollIntervalMs?: number;
@@ -46,8 +49,36 @@ const destinationSchema = z.discriminatedUnion('kind', [
 ]);
 type Destination = z.infer<typeof destinationSchema>;
 type RouteKind = 'segment' | 'attempt' | 'image' | 'result' | 'pin';
+const recipientRecoverySchema = z.object({ requestId: z.uuid(), binding: modelDeviceBindingSchema,
+  successions: z.array(modelOriginSuccessionSchema).min(1).max(64) }).strict();
 const savedRequestSchema = z.object({ kind: z.literal('device-options').optional(), identity: spaceIdentitySchema, request: learningModelRequestSchema,
-  origin: pairedModelOriginSchema, destination: destinationSchema, forwarded: learningModelRequestSchema, localReply: learningModelReplySchema.optional() }).strict();
+  origin: pairedModelOriginSchema, destination: destinationSchema, forwarded: learningModelRequestSchema, localReply: learningModelReplySchema.optional(),
+  recipientRecovery: recipientRecoverySchema.optional() }).strict();
+type SavedRequest = z.infer<typeof savedRequestSchema>;
+function recipientChain(original: ModelDeviceBinding, current: ModelDeviceBinding, value: unknown) {
+  const facts = recipientRecoverySchema.shape.successions.parse(value);
+  if (hash(original.owner) !== hash(current.owner) || original.installationId === current.installationId) throw new StorageError('identity-conflict');
+  let installation = original.installationId;
+  const seen = new Set([installation]);
+  for (const fact of facts) {
+    if (fact.sourceEnvironmentId !== original.owner.environmentId || fact.sourceServiceId !== original.owner.serviceId
+      || fact.sourceInstallationId !== installation || seen.has(fact.targetInstallationId)) throw new StorageError('identity-conflict');
+    installation = fact.targetInstallationId; seen.add(installation);
+  }
+  if (installation !== current.installationId) throw new StorageError('identity-conflict');
+  return facts;
+}
+function validateRecipientRequest(saved: SavedRequest, original: SavedRequest) {
+  const recovery = saved.recipientRecovery;
+  if (!recovery || original.recipientRecovery || original.kind || original.localReply || saved.kind || saved.localReply
+    || saved.destination.kind !== 'device' || original.destination.kind !== 'device'
+    || !modelOriginRecoveryOperationSchema.safeParse(saved.request.operation).success
+    || recovery.requestId !== original.origin.operationId || saved.origin.operationId === recovery.requestId
+    || hash(saved.identity) !== hash(original.identity) || hash(saved.request) !== hash(original.request)
+    || hash(saved.forwarded) !== hash(original.forwarded) || hash(saved.destination) !== hash(original.destination)
+    || hash({ ...saved.origin, operationId: recovery.requestId }) !== hash(original.origin)) throw new StorageError('corrupt');
+  recipientChain(original.destination.binding, recovery.binding, recovery.successions);
+}
 
 /** School hub outbox. All device work is consumed by its authenticated active poller.
  * Each invocation has its own operationId: retry it unchanged after an unavailable result;
@@ -84,6 +115,54 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
       return body;
     });
     return modelDeviceBindingSchema.parse(receipt.result);
+  }
+  async function currentRecipient(identity: SpaceIdentity, saved: SavedRequest): Promise<SavedRequest> {
+    if (saved.destination.kind !== 'device' || !modelOriginRecoveryOperationSchema.safeParse(saved.request.operation).success
+      || !options.recipientSuccessions) return saved;
+    const original = saved.destination.binding;
+    const { rows } = await storage.read('SELECT body FROM model_member_devices WHERE scope=$1 ORDER BY version DESC', [modelScopeOf(identity)]);
+    for (const row of rows) {
+      const binding = modelDeviceBindingSchema.parse(row.body);
+      if (hash(binding.owner) !== hash(original.owner) || binding.installationId === original.installationId) continue;
+      let facts;
+      try {
+        facts = await options.recipientSuccessions(identity, original, binding);
+        if (!facts) continue;
+        await options.authorizeBinding(identity, binding);
+      } catch (error) {
+        // A revoked historical candidate cannot hide a different currently authorized successor.
+        if (error instanceof StorageError && error.code === 'forbidden') continue;
+        throw error;
+      }
+      const successions = recipientChain(original, binding, facts);
+      const taskId = idFor(['paired-recipient-recovery', saved.origin.operationId, binding]);
+      const recovered = savedRequestSchema.parse({ ...saved, origin: { ...saved.origin, operationId: taskId },
+        recipientRecovery: { requestId: saved.origin.operationId, binding, successions } });
+      validateRecipientRequest(recovered, saved);
+      const accepted = await storage.request({ requestId: 'paired-recipient-recovery:' + taskId, fingerprint: hash(recovered) }, async tx => {
+        options.assertWritable();
+        // Original request, route, authorization and any uncertain old task remain immutable.
+        // This separate access task cannot dispatch; cancellation still names the original attempt.
+        await tx.query('INSERT INTO model_paired_requests VALUES($1,$2,$3)', [taskId, modelScopeOf(identity), recovered]);
+        return recovered;
+      });
+      return savedRequestSchema.parse(accepted.result);
+    }
+    return saved;
+  }
+  async function authorizeRecipient(identity: SpaceIdentity, saved: SavedRequest) {
+    if (saved.destination.kind !== 'device') throw new StorageError('corrupt');
+    const recovery = saved.recipientRecovery;
+    if (!recovery) { await options.authorizeBinding(identity, saved.destination.binding); return saved.destination.binding; }
+    const { rows: [row] } = await storage.read('SELECT body FROM model_paired_requests WHERE id=$1 AND scope=$2',
+      [recovery.requestId, modelScopeOf(identity)]);
+    if (!row) throw new StorageError('corrupt');
+    validateRecipientRequest(saved, savedRequestSchema.parse(row.body));
+    const facts = await options.recipientSuccessions?.(identity, saved.destination.binding, recovery.binding);
+    if (!facts || hash(recipientChain(saved.destination.binding, recovery.binding, facts)) !== hash(recovery.successions))
+      throw new StorageError('forbidden');
+    await options.authorizeBinding(identity, recovery.binding);
+    return recovery.binding;
   }
   async function bindingForSource(identity: SpaceIdentity, value: z.input<typeof sourceSchema>) {
     await options.authorize(identity); const source = sourceSchema.parse(value);
@@ -133,10 +212,9 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
       || hash(original.identity) !== hash(original.request.identity) || hash(original.identity) !== hash(original.forwarded.identity)
       || original.request.operation !== original.forwarded.operation && !(original.request.operation === 'selection.snapshot' && original.forwarded.operation === 'selection.resolve')
         && !(original.request.operation === 'selection.pin' && original.forwarded.operation === 'selection.pinSource')) throw new StorageError('corrupt');
-    if (original.kind === 'device-options' || identity.kind !== 'school' || original.destination.kind !== 'device'
-      || original.destination.binding.grantId !== binding.grantId
-      || original.destination.binding.installationId !== binding.installationId) throw new StorageError('forbidden');
-    await options.authorizeBinding(identity, original.destination.binding);
+    if (original.kind === 'device-options' || identity.kind !== 'school' || original.destination.kind !== 'device') throw new StorageError('forbidden');
+    const recipient = await authorizeRecipient(identity, original);
+    if (recipient.grantId !== binding.grantId || recipient.installationId !== binding.installationId) throw new StorageError('forbidden');
     const { task } = await models.deviceTasks.read(identity, binding, id);
     const expectedOrigin = { service: original.origin.service, installationId: original.origin.installationId,
       grantId: original.origin.grantId, identity: original.identity, recoveryGeneration: binding.installationId,
@@ -206,7 +284,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
     let saved: z.infer<typeof savedRequestSchema>;
     if (existing) {
       saved = savedRequestSchema.parse(existing.body);
-      if (saved.kind || existing.scope !== scope || hash([saved.request, saved.origin]) !== fingerprint) throw new StorageError('identity-conflict');
+      if (saved.kind || saved.recipientRecovery || existing.scope !== scope || hash([saved.request, saved.origin]) !== fingerprint) throw new StorageError('identity-conflict');
     } else {
       let destination: Destination;
       let forwarded = input;
@@ -325,12 +403,12 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
       }
     }
     else {
-      const binding = saved.destination.binding;
       try {
-      await options.authorizeBinding(identity, binding);
+      const delivery = await currentRecipient(identity, saved);
+      const binding = await authorizeRecipient(identity, delivery);
       const check = operation.startsWith('checks.');
       const attemptId = check ? operation === 'checks.receive' ? (args[0] as { attemptId: string }).attemptId : args[0] as string : undefined;
-      const task = modelDeviceTaskSchema.parse({ taskId: origin.operationId, operation: 'learning', formatVersion: 2,
+      const task = modelDeviceTaskSchema.parse({ taskId: delivery.origin.operationId, operation: 'learning', formatVersion: 2,
         ...(attemptId ? { attemptId } : {}), request: saved.forwarded,
         origin: { service: origin.service, installationId: origin.installationId, grantId: origin.grantId, identity, recoveryGeneration: binding.installationId,
           ...(origin.activityId ? { activityId: origin.activityId } : {}),
@@ -339,8 +417,8 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
       await models.deviceTasks.enqueue(identity, taskBinding, task);
       const until = Date.now() + timeoutMs;
       while (true) {
-        await options.authorize(identity); await options.authorizeBinding(identity, binding);
-        const record = await models.deviceTasks.read(identity, taskBinding, origin.operationId);
+        await options.authorize(identity); await authorizeRecipient(identity, delivery);
+        const record = await models.deviceTasks.read(identity, taskBinding, delivery.origin.operationId);
         if (record.receipt) { reply = learningModelReplySchema.parse(record.receipt); break; }
         if (Date.now() >= until) throw new StorageError('unavailable');
         await new Promise(resolve => setTimeout(resolve, interval));
@@ -355,7 +433,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
         await options.authorizeOrigin(identity, origin, input);
         const selected = await models.selection.destination(identity);
         const view = await models.selection.read(identity);
-        if (!view.selected || selected && hash(selected.binding) === hash(binding)) throw error;
+        if (!view.selected || selected && hash(selected.binding) === hash(saved.destination.binding)) throw error;
         return { ok: true, value: view };
       }
     }
@@ -396,6 +474,14 @@ export async function validatePairedLearning(storage: OwnedStorage) {
   for (const row of requests) {
     const saved = savedRequestSchema.parse(row.body);
     await validateDestination(row.scope as string, saved.destination);
+    if (saved.recipientRecovery) {
+      await validateDestination(row.scope as string, { kind: 'device', binding: saved.recipientRecovery.binding });
+      const { rows: [original] } = await storage.read('SELECT body FROM model_paired_requests WHERE id=$1 AND scope=$2',
+        [saved.recipientRecovery.requestId, row.scope]);
+      if (!original) throw new StorageError('corrupt');
+      try { validateRecipientRequest(saved, savedRequestSchema.parse(original.body)); }
+      catch { throw new StorageError('corrupt'); }
+    }
     if (saved.localReply?.ok) parseLearningModelResult(saved.request.operation, saved.localReply.value);
     if (saved.origin.operationId !== row.id || modelScopeOf(saved.identity) !== row.scope || modelScopeOf(saved.request.identity) !== row.scope) throw new StorageError('corrupt');
   }

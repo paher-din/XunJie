@@ -1,0 +1,17 @@
+✔ paired learning tasks receive, claim, query and stop through legacy localBinding (4387.334334ms)
+✔ paired learning tasks receive, claim, query and stop through independent modelBinding (13921.69225ms)
+✔ the explicit learning boundary rejects unknown operations, extra arguments and normalizes errors (2.269708ms)
+✔ versioned learning tasks survive reopen and reject replacing original owner or recovery generation (767.291041ms)
+✔ real PG and SDK dispatch returns durable acceptance while reads and cancellation remain live; authorization is rechecked before send (1068.813166ms)
+✔ selection.read accepts the trimmed empty tuple; clients reject malformed operation-specific network results (1.930208ms)
+✔ native replay metadata is checked without dropping valid Responses citations or Messages thinking (1.861042ms)
+✔ network selection cannot nominate another owner; trusted local school/device selection still works (752.268917ms)
+✔ two lost concurrent claim acknowledgements cannot overwrite the original unsent claim (776.682041ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22441.313417

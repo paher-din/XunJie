@@ -129,3 +129,47 @@ for (const revoked of ['agentGrant', 'deviceConnection', 'activityAccess', 'late
     upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); await fixture.close();
   }
 });
+
+test('a currently authorized replacement grant can reconcile the same installation without rewriting original model provenance', { timeout: 60000 }, async () => {
+  const fixture = await nativeFixture(); let storage;
+  try {
+    const owner = { environmentId: randomUUID(), serviceId: randomUUID() };
+    const binding = await provisionStorage({ admin: fixture.admin, owner, password: randomUUID(), migrations: modelMigrations });
+    const backend = createFileBackend({ id: 'files', root: fixture.root + '/objects' });
+    storage = await openStorage({ binding, backend, migrations: modelMigrations });
+    let allowed = true;
+    let models = await createModelGateway(storage, { authorize: async () => { if (!allowed) throw new StorageError('forbidden'); } });
+    const identity = { environmentId: owner.environmentId, spaceId: randomUUID(), principalId: randomUUID(), kind: 'school', name: 'School' };
+    const attemptId = randomUUID();
+    const original = { formatVersion: 2, service: { environmentId: randomUUID(), serviceId: randomUUID() },
+      installationId: randomUUID(), grantId: randomUUID(), identity, recoveryGeneration: randomUUID(),
+      attemptId, runId: randomUUID(), activityId: randomUUID() };
+    await models.origins.bind(identity, attemptId, original);
+    const renewed = { ...original, grantId: randomUUID() };
+    await assert.rejects(models.origins.assert(identity, attemptId, renewed), { code: 'identity-conflict' });
+    allowed = false;
+    await assert.rejects(models.origins.bind(identity, attemptId, renewed), { code: 'forbidden' });
+    await assert.rejects(models.origins.assert(identity, attemptId, renewed), { code: 'identity-conflict' });
+    allowed = true;
+    await models.origins.bind(identity, attemptId, renewed);
+    await models.origins.assert(identity, attemptId, original);
+    await models.origins.assert(identity, attemptId, renewed);
+    const { rows: [row] } = await storage.read('SELECT body FROM model_origin_journals WHERE association_id=$1', [attemptId]);
+    assert.deepEqual(row.body, original, 'first installation and grant remain the original attempt provenance');
+    for (const changed of [
+      { ...renewed, installationId: randomUUID() },
+      { ...renewed, service: { ...renewed.service, serviceId: randomUUID() } },
+      { ...renewed, recoveryGeneration: randomUUID() },
+      { ...renewed, runId: randomUUID() },
+      { ...renewed, activityId: randomUUID() },
+      { ...renewed, identity: { ...identity, principalId: randomUUID() } },
+    ]) await assert.rejects(models.origins.bind(identity, attemptId, changed), { code: 'identity-conflict' });
+    await storage.close(); storage = await openStorage({ binding, backend, migrations: modelMigrations });
+    allowed = false;
+    models = await createModelGateway(storage, { authorize: async () => { throw new StorageError('forbidden'); } });
+    await models.origins.assert(identity, attemptId, original);
+    await models.origins.assert(identity, attemptId, renewed);
+    await assert.rejects(models.origins.assert(identity, attemptId, { ...renewed, grantId: randomUUID() }), { code: 'identity-conflict' });
+    await models.validate();
+  } finally { await storage?.close(); await fixture.close(); }
+});

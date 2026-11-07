@@ -3,7 +3,7 @@ import type { ActionInput, ActionReceipt } from '@xunjie/contracts/action-intent
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import type { TeachingConversation, TeachingEvent, TeachingRun, TeachingInteractionSettings,
   TeachingControlReceipt } from '@xunjie/contracts/teaching-agent';
-import type { openProductRuntime } from '@xunjie/product-runtime';
+import type { openProductRuntime, InstallOptions } from '@xunjie/product-runtime';
 
 interface Fixture {
   root: string; readonly endpoint: string; payloads: Record<string, unknown>[]; failures: unknown[];
@@ -25,6 +25,7 @@ interface Fixture {
   }>;
   restart(): Promise<void>; close(): Promise<void>;
 }
-export function fixture(answer?: (payload: Record<string, unknown>, response: ServerResponse, index: number) => void | Promise<void>): Promise<Fixture>;
+export function fixture(answer?: (payload: Record<string, unknown>, response: ServerResponse, index: number) => void | Promise<void>,
+  installation?: Partial<InstallOptions>): Promise<Fixture>;
 export function reply(response: ServerResponse, value?: { text?: string; calls?: { id: string; name: string; arguments: unknown }[] }): void;
 export function until<T>(check: () => T | Promise<T>, description: string, timeout?: number): Promise<NonNullable<T>>;

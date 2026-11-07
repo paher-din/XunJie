@@ -15,7 +15,8 @@ import {
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot,
 } from '@xunjie/contracts/teaching-agent';
-import { buildContext, type ContextMessage } from './context.js';
+import { buildContext, fixedInputText, portableContext, type ContextMessage } from './context.js';
+import { modelSegmentInputSchema } from '@xunjie/contracts/model-connections';
 import { requiresExplanationReview } from './help-policy.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
@@ -229,15 +230,24 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
 
   async function cancel(requestId: string, inputDigest: string): Promise<ActionReceipt> {
     if (writesClosed) throw new StorageError('maintenance');
-    const row = await requestRow(requestId);
+    let row = await requestRow(requestId);
     if (!row) {
       const tombstone = actionReceiptSchema.parse({ requestId, inputDigest, receiver: identity, state: 'cancelled',
         receiptId: requestId, detail: JSON.stringify({ version: 1, runId: null, inputId: null }) });
-      await storage.request({ requestId: 'teaching-cancel-tombstone:' + requestId, fingerprint: inputDigest }, async tx => {
+      const committed = await storage.request({ requestId: 'teaching-cancel-tombstone:' + requestId, fingerprint: inputDigest }, async tx => {
         await tx.query(`INSERT INTO teaching_requests(request_id,activity_id,input_digest,body,state,receipt)
           VALUES($1,NULL,$2,NULL,'cancelled',$3) ON CONFLICT(request_id) DO NOTHING`, [requestId, inputDigest, JSON.stringify(tombstone)]);
+        const { rows: [current] } = await tx.query('SELECT input_digest,receipt FROM teaching_requests WHERE request_id=$1', [requestId]);
+        if (!current) throw new StorageError('corrupt');
+        if (current.input_digest !== inputDigest) throw new StorageError('identity-conflict');
+        return current.receipt;
       });
-      return tombstone;
+      const current = actionReceiptSchema.parse(committed.result);
+      if (current.state === 'cancelled') return current;
+      // Acceptance may have committed after the optimistic read. Preserve its
+      // original receipt and apply the same stop path as an already known Run.
+      row = await requestRow(requestId);
+      if (!row) throw new StorageError('corrupt');
     }
     if (row.input_digest !== inputDigest) throw new StorageError('identity-conflict');
     // An accepted request is immutable evidence. Cancelling it now closes the run, never rewrites
@@ -308,6 +318,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       if (!current || terminal(current.state as TeachingRun['state'])) return { finished: true, next: null };
       const finalState = current.stop_requested ? 'stopped' : current.reason === 'wait-expired' ? 'paused' : state;
       const finalReason = current.stop_requested ? 'stop-requested' : current.reason === 'wait-expired' ? 'wait-expired' : reason;
+      // An input can arrive after the planner observed an empty unconsumed set.
+      // Recheck under the same write order as acceptance before stopping this Run.
+      if (finalReason === 'input-removed-before-adoption' && (await inputs.pending(run, tx)).length)
+        return { finished: false, next: null };
       const steering = finalState === 'completed' && await inputs.hasSteering(tx, run);
       const { rows: resultWaits } = finalState === 'completed' ? await tx.query(`SELECT state,observed_step_id FROM teaching_waits
         WHERE run_id=$1 AND purpose='result' AND (state='pending' OR (state='consumed' AND observed_step_id IS NULL))`, [run.runId]) : { rows: [] };
@@ -358,17 +372,20 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     });
   }
   async function historyThrough(activityId: string, boundary: number, runId?: string): Promise<ContextMessage[]> {
-    const { rows } = await storage.read(`SELECT e.kind,e.body,i.state AS input_state,i.adopted_run_id,
+    const { rows } = await storage.read(`SELECT e.kind,e.body,i.state AS input_state,i.adopted_run_id,v.body AS fixed_input,
       EXISTS(SELECT 1 FROM teaching_events a WHERE a.activity_id=e.activity_id AND a.kind='input-adopted'
         AND a.body->>'inputId'=e.body->>'inputId') AS adoption_logged
       FROM teaching_events e LEFT JOIN teaching_inputs i ON i.input_id::text=e.body->>'inputId'
+      LEFT JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=COALESCE((e.body->>'version')::integer,1)
       WHERE e.activity_id=$1 AND e.seq<$2 AND e.kind IN ('input','input-adopted','assistant','question-created','student-response','tool-result') ORDER BY e.seq`, [activityId, boundary]);
     return rows.flatMap((row): ContextMessage[] => {
       const body = row.body as Record<string, unknown>;
       if (row.kind === 'input-adopted' || row.kind === 'input' && row.input_state === 'adopted' && !row.adoption_logged) {
         if (runId && (body.runId === runId || row.adopted_run_id === runId)) return [];
-        return typeof body.question === 'string' && body.question ? [{ role: 'student' as const, text: body.question,
-          source: { kind: 'input', id: String(body.inputId) + ':' + String(body.version ?? 1), label: '先前已采用的学生输入' } }] : [];
+        if (!row.fixed_input) throw new StorageError('corrupt');
+        const text = fixedInputText(actionInputSchema.parse(row.fixed_input));
+        return text ? [{ role: 'student' as const, text,
+          source: { kind: 'input', id: String(body.inputId) + ':' + String(body.version ?? 1), label: '先前已采用的学生输入与固定依据' } }] : [];
       }
       if (row.kind === 'assistant') return typeof body.text === 'string' && body.text ? [{ role: 'assistant' as const, text: body.text }] : [];
       if (row.kind === 'question-created' && typeof body.question === 'string') return [{ role: 'assistant',
@@ -412,24 +429,27 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const model = modelFact(choice.choice.connection);
     const fingerprint = fingerprintOf(model, system + canonicalDigest(tools));
     let previousSegmentId: string | undefined;
+    let closeSequence: number | undefined;
     if (segmentId) {
       const segment = await options.models.segments.read(identity, segmentId);
       if (!segment.closed && !segment.pending && session.segment_fingerprint === fingerprint) {
         return { segmentId, sequence: segment.sequence, model, fresh: false };
       }
       if (segment.pending) throw new StorageError('resource-busy');
-      if (!segment.closed) {
-        await options.models.segments.close(identity, segmentId, { requestId: randomUUID(), expectedSequence: segment.sequence });
-      }
+      if (!segment.closed) closeSequence = segment.sequence;
       previousSegmentId = segmentId;
       segmentId = null;
     }
     const createdId = randomUUID();
-    await options.models.segments.create(identity, { requestId: randomUUID(), segmentId: createdId, purpose: 'learning',
+    const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history));
+    if (!portable.success) throw new TeachingBudgetError('capacity-exceeded');
+    const candidate = modelSegmentInputSchema.parse({ requestId: randomUUID(), segmentId: createdId, purpose: 'learning',
       source: { selected: true, selectionVersion }, prefix: { system, tools },
-      portable: history.map(message => ({ role: message.role === 'student' ? 'user' as const : 'assistant' as const,
-        text: message.text })),
+      portable: portable.data,
       ...(previousSegmentId ? { previousSegmentId } : {}) });
+    if (previousSegmentId && closeSequence !== undefined)
+      await options.models.segments.close(identity, previousSegmentId, { requestId: randomUUID(), expectedSequence: closeSequence });
+    await options.models.segments.create(identity, candidate);
     const segment = await options.models.segments.read(identity, createdId);
     await storage.request({ requestId: 'teaching-segment:' + run.runId + ':' + randomUUID(),
       fingerprint: 'teaching-segment:' + run.runId }, async tx => {
@@ -484,11 +504,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       if (writesClosed || dispatchClosed) return pauseSwitch(row, 'maintenance', generation);
       const choice = await options.models.selection.pinned(member, requestId, Number(row.selection_version));
       const oldId = row.from_segment_id as string | null;
+      let closeSequence: number | undefined;
       if (oldId) {
         const old = await options.models.segments.read(member, oldId);
         if (old.pending || old.pendingTools?.length) return pauseSwitch(row, 'segment-busy', generation);
-        if (!old.closed) await options.models.segments.close(member, oldId, {
-          requestId: row.close_request_id, expectedSequence: old.sequence });
+        if (!old.closed) closeSequence = old.sequence;
       }
       const { rows: [latest] } = await storage.read(`SELECT body FROM teaching_requests WHERE activity_id=$1
         AND state='accepted' ORDER BY created_at DESC LIMIT 1`, [activity.activityId]);
@@ -504,20 +524,23 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         stepId: operationId('model-switch-step:' + requestId), snapshotId: operationId('model-switch-snapshot:' + requestId),
         ...(oldId ? { segmentId: oldId } : {}) };
       const tools = [studentAskDefinition, ...(options.tools ? await options.tools.definitions(pseudo) : [])];
-      const candidate = { requestId: row.create_request_id, segmentId: row.to_segment_id,
+      const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history));
+      if (!portable.success) return pauseSwitch(row, 'capacity-exceeded', generation);
+      const candidate = modelSegmentInputSchema.parse({ requestId: row.create_request_id, segmentId: row.to_segment_id,
         purpose: 'learning', source: { selected: true, selectionVersion: Number(row.selection_version), pinId: requestId },
-        prefix: { system: context.system, tools }, portable: history.map(message => ({
-          role: message.role === 'student' ? 'user' as const : 'assistant' as const, text: message.text })),
-        ...(oldId ? { previousSegmentId: oldId } : {}) };
+        prefix: { system: context.system, tools }, portable: portable.data,
+        ...(oldId ? { previousSegmentId: oldId } : {}) });
       const fixed = await storage.request({ requestId: 'teaching-switch-input:' + requestId,
         fingerprint: canonicalDigest([requestId, row.to_segment_id]) }, async tx => {
         const { rows: [locked] } = await tx.query(`SELECT * FROM teaching_model_switches WHERE request_id=$1 FOR UPDATE`, [requestId]);
         if (locked?.lease_owner !== ownerId || Number(locked.generation) !== generation) throw new StorageError('conflict');
-        const body = locked.create_body ?? candidate;
+        const body = modelSegmentInputSchema.parse(locked.create_body ?? candidate);
         await tx.query('UPDATE teaching_model_switches SET create_body=$2 WHERE request_id=$1', [requestId, body]);
         return body;
       });
       if (writesClosed || dispatchClosed) return pauseSwitch(row, 'maintenance', generation);
+      if (oldId && closeSequence !== undefined) await options.models.segments.close(member, oldId, {
+        requestId: row.close_request_id, expectedSequence: closeSequence });
       await options.models.segments.create(member, fixed.result);
       const created = await options.models.segments.read(member, String(row.to_segment_id));
       const target = row.target as { model: ReturnType<typeof modelFact> };
@@ -685,7 +708,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         // the original step/attempt/command and let recovery query those identities.
         const reason = error instanceof TeachingBudgetError ? error.message : error instanceof z.ZodError ? 'corrupt' : error instanceof StorageError ? error.code
           : (error as { code?: string }).code === 'capability-unavailable' ? 'model-capability-unavailable' : '';
-        if (error instanceof TeachingBudgetError || ['forbidden', 'invalid', 'missing', 'resource-busy', 'corrupt', 'incompatible', 'resource-gone', 'model-capability-unavailable'].includes(reason)) {
+        if (error instanceof TeachingBudgetError || ['forbidden', 'invalid', 'missing', 'identity-conflict', 'resource-busy', 'corrupt', 'incompatible', 'resource-gone', 'model-capability-unavailable'].includes(reason)) {
           const row = await runRow(runId).catch(() => null);
           if (row && !terminal(row.state as TeachingRun['state'])) await finish(run, generation, 'paused', reason,
             (row.usage as ModelUsage) ?? { state: 'unknown' }, (row.model as TeachingRun['model']) ?? null,
@@ -710,7 +733,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
       AND NOT (state='waiting' AND reason='model-switch-boundary' AND NOT stop_requested AND NOT EXISTS
         (SELECT 1 FROM teaching_budgets b WHERE b.run_id=r.run_id AND b.deadline<=clock_timestamp()) AND EXISTS
         (SELECT 1 FROM teaching_model_switches s WHERE s.activity_id=r.activity_id AND s.state IN ('accepted','paused')))
-      AND (lease_expires_at IS NULL OR lease_expires_at < clock_timestamp()) ORDER BY created_at LIMIT 20`);
+      AND (lease_expires_at IS NULL OR lease_expires_at < clock_timestamp()) ORDER BY updated_at,created_at,run_id LIMIT 20`);
     for (const row of rows) kick(row.run_id as string);
   }
   function startTicker() {

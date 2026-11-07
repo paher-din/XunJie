@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { teachingStudentResponseInputSchema, teachingStudentResponseReceiptSchema } from '@xunjie/contracts/teaching-agent'
 import type { TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
 import { canonicalValue } from '@xunjie/contracts/execution'
@@ -22,12 +22,12 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   request: (route: string, body?: unknown) => Promise<unknown>
   onConfirmed: () => Promise<void>; focusRequested?: boolean; onFocused?: () => void
 }) {
-  const { draft } = useActivitySession()
+  const { draft, workspace } = useActivitySession()
   const key = JSON.stringify([scope, question.questionId, question.version, question.waitVersion])
+  const protection = useSyncExternalStore(workspace.subscribe, () => workspace.inputProtection(key))
   const [record, setRecord] = useState<LocalStudentResponse | null>(null)
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const alive = useRef(false), writable = useRef(!readOnly), card = useRef<HTMLElement>(null)
-  const writes = useRef<Promise<unknown>>(Promise.resolve()), revision = useRef(0)
   writable.current = !readOnly
   const initial = useCallback((): LocalStudentResponse => ({ key, scope, presentationId: crypto.randomUUID(),
     mode: question.options.length ? 'choice' : 'text', optionId: '', text: '' }), [key, scope, question.options.length])
@@ -61,16 +61,21 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
     void (async () => {
       let saved: LocalStudentResponse
       try {
-        saved = await store.read(key) ?? initial()
+        const retained = workspace.retainedInput<LocalStudentResponse>(key)
+        saved = await store.read(key) ?? retained ?? initial()
         if (saved.scope !== scope) throw new Error('回应不属于当前空间。')
-        if (writable.current) saved = await store.change(key, current => current ?? saved)
+        if (retained) saved = { ...saved, mode: retained.mode, optionId: retained.optionId, text: retained.text }
+        else if (writable.current) saved = await store.change(key, current => current ?? saved)
         if (!alive.current) return
         setRecord(saved)
         if (saved.input && !saved.receipt) void deliver(saved)
-      } catch { if (alive.current) { setRecord(initial()); setError('本机保护暂不可用，请保留或复制输入后重试。') } }
+      } catch { if (alive.current) {
+        setRecord(workspace.retainedInput<LocalStudentResponse>(key) ?? initial())
+        setError('本机保护暂不可用，请保留或复制输入后重试。')
+      } }
     })()
     return () => { alive.current = false }
-  }, [key, scope, initial, deliver])
+  }, [key, scope, initial, deliver, workspace])
   useEffect(() => {
     if (!focusRequested || !card.current) return
     card.current.focus({ preventScroll: true }); card.current.scrollIntoView({ block: 'nearest' }); onFocused?.()
@@ -91,17 +96,16 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   }, [record?.presentationId, readOnly, question.questionId, question.version, question.waitVersion, question.state, request])
   const edit = (change: Partial<Pick<LocalStudentResponse, 'mode' | 'optionId' | 'text'>>) => {
     if (!record || readOnly || busy || record.input && !record.receipt) return
-    const value = { ...record, ...change }, version = ++revision.current
-    setRecord(value)
-    writes.current = writes.current.catch(() => {}).then(() => store.change(key, current => ({ ...(current ?? value), ...change })))
-    void writes.current.then(() => { if (alive.current && revision.current === version) setError('') })
-      .catch(() => { if (alive.current) setError('输入尚未在本机可靠保留，请复制后重试。') })
+    const value = { ...record, ...change }
+    setRecord(value); setError('')
+    void workspace.retainInput(key, value, input => store.change(key, current => ({ ...(current ?? input),
+      mode: input.mode, optionId: input.optionId, text: input.text }))).catch(() => {})
   }
   const submit = async (skip = false) => {
     if (!record || !writable.current || busy || question.state !== 'pending') return
     setBusy(true)
     try {
-      await writes.current.catch(() => {})
+      await workspace.protectInput(key)
       if (!alive.current || !writable.current) return
       const saved = await store.change(key, current => {
         if (current?.input && !current.receipt) return current
@@ -146,7 +150,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
     <p className="student-question-status" role="status">{status}</p>
     {pending && !readOnly && <button type="button" className="outline" disabled={busy} onClick={() => void deliver(record!)}>核对原回应</button>}
     {record?.receipt?.status === 'rejected' && <p className="detail">{reasons[record.receipt.reason] ?? '这份回应未用于当前问题，输入仍保留。'}</p>}
-    {error && <p className="learning-error" role="alert">{error}</p>}
+    {(error || protection === 'failed') && <p className="learning-error" role="alert">{error || '输入尚未在本机可靠保留，请复制后重试。'}</p>}
     {record && (record.text || record.optionId) && <button type="button" className="student-response-copy" onClick={() => {
       void navigator.clipboard.writeText(record.text || question.options.find(option => option.id === record.optionId)?.label || '').catch(() => setError('暂时无法复制，请直接选中输入文字保存。'))
     }}>复制保留的回应</button>}

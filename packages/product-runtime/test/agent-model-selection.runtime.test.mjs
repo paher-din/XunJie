@@ -1,18 +1,54 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
+import { storageErrorCodes } from '@xunjie/contracts/storage';
+import pg from 'pg';
 
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
   postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, postgresVersion: '18.6',
   webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
   windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
 if (!resources.postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
+
+// Read private evidence only on failure, and export an explicit metadata allowlist.
+// Never pass a journal entry, SQL binding, payload, result, or Error to assertions.
+const safeCode = value => storageErrorCodes.includes(value) || ['ENOENT', 'EACCES', 'ECONNREFUSED'].includes(value) ? value : null;
+const safeOperation = value => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_.-]{0,100}$/.test(value) ? value : null;
+async function agentFailureMetadata(agentRoot, serviceId, runId) {
+  const transfers = [], steps = [];
+  try {
+    const path = join(agentRoot, 'private', 'agent-transfers');
+    const names = await readdir(path);
+    for (const name of names.filter(name => /^[a-f0-9]{64}\.json$/.test(name)).sort()) {
+      const entry = JSON.parse(await readFile(join(path, name), 'utf8'));
+      const nested = entry.payload?.operation === 'model' ? entry.payload.args?.[0] : null;
+      transfers.push({ capability: ['teaching.agent', 'teaching.dependencies'].includes(entry.capability) ? entry.capability : null,
+        operation: nested ? 'model.' + safeOperation(nested.operation) : safeOperation(entry.payload?.operation),
+        state: ['pending', 'received', 'consumed'].includes(entry.state) ? entry.state : null,
+        errorCode: safeCode(entry.result?.error ?? (entry.result?.ok === false ? entry.result.code : null)),
+        digest: /^[a-f0-9]{64}$/.test(entry.digest) ? entry.digest : null,
+        transferId: /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(entry.transferId) ? entry.transferId : null });
+    }
+  } catch (error) { transfers.push({ state: 'diagnostic-unavailable', errorCode: safeCode(error.code) }); }
+  if (runId) {
+    let client;
+    try {
+      const binding = JSON.parse(await resolveCredential(agentRoot, 'storage-' + serviceId));
+      client = new pg.Client(binding.connection); await client.connect();
+      const schema = '"' + binding.schema.replaceAll('"', '""') + '"';
+      const { rows } = await client.query(`SELECT phase FROM ${schema}.teaching_steps WHERE run_id=$1`, [runId]);
+      for (const row of rows) steps.push({ phase: ['planned', 'model', 'final', 'tools', 'waiting', 'completed'].includes(row.phase) ? row.phase : null });
+    } catch (error) { steps.push({ phase: 'diagnostic-unavailable', errorCode: safeCode(error.code) }); }
+    finally { await client?.end().catch(() => {}); }
+  }
+  return { transfers, steps };
+}
 
 test('installed school settings share the Root pointer and independent Agent dispatches the chosen school/self/device owner', { timeout: 300000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'xj-agent-model-selection-'));
@@ -152,7 +188,8 @@ test('installed school settings share the Root pointer and independent Agent dis
         if (run && ['completed','failed','paused','stopped'].includes(run.state)) break;
         await new Promise(resolve => setTimeout(resolve, 100));
       } while (Date.now()<until);
-      assert.equal(run?.state, 'completed', JSON.stringify(conversation));
+      if (run?.state !== 'completed') assert.fail('Agent model-selection failed: ' + JSON.stringify(
+        await agentFailureMetadata(join(directory, 'agent'), agentService.serviceId, run?.runId)));
       assert.equal(run.model.connectionId, expectedConnectionId);
       assert.ok(conversation.messages.some(message => message.text === 'route:'+modelId));
       assert.equal(payloads.at(-1).model, modelId, 'the actual SDK reaches the selected owner/configuration');

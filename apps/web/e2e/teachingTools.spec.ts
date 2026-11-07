@@ -42,6 +42,7 @@ function reply(response: ServerResponse, value: { text: string } | { call: { id:
   for (const chunk of [
     { id: 'tools-ui', choices: [{ index: 0, delta, finish_reason: null }] },
     { id: 'tools-ui', choices: [{ index: 0, delta: {}, finish_reason: 'call' in value ? 'tool_calls' : 'stop' }] },
+    { choices: [], usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } },
   ]) response.write('data: ' + JSON.stringify(chunk) + '\n\n')
   response.end('data: [DONE]\n\n')
 }
@@ -370,7 +371,7 @@ test('real native and browser operations retain results; a disconnected browser 
     await expect(waitingPage.locator('.teaching-tool-record').last().locator('.teaching-tool-status'))
       .toHaveText(/已接受，等待结果|效果未知/)
     await waitingPage.getByLabel('你的问题', { exact: true }).fill('等待期间继续保留的新问题。')
-    await expect(waitingPage.getByRole('button', { name: '等待当前回答', exact: true })).toBeDisabled()
+    await expect(waitingPage.getByRole('button', { name: '补充当前任务', exact: true })).toBeEnabled()
     await expect.poll(async () => (await api(waitingPage.request, 'drafts/' + activity.activityId, undefined, {})).question)
       .toBe('等待期间继续保留的新问题。')
     await waiting.scrollIntoViewIfNeeded()

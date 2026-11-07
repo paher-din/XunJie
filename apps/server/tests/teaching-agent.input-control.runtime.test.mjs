@@ -5,7 +5,7 @@ import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve, basename } from 'node:path';
 import { openProductRuntime, restoreProductRecovery } from '@xunjie/product-runtime';
-import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
+import { runPublishedAggregation } from './support/teaching-recovery.mjs';
 import { executionActionSchema } from '@xunjie/contracts/execution';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { StorageError } from '@xunjie/storage';
@@ -280,18 +280,8 @@ test('steering wakes discussion during a real long-tool Wait, then the original 
       execution: { executionRef: randomUUID(), acceptedSeq: 1 } };
     const accepted = await learning.executions.agent.acceptBrowser(identity, activity.activityId, commandId, browserId, acceptance,
       association => agent.assertCommandDispatch(identity, activity.activityId, association));
-    const ts = await import('../../../packages/learning-space/node_modules/typescript/lib/typescript.js');
-    const source = await readFile(new URL('../../web/src/tool-execution/algorithm.ts', import.meta.url), 'utf8');
-    const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-    const algorithm = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-    const published = await aggregationPackage();
-    const computed = algorithm.runAggregation({ ...algorithm.jobFromAction(action, action.execution.limits),
-      bytes: Buffer.from(published.algorithmBase64, 'base64'), memoryPages: manifest.algorithm.memoryPages, entry: manifest.algorithm.entry });
+    const { computed, resultInput } = await runPublishedAggregation(action, manifest);
     assert.equal(computed.result.value, 83.33333333333333, 'Execute the actual published Wasm, holding only result delivery.');
-    const bytes = Buffer.from(computed.artifact.text);
-    const resultInput = { contentId: randomUUID(), output: computed.result, text: computed.artifact.text,
-      name: computed.artifact.name, mediaType: computed.artifact.mediaType,
-      sha256: createHash('sha256').update(bytes).digest('hex'), byteLength: bytes.length };
     const deliverResult = async () => {
       const result = await learning.executions.result(identity, activity.activityId, commandId, resultInput);
       const report = { ...result, state: 'succeeded', confirmedSeq: 3 };

@@ -1,0 +1,9 @@
+Passing-case excerpt from the broader initial native run; its other failures were repaired and rerun separately.
+✔ R1 cancellation racing acceptance returns the committed receiver receipt (643.721583ms)
+✔ R2 complete text accompanying tool calls is retained in the student conversation (834.095875ms)
+✔ R3 an accepted learning attempt remains resumable past the probe-only 60 second deadline (859.863125ms)
+✔ R4 removed unconsumed input is not sent when a model-less Run is resumed (777.461167ms)
+✔ R4 control: remaining unconsumed steering can resume without reviving the removed root (708.631458ms)
+✔ R4 race control: steering accepted after the empty read is not paused by stale finish (715.315042ms)
+✔ R5 explicit model switch preserves adopted fixed work content in portable context (700.040583ms)
+✔ R5 capacity control: preserving large fixed history never closes the usable old segment before validation (775.413292ms)

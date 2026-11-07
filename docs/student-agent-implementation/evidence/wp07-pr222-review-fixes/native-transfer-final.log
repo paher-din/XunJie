@@ -1,0 +1,21 @@
+✔ formal Agent connection reuses one large transfer through 20 lost begin replies and a new Run lease (3889.0255ms)
+✔ small request with large reply survives lost ack, real process restart and runtime journal restore (2250.912167ms)
+✔ unknown effects remain unknown through grant renewal and legitimate installation succession (2414.642ms)
+✔ legacy orphans can be located and only unexecuted records released under a renewed grant (6322.1255ms)
+✔ two real client processes share one effect identity and the same complete result (3818.347666ms)
+✔ a lost bounded authorization reply is checked again without retaining an old permit (5901.091083ms)
+✔ a lost bounded authorize reply never caches current authority (3946.2705ms)
+✔ a lost bounded identityFor reply never caches current authority (1985.165334ms)
+✔ a lost bounded assertCommandDispatch reply never caches current authority (1415.898ms)
+✔ a recovered model switch receipt rechecks the original domain after revocation (3823.055333ms)
+✔ a recovered model pin receipt rechecks the original domain after revocation (4267.297916ms)
+✔ field reordering preserves an effect identity and a consumed temporary rejection can be explicitly retried (3760.437083ms)
+✔ a transfer confirmed absent at its original owner keeps its ID when a successor first delivers it (3715.614166ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 47718.377541

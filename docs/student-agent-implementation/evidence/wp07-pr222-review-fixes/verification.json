@@ -1,0 +1,170 @@
+{
+  "status": "passed",
+  "baseCommit": "29f83ec2b871a09f9f9b3d4860a1f8473fd3315d",
+  "node": "24.21.0",
+  "platform": "darwin-arm64",
+  "postgres": "18.6 native",
+  "sourceFingerprint": "66335a0e3a9c4d4b43cc1b9aa3dcebc837c9f9f2f2c4220ffd1d18deaa1e06b7",
+  "checks": [
+    {
+      "name": "R11 native transfer",
+      "tests": 13,
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-transfer-final.log"
+    },
+    {
+      "name": "Root / independent Agent / paired model selection and bounded authorization",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-selection-final.log"
+    },
+    {
+      "name": "Tool RPC and current dispatch authority",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-permit-final.log"
+    },
+    {
+      "name": "Portable context and real Wasm recovery",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-history-wasm-final.log"
+    },
+    {
+      "name": "Steering and original long-tool Wait",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "input-steering-final.log"
+    },
+    {
+      "name": "Native R10 source and recipient succession, two formal recoveries, independent Agent Waits and host proof",
+      "tests": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-recovery-final.log"
+    },
+    {
+      "name": "R1-R5 native fault regressions",
+      "tests": 8,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-core-passed.log",
+      "scope": "individual passing cases extracted from the initial broader native run; unaffected implementations retained"
+    },
+    {
+      "name": "R9 native admission and qualification withdrawal",
+      "tests": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-admission-passed.log",
+      "scope": "individual passing cases extracted from the initial broader native run; unaffected implementations retained"
+    },
+    {
+      "name": "Paired model task, SDK cancellation and original concurrent claim",
+      "tests": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-owner-final.log"
+    }
+  ],
+  "chrome": {
+    "browser": "installed Chrome",
+    "passed": 19,
+    "skipped": 3,
+    "modelTransport": "synthetic controlled endpoints; three protocols",
+    "status": "passed",
+    "skippedReason": "three opt-in historical baseline captures; all 19 active acceptance scenarios must pass",
+    "log": "chrome-final.log",
+    "channel": "chrome",
+    "modelSwitchCases": [
+      {
+        "title": "school and personal models switch both ways while prior questions, answers, work and tool results keep their provenance",
+        "status": "passed",
+        "duration": 15331
+      },
+      {
+        "title": "a switch requested during a slow answer waits for the original call, keeps duplicate identity and rejects a competing request before continuing on the new model",
+        "status": "passed",
+        "duration": 14466
+      },
+      {
+        "title": "a lost switch reply is explicit, keeps the activity readable after reload and a product process restart, and can be reapplied",
+        "status": "passed",
+        "duration": 9846
+      },
+      {
+        "title": "stopping an answer keeps the stopped state and the unsent draft",
+        "status": "passed",
+        "duration": 4518
+      }
+    ]
+  },
+  "notRun": [
+    "Windows",
+    "physical IME",
+    "cross-machine network matrix",
+    "paid real provider matrix",
+    "teaching effectiveness"
+  ],
+  "engineering": {
+    "status": "passed",
+    "nodeVersion": "v24.21.0",
+    "startedAt": "2026-11-07T16:58:23.622Z",
+    "finishedAt": "2026-11-07T17:01:41.087Z",
+    "durationMs": 197467,
+    "testsCached": false,
+    "groups": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "passed": 4,
+        "tasks": 4
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "passed": 1,
+        "tasks": 1
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "passed": 35,
+        "tasks": 35
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "passed": 92,
+        "tasks": 92
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "passed": 45,
+        "tasks": 45
+      }
+    ],
+    "web": {
+      "files": 92,
+      "tests": 1002,
+      "passed": 1002
+    }
+  },
+  "scope": "local engineering and affected acceptance; hosted CI is reported on PR #222",
+  "finishedAt": "2026-11-07T17:05:22.861074+00:00"
+}

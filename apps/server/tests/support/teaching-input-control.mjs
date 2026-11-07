@@ -36,7 +36,7 @@ export function reply(response, { text = '', calls = [] } = {}) {
 }
 
 /** Real public HTTP, production owners, native PostgreSQL and resources; only the upstream model is controlled. */
-export async function fixture(answer = (_payload, response) => reply(response, { text: '已按当前问题完成。' })) {
+export async function fixture(answer = (_payload, response) => reply(response, { text: '已按当前问题完成。' }), installation = {}) {
   const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
   if (!postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
   const payloads = [], failures = [], ownedAgents = [], ownedStorages = [], ownedServices = [];
@@ -55,7 +55,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
     webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../../../web/dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
   const runtime = external ? null : openProductRuntime({ root, resources });
-  if (runtime) await runtime.install({ profile: 'local' });
+  if (runtime) await runtime.install({ profile: 'local', ...installation });
   let endpoint = external ?? (await runtime.start()).endpoint;
   const raw = async (route, body, headers = { 'x-xj-space': 'personal' }) => {
     const response = await fetch(new URL('/api/learning/' + route, endpoint), {

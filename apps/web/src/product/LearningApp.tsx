@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { activitySchema, createActivitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data'
-import type { LearningActivity, CreateActivity, CourseActivityResult } from '@xunjie/contracts/learning-data'
+import type { LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data'
 import { courseCatalogSchema, courseReleaseSchema, courseMaterialContentSchema, createCourseActivitySchema } from '@xunjie/contracts/courses'
 import type { Course, CourseRelease, CourseMaterial } from '@xunjie/contracts/courses'
 import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces'
@@ -14,7 +14,7 @@ import { useModelSelection } from './ModelSelection'
 import { CourseTiles, LearningTaskCard, LearningCardGrid } from '../components/home/LearningCards'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
-import { rememberFirstQuestion } from './ActivityConversation'
+import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
 
 
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
@@ -112,7 +112,7 @@ function LearningView() {
   const [password, setPassword] = useState('')
   const [schoolEndpoint, setSchoolEndpoint] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
-  const [pendingRequest, setPendingRequest] = useState<CreateActivity | null>(null)
+  const [pendingRequest, setPendingRequest] = useState<PendingActivityRequest | null>(null)
   const askNext = useRef<boolean | null>(null)
   const [coursePending, setCoursePending] = useState<CreateCourseActivity | null>(null)
   const [notice, setNotice] = useState('')
@@ -292,8 +292,8 @@ function LearningView() {
       try {
         const saved = localStorage.getItem(pendingKey)
         if (saved) {
-          const pending = createActivitySchema.parse(JSON.parse(saved))
-          setPendingRequest(pending); setGoal(pending.goal); setQuestion(pending.question); setReference(pending.references[0]?.url ?? '')
+          const pending = parsePendingActivityRequest(JSON.parse(saved))
+          setPendingRequest(pending); setGoal(pending.input.goal); setQuestion(pending.input.question); setReference(pending.input.references[0]?.url ?? '')
         }
       } catch { setError('无法读取上次活动请求，请保留当前输入并检查浏览器存储。') }
       void api('activities', undefined, key, controller.signal).then(value => {
@@ -376,20 +376,31 @@ function LearningView() {
     const startedSearch = currentSearch.current
     const scopeKey = pendingKey
     const selected = key
-    const input = pendingRequest ?? createActivitySchema.parse({ requestId: crypto.randomUUID(), goal, question,
+    const protectedRequest = localStorage.getItem(scopeKey)
+    const previous = protectedRequest ? parsePendingActivityRequest(JSON.parse(protectedRequest)) : pendingRequest
+    const input = previous?.input ?? createActivitySchema.parse({ requestId: crypto.randomUUID(), goal, question,
       references: reference ? [{ kind: 'url', url: reference, label: reference }] : [] })
-    const ask = askNext.current === true
+    const firstQuestion = previous?.firstQuestion ?? (askNext.current === true && input.question.trim()
+      ? { requestId: crypto.randomUUID(), question: input.question } : null)
     askNext.current = null
-    // Persist the exact request before dispatch; an unknown result keeps this identity across reloads.
-    localStorage.setItem(scopeKey, JSON.stringify(input))
-    setPendingRequest(input)
+    // Protect both operations before creation. A lost creation reply must not erase
+    // the already authorized first question or manufacture another Agent identity.
+    const pending: PendingActivityRequest = { version: 1, input, firstQuestion }
+    localStorage.setItem(scopeKey, JSON.stringify(pending))
+    setPendingRequest(pending)
     try {
       const existing = await api('receipts/' + input.requestId, undefined, selected)
       const activity = activitySchema.parse(existing ?? await api('activities', input, selected))
+      // Complete the durable handoff even if the student changed views while the
+      // creation was in flight. View generations control presentation only.
       const saved = localStorage.getItem(scopeKey)
-      if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
-      if (generation === epoch.current && startedSearch === currentSearch.current) {
-        if (ask && input.question.trim()) rememberFirstQuestion(activity.activityId, input.question)
+      const current = saved ? parsePendingActivityRequest(JSON.parse(saved)) : null
+      const completing = current?.input.requestId === input.requestId
+      // A deliberately discarded/replaced pending request no longer authorizes
+      // a late response to recreate its automatic-send intent.
+      if (completing && current.firstQuestion) rememberFirstQuestion(activity.activityId, current.firstQuestion)
+      if (completing && localStorage.getItem(scopeKey) === saved) localStorage.removeItem(scopeKey)
+      if (completing && generation === epoch.current && startedSearch === currentSearch.current) {
         setPendingRequest(null); rememberActivity(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
         setActivitiesFor(scopeKey)
         setGoal(''); setQuestion(''); setReference('')
@@ -398,7 +409,7 @@ function LearningView() {
       // A rejected input can never succeed under this request identity; let the student edit again.
       if ((error as { code?: string }).code === 'invalid') {
         const saved = localStorage.getItem(scopeKey)
-        if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
+        if (saved && parsePendingActivityRequest(JSON.parse(saved)).input.requestId === input.requestId) localStorage.removeItem(scopeKey)
         if (generation === epoch.current && startedSearch === currentSearch.current) setPendingRequest(null)
       }
       throw error

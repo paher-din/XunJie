@@ -132,6 +132,13 @@ export class ReliableActions {
     if (options.objectIds?.some(id => !works.some(file => file.objectId === id))) throw new Error('所需作品已不在当前工作区。')
     return this.retainNew(input)
   }
+  /** A separately protected question must never capture or acknowledge later composer edits. */
+  async createFixedQuestion(value: ActionInput) {
+    const input = actionInputSchema.parse(value)
+    if (input.receiver.kind !== 'question' || JSON.stringify(input.scope) !== JSON.stringify(scopeFromKey(this.key)))
+      throw new Error('固定问题不属于当前工作区或问题接收方。')
+    return this.retainNew(input)
+  }
   /**
    * An execution intent fixes its own basis only: the current works and the selected state file.
    * It never reads, sends or clears the question draft, and later edits cannot widen it.

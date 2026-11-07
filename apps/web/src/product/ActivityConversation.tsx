@@ -8,6 +8,10 @@ import { Markdown } from '../components/chat/Markdown'
 import { TeachingToolRecords, type TeachingToolLocator } from './TeachingToolRecords'
 import { StudentQuestionCard } from './StudentQuestionCard'
 import { AgentInputRecord, AgentRunControls } from './AgentControls'
+import { actionInputSchema } from '@xunjie/contracts/action-intents'
+import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
+import { firstQuestionKey, firstQuestionToken, readFirstQuestion, rememberFirstQuestion } from './first-question'
+export { firstQuestionKey } from './first-question'
 
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
 
@@ -21,6 +25,9 @@ function runLabel(run: TeachingRun, waits: TeachingWait[]) {
   if (run.state === 'received' || run.state === 'running') return 'Agent 正在准备回答…'
   if (run.state === 'dispatching') return 'Agent 正在生成回答…'
   if (run.state === 'waiting') {
+    if (['learning-fee-budget', 'learning-request-exceeds-budget'].includes(run.reason))
+      return '当前模型额度不足，问题与依据已保留，正在等待可用额度。'
+    if (run.reason.startsWith('learning-')) return '正在排队等待模型资源，问题与依据已保留。'
     if (run.reason === 'student-response-expired') return '回应等待已到期，正在结清原调用；不会重新生成。'
     const reasons = new Set(waits.filter(wait => wait.runId === run.runId && wait.state === 'pending').map(wait => wait.reason))
     return [reasons.has('student') && 'Agent 在等你明确回应，可以继续编辑作品。',
@@ -145,35 +152,40 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   </section>
 }
 
-const FIRST_QUESTION_PREFIX = 'xj:first-question:'
-export const firstQuestionKey = (activityId: string) => FIRST_QUESTION_PREFIX + activityId
-export function rememberFirstQuestion(activityId: string, question: string) {
-  localStorage.setItem(firstQuestionKey(activityId), JSON.stringify({ requestId: crypto.randomUUID(), question }))
-}
-
 /** A first question is already fixed in the activity creation input; this sends the same text through the durable action queue. */
 export function FirstQuestionAutoSend({ activity }: { activity: LearningActivity }) {
-  const { draft, actions, inputInteraction } = useActivitySession()
+  const { actions, inputInteraction } = useActivitySession()
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const receiver = state.receivers.find(item => item.kind === 'question')
-  const sent = useRef(false)
+  const sent = useRef<string | null>(null)
+  const [error, setError] = useState('')
   useEffect(() => {
-    if (sent.current || !receiver || !state.ready || !inputInteraction.ready || !inputInteraction.writable) return
+    if (!state.ready || !inputInteraction.writable) return
     const key = firstQuestionKey(activity.activityId)
-    const raw = localStorage.getItem(key)
-    if (!raw) return
-    let saved: { requestId: string; question: string }
-    try { saved = JSON.parse(raw) as typeof saved } catch { localStorage.removeItem(key); return }
-    if (!saved.requestId || !saved.question.trim()) { localStorage.removeItem(key); return }
-    if (state.items.some(item => item.input.requestId === saved.requestId)) { localStorage.removeItem(key); return }
-    sent.current = true
     void (async () => {
       try {
-        if (!draft.snapshot().question) draft.change(saved.question, [])
-        await actions.create({ requestId: saved.requestId, receiver, delivery: inputInteraction.delivery })
+        const saved = readFirstQuestion(activity.activityId)
+        if (!saved) return
+        // The durable queue owns an already protected request, including its original
+        // receiver and send mode. An in-memory unprotected entry is not enough.
+        if (state.items.some(item => item.input.requestId === saved.requestId && item.phase !== 'unprotected')) {
+          localStorage.removeItem(key); setError(''); return
+        }
+        if (sent.current === saved.requestId) return
+        if (!saved.input && (!receiver || !inputInteraction.ready)) return
+        const input = saved.input ?? actionInputSchema.parse({ requestId: saved.requestId,
+          scope: actionScopeFromWorkspaceKey(actions.key), receiver,
+          draft: { token: firstQuestionToken(saved.requestId), question: saved.question, references: [], bases: [] },
+          works: [], evidence: [], ...(inputInteraction.delivery ? { delivery: inputInteraction.delivery } : {}) })
+        // Persist the binding before any async queue write. A reload or changed
+        // preference cannot alter this request, and no later work/draft is captured.
+        rememberFirstQuestion(activity.activityId, { ...saved, input })
+        sent.current = saved.requestId
+        await actions.createFixedQuestion(input)
         localStorage.removeItem(key)
-      } catch { sent.current = false }
+        setError('')
+      } catch { setError('首问尚未完成可靠交接，原问题仍保留；请检查浏览器存储后重开活动。') }
     })()
-  }, [actions, activity.activityId, draft, receiver, state.ready, state.items, inputInteraction.ready, inputInteraction.writable, inputInteraction.delivery])
-  return null
+  }, [actions, activity.activityId, receiver, state.ready, state.items, inputInteraction.ready, inputInteraction.writable, inputInteraction.delivery])
+  return error ? <p role="alert" className="learning-error">{error}</p> : null
 }

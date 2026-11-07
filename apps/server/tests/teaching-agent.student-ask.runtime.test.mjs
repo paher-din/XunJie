@@ -10,6 +10,7 @@ import { openProductRuntime, restoreProductRecovery, resolveCredential } from '@
 import { openStorage, provisionStorage, createFileBackend } from '@xunjie/storage';
 import { createTeachingAgent, createModelGateway, createSpaces, createCourses, createLearningData,
   teachingAgentMigrations, spaceCourseMigrations, learningMigrations, modelMigrations } from '@xunjie/learning-space';
+import { defaultLearningAdmissionPolicy } from '@xunjie/learning-space';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -38,7 +39,7 @@ function reply(response, { ask = false, text = '', calls } = {}) {
   ]) response.write('data: ' + JSON.stringify(value) + '\n\n');
   response.end('data: [DONE]\n\n');
 }
-async function fixture(answer) {
+async function fixture(answer, installation = {}) {
   const payloads = [], failures = [];
   const controlledAgents = [], controlledStorages = [], controlledServices = [];
   const upstream = createServer(async (request, response) => {
@@ -56,7 +57,7 @@ async function fixture(answer) {
     webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) };
   const runtime = openProductRuntime({ root, resources });
-  await runtime.install({ profile: 'local' });
+  await runtime.install({ profile: 'local', ...installation });
   let endpoint = (await runtime.start()).endpoint;
   const raw = async (route, body) => {
     const response = await fetch(new URL('/api/learning/' + route, endpoint), {
@@ -452,7 +453,7 @@ test('a new model configuration reconstructs the question behind a prior explici
     if (index === 1) reply(response, { ask: true });
     else if (index === 2) await new Promise(resolve => response.once('close', resolve));
     else reply(response, { text: '继续核对原预测及其明确来源。' });
-  });
+  }, { learningAdmissionPolicy: { ...defaultLearningAdmissionPolicy, version: 'student-response-history-v1', maxPrincipalPhysical: 2 } });
   try {
     const runId = await f.send(), question = await f.question(runId), base = `agent/${f.activity.activityId}`;
     const receipt = await f.api(`${base}/questions/${question.questionId}/responses`, { requestId: randomUUID(),

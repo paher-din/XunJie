@@ -55,6 +55,24 @@ export async function recoverySuccessions(root: string): Promise<Succession[]> {
   }
   return result;
 }
+/** Ordered, retired predecessors of a currently authenticated installation, for a host permit.
+ * No credential, activity input or caller-supplied succession fact can populate this chain.
+ */
+export async function recoveryPredecessors(root: string, service: { environmentId: string; serviceId: string }, installationId: string): Promise<Succession[]> {
+  z.uuid().parse(installationId);
+  const facts = (await recoverySuccessions(root)).filter(fact => fact.sourceEnvironmentId === service.environmentId
+    && fact.sourceServiceId === service.serviceId);
+  const chain: Succession[] = [], seen = new Set([installationId]);
+  let current = installationId;
+  while (true) {
+    const previous = facts.filter(fact => fact.targetInstallationId === current);
+    if (!previous.length) return chain.reverse();
+    if (previous.length !== 1 || seen.has(previous[0]!.sourceInstallationId) || chain.length >= 64)
+      throw new Error('Invalid recovery predecessor chain.');
+    const fact = previous[0]!;
+    chain.push(fact); current = fact.sourceInstallationId; seen.add(current);
+  }
+}
 export async function restoreRecoverySuccessions(root: string, value: unknown): Promise<void> {
   for (const fact of z.array(schema).parse(value)) await recordRecoverySuccession(root, fact);
 }

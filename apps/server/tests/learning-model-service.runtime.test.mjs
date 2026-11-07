@@ -20,6 +20,7 @@ import { provisionStorage, openStorage, createFileBackend } from '@xunjie/storag
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
 import { createModelGateway, modelMigrations } from '../../../packages/learning-space/dist/model-connections/index.js';
 import { createModelDeviceTasks } from '../../../packages/learning-space/dist/model-connections/device-tasks.js';
+import { defaultLearningAdmissionPolicy } from '../../../packages/learning-space/dist/model-connections/learning-admission.js';
 
 test('versioned learning tasks survive reopen and reject replacing original owner or recovery generation', { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(); let storage;
@@ -68,7 +69,10 @@ test('real PG and SDK dispatch returns durable acceptance while reads and cancel
     storage = await openStorage({ binding, migrations: modelMigrations, backend: createFileBackend({ id: 'files', root: fixture.root + '/objects' }) });
     let allowed = true;
     const authorize = async () => { if (!allowed) throw new StorageError('forbidden'); };
-    gateway = await createModelGateway(storage, { holder: 'device', authorize });
+    // This fixture deliberately starts one more request after an unconfirmed
+    // cancellation; its unknown upstream reservation must continue occupying slot 1.
+    gateway = await createModelGateway(storage, { holder: 'device', authorize,
+      learningAdmissionPolicy: { ...defaultLearningAdmissionPolicy, version: 'service-cancel-fixture-v1', maxPrincipalPhysical: 2 } });
     const connectionId = randomUUID();
     await gateway.save(identity, { requestId: randomUUID(), connectionId, expectedVersion: 0, name: 'SDK测试', protocol: 'chat-completions',
       baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, path: '/chat/completions', modelId: 'fixture', dialect: 'standard',
@@ -101,6 +105,9 @@ test('real PG and SDK dispatch returns durable acceptance while reads and cancel
     assert.equal(cancelled.cancelRequested, true);
     for (let n = 0; n < 200 && !(await client.checks.read(identity, input.attemptId)).physicalRequestEnded; n++) await new Promise(resolve => setTimeout(resolve, 10));
     assert.equal((await client.checks.read(identity, input.attemptId)).physicalRequestEnded, true);
+    const { rows: [unknown] } = await storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [input.attemptId]);
+    assert.equal(unknown.physical_held, true); assert.equal(unknown.upstream_ended, false);
+    assert.equal(unknown.settled_units, null); assert.equal(unknown.settlement, 'unknown');
     assert.equal(sends, 1);
     assert.ok(seen.filter(item => item.operation === 'checks.dispatch').length >= 2);
     assert.deepEqual(seen.find(item => item.operation === 'checks.receive').args[0].attemptId, input.attemptId);
@@ -126,6 +133,8 @@ test('real PG and SDK dispatch returns durable acceptance while reads and cancel
     }
     assert.equal(completed.state, 'completed');
     assert.equal(completed.text, '等待结果');
+    const { rows: [retained] } = await storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [input.attemptId]);
+    assert.equal(retained.physical_held, true); assert.equal(retained.settled_units, null);
     for (const malformed of [
       { ...completed, upstream: { httpStatus: '200' } },
       { ...completed, createdAt: 'not-a-date' },

@@ -18,6 +18,7 @@ import type { ProductPrerequisiteResult } from './prerequisites.js';
 import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
 import { RecoveryError } from './recovery.js';
 import type { RetirementProof } from './recovery.js';
+import { learningAdmissionPolicySchema, type LearningAdmissionPolicy } from '@xunjie/learning-space';
 
 export interface InstallOptions {
   profile: RuntimeEnvironment['profile'];
@@ -28,6 +29,7 @@ export interface InstallOptions {
   tls?: { certificateFile: string; keyFile: string };
   requiredServiceIds?: string[];
   agent?: { dependencyConnectionId: string };
+  learningAdmissionPolicy?: LearningAdmissionPolicy;
 }
 export interface InstalledConfiguration {
   installed: boolean;
@@ -39,6 +41,7 @@ export interface InstalledConfiguration {
   requiredServiceIds: string[];
   connections: RuntimeConnection[];
   agent?: { dependencyConnectionId: string };
+  learningAdmissionPolicy?: LearningAdmissionPolicy;
 }
 export interface RunningInstance extends ProcessOwner { endpoint: string }
 
@@ -217,6 +220,8 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     prepare: (input?: InstallOptions) => prepare(input),
     async install(input: InstallOptions = { profile: 'local' }): Promise<RuntimeStatus> {
       runtimeEnvironmentSchema.shape.profile.parse(input.profile);
+      const learningAdmissionPolicy = input.learningAdmissionPolicy === undefined ? undefined
+        : learningAdmissionPolicySchema.parse(input.learningAdmissionPolicy);
       await requirePrepared(input, true);
       await initializeRoot(root);
       return withLock(root, async () => {
@@ -264,6 +269,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         await atomicJson(configPath, {
           installed: true, resources, database, host, port: input.publicEndpoint ? port : Number(new URL(existing.services[0]!.endpoint).port || port),
           ...(input.tls ? { tls: input.tls } : {}), ...(input.agent ? { agent: input.agent } : {}), requiredServiceIds: input.requiredServiceIds ?? [], connections: [],
+          ...(learningAdmissionPolicy ? { learningAdmissionPolicy } : {}),
         } satisfies InstalledConfiguration);
         const installed: RuntimeStatus = { state: 'installed', environment: existing, dependencies: [] };
         await atomicJson(join(root, 'status.json'), installed);

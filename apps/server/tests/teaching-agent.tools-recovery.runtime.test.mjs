@@ -17,6 +17,7 @@ import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { executionActionSchema } from '@xunjie/contracts/execution';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
 import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
+import { runPublishedAggregation } from './support/teaching-recovery.mjs';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
@@ -1020,14 +1021,7 @@ test('expired Waits archive a late real Wasm result once, preserve paused or sto
         const action = claimed.action;
         assert.equal(action.requestId, commandId);
         // Execute the published WP03 Wasm; delay only the original receipt and result delivery.
-        const ts = await import('../../../packages/learning-space/node_modules/typescript/lib/typescript.js');
-        const source = await readFile(new URL('../../web/src/tool-execution/algorithm.ts', import.meta.url), 'utf8');
-        const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-        const algorithm = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-        const published = await aggregationPackage();
-        const computed = algorithm.runAggregation({ ...algorithm.jobFromAction(action, action.execution.limits),
-          bytes: Buffer.from(published.algorithmBase64, 'base64'), memoryPages: manifest.algorithm.memoryPages,
-          entry: manifest.algorithm.entry });
+        const { computed } = await runPublishedAggregation(action, manifest);
         assert.equal(computed.result.value, 83.33333333333333);
         assert.equal(computed.result.groups[0].mean, 83);
         if (terminalState === 'stopped') {
@@ -1138,14 +1132,7 @@ test('a real Wasm result arriving after stopped terminal is archived and consume
       assert.equal(action.requestId, commandId);
       assert.deepEqual(action.execution.basis.works, [work]);
       // Compute before stop at the real WP03 ABI. Only delivery of the original receipt/result is late.
-      const ts = await import('../../../packages/learning-space/node_modules/typescript/lib/typescript.js');
-      const source = await readFile(new URL('../../web/src/tool-execution/algorithm.ts', import.meta.url), 'utf8');
-      const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-      const algorithm = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-      const published = await aggregationPackage();
-      const computed = algorithm.runAggregation({ ...algorithm.jobFromAction(action, action.execution.limits),
-        bytes: Buffer.from(published.algorithmBase64, 'base64'), memoryPages: manifest.algorithm.memoryPages,
-        entry: manifest.algorithm.entry });
+      const { computed } = await runPublishedAggregation(action, manifest);
       assert.equal(computed.result.value, 83.33333333333333);
       assert.equal(computed.result.groups[0].mean, 83);
       await agent.stop(f.identity, f.activity.activityId, runId, { requestId: randomUUID() });

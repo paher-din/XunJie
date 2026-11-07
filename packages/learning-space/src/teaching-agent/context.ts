@@ -63,6 +63,26 @@ function workBlock(input: ActionInput) {
   }).join('\n\n');
 }
 
+/** The adopted revision remains usable when native history changes model owner or protocol. */
+export function fixedInputText(input: ActionInput) {
+  return [referenceBlock(input), workBlock(input), input.draft.question].filter(Boolean).join('\n\n---\n\n');
+}
+
+export function portableContext(history: ContextMessage[]) {
+  return history.flatMap(message => {
+    const role = message.role === 'student' ? 'user' as const : 'assistant' as const;
+    const parts: { role: typeof role; text: string }[] = [];
+    let offset = 0;
+    while (offset < message.text.length) {
+      let end = Math.min(offset + 400_000, message.text.length);
+      if (end < message.text.length && /[\uD800-\uDBFF]/.test(message.text[end - 1]!)) end--;
+      parts.push({ role, text: message.text.slice(offset, end) });
+      offset = end;
+    }
+    return parts;
+  });
+}
+
 export function buildContext(activity: LearningActivity, input: ActionInput, history: ContextMessage[],
   options: { contextWindow?: number; maxOutputTokens: number }): BuiltContext {
   const sources: ContextSource[] = [
@@ -87,7 +107,7 @@ export function buildContext(activity: LearningActivity, input: ActionInput, his
   ].filter(Boolean);
   const system = sections.join('\n\n---\n\n');
   // Fixed works and citations belong to this request, not to the stable system prefix.
-  const userText = [referenceBlock(input), workBlock(input), input.draft.question].filter(Boolean).join('\n\n---\n\n');
+  const userText = fixedInputText(input);
   const transcriptChars = history.reduce((total, message) => total + message.role.length + message.text.length, 0);
   const inputChars = system.length + userText.length + transcriptChars;
   const outputReserve = options.maxOutputTokens;

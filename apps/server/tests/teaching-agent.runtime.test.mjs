@@ -312,7 +312,8 @@ test('long histories, large inputs and saved 1M windows are used without probe l
     assert.equal(roles[0], 'system');
     assert.equal(roles.filter(role => role === 'user').length, 11, 'a sealed segment keeps prior student turns with their native role');
     assert.equal(roles.filter(role => role === 'assistant').length, 10, 'a sealed segment keeps prior Agent turns with their native role');
-    assert.equal(received[10].messages[1].content, '第 1 个问题。');
+    assert.ok(received[10].messages[1].content.endsWith('第 1 个问题。'));
+    assert.ok(received[10].messages[1].content.includes(big.value), 'portable history retains the first adopted fixed material');
   } catch (error) { failure = error; }
   finally {
     try { await runtime.stop(); } catch (error) { failure = failure ? new AggregateError([failure, error]) : error; }

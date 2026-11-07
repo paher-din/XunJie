@@ -11,6 +11,7 @@ import { createAgentConnection } from './agent-connections.js';
 import { readJson } from './io.js';
 import type { CapabilityHandler } from './connections.js';
 import { RuntimeConnectionError } from './connections.js';
+import { isRecoverySuccessor } from './recovery-successions.js';
 import { teachingAgentCallSchema, teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
 
 /** The standalone composition owns Agent facts only; dependencies stay with their actual owners. */
@@ -40,7 +41,7 @@ export function createStandaloneAgentApplication(options: {
   const teaching = createTeachingAgent(storage, { ...dependencies, models, start: false,
     withAuthority: (value, work) => authority.run(value, work) });
   const service = createTeachingAgentService(teaching, async (identity, activityId) => {
-    await dependencies.activity(identity, activityId);
+    await dependencies.authorizeActivity(identity, activityId);
   });
   const chunks = createChunkChannel(storage);
   const chunked = chunks.wrap(async value => {
@@ -49,11 +50,13 @@ export function createStandaloneAgentApplication(options: {
       return await activityContext.run(input.activityId, () => service(input));
     }
     catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
-  }, { authorize: async (value, source) => {
+  }, { successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
+    && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
+  authorize: async (value, source) => {
     try { await source.assertAuthorized?.(); }
     catch (error) { throw new StorageError(error instanceof RuntimeConnectionError && error.code === 'unauthorized' ? 'forbidden' : 'unavailable'); }
     const input = teachingAgentCallSchema.parse(value);
-    await dependencies.activity(input.identity, input.activityId);
+    await dependencies.authorizeActivity(input.identity, input.activityId);
   } });
   const handler: CapabilityHandler = async (value, source) => {
     try {

@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { teachingRunControlReceiptSchema } from '@xunjie/contracts/teaching-agent'
+import { defaultLearningAdmissionPolicy } from '@xunjie/learning-space'
 import { fixture, reply, until } from '../../server/tests/support/teaching-input-control.mjs'
 
 const evidence = process.env.XUNJIE_INPUT_CONTROL_EVIDENCE_DIR
@@ -173,7 +174,7 @@ test('stop and selected continuation keep original control identities and remove
   const f = await fixture(async (_payload: unknown, response: import('node:http').ServerResponse, index: number) => {
     if (index === 1) await new Promise<void>(resolve => response.once('close', resolve))
     else reply(response, { text: '只处理你明确选择继续的输入。' })
-  })
+  }, { learningAdmissionPolicy: { ...defaultLearningAdmissionPolicy, version: 'input-control-continuation-v1', maxPrincipalPhysical: 2 } })
   try {
     await f.configure()
     const activity = await f.activity('停止后选择待处理输入继续')

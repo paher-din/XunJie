@@ -10,6 +10,7 @@ import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs
 const { createModelGateway, modelMigrations } = await import('../../../packages/learning-space/dist/model-connections/index.js');
 const { createSchoolClient } = await import('../../../packages/product-runtime/dist/school-client.js');
 import { createConnectionAuthority } from '../../../packages/product-runtime/dist/connections.js';
+import { defaultLearningAdmissionPolicy } from '../../../packages/learning-space/dist/model-connections/learning-admission.js';
 
 for (const independent of [false, true]) test(`paired learning tasks receive, claim, query and stop through ${independent ? 'independent modelBinding' : 'legacy localBinding'}`, { timeout: 60000 }, async () => {
   const fixture = await nativeFixture(); let storage; let models; let authority; let pair;
@@ -94,6 +95,10 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
     const client = createSchoolClient(root, { formatVersion: 1, environmentId: localTarget.environmentId, installationId, clientNamespace: 'fixture', profile: 'local', services: [] }, local);
     models = await createModelGateway(storage, { holder: 'device', authorize: client.authorizeModel,
       authorizeDispatch: async identity => { await beforeDispatch?.(); await client.authorizeModelDispatch(identity); },
+      // One initial cancellation plus three distinct live-revocation scenarios
+      // retain four unknown upstream slots. This finite fixture policy leaves the
+      // production default of one slot per principal unchanged.
+      learningAdmissionPolicy: { ...defaultLearningAdmissionPolicy, version: 'school-task-revocations-fixture-v1', maxPrincipalPhysical: 4 },
       schoolDefault: client.schoolModel, authorizationPollMs: 20 }); local.models = models;
     if (independent) {
       assert.deepEqual(await client.configureModel({ connectionId, runtimeConnectionId, target: localTarget }), { identity: actor, target: localTarget, configured: true });
@@ -171,6 +176,14 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
     const segmentId = randomUUID(), attemptId = randomUUID();
     const serviceOrigin = { service: { environmentId: actor.environmentId, serviceId: randomUUID() }, identity: actor, recoveryGeneration: installationId };
     const origin = independent ? { ...serviceOrigin, installationId: randomUUID(), grantId: randomUUID() } : { ...serviceOrigin, runId: randomUUID(), attemptId };
+    if (independent) {
+      const agentGrant = await authority.authorize({ sourceEnvironmentId: origin.service.environmentId,
+        sourceServiceId: origin.service.serviceId, sourceInstallationId: origin.installationId, capabilities: ['learning.authority'] });
+      origin.grantId = agentGrant.grantId;
+      // Same-installation grant renewal is legal only after the host verifies the
+      // current WP01 grant; random credentials are not a renewal permit.
+      verifyAgent = true;
+    }
     const runAuthority = { driverId: 'test-agent-driver', runId: randomUUID(), activityId: randomUUID(), generation: 1 };
     let retiredLease;
     permittedLease = runAuthority;
@@ -241,6 +254,9 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
     assert.equal((await task('checks.cancel', [attemptId])).value.cancelRequested, true);
     for (let n = 0; n < 100 && !(await models.checks.read(actor, attemptId)).physicalRequestEnded; n++) await new Promise(resolve => setTimeout(resolve, 10));
     assert.equal((await models.checks.read(actor, attemptId)).physicalRequestEnded, true);
+    const { rows: [unknown] } = await storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [attemptId]);
+    assert.equal(unknown.physical_held, true); assert.equal(unknown.upstream_ended, false);
+    assert.equal(unknown.settled_units, null); assert.equal(unknown.settlement, 'unknown');
     assert.equal(calls, 1);
     if (blockedGrant) {
       assert.equal((await models.deviceTasks.read(actor, pair, blockedGrant.taskId)).receipt, null);
@@ -248,11 +264,16 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
       await client.pollModelTasks(() => true);
       assert.equal((await models.deviceTasks.read(actor, pair, blockedGrant.taskId)).receipt.ok, true);
     }
-    assert.deepEqual(await task('checks.read', [attemptId], { ...origin, service: { ...origin.service, serviceId: randomUUID() } }), { ok: false, code: 'identity-conflict' });
+    assert.deepEqual(await task('checks.read', [attemptId], { ...origin, service: { ...origin.service, serviceId: randomUUID() } }),
+      { ok: false, code: independent ? 'forbidden' : 'identity-conflict' });
     if (independent) {
       for (const changed of [{ ...origin, installationId: randomUUID() }, { ...origin, grantId: randomUUID() },
         { ...origin, service: { ...origin.service, environmentId: randomUUID() } }])
-        assert.deepEqual(await task('checks.read', [attemptId], changed), { ok: false, code: 'identity-conflict' });
+        assert.deepEqual(await task('checks.read', [attemptId], changed), { ok: false, code: 'forbidden' });
+      const fixed = await models.origins.read(actor, attemptId);
+      assert.equal(fixed.grantId, origin.grantId); assert.equal(fixed.installationId, origin.installationId);
+      const { rows: authorizedOrigins } = await storage.read('SELECT grant_id FROM model_origin_authorizations WHERE association_id=$1', [attemptId]);
+      assert.deepEqual(authorizedOrigins.map(row => row.grant_id), [origin.grantId], 'forged credentials never enter the origin authorization ledger');
       accessTarget = { ...localTarget, serviceId: randomUUID() };
       assert.deepEqual(await task('checks.read', [attemptId]), { ok: false, code: 'forbidden' });
       accessTarget = localTarget;
@@ -271,7 +292,13 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
       let entered, release;
       const enteredSend = new Promise(resolve => { entered = resolve; });
       const releaseSend = new Promise(resolve => { release = resolve; });
-      beforeDispatch = async () => { entered(); await releaseSend; };
+      beforeDispatch = async () => {
+        const { rows: [row] } = await storage.read('SELECT state FROM model_attempts WHERE id=$1', [nextAttempt]);
+        // Hold background delivery after its durable claim, not the synchronous
+        // preflight that must finish before the dispatch receipt can return.
+        if (row.state !== 'dispatched') return;
+        entered(); await releaseSend;
+      };
       try {
         assert.equal((await task('checks.dispatch', [nextAttempt])).ok, true);
         await enteredSend;
@@ -319,8 +346,13 @@ for (const independent of [false, true]) test(`paired learning tasks receive, cl
           await new Promise(resolve => setTimeout(resolve, 10));
         } while (true);
         assert.equal(stopped.cancelRequested, true); assert.equal(stopped.state, 'cancelled');
+        const { rows: [unconfirmed] } = await storage.read('SELECT * FROM model_learning_admissions WHERE attempt_id=$1', [attemptId]);
+        assert.equal(unconfirmed.physical_held, true); assert.equal(unconfirmed.upstream_ended, false);
+        assert.equal(unconfirmed.settled_units, null); assert.equal(unconfirmed.settlement, 'unknown');
         assert.equal(calls, previous + 1);
       }
+      const { rows: [held] } = await storage.read('SELECT count(*)::int AS n FROM model_learning_admissions WHERE physical_held');
+      assert.equal(held.n, 4, 'all four aborted upstream calls retain their physical reservations');
     }
   } finally {
     models?.closeWrites(); await models?.checks.drain(); await storage?.close();

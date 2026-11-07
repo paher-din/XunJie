@@ -16,6 +16,7 @@ import { openProductRuntime } from './runtime.js';
 import { createRecoveryManager, RecoveryError } from './recovery.js';
 import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
 import { recordRecoverySuccession } from './recovery-successions.js';
+import { validateAgentTransfers } from './agent-transfer-journal.js';
 import { createSshRecoveryReceiver } from './ssh-recovery.js';
 import type { SshRecoveryReceiver } from './ssh-recovery.js';
 import type { BackupPolicy, ReceiverExecutionBoundary, RecoveryOwner } from './recovery-types.js';
@@ -110,7 +111,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     },
   });
   const runtimeParticipant: MaintenanceParticipant = {
-    descriptor: { serviceId: service.serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: ['installation'] },
+    descriptor: { serviceId: service.serviceId, schemaVersion: '2', resourceRoots: [], configurationRefs: ['installation'] },
     async closeWrites() { gatesClosed = true; },
     async closeDispatch() { gatesClosed = true; await application?.lifecycle?.pause(); },
     async drain() {
@@ -121,7 +122,10 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         await new Promise(resolve => setTimeout(resolve, 10));
       }
     },
-    async validate() { if (config.database.mode !== 'none') await inspectDatabase(root, config.database); },
+    async validate() {
+      if (config.database.mode !== 'none') await inspectDatabase(root, config.database);
+      await validateAgentTransfers(root);
+    },
     async resume() {
       if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
       gatesClosed = false;

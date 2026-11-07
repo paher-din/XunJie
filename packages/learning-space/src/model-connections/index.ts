@@ -7,6 +7,9 @@ import type { ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xun
 import type { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
+import { learningAdmissionMigration, type LearningAdmissionPolicy } from './learning-admission.js';
+export type { LearningAdmissionPolicy } from './learning-admission.js';
+export { learningAdmissionPolicySchema, defaultLearningAdmissionPolicy } from './learning-admission.js';
 import type { ModelCheckInput, ModelAttempt } from '@xunjie/contracts/model-connections';
 import { modelDeviceChoicesMigration, modelDeviceRevocationsMigration } from './device-choices.js';
 import { createModelSelections, selectionMigrations } from './selection.js';
@@ -16,7 +19,8 @@ import { createModelRouting, modelRoutingMigrations } from './routing.js';
 import { measuredCapabilities } from './capabilities.js';
 import { createModelResults } from './results.js';
 import { adapterReady } from './transport.js';
-import { modelOriginMigration, createModelOrigins } from './origins.js';
+import { modelOriginMigration, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, createModelOrigins } from './origins.js';
+export { modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from './origins.js';
 import { pairedLearningMigration, validatePairedLearning } from './paired-learning.js';
 export { createPairedLearningModels } from './paired-learning.js';
 export type { PairedModelOrigin, PairedLearningOptions, ModelDeviceBinding } from './paired-learning.js';
@@ -47,7 +51,7 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
     source jsonb NOT NULL,body jsonb NOT NULL);
   ALTER TABLE model_paired_grants DROP CONSTRAINT model_paired_grants_kind_check;
   ALTER TABLE model_paired_grants ADD CONSTRAINT model_paired_grants_kind_check CHECK(kind IN ('segment','attempt','pin'));
-` }];
+` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
@@ -58,6 +62,8 @@ export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promi
   /** Live check for a running original attempt; MUST bypass any task admission cache. */
   authorizeActive?(identity: SpaceIdentity, attemptId: string): Promise<void>;
   authorizationPollMs?: number;
+  /** Trusted owner policy; a version cannot be reused with different values. */
+  learningAdmissionPolicy?: LearningAdmissionPolicy;
   /** Trusted product composition; omitted holders use the school/public policy. */
   holder?: 'school' | 'device';
   schoolDefault?(identity: SpaceIdentity): Promise<z.infer<typeof schoolModelSchema> | null>;
@@ -257,6 +263,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); } });
   const checks = createChecks(storage, {
     dispatcher: options.dispatcher, authorizationPollMs: options.authorizationPollMs,
+    learningAdmissionPolicy: options.learningAdmissionPolicy,
     async assertActive(identity, attempt, ref) {
       if (options.authorizeActive) await options.authorizeActive(identity, attempt.attemptId);
       else if (options.authorizeDispatch) await options.authorizeDispatch(identity);
