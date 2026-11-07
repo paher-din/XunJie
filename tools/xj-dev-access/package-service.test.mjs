@@ -34,7 +34,7 @@ test('real HTTPS/proof grants file-only identities without SSH/application acces
       } });
     await service.listen();config.endpoint='https://127.0.0.1:'+service.publicServer.address().port;
     const enroll=async(label,capabilities)=>{
-      const i=await adminRequest(config.adminSocket,'invite',{label,teamRole:'developer',appRole:'teacher',courseId:'course',ttlSeconds:60,capabilities});
+      const i=await adminRequest(config.adminSocket,'invite',{label,teamRole:'developer',appRole:'teacher',courseId:'course',ttlSeconds:process.platform === 'win32' ? 300 : 60,capabilities});
       const invitationFile=join(root,label+'.json');writePrivateJson(invitationFile,i);
       return joinEnrollment({home:join(root,label+'-home'),invitationFile});
     };

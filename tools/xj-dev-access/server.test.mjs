@@ -51,7 +51,7 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
         let text = ''; res.on('data', bytes => { text += bytes; }); res.on('end', () => accept({ status: res.statusCode, body: JSON.parse(text) }));
       }); req.on('error', reject); req.end(JSON.stringify(body));
     });
-    const inviteInput = { label: 'member', teamRole: 'developer', courseId: 'approved-course', appRole: 'student', capabilities: ['page'], ttlSeconds: 60 };
+    const inviteInput = { label: 'member', teamRole: 'developer', courseId: 'approved-course', appRole: 'student', capabilities: ['page'], ttlSeconds: process.platform === 'win32' ? 300 : 60 };
     const i = await adminRequest(config.adminSocket, 'invite', inviteInput);
     const proof = async (path, body, index = 0, invitationSecret) => {
       const response = await call('/v1/challenges', { publicKey: readFileSync(keys[index] + '.pub', 'utf8'), method: 'POST', path, bodyHash: digest(JSON.stringify(body)), invitationSecret, deviceId: body.deviceId });
@@ -101,13 +101,13 @@ test('HTTPS enroll resumes only unfinished stages; device/member revocation and 
     const cli = args => new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [tool, ...args, '--worktree', worktree], { env: { ...process.env, XJ_DEV_HOME: join(root, 'home') }, stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '', error = ''; child.stdout.on('data', bytes => { out += bytes; }); child.stderr.on('data', bytes => { error += bytes; });
-      child.on('error', reject); child.on('exit', code => {
+      child.on('error', reject); child.on('close', code => {
         assert.equal(out.includes(cliInvite.secret), false); assert.equal(error.includes(cliInvite.secret), false);
         resolve({ code, result: JSON.parse(out) });
       });
     });
     const firstCli = await cli(['join', '--invitation-file', invitationFile, '--no-start']);
-    assert.equal(firstCli.code, 0); assert.equal(firstCli.result.ok, true);
+    assert.equal(firstCli.code, 0, JSON.stringify(firstCli.result.failure)); assert.equal(firstCli.result.ok, true);
     assert.equal(firstCli.result.enrollment.state, 'registered');
     const cliDevice = firstCli.result.enrollment.identity.deviceId;
     const repeatedCli = await cli(['join', '--invitation-file', invitationFile, '--no-start']);

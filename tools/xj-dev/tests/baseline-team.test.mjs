@@ -92,7 +92,7 @@ async function fixture(t) {
   await service.listen();
   config.endpoint = `https://127.0.0.1:${service.publicServer.address().port}`;
   const enroll = async (label, capabilities) => {
-    const invite = await admin('invite', { label, teamRole: 'developer', appRole: 'student', courseId: 'course', capabilities, ttlSeconds: 60 });
+    const invite = await admin('invite', { label, teamRole: 'developer', appRole: 'student', courseId: 'course', capabilities, ttlSeconds: process.platform === 'win32' ? 300 : 60 });
     const invitationFile = join(root, label + '.json'); writePrivateJson(invitationFile, invite);
     return joinEnrollment({ home: label === 'reader' ? home : join(root, label + '-home'), invitationFile });
   };

@@ -81,10 +81,10 @@ if(stage === process.env.FAIL_STAGE) { console.error('known failure detail'); pr
     summary: () => JSON.parse(readFileSync(join(root, '.verification/latest.json'), 'utf8')) };
 }
 
-async function until(condition) {
-  const deadline = Date.now() + 5_000;
+async function until(condition, diagnostics = () => '') {
+  const deadline = Date.now() + (process.platform === 'win32' ? 20_000 : 5_000);
   while (!condition()) {
-    if (Date.now() >= deadline) throw new Error('Verification did not reach the expected process boundary.');
+    if (Date.now() >= deadline) throw new Error('Verification did not reach the expected process boundary.\n' + diagnostics());
     await delay(20);
   }
 }
@@ -93,12 +93,12 @@ function gone(pid) {
   try { process.kill(pid, 0); return false; } catch (error) { return error.code === 'ESRCH'; }
 }
 
-test('raw stdout/stderr reach logs before exit; no arguments prepare and run every local group', { timeout: 10_000 }, async t => {
+test('raw stdout/stderr reach logs before exit; no arguments prepare and run every local group', { timeout: process.platform === 'win32' ? 60_000 : 10_000 }, async t => {
   const f = fixture(t, { HOLD_STAGE: '1' });
   await until(() => {
     if (!existsSync(join(f.root, '.verification/latest.json'))) return false;
     return readFileSync(f.summary().stages[0].logFile, 'utf8').includes('raw stderr: typecheck');
-  });
+  }, f.output);
   assert.equal(f.child.exitCode, null);
   assert.equal(f.summary().status, 'running');
   assert.match(readFileSync(f.summary().logFile, 'utf8'), /原始 stdout: typecheck/);

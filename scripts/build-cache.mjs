@@ -134,7 +134,19 @@ async function lock(cache, signal) {
     // neither interleave with itself nor race the unlink in release().
     const next = queue.then(async () => {
       const temporary = `${path}.${randomUUID()}.tmp`;
-      try { await writeFile(temporary, snapshot); await rename(temporary, path); }
+      try {
+        await writeFile(temporary, snapshot);
+        // Windows can briefly refuse replacement while a reader/scanner holds
+        // the previous ticket. Keep that ticket intact and retry atomically;
+        // never unlink a live owner to make publication succeed.
+        for (let attempt = 0; ; attempt++) {
+          try { await rename(temporary, path); break; }
+          catch (error) {
+            if (process.platform !== 'win32' || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code) || attempt >= 10) throw error;
+            await delay(50, undefined, { signal });
+          }
+        }
+      }
       finally { await rm(temporary, { force: true }); }
     });
     queue = next.catch(() => {});
