@@ -344,20 +344,40 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString(),
         resolvedAgent, contextHistory: history, selectionVersion: selection.version, selectionPinId };
     }
+    if (previous && plan.input.segmentId !== previous.segment_id) {
+      // A fresh native segment needs a current user turn. Without a new direction,
+      // resume the adopted fixed intent; portable tool facts/reasoning cannot replace it.
+      if (!fixedInputs.length) {
+        const { rows: adopted } = await storage.read(`SELECT v.body FROM teaching_inputs i
+          JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
+          WHERE i.adopted_run_id=$1 ORDER BY i.seq`, [run.runId]);
+        plan.input.input.text = adopted.map(row => fixedInputText(actionInputSchema.parse(row.body)))
+          .filter(Boolean).join('\n\n---\n\n');
+      }
+      // Portable history preserves the source facts, but not native image bytes.
+      // Reuse the original retained references instead of claiming visual evidence
+      // from text alone or dispatching the PDF/image read under another Command.
+      const { rows: effects } = await storage.read(`SELECT outcome FROM teaching_commands
+        WHERE run_id=$1 AND state='settled' ORDER BY created_at,ordinal`, [run.runId]);
+      const images = effects.flatMap(row => (row.outcome as TeachingToolOutcome).feedback.images);
+      plan.input.input.images = [...new Map(images.map(image => [image.imageId + ':' + image.version, image])).values()];
+    }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
     const policy = plan.resolvedAgent?.definition.contextPolicy;
-    if (plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
+    if (plan.input.input.images.length > 8
+      || plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
       || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
+      const requiredInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
       await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
         { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
-          inputChars: plan.input.input.text.length, policy,
-          requiredScope: { questions: fixedInputs.map(item => item.input.requestId),
-            references: fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.referenceId)),
-            works: fixedInputs.flatMap(item => item.input.works.map(work => work.contentId)),
-            workNames: [...new Set(fixedInputs.flatMap(item => item.input.works.map(work => work.name)))],
-            referenceNames: [...new Set(fixedInputs.flatMap(item => item.input.draft.references.map(ref => ref.sourceName)))] } } });
+          inputChars: plan.input.input.text.length, imageCount: plan.input.input.images.length, policy,
+          requiredScope: { questions: requiredInputs.map(input => input.requestId),
+            references: requiredInputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+            works: requiredInputs.flatMap(input => input.works.map(work => work.contentId)),
+            workNames: [...new Set(requiredInputs.flatMap(input => input.works.map(work => work.name)))],
+            referenceNames: [...new Set(requiredInputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] } } });
       return null;
     }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;

@@ -1,0 +1,150 @@
+[
+  {
+    "name": "Skia",
+    "version": "b94213a11b3a2edadfae89f0c57a7f4ab72772c9",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://raw.githubusercontent.com/google/skia/b94213a11b3a2edadfae89f0c57a7f4ab72772c9/LICENSE",
+        "sha256": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd"
+      }
+    ]
+  },
+  {
+    "name": "expat",
+    "version": "6154446fccefbf3ca644894f598969113b0c7bcd",
+    "files": [
+      {
+        "path": "COPYING",
+        "source": "https://chromium.googlesource.com/external/github.com/libexpat/libexpat/+/6154446fccefbf3ca644894f598969113b0c7bcd/COPYING?format=TEXT",
+        "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87"
+      }
+    ]
+  },
+  {
+    "name": "freetype",
+    "version": "264b5fbf5b912b39f98d038bf75d39be0a73f21b",
+    "files": [
+      {
+        "path": "docs/FTL.TXT",
+        "source": "https://chromium.googlesource.com/chromium/src/third_party/freetype2/+/264b5fbf5b912b39f98d038bf75d39be0a73f21b/docs/FTL.TXT?format=TEXT",
+        "sha256": "5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f"
+      }
+    ]
+  },
+  {
+    "name": "brotli",
+    "version": "6d03dfbedda1615c4cba1211f8d81735575209c8",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://skia.googlesource.com/external/github.com/google/brotli/+/6d03dfbedda1615c4cba1211f8d81735575209c8/LICENSE?format=TEXT",
+        "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+      }
+    ]
+  },
+  {
+    "name": "harfbuzz",
+    "version": "9cb1fee51069b206effb4736e443b038d230789d",
+    "files": [
+      {
+        "path": "COPYING",
+        "source": "https://chromium.googlesource.com/external/github.com/harfbuzz/harfbuzz/+/9cb1fee51069b206effb4736e443b038d230789d/COPYING?format=TEXT",
+        "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64"
+      }
+    ]
+  },
+  {
+    "name": "icu",
+    "version": "d578f2e8b7bd5938e21cfb6bf15c079e0aa5b738",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://chromium.googlesource.com/chromium/deps/icu/+/d578f2e8b7bd5938e21cfb6bf15c079e0aa5b738/LICENSE?format=TEXT",
+        "sha256": "e55522d81edc687a341a4411e0776e54ca654e90147f354a90458aaced4116af"
+      }
+    ]
+  },
+  {
+    "name": "libjxl",
+    "version": "332feb17d17311c748445f7ee75c4fb55cc38530",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://chromium.googlesource.com/external/gitlab.com/wg1/jpeg-xl/+/332feb17d17311c748445f7ee75c4fb55cc38530/LICENSE?format=TEXT",
+        "sha256": "8405932022a556380c2d8c272eff154a923feb197233f348ce5f7334fb0a5ede"
+      }
+    ]
+  },
+  {
+    "name": "highway",
+    "version": "457c891775a7397bdb0376bb1031e6e027af1c48",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://chromium.googlesource.com/external/github.com/google/highway/+/457c891775a7397bdb0376bb1031e6e027af1c48/LICENSE?format=TEXT",
+        "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"
+      }
+    ]
+  },
+  {
+    "name": "libjpeg-turbo",
+    "version": "e14cbfaa85529d47f9f55b0f104a579c1061f9ad",
+    "files": [
+      {
+        "path": "LICENSE.md",
+        "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo/+/e14cbfaa85529d47f9f55b0f104a579c1061f9ad/LICENSE.md?format=TEXT",
+        "sha256": "96f5b328adbb78eeaaec6980d73fd558cb1e4d62560ed615646bc3cf5e532430"
+      },
+      {
+        "path": "README.ijg",
+        "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo/+/e14cbfaa85529d47f9f55b0f104a579c1061f9ad/README.ijg?format=TEXT",
+        "sha256": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6"
+      }
+    ]
+  },
+  {
+    "name": "libpng",
+    "version": "d5515b5b8be3901aac04e5bd8bd5c89f287bcd33",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://skia.googlesource.com/third_party/libpng/+/d5515b5b8be3901aac04e5bd8bd5c89f287bcd33/LICENSE?format=TEXT",
+        "sha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526"
+      }
+    ]
+  },
+  {
+    "name": "libwebp",
+    "version": "845d5476a866141ba35ac133f856fa62f0b7445f",
+    "files": [
+      {
+        "path": "COPYING",
+        "source": "https://chromium.googlesource.com/webm/libwebp/+/845d5476a866141ba35ac133f856fa62f0b7445f/COPYING?format=TEXT",
+        "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf"
+      }
+    ]
+  },
+  {
+    "name": "wuffs",
+    "version": "e3f919ccfe3ef542cfc983a82146070258fb57f8",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://skia.googlesource.com/external/github.com/google/wuffs-mirror-release-c/+/e3f919ccfe3ef542cfc983a82146070258fb57f8/LICENSE?format=TEXT",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "name": "zlib",
+    "version": "646b7f569718921d7d4b5b8e22572ff6c76f2596",
+    "files": [
+      {
+        "path": "LICENSE",
+        "source": "https://chromium.googlesource.com/chromium/src/third_party/zlib/+/646b7f569718921d7d4b5b8e22572ff6c76f2596/LICENSE?format=TEXT",
+        "sha256": "e1cfcc55c325b3f78cf55df9664abaa066e2271dffe8213347d9fccdfbac8f2c"
+      }
+    ]
+  }
+]

@@ -165,6 +165,7 @@ export interface CourseReferenceAuthority {
 }
 /** The learning-data owner consumes only this narrow, current-authority interface. */
 export interface CourseBindingAuthority extends CourseReferenceAuthority {
+  readMaterial?(identity: SpaceIdentity, releaseId: string, materialId: string): Promise<CourseMaterialContent>;
   prepare(input: CoursePrepareInput): Promise<CourseBindingState>;
   confirm(input: CourseConfirmInput): Promise<CourseBindingState>;
   authorize(identity: SpaceIdentity, pointer: CourseBindingPointer): Promise<void>;

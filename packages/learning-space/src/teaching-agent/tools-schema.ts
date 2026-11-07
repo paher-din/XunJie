@@ -47,6 +47,18 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
     tool('read_result', 'Read the real result of an approved or original Agent execution.', objectSchema({ requestId: uuid })),
     tool('execution_query', 'Query the original execution identity without replaying it.', objectSchema({ requestId: uuid })),
     tool('execution_stop', 'Stop only an execution originally started by this Agent run.', objectSchema({ requestId: uuid }))];
+  if (scope.input.draft.references.some(reference => reference.source.kind === 'pdf')) definitions.push(
+    tool('read_pdf_text', 'Continue native text from an already retained PDF readingId returned by read_pdf, read_reference or find_pdf. Uses actual page index and UTF-16 start/length; nextStart continues the same saved text without rendering. No OCR or image reading.',
+      objectSchema({ referenceId: uuid, readingId: uuid, page: { type: 'integer', minimum: 1, maximum: 100000 },
+        start: { type: 'integer', minimum: 0, maximum: 1000000 }, length: { type: 'integer', minimum: 1, maximum: 2400 } })),
+    tool('find_pdf', 'Case-sensitive native-text search on one or two explicit actual PDF pages. No OCR or visual reading; empty scanned text is not evidence of no visual match. Offsets are UTF-16 code units.',
+      objectSchema({ referenceId: uuid, pages: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 100000 }, minItems: 1, maxItems: 2, uniqueItems: true },
+        query: { type: 'string', minLength: 1, maxLength: 200 } })),
+    tool('read_pdf', 'Read at most two actual 1-based pages of the PDF selected by referenceId. Page images are sent only on the fixed verified image route; printed labels are not page indexes. Region coordinates use the rotated visible page, top-left origin, normalized 0..1. Never claim unread pages or OCR.',
+      objectSchema({ referenceId: uuid, pages: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 100000 }, minItems: 1, maxItems: 2, uniqueItems: true },
+        region: { anyOf: [{ type: 'null' }, objectSchema({ x: { type: 'number', minimum: 0, maximum: 1 },
+          y: { type: 'number', minimum: 0, maximum: 1 }, width: { type: 'number', exclusiveMinimum: 0, maximum: 1 },
+          height: { type: 'number', exclusiveMinimum: 0, maximum: 1 } })] } })));
   if (operations.length) definitions.push(tool('course_operation', 'Run one declared component operation. start_session initializes a native session; later inputs require its requestId and last observed expectedSeq.',
     { type: 'object', anyOf: operations }));
   toolValidators(definitions);

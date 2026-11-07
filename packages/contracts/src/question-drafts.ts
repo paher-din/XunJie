@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { aluReferenceAdapters, aluReferenceCopy, normalizeAluReferenceTarget } from './alu-references.js';
+import { pdfReferenceSourceSchema, pdfReferenceTargetSchema, pdfReferenceCopy } from './pdf-materials.js';
 const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** UTF-16 half-open offsets in the selected source's original text. */
@@ -33,11 +34,12 @@ export const componentReferenceSourceSchema = z.object({ kind: z.literal('compon
   : value.requestId !== null && value.executionRef !== null);
 /** Stable source object plus immutable content identity. Display names and paths are never identity. */
 export const questionReferenceSourceSchema = z.discriminatedUnion('kind',
-  [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema]);
+  [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema, pdfReferenceSourceSchema]);
 export type QuestionReferenceSource = z.infer<typeof questionReferenceSourceSchema>;
 
 export function questionReferenceSourceId(source: QuestionReferenceSource): string {
   switch (source.kind) {
+    case 'pdf': return `pdf:${source.activityId}:${source.documentId}`;
     case 'component': return `component:${source.activityId}:${source.instanceId}:${source.objectId}`;
     case 'work': return `work:${source.objectId}`;
     case 'course-material': return `course-material:${source.releaseId}:${source.materialId}`;
@@ -95,10 +97,12 @@ const arraySemanticAdapters = {
   'annotation-objects': { version: 1, origin: 'state', target: annotationTarget },
   'aggregation-groups': { version: 1, origin: 'execution-result', target: aggregationTarget },
 } as const;
-export const semanticAdapters = { ...arraySemanticAdapters, ...aluReferenceAdapters } as const;
+export const semanticAdapters = { ...arraySemanticAdapters, ...aluReferenceAdapters,
+  'pdf-pages': { version: 1, origin: 'pdf', target: pdfReferenceTargetSchema } } as const;
 export function normalizeSemanticRange(range: z.infer<typeof semanticRangeSchema>): { typeId: string; version: number; target: Record<string, unknown> } {
   const adapter = semanticAdapters[range.typeId as keyof typeof semanticAdapters];
   if (!adapter || range.version !== adapter.version) throw new Error('unsupported-version');
+  if (range.typeId === 'pdf-pages') return { typeId: range.typeId, version: 1, target: pdfReferenceTargetSchema.parse(range.target) };
   if (Object.hasOwn(aluReferenceAdapters, range.typeId))
     return { typeId: range.typeId, version: range.version, target: normalizeAluReferenceTarget(range.typeId, range.target) };
   const target = arraySemanticAdapters[range.typeId as keyof typeof arraySemanticAdapters].target.parse(range.target);
@@ -107,6 +111,7 @@ export function normalizeSemanticRange(range: z.infer<typeof semanticRangeSchema
 }
 export function semanticReferenceCopy(range: z.infer<typeof semanticRangeSchema>, content: unknown): string {
   const { target } = normalizeSemanticRange(range);
+  if (range.typeId === 'pdf-pages') return pdfReferenceCopy(content);
   if (Object.hasOwn(aluReferenceAdapters, range.typeId)) return aluReferenceCopy(range.typeId, target, content);
   if (range.typeId === 'annotation-objects') {
     const parsed = z.object({ annotations: z.array(z.object({ id: z.uuid(), quote: z.string().max(4000), note: z.string().max(4000) }).strict()).max(100) }).strict().parse(content);

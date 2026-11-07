@@ -1,4 +1,5 @@
 import { verifySemanticReference } from './semantic-references.js';
+import { verifyPdfReference } from './pdf-materials.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -82,6 +83,10 @@ export function createActionIntents(storage: OwnedStorage, options: {
       for (const file of input.works) await tx.reference(`action/${input.requestId}/work/${file.contentId}`, file.contentId);
       for (const reference of input.draft.references) if (reference.source.kind === 'work' || reference.source.kind === 'component')
         await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}`, reference.source.contentId);
+      for (const reference of input.draft.references) if (reference.source.kind === 'pdf') {
+        await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}`, reference.source.readingId);
+        await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}/original`, reference.source.documentId);
+      }
       return { requestId: input.requestId, inputDigest };
     });
     return (await read(identity, activityId, input.requestId))!;
@@ -209,7 +214,13 @@ export async function validateActionIntents(storage: OwnedStorage) {
     }
     for (const reference of intent.input.draft.references) {
       const source = reference.source;
-      if (source.kind === 'component') {
+      if (source.kind === 'pdf') {
+        await verifyPdfReference(storage, String(row.activity_id), reference);
+        const pin = `action/${intent.input.requestId}/reference/${reference.referenceId}`;
+        const { rows: links } = await storage.read('SELECT reference_id,resource_id FROM _storage_references WHERE reference_id=$1 OR reference_id=$2', [pin, pin + '/original']);
+        if (links.length !== 2 || !links.some(link => link.reference_id === pin && link.resource_id === source.readingId)
+          || !links.some(link => link.reference_id === pin + '/original' && link.resource_id === source.documentId)) throw new StorageError('corrupt');
+      } else if (source.kind === 'component') {
         await verifySemanticReference(storage, body, reference, true);
         const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
           [`action/${intent.input.requestId}/reference/${reference.referenceId}`]);

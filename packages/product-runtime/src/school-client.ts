@@ -13,6 +13,7 @@ import { componentAlgorithmBundleSchema, componentBundleSchema, componentDepende
 import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, executionHistoryPageSchema,
   executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
+import { pdfDocumentSchema, pdfReadingSchema, pdfSearchResultSchema } from '@xunjie/contracts/pdf-materials';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { teachingInteractionSettingsSchema, teachingControlReceiptSchema, teachingInputControlReceiptSchema } from '@xunjie/contracts/teaching-agent';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
@@ -112,7 +113,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     let response: Response;
     try {
       response = await fetch(new URL('/api/learning/' + route, connection.schoolEndpoint), {
-        method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(10000),
+        method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(route.startsWith('pdf/') ? 45000 : 10000),
         headers: { 'content-type': 'application/json', ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
@@ -131,6 +132,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     // this ceiling cannot be borrowed by an operation that was never sized for a toolchain file.
     if (runtimeResourceRoute.test(route)) return boundedJsonResponse(response, runtimeResourceResponseBytes);
     if(executionArtifactRoute.test(route))return boundedJsonResponse(response,executionArtifactResponseBytes);
+    if (route.startsWith('pdf/') || /^releases\/[0-9a-f-]{36}\/materials\//.test(route)) return boundedJsonResponse(response, 29*1024*1024);
     return response.json() as Promise<unknown>;
   }
   const subject = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind].join('.');
@@ -617,6 +619,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyComponentReference', reference)); },
       async verifyReference(identity, reference) { sameIdentity(identity);
         z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyReference', reference)); },
+      async readMaterial(identity, releaseId, materialId) {
+        sameIdentity(identity); await checkLocal(connection, binding.runtimeConnectionId);
+        return courseMaterialContentSchema.parse(await call(connection, `releases/${releaseId}/materials/${materialId}`, undefined, true));
+      },
     });
     const identity = connection.grant!.identity;
     if (route === 'agent-settings') return body === undefined ? learning.agentPreferences.read(identity) : learning.agentPreferences.save(identity, body);
@@ -628,6 +634,19 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'course-activities') return learning.createCourse(identity, body);
     if (route.startsWith('course-activity-results/')) return learning.courseResult(identity, route.slice('course-activity-results/'.length));
     const parts = route.split('/');
+    if (parts[0] === 'pdf') {
+      if (parts.length === 2) return body === undefined ? learning.pdf.list(identity, parts[1]!) : learning.pdf.upload(identity, parts[1]!, body);
+      if (parts.length === 3 && body !== undefined && parts[2] === 'read') return learning.pdf.read(identity, parts[1]!, body);
+      if (parts.length === 3 && body !== undefined && parts[2] === 'find') return learning.pdf.find(identity, parts[1]!, body);
+      if (parts.length === 3 && body !== undefined && parts[2] === 'course') return learning.pdf.importCourse(identity, parts[1]!, body);
+      if (parts.length === 4 && body === undefined && parts[2] === 'documents') return learning.pdf.document(identity, parts[1]!, parts[3]!);
+      if (parts.length === 4 && body === undefined && parts[2] === 'reads') return learning.pdf.reading(identity, parts[1]!, parts[3]!);
+      if (parts.length === 4 && body === undefined && parts[2] === 'originals') {
+        const original = await learning.pdf.original(identity, parts[1]!, parts[3]!);
+        return { document: original.document, dataBase64: Buffer.from(original.bytes).toString('base64') };
+      }
+      throw new StorageError('forbidden');
+    }
     if (parts[0] === 'intents') {
       if (parts.length === 2) return body === undefined ? learning.intents.list(identity, parts[1]!) : learning.intents.prepare(identity, parts[1]!, body);
       if (parts.length === 3 && parts[2] === 'capabilities' && body === undefined) return learning.intents.capabilities(identity, parts[1]!);
@@ -669,6 +688,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const key = '[a-z][a-z0-9-]{0,47}';
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|agent-settings(?:/receipts/${id})?` +
+      `|pdf/${id}(?:/read|/find|/course|/(?:documents|reads|originals)/${id})?` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?` +
       `|/resources/${runtimeResourcePathPattern})?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
@@ -682,7 +702,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.localBinding && /^(agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(pdf|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -707,6 +727,13 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (!result.success) throw new StorageError('unavailable');
       return result.data;
     };
+    if (route.startsWith('pdf/')) {
+      if (route.endsWith('/find')) return parsed(pdfSearchResultSchema, value);
+      if (route.split('/').length === 2 && body === undefined) return parsed(z.array(pdfDocumentSchema), value);
+      if (route.endsWith('/read') || route.includes('/reads/')) return value === null ? null : parsed(pdfReadingSchema, value);
+      if (route.includes('/originals/')) return parsed(z.object({ document: pdfDocumentSchema, dataBase64: z.string() }).strict(), value);
+      return parsed(pdfDocumentSchema, value);
+    }
     const check = (candidate: unknown) => {
       const activity = parsed(activitySchema, candidate);
       if (JSON.stringify(activity.identity) !== JSON.stringify(connection.grant!.identity)

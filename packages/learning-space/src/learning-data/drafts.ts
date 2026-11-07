@@ -1,6 +1,7 @@
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { verifySemanticReference } from './semantic-references.js';
+import { verifyPdfReference } from './pdf-materials.js';
 import { validateComponentFiles } from './component-state.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -139,6 +140,10 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     const used = new Set<string>();
     for (const reference of input.references) {
       const source = reference.source;
+      if (source.kind === 'pdf') {
+        await verifyPdfReference(storage, activity.activityId, reference);
+        continue;
+      }
       if (source.kind === 'component') {
         used.add(source.contentId);
         const basis = bases.get(source.contentId);
@@ -227,6 +232,10 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
         // only links work content it actually stores.
         if (reference.source.kind === 'work' || reference.source.kind === 'component')
           await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`, reference.source.contentId);
+        if (reference.source.kind === 'pdf') {
+          await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`, reference.source.readingId);
+          await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}/original`, reference.source.documentId);
+        }
       }
       await tx.query('INSERT INTO question_draft_receipts(request_id,draft_id) VALUES($1,$2)', [input.requestId, draftId]);
       return { draft };
@@ -283,12 +292,23 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
 
 /** All revisions retain their own resource pins, including copies no longer in the current draft. */
 async function validateSemanticRevision(storage: OwnedStorage, activityId: string, draft: QuestionDraftView) {
-  const references = draft.references.filter(reference => reference.source.kind === 'component');
+  const references = draft.references.filter(reference => reference.source.kind === 'component' || reference.source.kind === 'pdf');
   if (!references.length) return;
   const { rows: [row] } = await storage.read('SELECT body FROM activities WHERE id=$1', [activityId]);
   if (!row) return fail('corrupt');
   const activity = activitySchema.parse(row.body);
   for (const reference of references) {
+    if (reference.source.kind === 'pdf') {
+      const source = reference.source;
+      await verifyPdfReference(storage, activityId, reference);
+      if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
+      const { rows: pins } = await storage.read('SELECT reference_id,resource_id FROM _storage_references WHERE reference_id=$1 OR reference_id=$2',
+        [`question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}`,
+          `question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}/original`]);
+      if (pins.length !== 2 || !pins.some(pin => pin.resource_id === source.readingId)
+        || !pins.some(pin => pin.resource_id === source.documentId)) return fail('corrupt');
+      continue;
+    }
     if (reference.source.kind !== 'component') continue;
     if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
     await verifySemanticReference(storage, activity, reference, true);
