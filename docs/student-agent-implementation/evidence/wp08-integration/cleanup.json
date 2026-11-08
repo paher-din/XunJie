@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-11-08T07:00:15.786838+00:00",
+  "atomicPushHead": "57695b3fda7a62415e9cb57cf1e70301a66c0625",
+  "productionCommit": "c25cfbc1",
+  "allDonorTipsMergedAndUnchangedBeforeDeletion": true,
+  "remoteDeletionUsedExactShaLeases": true,
+  "localDeletionUsedMergedBranchCheck": true,
+  "donors": [
+    {
+      "branch": "codex/wp08-216-tool-discovery",
+      "sha": "80066505422ba551239fe49e8b3d250863908257",
+      "worktree": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+      "merge": "e27d087"
+    },
+    {
+      "branch": "codex/wp08-217-skills",
+      "sha": "e7eab19bf1be16d615e500d4e301d90b1f659360",
+      "worktree": "/Users/robertwu/.codex/worktrees/495e/XunJie",
+      "merge": "f3266e9"
+    },
+    {
+      "branch": "codex/wp08-218-pdf",
+      "sha": "4e9c8451276c7e1c369a1d98a45b17e2064198ad",
+      "worktree": "/Users/robertwu/.codex/worktrees/f50c/XunJie",
+      "merge": "f6a72dc"
+    },
+    {
+      "branch": "codex/wp08-220-context-compaction",
+      "sha": "c8532012cb5f9a1d0f3e2cb98c2041528799adf2",
+      "worktree": "/Users/robertwu/.codex/worktrees/1378/XunJie",
+      "merge": "bf63ec5"
+    }
+  ],
+  "deletedLocalBranches": 4,
+  "deletedRemoteBranches": 4,
+  "deletedWorktrees": 4,
+  "taskTemporaryPackageRemoved": true,
+  "unrelatedWorktreesPreserved": [
+    "/private/tmp/xj-old-f0979d5",
+    "/Users/robertwu/.codex/worktrees/71aa/XunJie"
+  ],
+  "issueStates": {
+    "214": "open",
+    "215": "closed",
+    "216": "closed",
+    "217": "closed",
+    "218": "closed",
+    "219": "open",
+    "220": "closed"
+  },
+  "issue218DeliveryUrlsPinnedTo": "4e9c8451276c7e1c369a1d98a45b17e2064198ad",
+  "chatsDeleted": false
+}
