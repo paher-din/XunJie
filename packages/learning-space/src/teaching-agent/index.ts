@@ -41,6 +41,8 @@ import { createTeachingSkills, teachingSkillsMigration, validateTeachingSkills }
 import { createTeachingSkillRuntime } from './skill-runtime.js';
 import { abandonTeachingCompactions, createTeachingCompaction, teachingCompactionMigration } from './compaction.js';
 import { validateTeachingCompactions } from './compaction-validation.js';
+import { createTeachingStudentFacts, studentFactsGoalMigration, studentFactsMigration, validateTeachingStudentFacts } from './student-facts.js';
+export { createTeachingStudentFacts, studentFactsGoalMigration, studentFactsMigration, validateTeachingStudentFacts } from './student-facts.js';
 
 const reasonText = (reason: unknown) => {
   switch (typeof reason === 'string' ? reason : '') {
@@ -105,7 +107,7 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
   UPDATE teaching_steps SET input_reserved=COALESCE((plan->'model'->>'contextWindow')::bigint,1048576);
   ALTER TABLE teaching_steps ALTER COLUMN input_reserved SET NOT NULL;
 ` }, teachingInputMigration, teachingSegmentMigration, teachingAssemblyMigration, teachingSkillsMigration,
-  { ...teachingCompactionMigration, version: 12, formerVersion: 11 }];
+  { ...teachingCompactionMigration, version: 12, formerVersion: 11 }, studentFactsMigration, studentFactsGoalMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -143,6 +145,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   const skills = createTeachingSkills(storage, { authorize: options.authorize, activity: options.activity,
     assertWritable() { if (writesClosed || dispatchClosed) throw new StorageError('maintenance'); } });
   const skillRuntime = createTeachingSkillRuntime(skills, options.tools);
+  const studentFacts = createTeachingStudentFacts(storage, { activity: options.activity, authorize: options.authorize });
   const tools = skillRuntime.host;
   const segments = createTeachingSegments(storage, { models: options.models, leaseMs,
     assertWritable() { if (writesClosed || dispatchClosed) throw new StorageError('maintenance'); } });
@@ -230,6 +233,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           source: reference.source, sourceName: reference.sourceName, copy: reference.copy })), works: input.works.map(work => ({ objectId: work.objectId,
           name: work.name, kind: work.kind })), goal: activity.goal, activityQuestion: activity.question });
       await inputs.register(tx, input, targetRunId, received.seq);
+      await studentFacts.record(tx, { identity: activity.identity, activity, inputId,
+        eventId: received.eventId, eventSeq: received.seq, contentVersion: 1, text: input.draft.question });
       if (!busy) await appendEvent(tx, input.scope.activityId, 'run-received', { runId, requestId: input.requestId, inputId });
       return accepted;
     });
@@ -1128,6 +1133,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
     skills: { list: skills.list, import: skills.import, select: skills.select.bind(skills), disable: skills.disable, read: skills.read },
+    studentFacts: { read: studentFacts.read },
     run, conversation, events, snapshot, request, stop, continueRun, switchModel, capabilities, assertCommandDispatch, assertModelDispatch, validate,
     respond, response: studentQuestions.response, presentQuestion,
     async controlInput(identity: SpaceIdentity, activityId: string, inputId: string, value: unknown) {
@@ -1163,6 +1169,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
 /** Recovery validation reads only this owner's durable facts; it never triggers a model call. */
 export async function validateTeachingAgent(storage: OwnedStorage) {
   await validateTeachingSkills(storage);
+  await validateTeachingStudentFacts(storage);
   await createChunkChannel(storage).validate();
   await validateTeachingSegmentTransitions(storage);
   await validateTeachingDependencyBindings(storage);

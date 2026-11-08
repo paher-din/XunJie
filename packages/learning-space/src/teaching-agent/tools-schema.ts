@@ -45,7 +45,23 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
     tool('read_material', 'Read a student-open text material from this fixed course release.', objectSchema({ materialId: uuid })),
     tool('read_result', 'Read the real result of an approved or original Agent execution.', objectSchema({ requestId: uuid })),
     tool('execution_query', 'Query the original execution identity without replaying it.', objectSchema({ requestId: uuid })),
-    tool('execution_stop', 'Stop only an execution originally started by this Agent run.', objectSchema({ requestId: uuid }))];
+    tool('execution_stop', 'Stop only an execution originally started by this Agent run.', objectSchema({ requestId: uuid })),
+    tool('search_materials', 'Search permitted course text materials, fixed personal notes, native PDF text already read from a selected reference, and explicitly selected Skill text attachments. Returns only authorized snippets with fixed version, source position, read method and actual coverage: no-hit, not-indexed, no-text, partial-failure and no-access are different. Never claims unsearched sources.',
+      { type: 'object', properties: {
+        query: { type: 'string', minLength: 1, maxLength: 200 },
+        scope: { anyOf: [{ type: 'null' }, { type: 'object', properties: {
+          courseMaterials: { type: 'boolean' },
+          personalMaterialIds: { type: 'array', items: uuid, maxItems: 64, uniqueItems: true },
+          pdfReferenceIds: { type: 'array', items: uuid, maxItems: 16, uniqueItems: true },
+          skillAttachments: { type: 'boolean' } }, additionalProperties: false }] } }, required: ['query'], additionalProperties: false }),
+    tool('read_student_facts', 'Read the student\'s explicit preference and fact statements from the original owner records. Facts are never confirmed merely because they are absent; corrections and retractions keep their links. Same-course task reading only continues permitted related facts; other courses only explicit global preferences; ambiguous personal continuation is reported as ambiguous instead of guessed.',
+      { type: 'object', properties: { query: { anyOf: [{ type: 'null' }, { type: 'string', maxLength: 200 }] },
+        scope: { type: 'string', enum: ['current-activity', 'same-course', 'eligible'] } }, additionalProperties: false })];
+  if (scope.input.draft.references.some(reference => reference.source.kind === 'personal-material')) definitions.push(
+    tool('read_personal_material', 'Read a fixed UTF-16 range of a personal note version pinned in the current draft reference. Use this after search when the hit lies outside the quoted selection; never re-open the current workspace copy.',
+      objectSchema({ materialId: uuid, version: { type: 'integer', minimum: 1, maximum: 64 },
+        start: { type: 'integer', minimum: 0, maximum: 100000000 },
+        length: { type: 'integer', minimum: 1, maximum: 6000 } })));
   if (scope.input.draft.references.some(reference => reference.source.kind === 'pdf')) definitions.push(
     tool('read_pdf_text', 'Continue native text from an already retained PDF readingId returned by read_pdf, read_reference or find_pdf. Uses actual page index and UTF-16 start/length; nextStart continues the same saved text without rendering. No OCR or image reading.',
       objectSchema({ referenceId: uuid, readingId: uuid, page: { type: 'integer', minimum: 1, maximum: 100000 },

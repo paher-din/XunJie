@@ -6,6 +6,7 @@ import type { teachingPreparedToolSchema, teachingToolOutcomeSchema } from '@xun
 import type { z } from 'zod';
 import type { TeachingDispatchAuthority } from './remote-state.js';
 import type { AgentToolBinding } from '@xunjie/contracts/teaching-agent';
+import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
 
 /** Fixed definitions and their owning executor; model aliases never select code. */
 export type TeachingToolContribution = Omit<AgentToolBinding, 'bindingId' | 'modelName'>;
@@ -24,6 +25,8 @@ export interface TeachingToolScope {
   authority?: TeachingDispatchAuthority;
   /** Reconstructed from the durable Run permit; never serialized or model supplied. */
   assertDispatch?: () => Promise<void>;
+  /** Snapshot-frozen selected skills for this step; search covers only permitted text attachments. */
+  skillState?: TeachingSkillState;
 }
 
 /** Cleanup uses only the original stored scope, never current activity or source-content reads. */

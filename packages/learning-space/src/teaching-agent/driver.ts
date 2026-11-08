@@ -195,8 +195,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     const identity = owner.identity(await owner.runRow(run.runId));
     const request = await owner.requestRow(run.requestId);
     if (!request) throw new StorageError('corrupt');
+    const plan = saved.plan as Plan | undefined;
     return { identity, activity: await owner.activity(identity, run.activityId),
-      input: actionInputSchema.parse((saved.plan as Plan | undefined)?.inputBasis ?? request.body),
+      input: actionInputSchema.parse(plan?.inputBasis ?? request.body),
+      ...(plan?.skillState ? { skillState: plan.skillState } : {}),
       runId: run.runId, stepId: String(saved.step_id), snapshotId: String(saved.snapshot_id),
       ...(typeof saved.segment_id === 'string' ? { segmentId: saved.segment_id } : {}),
       ...(generation === undefined ? {} : { authority: { runId: run.runId, activityId: run.activityId,

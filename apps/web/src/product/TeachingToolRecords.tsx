@@ -17,10 +17,11 @@ const stateLabels = {
   waiting: '等待核对结果', settled: '结果尚未确认',
 }
 const toolLabels: Record<string, string> = {
-  read_work: '读取作品', read_reference: '读取引用', read_material: '读取材料', read_result: '读取结果',
+  read_work: '读取作品', read_reference: '读取引用', read_material: '读取材料', read_personal_material: '读取个人笔记', read_result: '读取结果',
   discover_tools: '查找工具', load_tools: '使用工具', read_tool_result: '继续读取结果',
   course_operation: '课程操作', execution_query: '核对执行', execution_stop: '停止执行',
   skill_load: '加载 Skill', skill_read: '读取 Skill 文件',
+  search_materials: '检索材料', read_student_facts: '读取学生偏好',
 }
 const sourceLabels: Record<string, string> = {
   'fixed-current': '本次使用固定时的当前版本。',
@@ -30,10 +31,17 @@ const sourceLabels: Record<string, string> = {
 }
 const fieldLabels: Record<string, string> = {
   capability: '工具来源与版本', source: '来源', sourceId: '来源标识', version: '版本',
-  parameters: '参数', groupColumn: '分组列', valueColumn: '数值列', aggregate: '聚合方式',
+  parameters: '参数', search: '检索结果', matches: '匹配片段', coverage: '实际覆盖', sourceCount: '来源数',
+  searchedSourceCount: '已搜索来源数', excludedSourceCount: '未纳入来源数', searchedChars: '已搜索字符数',
+  kinds: '来源类型', truncated: '是否截断', locator: '页/行位置', readMethod: '读取方式', excerpt: '片段',
+  continuation: '延续范围', unknown: '未知状态', facts: '事实', activity: '活动', topic: '主题', statement: '原话',
+  reviewStatus: '复核状态', contentVersion: '内容版本', scope: '作用范围', supersedes: '替代事实', retractedBy: '撤回链接',
+  eventId: '原事件', seq: '事件序号', createdAt: '记录时间', kind: '类型', page: '页码', start: '起始', end: '结束',
+  groupColumn: '分组列', valueColumn: '数值列', aggregate: '聚合方式',
   table: '表格', columns: '列', rows: '行', groups: '分组', key: '分组名', value: '内容', file: '固定作品',
   count: '数量', sum: '合计', mean: '平均值', min: '最小值', max: '最大值', rejected: '未参与计算的行',
-  name: '名称', text: '文本', content: '内容', copy: '固定副本', works: '作品', references: '引用',
+  name: '名称', text: '固定原文', content: '内容', copy: '固定副本', works: '作品', references: '引用',
+  total: '原文总长', coordinates: '坐标单位',
   state: '状态', output: '输出', result: '结果', reason: '原因', detail: '详情', error: '错误',
   observation: '实际观察', observations: '观察记录', session: '会话', appliedSeq: '已应用输入序号',
   message: '说明', line: '行号', column: '列号', path: '路径', diagnostics: '诊断',

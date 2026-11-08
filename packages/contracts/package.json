@@ -10,6 +10,7 @@
   "exports": {
     "./agent-skills": { "types": "./dist/agent-skills.d.ts", "import": "./dist/agent-skills.js" },
     "./pdf-materials": { "types": "./dist/pdf-materials.d.ts", "import": "./dist/pdf-materials.js" },
+    "./personal-materials": { "types": "./dist/personal-materials.d.ts", "import": "./dist/personal-materials.js" },
     "./alu-learning": { "types": "./dist/alu-learning.d.ts", "import": "./dist/alu-learning.js" },
     "./alu-references": { "types": "./dist/alu-references.d.ts", "import": "./dist/alu-references.js" },
     "./alu-waveform": { "types": "./dist/alu-waveform.d.ts", "import": "./dist/alu-waveform.js" },
@@ -22,6 +23,7 @@
     "./learning-data": { "types": "./dist/learning-data.d.ts", "import": "./dist/learning-data.js" },
     "./question-drafts": { "types": "./dist/question-drafts.d.ts", "import": "./dist/question-drafts.js" },
     "./teaching-agent": { "types": "./dist/teaching-agent.d.ts", "import": "./dist/teaching-agent.js" },
+    "./student-facts": { "types": "./dist/student-facts.d.ts", "import": "./dist/student-facts.js" },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"

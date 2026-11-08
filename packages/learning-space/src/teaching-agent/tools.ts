@@ -17,6 +17,7 @@ import { aluVerificationAction } from './alu-tools.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-images.js';
 import { pdfReadingOutcome, pdfSearchOutcome, pdfTextInputSchema, pdfTextOutcome } from './tools-pdf.js';
 import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
+import { materialSearchInputSchema, personalMaterialReadSchema } from '@xunjie/contracts/personal-materials';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
@@ -35,6 +36,12 @@ export function createTeachingTools(options: {
   authorizeDispatch?: (scope: TeachingToolScope, command: TeachingPreparedTool) => Promise<void>;
   device?: (scope: TeachingToolScope) => Promise<ExecutionDevice | undefined>;
   environment?: (scope: TeachingToolScope) => Promise<{ device: ExecutionDevice; remoteAvailable: boolean }>;
+  /** Narrow teaching-agent owner read; facts never come from the browser or a demo profile. */
+  studentFacts?: { read(identity: TeachingToolScope['identity'], activityId: string, input: unknown):
+    Promise<{ facts: unknown[]; activity: { activityId: string; goal: string; courseId: string | null };
+      continuation: { state: string; detail: string }; unknown: string[] }> };
+  /** Read one permitted skill attachment through the selected-skill guard. */
+  skillRead?: (scope: TeachingToolScope, skillId: string, version: number, path: string) => Promise<{ content: string; digest: string }>;
 }): TeachingToolHost {
   const learning = options.learning;
   async function authorize(scope: TeachingToolCleanupScope) {
@@ -121,6 +128,19 @@ export function createTeachingTools(options: {
       const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId);
       if (!reference) fail('forbidden');
       detail = { reference, ...(reference.source.kind === 'pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_personal_material') {
+      const materialId = z.uuid().parse(args.materialId), version = z.number().int().positive().max(64).parse(args.version);
+      const input = personalMaterialReadSchema.parse({ start: args.start, length: args.length });
+      const reference = scope.input.draft.references.find(item => item.source.kind === 'personal-material'
+        && item.source.materialId === materialId && item.source.version === version);
+      if (!reference) fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      detail = { reference, input: { materialId, version, ...input } };
+    } else if (name === 'search_materials') {
+      detail = { input: materialSearchInputSchema.parse({ query: args.query, ...(args.scope == null ? {} : { scope: args.scope }) }) };
+    } else if (name === 'read_student_facts') {
+      if (!options.studentFacts) fail('unavailable');
+      detail = { input: { ...(args.query == null ? {} : { query: args.query }), scope: args.scope } };
     } else if (name === 'read_material') {
       const course = scope.activity.course, material = course?.materials.find(item => item.materialId === args.materialId);
       if (!course || !material) fail('forbidden');
@@ -323,6 +343,32 @@ export function createTeachingTools(options: {
         return pdfReadingOutcome(scope, options.models, command, reading, reference);
       }
       return outcome(command, 'completed', { reference }, reference.sourceName);
+    }
+    if (command.name === 'read_personal_material') {
+      const input = command.basis.input as { materialId: string; version: number; start: number; length: number };
+      const content = await learning().materials.readRange(scope.identity, id, input.materialId, input.version,
+        { start: input.start, length: input.length });
+      return outcome(command, 'completed', { reference: command.basis.reference, ...content }, content.name);
+    }
+    if (command.name === 'search_materials') {
+      const input = materialSearchInputSchema.parse(command.basis.input);
+      const references = scope.input.draft.references;
+      const result = await learning().search.search(scope.identity, id, input, {
+        pdfReferences: references.filter(reference => reference.source.kind === 'pdf'),
+        personalReferences: references.filter(reference => reference.source.kind === 'personal-material'),
+        ...(scope.input.draft.skills ? { skillReferences: scope.input.draft.skills } : {}),
+        ...(scope.skillState ? { skillState: scope.skillState } : {}),
+        ...(options.skillRead ? { skillRead: (skillId: string, version: number, path: string) =>
+          options.skillRead!(scope, skillId, version, path).then(item => ({ content: item.content, digest: item.digest })) } : {}) });
+      return outcome(command, 'completed', { search: result }, '材料检索');
+    }
+    if (command.name === 'read_student_facts') {
+      if (!options.studentFacts) fail('unavailable');
+      const stored = command.basis.input as { query?: string | null; scope?: string } | undefined;
+      const result = await options.studentFacts.read(scope.identity, id,
+        { ...(stored?.query == null ? {} : { query: stored.query }), ...(stored?.scope ? { scope: stored.scope } : {}) });
+      return outcome(command, 'completed', { facts: result.facts, activity: result.activity, continuation: result.continuation,
+        unknown: result.unknown }, '学生事实与偏好');
     }
     if (command.name === 'read_material') {
       const source = command.basis.source;

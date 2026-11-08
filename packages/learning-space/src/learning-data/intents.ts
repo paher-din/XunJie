@@ -1,5 +1,6 @@
 import { verifySemanticReference } from './semantic-references.js';
 import { verifyPdfReference } from './pdf-materials.js';
+import { personalMaterialResourceId, verifyPersonalMaterialReference } from './personal-materials.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -87,6 +88,9 @@ export function createActionIntents(storage: OwnedStorage, options: {
         await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}`, reference.source.readingId);
         await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}/original`, reference.source.documentId);
       }
+      for (const reference of input.draft.references) if (reference.source.kind === 'personal-material')
+        await tx.reference(`action/${input.requestId}/reference/${reference.referenceId}`,
+          personalMaterialResourceId(reference.source.materialId, reference.source.version));
       return { requestId: input.requestId, inputDigest };
     });
     return (await read(identity, activityId, input.requestId))!;
@@ -225,6 +229,12 @@ export async function validateActionIntents(storage: OwnedStorage) {
         const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
           [`action/${intent.input.requestId}/reference/${reference.referenceId}`]);
         if (links.length !== 1 || links[0]!.resource_id !== source.contentId) throw new StorageError('corrupt');
+      } else if (source.kind === 'personal-material') {
+        await verifyPersonalMaterialReference(storage, String(row.activity_id), reference);
+        const pin = `action/${intent.input.requestId}/reference/${reference.referenceId}`;
+        const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [pin]);
+        if (links.length !== 1 || links[0]!.resource_id !== personalMaterialResourceId(source.materialId, source.version))
+          throw new StorageError('corrupt');
       } else if (source.kind === 'work') {
         const { rows: [content] } = await storage.read(`SELECT c.activity_id,c.object_id,c.encoding,o.kind FROM work_contents c
           JOIN work_objects o ON o.object_id=c.object_id WHERE content_id=$1`, [source.contentId]);

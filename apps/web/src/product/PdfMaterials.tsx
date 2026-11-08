@@ -197,7 +197,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     } catch (error) { if (alive.current) setError(failureText(error)) }
     finally { operation.current = false; if (alive.current) setBusy(false) }
   }
-  const locate = async (value: unknown) => {
+  const locate = async (value: unknown, targetPage?: number) => {
     const parsed = pdfReferenceSourceSchema.safeParse(value)
     if (!parsed.success || parsed.data.activityId !== activity.activityId)
       return { ok: false as const, reason: 'PDF 引用不属于当前活动，固定副本仍保留。' }
@@ -221,8 +221,10 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       adopt(doc); setDocument(doc); setReading(fixed); setPendingRead(null); setNotice('已打开引用时保留的页图。')
       for (let attempt = 0; attempt < 120 && alive.current && epoch === readEpoch.current; attempt++) {
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-        const target = window.document.querySelector<HTMLElement>(`[data-pdf-reading-id="${CSS.escape(fixed.readingId)}"]`)
-        if (target) { target.focus(); target.scrollIntoView({ block: 'nearest' }); return { ok: true as const } }
+        const target = targetPage === undefined ? null
+          : window.document.querySelector<HTMLElement>(`[data-pdf-reading-id="${CSS.escape(fixed.readingId)}"] [data-pdf-page="${targetPage}"]`)
+        const readingTarget = target ?? window.document.querySelector<HTMLElement>(`[data-pdf-reading-id="${CSS.escape(fixed.readingId)}"]`)
+        if (readingTarget) { readingTarget.focus(); readingTarget.scrollIntoView({ block: 'nearest' }); return { ok: true as const } }
       }
       return { ok: false as const, reason: '固定页图已读取，但当前布局未能打开阅读位置。' }
     } catch (error) {
@@ -350,7 +352,7 @@ export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onB
               ? '当前页无可检索的原生文字；未执行 OCR' : '当前阅读页无匹配文字'}</span>}
         </div>
         {reading && <div className="pdf-reading" data-pdf-reading-id={reading.readingId} tabIndex={-1}>
-          {reading.pages.map(item => <article className="pdf-page" key={item.page}>
+          {reading.pages.map(item => <article className="pdf-page" data-pdf-page={item.page} tabIndex={-1} key={item.page}>
             <h3>第 {item.page} 页 <span>标签：{item.label || '无'}</span></h3>
             {item.state !== 'ready' || !item.image ? <p className="pdf-error" role="status">{item.state === 'out-of-range' ? '此页超出 PDF 实际页数。'
               : item.state === 'limit' ? '此页图超出处理尺寸或体积限制，无法显示。'

@@ -23,6 +23,10 @@
 | `POST manage/course-import` / `manage/course-access` / `manage/course-result` | 管理者登记不可变发布、授予/撤销课程资格、查询原登记结果 |
 | `GET/POST drafts/:activityId` | 读取或同步活动的问题草稿与固定引用；单次请求携带问题、引用顺序、范围/副本和未登记作品的固定依据 |
 | `GET drafts/:activityId/receipts/:requestId` / `revisions/:revisionId` | 查询原同步请求结果或按稳定修订身份读取历史草稿；未知返回 null |
+| `GET/POST materials/:activityId` | 列出当前活动的个人文本材料或按稳定请求保存；同名不是身份 |
+| `POST materials/:activityId/:materialId` / `.../remove` | 追加不可变版本或移除材料，均校验 `expectedVersion` 与请求身份 |
+| `GET materials/:activityId/:materialId/versions/:version` / `POST .../read` | 读取固定版本原件或 UTF-16 范围文本；移除后固定版本仍可读 |
+| `GET materials/:activityId/requests/:requestId` | 按原请求身份核对未知保存/更新/移除回执 |
 | `GET/POST intents/:activityId` / `GET intents/:activityId/:requestId` | 列出、固定准备或查询原动作；内容确认不等于业务接受 |
 | `GET intents/:activityId/capabilities` | 当前原活动已注册的接收能力；默认空列表，不挂载测试接收器 |
 | `POST intents/:activityId/:requestId/dispatch` / `cancel` | 沿原身份派发、核实及持久协调取消；未知不伪装为未接收或已撤回 |

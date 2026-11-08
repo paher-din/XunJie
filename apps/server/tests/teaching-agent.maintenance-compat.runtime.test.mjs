@@ -17,6 +17,7 @@ const published = [
 function oldInventory(current, profile) {
   const value = structuredClone(current);
   value.evidence.formatVersion = profile.version;
+  delete value.evidence.tables.teaching_student_facts;
   if (!profile.skills) for (const table of skillTables) delete value.evidence.tables[table];
   if (!profile.compactions) delete value.evidence.tables.teaching_compactions;
   return value;
@@ -38,7 +39,7 @@ test('each published inventory remains readable when omitted feature domains are
   try {
     await close(f.storage);
     const current = await collectTeachingBoundary(f.storage);
-    assert.equal(current.evidence.formatVersion, 3);
+    assert.equal(current.evidence.formatVersion, 4);
     await validateTeachingBoundary(f.storage, current);
     for (const profile of published) await validateTeachingBoundary(f.storage, oldInventory(current, profile));
     const corrupt = structuredClone(current);

@@ -13,6 +13,8 @@ import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
 import { createWorks, workMigration, validateWorks } from './works.js';
 import { createPdfMaterials, pdfMaterialMigration, validatePdfMaterials } from './pdf-materials.js';
+import { createPersonalMaterials, personalMaterialMigration, validatePersonalMaterials } from './personal-materials.js';
+import { createMaterialSearch } from './material-search.js';
 import { createQuestionDrafts, questionDraftMigration, validateQuestionDrafts } from './drafts.js';
 import { createActionIntents, actionIntentMigration, validateActionIntents } from './intents.js';
 import type { ActionIntentOptions } from './intents.js';
@@ -27,6 +29,7 @@ export type { ActionIntentOptions } from './intents.js';
 export type { NativeSessionHostOptions } from './native-sessions.js';
 export { collectExecutionBoundary, validateExecutionBoundary, executionMaintenanceFormatVersion, executionMaintenanceKind } from './maintenance.js';
 export type { ExecutionBoundaryMaterial, UnresolvedCommand, UnresolvedDisposition } from './maintenance.js';
+export { createMaterialSearch } from './material-search.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,
@@ -43,7 +46,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
 nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
-{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration];
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -64,6 +67,7 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 
 export async function validateLearningData(storage: OwnedStorage) {
   await validatePdfMaterials(storage);
+  await validatePersonalMaterials(storage);
   await validateAgentPreferences(storage);
   await createChunkChannel(storage).validate();
   await validateActivityAgentRoutes(storage);
@@ -281,6 +285,8 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   }
   const works = createWorks(storage, open);
   const pdf = createPdfMaterials(storage, open, courses);
+  const materials = createPersonalMaterials(storage, open);
+  const search = createMaterialSearch({ open, ...(courses ? { courses } : {}), pdf, personal: materials });
   const drafts = createQuestionDrafts(storage, { activity: open, works, courses });
   const intents = createActionIntents(storage, { activity: open, works, drafts, ...actions });
   const executions = createExecutions(storage, { activity: open, works, ...(channel ? { channel } : {}),
@@ -290,7 +296,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, pdf, drafts, intents, executions,
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, pdf, materials, search, drafts, intents, executions,
     agentPreferences: createAgentPreferences(storage, access),
     validate: () => validateLearningData(storage) };
 }

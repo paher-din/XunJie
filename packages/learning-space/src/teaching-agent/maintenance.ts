@@ -13,19 +13,22 @@ const commonTables = ['teaching_sessions', 'teaching_requests', 'teaching_runs',
   'agent_chunk_transfers', 'agent_chunk_parts'] as const;
 const skillTables = ['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads'] as const;
 const compactionTables = ['teaching_compactions'] as const;
-const tables = [...commonTables, ...skillTables, ...compactionTables] as const;
+const studentFactTables = ['teaching_student_facts'] as const;
+const tables = [...commonTables, ...skillTables, ...compactionTables, ...studentFactTables] as const;
 interface BoundaryProfile {
-  formatVersion: 1 | 2 | 3;
+  formatVersion: 1 | 2 | 3 | 4;
   tables: readonly (typeof tables)[number][];
   historicalResults: boolean;
 }
-const currentProfile: BoundaryProfile = { formatVersion: 3, tables, historicalResults: true };
+const formatVersion3Tables = [...commonTables, ...skillTables, ...compactionTables] as const;
+const currentProfile: BoundaryProfile = { formatVersion: 4, tables, historicalResults: true };
 // These are the exact published inventories, not permission to omit arbitrary tables.
 const profiles: readonly BoundaryProfile[] = [
   { formatVersion: 1, tables: commonTables, historicalResults: false },
   { formatVersion: 1, tables: [...commonTables, ...compactionTables], historicalResults: false },
   { formatVersion: 2, tables: commonTables, historicalResults: true },
   { formatVersion: 2, tables: [...commonTables, ...skillTables], historicalResults: false },
+  { formatVersion: 3, tables: formatVersion3Tables, historicalResults: true },
   currentProfile,
 ];
 const terminal = new Set(['completed', 'failed', 'stopped']);
@@ -123,7 +126,7 @@ export async function validateTeachingBoundary(storage: OwnedStorage, material: 
   if (material.kind === 'xunjie.storage.boundary' && material.evidence === undefined) return;
   if (material.kind !== teachingMaintenanceKind) throw new StorageError('incompatible');
   const version = (material.evidence as { formatVersion?: unknown } | undefined)?.formatVersion;
-  if (!material.evidence || typeof material.evidence !== 'object' || typeof version !== 'number' || ![1, 2, 3].includes(version)) throw new StorageError('incompatible');
+  if (!material.evidence || typeof material.evidence !== 'object' || typeof version !== 'number' || ![1, 2, 3, 4].includes(version)) throw new StorageError('incompatible');
   const listed = (material.evidence as { tables?: unknown }).tables;
   if (!listed || typeof listed !== 'object' || Array.isArray(listed)) throw new StorageError('corrupt');
   const names = Object.keys(listed).sort();

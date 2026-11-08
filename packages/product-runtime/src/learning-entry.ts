@@ -232,6 +232,15 @@ export async function createProductLearningApplication(context: {
       },
       activity: (identity, activityId) => learning!.open(identity, activityId),
       models, tools: createTeachingTools({ learning: () => learning!, courses, models, executionOrigin: currentExecutionOrigin,
+        studentFacts: { read: (identity, activityId, input) => {
+          if (!teaching) throw new StorageError('unavailable');
+          return teaching.studentFacts.read(identity, activityId, input);
+        } },
+        skillRead: (scope, skillId, version, path) => {
+          if (!teaching) throw new StorageError('unavailable');
+          return teaching.skills.read(scope.identity, scope.activity.activityId, skillId, version, path,
+            { references: scope.input.draft.skills });
+        },
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return teachingFor(scope.identity, scope.activity.activityId).then(agent => agent.assertCommandDispatch(scope.identity,

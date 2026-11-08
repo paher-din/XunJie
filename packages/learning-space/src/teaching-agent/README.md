@@ -21,6 +21,7 @@
 | `teaching_student_questions` | 固定 `student.ask` 问题、来源、问题/Wait 版本、呈现与明确回答状态 |
 | `teaching_student_presentations` | 幂等呈现回执；不代表学生回答或模型已采用 |
 | `teaching_student_responses` | 独立输入身份、原文摘要、接受/拒绝结果及原回应查询 |
+| `teaching_student_facts` | 学生明确表达的第一人称偏好/指令、原事件与时间、内容版本、作用范围和复核/修正链；缺失不等于已确认 |
 
 接收、Run、输入与事件在同一事务提交；同身份同内容返回原回执，换内容冲突。接收前取消写入持久取消记录，迟到派发不能复活。`RunDriver` 用 `clock_timestamp()` 领取代际与 lease，条件提交保证单一推进权；lease 只决定推进权，不是生成期限。过期接管先按原 attempt 身份查询/续接，已接受未派发的 attempt 由新推进者继续派发，不第二次付费生成。
 
@@ -42,7 +43,7 @@
 
 `driver.ts` 使用同一状态机推进模型和工具。模型外发前先保存完整步骤计划和稳定 attempt 身份，再保存实际请求快照并取得派发许可。模型结果保存后，原件关联、步骤完成与工具意图在一个所属事务提交；恢复重读原结果，不重新生成。不可消费的输出不产生工具命令。
 
-`tools.ts` 提供版本化的 `read_work`、`read_reference`、`read_material`、`read_result`、`execution_query`、`execution_stop`；活动有对应组件时增加 `course_operation`。模型选择工具，宿主按本次固定授权取证与执行。课程操作从 manifest 与课程运行方案派生，不在 Driver 内硬编码课程信号。图像只接受 WP06 支持的固定 PNG，并核对原生段已核实的图像能力。
+`tools.ts` 提供版本化的 `read_work`、`read_reference`、`read_material`、`read_personal_material`、`read_result`、`execution_query`、`execution_stop`、`search_materials`、`read_student_facts`；活动有对应组件时增加 `course_operation`。模型选择工具，宿主按本次固定授权取证与执行。课程操作从 manifest 与课程运行方案派生，不在 Driver 内硬编码课程信号。图像只接受 WP06 支持的固定 PNG，并核对原生段已核实的图像能力。
 
 WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／命令／快照关联及执行点资格回调；普通学生 HTTP 入口不能自报 Agent 发起者。查询与停止限定原 Run 发起的执行，学生独立实验不受影响。已完成输入与其仍在运行的原生会话分别记录，后续停止不改写原输入结果。
 
@@ -88,7 +89,7 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 `validateTeachingBoundary` 在独立目标重新导出相同事实后核对清单。受支持的旧通用清单仍走原服务/资源校验；未知必需清单版本拒绝恢复。日志外壳仍为 v1，可忽略扩展使用 `kind: extension` 和显式 `ignorable: true` 的版本化正文，查询保留原件，推进不解释其语义。未知必需事件及外壳版本拒绝推进，已发布迁移保持不变。
 
-WP08 整合后的领域清单为 v3，覆盖 Skills、压缩及所有历史工具结果资源；旧清单只接受明确已发布的表集和行形状，不允许用旧版本遗漏新事实。Skills 保持迁移 11，压缩注册为迁移 12；只对名称、SQL 摘要及前缀完全匹配的旧压缩尾项识别原版本 11。严格打开仍核对当前完整链，恢复先核验原链再在关闸状态升级。实际旧备份与组合回归见[整合说明](../../../../docs/student-agent-implementation/wp08-integration.md)。
+WP08 整合后的领域清单为 v4，覆盖 Skills、压缩、个人明确事实及所有历史工具结果资源；事实表使用迁移 13 `teaching_student_facts`。旧清单只接受明确已发布的表集和行形状，不允许用旧版本遗漏新事实。Skills 保持迁移 11，压缩注册为迁移 12；只对名称、SQL 摘要及前缀完全匹配的旧压缩尾项识别原版本 11。严格打开仍核对当前完整链，恢复先核验原链再在关闸状态升级。实际旧备份与组合回归见[整合说明](../../../../docs/student-agent-implementation/wp08-integration.md)。
 
 接收端撤权使用同一 owner 的 `collectTeachingReceiverBoundary`：休眠的已确认逻辑 Wait 可保留，未知派发和停止待确认仍阻断；真实模型/执行 owner 仍须各自确认物理边界。完整备份始终保存全部逻辑未结项，不因接收端投影而丢失等待记录。
 

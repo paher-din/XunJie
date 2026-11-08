@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { aluReferenceAdapters, aluReferenceCopy, normalizeAluReferenceTarget } from './alu-references.js';
 import { teachingSkillReferencesSchema } from './agent-skills.js';
 import { pdfReferenceSourceSchema, pdfReferenceTargetSchema, pdfReferenceCopy } from './pdf-materials.js';
+import { personalMaterialReferenceSourceSchema } from './personal-materials.js';
 const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** UTF-16 half-open offsets in the selected source's original text. */
@@ -35,12 +36,14 @@ export const componentReferenceSourceSchema = z.object({ kind: z.literal('compon
   : value.requestId !== null && value.executionRef !== null);
 /** Stable source object plus immutable content identity. Display names and paths are never identity. */
 export const questionReferenceSourceSchema = z.discriminatedUnion('kind',
-  [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema, pdfReferenceSourceSchema]);
+  [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema, pdfReferenceSourceSchema,
+    personalMaterialReferenceSourceSchema]);
 export type QuestionReferenceSource = z.infer<typeof questionReferenceSourceSchema>;
 
 export function questionReferenceSourceId(source: QuestionReferenceSource): string {
   switch (source.kind) {
     case 'pdf': return `pdf:${source.activityId}:${source.documentId}`;
+    case 'personal-material': return `personal-material:${source.activityId}:${source.materialId}:${source.version}`;
     case 'component': return `component:${source.activityId}:${source.instanceId}:${source.objectId}`;
     case 'work': return `work:${source.objectId}`;
     case 'course-material': return `course-material:${source.releaseId}:${source.materialId}`;

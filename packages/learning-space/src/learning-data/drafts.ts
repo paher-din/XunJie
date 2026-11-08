@@ -2,6 +2,7 @@ import { activitySchema } from '@xunjie/contracts/learning-data';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { verifySemanticReference } from './semantic-references.js';
 import { verifyPdfReference } from './pdf-materials.js';
+import { personalMaterialResourceId, verifyPersonalMaterialReference } from './personal-materials.js';
 import { validateComponentFiles } from './component-state.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -146,6 +147,10 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
         await verifyPdfReference(storage, activity.activityId, reference);
         continue;
       }
+      if (source.kind === 'personal-material') {
+        await verifyPersonalMaterialReference(storage, activity.activityId, reference);
+        continue;
+      }
       if (source.kind === 'component') {
         used.add(source.contentId);
         const basis = bases.get(source.contentId);
@@ -238,6 +243,10 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
           await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`, reference.source.readingId);
           await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}/original`, reference.source.documentId);
         }
+        if (reference.source.kind === 'personal-material') {
+          await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`,
+            personalMaterialResourceId(reference.source.materialId, reference.source.version));
+        }
       }
       await tx.query('INSERT INTO question_draft_receipts(request_id,draft_id) VALUES($1,$2)', [input.requestId, draftId]);
       return { draft };
@@ -294,7 +303,8 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
 
 /** All revisions retain their own resource pins, including copies no longer in the current draft. */
 async function validateSemanticRevision(storage: OwnedStorage, activityId: string, draft: QuestionDraftView) {
-  const references = draft.references.filter(reference => reference.source.kind === 'component' || reference.source.kind === 'pdf');
+  const references = draft.references.filter(reference => reference.source.kind === 'component' || reference.source.kind === 'pdf'
+    || reference.source.kind === 'personal-material');
   if (!references.length) return;
   const { rows: [row] } = await storage.read('SELECT body FROM activities WHERE id=$1', [activityId]);
   if (!row) return fail('corrupt');
@@ -309,6 +319,15 @@ async function validateSemanticRevision(storage: OwnedStorage, activityId: strin
           `question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}/original`]);
       if (pins.length !== 2 || !pins.some(pin => pin.resource_id === source.readingId)
         || !pins.some(pin => pin.resource_id === source.documentId)) return fail('corrupt');
+      continue;
+    }
+    if (reference.source.kind === 'personal-material') {
+      await verifyPersonalMaterialReference(storage, activityId, reference);
+      if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
+      const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+        [`question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}`]);
+      if (links.length !== 1 || links[0]!.resource_id !== personalMaterialResourceId(reference.source.materialId, reference.source.version))
+        return fail('corrupt');
       continue;
     }
     if (reference.source.kind !== 'component') continue;

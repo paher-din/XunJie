@@ -1,6 +1,6 @@
 # 学习数据 owner
 
-[#218 PDF](../../../../docs/student-agent-implementation/wp08-218-pdf.md) 在迁移 23 增加本活动的原件与不可变页/区域读取记录。`pdf` 接口复用当前空间、主体及课程资格核验；`pdf-pages` 引用进入同一 `drafts/intents`，原件与已用文字/页图随资源 pin 保留。恢复直接校验保存字节，不重新转换。个人资料不会写入课程发布或教师投影。
+[#218 PDF](../../../../docs/student-agent-implementation/wp08-218-pdf.md) 在迁移 23 增加本活动的原件与不可变页/区域读取记录。[#219 个人资料与检索](../../../../docs/student-agent-implementation/wp08-219-personal-materials.md) 在迁移 24 增加个人 UTF-8 笔记的不可变版本与固定引用；`search` 在每次查询时按授权范围重读课程材料、个人原件、固定 PDF 原生文字和 Skill 附件，不维护可过期索引。`pdf` 接口复用当前空间、主体及课程资格核验；`pdf-pages` 引用进入同一 `drafts/intents`，原件与已用文字/页图随资源 pin 保留。恢复直接校验保存字节，不重新转换。个人资料不会写入课程发布或教师投影。
 
 本模块拥有无课程活动及其请求身份和回执；通过 `SpaceAuthority.resolveBinding` 取得当前成员与实际目标，不访问空间 owner 的数据库。wire 从 `@xunjie/contracts/learning-data` 消费，生产入口见 [learning-entry](../learning-entry/README.md)。
 

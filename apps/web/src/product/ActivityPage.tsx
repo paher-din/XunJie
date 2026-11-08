@@ -21,22 +21,26 @@ import { GuidancePresentation } from '../components/workspace/guidance/GuidanceP
 import { AgentInputMode } from './AgentInteraction'
 import { waitForComposerComposition } from '../components/workspace/references/composer-view'
 import { PdfMaterials, PdfMaterialEntries, usePdfMaterials } from './PdfMaterials'
+import { PersonalMaterials, PersonalMaterialEntries, usePersonalMaterials } from './PersonalMaterials'
 import { panes, type LayoutNode } from '../lib/wsLayout'
 
 // The center already supports injected named tool bodies; PDF shares its existing tab/layout lifecycle.
 const PDF_TOOL = 'component:__pdf-materials__' as const
+const PERSONAL_TOOL = 'component:__personal-materials__' as const
 
-function includePdfTab(taskId: string) {
+function includeCenterTab(taskId: string, key: ToolKey) {
   try {
-    const key = `ws-layout:${taskId}`, saved = localStorage.getItem(key)
+    const storageKey = `ws-layout:${taskId}`, saved = localStorage.getItem(storageKey)
     if (!saved) return
     const layout = JSON.parse(saved) as LayoutNode
-    if (panes(layout).some(pane => pane.tabs.includes(PDF_TOOL))) return
-    // Add to the first existing pane without changing its active tab or any split geometry.
+    if (panes(layout).some(pane => pane.tabs.includes(key))) return
     const append = (node: LayoutNode): LayoutNode => node.kind === 'pane'
-      ? { ...node, tabs: [...node.tabs, PDF_TOOL] } : { ...node, a: append(node.a) }
-    localStorage.setItem(key, JSON.stringify(append(layout)))
+      ? { ...node, tabs: [...node.tabs, key] } : { ...node, a: append(node.a) }
+    localStorage.setItem(storageKey, JSON.stringify(append(layout)))
   } catch { /* The center already falls back to a fresh layout for unreadable storage. */ }
+}
+function includePdfTab(taskId: string) {
+  includeCenterTab(taskId, PDF_TOOL)
 }
 function toolReference(value: unknown) {
   const received = questionReferenceSchema.safeParse(value)
@@ -74,9 +78,11 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const readOnly = workspace.isReadOnly()
   const scope = workspaceScope(namespace, activity)
   const [layoutReady, setLayoutReady] = useState(false)
-  useEffect(() => { includePdfTab(namespace + ':' + activity.activityId); setLayoutReady(true) }, [namespace, activity.activityId])
+  useEffect(() => { const taskId = namespace + ':' + activity.activityId; includePdfTab(taskId); includeCenterTab(taskId, PERSONAL_TOOL); setLayoutReady(true) }, [namespace, activity.activityId])
   const revealPdf = useCallback(async () => { await workspace.leave(); setTool(PDF_TOOL) }, [workspace])
   const pdf = usePdfMaterials({ activity, spaceKey, namespace, authorized, reveal: revealPdf })
+  const revealPersonal = useCallback(async () => { await workspace.leave(); setTool(PERSONAL_TOOL) }, [workspace])
+  const personal = usePersonalMaterials({ activity, spaceKey, namespace, authorized, reveal: revealPersonal })
   const [pendingQuestion, setPendingQuestion] = useState<TeachingStudentQuestion | null>(null)
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null)
   const questionFocused = useCallback(() => setFocusQuestionId(null), [])
@@ -106,6 +112,29 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   } }), [workspace, draft, actions, scope])
   const [toolError, setToolError] = useState('')
   const locateTool: TeachingToolLocator = async record => {
+    if (record.name === 'search_materials') {
+      const search = record.result?.search as { matches?: { source?: Record<string, unknown>;
+        locator?: { line?: number; page?: number; start?: number; end?: number } }[] } | undefined
+      const match = search?.matches?.[0], source = match?.source
+      if (source?.kind === 'pdf' && typeof source.readingId === 'string' && typeof source.documentId === 'string')
+        return pdf.locate({ kind: 'pdf', activityId: activity.activityId, documentId: source.documentId,
+          documentSha256: String(source.sha256 ?? source.version), readingId: source.readingId },
+          typeof match?.locator?.page === 'number' ? match.locator.page : undefined)
+      if (source?.kind === 'course-material' && typeof source.materialId === 'string') {
+        if (source.releaseId !== activity.course?.releaseId)
+          return { ok: false, reason: '课程材料版本已变化，固定片段仍保留。' }
+        setMaterialsOpen(true)
+        if (window.matchMedia('(width < 1024px)').matches) references.setOpen(false)
+        return focusLocation(root.current, `[data-material-id="${CSS.escape(source.materialId)}"]`)
+      }
+      if (source?.kind === 'skill-attachment')
+        return { ok: false, reason: 'Skill 附件没有独立文件面板；命中位置和固定片段保留在本条检索记录中。' }
+      if (source?.kind === 'personal-material' && typeof source.materialId === 'string')
+        return personal.locate({ kind: 'personal-material', activityId: activity.activityId, materialId: source.materialId,
+          version: Number(source.version), sha256: String(source.sha256) },
+        match?.locator?.start !== undefined && match.locator.end !== undefined
+          ? { start: match.locator.start, end: match.locator.end } : undefined)
+    }
     const resultReference = toolReference(record.result?.reference)
     const resultSource = questionReferenceSourceSchema.safeParse(record.result?.source)
     const reference = resultReference.success ? resultReference : toolReference(record.basis.reference)
@@ -114,6 +143,13 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     const fixed = resultReference.success ? resultReference.data.source : resultSource.success ? resultSource.data
       : reference.success ? reference.data.source : source.success ? source.data : null
     if (fixed?.kind === 'pdf') return pdf.locate(fixed)
+    if (fixed?.kind === 'personal-material') {
+      const read = record.name === 'read_personal_material' ? record.result as { start?: number; end?: number } | null : null
+      const range = reference.success ? reference.data.range : null
+      return personal.locate(fixed,
+        read?.start !== undefined && read.end !== undefined ? { start: read.start, end: read.end }
+          : range?.kind === 'text' ? { start: range.start, end: range.end } : undefined)
+    }
     const objectId = fixed?.kind === 'work' ? fixed.objectId : record.name === 'read_work' ? record.arguments.objectId : null
     const contentId = fixed?.kind === 'work' ? fixed.contentId : record.arguments.contentId
     if (typeof objectId === 'string') {
@@ -165,6 +201,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   }
   const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
     { key: PDF_TOOL, label: 'PDF 资料', icon: 'clipboard-text' },
+    { key: PERSONAL_TOOL, label: '个人笔记', icon: 'clipboard-text' },
     ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
   // A component may declare a restricted run or a native stateful session; both keep their
   // record, query and stop in this area instead of inside the opaque view.
@@ -186,6 +223,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         : <div key={binding.key} style={{ height: '100%' }} data-component-key={binding.key} tabIndex={-1}>
           <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></div>)]))
   toolBodies[PDF_TOOL] = <PdfMaterials pdf={pdf} onBack={() => setTool('design')} />
+  toolBodies[PERSONAL_TOOL] = <PersonalMaterials personal={personal} onBack={() => setTool('design')} />
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
@@ -214,7 +252,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">
-        {details(materialId => void pdf.openCourse(materialId))}<PdfMaterialEntries pdf={pdf} />
+        {details(materialId => void pdf.openCourse(materialId))}<PdfMaterialEntries pdf={pdf} /><PersonalMaterialEntries personal={personal} />
       </aside>}
       {layoutReady && <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
         beforeToolChange={() => workspace.leave()}
