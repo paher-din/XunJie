@@ -180,11 +180,12 @@ export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({
 }).strict();
 export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events', 'switchModel',
   'capabilities', 'run', 'stop', 'continueRun', 'request', 'snapshot', 'assertCommandDispatch', 'assertModelDispatch',
-  'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt',
+  'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt', 'facts.read',
   'skills.list', 'skills.import', 'skills.select', 'skills.disable', 'skills.read']);
 export const teachingAgentCallSchema = z.object({ version: z.literal(1), operation: teachingAgentOperationSchema,
   identity: spaceIdentitySchema, activityId: z.uuid().optional(), args: z.array(z.unknown()).max(4) }).strict()
-  .refine(call => call.activityId !== undefined || call.operation.startsWith('skills.'), 'activity is required for conversation operations');
+  .refine(call => call.activityId !== undefined || call.operation.startsWith('skills.'),
+    'activity is required for conversation operations');
 
 export const teachingPreparedToolSchema = z.object({ version: z.literal(1), commandId: z.uuid(), name: z.string().min(1),
   arguments: z.record(z.string(), z.unknown()), effect: z.enum(['read', 'execute', 'input', 'stop', 'ask']), conflictKey: z.string().min(1),

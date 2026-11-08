@@ -42,6 +42,7 @@ import { createTeachingSkillRuntime } from './skill-runtime.js';
 import { abandonTeachingCompactions, createTeachingCompaction, teachingCompactionMigration } from './compaction.js';
 import { validateTeachingCompactions } from './compaction-validation.js';
 import { createTeachingStudentFacts, studentFactsGoalMigration, studentFactsMigration, validateTeachingStudentFacts } from './student-facts.js';
+import { validateTeachingSkillLoads } from './maintenance.js';
 export { createTeachingStudentFacts, studentFactsGoalMigration, studentFactsMigration, validateTeachingStudentFacts } from './student-facts.js';
 
 const reasonText = (reason: unknown) => {
@@ -1169,6 +1170,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
 /** Recovery validation reads only this owner's durable facts; it never triggers a model call. */
 export async function validateTeachingAgent(storage: OwnedStorage) {
   await validateTeachingSkills(storage);
+  await validateTeachingSkillLoads(storage);
   await validateTeachingStudentFacts(storage);
   await createChunkChannel(storage).validate();
   await validateTeachingSegmentTransitions(storage);

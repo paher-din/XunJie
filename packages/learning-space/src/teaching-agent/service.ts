@@ -10,12 +10,14 @@ import { teachingAgentCallSchema, teachingAgentReceiverId, teachingConversationS
   teachingModelSwitchInputSchema, teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent';
 import type { createTeachingAgent } from './index.js';
 import { teachingSkillCatalogEntrySchema, teachingSkillLoadedSchema, teachingSkillImportSchema,
-  teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillReferenceSchema, teachingSkillPathSchema,
-  teachingSkillListSchema } from '@xunjie/contracts/agent-skills';
+  teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillReferenceSchema, teachingSkillReferencesSchema,
+  teachingSkillPathSchema, teachingSkillListSchema } from '@xunjie/contracts/agent-skills';
+import { studentFactsReadInputSchema, studentFactsReadResultSchema } from '@xunjie/contracts/student-facts';
 
 export type TeachingAgentPort = Pick<ReturnType<typeof createTeachingAgent>, 'receiver' | 'conversation' | 'events' | 'capabilities'
   | 'run' | 'stop' | 'continueRun' | 'request' | 'snapshot' | 'assertCommandDispatch' | 'assertModelDispatch'
-  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt' | 'switchModel' | 'skills'>;
+  | 'respond' | 'response' | 'presentQuestion' | 'controlInput' | 'inputControlReceipt' | 'switchModel' | 'skills'
+  | 'studentFacts'>;
 export type TeachingAgentCall = z.infer<typeof teachingAgentCallSchema>;
 const ids = (values: unknown[], count: number) => z.array(z.uuid()).length(count).parse(values);
 
@@ -30,7 +32,15 @@ export function createTeachingAgentService(agent: TeachingAgentPort,
     if (call.operation === 'skills.disable') return agent.skills.disable(identity, teachingSkillDisableSchema.parse(args[0]));
     if (call.operation === 'skills.read') {
       const ref = teachingSkillReferenceSchema.extend({ path: teachingSkillPathSchema }).strict().parse(args[0]);
-      return agent.skills.read(identity, z.uuid().parse(call.activityId), ref.skillId, ref.version, ref.path);
+      // The caller may supply the original step's selected references. The owner re-resolves them
+      // against current activity eligibility; a forged or stale selection is rejected, never expanded.
+      const references = args[1] === undefined ? undefined : teachingSkillReferencesSchema.parse(args[1]);
+      return agent.skills.read(identity, z.uuid().parse(call.activityId), ref.skillId, ref.version, ref.path,
+        references ? { references } : {});
+    }
+    if (call.operation === 'facts.read') {
+      return studentFactsReadResultSchema.parse(await agent.studentFacts.read(identity, z.uuid().parse(call.activityId),
+        studentFactsReadInputSchema.parse(args[0] ?? {})));
     }
     const activityId = z.uuid().parse(call.activityId);
     switch (call.operation) {
@@ -87,7 +97,12 @@ export function createTeachingAgentClient(serviceId: string, identity: SpaceIden
       import: async (_identity, input) => teachingSkillCatalogEntrySchema.parse(await invoke('skills.import', [input])),
       select: async (_identity, input) => teachingSkillListSchema.parse(await invoke('skills.select', [input])),
       disable: async (_identity, input) => teachingSkillCatalogEntrySchema.parse(await invoke('skills.disable', [input])),
-      read: async (_identity, activity, skillId, version, path) => teachingSkillLoadedSchema.parse(await invoke('skills.read', [{ skillId, version, path }], activity)),
+      read: async (_identity, activity, skillId, version, path, guard) => teachingSkillLoadedSchema.parse(
+        await invoke('skills.read', [{ skillId, version, path }, ...(guard?.references ? [guard.references] : [])], activity)),
+    },
+    studentFacts: {
+      read: async (identity, activity, input) => studentFactsReadResultSchema.parse(
+        await invoke('facts.read', [studentFactsReadInputSchema.parse(input)], activity)),
     },
     receiver: { identity: { receiverId: teachingAgentReceiverId(serviceId), kind: 'question', location: 'remote' },
       accept: async (input, hash) => actionReceiptSchema.parse(await invoke('accept', [input, hash])),

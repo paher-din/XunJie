@@ -67,6 +67,8 @@ export function createStorageRecoveryOwner(options: {
   receiverBoundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
   /** The owner, not backup orchestration, knows how to re-read its domain through its API. */
   validateService: (storage: OwnedStorage) => Promise<void>;
+  /** Read-only source closure emitted at the same closed boundary (#221). */
+  sources?: (storage: OwnedStorage) => Promise<NonNullable<OwnerBoundaryMaterial['sources']>>;
 }): RecoveryOwner {
   const participant = options.storage.participant();
   const validateStorage = participant.validate.bind(participant);
@@ -83,6 +85,7 @@ export function createStorageRecoveryOwner(options: {
         retained: evidence.retained ?? { resources: 0, checkpoints: 0 },
         blocking: evidence.blocking.map(item => ({ ...item })),
         ...(evidence.evidence === undefined ? {} : { evidence: evidence.evidence }),
+        ...(options.sources ? { sources: await options.sources(options.storage) } : {}),
       };
       return material;
   }
@@ -139,6 +142,9 @@ export function createStorageRecoveryTarget(options: {
   validateService: (storage: OwnedStorage) => Promise<void>;
   /** The owner re-derives its evidence from the restored data and compares it with the material. */
   validateMaterial?: (storage: OwnedStorage, material: OwnerBoundaryMaterial) => Promise<void>;
+  /** Read-only source closure for backups produced after #221; absent on published legacy backups. */
+  sources?: (storage: OwnedStorage) => Promise<NonNullable<OwnerBoundaryMaterial['sources']>>;
+  validateSources?: (storage: OwnedStorage, sources: NonNullable<OwnerBoundaryMaterial['sources']>) => Promise<void>;
   boundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
   receiverBoundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
 }): RecoveryTarget {
@@ -189,7 +195,8 @@ export function createStorageRecoveryTarget(options: {
         await options.onRestored?.(restored, binding);
         return createStorageRecoveryOwner({ storage: restored, binding, migrations: options.migrations, resources: options.resources,
           resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService,
-          boundary: options.boundary, receiverBoundary: options.receiverBoundary });
+          boundary: options.boundary, receiverBoundary: options.receiverBoundary,
+          ...(options.sources ? { sources: options.sources } : {}) });
       } catch (error) { await restored?.close(); restored = undefined; throw error; }
     },
     async validate() {
@@ -200,6 +207,8 @@ export function createStorageRecoveryTarget(options: {
       if (!restored) throw new RecoveryError('restore-incomplete');
       if (material.serviceId !== options.owner.serviceId) throw new RecoveryError('incompatible-boundary-material');
       await options.validateMaterial?.(restored, material);
+      if (material.sources !== undefined && options.validateSources)
+        await options.validateSources(restored, material.sources);
     },
   };
 }

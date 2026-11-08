@@ -1,0 +1,3142 @@
+{
+  "status": "passed",
+  "startedAt": "2026-11-08T10:08:30.787Z",
+  "finishedAt": "2026-11-08T10:14:04.112Z",
+  "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+  "nodeVersion": "v24.21.0",
+  "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/verify.log",
+  "summaryFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/summary.json",
+  "exitCode": 0,
+  "group": "full",
+  "shard": null,
+  "jobs": 2,
+  "testsCached": false,
+  "stages": [
+    {
+      "name": "prepare",
+      "status": "passed",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/01-prepare.log",
+      "tasks": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "typecheck"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-08T10:08:30.789Z",
+          "finishedAt": "2026-11-08T10:08:43.975Z",
+          "durationMs": 13186,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "build",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "all"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-08T10:08:43.976Z",
+          "finishedAt": "2026-11-08T10:08:52.688Z",
+          "durationMs": 8712,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "check:contracts:browser",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/check-contracts-browser.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-08T10:08:52.689Z",
+          "finishedAt": "2026-11-08T10:08:52.952Z",
+          "durationMs": 263,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "check:docs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/check-doc-links.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+          "exclusive": true,
+          "startedAt": "2026-11-08T10:08:52.953Z",
+          "finishedAt": "2026-11-08T10:08:53.224Z",
+          "durationMs": 271,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-08T10:08:30.789Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-08T10:08:53.224Z",
+      "durationMs": 22435
+    },
+    {
+      "name": "build:test",
+      "status": "passed",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/02-build-test.log",
+      "tasks": [
+        {
+          "name": "build:test",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "scripts/build.mjs",
+            "test"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:53.225Z",
+          "finishedAt": "2026-11-08T10:08:53.756Z",
+          "durationMs": 531,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-08T10:08:53.225Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-08T10:08:53.756Z",
+      "durationMs": 531
+    },
+    {
+      "name": "unit",
+      "status": "passed",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/03-unit.log",
+      "tasks": [
+        {
+          "name": "scripts/build.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/build.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:53.757Z",
+          "finishedAt": "2026-11-08T10:09:01.286Z",
+          "durationMs": 7529,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/check-contracts-browser.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/check-contracts-browser.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:54.344Z",
+          "finishedAt": "2026-11-08T10:08:55.834Z",
+          "durationMs": 1490,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/check-doc-links.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/check-doc-links.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:56.392Z",
+          "finishedAt": "2026-11-08T10:08:56.909Z",
+          "durationMs": 517,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/ci-build-artifact.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/ci-build-artifact.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:57.112Z",
+          "finishedAt": "2026-11-08T10:08:57.730Z",
+          "durationMs": 618,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/package-product.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/package-product.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:57.934Z",
+          "finishedAt": "2026-11-08T10:08:58.030Z",
+          "durationMs": 96,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/test-discovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/test-discovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:58.232Z",
+          "finishedAt": "2026-11-08T10:08:58.369Z",
+          "durationMs": 137,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/test-scheduler.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/test-scheduler.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:01.287Z",
+          "finishedAt": "2026-11-08T10:09:05.940Z",
+          "durationMs": 4653,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "scripts/verify.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/verify.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:05.941Z",
+          "finishedAt": "2026-11-08T10:09:12.587Z",
+          "durationMs": 6646,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "web",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/node_modules/vitest/vitest.mjs",
+            "run",
+            "--maxWorkers=1",
+            "--minWorkers=1",
+            "--no-file-parallelism"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/web",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:09.802Z",
+          "finishedAt": "2026-11-08T10:09:44.773Z",
+          "durationMs": 34971,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/alu-counterexample.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts/test/alu-counterexample.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:14.451Z",
+          "finishedAt": "2026-11-08T10:09:14.614Z",
+          "durationMs": 163,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/alu-references.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts/test/alu-references.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.032Z",
+          "finishedAt": "2026-11-08T10:09:15.201Z",
+          "durationMs": 169,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/alu-waveform.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts/test/alu-waveform.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.414Z",
+          "finishedAt": "2026-11-08T10:09:15.543Z",
+          "durationMs": 129,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/component-formats.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts/test/component-formats.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.880Z",
+          "finishedAt": "2026-11-08T10:09:16.028Z",
+          "durationMs": 148,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/execution-plan.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts/test/execution-plan.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:16.558Z",
+          "finishedAt": "2026-11-08T10:09:16.705Z",
+          "durationMs": 147,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/contracts/test/teaching-event.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts/test/teaching-event.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/contracts",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:17.487Z",
+          "finishedAt": "2026-11-08T10:09:17.635Z",
+          "durationMs": 148,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/connections-installation.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/connections-installation.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:26.092Z",
+          "finishedAt": "2026-11-08T10:09:27.559Z",
+          "durationMs": 1467,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/host-facts.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/host-facts.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:44.052Z",
+          "finishedAt": "2026-11-08T10:09:44.879Z",
+          "durationMs": 827,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/io.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/io.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:45.113Z",
+          "finishedAt": "2026-11-08T10:09:48.306Z",
+          "durationMs": 3193,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/learning-drain.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/learning-drain.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:51.850Z",
+          "finishedAt": "2026-11-08T10:09:52.303Z",
+          "durationMs": 453,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:52.637Z",
+          "finishedAt": "2026-11-08T10:10:03.083Z",
+          "durationMs": 10446,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/maintenance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/maintenance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:03.207Z",
+          "finishedAt": "2026-11-08T10:10:03.321Z",
+          "durationMs": 114,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/model-origin-recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/model-origin-recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:07.630Z",
+          "finishedAt": "2026-11-08T10:10:07.940Z",
+          "durationMs": 310,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/prerequisites-cli.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/prerequisites-cli.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:08.528Z",
+          "finishedAt": "2026-11-08T10:10:14.047Z",
+          "durationMs": 5519,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/prerequisites-lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:11.041Z",
+          "finishedAt": "2026-11-08T10:10:12.010Z",
+          "durationMs": 969,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/prerequisites.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/prerequisites.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:13.627Z",
+          "finishedAt": "2026-11-08T10:10:13.715Z",
+          "durationMs": 88,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/recovery-connections.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:14.048Z",
+          "finishedAt": "2026-11-08T10:10:19.884Z",
+          "durationMs": 5836,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery-files.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/recovery-files.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:24.197Z",
+          "finishedAt": "2026-11-08T10:10:24.536Z",
+          "durationMs": 339,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery-set.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/recovery-set.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:26.088Z",
+          "finishedAt": "2026-11-08T10:10:26.507Z",
+          "durationMs": 419,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:31.055Z",
+          "finishedAt": "2026-11-08T10:10:41.581Z",
+          "durationMs": 10526,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/resource-response.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/resource-response.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:42.690Z",
+          "finishedAt": "2026-11-08T10:10:42.831Z",
+          "durationMs": 141,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/school-client.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/school-client.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:44.781Z",
+          "finishedAt": "2026-11-08T10:10:45.545Z",
+          "durationMs": 764,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/service-routing.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/service-routing.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:45.903Z",
+          "finishedAt": "2026-11-08T10:10:47.776Z",
+          "durationMs": 1873,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/shutdown-sockets.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:48.815Z",
+          "finishedAt": "2026-11-08T10:10:49.371Z",
+          "durationMs": 556,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/ssh-recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/ssh-recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:01.018Z",
+          "finishedAt": "2026-11-08T10:11:01.387Z",
+          "durationMs": 369,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/storage/test/blobs.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/storage/test/blobs.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/storage",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:07.592Z",
+          "finishedAt": "2026-11-08T10:11:08.537Z",
+          "durationMs": 945,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "packages/product-runtime/test/connections.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime/test/connections.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/packages/product-runtime",
+          "exclusive": true,
+          "startedAt": "2026-11-08T10:14:01.026Z",
+          "finishedAt": "2026-11-08T10:14:04.111Z",
+          "durationMs": 3085,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-08T10:08:53.757Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-08T10:14:04.111Z",
+      "durationMs": 310354
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/04-server.log",
+      "tasks": [
+        {
+          "name": "apps/server/runner/alu-check.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/alu-check.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:53.758Z",
+          "finishedAt": "2026-11-08T10:08:53.895Z",
+          "durationMs": 137,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/control.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/control.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:55.835Z",
+          "finishedAt": "2026-11-08T10:08:55.951Z",
+          "durationMs": 116,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/course.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/course.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:56.910Z",
+          "finishedAt": "2026-11-08T10:08:57.023Z",
+          "durationMs": 113,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/editor-diagnostics.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/editor-diagnostics.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:57.730Z",
+          "finishedAt": "2026-11-08T10:08:57.844Z",
+          "durationMs": 114,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/hdl-clock.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/hdl-clock.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:58.031Z",
+          "finishedAt": "2026-11-08T10:08:58.142Z",
+          "durationMs": 111,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/hdl-profile.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/hdl-profile.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:58.370Z",
+          "finishedAt": "2026-11-08T10:08:58.487Z",
+          "durationMs": 117,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/node-files.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/node-files.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:04.059Z",
+          "finishedAt": "2026-11-08T10:09:04.168Z",
+          "durationMs": 109,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/report.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/report.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:07.539Z",
+          "finishedAt": "2026-11-08T10:09:07.650Z",
+          "durationMs": 111,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/result-files.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/result-files.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:12.588Z",
+          "finishedAt": "2026-11-08T10:09:12.701Z",
+          "durationMs": 113,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/run-snapshot.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/run-snapshot.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:14.615Z",
+          "finishedAt": "2026-11-08T10:09:14.724Z",
+          "durationMs": 109,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/snapshot.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/snapshot.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.202Z",
+          "finishedAt": "2026-11-08T10:09:15.311Z",
+          "durationMs": 109,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/runner/verify.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/runner/verify.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.544Z",
+          "finishedAt": "2026-11-08T10:09:15.649Z",
+          "durationMs": 105,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/deployment-identity.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/deployment-identity.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:16.029Z",
+          "finishedAt": "2026-11-08T10:09:16.180Z",
+          "durationMs": 151,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/digital-logic.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/digital-logic.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:16.706Z",
+          "finishedAt": "2026-11-08T10:09:16.818Z",
+          "durationMs": 112,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/execution-nodes.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/execution-nodes.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:17.636Z",
+          "finishedAt": "2026-11-08T10:09:25.888Z",
+          "durationMs": 8252,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/i0-readiness.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/i0-readiness.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:27.560Z",
+          "finishedAt": "2026-11-08T10:09:37.868Z",
+          "durationMs": 10308,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/i0-tutoring.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/i0-tutoring.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:44.774Z",
+          "finishedAt": "2026-11-08T10:09:51.043Z",
+          "durationMs": 6269,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/i0.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/i0.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:48.307Z",
+          "finishedAt": "2026-11-08T10:09:57.805Z",
+          "durationMs": 9498,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/main-readiness-compatibility.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/main-readiness-compatibility.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:52.303Z",
+          "finishedAt": "2026-11-08T10:09:52.453Z",
+          "durationMs": 150,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/model-budget.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/model-budget.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:57.809Z",
+          "finishedAt": "2026-11-08T10:10:08.399Z",
+          "durationMs": 10590,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/personal-models.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/personal-models.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:03.321Z",
+          "finishedAt": "2026-11-08T10:10:06.219Z",
+          "durationMs": 2898,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/pr53-56-readiness.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/pr53-56-readiness.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:07.941Z",
+          "finishedAt": "2026-11-08T10:10:09.634Z",
+          "durationMs": 1693,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/app/response-metrics.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/app/response-metrics.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:09.635Z",
+          "finishedAt": "2026-11-08T10:10:10.398Z",
+          "durationMs": 763,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/personal-agent/integration.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/personal-agent/integration.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:12.011Z",
+          "finishedAt": "2026-11-08T10:10:13.332Z",
+          "durationMs": 1321,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/personal-agent/model-budget.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/personal-agent/model-budget.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:13.716Z",
+          "finishedAt": "2026-11-08T10:10:13.853Z",
+          "durationMs": 137,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/personal-agent/student-tasks.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/personal-agent/student-tasks.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:19.885Z",
+          "finishedAt": "2026-11-08T10:10:20.607Z",
+          "durationMs": 722,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/records.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/records/records.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:24.536Z",
+          "finishedAt": "2026-11-08T10:10:24.648Z",
+          "durationMs": 112,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/teaching-projection.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/records/teaching-projection.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:26.508Z",
+          "finishedAt": "2026-11-08T10:10:33.520Z",
+          "durationMs": 7012,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/teaching-review.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/records/teaching-review.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:33.521Z",
+          "finishedAt": "2026-11-08T10:10:42.689Z",
+          "durationMs": 9168,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/records/teaching.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/records/teaching.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:42.831Z",
+          "finishedAt": "2026-11-08T10:10:48.814Z",
+          "durationMs": 5983,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/deepseek-sdk.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/deepseek-sdk.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:45.546Z",
+          "finishedAt": "2026-11-08T10:10:45.767Z",
+          "durationMs": 221,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/hdl-help.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/hdl-help.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:47.777Z",
+          "finishedAt": "2026-11-08T10:10:47.943Z",
+          "durationMs": 166,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/index.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/index.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:49.372Z",
+          "finishedAt": "2026-11-08T10:10:49.656Z",
+          "durationMs": 284,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/learner-analysis.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/learner-analysis.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:01.196Z",
+          "finishedAt": "2026-11-08T10:11:07.591Z",
+          "durationMs": 6395,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/openai-compatible.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/openai-compatible.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:08.538Z",
+          "finishedAt": "2026-11-08T10:11:08.690Z",
+          "durationMs": 152,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/real-model-support.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/real-model-support.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:12.915Z",
+          "finishedAt": "2026-11-08T10:11:13.737Z",
+          "durationMs": 822,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/tutoring/test/student-help.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/tutoring/test/student-help.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:14.141Z",
+          "finishedAt": "2026-11-08T10:11:27.904Z",
+          "durationMs": 13763,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/a5-consumption.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/a5-consumption.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:26.580Z",
+          "finishedAt": "2026-11-08T10:11:27.675Z",
+          "durationMs": 1095,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/editor-diagnostics.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/editor-diagnostics.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:27.905Z",
+          "finishedAt": "2026-11-08T10:11:28.982Z",
+          "durationMs": 1077,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/hdl.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/hdl.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:29.922Z",
+          "finishedAt": "2026-11-08T10:11:36.870Z",
+          "durationMs": 6948,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/integration.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/integration.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:38.137Z",
+          "finishedAt": "2026-11-08T10:11:46.983Z",
+          "durationMs": 8846,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/job-composition.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/job-composition.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:14.061Z",
+          "finishedAt": "2026-11-08T10:12:15.523Z",
+          "durationMs": 1462,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/limited-check.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/limited-check.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:15.523Z",
+          "finishedAt": "2026-11-08T10:12:20.670Z",
+          "durationMs": 5147,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/review.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/review.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:20.671Z",
+          "finishedAt": "2026-11-08T10:12:23.766Z",
+          "durationMs": 3095,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/runs.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/runs.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:23.393Z",
+          "finishedAt": "2026-11-08T10:12:23.540Z",
+          "durationMs": 147,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/submissions.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/submissions.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:23.727Z",
+          "finishedAt": "2026-11-08T10:12:30.661Z",
+          "durationMs": 6934,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/server/workspace/workspace.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/server/workspace/workspace.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:23.767Z",
+          "finishedAt": "2026-11-08T10:12:23.919Z",
+          "durationMs": 152,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/a5-feedback.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/a5-feedback.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:23.920Z",
+          "finishedAt": "2026-11-08T10:12:33.520Z",
+          "durationMs": 9600,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/a5-followup.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/a5-followup.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:30.662Z",
+          "finishedAt": "2026-11-08T10:12:32.279Z",
+          "durationMs": 1617,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/access.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/access.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:32.280Z",
+          "finishedAt": "2026-11-08T10:12:51.266Z",
+          "durationMs": 18986,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/account-control.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/account-control.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:33.521Z",
+          "finishedAt": "2026-11-08T10:12:35.222Z",
+          "durationMs": 1701,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/alu-reflection-retry.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/alu-reflection-retry.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:35.223Z",
+          "finishedAt": "2026-11-08T10:12:35.488Z",
+          "durationMs": 265,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/app.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/app.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:35.489Z",
+          "finishedAt": "2026-11-08T10:12:35.653Z",
+          "durationMs": 164,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/application-database.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/application-database.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:35.654Z",
+          "finishedAt": "2026-11-08T10:12:37.240Z",
+          "durationMs": 1586,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-activities.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-activities.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:37.241Z",
+          "finishedAt": "2026-11-08T10:12:52.157Z",
+          "durationMs": 14916,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-agent.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-agent.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:51.267Z",
+          "finishedAt": "2026-11-08T10:13:07.677Z",
+          "durationMs": 16410,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-checks.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-checks.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:52.160Z",
+          "finishedAt": "2026-11-08T10:12:52.298Z",
+          "durationMs": 138,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-draft.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-draft.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:52.299Z",
+          "finishedAt": "2026-11-08T10:12:52.429Z",
+          "durationMs": 130,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-material.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-material.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:52.430Z",
+          "finishedAt": "2026-11-08T10:12:52.566Z",
+          "durationMs": 136,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-projection.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-projection.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:52.566Z",
+          "finishedAt": "2026-11-08T10:12:52.706Z",
+          "durationMs": 140,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/design-storage.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/design-storage.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:52.707Z",
+          "finishedAt": "2026-11-08T10:13:04.732Z",
+          "durationMs": 12025,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/display-metadata.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/display-metadata.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:04.733Z",
+          "finishedAt": "2026-11-08T10:13:05.986Z",
+          "durationMs": 1253,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/dl-a-app.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/dl-a-app.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:05.987Z",
+          "finishedAt": "2026-11-08T10:13:18.863Z",
+          "durationMs": 12876,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/dl-a-hdl-help.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/dl-a-hdl-help.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:07.678Z",
+          "finishedAt": "2026-11-08T10:13:13.525Z",
+          "durationMs": 5847,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/durability.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/durability.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:13.526Z",
+          "finishedAt": "2026-11-08T10:13:14.850Z",
+          "durationMs": 1324,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/errors.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/errors.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:14.851Z",
+          "finishedAt": "2026-11-08T10:13:15.025Z",
+          "durationMs": 174,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/execution-nodes.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/execution-nodes.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:15.026Z",
+          "finishedAt": "2026-11-08T10:13:15.155Z",
+          "durationMs": 129,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/learning-admission-policy.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/learning-admission-policy.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:15.156Z",
+          "finishedAt": "2026-11-08T10:13:15.294Z",
+          "durationMs": 138,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/local-socket.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/local-socket.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:15.294Z",
+          "finishedAt": "2026-11-08T10:13:15.473Z",
+          "durationMs": 179,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/material-search-coverage.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/material-search-coverage.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:15.474Z",
+          "finishedAt": "2026-11-08T10:13:15.599Z",
+          "durationMs": 125,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-capability-images.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-capability-images.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:15.600Z",
+          "finishedAt": "2026-11-08T10:13:16.003Z",
+          "durationMs": 403,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-consumer.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-consumer.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:16.004Z",
+          "finishedAt": "2026-11-08T10:13:22.953Z",
+          "durationMs": 6949,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-messages-review.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-messages-review.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:18.863Z",
+          "finishedAt": "2026-11-08T10:13:19.315Z",
+          "durationMs": 452,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-network-policy.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-network-policy.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:19.316Z",
+          "finishedAt": "2026-11-08T10:13:19.497Z",
+          "durationMs": 181,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-progress.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-progress.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:19.498Z",
+          "finishedAt": "2026-11-08T10:13:19.584Z",
+          "durationMs": 86,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-protocol-review.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-protocol-review.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:19.588Z",
+          "finishedAt": "2026-11-08T10:13:20.976Z",
+          "durationMs": 1388,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/model-sensitive-boundary.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/model-sensitive-boundary.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:20.976Z",
+          "finishedAt": "2026-11-08T10:13:21.251Z",
+          "durationMs": 275,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/native-isolation.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/native-isolation.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:21.252Z",
+          "finishedAt": "2026-11-08T10:13:26.752Z",
+          "durationMs": 5500,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/native-session.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/native-session.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:22.954Z",
+          "finishedAt": "2026-11-08T10:13:28.463Z",
+          "durationMs": 5509,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/records-adapter-performance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/records-adapter-performance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:26.752Z",
+          "finishedAt": "2026-11-08T10:13:27.230Z",
+          "durationMs": 478,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/records-adapter.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/records-adapter.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:27.231Z",
+          "finishedAt": "2026-11-08T10:13:29.809Z",
+          "durationMs": 2578,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/review.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/review.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:28.464Z",
+          "finishedAt": "2026-11-08T10:14:01.025Z",
+          "durationMs": 32561,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/semantic-references.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/semantic-references.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:29.810Z",
+          "finishedAt": "2026-11-08T10:13:29.957Z",
+          "durationMs": 147,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/session-checkpoints.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/session-checkpoints.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:29.958Z",
+          "finishedAt": "2026-11-08T10:13:30.103Z",
+          "durationMs": 145,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/session-store.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/session-store.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:30.104Z",
+          "finishedAt": "2026-11-08T10:13:30.222Z",
+          "durationMs": 118,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/startup.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/startup.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:30.222Z",
+          "finishedAt": "2026-11-08T10:13:30.556Z",
+          "durationMs": 334,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/teacher-design-budget.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/teacher-design-budget.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:30.557Z",
+          "finishedAt": "2026-11-08T10:13:30.711Z",
+          "durationMs": 154,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/teacher-workflow.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/teacher-workflow.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:30.712Z",
+          "finishedAt": "2026-11-08T10:13:36.865Z",
+          "durationMs": 6153,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/teaching-agent.dependency-authorization.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/teaching-agent.dependency-authorization.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:36.866Z",
+          "finishedAt": "2026-11-08T10:13:37.134Z",
+          "durationMs": 268,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/transaction.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/transaction.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:37.134Z",
+          "finishedAt": "2026-11-08T10:13:37.253Z",
+          "durationMs": 119,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/validation.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/validation.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:37.254Z",
+          "finishedAt": "2026-11-08T10:13:37.421Z",
+          "durationMs": 167,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/workspace-hydration-performance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/workspace-hydration-performance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:37.422Z",
+          "finishedAt": "2026-11-08T10:13:38.515Z",
+          "durationMs": 1093,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/workspace-scope-performance.test.ts",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/workspace-scope-performance.test.ts"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:38.516Z",
+          "finishedAt": "2026-11-08T10:13:41.105Z",
+          "durationMs": 2589,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/wp08-221-cross-service.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/wp08-221-cross-service.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:41.105Z",
+          "finishedAt": "2026-11-08T10:13:41.374Z",
+          "durationMs": 269,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "apps/server/tests/wp08-221-source-closure.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server/tests/wp08-221-source-closure.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/apps/server",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:13:41.375Z",
+          "finishedAt": "2026-11-08T10:13:41.647Z",
+          "durationMs": 272,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-08T10:08:53.758Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-08T10:14:01.025Z",
+      "durationMs": 307267
+    },
+    {
+      "name": "tools",
+      "status": "passed",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-11-08T10-08-30-786Z-BXGRBX/05-tools.log",
+      "tasks": [
+        {
+          "name": "tools/i0-cloud/backup-retained.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/backup-retained.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:53.896Z",
+          "finishedAt": "2026-11-08T10:08:54.343Z",
+          "durationMs": 447,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/build-runtime-artifact.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:55.952Z",
+          "finishedAt": "2026-11-08T10:08:56.391Z",
+          "durationMs": 439,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-analysis.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/capacity-analysis.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:57.024Z",
+          "finishedAt": "2026-11-08T10:08:57.111Z",
+          "durationMs": 87,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-collect.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/capacity-collect.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:57.844Z",
+          "finishedAt": "2026-11-08T10:08:57.933Z",
+          "durationMs": 89,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-metrics.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/capacity-metrics.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:58.142Z",
+          "finishedAt": "2026-11-08T10:08:58.231Z",
+          "durationMs": 89,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/capacity-run-failure.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:08:58.487Z",
+          "finishedAt": "2026-11-08T10:09:04.058Z",
+          "durationMs": 5571,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/capacity-workflow.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/capacity-workflow.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:04.168Z",
+          "finishedAt": "2026-11-08T10:09:07.537Z",
+          "durationMs": 3369,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/deploy-artifact.test.py",
+          "status": "passed",
+          "command": "python3",
+          "args": [
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/deploy-artifact.test.py"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:07.651Z",
+          "finishedAt": "2026-11-08T10:09:09.802Z",
+          "durationMs": 2151,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-cloud/prepare-demo-data.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-cloud/prepare-demo-data.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:12.701Z",
+          "finishedAt": "2026-11-08T10:09:14.451Z",
+          "durationMs": 1750,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-hdl/editor-source.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-hdl/editor-source.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:14.725Z",
+          "finishedAt": "2026-11-08T10:09:15.031Z",
+          "durationMs": 306,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/i0-hdl/receive-frozen-images.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/i0-hdl/receive-frozen-images.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.312Z",
+          "finishedAt": "2026-11-08T10:09:15.413Z",
+          "durationMs": 101,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/access.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/access.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:15.650Z",
+          "finishedAt": "2026-11-08T10:09:15.879Z",
+          "durationMs": 229,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/adapters.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/adapters.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:16.180Z",
+          "finishedAt": "2026-11-08T10:09:16.558Z",
+          "durationMs": 378,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/deployment.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/deployment.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:16.819Z",
+          "finishedAt": "2026-11-08T10:09:17.486Z",
+          "durationMs": 667,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/entrypoints.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/entrypoints.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:25.889Z",
+          "finishedAt": "2026-11-08T10:09:26.092Z",
+          "durationMs": 203,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/github-login.e2e.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/github-login.e2e.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:37.868Z",
+          "finishedAt": "2026-11-08T10:09:44.051Z",
+          "durationMs": 6183,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/github-login.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/github-login.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:44.881Z",
+          "finishedAt": "2026-11-08T10:09:45.112Z",
+          "durationMs": 231,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:51.044Z",
+          "finishedAt": "2026-11-08T10:09:51.849Z",
+          "durationMs": 805,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/oss-storage.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/oss-storage.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:09:52.454Z",
+          "finishedAt": "2026-11-08T10:09:52.636Z",
+          "durationMs": 182,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/package-cleanup.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/package-cleanup.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:03.084Z",
+          "finishedAt": "2026-11-08T10:10:03.206Z",
+          "durationMs": 122,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/package-service.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/package-service.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:06.220Z",
+          "finishedAt": "2026-11-08T10:10:07.629Z",
+          "durationMs": 1409,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/packages.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/packages.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:08.400Z",
+          "finishedAt": "2026-11-08T10:10:08.528Z",
+          "durationMs": 128,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/server.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/server.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:10.398Z",
+          "finishedAt": "2026-11-08T10:10:11.041Z",
+          "durationMs": 643,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev-access/tls.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev-access/tls.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:13.333Z",
+          "finishedAt": "2026-11-08T10:10:13.626Z",
+          "durationMs": 293,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/baseline-recovery.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/baseline-recovery.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:13.853Z",
+          "finishedAt": "2026-11-08T10:10:24.196Z",
+          "durationMs": 10343,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/baseline-team.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:20.608Z",
+          "finishedAt": "2026-11-08T10:10:26.977Z",
+          "durationMs": 6369,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/baseline-unstarted.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/baseline-unstarted.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:24.649Z",
+          "finishedAt": "2026-11-08T10:10:26.087Z",
+          "durationMs": 1438,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/certificates.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/certificates.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:26.978Z",
+          "finishedAt": "2026-11-08T10:10:31.054Z",
+          "durationMs": 4076,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/enrollment-client.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:41.581Z",
+          "finishedAt": "2026-11-08T10:10:44.690Z",
+          "durationMs": 3109,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/enrollment-protocol.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:44.691Z",
+          "finishedAt": "2026-11-08T10:10:44.780Z",
+          "durationMs": 89,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/enrollment-ssh.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:45.768Z",
+          "finishedAt": "2026-11-08T10:10:45.902Z",
+          "durationMs": 134,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/env-removal.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/env-removal.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:47.944Z",
+          "finishedAt": "2026-11-08T10:11:01.195Z",
+          "durationMs": 13251,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:10:49.656Z",
+          "finishedAt": "2026-11-08T10:11:01.017Z",
+          "durationMs": 11361,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/integration.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/integration.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:01.387Z",
+          "finishedAt": "2026-11-08T10:11:12.914Z",
+          "durationMs": 11527,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/local-status.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/local-status.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:08.691Z",
+          "finishedAt": "2026-11-08T10:11:25.597Z",
+          "durationMs": 16906,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/managed-modes.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/managed-modes.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:13.737Z",
+          "finishedAt": "2026-11-08T10:11:14.141Z",
+          "durationMs": 404,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/operation-lock.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/operation-lock.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:25.597Z",
+          "finishedAt": "2026-11-08T10:11:26.579Z",
+          "durationMs": 982,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/package-transfer.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:27.676Z",
+          "finishedAt": "2026-11-08T10:11:38.136Z",
+          "durationMs": 10460,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-code-batch.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/repro-code-batch.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:28.983Z",
+          "finishedAt": "2026-11-08T10:11:29.922Z",
+          "durationMs": 939,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/repro-e2e.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:36.871Z",
+          "finishedAt": "2026-11-08T10:12:14.570Z",
+          "durationMs": 37699,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/repro-restore.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:11:46.984Z",
+          "finishedAt": "2026-11-08T10:12:14.061Z",
+          "durationMs": 27077,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/repro-secrets.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:14.570Z",
+          "finishedAt": "2026-11-08T10:12:19.626Z",
+          "durationMs": 5056,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/repro.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/repro.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:19.627Z",
+          "finishedAt": "2026-11-08T10:12:22.633Z",
+          "durationMs": 3006,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/unit.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/unit.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:22.634Z",
+          "finishedAt": "2026-11-08T10:12:23.392Z",
+          "durationMs": 758,
+          "exitCode": 0,
+          "signal": null
+        },
+        {
+          "name": "tools/xj-dev/tests/workspace-dependencies.test.mjs",
+          "status": "passed",
+          "command": "/Users/robertwu/.local/share/xunjie-mac/node-v24.21.0-darwin-arm64/bin/node",
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools/xj-dev/tests/workspace-dependencies.test.mjs"
+          ],
+          "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/tools",
+          "exclusive": false,
+          "startedAt": "2026-11-08T10:12:23.541Z",
+          "finishedAt": "2026-11-08T10:12:23.726Z",
+          "durationMs": 185,
+          "exitCode": 0,
+          "signal": null
+        }
+      ],
+      "startedAt": "2026-11-08T10:08:53.896Z",
+      "exitCode": 0,
+      "finishedAt": "2026-11-08T10:12:23.727Z",
+      "durationMs": 209831
+    }
+  ],
+  "durationMs": 333326
+}

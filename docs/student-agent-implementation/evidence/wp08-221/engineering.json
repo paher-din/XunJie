@@ -1,0 +1,84 @@
+{
+  "issue": 221,
+  "at": "2026-11-08T10:25:17.893Z",
+  "node": "v24.21.0",
+  "postgres": "18.6 (packaged)",
+  "fullVerify": {
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-08T10:08:30.787Z",
+    "finishedAt": "2026-11-08T10:14:04.112Z",
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4,
+        "passed": 4,
+        "failed": 0
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": 36,
+        "passed": 36,
+        "failed": 0
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": 95,
+        "passed": 95,
+        "failed": 0
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": 45,
+        "passed": 45,
+        "failed": 0
+      }
+    ],
+    "totalTasks": 181,
+    "skippedTestCases": 20
+  },
+  "newUnitTests": {
+    "files": [
+      "apps/server/tests/wp08-221-cross-service.test.mjs",
+      "apps/server/tests/wp08-221-source-closure.test.mjs",
+      "packages/product-runtime/test/recovery-set.test.mjs"
+    ],
+    "passed": 15,
+    "failed": 0
+  },
+  "runtimeRegression": {
+    "passed": 48,
+    "failed": 1,
+    "total": 49,
+    "preExistingFailure": "skills-recovery v1 inventory assertion stale after #219 v4",
+    "fixedAndRerun": "2/2"
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "docLinks": {
+    "markdown": 282,
+    "targets": 2778,
+    "failures": 0
+  },
+  "realProtocols": {
+    "sourceBuild": "6/6 HTTP 200",
+    "packaged": "6/6 HTTP 200",
+    "continuation": "8 real HTTPS requests, 4/4 scenarios"
+  },
+  "chrome": {
+    "pdf": "6/6",
+    "skills": "8/8",
+    "version": "156.0.8078.80"
+  }
+}

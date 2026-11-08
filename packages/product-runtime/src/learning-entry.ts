@@ -7,7 +7,8 @@ import { z } from 'zod';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
   createCourses, spaceCourseMigrations, createLearningAuthority, linuxSessionEntry, productNativeAdapters, createNativeChannel,
-  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, createTeachingTools, teachingAgentMigrations, validateTeachingAgent } from '@xunjie/learning-space';
+  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, createTeachingTools, teachingAgentMigrations, validateTeachingAgent,
+  collectLearningSources, validateLearningSources, collectTeachingSources, validateTeachingSources } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { ExecutionDevice } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -232,15 +233,14 @@ export async function createProductLearningApplication(context: {
       },
       activity: (identity, activityId) => learning!.open(identity, activityId),
       models, tools: createTeachingTools({ learning: () => learning!, courses, models, executionOrigin: currentExecutionOrigin,
-        studentFacts: { read: (identity, activityId, input) => {
-          if (!teaching) throw new StorageError('unavailable');
-          return teaching.studentFacts.read(identity, activityId, input);
-        } },
-        skillRead: (scope, skillId, version, path) => {
-          if (!teaching) throw new StorageError('unavailable');
-          return teaching.skills.read(scope.identity, scope.activity.activityId, skillId, version, path,
-            { references: scope.input.draft.skills });
-        },
+        // Activity facts and Skill attachments belong to the activity's fixed Agent owner. Local
+        // and independently installed Agents are reached through the same narrow read interface.
+        studentFacts: { read: async (identity, activityId, input) =>
+          (await teachingFor(identity, activityId)).studentFacts.read(identity, activityId, input) },
+        skillRead: async (scope, skillId, version, path) =>
+          (await teachingFor(scope.identity, scope.activity.activityId)).skills.read(
+            scope.identity, scope.activity.activityId, skillId, version, path,
+            { references: scope.input.draft.skills }),
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return teachingFor(scope.identity, scope.activity.activityId).then(agent => agent.assertCommandDispatch(scope.identity,
@@ -333,6 +333,12 @@ export async function createProductLearningApplication(context: {
       },
       activity: learning.open, models, modelRequest,
       tools: createTeachingTools({ learning: () => learning!, courses, ...(toolModels ? { models: toolModels } : {}), executionOrigin: currentExecutionOrigin,
+        studentFacts: { read: async (identity, activityId, input) =>
+          (await teachingFor(identity, activityId)).studentFacts.read(identity, activityId, input) },
+        skillRead: async (scope, skillId, version, path) =>
+          (await teachingFor(scope.identity, scope.activity.activityId)).skills.read(
+            scope.identity, scope.activity.activityId, skillId, version, path,
+            { references: scope.input.draft.skills }),
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return (await teachingFor(scope.identity, scope.activity.activityId)).assertCommandDispatch(
@@ -364,6 +370,10 @@ export async function createProductLearningApplication(context: {
             blocking: boundary.blocking, retained: { resources: 0, checkpoints: boundary.checkpoints },
             evidence: boundary };
         } } : module === agent ? { boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary } : {}),
+        // #221: every business owner emits a read-only fixed-source closure at this same closed
+        // boundary, so an isolated restore can prove it holds the originals without recomputation.
+        ...(module === data ? { sources: collectLearningSources }
+          : module === agent ? { sources: collectTeachingSources } : {}),
         validateService: validate });
       const participant = recoveryOwner.participant;
       let dispatchClosing: Promise<void> | undefined;
@@ -613,8 +623,10 @@ export function createLearningRecoveryTargets(options: {
       migrations: unit === 'space-course' ? spaceCourseMigrations : unit === 'model-connection' ? modelMigrations
         : unit === 'teaching-agent' ? teachingAgentMigrations : learningMigrations,
       ...(unit === 'learning-data' ? { validateMaterial: async (storage: OwnedStorage, material: OwnerBoundaryMaterial) =>
-        validateExecutionBoundary(storage, material.evidence) } : unit === 'teaching-agent' ? {
+        validateExecutionBoundary(storage, material.evidence), sources: collectLearningSources, validateSources: validateLearningSources }
+        : unit === 'teaching-agent' ? {
           boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary, validateMaterial: validateTeachingBoundary,
+          sources: collectTeachingSources, validateSources: validateTeachingSources,
         } : {}),
       validateService: async storage => {
         if (unit === 'learning-data') return validateLearningData(storage);

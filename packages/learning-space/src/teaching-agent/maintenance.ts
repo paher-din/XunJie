@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
+import { teachingSkillLoadedSchema } from '@xunjie/contracts/agent-skills';
 import { canonicalDigest } from './identity.js';
+import { validateTeachingSkillVersion, skillFileBytes } from './skills-package.js';
+
+const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
 export const teachingMaintenanceKind = 'xunjie.teaching-agent.boundary';
 // This list belongs to the domain owner. The runtime never enumerates its tables.
@@ -137,4 +141,30 @@ export async function validateTeachingBoundary(storage: OwnedStorage, material: 
   const { kind, unresolved, settled, retained, blocking, evidence } = material;
   if (canonicalDigest({ kind, unresolved, settled, retained, blocking, evidence }) !== canonicalDigest(actual))
     throw new StorageError('corrupt');
+}
+
+/** Prove each loaded Skill chunk still matches the exact bytes of its original fixed package. */
+export async function validateTeachingSkillLoads(storage: OwnedStorage): Promise<void> {
+  const { rows: [existing] } = await storage.read('SELECT to_regclass($1) AS relation', ['teaching_skill_loads']);
+  if (!existing?.relation) return;
+  const { rows: loads } = await storage.read('SELECT owner_key,body FROM teaching_skill_loads');
+  for (const row of loads) {
+    const loaded = teachingSkillLoadedSchema.parse(row.body);
+    const { rows: versions } = await storage.read(`SELECT body FROM teaching_skill_versions
+      WHERE owner_key=$1 AND skill_id=$2 AND version=$3`, [row.owner_key, loaded.skillId, loaded.version]);
+    // A course skill's fixed package lives in the course owner, not in this owner's versions table.
+    if (versions.length !== 1) continue;
+    const fixed = validateTeachingSkillVersion(versions[0]!.body);
+    if (loaded.packageDigest !== fixed.digest) throw new StorageError('corrupt');
+    const file = fixed.files.find(item => item.path === loaded.path);
+    const attachment = fixed.attachments.find(item => item.path === loaded.path);
+    if (!file || !attachment) throw new StorageError('corrupt');
+    const original = skillFileBytes(file);
+    if (sha(original) !== loaded.originalDigest || original.length !== loaded.totalByteLength) throw new StorageError('corrupt');
+    const slice = original.subarray(loaded.offset, loaded.offset + loaded.byteLength);
+    if (slice.length !== loaded.byteLength || sha(slice) !== loaded.digest) throw new StorageError('corrupt');
+    let loadedBytes: Uint8Array;
+    try { loadedBytes = skillFileBytes(loaded); } catch { throw new StorageError('corrupt'); }
+    if (!Buffer.from(loadedBytes).equals(Buffer.from(slice))) throw new StorageError('corrupt');
+  }
 }

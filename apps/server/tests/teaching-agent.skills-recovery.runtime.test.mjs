@@ -122,7 +122,8 @@ test('maintenance accepts the published v1 empty-Skills inventory but refuses to
       const current = await collectTeachingBoundary(owner.storage);
       assert.equal(current.evidence.formatVersion, 4);
       const legacy = structuredClone(current); legacy.evidence.formatVersion = 1;
-      for (const table of ['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads']) {
+      for (const table of ['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads',
+        'teaching_student_facts']) {
         assert.equal(legacy.evidence.tables[table].count, 0); delete legacy.evidence.tables[table];
       }
       assert.equal(legacy.evidence.tables.teaching_compactions.count, 0);

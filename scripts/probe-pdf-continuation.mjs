@@ -265,6 +265,10 @@ async function measure(protocol, cross = false) {
     };
     agent = c.makeAgent({ tools, definition: async () => {
       const configured = definition(version);
+      // #216 discovery only exposes a non-platform contribution initially when its capability is
+      // required. The controlled long job must be callable in the same batch as the PDF read.
+      if (cross) configured.capabilities = configured.capabilities.map(item =>
+        item.sourceId === 'platform.probe' ? { ...item, required: true } : item);
       if (values['refresh-pdf-schema']) configured.prompt.runtime += version === 1
         ? ' 当前步骤必须实际调用 read_reference 获取页图。学生引用 copy 是文字快照，不是本 Agent 已调用页图的工具结果；禁止仅凭 copy 直接回答。'
         : ' 当前步骤已经收到 read_reference 的 completed 结果和固定页图，直接解释并结束，禁止再次调用任何工具。';

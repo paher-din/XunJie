@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -97,6 +97,15 @@ test('the normal product opens restored learning data read-only without enabling
         body: JSON.stringify(newActivity),
       });
       assert.equal(response.status, expected);
+    }
+    // #221: the backup keeps an encrypted credential history, but the new installation never
+    // revives source secrets. Model/execution dispatch stays gated until the maintainer re-issues
+    // the route credential through the original settings and obtains a current service grant.
+    const restoredCredentials = await readdir(join(directory, 'target', 'credentials'));
+    for (const name of restoredCredentials) {
+      const value = await readFile(join(directory, 'target', 'credentials', name), 'utf8');
+      assert.doesNotMatch(value, /synthetic-isolated-key|reissued-through-original-settings/,
+        'a source model secret must not be restored into the successor installation');
     }
   } finally {
     for (const owner of restored?.owners ?? []) await owner.close?.();

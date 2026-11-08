@@ -1,0 +1,10 @@
+✔ Skills versions and actual attachment loads survive formal backup and isolated restore without model or tool replay (6436.972583ms)
+✔ maintenance accepts the published v1 empty-Skills inventory but refuses to hide new Skills facts behind it (1559.588166ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8313.267208

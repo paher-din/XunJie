@@ -9,6 +9,7 @@ import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { teachingDependencyCallSchema, teachingPreparedToolSchema, teachingToolOutcomeSchema } from '@xunjie/contracts/teaching-agent';
 import { modelToolSchema } from '@xunjie/contracts/model-connections';
 import { agentToolBindingSchema } from '@xunjie/contracts/teaching-agent';
+import { teachingSkillStateSchema, type TeachingSkillState } from '@xunjie/contracts/agent-skills';
 import { toolContributions } from './assembly.js';
 export { teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
 
@@ -75,16 +76,24 @@ export function createTeachingDependencyService(options: {
       return options.modelRequest ? options.modelRequest(request) : models(request);
     }
     if (input.operation.startsWith('tool.')) {
-      const raw = z.object({ identity: spaceIdentitySchema, activity: input.operation === 'tool.stop'
+      // The fixed step state is public wire data: it must be schema-validated before the
+      // material owner may use it. No local guard function is ever accepted from the caller.
+      const scopeSchema = z.object({ identity: spaceIdentitySchema, activity: input.operation === 'tool.stop'
         ? activitySchema.pick({ identity: true, activityId: true, course: true }) : activitySchema, input: actionInputSchema,
-        runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(), segmentId: z.uuid().optional() }).strict().parse(input.args[0]);
+        runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(), segmentId: z.uuid().optional(),
+        skillState: teachingSkillStateSchema.optional() }).strict()
+        .refine(value => JSON.stringify(value.skillState ?? null).length <= 2_000_000,
+          'fixed skill state exceeds the public wire budget');
+      const raw = scopeSchema.parse(input.args[0]);
       if (JSON.stringify(raw.identity) !== JSON.stringify(identity)) throw new StorageError('forbidden');
       if (input.authority && (input.authority.runId !== raw.runId || input.authority.activityId !== raw.activity.activityId))
         throw new StorageError('forbidden');
       if (input.operation === 'tool.dispatch' && !input.authority) throw new StorageError('forbidden');
-      const { segmentId, ...fixed } = raw;
-      if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...(segmentId ? { segmentId } : {}) }, teachingPreparedToolSchema.parse(input.args[1]));
-      const scope: TeachingToolScope = { ...fixed, ...(segmentId ? { segmentId } : {}),
+      const { segmentId, skillState, ...fixed } = raw;
+      const frozenSkills = skillState ? { skillState: skillState as TeachingSkillState } : {};
+      if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...frozenSkills,
+        ...(segmentId ? { segmentId } : {}) }, teachingPreparedToolSchema.parse(input.args[1]));
+      const scope: TeachingToolScope = { ...fixed, ...frozenSkills, ...(segmentId ? { segmentId } : {}),
         ...(input.authority ? { authority: input.authority } : {}), activity: await options.activity(identity, raw.activity.activityId) };
       switch (input.operation) {
         case 'tool.contributions': return toolContributions(options.tools, scope);
