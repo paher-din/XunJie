@@ -1,0 +1,77 @@
+{
+  "productionCommit": "c25cfbc1a18a408289402d102ffbef3f53061be0",
+  "baseline": "32720f983b40a0c3d173df312f73d5c733032af3",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "platform": "darwin-arm64",
+  "applicationSha256": "c4340885b1d479fe646e00718d849e99460affd74d823659e9ea574402f3233a",
+  "distributionSha256": "80abd1ce7c9e846f65c669224eed5ac5aaf957dedea35d4bf6efa2a8d97bd9d7",
+  "native": {
+    "initial": {
+      "tests": 235,
+      "pass": 230,
+      "fail": 5,
+      "skip": 0
+    },
+    "affected": {
+      "tests": 81,
+      "pass": 80,
+      "fail": 1,
+      "skip": 0,
+      "remainingFailure": "stale expected maintenance format2; actual3"
+    },
+    "cleanupAfterAssertionUpdate": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skip": 0
+    },
+    "combined": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "skip": 0
+    },
+    "migrations": {
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "skip": 0
+    },
+    "maintenance": {
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "skip": 0
+    },
+    "permissionAndCombined": {
+      "tests": 11,
+      "pass": 11,
+      "fail": 0,
+      "skip": 0,
+      "note": "before final known-eligibility-error classification catch"
+    }
+  },
+  "browser": {
+    "skillsCases": 8,
+    "pdfCases": 6,
+    "platform": "darwin-arm64",
+    "model": "controlled external upstream; production product runtime, Gateway and owners"
+  },
+  "realProvider": {
+    "protocols": [
+      "chat-completions",
+      "responses",
+      "messages"
+    ],
+    "generations": 6,
+    "retries": 0,
+    "scope": "fixed Skill body and attachment, actual request digest match"
+  },
+  "windowsIntegrationRerun": "not-run",
+  "crossMachineIntegrationRerun": "not-run",
+  "teachingEffect": "not-assessed",
+  "osImeCandidateWindow": "not-run",
+  "fullVerify": "pending",
+  "firstMacPackageSource": "8808d5f3df7efccc1611e85beacd5e80217a4bb0"
+}

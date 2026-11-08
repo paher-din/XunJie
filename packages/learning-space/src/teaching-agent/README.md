@@ -88,6 +88,8 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 `validateTeachingBoundary` 在独立目标重新导出相同事实后核对清单。受支持的旧通用清单仍走原服务/资源校验；未知必需清单版本拒绝恢复。日志外壳仍为 v1，可忽略扩展使用 `kind: extension` 和显式 `ignorable: true` 的版本化正文，查询保留原件，推进不解释其语义。未知必需事件及外壳版本拒绝推进，已发布迁移保持不变。
 
+WP08 整合后的领域清单为 v3，覆盖 Skills、压缩及所有历史工具结果资源；旧清单只接受明确已发布的表集和行形状，不允许用旧版本遗漏新事实。Skills 保持迁移 11，压缩注册为迁移 12；只对名称、SQL 摘要及前缀完全匹配的旧压缩尾项识别原版本 11。严格打开仍核对当前完整链，恢复先核验原链再在关闸状态升级。实际旧备份与组合回归见[整合说明](../../../../docs/student-agent-implementation/wp08-integration.md)。
+
 接收端撤权使用同一 owner 的 `collectTeachingReceiverBoundary`：休眠的已确认逻辑 Wait 可保留，未知派发和停止待确认仍阻断；真实模型/执行 owner 仍须各自确认物理边界。完整备份始终保存全部逻辑未结项，不因接收端投影而丢失等待记录。
 
 完整流程及实际平台范围见 [#204 交付](../../../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)；Mac 与真实跨机交接见 [#212](https://github.com/paher-din/XunJie/issues/212)。隔离副本只读，维护者通过正式 CLI 接管；恢复不重置原预算、Wait 或命令，不重放未知效果。

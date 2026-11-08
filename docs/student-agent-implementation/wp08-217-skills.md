@@ -24,7 +24,7 @@ Skill 始终低于平台、课程帮助边界和本次学生意图。allowed-too
 
 复用 `assembleTeachingAgent`、`createTeachingSegments`、RunDriver、ModelGateway 和原工具 prepare/dispatch/reconcile/stop 边界。范围、版本、启停变化在合法步骤边界装配；普通包内容读取保留原生工具配对，不因读一个附件就创建新段。显式/课程正文固定在装配中；渐进读取的内容保存在原工具结果和步骤 `ContextManifest`。真实配置换段时保留当前问题、steering 的原顺序、Command/Wait、未知状态和累计预算。
 
-迁移 11 追加 `teaching_skills`、`teaching_skill_versions`、`teaching_skill_selections`、`teaching_skill_loads`；未修改已发布迁移。包内容和原读取按 Agent owner 保存在 PostgreSQL，参加同一备份、校验、隔离还原和接管协议。维护清单升级到 v2；旧 v1 清单只有在新增事实为空时才能兼容，不能借旧清单遗漏实际 Skills。
+迁移 11 追加 `teaching_skills`、`teaching_skill_versions`、`teaching_skill_selections`、`teaching_skill_loads`；未修改已发布迁移。包内容和原读取按 Agent owner 保存在 PostgreSQL，参加同一备份、校验、隔离还原和接管协议。独立分支曾使用维护清单 v2；合入 `wp08` 后统一为 v3，按精确的已发布清单形状兼容旧备份，不能遗漏实际 Skills、压缩或历史结果资源。两份独立迁移 11 的协调与旧记录恢复见[整合说明](wp08-integration.md)。
 
 停用后新步骤和实际读取重新检查资格；旧快照、原工具结果与原来源仍可纯读。换模型和恢复不会把旧 Skill 状态重新当成当前指导，也不会重放工具。
 
