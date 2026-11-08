@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-11-07T20:08:24.591415+00:00",
+  "files": {
+    "scripts/package-product.mjs": "c2effab9aaf519d22b84bbe383f40c98a533ee414ab25d14b1876e8ece7738a2",
+    "scripts/smoke-product-pdf.mjs": "2072ca9774f5a8067b0bc42bdda9dd3e1e1f06edd948377d1a53308e2d7b4e87",
+    "package-lock.json": "7c28f36a4ac7ea281ce7838d157c943e9971181a3c287cf071eaada7f15d399f",
+    "packages/learning-space/src/pdf-engine/pdf-engine-worker.ts": "f483a9e876886fa537386870e20a6febb00f72522335e961a825b8fee388966e",
+    "packages/learning-space/src/pdf-engine/index.ts": "e128bf1860efedcb58c6350a3ab593180c306f889d510e065095b87549c0c2b3",
+    "packages/learning-space/src/teaching-agent/driver.ts": "06892a8b3a52dfe088b76f5dc4425d350f5d25a09418a17b6c744eca4b6756cc",
+    "packages/learning-space/src/teaching-agent/tools-pdf.ts": "d46dd73a6699c5d4ff3ceca238deaa5b2d6ccc7f4b8f12fb1bda32b8f86ff4c0",
+    "packages/learning-space/src/teaching-agent/tools-schema.ts": "6cd1d3c149e1dddf5c4ceae321566422893bf43bcdd64302050bd724a683a341",
+    "packages/learning-space/src/teaching-agent/tools.ts": "7681c8f1dfb03c2a3f6f7788e16daa5e77ea0ebfebcfa8a5989fca822fe1be84",
+    "packages/product-runtime/src/host.ts": "9486082da007e655d834dd1afb62cdda9ed7f251e23bb8ceb3ee0811cb896e59",
+    "packages/product-runtime/src/school-client.ts": "cd1c14e486c6130b3f4b2a8ff1718dad77ad4d620e2578d72de3329491c9b1f8",
+    "packages/learning-space/src/learning-data/pdf-materials.ts": "2c964539ad59ced7452f965f6b875466f627c4e85ea14b1ecedbd623c3bf36ff"
+  },
+  "sourceCommit": "78432257227c30878a6418fd372adf203cd520b5",
+  "baseCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c",
+  "matchesCommittedInputs": true
+}

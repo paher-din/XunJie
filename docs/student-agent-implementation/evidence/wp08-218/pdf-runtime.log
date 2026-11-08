@@ -1,0 +1,211 @@
+TAP version 13
+# Subtest: chat-completions: PDF fixed reference delivers its real page image and survives a later edit
+ok 1 - chat-completions: PDF fixed reference delivers its real page image and survives a later edit
+  ---
+  duration_ms: 9331.449875
+  type: 'test'
+  ...
+# Subtest: responses: PDF fixed reference delivers its real page image and survives a later edit
+ok 2 - responses: PDF fixed reference delivers its real page image and survives a later edit
+  ---
+  duration_ms: 9066.388208
+  type: 'test'
+  ...
+# Subtest: messages: PDF fixed reference delivers its real page image and survives a later edit
+ok 3 - messages: PDF fixed reference delivers its real page image and survives a later edit
+  ---
+  duration_ms: 6675.173375
+  type: 'test'
+  ...
+# Subtest: Agent reads adjacent fixed PDF pages through the same Command identity
+ok 4 - Agent reads adjacent fixed PDF pages through the same Command identity
+  ---
+  duration_ms: 9135.844958
+  type: 'test'
+  ...
+# Subtest: Agent finds text only within explicitly selected fixed PDF pages
+ok 5 - Agent finds text only within explicitly selected fixed PDF pages
+  ---
+  duration_ms: 7600.816
+  type: 'test'
+  ...
+# Subtest: new-segment steering keeps sequence and does not replay the old adopted PDF question
+ok 6 - new-segment steering keeps sequence and does not replay the old adopted PDF question
+  ---
+  duration_ms: 13172.793
+  type: 'test'
+  ...
+# Subtest: a PDF continuation preserves an original accepted host receipt without claiming completion
+ok 7 - a PDF continuation preserves an original accepted host receipt without claiming completion
+  ---
+  duration_ms: 8331.742459
+  type: 'test'
+  ...
+# Subtest: a PDF continuation preserves an original unknown host receipt without claiming completion
+ok 8 - a PDF continuation preserves an original unknown host receipt without claiming completion
+  ---
+  duration_ms: 7163.561375
+  type: 'test'
+  ...
+# Subtest: replayed fixed PDF input over the new policy reports its question, works and references
+ok 9 - replayed fixed PDF input over the new policy reports its question, works and references
+  ---
+  duration_ms: 6475.656834
+  type: 'test'
+  ...
+# Subtest: chat-completions: assembly-change continues the adopted PDF question as current user input
+ok 10 - chat-completions: assembly-change continues the adopted PDF question as current user input
+  ---
+  duration_ms: 8093.324458
+  type: 'test'
+  ...
+# Subtest: chat-completions: model-switch continues the adopted PDF question as current user input
+ok 11 - chat-completions: model-switch continues the adopted PDF question as current user input
+  ---
+  duration_ms: 7879.838334
+  type: 'test'
+  ...
+# Subtest: responses: assembly-change continues the adopted PDF question as current user input
+ok 12 - responses: assembly-change continues the adopted PDF question as current user input
+  ---
+  duration_ms: 7370.855958
+  type: 'test'
+  ...
+# Subtest: responses: model-switch continues the adopted PDF question as current user input
+ok 13 - responses: model-switch continues the adopted PDF question as current user input
+  ---
+  duration_ms: 7758.295333
+  type: 'test'
+  ...
+# Subtest: messages: assembly-change continues the adopted PDF question as current user input
+ok 14 - messages: assembly-change continues the adopted PDF question as current user input
+  ---
+  duration_ms: 6563.527625
+  type: 'test'
+  ...
+# Subtest: messages: model-switch continues the adopted PDF question as current user input
+ok 15 - messages: model-switch continues the adopted PDF question as current user input
+  ---
+  duration_ms: 6582.071458
+  type: 'test'
+  ...
+# Subtest: assembly-change cannot reset the original PDF Run model budget
+ok 16 - assembly-change cannot reset the original PDF Run model budget
+  ---
+  duration_ms: 5301.058708
+  type: 'test'
+  ...
+# Subtest: model-switch cannot reset the original PDF Run model budget
+ok 17 - model-switch cannot reset the original PDF Run model budget
+  ---
+  duration_ms: 6183.105625
+  type: 'test'
+  ...
+# Subtest: course PDF import checks the fixed student-open release and retains its provenance
+ok 18 - course PDF import checks the fixed student-open release and retains its provenance
+  ---
+  duration_ms: 9667.594333
+  type: 'test'
+  ...
+# Subtest: formal activity material upload retains a real PDF and its actual page order after restart
+ok 19 - formal activity material upload retains a real PDF and its actual page order after restart
+  ---
+  duration_ms: 7803.944125
+  type: 'test'
+  ...
+# Subtest: formal HTTP PDF edge cases preserve originals, fixed evidence and activity isolation
+    # Subtest: damaged PDF retains its original but cannot create a reading
+    ok 1 - damaged PDF retains its original but cannot create a reading
+      ---
+      duration_ms: 363.971917
+      type: 'test'
+      ...
+    # Subtest: a genuinely password-encrypted PDF is classified as encrypted rather than damaged
+    ok 2 - a genuinely password-encrypted PDF is classified as encrypted rather than damaged
+      ---
+      duration_ms: 475.43
+      type: 'test'
+      ...
+    # Subtest: rotated CropBox region uses normalized top-left viewport coordinates and retains whole-page native text
+    ok 3 - rotated CropBox region uses normalized top-left viewport coordinates and retains whole-page native text
+      ---
+      duration_ms: 2413.745167
+      type: 'test'
+      ...
+    # Subtest: raster-only scan has visible image pixels but no invented text or OCR
+    ok 4 - raster-only scan has visible image pixels but no invented text or OCR
+      ---
+      duration_ms: 1415.429459
+      type: 'test'
+      ...
+    # Subtest: same-name upload creates a new document without replacing an old draft reference or fixed reading
+    ok 5 - same-name upload creates a new document without replacing an old draft reference or fixed reading
+      ---
+      duration_ms: 2826.019167
+      type: 'test'
+      ...
+    # Subtest: one successful page survives an adjacent out-of-range page; an incomplete reference is rejected as invalid
+    ok 6 - one successful page survives an adjacent out-of-range page; an incomplete reference is rejected as invalid
+      ---
+      duration_ms: 876.430625
+      type: 'test'
+      ...
+    # Subtest: 20 MiB plus one byte is rejected before a document or original is retained
+    ok 7 - 20 MiB plus one byte is rejected before a document or original is retained
+      ---
+      duration_ms: 314.490458
+      type: 'test'
+      ...
+    # Subtest: document, reading, original, upload identity and draft reference cannot cross activities or an expected subject
+    ok 8 - document, reading, original, upload identity and draft reference cannot cross activities or an expected subject
+      ---
+      duration_ms: 88.166333
+      type: 'test'
+      ...
+    1..8
+ok 20 - formal HTTP PDF edge cases preserve originals, fixed evidence and activity isolation
+  ---
+  duration_ms: 12860.032667
+  type: 'test'
+  ...
+# state=damaged; read=400 invalid; original sha256=4a5b7936cac7cf8e1b2763fdd6b0a179cae10d23aed675a1b25ff1e2af699a03
+# known-password fixture decrypts real text; formal upload=encrypted; read=400 invalid
+# rotation=90; CropBox=[40,30,240,130]; full=1024x2048; region=1536x2048; sampled pixels=red; native text remains whole-page
+# scan=ready; native text length=0; OCR=not-performed; visible white/black/red pixels; image sha256=488699cea123b7aea221f736ae846ccee18f8e33ce32be5bc173ceeb66544dec
+# same name: distinct document/request/digest; original 37 volts and replacement 91 amps both retained after host restart
+# partial states=ready,out-of-range; incomplete reference HTTP=400 {"error":"invalid"}
+# 20 MiB+1 decoded bytes (same base64-length bucket as limit): HTTP=400 invalid; no document/original visible
+# foreign document/original/read=missing; foreign reference=invalid/missing; reused upload identity=409; wrong subject=403; original remains intact
+# Subtest: formal backup restores PDF originals, used pages, actions and model evidence without conversion or generation
+ok 21 - formal backup restores PDF originals, used pages, actions and model evidence without conversion or generation
+  ---
+  duration_ms: 16901.643041
+  type: 'test'
+  ...
+# Subtest: read_pdf: bounded feedback permits reading the retained tail of a long native page
+ok 22 - read_pdf: bounded feedback permits reading the retained tail of a long native page
+  ---
+  duration_ms: 9780.519459
+  type: 'test'
+  ...
+# Subtest: find_pdf: bounded feedback permits reading the retained tail of a long native page
+ok 23 - find_pdf: bounded feedback permits reading the retained tail of a long native page
+  ---
+  duration_ms: 9520.905375
+  type: 'test'
+  ...
+# Subtest: native-text continuation cannot borrow a reading from an unselected document
+ok 24 - native-text continuation cannot borrow a reading from an unselected document
+  ---
+  duration_ms: 6262.644208
+  type: 'test'
+  ...
+1..24
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 214412.404

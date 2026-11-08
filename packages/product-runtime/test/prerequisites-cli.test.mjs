@@ -8,13 +8,47 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { build } from 'esbuild';
-import { assertProductionGraph, buildApplication } from '../../../scripts/package-product.mjs';
+import { assertProductionGraph } from '../../../scripts/package-product.mjs';
 
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const packager = join(repository, 'scripts/package-product.mjs');
 const catalogPath = join(repository, 'scripts/product-resources.json');
 const execute = promisify(execFile);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+
+async function archiveBoundary(directory, catalog) {
+  const cache = join(directory, 'cache');
+  await mkdir(cache, { recursive: true });
+  // The native archive is an input boundary, like the existing Node/PG archives.
+  // No native code is executed by these prerequisite/API checks. Real rendering
+  // is covered by the product smoke; production bundling/imports stay real here.
+  const nativePackage = '@napi-rs/canvas-darwin-arm64';
+  const source = join(directory, 'native-input', 'package');
+  await mkdir(source, { recursive: true });
+  await writeFile(join(source, 'package.json'), JSON.stringify({ name: nativePackage, version: '1.1.0',
+    main: 'skia.darwin-arm64.node', license: 'MIT', os: ['darwin'], cpu: ['arm64'] }));
+  const binary = Buffer.from('fixture native archive boundary; not executable');
+  await writeFile(join(source, 'skia.darwin-arm64.node'), binary);
+  await writeFile(join(source, 'sbom.cdx.json'), JSON.stringify({ bomFormat: 'CycloneDX', specVersion: '1.6', version: 1 }));
+  const archive = join(cache, 'canvas-darwin-arm64-1.1.0.tgz');
+  await execute('tar', ['-czf', archive, '-C', dirname(source), 'package']);
+  const integrity = 'sha512-' + createHash('sha512').update(await readFile(archive)).digest('base64');
+  const lockPath = join(repository, 'package-lock.json');
+  const lock = JSON.parse(await readFile(lockPath, 'utf8'));
+  lock.packages[`node_modules/${nativePackage}`].integrity = integrity;
+  const overrides = { [lockPath]: JSON.stringify(lock), ...(catalog ? { [catalogPath]: JSON.stringify(catalog) } : {}) };
+  const preload = join(directory, 'archive-boundary.mjs');
+  await writeFile(preload, `import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+const overrides = ${JSON.stringify(overrides)};
+const original = fs.readFile;
+fs.readFile = (path, ...args) => Object.hasOwn(overrides, path)
+  ? Promise.resolve(overrides[path]) : original(path, ...args);
+syncBuiltinESMExports();
+globalThis.fetch = () => { throw new Error('Packaging regression must never use the network'); };
+`);
+  return { cache, preload, nativePackage, integrity, binarySha256: digest(binary) };
+}
 
 test('the public packaging CLI selects versioned resources and emits an independently importable API', { skip: process.platform === 'win32' }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'xunjie-package-api-'));
@@ -50,15 +84,7 @@ test('the public packaging CLI selects versioned resources and emits an independ
       asset.bytes = bytes.length;
       asset.sha256 = digest(bytes);
     }
-    const preload = join(directory, 'archive-boundary.mjs');
-    await writeFile(preload, `import fs from 'node:fs/promises';
-import { syncBuiltinESMExports } from 'node:module';
-const original = fs.readFile;
-fs.readFile = (path, ...args) => path === ${JSON.stringify(catalogPath)}
-  ? Promise.resolve(${JSON.stringify(JSON.stringify(catalog))}) : original(path, ...args);
-syncBuiltinESMExports();
-globalThis.fetch = () => { throw new Error('Packaging regression must never use the network'); };
-`);
+    const { preload, nativePackage, integrity, binarySha256 } = await archiveBoundary(directory, catalog);
     const npm = join(directory, 'web-build.mjs');
     await writeFile(npm, `import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -92,11 +118,29 @@ await mkdir(out,{recursive:true}); await writeFile(join(out,'index.html'),'<html
       assert.equal(metafile.outputs['app/product-runtime.js'].entryPoint, 'packages/product-runtime/src/index.ts');
       assertProductionGraph(metafile);
       assert.ok(manifest.application.dependencies.some(item => item.name === 'pg' && item.version === '8.16.3'));
+      assert.equal(metafile.outputs['app/pdf-engine-worker.js'].entryPoint, 'packages/learning-space/src/pdf-engine/pdf-engine-worker.ts');
+      const pdf = JSON.parse(await readFile(join(out, 'app/pdf-runtime.json'), 'utf8'));
+      assert.equal(pdf.nativePackage, nativePackage);
+      assert.equal(pdf.nativeIntegrity, integrity);
+      const nativePath = `app/node_modules/${nativePackage}/skia.darwin-arm64.node`;
+      assert.equal(manifest.entryHashes[nativePath].sha256, binarySha256);
+      for (const path of ['app/node_modules/pdfjs-dist/legacy/build/pdf.mjs',
+        'app/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs', 'app/licenses/pdf-native/NOTICE-PDF.txt']) {
+        assert.equal(manifest.entryHashes[path].sha256, digest(await readFile(join(out, path))));
+      }
       await assert.rejects(readFile(join(out, 'app/product-runtime.js.map')), { code: 'ENOENT' });
       // Import from outside the repository, with no workspace/node_modules
       // resolution. Exercise an actual public API without starting a service.
       const environment = join(directory, `not-created-${version}`);
-      const code = `import {openProductRuntime,createProductRuntimeHost,resolveCredential,restoreProductRecovery,storage} from ${JSON.stringify(pathToFileURL(api).href)};
+      const code = `import {createRequire} from 'node:module';
+import {realpathSync} from 'node:fs';
+import {sep} from 'node:path';
+import {openProductRuntime,createProductRuntimeHost,resolveCredential,restoreProductRecovery,storage} from ${JSON.stringify(pathToFileURL(api).href)};
+const require=createRequire(${JSON.stringify(pathToFileURL(api).href)});
+const dependencyRoot=realpathSync(${JSON.stringify(join(out, 'app', 'node_modules'))})+sep;
+for(const name of ['pdfjs-dist/legacy/build/pdf.mjs','@napi-rs/canvas',${JSON.stringify(nativePackage)}]) {
+ if(!realpathSync(require.resolve(name)).startsWith(dependencyRoot)) throw Error('PDF dependency escaped product');
+}
 if(typeof createProductRuntimeHost!=='function'||typeof resolveCredential!=='function') throw Error('Missing public export');
 if(typeof restoreProductRecovery!=='function'||typeof storage.provisionStorage!=='function'||typeof storage.openStorage!=='function') throw Error('Missing recovery/storage export');
 const runtime=openProductRuntime({root:${JSON.stringify(environment)},resources:{nodePath:process.execPath,nodeVersion:'24.21.0',webRoot:${JSON.stringify(out)}}});
@@ -135,7 +179,12 @@ test('packaged CLI gates managed install before data mutation and keeps read-onl
   const directory = await mkdtemp(join(tmpdir(), 'xunjie-prereq-cli-'));
   try {
     const app = join(directory, 'app');
-    await buildApplication(app);
+    const { cache, preload } = await archiveBoundary(directory);
+    await execute(process.execPath, ['--import', preload, '--input-type=module', '-e',
+      `import {buildApplication} from ${JSON.stringify(pathToFileURL(packager).href)};
+await buildApplication(${JSON.stringify(app)},'darwin-arm64',${JSON.stringify(cache)});`], {
+      cwd: directory, env: { ...process.env, NODE_OPTIONS: '', NODE_PATH: '' },
+    });
     const cli = join(app, 'cli-windows.mjs');
     // Exercise the production CLI's Windows branch on CI without running any
     // Windows installer. Only its OS-command boundary is a process fixture.

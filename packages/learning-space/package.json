@@ -19,10 +19,12 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.1.0",
+    "@napi-rs/canvas": "1.1.0",
     "@xunjie/contracts": "0.1.0",
     "@xunjie/storage": "0.1.0",
     "ajv": "8.20.0",
     "openai": "7.42.0",
+    "pdfjs-dist": "6.5.438",
     "undici": "7.30.0",
     "yaml": "2.8.2",
     "zod": "4.6.5"

@@ -577,10 +577,11 @@ function LearningView() {
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
-        error={error || notice ? feedback : null} details={<>
+        error={error || notice ? feedback : null} details={openCoursePdf => <>
           {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
             requirementsContent={<CourseRequirementsReference course={opened.course} />}
-            onMaterial={item => void action(() => readMaterial(opened.course!.releaseId, item))} />
+            onMaterial={item => item.mediaType.toLowerCase().split(';')[0].trim() === 'application/pdf'
+              ? openCoursePdf(item.materialId) : void action(() => readMaterial(opened.course!.releaseId, item))} />
             <CourseMaterialReferences activity={opened} course={opened.course} spaceKey={key} namespace={context.clientNamespace} />
           </> : <><h2>学习目标</h2><p className="preserve-lines">{opened.goal || opened.question || '资料学习'}</p>
             {opened.question && opened.goal && <><h3>起始问题</h3><p className="preserve-lines">{opened.question}</p></>}

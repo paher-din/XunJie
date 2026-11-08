@@ -10,6 +10,7 @@
 
 | 需要了解什么 | 阅读入口 |
 | --- | --- |
+| WP08 正式 PDF 添加、页/区域固定引用、真实页图入模与两平台证据 | [#218 PDF 交付](wp08-218-pdf.md) · [验收证据](evidence/wp08-218/README.md) |
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |

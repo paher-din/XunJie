@@ -1,0 +1,10 @@
+{
+  "state": "passed",
+  "tests": 3,
+  "failures": 0,
+  "skipped": 0,
+  "node": "24.21.0",
+  "command": "node --test packages/product-runtime/test/prerequisites-cli.test.mjs",
+  "network": "denied in archive-boundary preload",
+  "workspaceDependenciesRenamed": false
+}

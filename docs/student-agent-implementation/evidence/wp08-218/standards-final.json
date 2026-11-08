@@ -1,0 +1,20 @@
+{
+  "reviewedAt": "2026-11-07T20:13:27.340902+00:00",
+  "axis": "Standards",
+  "baseCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c",
+  "sourceCommit": "78432257227c30878a6418fd372adf203cd520b5",
+  "diffCommand": "git diff cb104e33604cbfcb8c5c4f294dd5c745e723834c...HEAD",
+  "standards": [
+    "AGENTS.md",
+    "DESIGN.md",
+    "README.md",
+    "packages/learning-space/src/learning-data/README.md"
+  ],
+  "blockingFindings": [],
+  "actionableFindings": [],
+  "conclusion": "No actionable Standards violations found. Existing product shell/components, design tokens, owner/contracts boundaries and scoped verification are retained.",
+  "sourceWhitespaceCheck": "passed excluding verbatim third-party license texts",
+  "thirdPartyNoticeWhitespace": "Upstream trailing whitespace and final blank lines are retained in license notices; no source edit requested.",
+  "specReview": "Not repeated in this Standards-only pass; owned by main",
+  "evidenceCloseout": "Main will commit the current docs/evidence working tree."
+}

@@ -15,6 +15,8 @@ import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, Tea
 import { teachingDefinitions, teachingContributions } from './tools-schema.js';
 import { aluVerificationAction } from './alu-tools.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-images.js';
+import { pdfReadingOutcome, pdfSearchOutcome, pdfTextInputSchema, pdfTextOutcome } from './tools-pdf.js';
+import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
@@ -98,10 +100,27 @@ export function createTeachingTools(options: {
       detail = { ...(file ? { file } : {}), ...(ref ? { reference: ref } : {}), objectId: args.objectId, contentId: args.contentId,
         provenance: { ...version, sourceState },
         ...(file?.mediaType === 'image/png' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_pdf_text') {
+      const input = pdfTextInputSchema.parse(args);
+      const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      const reading = await learning().pdf.reading(scope.identity, scope.activity.activityId, input.readingId);
+      if (!reading || reading.documentId !== reference.source.documentId
+        || reading.documentSha256 !== reference.source.documentSha256) fail('forbidden');
+      detail = { reference, input };
+    } else if (name === 'read_pdf' || name === 'find_pdf') {
+      const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      const input = name === 'find_pdf' ? pdfFindInputSchema.parse({ requestId: commandId, documentId: reference.source.documentId,
+        pages: args.pages, query: args.query }) : pdfReadInputSchema.parse({ requestId: commandId, documentId: reference.source.documentId,
+        pages: args.pages, region: args.region });
+      detail = { reference, input, ...(name === 'read_pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
     } else if (name === 'read_reference') {
       const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId);
       if (!reference) fail('forbidden');
-      detail = { reference };
+      detail = { reference, ...(reference.source.kind === 'pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
     } else if (name === 'read_material') {
       const course = scope.activity.course, material = course?.materials.find(item => item.materialId === args.materialId);
       if (!course || !material) fail('forbidden');
@@ -241,6 +260,28 @@ export function createTeachingTools(options: {
   async function dispatch(scope: TeachingToolScope, command: TeachingPreparedTool): Promise<TeachingToolOutcome> {
     await check(scope, command);
     const a = command.arguments, id = scope.activity.activityId;
+    if (command.name === 'read_pdf_text') {
+      const input = pdfTextInputSchema.parse(command.basis.input);
+      const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      const reading = await learning().pdf.reading(scope.identity, id, input.readingId);
+      if (!reading || reading.documentId !== reference.source.documentId
+        || reading.documentSha256 !== reference.source.documentSha256) fail('forbidden');
+      return pdfTextOutcome(reading, input);
+    }
+    if (command.name === 'find_pdf') {
+      await context(scope, command, true).assertDispatch();
+      const result = await learning().pdf.find(scope.identity, id, command.basis.input);
+      return pdfSearchOutcome(result, String(a.referenceId));
+    }
+    if (command.name === 'read_pdf') {
+      let reading = await learning().pdf.reading(scope.identity, id, command.commandId);
+      if (!reading) {
+        await context(scope, command, true).assertDispatch();
+        reading = await learning().pdf.read(scope.identity, id, command.basis.input);
+      }
+      return pdfReadingOutcome(scope, options.models, command, reading);
+    }
     if (command.name === 'read_work') {
       const { file, ref } = approvedFile(scope, String(a.objectId), String(a.contentId));
       let stored;
@@ -276,6 +317,11 @@ export function createTeachingTools(options: {
       const reference = scope.input.draft.references.find(item => item.referenceId === a.referenceId)!;
       await learning().drafts.verifyReferences(scope.identity, id, { references: [reference], bases: scope.input.draft.bases
         .filter(file => 'contentId' in reference.source && file.contentId === reference.source.contentId) });
+      if (reference.source.kind === 'pdf') {
+        const reading = await learning().pdf.reading(scope.identity, id, reference.source.readingId);
+        if (!reading) fail('missing');
+        return pdfReadingOutcome(scope, options.models, command, reading, reference);
+      }
       return outcome(command, 'completed', { reference }, reference.sourceName);
     }
     if (command.name === 'read_material') {

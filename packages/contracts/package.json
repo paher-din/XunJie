@@ -9,6 +9,7 @@
   ],
   "exports": {
     "./agent-skills": { "types": "./dist/agent-skills.d.ts", "import": "./dist/agent-skills.js" },
+    "./pdf-materials": { "types": "./dist/pdf-materials.d.ts", "import": "./dist/pdf-materials.js" },
     "./alu-learning": { "types": "./dist/alu-learning.d.ts", "import": "./dist/alu-learning.js" },
     "./alu-references": { "types": "./dist/alu-references.d.ts", "import": "./dist/alu-references.js" },
     "./alu-waveform": { "types": "./dist/alu-waveform.d.ts", "import": "./dist/alu-waveform.js" },

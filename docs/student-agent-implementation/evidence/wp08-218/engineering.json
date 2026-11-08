@@ -1,0 +1,76 @@
+{
+  "scope": "WP08 #218",
+  "candidateCommit": "78432257227c30878a6418fd372adf203cd520b5",
+  "fullVerify": {
+    "command": "rtk bypass npm run verify",
+    "startedAt": "2026-11-07T19:57:37.719Z",
+    "finishedAt": "2026-11-07T20:04:07.408Z",
+    "status": "failed",
+    "nodeVersion": "v24.21.0",
+    "tasks": 177,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "taskCount": 4
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "taskCount": 1
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "taskCount": 35
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "taskCount": 92
+      },
+      {
+        "name": "tools",
+        "status": "failed",
+        "taskCount": 45
+      }
+    ],
+    "failedFiles": [
+      "tools/xj-dev/tests/repro-e2e.test.mjs",
+      "tools/xj-dev/tests/repro-restore.test.mjs"
+    ],
+    "cause": "New PDF dependency lockfile differed from HEAD; repro tests restore the committed code baseline. Candidate commit aligns both."
+  },
+  "reviewTypecheck": {
+    "command": "node scripts/build.mjs typecheck",
+    "status": "passed",
+    "source": "after bounded feedback, MIME and read_pdf_text fixes"
+  },
+  "docLinks": {
+    "status": "passed",
+    "markdownFiles": 263,
+    "localTargets": 2610,
+    "failures": 0
+  },
+  "reproRetest": {
+    "status": "passed",
+    "command": "node --test --test-concurrency=1 tools/xj-dev/tests/repro-e2e.test.mjs tools/xj-dev/tests/repro-restore.test.mjs",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 1,
+    "skipReason": "Existing Windows-drive-root-only repro test is not applicable on macOS; not counted passed.",
+    "durationMs": 220412.721959,
+    "log": "repro-retest.log"
+  },
+  "pdfFinal": {
+    "status": "passed",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap apps/server/tests/pdf-*.runtime.test.mjs",
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 214412.404,
+    "log": "pdf-runtime.log"
+  },
+  "teachingEffect": "not-measured",
+  "status": "passed-after-targeted-retest"
+}

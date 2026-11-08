@@ -2,7 +2,7 @@ import { openWorkspaceDatabase } from './draft-store'
 
 /** Shared local protection for immutable Agent operations; subject/target identity is part of every key. */
 export class ReliableRecordStore<T extends { key: string }> {
-  constructor(private partition: 'studentResponses' | 'agentControls') {}
+  constructor(private partition: 'studentResponses' | 'agentControls' | 'pdfMaterials') {}
   async read(key: string): Promise<T | undefined> {
     const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {

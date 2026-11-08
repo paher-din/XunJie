@@ -14,6 +14,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const catalogPath = join(root, 'scripts/product-resources.json');
 const slash = path => path.split(sep).join('/');
 const builtin = new Set(builtinModules.flatMap(name => [name, `node:${name.replace(/^node:/, '')}`]));
+const pdfExternals = new Set(['pdfjs-dist/legacy/build/pdf.mjs', '@napi-rs/canvas']);
 const forbidden = /(?:^|\/)(?:tests?|__tests__|fixtures|__fixtures__|acceptance|验收宿主)(?:\/|$)|(?:\.test|\.spec|\.fixtures|test-child|test-host|acceptance-host|acceptance-runner|test-support)\.[^/]+$/i;
 
 async function exists(path) {
@@ -118,7 +119,7 @@ export function assertProductionGraph(metafile) {
   }
   for (const output of Object.values(metafile.outputs)) {
     for (const item of output.imports) {
-      if (item.external && !builtin.has(item.path)) throw new Error(`Unbundled product dependency: ${item.path}`);
+      if (item.external && !builtin.has(item.path) && !pdfExternals.has(item.path)) throw new Error(`Unbundled product dependency: ${item.path}`);
     }
   }
 }
@@ -129,8 +130,12 @@ async function assertNoWorkspacePath(path) {
   if (variants.some(value => text.includes(value))) throw new Error(`Workspace absolute path leaked into ${basename(path)}.`);
 }
 
-async function bundledLicenses(metafile, app) {
+async function bundledLicenses(metafile, app, additionalDirectories = []) {
   const packages = new Map();
+  for (const directory of additionalDirectories) {
+    const pkg = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
+    packages.set(`${pkg.name}@${pkg.version}`, { directory, pkg });
+  }
   for (const input of Object.keys(metafile.inputs)) {
     if (!slash(input).includes('node_modules/')) continue;
     let current = dirname(resolve(root, input));
@@ -149,23 +154,114 @@ async function bundledLicenses(metafile, app) {
   }
   const records = [];
   for (const [id, { directory, pkg }] of [...packages].sort(([a], [b]) => a.localeCompare(b))) {
-    const notices = (await readdir(directory)).filter(name => /^(?:licen[cs]e|copying|notice)(?:[.-]|$)/i.test(name));
+    const notices = (await walk(directory)).filter(file => /^(?:licen[cs]e|copying|notice)(?:[._-]|$)/i.test(basename(file.name)))
+      .map(file => file.name);
     const target = join(app, 'licenses', id.replaceAll('/', '+'));
     await mkdir(target, { recursive: true });
-    for (const name of notices) await cp(join(directory, name), join(target, name), { recursive: true, dereference: false, verbatimSymlinks: true });
+    for (const name of notices) {
+      await mkdir(dirname(join(target, name)), { recursive: true });
+      await cp(join(directory, name), join(target, name), { recursive: true, dereference: false, verbatimSymlinks: true });
+    }
     await cp(join(directory, 'package.json'), join(target, 'package.json'));
     if (notices.length === 0) {
       for (const name of (await readdir(directory)).filter(name => /^readme(?:\.|$)/i.test(name))) {
         await cp(join(directory, name), join(target, name));
       }
     }
-    records.push({ name: pkg.name, version: pkg.version, license: pkg.license ?? 'NOASSERTION', notices: notices.map(name => slash(relative(app, join(target, name)))) });
+    const recordedNotices = notices.map(name => slash(relative(app, join(target, name))));
+    const nativeCanvas = pkg.name.startsWith('@napi-rs/canvas-');
+    if (nativeCanvas) recordedNotices.push('licenses/@napi-rs+canvas@1.1.0/LICENSE',
+      ...['NOTICE-PDF.txt', 'NOTICE-canvas-rust-1.1.0.txt', 'NOTICE-canvas-skia-1.1.0.txt'].map(name => `licenses/pdf-native/${name}`));
+    records.push({ name: pkg.name, version: pkg.version, license: pkg.license ?? 'NOASSERTION', notices: recordedNotices,
+      ...(nativeCanvas ? { sbom: slash(relative(app, join(directory, 'sbom.cdx.json'))) } : {}) });
   }
   await json(join(app, 'licenses.json'), records);
   return records;
 }
 
-export async function buildApplication(app) {
+// Select native npm bytes by the distribution target, never by the build host.
+// Cross-packaging only downloads a root-lock-pinned tarball; end users need no npm.
+async function canvasArchive(platform, cache) {
+  const targets = { 'darwin-arm64': 'darwin-arm64', 'win32-x64': 'win32-x64-msvc', 'linux-x64': 'linux-x64-gnu' };
+  const target = targets[platform];
+  if (!target) throw new Error(`Unsupported PDF native platform: ${platform}`);
+  const name = `@napi-rs/canvas-${target}`;
+  const lock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'));
+  const spec = lock.packages[`node_modules/${name}`];
+  if (spec?.version !== '1.1.0' || !spec.integrity?.startsWith('sha512-') || !spec.resolved?.startsWith('https://registry.npmjs.org/')) {
+    throw new Error(`Missing pinned ${name}@1.1.0 npm archive.`);
+  }
+  await mkdir(cache, { recursive: true });
+  const archive = join(cache, `canvas-${target}-1.1.0.tgz`);
+  const verify = async path => {
+    const hash = createHash('sha512');
+    let bytes = 0;
+    for await (const chunk of createReadStream(path)) {
+      bytes += chunk.length;
+      if (bytes > 64 * 1024 * 1024) throw new Error('Canvas npm archive exceeds 64 MiB.');
+      hash.update(chunk);
+    }
+    if (`sha512-${hash.digest('base64')}` !== spec.integrity) throw new Error(`Canvas archive integrity mismatch: ${name}`);
+  };
+  if (await exists(archive)) await verify(archive);
+  else {
+    const temporary = `${archive}.${randomUUID()}.download`;
+    try {
+      const response = await fetch(spec.resolved, { signal: AbortSignal.timeout(120_000) });
+      if (!response.ok || !response.body) throw new Error(`Canvas archive download failed: ${response.status}`);
+      let bytes = 0;
+      const bounded = async function* () {
+        for await (const chunk of response.body) {
+          bytes += chunk.byteLength;
+          if (bytes > 64 * 1024 * 1024) throw new Error('Canvas npm archive exceeds 64 MiB.');
+          yield chunk;
+        }
+      };
+      await pipeline(Readable.from(bounded()), createWriteStream(temporary, { flags: 'wx' }));
+      await verify(temporary);
+      await rename(temporary, archive);
+    } finally { await rm(temporary, { force: true }); }
+  }
+  return { name, archive, target, integrity: spec.integrity };
+}
+
+export async function stagePdfRuntime(app, platform, cache = join(homedir(), '.cache/xunjie-product-runtime')) {
+  const require = createRequire(join(root, 'packages/learning-space/package.json'));
+  const directories = [];
+  for (const [name, version, files] of [
+    ['pdfjs-dist', '6.5.438', ['package.json', 'LICENSE', 'legacy/build/pdf.mjs', 'legacy/build/pdf.worker.mjs',
+      'cmaps', 'standard_fonts', 'wasm', 'iccs']],
+    ['@napi-rs/canvas', '1.1.0', ['package.json', 'LICENSE', 'index.js', 'js-binding.js', 'geometry.js', 'load-image.js']],
+  ]) {
+    const source = dirname(require.resolve(`${name}/package.json`));
+    const metadata = JSON.parse(await readFile(join(source, 'package.json'), 'utf8'));
+    if (metadata.version !== version) throw new Error(`Expected ${name}@${version}.`);
+    const destination = join(app, 'node_modules', name);
+    for (const file of files) {
+      await mkdir(dirname(join(destination, file)), { recursive: true });
+      await cp(join(source, file), join(destination, file), { recursive: true, dereference: false, verbatimSymlinks: true });
+    }
+    directories.push(destination);
+  }
+  const native = await canvasArchive(platform, cache);
+  const scratch = await mkdtemp(join(dirname(app), '.pdf-native-'));
+  const destination = join(app, 'node_modules', native.name);
+  try {
+    await run('tar', ['-xf', native.archive, '-C', scratch]);
+    const metadata = JSON.parse(await readFile(join(scratch, 'package/package.json'), 'utf8'));
+    if (metadata.name !== native.name || metadata.version !== '1.1.0') throw new Error('Canvas native package identity mismatch.');
+    await cp(join(scratch, 'package'), destination, { recursive: true, dereference: false });
+    await stat(join(destination, `skia.${native.target}.node`));
+  } finally { await rm(scratch, { recursive: true, force: true }); }
+  directories.push(destination);
+  await cp(join(root, 'scripts/pdf-licenses'), join(app, 'licenses/pdf-native'), { recursive: true });
+  await json(join(app, 'pdf-runtime.json'), { engine: 'pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0', platform,
+    nativePackage: native.name, nativeIntegrity: native.integrity, licenses: 'licenses/pdf-native',
+    resources: ['cmaps', 'standard_fonts', 'wasm', 'iccs'], worker: 'pdf-engine-worker.js' });
+  return directories;
+}
+
+export async function buildApplication(app, platform = `${process.platform}-${process.arch}`, cache) {
   const require = createRequire(join(root, 'packages/product-runtime/package.json'));
   const driver = JSON.parse(await readFile(require.resolve('pg/package.json'), 'utf8'));
   if (driver.version !== '8.16.3') throw new Error(`Expected pg 8.16.3; found ${driver.version}. Run npm ci first.`);
@@ -173,9 +269,10 @@ export async function buildApplication(app) {
   const result = await build({
     absWorkingDir: root,
     entryPoints: { cli: 'apps/local-runtime/src/cli.ts', daemon: 'packages/product-runtime/src/daemon.ts',
-      'product-runtime': 'packages/product-runtime/src/index.ts' },
+      'product-runtime': 'packages/product-runtime/src/index.ts',
+      'pdf-engine-worker': 'packages/learning-space/src/pdf-engine/pdf-engine-worker.ts' },
     outdir: app, bundle: true, splitting: false, platform: 'node', target: 'node24', format: 'esm',
-    packages: 'bundle', external: [...builtin], sourcemap: false, metafile: true, write: true,
+    packages: 'bundle', external: [...builtin, ...pdfExternals], sourcemap: false, metafile: true, write: true,
     legalComments: 'eof', logLevel: 'warning',
     banner: { js: "import { createRequire as __productCreateRequire } from 'node:module'; const require = __productCreateRequire(import.meta.url);" },
     define: { 'process.env.NODE_PG_FORCE_NATIVE': 'undefined' },
@@ -201,13 +298,15 @@ export async function buildApplication(app) {
     }],
   });
   assertProductionGraph(result.metafile);
-  for (const name of ['cli.js', 'daemon.js', 'product-runtime.js']) await assertNoWorkspacePath(join(app, name));
+  for (const name of ['cli.js', 'daemon.js', 'product-runtime.js', 'pdf-engine-worker.js']) await assertNoWorkspacePath(join(app, name));
   const recordedMetafile = { ...result.metafile, outputs: Object.fromEntries(
     Object.entries(result.metafile.outputs).map(([path, details]) => [`app/${slash(relative(app, resolve(root, path)))}`, details]),
   ) };
   await json(join(app, 'metafile.json'), recordedMetafile);
   await assertNoWorkspacePath(join(app, 'metafile.json'));
-  return { driverVersion: driver.version, dependencies: await bundledLicenses(result.metafile, app) };
+  const pdfDirectories = await stagePdfRuntime(app, platform, cache);
+  return { driverVersion: driver.version, dependencies: await bundledLicenses(result.metafile, app, pdfDirectories),
+    pdfRuntime: 'app/pdf-runtime.json' };
 }
 
 async function walk(directory, prefix = '') {
@@ -317,7 +416,7 @@ export async function packageProduct(options) {
         manifestSource: 'https://learn.microsoft.com/en-us/windows/apps/design/globalizing/use-utf8-code-page' };
       resources.push(record);
     }
-    const application = await buildApplication(join(staging, 'app'));
+    const application = await buildApplication(join(staging, 'app'), platform, cache);
     const windowsPrerequisitePath = platform === 'win32-x64' && profile === 'full'
       ? 'resources/prerequisites/windows-vc.ps1' : undefined;
     if (windowsPrerequisitePath) {

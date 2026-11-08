@@ -401,13 +401,25 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         resolvedAgent, ...(assembly.skillState ? { skillState: assembly.skillState } : {}),
         contextHistory: history, selectionVersion: selection.version, selectionPinId };
     }
-    // A fresh native segment starts a new user turn. Portable assistant facts are
-    // evidence, never an open provider reasoning turn or a substitute for the fixed intent.
-    if (previous && plan.input.segmentId !== previous.segment_id && !plan.input.input.text && !fixedInputs.length) {
-      const settled = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
-        name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
-      plan.input.input.text = '同一已接受问题的后续步骤。原操作状态如下；已完成的不重跑，已接受或未知不当作完成，按原身份核对：\n'
-        + JSON.stringify(settled) + '\n\n当前固定学生意图与依据：\n' + fixedInputText(scope.input);
+    if (previous && plan.input.segmentId !== previous.segment_id) {
+      // A new native segment carries the accepted intent and real operation states,
+      // without reopening reasoning or dispatching the original tools again.
+      if (!plan.input.input.text && !fixedInputs.length) {
+        const { rows: adopted } = await storage.read(`SELECT v.body FROM teaching_inputs i
+          JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
+          WHERE i.adopted_run_id=$1 ORDER BY i.seq`, [run.runId]);
+        const intent = adopted.map(row => fixedInputText(actionInputSchema.parse(row.body))).filter(Boolean).join('\n\n---\n\n')
+          || fixedInputText(scope.input);
+        const operations = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
+          name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
+        plan.input.input.text = '同一已接受问题的后续步骤。原操作状态如下；已完成的不重跑，已接受或未知不当作完成，按原身份核对：\n'
+          + JSON.stringify(operations) + '\n\n当前固定学生意图与依据：\n' + intent;
+      }
+      // Textual portable facts do not replace the exact retained image bytes.
+      const { rows: effects } = await storage.read(`SELECT outcome FROM teaching_commands
+        WHERE run_id=$1 AND state='settled' ORDER BY created_at,ordinal`, [run.runId]);
+      const images = effects.flatMap(row => (row.outcome as TeachingToolOutcome).feedback.images);
+      plan.input.input.images = [...new Map(images.map(image => [image.imageId + ':' + image.version, image])).values()];
     }
     const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
@@ -416,11 +428,12 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if (skillText) plan.input.input.text = [skillText, plan.input.input.text].filter(Boolean).join('\n\n---\n\n');
     const policy = plan.resolvedAgent?.definition.contextPolicy;
     const capacityInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
-    if (plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
+    if (plan.input.input.images.length > 8
+      || plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
       || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
       await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
         { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
-          inputChars: plan.input.input.text.length, policy,
+          inputChars: plan.input.input.text.length, imageCount: plan.input.input.images.length, policy,
           requiredScope: { questions: capacityInputs.map(input => input.requestId),
             references: capacityInputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
             works: capacityInputs.flatMap(input => input.works.map(work => work.contentId)),

@@ -1,0 +1,158 @@
+{
+  "formatVersion": 1,
+  "axis": "Spec",
+  "status": "passed",
+  "reviewedAt": "2026-11-07T20:19:02.023712+00:00",
+  "base": "cb104e33604cbfcb8c5c4f294dd5c745e723834c",
+  "candidate": "78432257227c30878a6418fd372adf203cd520b5",
+  "diffCommand": "git diff cb104e33604cbfcb8c5c4f294dd5c745e723834c...78432257227c30878a6418fd372adf203cd520b5",
+  "specSources": [
+    ".verification/issue-218.md",
+    ".verification/issue-214.md"
+  ],
+  "scope": "All committed candidate changes, including new files; applicable PDF, public wire, owner, continuation and lifecycle requirements.",
+  "excluded": [
+    "docs/archive/",
+    "Uncommitted delivery documentation and evidence as code findings",
+    "Known unfinished acceptance evidence as code defects"
+  ],
+  "openFindingCount": 0,
+  "openFindings": [],
+  "closedFindings": [
+    {
+      "id": "P2-pdf-feedback-budget",
+      "severity": "P2",
+      "status": "closed",
+      "originalFinding": "Dense PDF search matches and escaped long text could exceed the Gateway tool-result text limit and block native pairing.",
+      "requirement": "#214 section 4: retain full results while bounding model projections and providing continued access.",
+      "evidence": [
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools-pdf.ts",
+          "line": 9,
+          "reason": "Validates the actual serialized feedback against modelToolResultSchema.shape.text."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools-pdf.ts",
+          "line": 38,
+          "reason": "Search projection shrinks match count until within the wire limit; full result remains retained."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools-pdf.ts",
+          "line": 64,
+          "reason": "Page feedback dynamically shrinks the text projection until the encoded payload fits."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools.ts",
+          "line": 271,
+          "reason": "find_pdf now returns the bounded pdfSearchOutcome."
+        }
+      ],
+      "regressionEvidence": {
+        "file": "apps/server/tests/pdf-text-continuation.runtime.test.mjs",
+        "line": 8,
+        "result": "passed",
+        "provenance": "Existing main-agent pdf-review-green.log observed: dense find and adjacent long-page continuation both passed; no reviewer rerun."
+      }
+    },
+    {
+      "id": "P2-pdf-text-continuation",
+      "severity": "P2",
+      "status": "closed",
+      "originalFinding": "A long adjacent page was always truncated at its prefix without a model-accessible continuation entry.",
+      "requirement": "#214 sections 4 and 9: continue reading retained material without replacing the fixed input or converting it again.",
+      "evidence": [
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools-pdf.ts",
+          "line": 12,
+          "reason": "Truncated projections identify read_pdf_text and the retained readingId."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools-pdf.ts",
+          "line": 20,
+          "reason": "Pure retained native-text range read returns start, end, total and nextStart with bounded encoded feedback."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools-schema.ts",
+          "line": 51,
+          "reason": "The model receives the read_pdf_text schema with referenceId, readingId, page, start and length."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools.ts",
+          "line": 102,
+          "reason": "Prepare verifies the selected reference and matches the retained reading documentId and SHA256."
+        },
+        {
+          "file": "packages/learning-space/src/teaching-agent/tools.ts",
+          "line": 262,
+          "reason": "Dispatch rechecks document identity and SHA256 before returning retained text; it does not render."
+        }
+      ],
+      "regressionEvidence": {
+        "file": "apps/server/tests/pdf-text-continuation.runtime.test.mjs",
+        "line": 51,
+        "result": "passed",
+        "provenance": "Unauthorized continuation negative case is committed and was reported green by the main agent; adjacent-page tail positives were also observed green."
+      }
+    },
+    {
+      "id": "P2-school-find-forwarding",
+      "severity": "P2",
+      "status": "closed",
+      "originalFinding": "The school client rejected the implemented public PDF /find endpoint before reaching local forwarding or result parsing.",
+      "requirement": "#214 owner and deployment boundaries: the same public capability contract across local and school connections.",
+      "evidence": [
+        {
+          "file": "packages/product-runtime/src/school-client.ts",
+          "line": 691,
+          "reason": "The forwarding allowlist now includes /find."
+        },
+        {
+          "file": "packages/product-runtime/src/school-client.ts",
+          "line": 640,
+          "reason": "The local binding forwards /find to learning.pdf.find."
+        },
+        {
+          "file": "packages/product-runtime/src/school-client.ts",
+          "line": 731,
+          "reason": "The remote response is parsed using pdfSearchResultSchema."
+        }
+      ],
+      "regressionEvidence": {
+        "file": "apps/server/tests/pdf-course.runtime.test.mjs",
+        "result": "passed",
+        "provenance": "Existing main-agent course regression output observed green; the public school-forwarding regression and final PDF 32/32 were reported passed by the main agent."
+      }
+    },
+    {
+      "id": "P2-course-pdf-mime",
+      "severity": "P2",
+      "status": "closed",
+      "originalFinding": "Exact MIME comparison rejected valid case variants or parameterized PDF types already recognized by the UI.",
+      "requirement": "#218: read course PDF from an authorized published material.",
+      "evidence": [
+        {
+          "file": "packages/learning-space/src/learning-data/pdf-materials.ts",
+          "line": 75,
+          "reason": "Course import normalizes case, parameters and whitespace before identifying application/pdf."
+        },
+        {
+          "file": "apps/web/src/product/LearningApp.tsx",
+          "line": 583,
+          "reason": "The front end uses the same normalization for course PDF opening."
+        }
+      ],
+      "regressionEvidence": {
+        "file": "apps/server/tests/pdf-course.runtime.test.mjs",
+        "result": "passed",
+        "provenance": "Existing main-agent pdf-review-green.log course case observed passed; final PDF 32/32 reported passed."
+      }
+    }
+  ],
+  "conclusion": "No remaining confirmed missing implementation, implementation error or scope creep in the reviewed Spec diff. The four original P2 findings are closed.",
+  "reviewerActions": {
+    "readOnlyCodeReview": true,
+    "codeFilesModifiedForReview": false,
+    "testsOrAcceptanceRerunForThisFinalReport": false
+  },
+  "deliveryBoundary": "Spec closure is separate from browser, cross-machine, engineering and teaching-effect evidence."
+}

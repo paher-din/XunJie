@@ -1,0 +1,31 @@
+PDF distribution notices
+========================
+
+PDF.js 6.5.438 is distributed under Apache-2.0; @napi-rs/canvas 1.1.0
+is distributed under MIT. These labels describe the top-level packages,
+not every font, codec, or native dependency included in their distributions.
+
+The product preserves the shipped PDF.js LICENSE and all license files under
+cmaps/, standard_fonts/, wasm/, and iccs/. The canvas wrapper LICENSE and the
+target native package's sbom.cdx.json are also preserved with the binaries.
+
+NOTICE-canvas-skia-1.1.0.txt preserves Skia and vendored dependency terms.
+NOTICE-canvas-rust-1.1.0.txt conservatively includes notices for all Cargo
+components listed in the native SBOM, including build dependencies. The
+sources-*.json records identify the exact source archives/revisions and
+checksums from which notices were collected. Identical complete license text
+is printed once and referenced from subsequent component notices.
+
+The Rust dependency set includes MPL-2.0 components (cssparser,
+cssparser-macros, dtoa-short, and selectors). Their unmodified corresponding
+source is available from the exact public source archive URLs in
+sources-canvas-rust-1.1.0.json. Those records inform recipients where to
+obtain the source; the complete MPL-2.0 terms are retained in the notices.
+No source changes to these dependencies are made by XunJie.
+
+Native npm archives are selected by the product target and verified against
+the root package-lock.json SHA512 integrity before extraction. The product
+records the selected native package and integrity in app/pdf-runtime.json;
+all retained application/dependency/license files are covered by the product
+distribution.json entryHashes. No npm executable or download is needed at
+runtime. Windows x64 loading still requires validation on the target system.

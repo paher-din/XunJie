@@ -1,5 +1,7 @@
 # 学习数据 owner
 
+[#218 PDF](../../../../docs/student-agent-implementation/wp08-218-pdf.md) 在迁移 23 增加本活动的原件与不可变页/区域读取记录。`pdf` 接口复用当前空间、主体及课程资格核验；`pdf-pages` 引用进入同一 `drafts/intents`，原件与已用文字/页图随资源 pin 保留。恢复直接校验保存字节，不重新转换。个人资料不会写入课程发布或教师投影。
+
 本模块拥有无课程活动及其请求身份和回执；通过 `SpaceAuthority.resolveBinding` 取得当前成员与实际目标，不访问空间 owner 的数据库。wire 从 `@xunjie/contracts/learning-data` 消费，生产入口见 [learning-entry](../learning-entry/README.md)。
 
 活动可由目标、起始问题或 HTTPS 资料引用建立，完全不生成课程、Assignment 或教师。`create/list/open/setStatus/receipt` 均经真实所属 PostgreSQL。每次读取和写入先核验空间环境、空间、主体和学习数据服务绑定；不存在及无权读取均不能触发新建。
