@@ -69,7 +69,7 @@ test('Skills versions and actual attachment loads survive formal backup and isol
         backupDirectory: join(directory, backup.backupId), key });
       const owner = restored.owners.find(item => item.participant.descriptor.serviceId === boundary.serviceId);
       const material = await owner.material({ backupId: backup.backupId, boundaryAt: backup.boundaryAt, signal: new AbortController().signal });
-      assert.equal(material.evidence.formatVersion, 2);
+      assert.equal(material.evidence.formatVersion, 3);
       const counts = Object.fromEntries(['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads']
         .map(table => [table, material.evidence.tables[table].count]));
       for (const entry of Object.values(material.evidence.tables)) assert.match(entry.sha256, /^[a-f0-9]{64}$/);
@@ -120,11 +120,13 @@ test('maintenance accepts the published v1 empty-Skills inventory but refuses to
     try {
       const activity = await f.activity('217 旧维护清单兼容'), owner = await f.controlled(activity);
       const current = await collectTeachingBoundary(owner.storage);
-      assert.equal(current.evidence.formatVersion, 2);
+      assert.equal(current.evidence.formatVersion, 3);
       const legacy = structuredClone(current); legacy.evidence.formatVersion = 1;
       for (const table of ['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads']) {
         assert.equal(legacy.evidence.tables[table].count, 0); delete legacy.evidence.tables[table];
       }
+      assert.equal(legacy.evidence.tables.teaching_compactions.count, 0);
+      delete legacy.evidence.tables.teaching_compactions;
       await validateTeachingBoundary(owner.storage, legacy);
       await owner.agent.skills.import(owner.identity, packageInput(1));
       await assert.rejects(validateTeachingBoundary(owner.storage, legacy), error => error.code === 'corrupt');

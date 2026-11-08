@@ -6,7 +6,7 @@ import { teachingToolOutcomeSchema } from '@xunjie/contracts/teaching-agent';
 import { canonical } from './identity.js';
 import type { TeachingToolOutcome, TeachingToolScope } from './tool-types.js';
 
-const feedbackBytes = 8192;
+export const toolFeedbackBytes = 8192;
 // Exact bytes are base64 encoded. Leave room for their JSON envelope and preview
 // within the existing model feedback budget, even when the caller asks for 8192.
 const sliceBytes = 4096;
@@ -55,11 +55,15 @@ export function projectToolOutcome(outcome: TeachingToolOutcome, commandId: stri
     if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) feedback = parsed as Record<string, unknown>;
   } catch { /* Non-JSON feedback uses the explicit outcome/result envelope. */ }
   const fullRange = { offset: 0, end: bytes.length };
+  const partial = bytes.length > toolFeedbackBytes;
   let text = JSON.stringify({ ...feedback, original,
     // Range-reader feedback already describes its source byte range. Keep that
     // field intact; describe this projection separately when the names collide.
-    ...('byteRange' in feedback ? { projectionByteRange: fullRange } : { byteRange: fullRange }), truncated: false });
-  if (bytes.length > feedbackBytes || Buffer.byteLength(text, 'utf8') > feedbackBytes) {
+    ...('byteRange' in feedback ? { projectionByteRange: partial ? null : fullRange }
+      : { byteRange: partial ? null : fullRange }), truncated: partial });
+  // A tool can already provide a bounded semantic projection with its own source
+  // and continuation contract. Preserve it instead of replacing it with byte text.
+  if (Buffer.byteLength(text, 'utf8') > toolFeedbackBytes) {
     const excerpt = preview(bytes, 2048);
     // preview is a JSON string containing an excerpt, not an invalid partial JSON value.
     text = JSON.stringify({ state: outcome.state, preview: excerpt.text, original,
@@ -86,10 +90,17 @@ export async function readToolResult(storage: Pick<OwnedStorage, 'read' | 'readR
   [commandId, scope.runId, scope.activity.activityId, scope.identity.environmentId, scope.identity.spaceId, scope.identity.principalId]);
   // Absence deliberately does not disclose whether a command exists outside this scope.
   if (!row || canonical(row.identity) !== canonical(scope.identity)) throw new StorageError('forbidden');
-  const command = row.command as { commandId?: string; basis?: { scope?: { identity?: unknown; activityId?: string; runId?: string } } };
+  const command = row.command as { version?: unknown; commandId?: string; name?: string; arguments?: unknown;
+    basis?: { skill?: unknown; scope?: { identity?: unknown; activityId?: string; runId?: string } } };
   const originalScope = command.basis?.scope;
-  if (command.commandId !== commandId || !originalScope || canonical(originalScope.identity) !== canonical(scope.identity)
-    || originalScope.activityId !== scope.activity.activityId || originalScope.runId !== scope.runId) throw new StorageError('corrupt');
+  const scoped = originalScope && canonical(originalScope.identity) === canonical(scope.identity)
+    && originalScope.activityId === scope.activity.activityId && originalScope.runId === scope.runId;
+  // Published Skills commands fixed a flat ActionInput scope. Their original Run,
+  // activity and principal are still independently checked by the ledger query.
+  const legacySkill = command.version === 1 && ['skill_load', 'skill_read'].includes(command.name ?? '')
+    && command.basis?.skill !== undefined && canonical(command.basis.skill) === canonical(command.arguments)
+    && canonical(originalScope) === canonical(scope.input.scope);
+  if (command.commandId !== commandId || !scoped && !legacySkill) throw new StorageError('corrupt');
   // The command's latest outcome/resource can change after reconciliation or
   // cleanup. Every retained tool-result event fixes an independently readable
   // version, including accepted/unknown observations of an unfinished effect.

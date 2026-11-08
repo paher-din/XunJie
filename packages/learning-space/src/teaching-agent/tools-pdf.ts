@@ -5,8 +5,15 @@ import type { PdfReading, pdfSearchResultSchema } from '@xunjie/contracts/pdf-ma
 import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts';
 import type { TeachingToolOutcome, TeachingToolScope, TeachingPreparedTool } from './tool-types.js';
 import { retainPdfImages, type TeachingImageModels } from './tools-images.js';
+import { toolFeedbackBytes } from './tool-results.js';
 
-const encodedFeedback = (value: unknown) => modelToolResultSchema.shape.text.safeParse(JSON.stringify(value));
+const encodedFeedback = (value: unknown) => {
+  const text = JSON.stringify(value);
+  // Reserve the common Command/SHA locator envelope without losing PDF-specific
+  // continuation metadata. The UTF-8 budget also covers non-ASCII page text.
+  return Buffer.byteLength(text, 'utf8') <= toolFeedbackBytes - 1024
+    ? modelToolResultSchema.shape.text.safeParse(text) : { success: false as const };
+};
 const sourceOf = (reading: PdfReading) => ({ kind: 'pdf' as const, activityId: reading.activityId,
   documentId: reading.documentId, documentSha256: reading.documentSha256, readingId: reading.readingId });
 const continueText = (referenceId: string, readingId: string) => ({ tool: 'read_pdf_text', referenceId, readingId,

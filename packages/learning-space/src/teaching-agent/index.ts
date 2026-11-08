@@ -988,8 +988,9 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     }
     // The cursor may only cover events actually delivered in this response; a later commit is
     // read on the next poll instead of being skipped by a concurrent max(seq).
+    const { tools, waits } = await driver.records(activityId);
     return teachingConversationSchema.parse({ activityId, cursor: rows.length ? Number(rows.at(-1)!.seq) : cursor, messages,
-      runs: runRows.map(toRun), tools: await driver.records(activityId), waits: await driver.waits(activityId), questions: await studentQuestions.list(activityId),
+      runs: runRows.map(toRun), tools, waits, questions: await studentQuestions.list(activityId),
       inputs: await inputs.list(activityId) });
   }
   async function events(identity: SpaceIdentity, activityId: string, after = 0): Promise<TeachingEvent[]> {

@@ -45,6 +45,20 @@ async function collectBoundary(storage: OwnedStorage, profile: BoundaryProfile) 
     const { rows } = await storage.read(`SELECT * FROM ${table}`);
     // pg Dates must be ISO values, not empty objects; JSONB object order is immaterial.
     const facts = JSON.parse(JSON.stringify(rows)) as Row[];
+    if (!profile.tables.includes('teaching_compactions')) {
+      // The compaction migration adds default columns to old rows. Compare the
+      // published pre-compaction row shape, but never hide a non-default fact.
+      for (const fact of facts) {
+        if (table === 'teaching_steps') {
+          if (fact.capacity_rejected !== undefined && fact.capacity_rejected !== false) throw new StorageError('corrupt');
+          delete fact.capacity_rejected;
+        }
+        if (table === 'teaching_segment_transitions') {
+          if (fact.compaction_id != null) throw new StorageError('corrupt');
+          delete fact.compaction_id;
+        }
+      }
+    }
     records.set(table, facts);
     if (!included && facts.length) throw new StorageError('corrupt');
     if (included) inventory[table] = { count: facts.length, sha256: canonicalDigest(facts.map(canonicalDigest).sort()) };

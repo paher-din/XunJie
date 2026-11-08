@@ -1334,9 +1334,16 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     return [...awakened];
   }
   async function records(activityId: string) {
-    const { rows } = await storage.read(`SELECT c.*,s.snapshot_id,s.plan AS step_plan FROM teaching_commands c JOIN teaching_steps s USING(step_id)
-      JOIN teaching_runs r ON r.run_id=c.run_id WHERE r.activity_id=$1 ORDER BY c.created_at,c.ordinal`, [activityId]);
-    return rows.map(row => {
+    // A cleanup transaction changes its Command and Wait together. Read both in
+    // one PostgreSQL statement so a poll cannot pair an old result with a new Wait.
+    const { rows: [facts] } = await storage.read<{ commands: Row[]; waits: Row[] }>(`SELECT
+      COALESCE((SELECT jsonb_agg(to_jsonb(c) || jsonb_build_object('snapshot_id',s.snapshot_id,'step_plan',s.plan)
+        ORDER BY c.created_at,c.ordinal) FROM teaching_commands c JOIN teaching_steps s USING(step_id)
+        JOIN teaching_runs r ON r.run_id=c.run_id WHERE r.activity_id=$1),'[]'::jsonb) AS commands,
+      COALESCE((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.deadline) FROM teaching_waits w
+        JOIN teaching_runs r USING(run_id) WHERE r.activity_id=$1),'[]'::jsonb) AS waits`, [activityId]);
+    if (!facts) throw new StorageError('corrupt');
+    const tools = facts.commands.map(row => {
       const command = row.command as unknown as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome | null;
       const binding = (row.step_plan as Plan).resolvedAgent?.tools.find(item => item.bindingId === row.binding_id);
       return teachingToolRecordSchema.parse({ commandId: row.command_id, runId: row.run_id, stepId: row.step_id,
@@ -1347,12 +1354,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         outcome: outcome?.state ?? null, feedback: outcome?.feedback.text ?? '', result: outcome?.result ?? null,
         source: outcome?.source ?? null, createdAt: new Date(row.created_at as string).toISOString(), updatedAt: new Date(row.updated_at as string).toISOString() });
     });
-  }
-  async function waits(activityId: string) {
-    const { rows } = await storage.read('SELECT w.* FROM teaching_waits w JOIN teaching_runs r USING(run_id) WHERE r.activity_id=$1 ORDER BY w.deadline', [activityId]);
-    return rows.map(row => teachingWaitSchema.parse({ waitId: row.wait_id, runId: row.run_id, stepId: row.step_id,
+    const waits = facts.waits.map(row => teachingWaitSchema.parse({ waitId: row.wait_id, runId: row.run_id, stepId: row.step_id,
       commandId: row.command_id, state: row.state, reason: row.reason, deadline: new Date(row.deadline as string).toISOString(),
       nextCheckAt: new Date(row.next_check_at as string).toISOString(), consumedAt: row.consumed_at ? new Date(row.consumed_at as string).toISOString() : null }));
+    return { tools, waits };
   }
-  return { execute, pollWaits, records, waits, stopTools, freezeBudget };
+  return { execute, pollWaits, records, stopTools, freezeBudget };
 }

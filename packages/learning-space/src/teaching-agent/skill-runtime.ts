@@ -108,7 +108,8 @@ export function createTeachingSkillRuntime(skills: ReturnType<typeof createTeach
       if (intent.name === 'skill_load' && args.path && args.path !== 'SKILL.md') throw new StorageError('invalid');
       if (intent.name === 'skill_read' && !args.path) throw new StorageError('invalid');
       return { version: 1, commandId, name: intent.name, arguments: args, effect: 'read', location: 'owner',
-        conflictKey: scope.activity.activityId, basis: { skill: args, scope: scope.input.scope } };
+        conflictKey: scope.activity.activityId, basis: { skill: args,
+          scope: { identity: scope.identity, activityId: scope.activity.activityId, runId: scope.runId } } };
     },
     async dispatch(scope, command) {
       if (!isSkill(command.name)) { if (!base) throw new StorageError('forbidden'); return base.dispatch(scope, command); }
