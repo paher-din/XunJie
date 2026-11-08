@@ -15,8 +15,32 @@ export function storageNames(owner: StorageOwner) {
 }
 
 export function migrationPlan(migrations: readonly Migration[]) {
-  if (migrations.some((item, index) => item.version !== index + 1 || !item.name || !item.sql.trim())) throw new StorageError('incompatible');
+  const formerVersions = new Set<number>();
+  if (migrations.some((item, index) => {
+    if (item.version !== index + 1 || !item.name || !item.sql.trim()) return true;
+    if (item.formerVersion === undefined) return false;
+    if (!Number.isInteger(item.formerVersion) || item.formerVersion < 1 || item.formerVersion >= item.version
+      || formerVersions.has(item.formerVersion)) return true;
+    formerVersions.add(item.formerVersion);
+    return false;
+  })) throw new StorageError('incompatible');
   return migrations.map(item => ({ ...item, checksum: digest(`${item.version}\n${item.name}\n${item.sql}`) }));
+}
+
+type PlannedMigration = ReturnType<typeof migrationPlan>[number];
+interface RecordedMigration { version: number; name: string; checksum: string; }
+/** Only a complete canonical prefix or a prefix with one explicitly displaced tail is a history. */
+function displacedTail(plan: readonly PlannedMigration[], recorded: readonly RecordedMigration[]): PlannedMigration | undefined {
+  const matches = (row: RecordedMigration, item: PlannedMigration | undefined) =>
+    item !== undefined && row.version === item.version && row.name === item.name && row.checksum === item.checksum;
+  if (recorded.every((row, index) => matches(row, plan[index]))) return undefined;
+  const tail = recorded.at(-1);
+  if (!tail || tail.version !== recorded.length
+    || !recorded.slice(0, -1).every((row, index) => matches(row, plan[index]))) throw new StorageError('incompatible');
+  const alternatives = plan.filter(item => item.formerVersion === tail.version && item.name === tail.name
+    && digest(`${tail.version}\n${item.name}\n${item.sql}`) === tail.checksum);
+  if (alternatives.length !== 1) throw new StorageError('incompatible');
+  return alternatives[0];
 }
 
 export async function inspectPostgres(client: pg.Client | pg.PoolClient): Promise<void> {
@@ -110,12 +134,20 @@ export async function provisionStorage(options: {
       VALUES(true,$1,$2,1) ON CONFLICT DO NOTHING`, [owner.environmentId, owner.serviceId]);
     const { rows: [state] } = await client.query('SELECT * FROM _storage_identity FOR UPDATE');
     if (state.environment_id !== owner.environmentId || state.service_id !== owner.serviceId || state.core_version !== 1) throw new StorageError('incompatible');
-    const recorded = (await client.query('SELECT version,name,checksum FROM _storage_migrations ORDER BY version')).rows;
-    if (recorded.some((row, i) => row.version !== plan[i]?.version || row.checksum !== plan[i]?.checksum || row.name !== plan[i]?.name)) throw new StorageError('incompatible');
+    const recorded = (await client.query<RecordedMigration>('SELECT version,name,checksum FROM _storage_migrations ORDER BY version')).rows;
+    const displaced = displacedTail(plan, recorded);
     const upgrading = Boolean(existingSchema) && recorded.length < plan.length;
     if (upgrading && (state.writes_open || state.dispatch_open)) throw new StorageError('maintenance');
     if (upgrading && (await client.query("SELECT 1 FROM _storage_resources WHERE state IN ('uploading','deleting') LIMIT 1")).rowCount) throw new StorageError('resource-busy');
-    for (const item of plan.slice(recorded.length)) {
+    const applied = new Set(recorded.map(item => item.version));
+    if (displaced) {
+      // Keep the original applied_at and all prior entries. The exact old checksum was
+      // verified above; relocating and filling the missing prefix share this transaction.
+      await client.query('UPDATE _storage_migrations SET version=$1,checksum=$2 WHERE version=$3',
+        [displaced.version, displaced.checksum, displaced.formerVersion]);
+      applied.delete(displaced.formerVersion!); applied.add(displaced.version);
+    }
+    for (const item of plan.filter(item => !applied.has(item.version))) {
       await client.query(item.sql);
       await client.query('INSERT INTO _storage_migrations(version,name,checksum) VALUES($1,$2,$3)', [item.version,item.name,item.checksum]);
     }
