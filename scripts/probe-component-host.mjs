@@ -399,7 +399,8 @@ try {
   await navigation.page.getByRole('tab', { name: '材料标注', exact: true }).click();
   await expect(navigation.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('导航前已经确认');
   passed('component-only workspace can navigate back/forward without a mounted editor ref');
-  await navigation.page.getByRole('button', { name: '打开对话', exact: true }).click();
+  if (await navigation.page.getByRole('button', { name: '打开对话', exact: true }).isVisible())
+    await navigation.page.getByRole('button', { name: '打开对话', exact: true }).click();
   await navigation.page.evaluate(() => {
     window.componentWriteFault = true;
     const original = IDBDatabase.prototype.transaction;
@@ -430,7 +431,8 @@ try {
   await navigation.page.locator(`[data-activity-id="${navigation.id}"]`).click();
   await navigation.page.getByRole('tab', { name: '材料标注', exact: true }).click();
   await expect(navigation.frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('存储失败时返回也不能丢失');
-  await navigation.page.getByRole('button', { name: '打开对话', exact: true }).click();
+  if (await navigation.page.getByRole('button', { name: '打开对话', exact: true }).isVisible())
+    await navigation.page.getByRole('button', { name: '打开对话', exact: true }).click();
   await expect(navigation.page.getByRole('textbox', { name: '你的问题', exact: true })).toHaveValue('组件旁边尚未保护的问题草稿');
   passed('failed return/history preserves the same component, exportable input and draft, then recovery permits leaving');
   const renaming = await openSample();

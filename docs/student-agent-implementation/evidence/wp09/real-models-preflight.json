@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "startedAt": "2026-11-08T12:07:05.229Z",
+  "status": "ready-not-run",
+  "node": "v24.21.0",
+  "platform": "darwin",
+  "probeSha256": "5560e6317a9e08f26193f79a7de66fdc8b337f074b84a0dcdac1fc4ac503e78d",
+  "limits": {
+    "maxGenerations": 24,
+    "maxOutputTokens": 8192,
+    "providerDeadlineMs": 60000,
+    "retries": 0
+  },
+  "provider": "api.deepseek.com",
+  "modelId": "deepseek-flash",
+  "requests": [],
+  "refusals": [],
+  "http": {},
+  "routes": [],
+  "stages": [],
+  "browser": {
+    "status": "not-run"
+  },
+  "crossRoute": {
+    "status": "not-run"
+  },
+  "currentBuild": {
+    "product": false,
+    "runtimeSha256": "59896bb7d90ad8fbd08642d8fcd5ad369929cce1877f123e88c1348ce880cc69",
+    "webIndexSha256": "e867aeabb4c3c8d8e7742f719c36baf86dfcd80a6c0cf81f05fcb6941c249703"
+  },
+  "transport": {
+    "kind": "probe-streaming-https-preserving-origin",
+    "originalHost": "api.deepseek.com",
+    "certificateVerification": true,
+    "preflight": {
+      "httpStatus": 401,
+      "authorized": true,
+      "protocol": "TLSv1.3",
+      "servername": "api.deepseek.com"
+    },
+    "nativeDns": [
+      {
+        "address": "198.18.0.134",
+        "family": 4
+      }
+    ],
+    "classificationShim": {
+      "enabled": true,
+      "address": "93.184.216.34",
+      "scope": "this probe process only; model-policy classification; actual TLS uses native DNS",
+      "reason": "OS proxy DNS returned benchmark-network address"
+    },
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "finishedAt": "2026-11-08T12:07:05.865Z",
+  "generationCount": 0
+}

@@ -1,0 +1,99 @@
+{
+  "issue": 224,
+  "status": "passed",
+  "measuredAt": "2026-11-08T12:55:53.346Z",
+  "mode": "transport-preflight",
+  "model": "real",
+  "cleanup": {
+    "windowsTaskRemoved": true,
+    "windowsDesktopReleased": true,
+    "scopedWindowsFirewallRemoved": true,
+    "remoteFixtureRemoved": true,
+    "localFixtureRemoved": true
+  },
+  "stages": [],
+  "previousAttempts": [
+    {
+      "status": "passed",
+      "model": "real",
+      "realProviderCalls": 0,
+      "finishedAt": "2026-11-08T12:27:22.137Z"
+    },
+    {
+      "status": "passed",
+      "model": "real",
+      "realProviderCalls": 0,
+      "finishedAt": "2026-11-08T12:41:10.047Z"
+    }
+  ],
+  "totalRealProviderCalls": 0,
+  "topology": {
+    "mac": {
+      "host": "Robert-Wu-MacBook-Air.local",
+      "ip": "192.168.3.39"
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "productTransport": "direct bidirectional LAN HTTPS",
+    "ssh": "control-only-no-tunnel",
+    "providerCredentials": "Mac only"
+  },
+  "windowsPreflight": {
+    "host": "LAPTOP-S7A4IQFU",
+    "os": "Microsoft Windows 11 家庭版 中文版",
+    "chrome": "156.0.8078.81",
+    "playwright": true,
+    "oldNode": "C:/Users/h/XunJie-acceptance/wp07-211/resources/node/node.exe",
+    "temp": "C:\\Users\\h\\AppData\\Local\\Temp",
+    "node": {
+      "node": "C:/Users/h/XunJie-acceptance/channel-product/resources/node/node.exe",
+      "version": "v24.21.0"
+    }
+  },
+  "tls": {
+    "certificateSha256": "4d98f52da9cd3780330b2a4bf3ac11622fff81d24d04bfbf14f97a1dadb62653",
+    "spki": "f6c43b3b41a023b3a9b52d05fcf3c3bfb4490c14d4a3da229056c4ac57f777d0",
+    "subjectAltName": "IP Address:192.168.3.39, IP Address:192.168.3.8",
+    "trust": "explicit test CA for Node; certificate SPKI pin for Chrome; no global trust-store modification"
+  },
+  "preparationStep": "complete",
+  "macFirewall": {
+    "disabled": true
+  },
+  "transport": {
+    "windowsToMac": {
+      "status": 200,
+      "value": {
+        "host": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "probe": "wp09-transport-only"
+      },
+      "tlsAuthorized": true
+    },
+    "macToWindows": {
+      "status": 200,
+      "value": {
+        "host": "LAPTOP-S7A4IQFU",
+        "platform": "win32",
+        "probe": "wp09-transport-only"
+      },
+      "tlsAuthorized": true
+    }
+  },
+  "windowsChrome": {
+    "status": "passed",
+    "chromeVersion": "156.0.8078.81",
+    "desktopSessionId": 1,
+    "transport": {
+      "httpStatus": 200,
+      "secureContext": true,
+      "scope": "TLS/Chrome infrastructure only; WP09 product not run"
+    },
+    "screenshot": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/transport-preflight.png",
+    "screenshotSha256": "887ced7878b725fca90f398f02bcfe19737535c164d91ad7a6f16c318b3e7bd0"
+  },
+  "wp09Product": "not-run; old package Node is transport infrastructure only",
+  "finishedAt": "2026-11-08T12:56:29.668Z"
+}

@@ -1,0 +1,935 @@
+{
+  "issue": 224,
+  "status": "passed",
+  "measuredAt": "2026-11-08T16:33:13.188Z",
+  "scope": "Continue the two already active original recovery targets; original sources stay retired",
+  "sourceReport": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/cross/recovery-r7.json",
+  "stages": [
+    {
+      "name": "same-two-active-targets-and-retirement-proofs",
+      "status": "passed",
+      "fact": {
+        "state": "stopped",
+        "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+        "installationId": "651b6b5e-891e-4ec4-b90f-a80945109315",
+        "target": {
+          "state": "ready",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+            "installationId": "f0a2c2c6-40b2-4f62-9cf5-a9f9b07b19f3",
+            "clientNamespace": "xunjie.v1.29e4f715-057a-4b59-8a83-4c5671ee87cb.recovery.10d2d26c-852d-47a4-b135-a952aa3cc9f7",
+            "profile": "agent",
+            "services": [
+              {
+                "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+                "serviceId": "5eaee158-7a03-4a91-bc89-f9ed3c6ddf2e",
+                "unit": "client",
+                "endpoint": "https://192.168.3.8:39412",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              },
+              {
+                "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+                "serviceId": "72c70826-0830-40d0-80a2-dd7cca39857f",
+                "unit": "teaching-agent",
+                "endpoint": "https://192.168.3.8:39412",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status",
+                  "teaching.agent"
+                ]
+              }
+            ]
+          },
+          "endpoint": "https://192.168.3.8:39412"
+        },
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "package": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "d294cf2d822011c046a02ea48f1dfe9f389feffeece4c3f823a1d6f7a4430524",
+          "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+          "webRuntime": [
+            {
+              "path": "web/assets/runtime-DFinlc6e.js",
+              "sha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e"
+            }
+          ],
+          "nodeVersion": "v24.21.0"
+        }
+      }
+    },
+    {
+      "name": "restored-receiver-revalidates-the-same-Mac-installation-succession",
+      "status": "passed",
+      "fact": {
+        "backupId": "7f27b4ab-d79b-47c6-87af-9964d8b50a7c",
+        "sourceInstallationId": "87fe356f-820d-4f90-b361-395245f9e28d",
+        "targetInstallationId": "b3dd1cb1-64df-4652-a31e-2afa79b360f0",
+        "execution": {
+          "formatVersion": 1,
+          "boundaryAt": "2026-11-08T16:33:37.890Z",
+          "services": [
+            {
+              "serviceId": "72c70826-0830-40d0-80a2-dd7cca39857f",
+              "unresolved": 0,
+              "settled": 2,
+              "blocking": 0
+            },
+            {
+              "serviceId": "5eaee158-7a03-4a91-bc89-f9ed3c6ddf2e",
+              "unresolved": 0,
+              "settled": 0,
+              "blocking": 0
+            }
+          ],
+          "unresolved": 0,
+          "blocking": 0
+        }
+      }
+    },
+    {
+      "name": "fresh-grants-preserve-the-original-fixed-owner-descriptors",
+      "status": "passed",
+      "fact": {
+        "fixedOwnerDescriptorsRetained": true,
+        "macInstallationId": "b3dd1cb1-64df-4652-a31e-2afa79b360f0",
+        "windowsInstallationId": "f0a2c2c6-40b2-4f62-9cf5-a9f9b07b19f3"
+      }
+    },
+    {
+      "name": "original-artifact-resources-input-and-Runs-after-formal-takeover",
+      "status": "passed",
+      "fact": {
+        "workRevision": 9,
+        "inputSha256": "bd9f3a787be5aa05398877dbc407c5d7b7af3687b6315c5cdcabca61d05b4335",
+        "runIds": [
+          "4c58b223-5868-4330-9204-4dcece18e008",
+          "eeac8741-16bc-4861-88ea-c8d259ded1eb"
+        ],
+        "conversationAttempts": [
+          {
+            "status": 200
+          }
+        ],
+        "newModelRequests": 0
+      }
+    },
+    {
+      "name": "both-retired-sources-and-old-browser-namespace-refuse-new-work",
+      "status": "passed",
+      "fact": {
+        "macRetired": true,
+        "windowsRetired": true,
+        "oldBrowserHttpStatus": 403
+      }
+    },
+    {
+      "name": "Windows-Interactive-Limited-Chrome-reopens-the-active-takeover",
+      "status": "passed",
+      "fact": {
+        "status": "passed",
+        "checks": [
+          "formal-takeover-same-artifact-state-editable"
+        ],
+        "chromeVersion": "156.0.8078.81",
+        "screenshots": [
+          {
+            "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/cross/win32-takeover.png",
+            "sha256": "a09b72b5fc8af46bfea257b25f3b0320add5e0005401b54dcc689ba9ea5fbe27"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Mac-Chrome-reopens-the-active-takeover",
+      "status": "passed",
+      "fact": {
+        "status": "passed",
+        "checks": [
+          "formal-takeover-same-artifact-state-editable"
+        ],
+        "chromeVersion": "156.0.8078.80",
+        "screenshots": [
+          {
+            "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/cross/darwin-takeover.png",
+            "sha256": "3938b831fa26f74fbcd4387e18ca3e68bc617a0c5216a58e0650002e64bdd959"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Windows-standalone-r7-product-and-Chrome",
+      "status": "passed",
+      "fact": {
+        "status": "passed",
+        "scope": "Windows standalone actual final product; controlled external Chat SSE transport",
+        "cleanup": {
+          "taskRemoved": true,
+          "desktopReleased": true
+        },
+        "screenshots": [
+          {
+            "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-reopened.png",
+            "sha256": "7704f2266d128d15c916dfd0fb4a8745e9db7af3286d11a88525c9b0ec3ac9b4"
+          },
+          {
+            "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-center.png",
+            "sha256": "3e57439079a7c7cbba4b05027eeea3037a97b2595411de96af5852b1827d73a7"
+          }
+        ],
+        "product": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "d294cf2d822011c046a02ea48f1dfe9f389feffeece4c3f823a1d6f7a4430524",
+          "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+          "webRuntime": [
+            {
+              "path": "web/assets/runtime-DFinlc6e.js",
+              "sha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e"
+            }
+          ],
+          "nodeVersion": "v24.21.0"
+        },
+        "setup": {
+          "activityId": "945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "endpoint": "http://127.0.0.1:63600",
+          "requestId": "1bfccfbb-6417-43f4-95af-b739ed04e4cc",
+          "runId": "a336a23b-1d67-4604-a1fc-2421c0610824",
+          "environmentId": "2f624dd1-368b-4de1-bcd5-e0b7db878ef8",
+          "modelSource": "controlled Chat SSE transport; no provider key on Windows",
+          "modelCalls": 2
+        },
+        "browser": {
+          "status": "passed",
+          "platform": "win32",
+          "host": "LAPTOP-S7A4IQFU",
+          "workerProcessId": 49316,
+          "checks": [
+            "actual-Windows-local-product-Agent-Chrome-check-adopt-save-refresh-shelf"
+          ],
+          "screenshots": [
+            {
+              "name": "windows-local-reopened",
+              "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-44299ac7-9890-4c7f-80cf-0365b64eff04/local-Chrome-38718118-519e-4b58-ba6c-a7f534699443/screen-windows-local-reopened.png",
+              "sha256": "7704f2266d128d15c916dfd0fb4a8745e9db7af3286d11a88525c9b0ec3ac9b4"
+            },
+            {
+              "name": "windows-local-center",
+              "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-44299ac7-9890-4c7f-80cf-0365b64eff04/local-Chrome-38718118-519e-4b58-ba6c-a7f534699443/screen-windows-local-center.png",
+              "sha256": "3e57439079a7c7cbba4b05027eeea3037a97b2595411de96af5852b1827d73a7"
+            }
+          ],
+          "model": "no browser-to-provider connection",
+          "phase": "local-Windows-generated-artifact",
+          "observedAt": "2026-11-08T16:34:22.701Z",
+          "requestTransport": {
+            "testCaSha256": "2281e6ff1a76028316e90069abf22cd2d21b50978b1695e5d5160226a9900dfa",
+            "certificateVerification": true,
+            "httpStatus": 200
+          },
+          "desktopSessionId": 1,
+          "product": {
+            "platform": "win32-x64",
+            "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93"
+          },
+          "chromeVersion": "156.0.8078.81",
+          "loginHTTP": [
+            {
+              "route": "context",
+              "status": 200
+            },
+            {
+              "route": "context",
+              "status": 200
+            },
+            {
+              "route": "context",
+              "status": 200
+            },
+            {
+              "route": "context",
+              "status": 200
+            }
+          ],
+          "productHTTP": [
+            {
+              "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/candidates/8d57d496-c0d8-4ee5-abd7-426e8eb603e2",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/resource",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/checks/8eab2f2b-229f-4e9f-b68f-a327b692c8b2",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/check",
+              "method": "POST",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/receipts/4e0f0daf-e4ac-42f4-a746-cd3ea1900da6",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/adopt",
+              "method": "POST",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/resource",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/receipts/f680ae6d-6aaa-4b94-87ae-1912f1d1cd8c",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/shelf",
+              "method": "POST",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+              "method": "GET",
+              "status": 200
+            },
+            {
+              "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+              "method": "GET",
+              "status": 200
+            }
+          ],
+          "failedRequests": [],
+          "workRequests": [
+            {
+              "requestId": "45e314cd-f4ea-4e24-8b2c-7e52dbf9fcee",
+              "baseRevision": 1,
+              "inputSha256": "ea2d02a551185c79cefde78e69fc3bb4a844dfec6a5b3c4fe94211c352506c87"
+            }
+          ],
+          "receiptQueries": [
+            "4e0f0daf-e4ac-42f4-a746-cd3ea1900da6",
+            "45e314cd-f4ea-4e24-8b2c-7e52dbf9fcee",
+            "f680ae6d-6aaa-4b94-87ae-1912f1d1cd8c"
+          ],
+          "loginPhase": "complete",
+          "pageErrors": [],
+          "finishedAt": "2026-11-08T16:34:22.701Z"
+        }
+      }
+    }
+  ],
+  "newModelRequests": 0,
+  "newGenerationOperations": 0,
+  "teachingEffect": "not-assessed",
+  "unexpectedGenerationOperations": [],
+  "packages": {
+    "mac": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "77d401fc09d715d237f5b6280b135c3422967bff5e4207f57cdfffd1043f484d",
+      "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-DFinlc6e.js",
+          "sha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "windows": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "d294cf2d822011c046a02ea48f1dfe9f389feffeece4c3f823a1d6f7a4430524",
+      "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-DFinlc6e.js",
+          "sha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    }
+  },
+  "windows": {
+    "status": "passed",
+    "checks": [
+      "formal-takeover-same-artifact-state-editable"
+    ],
+    "chromeVersion": "156.0.8078.81",
+    "screenshots": [
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/cross/win32-takeover.png",
+        "sha256": "a09b72b5fc8af46bfea257b25f3b0320add5e0005401b54dcc689ba9ea5fbe27"
+      }
+    ]
+  },
+  "mac": {
+    "status": "passed",
+    "checks": [
+      "formal-takeover-same-artifact-state-editable"
+    ],
+    "chromeVersion": "156.0.8078.80",
+    "screenshots": [
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/cross/darwin-takeover.png",
+        "sha256": "3938b831fa26f74fbcd4387e18ca3e68bc617a0c5216a58e0650002e64bdd959"
+      }
+    ]
+  },
+  "windowsStandalone": {
+    "status": "passed",
+    "scope": "Windows standalone actual final product; controlled external Chat SSE transport",
+    "cleanup": {
+      "taskRemoved": true,
+      "desktopReleased": true
+    },
+    "screenshots": [
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-reopened.png",
+        "sha256": "7704f2266d128d15c916dfd0fb4a8745e9db7af3286d11a88525c9b0ec3ac9b4"
+      },
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-center.png",
+        "sha256": "3e57439079a7c7cbba4b05027eeea3037a97b2595411de96af5852b1827d73a7"
+      }
+    ],
+    "product": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "d294cf2d822011c046a02ea48f1dfe9f389feffeece4c3f823a1d6f7a4430524",
+      "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-DFinlc6e.js",
+          "sha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "setup": {
+      "activityId": "945dba61-5cab-44ed-96e8-7edc14b38f29",
+      "endpoint": "http://127.0.0.1:63600",
+      "requestId": "1bfccfbb-6417-43f4-95af-b739ed04e4cc",
+      "runId": "a336a23b-1d67-4604-a1fc-2421c0610824",
+      "environmentId": "2f624dd1-368b-4de1-bcd5-e0b7db878ef8",
+      "modelSource": "controlled Chat SSE transport; no provider key on Windows",
+      "modelCalls": 2
+    },
+    "browser": {
+      "status": "passed",
+      "platform": "win32",
+      "host": "LAPTOP-S7A4IQFU",
+      "workerProcessId": 49316,
+      "checks": [
+        "actual-Windows-local-product-Agent-Chrome-check-adopt-save-refresh-shelf"
+      ],
+      "screenshots": [
+        {
+          "name": "windows-local-reopened",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-44299ac7-9890-4c7f-80cf-0365b64eff04/local-Chrome-38718118-519e-4b58-ba6c-a7f534699443/screen-windows-local-reopened.png",
+          "sha256": "7704f2266d128d15c916dfd0fb4a8745e9db7af3286d11a88525c9b0ec3ac9b4"
+        },
+        {
+          "name": "windows-local-center",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-44299ac7-9890-4c7f-80cf-0365b64eff04/local-Chrome-38718118-519e-4b58-ba6c-a7f534699443/screen-windows-local-center.png",
+          "sha256": "3e57439079a7c7cbba4b05027eeea3037a97b2595411de96af5852b1827d73a7"
+        }
+      ],
+      "model": "no browser-to-provider connection",
+      "phase": "local-Windows-generated-artifact",
+      "observedAt": "2026-11-08T16:34:22.701Z",
+      "requestTransport": {
+        "testCaSha256": "2281e6ff1a76028316e90069abf22cd2d21b50978b1695e5d5160226a9900dfa",
+        "certificateVerification": true,
+        "httpStatus": 200
+      },
+      "desktopSessionId": 1,
+      "product": {
+        "platform": "win32-x64",
+        "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93"
+      },
+      "chromeVersion": "156.0.8078.81",
+      "loginHTTP": [
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        }
+      ],
+      "productHTTP": [
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/candidates/8d57d496-c0d8-4ee5-abd7-426e8eb603e2",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/resource",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/checks/8eab2f2b-229f-4e9f-b68f-a327b692c8b2",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/check",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/receipts/4e0f0daf-e4ac-42f4-a746-cd3ea1900da6",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/adopt",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/resource",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/receipts/f680ae6d-6aaa-4b94-87ae-1912f1d1cd8c",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/shelf",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "failedRequests": [],
+      "workRequests": [
+        {
+          "requestId": "45e314cd-f4ea-4e24-8b2c-7e52dbf9fcee",
+          "baseRevision": 1,
+          "inputSha256": "ea2d02a551185c79cefde78e69fc3bb4a844dfec6a5b3c4fe94211c352506c87"
+        }
+      ],
+      "receiptQueries": [
+        "4e0f0daf-e4ac-42f4-a746-cd3ea1900da6",
+        "45e314cd-f4ea-4e24-8b2c-7e52dbf9fcee",
+        "f680ae6d-6aaa-4b94-87ae-1912f1d1cd8c"
+      ],
+      "loginPhase": "complete",
+      "pageErrors": [],
+      "finishedAt": "2026-11-08T16:34:22.701Z"
+    }
+  },
+  "windowsLocal": {
+    "status": "passed",
+    "scope": "Windows standalone actual final product; controlled external Chat SSE transport",
+    "cleanup": {
+      "taskRemoved": true,
+      "desktopReleased": true
+    },
+    "screenshots": [
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-reopened.png",
+        "sha256": "7704f2266d128d15c916dfd0fb4a8745e9db7af3286d11a88525c9b0ec3ac9b4"
+      },
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-center.png",
+        "sha256": "3e57439079a7c7cbba4b05027eeea3037a97b2595411de96af5852b1827d73a7"
+      }
+    ],
+    "product": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "d294cf2d822011c046a02ea48f1dfe9f389feffeece4c3f823a1d6f7a4430524",
+      "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-DFinlc6e.js",
+          "sha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "setup": {
+      "activityId": "945dba61-5cab-44ed-96e8-7edc14b38f29",
+      "endpoint": "http://127.0.0.1:63600",
+      "requestId": "1bfccfbb-6417-43f4-95af-b739ed04e4cc",
+      "runId": "a336a23b-1d67-4604-a1fc-2421c0610824",
+      "environmentId": "2f624dd1-368b-4de1-bcd5-e0b7db878ef8",
+      "modelSource": "controlled Chat SSE transport; no provider key on Windows",
+      "modelCalls": 2
+    },
+    "browser": {
+      "status": "passed",
+      "platform": "win32",
+      "host": "LAPTOP-S7A4IQFU",
+      "workerProcessId": 49316,
+      "checks": [
+        "actual-Windows-local-product-Agent-Chrome-check-adopt-save-refresh-shelf"
+      ],
+      "screenshots": [
+        {
+          "name": "windows-local-reopened",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-44299ac7-9890-4c7f-80cf-0365b64eff04/local-Chrome-38718118-519e-4b58-ba6c-a7f534699443/screen-windows-local-reopened.png",
+          "sha256": "7704f2266d128d15c916dfd0fb4a8745e9db7af3286d11a88525c9b0ec3ac9b4"
+        },
+        {
+          "name": "windows-local-center",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-44299ac7-9890-4c7f-80cf-0365b64eff04/local-Chrome-38718118-519e-4b58-ba6c-a7f534699443/screen-windows-local-center.png",
+          "sha256": "3e57439079a7c7cbba4b05027eeea3037a97b2595411de96af5852b1827d73a7"
+        }
+      ],
+      "model": "no browser-to-provider connection",
+      "phase": "local-Windows-generated-artifact",
+      "observedAt": "2026-11-08T16:34:22.701Z",
+      "requestTransport": {
+        "testCaSha256": "2281e6ff1a76028316e90069abf22cd2d21b50978b1695e5d5160226a9900dfa",
+        "certificateVerification": true,
+        "httpStatus": 200
+      },
+      "desktopSessionId": 1,
+      "product": {
+        "platform": "win32-x64",
+        "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93"
+      },
+      "chromeVersion": "156.0.8078.81",
+      "loginHTTP": [
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        }
+      ],
+      "productHTTP": [
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/candidates/8d57d496-c0d8-4ee5-abd7-426e8eb603e2",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/resource",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/checks/8eab2f2b-229f-4e9f-b68f-a327b692c8b2",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/check",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/receipts/4e0f0daf-e4ac-42f4-a746-cd3ea1900da6",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/adopt",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/resource",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/agent/945dba61-5cab-44ed-96e8-7edc14b38f29/conversation",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/receipts/f680ae6d-6aaa-4b94-87ae-1912f1d1cd8c",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/shelf",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "route": "/api/learning/artifacts/945dba61-5cab-44ed-96e8-7edc14b38f29/c7ddba3d-66ed-4604-97ca-cba98ac27544/revisions/2bb18df7-d2a0-443b-9d83-3da84d36d167/view",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "failedRequests": [],
+      "workRequests": [
+        {
+          "requestId": "45e314cd-f4ea-4e24-8b2c-7e52dbf9fcee",
+          "baseRevision": 1,
+          "inputSha256": "ea2d02a551185c79cefde78e69fc3bb4a844dfec6a5b3c4fe94211c352506c87"
+        }
+      ],
+      "receiptQueries": [
+        "4e0f0daf-e4ac-42f4-a746-cd3ea1900da6",
+        "45e314cd-f4ea-4e24-8b2c-7e52dbf9fcee",
+        "f680ae6d-6aaa-4b94-87ae-1912f1d1cd8c"
+      ],
+      "loginPhase": "complete",
+      "pageErrors": [],
+      "finishedAt": "2026-11-08T16:34:22.701Z"
+    }
+  },
+  "browser": "passed",
+  "cleanup": {
+    "windows": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    },
+    "controlProcessExited": true,
+    "macRootsRemoved": true,
+    "scopedFirewallRemoved": true
+  },
+  "finishedAt": "2026-11-08T16:34:40.792Z"
+}

@@ -1,0 +1,1025 @@
+{
+  "formatVersion": 1,
+  "startedAt": "2026-11-08T13:24:17.409Z",
+  "sourceReportSha256": "31d93203e5f79af1f38f6ee33d901b3a504d4d4f7ae248dc63a240ced51eec56",
+  "originalArtifact": {
+    "artifactId": "57a8b4fd-2d77-432e-a3d1-9a534689e94e",
+    "revisionId": "3359348c-cc43-4906-9755-85ceb7b8ebd8",
+    "candidateId": "3dbb05d9-13eb-4966-a365-b0c2bfd0e4e7",
+    "version": 1,
+    "parentRevisionId": null,
+    "resourceId": "31aa800a-56ef-4e70-b36b-ae1d4c00090c",
+    "sha256": "daad6676ad044768002ca7e0cfdf040902163b57304a8e9ab4a9095a5327ac74",
+    "byteLength": 6359,
+    "payloadSha256": "eea9b4631c254788b914d8bc1256d73833bb30b61705fd8981f9ff260714b921",
+    "stateShapeSha256": "2254302a2e3e7c492158101d9415d999e4d10c92519292a112e3bfd3853e0b1c",
+    "semanticFieldsSha256": "4f68c79cbfec88d7b955e46958dd792f8232eee056103c522ee72ae5540e568c",
+    "status": "candidate",
+    "checks": [
+      {
+        "code": "script-syntax",
+        "passed": true
+      },
+      {
+        "code": "fixed-resources",
+        "passed": true
+      },
+      {
+        "code": "capability-scope",
+        "passed": true
+      },
+      {
+        "code": "browser-roundtrip",
+        "passed": false
+      }
+    ],
+    "origin": {
+      "runId": "d80c9f0a-ab67-4e15-8f26-04fd4f708929",
+      "stepId": "4e120cca-f3f7-41e0-9fbf-6f5bb91ce563",
+      "snapshotId": "c3fbe076-37fb-4232-be39-5ac46969f985",
+      "commandId": "1e199851-8805-44ad-9075-5bae79a607d6",
+      "attemptId": "84ac0372-5a13-461b-86a5-b7b215e53a5a"
+    }
+  },
+  "activityId": "2d0c7f14-143b-423e-a8e9-8a7d66336785",
+  "originalRunId": "d80c9f0a-ab67-4e15-8f26-04fd4f708929",
+  "originalRequestId": "10e2011b-75db-4afa-9d4c-78a9b4b9410c",
+  "generationBudget": {
+    "cap": 24,
+    "prior": 20,
+    "new": 0,
+    "total": 20
+  },
+  "stages": [
+    {
+      "name": "same-real-generation-and-original-source",
+      "status": "passed"
+    },
+    {
+      "name": "formal-chrome-check-and-adopt-original-page",
+      "status": "passed"
+    },
+    {
+      "name": "ordinary-page-interaction-without-model-or-execution",
+      "status": "passed"
+    },
+    {
+      "name": "engineering-fixture-in-normal-monaco",
+      "status": "passed"
+    },
+    {
+      "name": "real-generated-button-to-icarus-and-original-owner",
+      "status": "failed",
+      "reason": "retained-result-is-not-original-execution"
+    },
+    {
+      "name": "same-real-generation-and-original-source",
+      "status": "passed"
+    },
+    {
+      "name": "formal-chrome-check-and-adopt-original-page",
+      "status": "passed"
+    },
+    {
+      "name": "ordinary-page-interaction-without-model-or-execution",
+      "status": "passed"
+    },
+    {
+      "name": "engineering-fixture-in-normal-monaco",
+      "status": "passed"
+    },
+    {
+      "name": "real-generated-button-to-icarus-and-original-owner",
+      "status": "passed"
+    },
+    {
+      "name": "refresh-retains-page-state-and-original-result-without-rerun",
+      "status": "passed"
+    }
+  ],
+  "status": "passed",
+  "package": {
+    "distributionSha256": "c1b07073ce81eaa66b34eb3e0288c53677a9b473252f3824e0a3f73494a082bf",
+    "runtimeSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+    "servedIndexSha256": "f002f2c9ebfa9e237f38ed9f7e7c794a1e6fd49a80bdb0600a42cb155813282c"
+  },
+  "invocations": [
+    {
+      "at": "2026-11-08T13:24:17.417Z",
+      "probeSha256": "b430ad4cb22d98a82e3beec4513b2a82618b482a926623ebcfb85b9770eb58e1",
+      "readOnly": false,
+      "distributionSha256": "c1b07073ce81eaa66b34eb3e0288c53677a9b473252f3824e0a3f73494a082bf"
+    },
+    {
+      "at": "2026-11-08T13:26:26.746Z",
+      "probeSha256": "595d99eb59f5d1731f84ea1773c57442d8fc0c69edfc44d8dac81be17abcbca1",
+      "readOnly": false,
+      "distributionSha256": "c1b07073ce81eaa66b34eb3e0288c53677a9b473252f3824e0a3f73494a082bf"
+    }
+  ],
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/learning/context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/courses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/models/selection",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/activities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/activities/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent-settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/materials/19200000-0000-4000-8000-000000000460",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/materials/19200000-0000-4000-8000-000000000461",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/pdf/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/materials/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/skills",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785/57a8b4fd-2d77-432e-a3d1-9a534689e94e/revisions/3359348c-cc43-4906-9755-85ceb7b8ebd8",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/history",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/sessions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785/57a8b4fd-2d77-432e-a3d1-9a534689e94e/revisions/3359348c-cc43-4906-9755-85ceb7b8ebd8/resource",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/checkpoints",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785/57a8b4fd-2d77-432e-a3d1-9a534689e94e/revisions/3359348c-cc43-4906-9755-85ceb7b8ebd8/view",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent-settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/models/selection",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/skills",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785/receipts/37950597-dcaf-493b-ab89-eafcc8567a8b",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/ivl.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/ivl.wasm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/ivlpp.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/ivlpp.wasm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/vvp.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/vvp.wasm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/checksums.txt",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/sessions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/checkpoints",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/COPYING.icarus",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/notices/Emscripten-LICENSE",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/notices/Emscripten-AUTHORS",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/notices/libcxx-LICENSE",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/notices/libcxxabi-LICENSE",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/notices/compiler-rt-LICENSE",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/notices/musl-COPYRIGHT",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/port.py",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/build-port.sh",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/sessions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/checkpoints",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/doctor.sh",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/rebuild.sh",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/verify-sdk.py",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/toolchain.lock.json",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/ubuntu-packages.lock",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/README.md",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/source/iverilog.tar.gz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/single.sv",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/self-check.sv",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/resources/check.sv",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/preparation-report",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/courses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/models/selection",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/activities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/activities/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent-settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/pdf/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/conversation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/materials/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/agent/2d0c7f14-143b-423e-a8e9-8a7d66336785/skills",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning/releases/19200000-0000-4000-8000-000000000205/components/alu/preparation-report",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/history",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/drafts/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/sessions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/workspaces/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785/57a8b4fd-2d77-432e-a3d1-9a534689e94e/revisions/3359348c-cc43-4906-9755-85ceb7b8ebd8",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785/capabilities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/checkpoints",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/intents/2d0c7f14-143b-423e-a8e9-8a7d66336785",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785/57a8b4fd-2d77-432e-a3d1-9a534689e94e/revisions/3359348c-cc43-4906-9755-85ceb7b8ebd8/resource",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-stops/6fc32f60-fcbf-43b0-932b-dcbb0bb05294",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/artifacts/2d0c7f14-143b-423e-a8e9-8a7d66336785/57a8b4fd-2d77-432e-a3d1-9a534689e94e/revisions/3359348c-cc43-4906-9755-85ceb7b8ebd8/view",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/executions/2d0c7f14-143b-423e-a8e9-8a7d66336785/agent-pending",
+      "status": 200
+    }
+  ],
+  "providerAttempts": 0,
+  "chrome": "156.0.8078.80",
+  "source": {
+    "artifactId": "57a8b4fd-2d77-432e-a3d1-9a534689e94e",
+    "revisionId": "3359348c-cc43-4906-9755-85ceb7b8ebd8",
+    "candidateId": "3dbb05d9-13eb-4966-a365-b0c2bfd0e4e7",
+    "sha256": "daad6676ad044768002ca7e0cfdf040902163b57304a8e9ab4a9095a5327ac74",
+    "runId": "d80c9f0a-ab67-4e15-8f26-04fd4f708929",
+    "requestId": "10e2011b-75db-4afa-9d4c-78a9b4b9410c",
+    "origin": {
+      "runId": "d80c9f0a-ab67-4e15-8f26-04fd4f708929",
+      "stepId": "4e120cca-f3f7-41e0-9fbf-6f5bb91ce563",
+      "snapshotId": "c3fbe076-37fb-4232-be39-5ac46969f985",
+      "commandId": "1e199851-8805-44ad-9075-5bae79a607d6",
+      "attemptId": "84ac0372-5a13-461b-86a5-b7b215e53a5a"
+    },
+    "payloadSha256": "75e3bb105058fb573053531e0f39a33160cd4546a75746771f1559c364bfbe48"
+  },
+  "bindingDigest": "78a49e0101d2576750c1ca56339056428caa3ff7823adf4ad91ed84f2c695ab2",
+  "initialExecutionIds": [],
+  "adoption": {
+    "candidateId": "3dbb05d9-13eb-4966-a365-b0c2bfd0e4e7",
+    "revisionId": "3359348c-cc43-4906-9755-85ceb7b8ebd8",
+    "checks": [
+      {
+        "code": "script-syntax",
+        "passed": true
+      },
+      {
+        "code": "fixed-resources",
+        "passed": true
+      },
+      {
+        "code": "capability-scope",
+        "passed": true
+      },
+      {
+        "code": "browser-roundtrip",
+        "passed": true
+      }
+    ]
+  },
+  "fixture": {
+    "source": "scripts/probe-wp09-alu.mjs engineering fixture",
+    "sha256": "ddb00cb54a10ad75c38a2120360220265abafbe8a0413109886300c103348a0b",
+    "entry": "alu.sv",
+    "method": "normal Monaco editor; not a student starter or Agent change",
+    "contentId": "2e6475d0-9cfc-490f-97eb-7f2f26e1b8dc",
+    "objectId": "ee002bb9-fed0-46ca-90e8-4696af843378"
+  },
+  "execution": {
+    "requestId": "a49c8d63-8364-4be2-ad3d-6f6b14f5e2d0",
+    "executionRef": "2b2a781c-5ffc-4a6d-9f42-dd0c9878421f",
+    "inputDigest": "d7dedac16fce3b0216246970401116bbe20733874b7a80ac3e753c46dd73ef43",
+    "state": "succeeded",
+    "statusKnowledge": "confirmed",
+    "output": {
+      "f": "0000",
+      "cout": "1"
+    },
+    "outputContentId": "d71a73f8-1bb4-4b45-bd85-3d9fa56c5e49",
+    "adapterId": "icarus-alu",
+    "bundleIdentity": "21a0a1ed4438143b33530efb293f83733dac84405b2f4c458b107a0b79358d4f",
+    "componentKey": "alu",
+    "operationId": "run-single",
+    "parameters": {
+      "A": 15,
+      "B": 1,
+      "M": 1,
+      "S": 0,
+      "Cin": 0
+    },
+    "code": {
+      "objectId": "ee002bb9-fed0-46ca-90e8-4696af843378",
+      "contentId": "2e6475d0-9cfc-490f-97eb-7f2f26e1b8dc",
+      "sha256": "ddb00cb54a10ad75c38a2120360220265abafbe8a0413109886300c103348a0b"
+    },
+    "page": {
+      "objectId": "e4c13a9d-cf3b-4ec0-844a-153035caf55b",
+      "contentId": "c8634e13-b3fa-4a78-b56a-a7a4af2792b0",
+      "sha256": "e1f66898a42e916ee63c4ebe24717aee33a46b46a075fd6ba5797450e366a3ec",
+      "artifactId": "57a8b4fd-2d77-432e-a3d1-9a534689e94e",
+      "revisionId": "3359348c-cc43-4906-9755-85ceb7b8ebd8"
+    },
+    "retainedArtifact": {
+      "executionRef": "2b2a781c-5ffc-4a6d-9f42-dd0c9878421f",
+      "requestId": "a49c8d63-8364-4be2-ad3d-6f6b14f5e2d0",
+      "inputDigest": "d7dedac16fce3b0216246970401116bbe20733874b7a80ac3e753c46dd73ef43",
+      "textSha256": "1986b272809f2e49c641f52d923e2ec8ccad2dcb2826ed25016473aae999783b"
+    }
+  },
+  "screenshots": [
+    {
+      "file": "real-alu-failure.png",
+      "sha256": "a8a39464a3fbda23ed953628156848423451fd7a7ff1c5029a6fe76b59918f24",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "file": "real-alu-actual-icarus.png",
+      "sha256": "44cd57b3fbe7023da7146259ef0c5ff0d845cc33211b0b4191bd19a15b26b290",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "file": "real-alu-restored.png",
+      "sha256": "aae904bea4c8d899bc7de51a6645b6d386d131e3c0ae5debab2ee9cfcd32c307",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    }
+  ],
+  "installationUnchanged": true,
+  "cleanup": "host-and-PG-stopped-root-retained",
+  "finishedAt": "2026-11-08T13:26:41.149Z",
+  "originalConversationRunIds": [
+    "d80c9f0a-ab67-4e15-8f26-04fd4f708929"
+  ],
+  "refresh": {
+    "originalRequestId": "a49c8d63-8364-4be2-ad3d-6f6b14f5e2d0",
+    "querySha256": "246543e982039e64a404fa638724f52fe2e4baebf28834c72d073b75c14f804d",
+    "retainedResultSha256": "16ca25f654b982594127bf2ef04a7a8aaae76a4b5b5c010e1be6a79bd3aabcc2",
+    "newExecutionRequests": 0
+  },
+  "failures": [
+    {
+      "stage": "real-generated-button-to-icarus-and-original-owner",
+      "reason": "retained-result-is-not-original-execution",
+      "assertion": "operation",
+      "frameStatusSha256": "72e43af08ffc1dcbe227e0fe28b85ceb4ebdca59f92136f108a1c2040cf023a4",
+      "frameStatusClasses": []
+    }
+  ]
+}

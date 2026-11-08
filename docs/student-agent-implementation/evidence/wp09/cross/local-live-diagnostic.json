@@ -1,0 +1,960 @@
+{
+  "scope": "same retained candidate; public Chrome flow with passive diagnostic snapshots",
+  "requests": [
+    {
+      "route": "context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "route": "context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "activities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "courses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "models/selection",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "activities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "courses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "models/selection",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "activities/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "pdf/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "materials/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent-settings",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/history",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040/candidates/7a315328-0ea6-4b57-b96f-3debbaf02095",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040/7d8148db-b039-4793-8922-21cf76c03d6b/revisions/93337338-05d1-42f0-a6a3-d768817057b4",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040/7d8148db-b039-4793-8922-21cf76c03d6b/revisions/93337338-05d1-42f0-a6a3-d768817057b4/resource",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/skills",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040/receipts/83760c51-1791-4f8d-bb32-69b1a5987809",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040/adopt",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040/7d8148db-b039-4793-8922-21cf76c03d6b/revisions/93337338-05d1-42f0-a6a3-d768817057b4/view",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "agent/be878eb5-2bc1-4ef5-ae9b-849005f10040/conversation",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "artifacts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "drafts/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "workspaces/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040/capabilities",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "intents/be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/sessions",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/checkpoints",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-stops/d180f275-a845-4424-a631-b7b214181bc1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": "executions/be878eb5-2bc1-4ef5-ae9b-849005f10040/agent-pending",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "snapshot": {
+    "hidden": false,
+    "secure": true,
+    "guards": [],
+    "entries": [
+      {
+        "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+        "revisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+        "issue": ""
+      }
+    ],
+    "workspace": {
+      "ready": true,
+      "error": "",
+      "conflict": false,
+      "denied": false,
+      "stopped": false,
+      "dirty": false,
+      "sending": false,
+      "remoteMutation": false,
+      "inputCount": 0,
+      "retainedInputs": 0,
+      "record": {
+        "localRevision": 1,
+        "remoteRevision": 1,
+        "pending": false
+      },
+      "saved": {
+        "localRevision": 1,
+        "remoteRevision": 1,
+        "pending": false
+      }
+    },
+    "locks": {
+      "held": [],
+      "pending": []
+    },
+    "alerts": [],
+    "iframeCount": 1
+  }
+}

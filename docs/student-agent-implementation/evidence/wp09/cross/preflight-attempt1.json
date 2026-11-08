@@ -1,0 +1,41 @@
+{
+  "issue": 224,
+  "status": "failed",
+  "measuredAt": "2026-11-08T12:24:02.498Z",
+  "mode": "transport-preflight",
+  "model": "real",
+  "cleanup": {
+    "remoteFixtureRemoved": true,
+    "localFixtureRemoved": true
+  },
+  "stages": [],
+  "topology": {
+    "mac": {
+      "host": "Robert-Wu-MacBook-Air.local",
+      "ip": "192.168.3.39"
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "productTransport": "direct bidirectional LAN HTTPS",
+    "ssh": "control-only-no-tunnel",
+    "providerCredentials": "Mac only"
+  },
+  "windowsPreflight": {
+    "host": "LAPTOP-S7A4IQFU",
+    "os": "Microsoft Windows 11 家庭版 中文版",
+    "chrome": "156.0.8078.81",
+    "playwright": true,
+    "oldNode": "C:/Users/h/XunJie-acceptance/wp07-211/resources/node/node.exe",
+    "temp": "C:\\Users\\h\\AppData\\Local\\Temp"
+  },
+  "tls": {
+    "certificateSha256": "1cf33e033279d1c85181ea14fb96e054ea6801527fac669c28f86b2082f12cef",
+    "spki": "4686788d16194a91154021638c3bd682e71f8ed96cf1e1bf4873feb1a8e92497",
+    "subjectAltName": "IP Address:192.168.3.39, IP Address:192.168.3.8",
+    "trust": "explicit test CA for Node; certificate SPKI pin for Chrome; no global trust-store modification"
+  },
+  "error": "ssh-control-timeout",
+  "finishedAt": "2026-11-08T12:25:09.787Z"
+}

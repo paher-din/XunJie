@@ -26,8 +26,9 @@ const option = (name, fallback) => {
 const product = option('--package', null);
 if (!product) throw new Error('--package is required (for example dist/product-darwin-arm64-wp03-r2)');
 const output = resolve(option('--out', '.verification/wp03-184-product'));
-const evidence = resolve('docs/student-agent-implementation/evidence');
+const evidence = resolve(option('--evidence-dir', 'docs/student-agent-implementation/evidence'));
 await mkdir(output, { recursive: true });
+await mkdir(evidence, { recursive: true });
 
 const nodeInProduct = join(product, 'resources/node/bin/node');
 const scrubbed = { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: process.env.HOME, LANG: 'en_US.UTF-8',

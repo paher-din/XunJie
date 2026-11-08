@@ -45,6 +45,8 @@
 
 `tools.ts` 提供版本化的 `read_work`、`read_reference`、`read_material`、`read_personal_material`、`read_result`、`execution_query`、`execution_stop`、`search_materials`、`read_student_facts`；活动有对应组件时增加 `course_operation`。模型选择工具，宿主按本次固定授权取证与执行。课程操作从 manifest 与课程运行方案派生，不在 Driver 内硬编码课程信号。图像只接受 WP06 支持的固定 PNG，并核对原生段已核实的图像能力。
 
+WP09 的 `read_teaching_artifact` / `generate_teaching_artifact` 沿同一能力贡献与 Command 接入；学习 Agent definition v4 提供共享宿主 SDK 与输出契约，历史定义不改写。完整生成固定原 Run/步骤/命令/快照/attempt 后由学习数据 owner 接收；不完整函数参数只投影为有界静态预览，不能派发或启用。正式视图、状态、固定引用和修订边界见 [WP09 实施](../../../../docs/student-agent-implementation/wp09-implementation.md)。
+
 WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／命令／快照关联及执行点资格回调；普通学生 HTTP 入口不能自报 Agent 发起者。查询与停止限定原 Run 发起的执行，学生独立实验不受影响。已完成输入与其仍在运行的原生会话分别记录，后续停止不改写原输入结果。
 
 浏览器操作通过所属 owner 持久待发与原浏览器领取，再进入既有 broker／Worker／WASM；原生操作通过既有隔离执行器。首次领取固定浏览器身份，多页共享同一持久 broker。丢回执后查询原命令，不换身份、浏览器或节点重跑。

@@ -45,7 +45,7 @@
 | WP08 四项能力合入 `wp08`、旧分支迁移与备份兼容、组合验证 | [整合说明](wp08-integration.md) · [本次验证证据](evidence/wp08-integration/README.md) |
 | WP08 个人资料、统一检索与明确事实读取 | [#219 实现与验收](wp08-219-personal-materials.md) · [实际验收证据](evidence/wp08-219/README.md) |
 | WP08 最后交付：跨服务接线、恢复来源闭包、跨安装备份与接管凭据门禁 | [#221 实现与验收](wp08-221.md) · [实际验收证据](evidence/wp08-221/README.md) |
-| WP09 的生成页面/卡片、渐进预览、校验启用、受控能力、状态恢复和修订保留输入；MCP Apps 暂缓 | [WP09：可交互教学内容](https://github.com/paher-din/XunJie/issues/224) |
+| WP09 的生成页面/卡片、渐进预览、校验启用、受控能力、状态恢复和修订保留输入；MCP Apps 暂缓 | [WP09：可交互教学内容](https://github.com/paher-din/XunJie/issues/224) · [实施与验收](wp09-implementation.md) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |

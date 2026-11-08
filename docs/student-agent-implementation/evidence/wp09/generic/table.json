@@ -1,0 +1,28 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "27.2.0",
+  "node": "v24.21.0",
+  "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-execution-browser-3otfC8",
+  "browser": "Google Chrome",
+  "cases": [
+    "the imported view renders the pinned sample table inside the formal workspace",
+    "a non-numeric cell stops the real algorithm before computing and names the row",
+    "the restricted WebAssembly algorithm returns the real group statistics (A: 4 项, 332, 83)",
+    "the workspace record shows the parameters and the input the result corresponds to",
+    "the retained artifact downloads as real CSV bytes from the run that produced it",
+    "a queued run is stopped through the real worker path and the service keeps its original acceptance",
+    "a new or cancelled run cannot present the preceding run result as its own",
+    "a full page reload re-queries the persisted run record instead of recomputing",
+    "the record warns that the current table changed after the run it describes",
+    "light, dark and narrow desktop rendering captured from the real run",
+    "switching tools keeps the run record and its download available",
+    "holding the save acknowledgement and continuing to type preserves the table captured by the run click",
+    "a second Chrome page stops the original running WASM Worker and the original owner confirms cancellation",
+    "the declared execution time limit really terminates a busy WASM Worker and leaves a queryable failure"
+  ],
+  "status": "passed",
+  "headless": false,
+  "browserVersion": "156.0.8078.80",
+  "crossTabStopMs": 3726
+}

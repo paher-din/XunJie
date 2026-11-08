@@ -1,0 +1,46 @@
+{
+  "issue": 224,
+  "status": "failed",
+  "measuredAt": "2026-11-08T12:26:07.401Z",
+  "mode": "transport-preflight",
+  "model": "real",
+  "cleanup": {
+    "scopedWindowsFirewallRemoved": true,
+    "remoteFixtureRemoved": true,
+    "localFixtureRemoved": true
+  },
+  "stages": [],
+  "topology": {
+    "mac": {
+      "host": "Robert-Wu-MacBook-Air.local",
+      "ip": "192.168.3.39"
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "productTransport": "direct bidirectional LAN HTTPS",
+    "ssh": "control-only-no-tunnel",
+    "providerCredentials": "Mac only"
+  },
+  "windowsPreflight": {
+    "host": "LAPTOP-S7A4IQFU",
+    "os": "Microsoft Windows 11 家庭版 中文版",
+    "chrome": "156.0.8078.81",
+    "playwright": true,
+    "oldNode": "C:/Users/h/XunJie-acceptance/wp07-211/resources/node/node.exe",
+    "temp": "C:\\Users\\h\\AppData\\Local\\Temp"
+  },
+  "tls": {
+    "certificateSha256": "7c54e2ebd64ad8d56232b44503c59cb688b33f05d4ebe743fd9e0ef115ab3531",
+    "spki": "985060333e611200838e3c8746e8a86b47b472de46180289cde618dc99a09191",
+    "subjectAltName": "IP Address:192.168.3.39, IP Address:192.168.3.8",
+    "trust": "explicit test CA for Node; certificate SPKI pin for Chrome; no global trust-store modification"
+  },
+  "preparationStep": "bidirectional-TLS",
+  "macFirewall": {
+    "disabled": true
+  },
+  "error": "windows-fixed-node-unavailable",
+  "finishedAt": "2026-11-08T12:26:29.790Z"
+}

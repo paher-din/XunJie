@@ -1,0 +1,382 @@
+{
+  "issue": 224,
+  "measuredAt": "2026-11-08T13:08:36.295Z",
+  "status": "passed",
+  "limits": {
+    "maxGenerations": 8,
+    "maxOutputTokens": 8192,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "topology": {
+    "mac": {
+      "ip": "192.168.3.39",
+      "host": "Robert-Wu-MacBook-Air.local",
+      "platform": "darwin",
+      "port": 39409
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "port": 39410,
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "transport": "direct LAN HTTPS; SSH control only; provider credentials remain on Mac"
+  },
+  "stages": [
+    {
+      "name": "mac-school-direct-https",
+      "status": "passed",
+      "fact": {
+        "environmentId": "486ed10e-67df-4691-8bc8-d1eaed4e871a",
+        "installationId": "4fe87ccc-378d-418c-adaa-8e0f287a59d3",
+        "endpoint": "https://192.168.3.39:39409",
+        "units": [
+          "client",
+          "learning-data",
+          "model-connection",
+          "space-course",
+          "teaching-agent"
+        ]
+      }
+    },
+    {
+      "name": "windows-independent-agent-direct-https",
+      "status": "passed",
+      "fact": {
+        "state": "degraded",
+        "endpoint": "https://192.168.3.8:39410",
+        "environmentId": "2188d2c8-a419-4319-9a9a-1e2f0148fa20",
+        "installationId": "f118e5cf-c059-4118-af44-075a49fc25ec",
+        "target": {
+          "environmentId": "2188d2c8-a419-4319-9a9a-1e2f0148fa20",
+          "serviceId": "5cd57aa7-535c-4db7-b102-814ab5c4c20d",
+          "unit": "teaching-agent",
+          "endpoint": "https://192.168.3.8:39410",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.agent"
+          ]
+        },
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "platform": "win32",
+        "host": "LAPTOP-S7A4IQFU",
+        "osRelease": "10.0.26200",
+        "package": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "e27a6a36fe2a9a1a88c3a06cc6f4981f55271e6d3f65bbc7ef5bae90e7000172",
+          "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+          "webRuntime": [
+            {
+              "path": "web/assets/runtime-BJR4SIL5.js",
+              "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+            }
+          ],
+          "nodeVersion": "v24.21.0"
+        },
+        "probeSha256": "992d2fa8de43115e598da7bb71337a35045ed96506c53d979c1b7a36f1b1e4a5"
+      }
+    },
+    {
+      "name": "bidirectional-runtime-authority-and-binding",
+      "status": "passed",
+      "fact": {
+        "schoolDataOwner": {
+          "environmentId": "486ed10e-67df-4691-8bc8-d1eaed4e871a",
+          "serviceId": "5f40d42f-b1fe-4d54-be15-22d90a6dc93b"
+        },
+        "agentOwner": {
+          "environmentId": "2188d2c8-a419-4319-9a9a-1e2f0148fa20",
+          "serviceId": "5cd57aa7-535c-4db7-b102-814ab5c4c20d"
+        },
+        "agentConnectionId": "9d37a50f-2fe5-4653-9d49-54ba73c44ef8",
+        "dependencyConnectionId": "c55de015-e077-4ef5-9221-1400118e3852",
+        "acceptGrantId": "ae036e97-21a9-44a5-a43b-3b64ae108e0d",
+        "dependencyGrantId": "11084d47-698b-4953-9718-87d6fbf7170e"
+      }
+    },
+    {
+      "name": "mac-only-real-provider-configuration",
+      "status": "passed",
+      "fact": {
+        "model": "deepseek-flash",
+        "protocol": "chat-completions",
+        "connectionId": "f4df2e3a-4266-4804-bb80-6d8c0ae682e9",
+        "credentialOwner": "Mac",
+        "credentialExported": false
+      }
+    }
+  ],
+  "engineering": "owned-by-main",
+  "browser": "passed",
+  "teachingEffect": "not-assessed",
+  "packages": {
+    "mac": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "c1b07073ce81eaa66b34eb3e0288c53677a9b473252f3824e0a3f73494a082bf",
+      "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-BJR4SIL5.js",
+          "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "windows": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "e27a6a36fe2a9a1a88c3a06cc6f4981f55271e6d3f65bbc7ef5bae90e7000172",
+      "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-BJR4SIL5.js",
+          "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    }
+  },
+  "probeSha256": "992d2fa8de43115e598da7bb71337a35045ed96506c53d979c1b7a36f1b1e4a5",
+  "ownerCode": {
+    "identicalApplication": true,
+    "commonWebRuntime": [
+      {
+        "path": "web/assets/runtime-BJR4SIL5.js",
+        "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+      }
+    ],
+    "policy": "Each final package matches its own manifest; Mac owner may include the explicitly authorized backend-only adoption fix."
+  },
+  "scope": "Windows standalone local product only; two-host pairing is infrastructure, not a cross-artifact acceptance claim",
+  "windowsStandalone": {
+    "status": "passed",
+    "scope": "Windows standalone actual final product; controlled external Chat SSE transport",
+    "cleanup": {
+      "taskRemoved": true,
+      "desktopReleased": true
+    },
+    "screenshots": [
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-reopened.png",
+        "sha256": "0bc3a39c5700fd6b502e2e8920b21b6546e1fcf8c71167fd026e4079f2ee684b"
+      },
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-center.png",
+        "sha256": "cf37851b32f069f1011b66029407f3dc9208970ab3710f02d89313741c3ef3ec"
+      }
+    ],
+    "product": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "e27a6a36fe2a9a1a88c3a06cc6f4981f55271e6d3f65bbc7ef5bae90e7000172",
+      "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-BJR4SIL5.js",
+          "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "setup": {
+      "activityId": "e3baeb9f-783e-4e96-acfc-d8a529ae6e29",
+      "endpoint": "http://127.0.0.1:56517",
+      "requestId": "a1adeb0f-2322-41f4-bcea-80b201812650",
+      "runId": "4eb26c47-e063-47d6-a176-6dbffcd91d2d",
+      "environmentId": "7819bf8c-0663-45ba-96da-609f569f4c7d",
+      "modelSource": "controlled Chat SSE transport; no provider key on Windows",
+      "modelCalls": 2
+    },
+    "browser": {
+      "status": "passed",
+      "platform": "win32",
+      "host": "LAPTOP-S7A4IQFU",
+      "workerProcessId": 29188,
+      "checks": [
+        "actual-Windows-local-product-Agent-Chrome-check-adopt-save-refresh-shelf"
+      ],
+      "screenshots": [
+        {
+          "name": "windows-local-reopened",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-5bb60e8b-4dfe-42ef-8078-4c2624a7c6bf/local-Chrome-daf3befe-212c-40d9-8ed9-ec8e0597b7da/screen-windows-local-reopened.png",
+          "sha256": "0bc3a39c5700fd6b502e2e8920b21b6546e1fcf8c71167fd026e4079f2ee684b"
+        },
+        {
+          "name": "windows-local-center",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-5bb60e8b-4dfe-42ef-8078-4c2624a7c6bf/local-Chrome-daf3befe-212c-40d9-8ed9-ec8e0597b7da/screen-windows-local-center.png",
+          "sha256": "cf37851b32f069f1011b66029407f3dc9208970ab3710f02d89313741c3ef3ec"
+        }
+      ],
+      "model": "no browser-to-provider connection",
+      "phase": "local-Windows-generated-artifact",
+      "observedAt": "2026-11-08T13:09:17.969Z",
+      "desktopSessionId": 1,
+      "product": {
+        "platform": "win32-x64",
+        "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43"
+      },
+      "chromeVersion": "156.0.8078.81",
+      "loginHTTP": [
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        }
+      ],
+      "workRequests": [
+        {
+          "requestId": "c1cf8928-b3f4-4e32-aca2-377373b847f9",
+          "baseRevision": 1,
+          "inputSha256": "79d4a0c4f42095734827046a5739a2cd04f17d70203e655227454f6dd349eb88"
+        }
+      ],
+      "receiptQueries": [
+        "cbdbeebc-6cb6-4d61-bedf-d9e30e69dbcc",
+        "c1cf8928-b3f4-4e32-aca2-377373b847f9",
+        "eb47cf81-bb96-490e-9f42-0f0c4799c30f"
+      ],
+      "loginPhase": "complete",
+      "pageErrors": [],
+      "finishedAt": "2026-11-08T13:09:17.969Z"
+    }
+  },
+  "artifacts": {
+    "status": "passed",
+    "scope": "Windows standalone actual final product; controlled external Chat SSE transport",
+    "cleanup": {
+      "taskRemoved": true,
+      "desktopReleased": true
+    },
+    "screenshots": [
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-reopened.png",
+        "sha256": "0bc3a39c5700fd6b502e2e8920b21b6546e1fcf8c71167fd026e4079f2ee684b"
+      },
+      {
+        "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/windows-local-center.png",
+        "sha256": "cf37851b32f069f1011b66029407f3dc9208970ab3710f02d89313741c3ef3ec"
+      }
+    ],
+    "product": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "e27a6a36fe2a9a1a88c3a06cc6f4981f55271e6d3f65bbc7ef5bae90e7000172",
+      "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-BJR4SIL5.js",
+          "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "setup": {
+      "activityId": "e3baeb9f-783e-4e96-acfc-d8a529ae6e29",
+      "endpoint": "http://127.0.0.1:56517",
+      "requestId": "a1adeb0f-2322-41f4-bcea-80b201812650",
+      "runId": "4eb26c47-e063-47d6-a176-6dbffcd91d2d",
+      "environmentId": "7819bf8c-0663-45ba-96da-609f569f4c7d",
+      "modelSource": "controlled Chat SSE transport; no provider key on Windows",
+      "modelCalls": 2
+    },
+    "browser": {
+      "status": "passed",
+      "platform": "win32",
+      "host": "LAPTOP-S7A4IQFU",
+      "workerProcessId": 29188,
+      "checks": [
+        "actual-Windows-local-product-Agent-Chrome-check-adopt-save-refresh-shelf"
+      ],
+      "screenshots": [
+        {
+          "name": "windows-local-reopened",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-5bb60e8b-4dfe-42ef-8078-4c2624a7c6bf/local-Chrome-daf3befe-212c-40d9-8ed9-ec8e0597b7da/screen-windows-local-reopened.png",
+          "sha256": "0bc3a39c5700fd6b502e2e8920b21b6546e1fcf8c71167fd026e4079f2ee684b"
+        },
+        {
+          "name": "windows-local-center",
+          "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-5bb60e8b-4dfe-42ef-8078-4c2624a7c6bf/local-Chrome-daf3befe-212c-40d9-8ed9-ec8e0597b7da/screen-windows-local-center.png",
+          "sha256": "cf37851b32f069f1011b66029407f3dc9208970ab3710f02d89313741c3ef3ec"
+        }
+      ],
+      "model": "no browser-to-provider connection",
+      "phase": "local-Windows-generated-artifact",
+      "observedAt": "2026-11-08T13:09:17.969Z",
+      "desktopSessionId": 1,
+      "product": {
+        "platform": "win32-x64",
+        "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43"
+      },
+      "chromeVersion": "156.0.8078.81",
+      "loginHTTP": [
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        },
+        {
+          "route": "context",
+          "status": 200
+        }
+      ],
+      "workRequests": [
+        {
+          "requestId": "c1cf8928-b3f4-4e32-aca2-377373b847f9",
+          "baseRevision": 1,
+          "inputSha256": "79d4a0c4f42095734827046a5739a2cd04f17d70203e655227454f6dd349eb88"
+        }
+      ],
+      "receiptQueries": [
+        "cbdbeebc-6cb6-4d61-bedf-d9e30e69dbcc",
+        "c1cf8928-b3f4-4e32-aca2-377373b847f9",
+        "eb47cf81-bb96-490e-9f42-0f0c4799c30f"
+      ],
+      "loginPhase": "complete",
+      "pageErrors": [],
+      "finishedAt": "2026-11-08T13:09:17.969Z"
+    }
+  },
+  "modelSource": "controlled external Chat transport; no real supplier calls",
+  "providerRequests": [],
+  "providerRefusals": [],
+  "dependencyOperations": {},
+  "cleanup": {
+    "providerRelayClosed": true,
+    "windows": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    },
+    "controlProcessExited": true,
+    "mac": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    }
+  },
+  "finishedAt": "2026-11-08T13:09:31.904Z"
+}

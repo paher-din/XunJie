@@ -1,0 +1,269 @@
+{
+  "issue": 224,
+  "status": "failed",
+  "measuredAt": "2026-11-08T15:20:03.839Z",
+  "scope": "Same original two-host generation, candidates and student input; recovery continuation without model requests",
+  "sourceReport": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/cross/report.case.json",
+  "sourceReportSha256": "ca58cda1c8595944d87f57d4a0de25400c0b037a86fa2f1d013a2699b6a72c6f",
+  "priorStages": [
+    {
+      "name": "mac-school-direct-https",
+      "status": "passed",
+      "fact": {
+        "environmentId": "a8cf9abc-b49f-403b-9575-933ef50f112d",
+        "installationId": "87fe356f-820d-4f90-b361-395245f9e28d",
+        "endpoint": "https://192.168.3.39:39409",
+        "units": [
+          "client",
+          "learning-data",
+          "model-connection",
+          "space-course",
+          "teaching-agent"
+        ]
+      }
+    },
+    {
+      "name": "windows-independent-agent-direct-https",
+      "status": "passed",
+      "fact": {
+        "state": "degraded",
+        "endpoint": "https://192.168.3.8:39410",
+        "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+        "installationId": "651b6b5e-891e-4ec4-b90f-a80945109315",
+        "target": {
+          "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+          "serviceId": "72c70826-0830-40d0-80a2-dd7cca39857f",
+          "unit": "teaching-agent",
+          "endpoint": "https://192.168.3.8:39410",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.agent"
+          ]
+        },
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "platform": "win32",
+        "host": "LAPTOP-S7A4IQFU",
+        "osRelease": "10.0.26200",
+        "package": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "aa30c60f3077535ac123d5815a382a1c14ca382a6ada4e12d93e4ff7e70797e2",
+          "applicationSha256": "02931f4088866f948ec6f876c16f25fb47227ef39139f51c9c959bc5e27ebf81",
+          "webRuntime": [
+            {
+              "path": "web/assets/runtime-CyAbAhBT.js",
+              "sha256": "feb24e4e9c986f9a2443a835696e3f75e8d566e121094e16b9377d3778b1ae50"
+            }
+          ],
+          "nodeVersion": "v24.21.0"
+        },
+        "probeSha256": "7adac95a8a2f0647a8830735130c82513b45b8fb6a865a12ff433a082ca6801f"
+      }
+    },
+    {
+      "name": "bidirectional-runtime-authority-and-binding",
+      "status": "passed",
+      "fact": {
+        "schoolDataOwner": {
+          "environmentId": "a8cf9abc-b49f-403b-9575-933ef50f112d",
+          "serviceId": "0f6bc1b0-619c-4817-bf06-1534741a6e08"
+        },
+        "agentOwner": {
+          "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+          "serviceId": "72c70826-0830-40d0-80a2-dd7cca39857f"
+        },
+        "agentConnectionId": "979a3964-f085-4de4-b8a3-17c976482856",
+        "dependencyConnectionId": "26216804-9d4c-4dd4-af59-3da8f74862a8",
+        "acceptGrantId": "c7a92788-3213-480e-9a63-64f46afe7882",
+        "dependencyGrantId": "95e08f24-a57e-4806-8c63-2d6760d0ba95"
+      }
+    },
+    {
+      "name": "mac-only-real-provider-configuration",
+      "status": "passed",
+      "fact": {
+        "model": "deepseek-flash",
+        "protocol": "chat-completions",
+        "connectionId": "3022d44f-2e2c-4ec0-b62b-1f8575e73b51",
+        "credentialOwner": "Mac",
+        "credentialExported": false
+      }
+    },
+    {
+      "name": "Win-Agent-generates-fixed-candidate-at-Mac-owner",
+      "status": "passed",
+      "fact": {
+        "requestId": "3ac6e570-2455-4e06-8d2b-c67c53f141b2",
+        "runId": "4c58b223-5868-4330-9204-4dcece18e008",
+        "artifactId": "a57f2748-3e88-467b-aeb5-e4466c962415",
+        "revisionId": "b54c5ddc-ad87-40af-b48d-4bdbb79c17e1",
+        "candidateId": "86526a46-dfc8-4121-a477-2e61d5e53093",
+        "commandId": "9e0a94e0-b05b-4695-a10e-b90181d743f1",
+        "snapshotId": "0435999c-9350-44e1-9a34-1005338a389e",
+        "stepId": "7552c6ae-25ce-46ac-b9a5-d1c5ddd06e2d",
+        "attemptId": "5c127913-5bfa-4710-9a19-766ad5e2dd47",
+        "resourceSha256": "3c129f439bdc9792a3dfe37498e9ce611a91bffdde3974102045129e6c68dffa",
+        "payloadSha256": "d5349c52dbcba9d3c93d38df2f1a8d292142be1270bbe3fed91bc61abc77ab02"
+      }
+    },
+    {
+      "name": "Windows-Interactive-Limited-Chrome-check-adopt-save",
+      "status": "passed",
+      "fact": {
+        "artifactId": "a57f2748-3e88-467b-aeb5-e4466c962415",
+        "firstRevisionId": "b54c5ddc-ad87-40af-b48d-4bdbb79c17e1",
+        "chromeVersion": "156.0.8078.81",
+        "desktopSessionId": 1
+      }
+    },
+    {
+      "name": "Win-Agent-revises-original-and-Chrome-retains-input",
+      "status": "failed",
+      "error": "revision-not-adopted"
+    }
+  ],
+  "priorProviderRequests": [
+    {
+      "index": 1,
+      "payloadSha256": "d5349c52dbcba9d3c93d38df2f1a8d292142be1270bbe3fed91bc61abc77ab02",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 6476
+    },
+    {
+      "index": 2,
+      "payloadSha256": "5dfe89c353b84cd53b51d7bafbca7833cb5b9e7f81fd67fcf6380f379f39beb1",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 1669
+    },
+    {
+      "index": 3,
+      "payloadSha256": "54a9614a0bd06242e1b1f8b90eafa93d7a2b14481eff98d30375d9b1fb7034e7",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 1615
+    },
+    {
+      "index": 4,
+      "payloadSha256": "9277b4ea899dc7743246cca642ac9f1107624eb9fbed23d4b056572f571f91d1",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 4370
+    },
+    {
+      "index": 5,
+      "payloadSha256": "d29c941acc61a646b3e7131476e27c92d17c95e8cb15d388459579539e580063",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 1480
+    }
+  ],
+  "privateResume": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp09-private-resume-kqjKhW/resume.json",
+  "stages": [
+    {
+      "name": "same-native-owners-restarted",
+      "status": "passed",
+      "fact": {
+        "state": "maintenance",
+        "endpoint": "https://192.168.3.8:39410",
+        "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+        "installationId": "651b6b5e-891e-4ec4-b90f-a80945109315",
+        "target": {
+          "environmentId": "29e4f715-057a-4b59-8a83-4c5671ee87cb",
+          "serviceId": "72c70826-0830-40d0-80a2-dd7cca39857f",
+          "unit": "teaching-agent",
+          "endpoint": "https://192.168.3.8:39410",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.agent"
+          ]
+        },
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "platform": "win32",
+        "host": "LAPTOP-S7A4IQFU",
+        "osRelease": "10.0.26200",
+        "package": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "6e5a8cd235d3c44c0ec045891c48b1d32b38afb56098517be797b9c85752e5af",
+          "applicationSha256": "93094790ac8f47431a5e105c5eab09f0eff1e49050dd81ab8d0099987a9e0e73",
+          "webRuntime": [
+            {
+              "path": "web/assets/runtime-CyAbAhBT.js",
+              "sha256": "feb24e4e9c986f9a2443a835696e3f75e8d566e121094e16b9377d3778b1ae50"
+            }
+          ],
+          "nodeVersion": "v24.21.0"
+        },
+        "probeSha256": "0f2ce5739cc957445b39f271fd56b9d9a30ac138b22aa7b5d337b83cdc6c7f07"
+      }
+    },
+    {
+      "name": "original-public-candidates-and-Run-facts",
+      "status": "failed",
+      "error": "learning-http-503"
+    }
+  ],
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "packages": {
+    "mac": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "02b76204cc42728b1a7acb14fe4847892d2c156e6f10ccacb130ac3fb982cd4b",
+      "applicationSha256": "93094790ac8f47431a5e105c5eab09f0eff1e49050dd81ab8d0099987a9e0e73",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-CyAbAhBT.js",
+          "sha256": "feb24e4e9c986f9a2443a835696e3f75e8d566e121094e16b9377d3778b1ae50"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    },
+    "windows": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "6e5a8cd235d3c44c0ec045891c48b1d32b38afb56098517be797b9c85752e5af",
+      "applicationSha256": "93094790ac8f47431a5e105c5eab09f0eff1e49050dd81ab8d0099987a9e0e73",
+      "webRuntime": [
+        {
+          "path": "web/assets/runtime-CyAbAhBT.js",
+          "sha256": "feb24e4e9c986f9a2443a835696e3f75e8d566e121094e16b9377d3778b1ae50"
+        }
+      ],
+      "nodeVersion": "v24.21.0"
+    }
+  },
+  "error": "learning-http-503",
+  "unexpectedGenerationOperations": [],
+  "dependencyOperations": {},
+  "cleanup": {
+    "windows": {
+      "stopped": true,
+      "retained": true,
+      "rootRemoved": false,
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp08-224-agent-RSeWji"
+    },
+    "controlProcessExited": true,
+    "mac": {
+      "stopped": true,
+      "retained": true
+    },
+    "scopedFirewallRemoved": true
+  },
+  "finishedAt": "2026-11-08T15:20:33.769Z"
+}

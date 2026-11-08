@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "platform": "darwin",
+  "node": "v24.21.0",
+  "cases": [
+    "isolated check/adoption performs zero actual executions",
+    "generated-page explicit run uses actual Icarus and preserves fixed work/parameters",
+    "lost real execution acceptance re-queries/re-delivers the original action without a second execution",
+    "comparison freezes actual page input and prediction on original successful code, with generated-page assistance provenance",
+    "host-owned result region distinguishes actual output from page teaching illustration",
+    "generated-page results enter the existing ALU observation reference and immutable post-observation explanation owners",
+    "query/reload retains original results and student reason without rerun",
+    "closing the generated view preserves a real execution awaiting result confirmation; explicit host stop wins over its delayed result acknowledgement"
+  ],
+  "model": "controlled package fixture; no model requests",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/wp09-macos",
+  "browser": "156.0.8078.80",
+  "identities": {
+    "activityId": "82ab88b4-8f96-4587-8167-35114f41440d",
+    "artifactId": "35f3e9b6-4662-4000-bb3e-46f87122afe6",
+    "revisionId": "f406eb87-4195-49be-b79e-65e4d3e42b47",
+    "runRequestId": "c21b28f2-3be2-41b0-90dc-bb5649fd3b2d",
+    "comparisonRequestId": "ccde3290-ac3f-4592-b75b-4ec35387e862"
+  }
+}

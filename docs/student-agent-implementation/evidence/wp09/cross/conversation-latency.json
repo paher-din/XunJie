@@ -1,0 +1,189 @@
+{
+  "scope": "one complete production HTTP query; product transport timeout unchanged; no Chrome polling; zero generation",
+  "activityId": "be878eb5-2bc1-4ef5-ae9b-849005f10040",
+  "observations": [
+    {
+      "at": "2026-11-08T13:42:32.687Z",
+      "mac": {
+        "pg": [
+          {
+            "pid": 50461,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": 4.128678,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          },
+          {
+            "pid": 59699,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": 0.175436,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          }
+        ],
+        "journal": [
+          {
+            "operation": "snapshot",
+            "state": "consumed",
+            "transferId": "33ea52f0-ffe7-4949-ae9c-91ddbfa704fb"
+          },
+          {
+            "operation": "accept",
+            "state": "consumed",
+            "transferId": "9ae1198c-cd43-4921-b965-a37190cda3a0"
+          },
+          {
+            "operation": "conversation",
+            "state": "pending",
+            "transferId": "6cc0e653-f819-4c2d-8236-975ec3706d40"
+          },
+          {
+            "operation": "skills.list",
+            "state": "pending",
+            "transferId": "8ada0096-a839-4e13-8642-58cbc4d05bf3"
+          },
+          {
+            "operation": "capabilities",
+            "state": "consumed",
+            "transferId": "ae5eaaf2-54b9-43a3-8f75-4b3f95a23c23"
+          }
+        ]
+      },
+      "windows": {
+        "error": "snapshot-failed"
+      }
+    },
+    {
+      "at": "2026-11-08T13:42:40.830Z",
+      "mac": {
+        "pg": [
+          {
+            "pid": 50461,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": 2.981055,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          },
+          {
+            "pid": 59699,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": -0.000927,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          },
+          {
+            "pid": 32709,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": 3.982568,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          }
+        ],
+        "journal": [
+          {
+            "operation": "snapshot",
+            "state": "consumed",
+            "transferId": "33ea52f0-ffe7-4949-ae9c-91ddbfa704fb"
+          },
+          {
+            "operation": "accept",
+            "state": "consumed",
+            "transferId": "9ae1198c-cd43-4921-b965-a37190cda3a0"
+          },
+          {
+            "operation": "conversation",
+            "state": "pending",
+            "transferId": "6cc0e653-f819-4c2d-8236-975ec3706d40"
+          },
+          {
+            "operation": "skills.list",
+            "state": "pending",
+            "transferId": "8ada0096-a839-4e13-8642-58cbc4d05bf3"
+          },
+          {
+            "operation": "capabilities",
+            "state": "consumed",
+            "transferId": "ae5eaaf2-54b9-43a3-8f75-4b3f95a23c23"
+          }
+        ]
+      },
+      "windows": {
+        "error": "snapshot-failed"
+      }
+    },
+    {
+      "at": "2026-11-08T13:42:47.454Z",
+      "mac": {
+        "pg": [
+          {
+            "pid": 50461,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": 4.535786,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          },
+          {
+            "pid": 59699,
+            "state": "idle",
+            "waitType": "Client",
+            "wait": "ClientRead",
+            "queryAgeSeconds": 0.031916,
+            "blocking": [],
+            "queryKind": "COMMIT"
+          }
+        ],
+        "journal": [
+          {
+            "operation": "snapshot",
+            "state": "consumed",
+            "transferId": "33ea52f0-ffe7-4949-ae9c-91ddbfa704fb"
+          },
+          {
+            "operation": "accept",
+            "state": "consumed",
+            "transferId": "9ae1198c-cd43-4921-b965-a37190cda3a0"
+          },
+          {
+            "operation": "conversation",
+            "state": "pending",
+            "transferId": "6cc0e653-f819-4c2d-8236-975ec3706d40"
+          },
+          {
+            "operation": "skills.list",
+            "state": "pending",
+            "transferId": "8ada0096-a839-4e13-8642-58cbc4d05bf3"
+          },
+          {
+            "operation": "capabilities",
+            "state": "consumed",
+            "transferId": "ae5eaaf2-54b9-43a3-8f75-4b3f95a23c23"
+          }
+        ]
+      },
+      "windows": {
+        "error": "snapshot-failed"
+      }
+    }
+  ],
+  "query": {
+    "durationMs": 10560,
+    "httpStatus": 503,
+    "error": "unavailable"
+  },
+  "cleanup": {
+    "scopedFirewallRemoved": true,
+    "roots": "retained unchanged"
+  }
+}
