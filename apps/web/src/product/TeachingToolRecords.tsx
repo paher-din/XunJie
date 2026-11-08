@@ -40,7 +40,7 @@ const fieldLabels: Record<string, string> = {
   operationId: '操作', componentKey: '组件', contentId: '内容版本', requestId: '原请求', expectedSeq: '预期输入序号',
   query: '执行记录', confirmedSeq: '状态序号', stopRequested: '已请求停止', artifact: '结果文件',
   stoppedExecution: '原执行停止结果', cleanupCompleted: '已确认停止', sessionStopped: '会话已停止', stopId: '停止请求',
-  loaded: '已读取的 Skill', skillId: 'Skill 身份', version: '固定版本', packageVersion: '包版本', source: '来源',
+  loaded: '已读取的 Skill', skillId: 'Skill 身份', packageVersion: '包版本',
   packageDigest: '包摘要', digest: '内容摘要', originalDigest: '原文件摘要', encoding: '编码', mediaType: '文件类型', byteLength: '本次读取字节数',
   offset: '起始字节', totalByteLength: '文件总字节数', complete: '已读取完整文件',
 }

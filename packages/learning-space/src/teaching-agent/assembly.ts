@@ -50,7 +50,7 @@ export class TeachingAssemblyError extends Error {
 /** Shared by normal steps and explicit route switching. No persistence or model effects. */
 export async function assembleTeachingAgent(scope: TeachingToolScope, host: TeachingToolHost | undefined,
   model: NonNullable<TeachingRun['model']>, history: ContextMessage[], definition: AgentDefinition = learningAgentDefinition,
-  capabilities: { loaded?: LoadedToolSelection[]; skills?: TeachingSkillState } = {}) {
+  capabilities: { loaded?: LoadedToolSelection[]; skills?: TeachingSkillState | undefined } = {}) {
   const { loaded = [], skills } = capabilities;
   definition = agentDefinitionSchema.parse(structuredClone(definition));
   const contributions: TeachingToolContribution[] = [{ definition: studentAskDefinition, purpose: studentAskDefinition.description,
