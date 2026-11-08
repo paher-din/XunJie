@@ -40,18 +40,38 @@ AI 功能需课程环境启用模型服务；支持个人配置的环境中，�
 
 教师项目设计页提供“AI 协助设计”：可请求项目候选、局部建议或量规试评，教师显式采纳后才写入草稿。它需要宿主配置真实 provider 和独立教师预算；个人模型设置不自动开启该预算。
 
-### 本地界面预览
+### 在本机运行应用
 
-准备 Git 和 Node.js 24.21.0，在终端执行：
+准备 Git、Node.js 24.21.0（含 npm）和桌面 Chrome。首次构建需要联网下载依赖和产品运行资源。Windows 11 x64 从源码打包还需要 MinGW-w64 GCC；可安装 [MSYS2](https://www.msys2.org/) 的 `mingw-w64-ucrt-x86_64-gcc`，并将其 `ucrt64/bin` 加入 `PATH`。macOS 支持 Apple Silicon，macOS 和 Linux 打包需要 `tar`、`unzip`。
+
+在终端执行：
 
 ```sh
 git clone https://github.com/paher-din/XunJie.git
 cd XunJie
+node --version  # 应为 v24.21.0
 npm ci
-npm run dev:prep -w @xunjie/web
+npm run package:product
 ```
 
-打开 `http://127.0.0.1:5601`。此模式使用演示数据，不连接真实课程、执行节点或模型；完整课程使用与服务接入见[运行说明](apps/web/README.md)。
+打包完成后，在仓库根目录按系统运行对应命令，首次启动会自动安装并打开应用：
+
+```powershell
+# Windows 11 x64
+.\dist\product-win32-x64\xunjie.cmd
+```
+
+```sh
+# Apple Silicon macOS
+./dist/product-darwin-arm64/xunjie
+
+# Linux x64
+./dist/product-linux-x64/xunjie
+```
+
+Windows 也可双击 `dist/product-win32-x64/xunjie.cmd`，macOS 可双击 `dist/product-darwin-arm64/循阶.command`。应用会打开系统默认浏览器；如需使用 Chrome，可将启动结果中 `endpoint` 的地址复制到 Chrome。以后再次运行同一入口即可打开应用。
+
+首次进入的是本机个人学习空间。需要课程时，在设置中连接学校提供的入口；使用 Agent 前，在设置中配置并选用自己的模型服务与 API Key。关闭网页不会停止服务；如需停止，在上述启动命令后加 `stop`，数据会保留。Windows 首次启动如果提示缺少 VC++ 运行库，按提示安装后重试。已有环境沿用原安装的运行资源，升级及其他运行方式见[产品运行说明](apps/local-runtime/README.md)。
 
 <details>
 <summary>开发者文档</summary>
