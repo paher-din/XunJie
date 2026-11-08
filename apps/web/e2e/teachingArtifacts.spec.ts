@@ -486,11 +486,17 @@ test('an actual isolated restore reopens the original card read-only with zero c
     })
     const writes: string[] = []
     page.on('request', request => { if (request.method() === 'POST' && request.url().startsWith(copy!.endpoint + '/api/learning/')) writes.push(request.url()) })
+    let unavailableConversations = 0
+    await page.route(/\/api\/learning\/agent\/[^/]+\/conversation(?:\?|$)/, route => {
+      unavailableConversations++
+      return route.fulfill({ status: 503, json: { error: 'unavailable' } })
+    })
     await page.goto(copy.endpoint + '/?activity=' + id)
     await expect(page.getByText('这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。').first()).toBeVisible()
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(input).toHaveValue('还原副本中的原始中文输入')
     await expect(input).toBeDisabled()
+    expect(unavailableConversations).toBeGreaterThan(0)
     await expect(card.getByRole('button', { name: '收纳', exact: true })).toHaveCount(0)
     // Invoke the public SDK in the opaque frame; the restored owner must reject before retaining a write.
     const browserFrame = await card.locator('iframe').elementHandle().then(handle => handle!.contentFrame())

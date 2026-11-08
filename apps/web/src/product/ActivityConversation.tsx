@@ -98,9 +98,13 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   useEffect(() => () => { onActiveChange?.(false) }, [onActiveChange])
   const readOnly = workspace.isReadOnly()
   if (!conversation) {
+    const restoredArtifacts = readOnly ? artifacts?.entries : undefined
     return <section aria-label="与 Agent 的对话" className="teaching-conversation">
       <h3>学习对话</h3>
-      {error ? <p role="alert" className="learning-error">{error}</p> : <p className="detail">正在读取学习对话…</p>}
+      {error ? <p role="alert" className="learning-error">{error}</p> : !restoredArtifacts?.length && <p className="detail">正在读取学习对话…</p>}
+      {restoredArtifacts?.map(entry => artifacts && <ArtifactCard key={entry.artifact.artifactId} entry={entry} controller={artifacts}
+        onOpen={() => onOpenArtifact?.(entry.artifact.artifactId) ?? Promise.resolve()} />)}
+      {artifacts?.error && <p role="alert" className="learning-error">{artifacts.error}</p>}
     </section>
   }
   const messages: TeachingMessage[] = conversation.messages
