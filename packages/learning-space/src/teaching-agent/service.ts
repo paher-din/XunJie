@@ -13,6 +13,7 @@ import { teachingSkillCatalogEntrySchema, teachingSkillLoadedSchema, teachingSki
   teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillReferenceSchema, teachingSkillReferencesSchema,
   teachingSkillPathSchema, teachingSkillListSchema } from '@xunjie/contracts/agent-skills';
 import { studentFactsReadInputSchema, studentFactsReadResultSchema } from '@xunjie/contracts/student-facts';
+import { teachingArtifactAdoptionAuthoritySchema } from './remote-state.js';
 
 export type TeachingAgentPort = Pick<ReturnType<typeof createTeachingAgent>, 'receiver' | 'conversation' | 'events' | 'capabilities'
   | 'run' | 'stop' | 'continueRun' | 'request' | 'snapshot' | 'assertCommandDispatch' | 'assertModelDispatch'
@@ -73,9 +74,11 @@ export function createTeachingAgentService(agent: TeachingAgentPort,
       case 'stop': return agent.stop(identity, activityId, z.uuid().parse(args[0]), teachingStopInputSchema.parse(args[1]));
       case 'continueRun': return agent.continueRun(identity, activityId, z.uuid().parse(args[0]), teachingContinueInputSchema.parse(args[1]));
       case 'assertCommandDispatch': {
-        const { authority, ...association } = z.object({ runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(),
-          commandId: z.uuid(), authority: teachingDispatchAuthoritySchema.optional() }).strict().parse(args[0]);
-        await agent.assertCommandDispatch(identity, activityId, { ...association, ...(authority ? { authority } : {}) });
+        const { authority, adoption, ...association } = z.object({ runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(),
+          commandId: z.uuid(), authority: teachingDispatchAuthoritySchema.optional(),
+          adoption: teachingArtifactAdoptionAuthoritySchema.optional() }).strict().parse(args[0]);
+        await agent.assertCommandDispatch(identity, activityId, { ...association, ...(authority ? { authority } : {}),
+          ...(adoption ? { adoption } : {}) });
         return null;
       }
       case 'assertModelDispatch': {

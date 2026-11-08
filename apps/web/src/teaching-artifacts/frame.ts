@@ -22,6 +22,12 @@ export function bootstrapMessage(revision: TeachingArtifactRevision, connectionI
     initialize: { hostApiVersion: 1, connectionId, instanceId, messageId: crypto.randomUUID(), method: 'host.initialize', payload: { theme: frameTheme(), readOnly } } } }
 }
 export async function checkRevision(revision: TeachingArtifactRevision, viewUrl: string): Promise<{ load: boolean; stateRoundtrip: boolean }> {
+  const manifestCapabilities = new Set<string>(revision.binding.definition.manifest.requiredCapabilities)
+  const capabilities = revision.payload.requiredCapabilities.filter(capability =>
+    (capability === 'workspace.read' || capability === 'workspace.change') && manifestCapabilities.has(capability))
+  const allowed = new Set<string>(capabilities)
+  // The production SDK restores state before exposing controls; a sample cannot grant that missing read.
+  if (!allowed.has('workspace.read')) return { load: false, stateRoundtrip: false }
   const frame = document.createElement('iframe')
   frame.setAttribute('sandbox', 'allow-scripts'); frame.setAttribute('aria-hidden', 'true')
   frame.title = '独立内容检查'; frame.style.cssText = 'position:fixed;left:-10000px;width:800px;height:600px;visibility:hidden'
@@ -37,13 +43,17 @@ export async function checkRevision(revision: TeachingArtifactRevision, viewUrl:
         if (message?.connectionId !== connectionId || message.instanceId !== instanceId) return
         let payload: unknown = {}, error: { code: string } | undefined
         if (message.method === 'component.ready') { ready = true; setTimeout(() => channel.port1.postMessage({ connectionId, instanceId, method: 'host.check' }), 50) }
-        else if (message.method === 'workspace.read') { requestedRead = true; payload = { contentId, content: structuredClone(content) } }
+        else if (message.method === 'workspace.read') {
+          if (!allowed.has('workspace.read')) error = { code: 'capability-unavailable' }
+          else { requestedRead = true; payload = { contentId, content: structuredClone(content) } }
+        }
         else if (message.method === 'workspace.change') {
-          if (message.payload.expectedContentId !== contentId || !acceptsState(revision.payload.stateShape, message.payload.content)) error = { code: 'invalid-input' }
+          if (!allowed.has('workspace.change')) error = { code: 'capability-unavailable' }
+          else if (message.payload.expectedContentId !== contentId || !acceptsState(revision.payload.stateShape, message.payload.content)) error = { code: 'invalid-input' }
           else { content = structuredClone(message.payload.content); contentId = message.payload.contentId; payload = { contentId } }
         } else if (message.method === 'artifact.checked') finish({ load: ready && requestedRead && message.payload.load === true, stateRoundtrip: message.payload.stateRoundtrip === true })
         else if (message.method === 'artifact.error') finish({ load: false, stateRoundtrip: false })
-        else if (message.method === 'artifact.capabilities') payload = { capabilities: ['workspace.read', 'workspace.change'], readOnly: false }
+        else if (message.method === 'artifact.capabilities') payload = { capabilities, readOnly: false }
         else if (message.method !== 'artifact.interaction') error = { code: 'capability-unavailable' }
         channel.port1.postMessage({ connectionId, instanceId, replyTo: message.messageId, method: message.method, payload, ...(error ? { error } : {}) })
       }

@@ -1,4 +1,4 @@
-import { createTeachingArtifacts, teachingArtifactMigration, validateTeachingArtifacts } from './teaching-artifacts.js';
+import { createTeachingArtifacts, teachingArtifactMigration, validateTeachingArtifacts, type ArtifactAdoptionGuard } from './teaching-artifacts.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { agentExecutionOriginMigration, agentExecutionAuthorityMigration } from './agent-executions.js';
 import { activityAgentRouteMigration, validateActivityAgentRoutes } from './agent-routes.js';
@@ -108,7 +108,8 @@ export async function validateLearningData(storage: OwnedStorage) {
 
 /** Only this module writes activities. Authority supplies a narrow, current member binding. */
 export function createLearningData(storage: OwnedStorage, authority: SpaceAuthority, courses?: CourseBindingAuthority,
-  actions: ActionIntentOptions = {}, native?: NativeSessionHostOptions, channel?: ReturnType<typeof createNativeChannel>) {
+  actions: ActionIntentOptions = {}, native?: NativeSessionHostOptions, channel?: ReturnType<typeof createNativeChannel>,
+  assertArtifactAdoption?: ArtifactAdoptionGuard) {
   async function access(identity: SpaceIdentity) {
     const target = await authority.resolveBinding(identity);
     if (target.environmentId !== storage.owner.environmentId || target.serviceId !== storage.owner.serviceId || target.version !== 1) fail('forbidden');
@@ -298,7 +299,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open), works, pdf, materials, search, drafts, intents, executions,
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions,
     agentPreferences: createAgentPreferences(storage, access),
     validate: () => validateLearningData(storage) };
 }

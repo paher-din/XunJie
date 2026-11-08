@@ -21,7 +21,9 @@ import { modelSegmentInputSchema } from '@xunjie/contracts/model-connections';
 import { requiresExplanationReview, teachingExplanationText } from './help-policy.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
-import { teachingDeploymentMigration, validateTeachingDependencyBindings, type TeachingDispatchAuthority } from './remote-state.js';
+import { teachingDeploymentMigration, validateTeachingDependencyBindings, teachingArtifactAdoptionAuthoritySchema,
+  type TeachingDispatchAuthority, type TeachingArtifactAdoptionAuthority } from './remote-state.js';
+import { teachingArtifactReceiptSchema } from '@xunjie/contracts/teaching-artifacts';
 import { chunkChannelMigrationSql, createChunkChannel } from './chunk-channel.js';
 import { studentQuestionMigration, createStudentQuestions, validateStudentQuestions } from './student-questions.js';
 import { teachingInputMigration, createTeachingInputs } from './inputs.js';
@@ -1091,24 +1093,41 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   /** New Driver dispatch requires a live lease; an owner-held accepted command may be claimed while its Run sleeps. */
   async function assertCommandDispatch(identity: SpaceIdentity, activityId: string,
-    association: { runId: string; stepId: string; snapshotId: string; commandId: string; authority?: TeachingDispatchAuthority }) {
+    association: { runId: string; stepId: string; snapshotId: string; commandId: string; authority?: TeachingDispatchAuthority;
+      adoption?: TeachingArtifactAdoptionAuthority }) {
     if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
     await options.authorize(identity);
     if ((await options.activity(identity, activityId)).status !== 'open') throw new StorageError('forbidden');
-    const { rows: [budget] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [association.runId]);
-    if (!budget || budget.expired) throw new StorageError('forbidden');
+    const adoption = association.adoption ? teachingArtifactAdoptionAuthoritySchema.parse(association.adoption) : undefined;
+    if (adoption && association.authority) throw new StorageError('forbidden');
+    if (!adoption) {
+      const { rows: [budget] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [association.runId]);
+      if (!budget || budget.expired) throw new StorageError('forbidden');
+    }
     await storage.pendingIntents();
     const authority = association.authority ? teachingDispatchAuthoritySchema.parse(association.authority) : undefined;
     if (authority && (authority.runId !== association.runId || authority.activityId !== activityId)) throw new StorageError('forbidden');
     await storage.request({ requestId: 'teaching-verify-command:'+randomUUID(), fingerprint: association.commandId }, async tx => {
       const { rows: [row] } = await tx.query(`SELECT r.*,c.state AS command_state,c.generation AS command_generation,s.snapshot_id,
+          c.command,c.outcome,s.attempt_id AS command_attempt_id,
           r.lease_expires_at>=clock_timestamp() AS live
         FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id JOIN teaching_steps s ON s.step_id=c.step_id
         WHERE c.command_id=$1 AND c.run_id=$2 AND c.step_id=$3 AND r.activity_id=$4 FOR UPDATE OF r,c`,
         [association.commandId, association.runId, association.stepId, activityId]);
-      if (dispatchClosed || writesClosed || !row || JSON.stringify(runIdentity(row)) !== JSON.stringify(identity)
-        || row.snapshot_id !== association.snapshotId || row.stop_requested || row.reason === 'student-response-expired' || terminal(row.state as TeachingRun['state'])
-        || !['dispatching', 'waiting'].includes(String(row.command_state))
+      if (dispatchClosed || writesClosed || !row || canonicalDigest(runIdentity(row)) !== canonicalDigest(identity)
+        || row.snapshot_id !== association.snapshotId) throw new StorageError('forbidden');
+      const noLongerEligible = row.stop_requested || row.reason === 'student-response-expired'
+        || terminal(row.state as TeachingRun['state']) && !(adoption && row.state === 'completed');
+      if (adoption) {
+        const command = row.command as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome | null;
+        const published = teachingArtifactReceiptSchema.safeParse(outcome?.result.artifact);
+        if (command.name !== 'generate_teaching_artifact' || adoption.attemptId && row.command_attempt_id !== adoption.attemptId)
+          throw new StorageError('forbidden');
+        if (noLongerEligible || row.command_state !== 'settled' || outcome?.state !== 'completed') throw new StorageError('conflict');
+        if (!published.success || published.data.kind !== 'publish' || published.data.requestId !== association.commandId
+          || published.data.artifactId !== adoption.artifactId || published.data.revisionId !== adoption.revisionId
+          || published.data.candidateId !== adoption.candidateId) throw new StorageError('forbidden');
+      } else if (noLongerEligible || !['dispatching', 'waiting'].includes(String(row.command_state))
         || authority && (row.generation !== authority.generation || row.command_generation !== authority.generation
           || row.lease_owner !== authority.driverId || !row.live)) throw new StorageError('forbidden');
       return null;

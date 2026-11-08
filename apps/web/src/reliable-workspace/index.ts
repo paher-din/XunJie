@@ -15,6 +15,20 @@ interface RetainedInput {
   value: unknown; write: () => Promise<unknown>; before?: Promise<void>; writing?: Promise<void>; state: 'pending' | 'failed'
 }
 
+/** Apply local changes to the newly adopted head, using the same baseline rule before and after protection. */
+function mergeAdoptedFiles(baseline: WorkFile[], local: WorkFile[], remote: WorkFile[],
+  reconcile: (local: WorkFile, remote: WorkFile) => WorkFile) {
+  const merged = new Map(remote.map(file => [file.objectId, file]))
+  for (const previous of baseline) if (!local.some(file => file.objectId === previous.objectId)) merged.delete(previous.objectId)
+  for (const file of local) {
+    const previous = baseline.find(item => item.objectId === file.objectId)
+    if (previous && sameFiles([previous], [file])) continue
+    const adopted = merged.get(file.objectId)
+    merged.set(file.objectId, adopted && previous && !sameFiles([previous], [adopted]) ? reconcile(file, adopted) : file)
+  }
+  return workFilesSchema.parse([...merged.values()])
+}
+
 /** The page/editor's only change and recovery interface. No legacy database or execution ledger access. */
 export class ReliableWorkspace extends ReliableStateCoordinator {
   private record: WorkRecord
@@ -136,34 +150,15 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       await this.withProtection(async () => {
         const next = await this.store.change(this.key, saved => {
           if (!saved || saved.conflict) throw new Error('conflict')
-          const merged = new Map(remote.files.map(file => [file.objectId, file]))
-          for (const previous of baseline.files) {
-            const local = saved.files.find(file => file.objectId === previous.objectId)
-            if (!local) merged.delete(previous.objectId)
-          }
-          for (const local of saved.files) {
-            const previous = baseline.files.find(file => file.objectId === local.objectId)
-            if (previous && sameFiles([previous], [local])) continue
-            const changed = merged.get(local.objectId)
-            merged.set(local.objectId, changed && previous && !sameFiles([previous], [changed]) ? reconcile(local, changed) : local)
-          }
-          const files = workFilesSchema.parse([...merged.values()])
+          const files = mergeAdoptedFiles(baseline.files, saved.files, remote.files, reconcile)
           return { ...saved, remoteOperation: undefined, remoteRevision: remote.revision, confirmedFiles: remote.files, files,
             localRevision: saved.localRevision + 1, pending: sameFiles(files, remote.files) ? null : pendingFor(files, remote.revision) }
         })
         this.record = next
         if (this.editEpoch === memoryEpoch) this.notify({ files: next.files, editorEpoch: this.state.editorEpoch + 1 })
         else {
-          const merged = new Map(next.files.map(file => [file.objectId, file]))
-          for (const previous of memoryAtCommit) if (!this.state.files.some(file => file.objectId === previous.objectId)) merged.delete(previous.objectId)
-          for (const local of this.state.files) {
-            const previous = memoryAtCommit.find(file => file.objectId === local.objectId)
-            if (previous && sameFiles([previous], [local])) continue
-            const adopted = merged.get(local.objectId)
-            merged.set(local.objectId, adopted && previous && !sameFiles([adopted], [previous]) ? reconcile(local, adopted) : local)
-          }
           this.dirty = true
-          this.notify({ files: workFilesSchema.parse([...merged.values()]), editorEpoch: this.state.editorEpoch + 1 })
+          this.notify({ files: mergeAdoptedFiles(memoryAtCommit, this.state.files, next.files, reconcile), editorEpoch: this.state.editorEpoch + 1 })
         }
       })
       await this.protect()

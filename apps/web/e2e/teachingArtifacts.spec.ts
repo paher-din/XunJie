@@ -115,6 +115,47 @@ test('a checked card activates in its activity and retains unshelved input after
   await expect(input).toHaveValue('尚未收纳的中文解释')
 })
 
+test('a narrowed revision forks while later input remains usable and synchronizes on the original page', async ({ page }) => {
+  const id = await activity(page)
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const first = await publish(page, id), original = page.locator(`[data-artifact-id="${first.artifactId}"]`).first()
+  const answer = original.frameLocator('iframe').getByRole('textbox', { name: '我的解释', exact: true })
+  await expect(answer).toBeEditable()
+  await answer.fill('原先的解释')
+  await page.locator('#activity-title').click()
+  let arrived!: () => void, release!: () => void
+  const received = new Promise<void>(resolve => { arrived = resolve }), held = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/learning/artifacts/*/adopt', async route => {
+    const response = await route.fetch()
+    arrived(); await held; await route.fulfill({ response })
+  })
+  const revised = payload('缩小了回答上限的修订')
+  revised.stateShape.properties.answer.maxLength = 20
+  revised.initialState.answer = '新版初值'
+  await publish(page, id, { artifactId: first.artifactId, parentRevisionId: first.revisionId, payload: revised })
+  try {
+    await received
+    const later = '接收期间继续输入的解释，长度超过新版上限，必须保留原页和全部文字。'
+    await answer.fill(later)
+    await page.locator('#activity-title').click()
+    release()
+    await expect(page.locator('.teaching-artifact-card[data-artifact-id]')).toHaveCount(2)
+    await expect(original).toHaveAttribute('data-revision-id', first.revisionId)
+    await expect(answer).toHaveValue(later)
+    await expect.poll(async () => {
+      const work = await (await page.request.get(endpoint + '/api/learning/workspaces/' + id, { headers: { 'x-xj-space': 'personal' } })).json()
+      return work.files.some((file: { name: string; value: string }) => file.name === `components/artifact-${first.artifactId}.json`
+        && JSON.parse(file.value).content.answer === later)
+    }).toBe(true)
+    const fork = page.locator('.teaching-artifact-card[data-artifact-id]').filter({ has: page.getByRole('heading', { name: '缩小了回答上限的修订', exact: true }) })
+    await expect(fork.frameLocator('iframe').getByRole('textbox', { name: '我的解释', exact: true })).toHaveValue('新版初值')
+    await page.reload()
+    await page.getByRole('button', { name: '打开对话', exact: true }).click()
+    await expect(answer).toHaveValue(later)
+    await expect(page.locator('.teaching-artifact-card[data-artifact-id]')).toHaveCount(2)
+  } finally { release(); await page.unroute('**/api/learning/artifacts/*/adopt') }
+})
+
 test('a compatible revision preserves new input and Chinese composition that arrives while adoption is awaiting its original receipt', async ({ page }) => {
   const id = await activity(page)
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
@@ -358,7 +399,7 @@ test('automatic and ordinary input responses do not consume a Wait, while omitte
   await publish(page, id, { payload: { ...payload('明确回应卡'),
     html: '<label>我的解释<textarea aria-label="我的解释"></textarea></label><output id="automatic"></output><output id="effect"></output><button id="follow">稍后讨论另一问题</button><button id="answer">明确回答原问题</button>',
     requiredCapabilities: ['workspace.read', 'workspace.change', 'student.respond'],
-    javascript: `(async()=>{const {content}=await xunjie.read();const input=document.querySelector('textarea');input.value=content.answer;const automatic=document.querySelector('#automatic'),effect=document.querySelector('#effect');xunjie.respond({requestId:'${autoId}',text:'不应自动回应',questionId:'${question.questionId}'}).then(()=>automatic.textContent='unexpected').catch(error=>automatic.textContent=error.message);input.addEventListener('input',()=>{xunjie.change({answer:input.value}).catch(()=>{});xunjie.respond({requestId:'${inputId}',text:'普通输入不能消费提问',questionId:'${question.questionId}'}).then(()=>automatic.textContent='unexpected').catch(error=>automatic.textContent='input:'+error.message);});document.querySelector('#follow').onclick=()=>xunjie.respond({requestId:'${queuedId}',text:'稍后讨论的补充问题'}).then(()=>effect.textContent='queued');document.querySelector('#answer').onclick=()=>xunjie.respond({requestId:'${answerId}',text:'这是显式绑定的回应',questionId:'${question.questionId}'}).then(()=>effect.textContent='answered');})();` } })
+    javascript: `(async()=>{const {content}=await xunjie.read();const input=document.querySelector('textarea');input.value=content.answer;const automatic=document.querySelector('#automatic'),effect=document.querySelector('#effect');xunjie.respond({requestId:'${autoId}',text:'不应自动回应',questionId:'${question.questionId}'}).then(()=>automatic.textContent='unexpected').catch(error=>automatic.textContent=error.message);input.addEventListener('input',()=>{xunjie.change({answer:input.value}).catch(()=>{});xunjie.respond({requestId:'${inputId}',text:'普通输入不能消费提问',questionId:'${question.questionId}'}).then(()=>automatic.textContent='unexpected').catch(error=>automatic.textContent='input:'+error.message);});document.querySelector('#follow').onclick=()=>xunjie.respond({requestId:'${queuedId}',text:'稍后讨论的补充问题'}).then(()=>effect.textContent='queued').catch(error=>effect.textContent=error.message);document.querySelector('#answer').onclick=()=>xunjie.respond({requestId:'${answerId}',text:'这是显式绑定的回应',questionId:'${question.questionId}'}).then(()=>effect.textContent='answered').catch(error=>effect.textContent=error.message);})();` } })
   const view = page.locator('.teaching-artifact-card').frameLocator('iframe')
   await expect(view.locator('#automatic')).toHaveText('forbidden')
   await view.getByRole('textbox', { name: '我的解释' }).fill('只是在编辑页面中的解释')
@@ -462,6 +503,33 @@ test('an actual isolated restore reopens the original card read-only with zero c
     expect(writes).toEqual([])
   } finally {
     for (const owner of restored?.owners ?? []) await owner.close?.()
-    await copy?.stop(); await rm(directory, { recursive: true, force: true })
+    await copy?.stop(); await host.recovery.resume(); await rm(directory, { recursive: true, force: true })
   }
+})
+
+test('a revision missing workspace.read fails its browser check and preserves the active page', async ({ page }) => {
+  const id = await activity(page)
+  await page.getByRole('button', { name: '打开对话', exact: true }).click()
+  const original = await publish(page, id)
+  const card = page.locator(`[data-artifact-id="${original.artifactId}"]`).first()
+  const input = card.frameLocator('iframe').getByRole('textbox', { name: '我的解释' })
+  await expect(input).toBeEditable()
+  await input.fill('缺失能力的新版不能隐藏这份原输入')
+  await expect.poll(async () => (await api(page, 'workspaces/' + id)).files.some((file: { value: string }) =>
+    file.value.includes('缺失能力的新版不能隐藏这份原输入'))).toBe(true)
+  await page.getByRole('textbox', { name: '你的问题', exact: true }).focus()
+  const before = await api(page, 'workspaces/' + id)
+  const candidate = await publish(page, id, { artifactId: original.artifactId, parentRevisionId: original.revisionId,
+    payload: { ...payload('遗漏读取能力的修订'), requiredCapabilities: ['workspace.change'] } })
+  await expect.poll(async () => (await api(page, `artifacts/${id}/candidates/${candidate.candidateId}`)).status).toBe('check-failed')
+  const report = await api(page, `artifacts/${id}/candidates/${candidate.candidateId}`)
+  expect(report.checks.find((check: { code: string }) => check.code === 'browser-roundtrip').passed).toBe(false)
+  expect((await api(page, `artifacts/${id}/${original.artifactId}`)).activeRevisionId).toBe(original.revisionId)
+  expect(await api(page, 'workspaces/' + id)).toEqual(before)
+  await expect(card).toHaveAttribute('data-revision-id', original.revisionId)
+  await expect(input).toBeEditable()
+  await expect(input).toHaveValue('缺失能力的新版不能隐藏这份原输入')
+  await input.fill('检查失败后原页面继续可编辑')
+  await expect.poll(async () => (await api(page, 'workspaces/' + id)).files.some((file: { value: string }) =>
+    file.value.includes('检查失败后原页面继续可编辑'))).toBe(true)
 })

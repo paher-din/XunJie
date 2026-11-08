@@ -6,7 +6,7 @@ import { StorageError, type OwnedStorage, type OwnedTransaction, type Migration 
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { workViewSchema } from '@xunjie/contracts/learning-data';
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data';
-import { componentBindingSchema, acceptsState, componentStateSchema, componentStateName, componentStateMediaType, componentInstanceId, matchesComponentState } from '@xunjie/contracts/components';
+import { componentBindingSchema, acceptsState, componentStateSchema, componentStateName, componentStateMediaType, componentInstanceId, matchesComponentState, type StateShape } from '@xunjie/contracts/components';
 import { teachingArtifactPublishSchema, teachingArtifactRevisionSchema, teachingArtifactCandidateSchema, teachingArtifactSchema,
   teachingArtifactReceiptSchema, teachingArtifactCheckSchema, teachingArtifactAdoptSchema, teachingArtifactShelfSchema, teachingArtifactOriginSchema, type TeachingArtifactOrigin, type TeachingArtifactPublish,
   type TeachingArtifactRevision, type TeachingArtifactCandidate, type TeachingArtifactReceipt } from '@xunjie/contracts/teaching-artifacts';
@@ -25,6 +25,8 @@ export const teachingArtifactMigration: Migration = { version: 25, name: 'activi
 const hash = (value: Uint8Array | string) => createHash('sha256').update(value).digest('hex');
 const fingerprint = canonicalDigest;
 export type TrustedArtifactPublish = { origin: TeachingArtifactOrigin; assertDispatch(): Promise<void> };
+export type ArtifactAdoptionGuard = (identity: SpaceIdentity, activityId: string, origin: TeachingArtifactOrigin,
+  candidate: Pick<TeachingArtifactCandidate, 'artifactId' | 'revisionId' | 'candidateId'>) => Promise<void>;
 export const artifactKey = (artifactId: string) => `artifact-${artifactId}`;
 function render(payload: TeachingArtifactRevision['payload']) {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><style>${payload.css.replace(/<\/style/gi, '<\\/style')}</style></head><body>${payload.html}<script>${payload.javascript.replace(/<\/script/gi, '<\\/script')}</script></body></html>`;
@@ -41,7 +43,7 @@ function checks(payload: TeachingArtifactRevision['payload'], activity: Learning
     { code: 'browser-roundtrip', passed: false, reason: 'Awaiting isolated browser load and state roundtrip' }];
 }
 export function createTeachingArtifacts(storage: OwnedStorage,
-  open: (identity: SpaceIdentity, activityId: string) => Promise<LearningActivity>) {
+  open: (identity: SpaceIdentity, activityId: string) => Promise<LearningActivity>, assertAdoption?: ArtifactAdoptionGuard) {
   async function writable(identity: SpaceIdentity, activityId: string) {
     const activity = await open(identity, activityId);
     if (activity.status !== 'open') throw new StorageError('forbidden');
@@ -179,6 +181,11 @@ export function createTeachingArtifacts(storage: OwnedStorage,
     const fixed = await revision(identity, activityId, artifact.artifactId, proposed.revisionId);
     if (proposed.status !== 'adoptable' || artifact.activeRevisionId !== input.expectedRevisionId
       || artifact.activeRevisionId !== null && fixed.parentRevisionId !== input.expectedRevisionId) throw new StorageError('conflict');
+    // Only the retained publication supplies the Run/Command association, never the student's request.
+    if (fixed.origin) {
+      if (!assertAdoption) throw new StorageError('unavailable');
+      await assertAdoption(identity, activityId, fixed.origin, proposed);
+    }
     await resource(identity, activityId, artifact.artifactId, fixed.revisionId);
     const { rows: [head] } = await storage.read('SELECT revision,files FROM work_heads WHERE activity_id=$1', [activityId]);
     if (Number(head?.revision ?? 0) !== input.expectedWorkRevision) throw new StorageError('conflict');
@@ -249,6 +256,9 @@ export function createTeachingArtifacts(storage: OwnedStorage,
         candidateId: input.candidateId, kind: 'adopt', outcome: compatible ? 'adopted' : 'forked', workRevision, contentId,
         relatedArtifactId: compatible ? null : artifact.artifactId, reason: compatible ? null : '旧页面与输入已保留，新版使用独立实例。' });
       await tx.query('INSERT INTO teaching_artifact_receipts VALUES($1,$2,$3)', [input.requestId, activityId, JSON.stringify(result)]);
+      // A check before resource I/O is only admission. Re-read the original Run after all
+      // awaited work so Stop during state preparation cannot commit a new active revision.
+      if (fixed.origin) await assertAdoption!(identity, activityId, fixed.origin, proposed);
       return result;
     });
     return teachingArtifactReceiptSchema.parse(saved.result);
@@ -322,6 +332,17 @@ export async function validateTeachingArtifacts(storage: OwnedStorage) {
   }
 }
 
+/** Old views may still accept input while adoption waits, so the new shape must accept their entire domain. */
+function preservesInputShape(before: StateShape, after: StateShape): boolean {
+  if (before.type !== after.type) return false;
+  if (before.type === 'string') return after.type === 'string' && after.maxLength >= before.maxLength;
+  if (before.type === 'array') return after.type === 'array' && after.maxItems >= before.maxItems && preservesInputShape(before.items, after.items);
+  if (before.type === 'object') return after.type === 'object'
+    && Object.keys(before.properties).length === Object.keys(after.properties).length
+    && Object.entries(before.properties).every(([key, shape]) => !!after.properties[key] && preservesInputShape(shape, after.properties[key]));
+  return true;
+}
+
 /** All old fields need a one-to-one mapping with unchanged meaning. No generated migration code runs. */
 function preserveArtifactState(parent: TeachingArtifactRevision, next: TeachingArtifactRevision, value: unknown): unknown | undefined {
   const before = parent.payload, after = next.payload;
@@ -333,7 +354,9 @@ function preserveArtifactState(parent: TeachingArtifactRevision, next: TeachingA
   for (const field of before.semanticFields) {
     const mapped = next.mapping.find(m => m.from === field.key)?.to ?? field.key;
     const target = after.semanticFields.find(f => f.key === mapped), shape = after.stateShape.properties[mapped];
-    if (!target || target.meaning !== field.meaning || !shape || used.has(mapped) || !acceptsState(shape, state[field.key])) return undefined;
+    const previousShape = before.stateShape.properties[field.key];
+    if (!target || target.meaning !== field.meaning || !shape || !previousShape || used.has(mapped)
+      || !preservesInputShape(previousShape, shape) || !acceptsState(shape, state[field.key])) return undefined;
     used.add(mapped); Object.defineProperty(result, mapped, { value: state[field.key], enumerable: true, writable: true, configurable: true });
   }
   return acceptsState(after.stateShape, result) ? result : undefined;

@@ -23,7 +23,7 @@ export function artifactViewDocument(value: unknown, expectedDigest: string | nu
   });})();`;
   const defaults = '<meta name="viewport" content="width=device-width,initial-scale=1"><style>'
     + 'body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}'
-    + 'h1,h2,h3{font-weight:600;font-family:"LXGW WenKai","Kaiti SC",STKaiti,serif}h1{font-size:28px}h2,h3{font-size:17px}button,input,textarea,select{font:inherit;color:inherit}input,textarea,select{background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:6px 8px}'
+    + 'h1,h2,h3{font-weight:600;font-family:"LXGW WenKai","Kaiti SC",STKaiti,serif}h1{font-size:28px}h2,h3{font-size:17px}h3{font-weight:400}button,input,textarea,select{font:inherit;color:inherit}input,textarea,select{background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:6px 8px}'
     + 'button{min-height:32px;font-size:13px;background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:4px 16px;cursor:pointer}'
     + ':focus-visible{outline:2px solid var(--accent);outline-offset:2px}*{box-sizing:border-box}</style>';
   return document.slice(0, start).replace('<head>', '<head>' + defaults) + '<script>' + loader + '</script></body></html>';
