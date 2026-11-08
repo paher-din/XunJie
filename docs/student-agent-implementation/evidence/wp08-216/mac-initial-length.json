@@ -1,0 +1,128 @@
+{
+  "issue": 202,
+  "label": "wp08-216-mac-real-discovery",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "headed": true,
+  "model": "deepseek-flash",
+  "startedAt": "2026-11-07T19:58:19.239Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T19:58:19.242Z",
+      "result": {
+        "endpoint": "http://127.0.0.1:60228",
+        "releaseId": "19200000-0000-4000-8000-000000000205",
+        "definitionDigest": "6f9c2da7c7deffa13904692866a23f071948b8d900533ccfa6a9fdbfb102169e"
+      },
+      "elapsedMs": 17337
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T19:58:36.585Z",
+      "result": {
+        "requestId": "380c6572-d947-43a5-acbc-adac810ea73e",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "451437ac575c152b408c4acbc344178fc4f2fef0bc89eb897967bd882a7a44f8",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 3468
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T19:58:40.056Z",
+      "result": {
+        "requestId": "1efafb21-50ea-4e3d-9a47-749ce0ab998d",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 5025
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T19:58:45.082Z",
+      "result": {
+        "requestId": "8338c551-8b06-4890-8091-e2845b88499e",
+        "referenceId": "f0960009-ee10-4694-b723-ab303562a5ba",
+        "index": 2079
+      },
+      "elapsedMs": 4554
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "failed",
+      "startedAt": "2026-11-07T19:58:49.636Z",
+      "error": "Agent failed: length",
+      "elapsedMs": 47765
+    }
+  ],
+  "modelCalls": [],
+  "workers": [],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "status": "failed",
+  "product": {
+    "candidate": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-darwin-arm64",
+    "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-211-ime-ijCw8l",
+    "productNodeVersion": "24.21.0",
+    "distributionSha256": "57a007f2c3b33700f3354eaca03f5e94f792cc802b397e0c6c639bea8dec7cb7"
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "fe2356c6-852c-487c-85a5-16e7b64fb50c",
+  "providerTransport": "holder-local byte relay to TLS-verified api.deepseek.com",
+  "providerRequests": [
+    {
+      "startedAt": "2026-11-07T19:58:52.639Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 8706
+    },
+    {
+      "startedAt": "2026-11-07T19:59:04.989Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1154
+    },
+    {
+      "startedAt": "2026-11-07T19:59:07.671Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1121
+    },
+    {
+      "startedAt": "2026-11-07T19:59:20.226Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 16261
+    }
+  ],
+  "providerConfiguration": {
+    "connectionId": "f5c1e702-0ec1-4038-bdc2-7293c810a727",
+    "protocol": "chat-completions",
+    "modelId": "deepseek-flash",
+    "baseUrl": "http://127.0.0.1:60650/v1"
+  },
+  "failure": "Agent failed: length",
+  "failureStack": "Error: Agent failed: length\n    at file:///Users/robertwu/.codex/worktrees/164f/XunJie/scripts/probe-alu-tutoring.mjs:215:69\n    at expect.poll.message (file:///Users/robertwu/.codex/worktrees/164f/XunJie/scripts/probe-alu-tutoring.mjs:49:71)\n    at async /Users/robertwu/.codex/worktrees/164f/XunJie/node_modules/playwright/lib/matchers/expect.js:13397:19\n    at async raceAgainstDeadline (/Users/robertwu/.codex/worktrees/164f/XunJie/node_modules/playwright-core/lib/coreBundle.js:4741:10)\n    at async pollAgainstDeadline (/Users/robertwu/.codex/worktrees/164f/XunJie/node_modules/playwright-core/lib/coreBundle.js:4762:22)\n    at async invokePollMatcher (/Users/robertwu/.codex/worktrees/164f/XunJie/node_modules/playwright/lib/matchers/expect.js:13394:18)\n    at async until (file:///Users/robertwu/.codex/worktrees/164f/XunJie/scripts/probe-alu-tutoring.mjs:49:3)",
+  "completedAt": "2026-11-07T19:59:40.181Z"
+}

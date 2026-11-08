@@ -178,7 +178,8 @@ for (const lost of ['close', 'create']) test(`an assembly-change ${lost} receipt
     const event = (await first.events(c.identity, activity.activityId)).find(item => item.kind === 'context-assembled');
     const originalSnapshot = await first.snapshot(c.identity, activity.activityId, event.body.snapshotId);
     let definition = structuredClone(originalSnapshot.resolvedAgent.definition);
-    definition.version = 2; definition.prompt.runtime += '\nASSEMBLY_RULE_V2';
+    const receivedVersion = definition.version + 1;
+    definition.version = receivedVersion; definition.prompt.runtime += '\nASSEMBLY_RULE_RECEIVED';
     first.close(); await first.drain();
     const receipts = { close: [], create: [] };
     let drop = true;
@@ -196,7 +197,7 @@ for (const lost of ['close', 'create']) test(`an assembly-change ${lost} receipt
     const input = await c.send('继续同一活动的新问题。', undefined, [], interrupted);
     await until(async () => (await interrupted.run(c.identity, activity.activityId, input.runId)).state === 'paused', 'The assembly transition loses its receipt.');
     interrupted.close(); await interrupted.drain();
-    definition = { ...definition, version: 3, prompt: { ...definition.prompt, runtime: 'ASSEMBLY_RULE_V3' } };
+    definition = { ...definition, version: receivedVersion + 1, prompt: { ...definition.prompt, runtime: 'ASSEMBLY_RULE_LATER' } };
     const resumed = c.makeAgent({ models, definition: async () => definition });
     await resumed.continueRun(c.identity, activity.activityId, input.runId, { version: 2, requestId: randomUUID(), inputs: [] });
     const completed = await until(async () => {
@@ -204,10 +205,10 @@ for (const lost of ['close', 'create']) test(`an assembly-change ${lost} receipt
     }, 'The received assembly completes without being replaced.');
     assert.equal(receipts.close.length, 1); assert.equal(receipts.create.length, 1);
     assert.equal(completed.segmentId, receipts.create[0].segmentId);
-    assert.match(JSON.stringify(f.payloads.at(-1)), /ASSEMBLY_RULE_V2/); assert.doesNotMatch(JSON.stringify(f.payloads.at(-1)), /ASSEMBLY_RULE_V3/);
+    assert.match(JSON.stringify(f.payloads.at(-1)), /ASSEMBLY_RULE_RECEIVED/); assert.doesNotMatch(JSON.stringify(f.payloads.at(-1)), /ASSEMBLY_RULE_LATER/);
     const assembled = (await resumed.events(c.identity, activity.activityId)).filter(item => item.kind === 'context-assembled').at(-1);
     const snapshot = await resumed.snapshot(c.identity, activity.activityId, assembled.body.snapshotId);
-    assert.equal(snapshot.resolvedAgent.definition.version, 2, 'The recorded assembly must match the actual restored create body.');
+    assert.equal(snapshot.resolvedAgent.definition.version, receivedVersion, 'The recorded assembly must match the actual restored create body.');
     assert.equal((await resumed.events(c.identity, activity.activityId)).filter(item => item.kind.startsWith('model-switch-')).length, 0);
     assert.equal(f.payloads.length, 2);
   } finally { await f.close(); }

@@ -16,6 +16,7 @@ export type AgentDefinition = z.infer<typeof agentDefinitionSchema>;
 
 export const agentToolBindingSchema = z.object({
   bindingId: digest, modelName: z.string(), definition: modelToolSchema,
+  purpose: z.string().optional(), resultSchema: z.record(z.string(), z.unknown()).optional(),
   source: z.object({ kind: z.enum(['platform', 'course']), sourceId: z.string(), version: z.string(),
     contentDigest: digest, releaseId: z.uuid().optional(), componentKey: z.string().optional() }).strict(),
   executor: z.object({ executorId: z.string(), toolName: z.string(), version: z.string() }).strict(),

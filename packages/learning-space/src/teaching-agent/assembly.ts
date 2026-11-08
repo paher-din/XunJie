@@ -6,6 +6,8 @@ import { buildContext, platformRules, runRules, type ContextMessage } from './co
 import { canonicalDigest, operationId } from './identity.js';
 import { studentAskDefinition } from './student-questions.js';
 import { platformToolContribution } from './tool-contributions.js';
+import { readToolResultDefinition } from './tool-results.js';
+import { discoveryContributions, contributionId, initiallyVisible, type LoadedToolSelection } from './tool-discovery.js';
 
 export const teachingAssemblyMigration: Migration = { version: 10, name: 'immutable-agent-assembly', sql: `
   CREATE TABLE teaching_agent_definitions(definition_id text NOT NULL,version integer NOT NULL,
@@ -18,10 +20,10 @@ export const teachingAssemblyMigration: Migration = { version: 10, name: 'immuta
 ` };
 
 export const learningAgentDefinition: AgentDefinition = agentDefinitionSchema.parse({
-  definitionId: 'xunjie.learning', version: 1, purpose: '围绕学生当前问题进行课程辅导或自主学习',
+  definitionId: 'xunjie.learning', version: 2, purpose: '围绕学生当前问题进行课程辅导或自主学习',
   prompt: { platform: platformRules, runtime: runRules },
   capabilities: [{ sourceId: 'platform.student', required: true }, { sourceId: 'platform.learning', required: false },
-    { sourceId: 'course:*', required: false }],
+    { sourceId: 'course:*', required: false }, { sourceId: 'platform.tools', required: true }],
   contextPolicy: { version: 1, maxSystemChars: 400_000, maxInputChars: 1_000_000 },
   outputContract: { kind: 'text', instructions: '回答先面对当前问题，按真实依据区分事实、推断与未知。' },
   budgetPolicy: { version: 1, retryLimit: 0 },
@@ -30,8 +32,14 @@ export const learningAgentDefinition: AgentDefinition = agentDefinitionSchema.pa
 /** Compatibility for actual owners that still implement the original tool-host contract. */
 export async function toolContributions(host: TeachingToolHost | undefined, scope: TeachingToolScope): Promise<TeachingToolContribution[]> {
   if (!host) return [];
-  if (host.contributions) return host.contributions(scope);
-  return (await host.definitions(scope)).map(definition => platformToolContribution(definition, scope));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const read = host.contributions ? host.contributions(scope)
+    : host.definitions(scope).then(definitions => definitions.map(definition => platformToolContribution(definition, scope)));
+  try {
+    return await Promise.race([read, new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new StorageError('unavailable')), 5000); timer.unref();
+    })]);
+  } finally { if (timer) clearTimeout(timer); }
 }
 
 export class TeachingAssemblyError extends Error {
@@ -40,13 +48,15 @@ export class TeachingAssemblyError extends Error {
 
 /** Shared by normal steps and explicit route switching. No persistence or model effects. */
 export async function assembleTeachingAgent(scope: TeachingToolScope, host: TeachingToolHost | undefined,
-  model: NonNullable<TeachingRun['model']>, history: ContextMessage[], definition: AgentDefinition = learningAgentDefinition) {
+  model: NonNullable<TeachingRun['model']>, history: ContextMessage[], definition: AgentDefinition = learningAgentDefinition, loaded: LoadedToolSelection[] = []) {
   definition = agentDefinitionSchema.parse(structuredClone(definition));
-  const contributions: TeachingToolContribution[] = [{ definition: studentAskDefinition,
+  const contributions: TeachingToolContribution[] = [{ definition: studentAskDefinition, purpose: studentAskDefinition.description,
+    resultSchema: { type: 'object', additionalProperties: true },
     source: { kind: 'platform', sourceId: 'platform.student', version: '1', contentDigest: canonicalDigest(studentAskDefinition) },
     executor: { executorId: 'teaching-student-questions:ask', toolName: studentAskDefinition.name, version: '1' },
     effect: 'ask', resourceScope: { identity: scope.identity, activityId: scope.activity.activityId } }];
   const unavailable: ResolvedAgent['unavailable'] = [];
+  contributions.push(...discoveryContributions(scope), ...discoveryContributions(scope, [readToolResultDefinition]));
   try { contributions.push(...await toolContributions(host, scope)); }
   catch (error) {
     if (!(error instanceof StorageError) || !['unavailable', 'missing'].includes(error.code)) throw error;
@@ -55,7 +65,14 @@ export async function assembleTeachingAgent(scope: TeachingToolScope, host: Teac
   }
   const matchesSource = (reference: string, source: string) => reference.endsWith('*')
     ? source.startsWith(reference.slice(0, -1)) : source === reference;
-  const selected = contributions.filter(item => definition.capabilities.some(ref => matchesSource(ref.sourceId, item.source.sourceId)));
+  const candidates = contributions.filter(item => definition.capabilities.some(ref => matchesSource(ref.sourceId, item.source.sourceId)));
+  if (candidates.length > 512 || Buffer.byteLength(JSON.stringify(candidates)) > 2_000_000)
+    throw new TeachingAssemblyError('catalog-capacity-exceeded', [{ sourceId: 'assembly', required: true, reason: 'catalog-limit' }]);
+  const loadedIds = new Set(loaded.map(item => item.bindingId));
+  const stale = loaded.filter(selection => !candidates.some(item => contributionId(item) === selection.bindingId));
+  const selected = candidates.filter(item => loadedIds.has(contributionId(item))
+    || initiallyVisible(item, scope, definition) && !stale.some(selection => selection.sourceId === item.source.sourceId && selection.name === item.definition.name));
+  for (const selection of stale) unavailable.push({ sourceId: selection.sourceId + ':' + selection.name, required: false, reason: 'loaded-version-unavailable' });
   for (const required of definition.capabilities) if (!selected.some(item => matchesSource(required.sourceId, item.source.sourceId))) {
     if (!unavailable.some(item => item.sourceId === required.sourceId)) unavailable.push({ ...required, reason: 'capability-missing' });
   }
@@ -64,13 +81,19 @@ export async function assembleTeachingAgent(scope: TeachingToolScope, host: Teac
     const key = item.source.sourceId + ':' + item.definition.name;
     if (keys.has(key)) throw new TeachingAssemblyError('capability-conflict', [{ sourceId: item.source.sourceId, required: true, reason: 'duplicate-definition' }]);
     keys.add(key);
-    const duplicate = selected.filter(other => other.definition.name === item.definition.name).length > 1;
+    const duplicate = candidates.filter(other => other.definition.name === item.definition.name).length > 1;
     const modelName = duplicate ? item.definition.name.slice(0, 46) + '_' + canonicalDigest(key).slice(0, 16) : item.definition.name;
     return { ...item, definition: { ...item.definition, name: modelName }, modelName, bindingId: canonicalDigest(item) };
   });
-  if (tools.length > 64) throw new TeachingAssemblyError('tool-capacity-exceeded', [{ sourceId: 'assembly', required: true, reason: 'tool-limit-64' }]);
+  if (tools.length > 64 || Buffer.byteLength(JSON.stringify(tools.map(item => item.definition))) > 24000) throw new TeachingAssemblyError('tool-capacity-exceeded', [{ sourceId: 'assembly', required: true, reason: 'tool-limit-64' }]);
   if (unavailable.some(item => item.required)) throw new TeachingAssemblyError('required-capability-unavailable', unavailable);
   const context = buildContext(scope.activity, scope.input, history, { definition });
+  if (stale.length) {
+    const notice = 'Previously loaded tool versions are unavailable; do not substitute a same-name executor. Discover and explicitly load an approved version if needed: '
+      + JSON.stringify(stale);
+    context.system += '\n\n' + notice;
+    context.layers.push({ kind: 'runtime', content: notice });
+  }
   const scopeFact = { ...scope.input.scope, ...(scope.activity.course ? { releaseId: scope.activity.course.releaseId,
     courseDigest: scope.activity.course.contentDigest, helpPolicy: scope.activity.course.helpPolicy } : {}) };
   const basis = { version: 1 as const, definition, definitionDigest: canonicalDigest(definition),
@@ -138,8 +161,8 @@ export async function validateTeachingAssemblyData(storage: OwnedStorage) {
       || !definitions.some(item => item.definition_id === resolved.definition.definitionId && item.version === resolved.definition.version
         && item.digest === resolved.definitionDigest)) throw new StorageError('corrupt');
     for (const binding of resolved.tools) {
-      const original = { definition: { ...binding.definition, name: binding.executor.toolName }, source: binding.source,
-        executor: binding.executor, effect: binding.effect, resourceScope: binding.resourceScope };
+      const { bindingId: _bindingId, modelName: _modelName, ...contribution } = binding;
+      const original = { ...contribution, definition: { ...binding.definition, name: binding.executor.toolName } };
       if (canonicalDigest(original) !== binding.bindingId || binding.modelName !== binding.definition.name) throw new StorageError('corrupt');
     }
   }

@@ -1,0 +1,10 @@
+{
+  "requestId": "385bba4e-4903-4b33-ab6e-ddb3beef0f8f",
+  "association": {
+    "runId": "b66acb1e-e328-49d6-9ad6-3f5708d84656",
+    "stepId": "b68c0ff7-e767-456c-913f-c3f720346608",
+    "commandId": "385bba4e-4903-4b33-ab6e-ddb3beef0f8f",
+    "snapshotId": "2e90331b-1df3-4767-be07-238f6444fc78"
+  },
+  "closedBeforeStart": true
+}

@@ -1,0 +1,16 @@
+✔ initial segment receipt loss and Agent restart reuse the original segment before any model dispatch (2359.723166ms)
+✔ a fenced Agent with a delayed create receipt cannot overwrite its successor or dispatch another model call (2508.838417ms)
+✔ close receipt loss resumes the fixed model switch under competing Agents without reassembly (3121.377042ms)
+✔ create receipt loss resumes the fixed model switch under competing Agents without reassembly (2368.205583ms)
+✔ a paired accepted student Wait keeps its original command, deadline and Run budget through a switch and restart (2590.70525ms)
+✔ an assembly-change close receipt loss keeps the received definition when configuration changes again (2713.151291ms)
+✔ an assembly-change create receipt loss keeps the received definition when configuration changes again (2564.407709ms)
+✔ a switch requested while the first assembly is resolving seals the segment actually reached at the boundary (2302.954458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20814.600375

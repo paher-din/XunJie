@@ -1,0 +1,366 @@
+{
+  "issue": 202,
+  "label": "wp08-216-mac-real-discovery-accepted",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "headed": true,
+  "model": "deepseek-flash",
+  "startedAt": "2026-11-07T20:13:30.951Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:13:30.957Z",
+      "result": {
+        "endpoint": "http://127.0.0.1:61768",
+        "releaseId": "19200000-0000-4000-8000-000000000205",
+        "definitionDigest": "6f9c2da7c7deffa13904692866a23f071948b8d900533ccfa6a9fdbfb102169e"
+      },
+      "elapsedMs": 21829
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:13:52.790Z",
+      "result": {
+        "requestId": "2796b9dc-0916-40ac-a8e7-bf8c6436eaa1",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "451437ac575c152b408c4acbc344178fc4f2fef0bc89eb897967bd882a7a44f8",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 4909
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:13:57.699Z",
+      "result": {
+        "requestId": "c620e8b7-4000-4079-951c-6ef2c2078334",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 5267
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:14:02.967Z",
+      "result": {
+        "requestId": "dae089b7-130c-4c75-9924-5d6f246327a7",
+        "referenceId": "4986abec-53f0-4b98-a56d-ed29a7e86f77",
+        "index": 2079
+      },
+      "elapsedMs": 4863
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:14:07.839Z",
+      "result": {
+        "runId": "e7c27913-5413-461f-8b28-52a5c375de8c",
+        "commandId": "3e45b3a2-4701-4613-9771-9a7099f9f888",
+        "originalCodeVerifiedAfterEdit": true,
+        "answerSha256": "393bbd3729d010cb54ac06eb5bfe1584e5f155229aabb8617d73bdd9815db103"
+      },
+      "elapsedMs": 48675
+    },
+    {
+      "id": "student-correction-real-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:14:56.518Z",
+      "result": {
+        "requestId": "e4bef570-1c9b-433b-bbfa-90f0c9cd679c",
+        "output": {
+          "f": "0000",
+          "cout": "1",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 2609
+    },
+    {
+      "id": "normal-input-real-agent",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:14:59.130Z",
+      "result": {
+        "runId": "7490801c-12cf-4a8c-b26c-c5595947cd90",
+        "commandId": "359ed712-4d1b-4fc4-a1ab-9d6c65e61171",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        },
+        "answerSha256": "acfad1204a742b602523f6417e62568393ff3f5c5dd3e4b92181af184c513fbb"
+      },
+      "elapsedMs": 52022
+    },
+    {
+      "id": "help-policy-with-tool-output-instructions",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:15:51.161Z",
+      "result": {
+        "runId": "d65d251a-2135-4279-9e0c-6a3880d6a037",
+        "codeUnchanged": true,
+        "studentPredictionUnchanged": true,
+        "answerSha256": "af602102009b798b92ad64e06934c0741af75685676337052f4a10428bbe078f"
+      },
+      "elapsedMs": 21625
+    },
+    {
+      "id": "daily-reopen-and-source-retention",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:16:12.787Z",
+      "result": {
+        "retainedRuns": 3,
+        "originalAgentCommands": 2
+      },
+      "elapsedMs": 3106
+    },
+    {
+      "id": "desktop-layout-and-provenance",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:16:15.894Z",
+      "result": {
+        "workerCount": 1,
+        "codeAndResourceOwner": "existing WP03/WP04",
+        "teachingEffect": "not-evaluated"
+      },
+      "elapsedMs": 429
+    }
+  ],
+  "modelCalls": [
+    {
+      "runId": "e7c27913-5413-461f-8b28-52a5c375de8c",
+      "attemptId": "34fa6f1d-9926-4ac2-8dee-17088a18eebb",
+      "snapshotId": "4c362b35-de5a-42bd-9b2e-897efef1b1e2",
+      "payloadSha256": "6cf2c237f640837205c659c93fa53a47a7460a0c1f278088c52514b84a43ddda",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "e7c27913-5413-461f-8b28-52a5c375de8c",
+      "attemptId": "ff9179f9-977f-4840-9527-508568cb0998",
+      "snapshotId": "e378f4de-ae04-426a-96c1-1c5c9a333a86",
+      "payloadSha256": "c01c024180ed976877ce2acdf89543a3f36eda9ca784a91eac6948a4c03ce937",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "e7c27913-5413-461f-8b28-52a5c375de8c",
+      "attemptId": "c3242936-d89e-4c79-a583-0c220d8e131f",
+      "snapshotId": "2acd1237-15c2-454d-b449-370e2ae77104",
+      "payloadSha256": "ca3953a3f33bee9fda2f6a6c8b0cd078014bf3534d67d4c5a4c1503fd0521980",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "e7c27913-5413-461f-8b28-52a5c375de8c",
+      "attemptId": "e0f5e2e1-f2a9-484c-a868-e30b88ca52fd",
+      "snapshotId": "9a1d2608-ab59-4ef8-a2d8-40f504d229d5",
+      "payloadSha256": "ab11cc7f99b72f423c35eb9e05ee6e4329b88294e2a2f845f56d97ba56c5d021",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "7490801c-12cf-4a8c-b26c-c5595947cd90",
+      "attemptId": "a97eab37-fadd-4bb7-87ab-cd73413c1d2f",
+      "snapshotId": "271b7ec2-2d18-481a-a66e-55387f72c472",
+      "payloadSha256": "e4628bb5df923640c9cb25d074dfd317b82b1e3fdfcb91e151cde6890db1d78f",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "7490801c-12cf-4a8c-b26c-c5595947cd90",
+      "attemptId": "f97f6bf0-7c05-4b66-892b-ec62831869e8",
+      "snapshotId": "049e2f49-84ee-49af-bbfc-784016b8ad1b",
+      "payloadSha256": "426519208cbe38e308282bacf49f831d56bbd22d40d9aa754af214dcf6e756e1",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "7490801c-12cf-4a8c-b26c-c5595947cd90",
+      "attemptId": "83bec37a-6670-41dc-920a-8686eb5e7496",
+      "snapshotId": "f8e06467-1908-4115-8418-ab65fe721357",
+      "payloadSha256": "d622bfa1ff7452ddecf412d1ec0d74eecbb08c8e43b43cd6e0d07e4d6d57feb5",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "7490801c-12cf-4a8c-b26c-c5595947cd90",
+      "attemptId": "ba1e13fc-d147-4865-a6b8-a6ee7fbfaa3f",
+      "snapshotId": "c7b7bba2-0c7c-4a36-8e09-0903726e47e3",
+      "payloadSha256": "7ca1bd56038460ccb721a46cab506851c77e28eb60e2c925ba76d063a84a1f7b",
+      "model": {
+        "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "deepseek-flash",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    }
+  ],
+  "workers": [
+    "http://127.0.0.1:61768/assets/worker-BFqxMnuA.js"
+  ],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "status": "passed",
+  "product": {
+    "candidate": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-darwin-arm64",
+    "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-211-ime-pEqaCb",
+    "productNodeVersion": "24.21.0",
+    "distributionSha256": "57a007f2c3b33700f3354eaca03f5e94f792cc802b397e0c6c639bea8dec7cb7"
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "b27feab4-7846-4c26-9cdb-eaf352b80547",
+  "providerTransport": "holder-local byte relay to TLS-verified api.deepseek.com",
+  "providerRequests": [
+    {
+      "startedAt": "2026-11-07T20:14:10.728Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 3274
+    },
+    {
+      "startedAt": "2026-11-07T20:14:19.331Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1529
+    },
+    {
+      "startedAt": "2026-11-07T20:14:22.160Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1186
+    },
+    {
+      "startedAt": "2026-11-07T20:14:37.636Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 15602
+    },
+    {
+      "startedAt": "2026-11-07T20:15:03.497Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 5685
+    },
+    {
+      "startedAt": "2026-11-07T20:15:12.203Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1176
+    },
+    {
+      "startedAt": "2026-11-07T20:15:14.769Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 1026
+    },
+    {
+      "startedAt": "2026-11-07T20:15:34.835Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 12174
+    },
+    {
+      "startedAt": "2026-11-07T20:15:55.209Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 2348
+    },
+    {
+      "startedAt": "2026-11-07T20:16:00.404Z",
+      "status": 200,
+      "tlsVerified": true,
+      "elapsedMs": 9526
+    }
+  ],
+  "providerConfiguration": {
+    "connectionId": "f7b9cc5e-2431-4faa-bea3-a9d50774c7f9",
+    "protocol": "chat-completions",
+    "modelId": "deepseek-flash",
+    "baseUrl": "http://127.0.0.1:62196/v1",
+    "limits": {
+      "maxOutputTokens": 4096,
+      "timeoutMs": 30000,
+      "maxGenerations": 24,
+      "retries": 0
+    }
+  },
+  "origins": [
+    "http://127.0.0.1:61768"
+  ],
+  "completedAt": "2026-11-07T20:16:18.715Z"
+}

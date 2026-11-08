@@ -1,0 +1,33 @@
+{
+  "issue": 216,
+  "status": "passed",
+  "ownedProcessesRemaining": 0,
+  "directoryRemoved": true,
+  "scheduledTaskRemoved": true,
+  "firewallRuleRemoved": true,
+  "completedAt": "2026-11-07T20:05:56.1200083Z",
+  "localRemoved": [
+    "windows-payload.tgz",
+    "windows-results.tgz",
+    "windows-received",
+    "windows-attempt1",
+    "windows-attempt2",
+    "cross-tls"
+  ],
+  "providerCredentialScan": "passed",
+  "physicalScreenshotsInspected": true,
+  "sharedCandidatesPreservedForMainAgent": true,
+  "smallExecutionScriptsAndRawReportsRetainedForReview": true,
+  "finalReadonlyRecheck": {
+    "checkedAt": "2026-11-07T20:08:21.0980393Z",
+    "directoryExists": false,
+    "scheduledTaskExists": false,
+    "firewallRuleExists": false,
+    "ownedProcessesRemaining": 0,
+    "listener38266": false,
+    "localTestTlsDirectoryExists": false,
+    "localTransferArchivesExist": false,
+    "sharedMacAndWindowsCandidatesPreserved": true,
+    "otherSessionLocksUntouched": true
+  }
+}

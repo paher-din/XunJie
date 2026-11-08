@@ -38,6 +38,7 @@
 | WP07 与已合入 main 的最终 WP04 整合、组合回归及清理 | [合并与复验](wp07-main-integration.md) |
 | WP08 的能力装配、独立 Skills、上下文压缩、记忆读取及 PDF 资料来源；MCP/Plugin 暂缓 | [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) |
 | WP08 现有学习对话的版本化能力装配、固定上下文与持久换段 | [#215 实现与验收](wp08-215-versioned-assembly.md) · [实际验收证据](evidence/wp08-215/README.md) |
+| WP08 平台与课程工具的按需发现、固定加载、大结果原件与范围读取 | [#216 实现与验收](wp08-216-tool-discovery.md) · [实际验收证据](evidence/wp08-216/README.md) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |

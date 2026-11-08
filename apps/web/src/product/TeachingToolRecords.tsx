@@ -17,6 +17,7 @@ const stateLabels = {
 }
 const toolLabels: Record<string, string> = {
   read_work: '读取作品', read_reference: '读取引用', read_material: '读取材料', read_result: '读取结果',
+  discover_tools: '查找工具', load_tools: '使用工具', read_tool_result: '继续读取结果',
   course_operation: '课程操作', execution_query: '核对执行', execution_stop: '停止执行',
 }
 const sourceLabels: Record<string, string> = {
@@ -26,6 +27,7 @@ const sourceLabels: Record<string, string> = {
   missing: '固定来源缺失。', corrupt: '固定来源无法通过内容校验。', unavailable: '固定来源暂不可用。',
 }
 const fieldLabels: Record<string, string> = {
+  capability: '工具来源与版本', source: '来源', sourceId: '来源标识', version: '版本',
   parameters: '参数', groupColumn: '分组列', valueColumn: '数值列', aggregate: '聚合方式',
   table: '表格', columns: '列', rows: '行', groups: '分组', key: '分组名', value: '内容', file: '固定作品',
   count: '数量', sum: '合计', mean: '平均值', min: '最小值', max: '最大值', rejected: '未参与计算的行',

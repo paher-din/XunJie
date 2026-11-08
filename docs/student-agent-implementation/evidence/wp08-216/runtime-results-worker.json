@@ -1,0 +1,16 @@
+{
+  "issue": 216,
+  "status": "passed",
+  "reportedBy": "01a1b762-fc73-7112-b5ff-cb8d703ff09b",
+  "method": "subagent execution record; final test session 82528; not rerun by main agent",
+  "file": "apps/server/tests/teaching-agent.tool-results.runtime.test.mjs",
+  "cases": 7,
+  "passed": 7,
+  "durationMs": 70020,
+  "exitCode": 0,
+  "additionalVersionCase": {
+    "passed": 1,
+    "total": 1
+  },
+  "rawLogPersisted": false
+}

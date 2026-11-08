@@ -1,0 +1,288 @@
+{
+  "measuredAt": "2026-11-07T19:21:33.335Z",
+  "model": "deepseek-flash",
+  "capability": "discover-load-read_material",
+  "limits": {
+    "maxGenerations": 12,
+    "maxPerProtocol": 4,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 4,
+      "tools": [
+        {
+          "name": "discover_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "load_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "read_material",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 13629,
+        "outputTokens": 1153,
+        "totalTokens": 14782,
+        "cachedTokens": 9344,
+        "reasoningTokens": 488
+      },
+      "answerSha256": "c6b6bec2702d1d1829e548159ba300d91cd5cc85ca93fca4cb96fceddef2c123",
+      "assemblies": [
+        {
+          "resolvedId": "34fa71c9-bd2e-42c8-92e8-b6f170e83199",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "12c5957f-a92c-466d-b718-95837da3bc69",
+          "payloadSha256": "e0ad40b07fda5de9f851e66070558e131526f369a29ed2bd0cd7fe79fb3583b5",
+          "contextManifestId": "ad391f98-8a2a-44fe-8102-5910df36f3ac",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "34fa71c9-bd2e-42c8-92e8-b6f170e83199",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "5d171b01-8315-4248-b98b-e396a5dd174b",
+          "payloadSha256": "52f6683523a8a8839037bcc6f938a8338ce371481135026c927c2a6343cf6275",
+          "contextManifestId": "3b3d230f-97f6-49c2-b077-c75515551509",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "35568979-6003-4550-8f8d-4e842923f780",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "4fae3cc9-702e-4391-88d0-ed1eb1757295",
+          "payloadSha256": "9bca79addea462f6f883fcd20c6dd1952dd5b512a1e7ab2e1867b86bab9a84d5",
+          "contextManifestId": "99ebcff5-a070-47fd-9b22-15e0c1041cc0",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "35568979-6003-4550-8f8d-4e842923f780",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "f7cd8243-4778-4252-a2ac-922d79772320",
+          "payloadSha256": "06cd84576fb08aefafa4d4cd86843b07d17cc15d7d84e7a4eac3a6cc138baf60",
+          "contextManifestId": "1ebb248f-07f5-4621-8385-49d384befe1e",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ],
+      "discovery": {
+        "materialId": "8bcce83c-315b-46ba-9793-7146e245e1c5",
+        "snapshotDigests": [
+          "e0ad40b07fda5de9f851e66070558e131526f369a29ed2bd0cd7fe79fb3583b5",
+          "52f6683523a8a8839037bcc6f938a8338ce371481135026c927c2a6343cf6275",
+          "9bca79addea462f6f883fcd20c6dd1952dd5b512a1e7ab2e1867b86bab9a84d5",
+          "06cd84576fb08aefafa4d4cd86843b07d17cc15d7d84e7a4eac3a6cc138baf60"
+        ],
+        "newDefinition": true,
+        "segmentChanged": true
+      }
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "completed",
+      "modelRequests": 4,
+      "tools": [
+        {
+          "name": "discover_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "load_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "read_material",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 13569,
+        "outputTokens": 1172,
+        "totalTokens": 14741,
+        "cachedTokens": 9600,
+        "reasoningTokens": 439
+      },
+      "answerSha256": "95b247bb3d28c00a1175c8cba9abd9c85cdb8159042f1d3a65a5288b26e6c1b4",
+      "assemblies": [
+        {
+          "resolvedId": "160936df-83ad-44b3-929a-53ef0b1ea4a7",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "44b3e57a-94f4-4921-ab7a-9ee9da4545c0",
+          "payloadSha256": "0302b05eaf7286592eb19c20691d9f1277b7fd422fcf988225b28a8091db0da3",
+          "contextManifestId": "8afbdeea-90b5-47cc-b346-7ab3d1f3552b",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "160936df-83ad-44b3-929a-53ef0b1ea4a7",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "67489d9a-3765-4e23-9601-dd62fc0669e8",
+          "payloadSha256": "167699ff3f60b943db60754c0fc603b2a25dd917d348a915c0c4bf44d675f3e2",
+          "contextManifestId": "e51b1ab5-9bc4-4f03-83ac-c5196d7ce0b3",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "ac1c6e19-dd7f-4e9e-96cc-4689e06e2967",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "7a2bb227-89db-4dc4-8a5b-00bdc83ead04",
+          "payloadSha256": "509d38fedec1631d536e8f25b0ca70c11eeef261f92c771edc84a0028d4ca759",
+          "contextManifestId": "8fde1730-7b7f-4589-ba9b-2a761da6b9bc",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "ac1c6e19-dd7f-4e9e-96cc-4689e06e2967",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "77753e08-d214-45ab-b1b6-47d062d3fae6",
+          "payloadSha256": "ba8717fb0f9cc94f653396002c5d91c68edd936a4effe1104eede11838fcd7dd",
+          "contextManifestId": "16258727-b537-4947-8068-98ecd28844ac",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ],
+      "discovery": {
+        "materialId": "81f7b389-4887-4a5c-a05c-050c25a6dd6a",
+        "snapshotDigests": [
+          "0302b05eaf7286592eb19c20691d9f1277b7fd422fcf988225b28a8091db0da3",
+          "167699ff3f60b943db60754c0fc603b2a25dd917d348a915c0c4bf44d675f3e2",
+          "509d38fedec1631d536e8f25b0ca70c11eeef261f92c771edc84a0028d4ca759",
+          "ba8717fb0f9cc94f653396002c5d91c68edd936a4effe1104eede11838fcd7dd"
+        ],
+        "newDefinition": true,
+        "segmentChanged": true
+      }
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "rate-limited",
+      "modelRequests": 4,
+      "tools": [
+        {
+          "name": "discover_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "load_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "discover_tools",
+          "outcome": "completed"
+        },
+        {
+          "name": "load_tools",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "partial"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "generations": 12,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1829,
+      "payloadSha256": "e0ad40b07fda5de9f851e66070558e131526f369a29ed2bd0cd7fe79fb3583b5"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1035,
+      "payloadSha256": "52f6683523a8a8839037bcc6f938a8338ce371481135026c927c2a6343cf6275"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 2879,
+      "payloadSha256": "9bca79addea462f6f883fcd20c6dd1952dd5b512a1e7ab2e1867b86bab9a84d5"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 4117,
+      "payloadSha256": "06cd84576fb08aefafa4d4cd86843b07d17cc15d7d84e7a4eac3a6cc138baf60"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 1490,
+      "payloadSha256": "0302b05eaf7286592eb19c20691d9f1277b7fd422fcf988225b28a8091db0da3"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 692,
+      "payloadSha256": "167699ff3f60b943db60754c0fc603b2a25dd917d348a915c0c4bf44d675f3e2"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 2278,
+      "payloadSha256": "509d38fedec1631d536e8f25b0ca70c11eeef261f92c771edc84a0028d4ca759"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 4106,
+      "payloadSha256": "ba8717fb0f9cc94f653396002c5d91c68edd936a4effe1104eede11838fcd7dd"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1071,
+      "payloadSha256": "f9c86d5a3847ca7a59110343ff9faedaa1e1a5b9c8fa56a019e5df4f2377706a"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1057,
+      "payloadSha256": "9b5478c9255ee78f1443b1b14e08ca446bd37bbfbcb9a4f1befd48193e40e0ae"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 3343,
+      "payloadSha256": "601e1f230efa8061baa2e47986d95190783d68ca6af700f1cc6c1544a0e98d97"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 853,
+      "payloadSha256": "7c1854e69dbad3678e411b2efff85c78ac8a480f4276c46f546cc0ce3b1c22d5"
+    }
+  ]
+}
