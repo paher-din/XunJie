@@ -133,6 +133,26 @@ test('maintenance retains an interrupted unexecuted input, while incomplete effe
   assert.equal(effects, 1);
 });
 
+test('maintenance retains an owner-classified incomplete read reply without replaying its handler', { timeout: 60000 }, async t => {
+  const f = await fixture(t), storage = await f.open(), actor = source();
+  let uploads = 0, reads = 0;
+  const boundary = new Proxy(storage, { get(target, property) {
+    if (property === 'stageResource') return input => {
+      if (++uploads === 2) throw new StorageError('unavailable');
+      return target.stageResource(input);
+    };
+    const member = Reflect.get(target, property);
+    return typeof member === 'function' ? member.bind(target) : member;
+  } });
+  const channel = createChunkChannel(boundary), handler = channel.wrap(input => { reads++; return input; });
+  const client = createChunkClient(input => handler(input, actor)), id = randomUUID();
+  await assert.rejects(client({ operation: 'activity' }, { transferId: id }), { code: 'commit-unknown' });
+  await assert.rejects(channel.validate(), { code: 'resource-busy' });
+  await createChunkChannel(await f.open()).validate(input => input.operation === 'activity');
+  assert.equal((await handler(wire('metadata', id), actor)).state, 'unknown');
+  assert.equal(reads, 1);
+});
+
 test('source admission enforces count and retained bytes; acknowledgement frees capacity, and full input hash is mandatory', { timeout: 60000 }, async t => {
   const f = await fixture(t), storage = await f.open(), actor = source();
   let effects = 0;

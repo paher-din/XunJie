@@ -19,8 +19,8 @@ import { createRuntimeRecoveryOwner, createRuntimeRecoveryTarget } from '../../.
 
 const exec = promisify(execFile);
 const checksum = bytes => createHash('sha256').update(bytes).digest('hex');
-async function fixture(t, effect = input => ({ accepted: input.args }), readOnly) {
-  const capability = readOnly ? 'teaching.agent' : 'teaching.dependencies';
+async function fixture(t, effect = input => ({ accepted: input.args }), readOnly,
+  capability = readOnly ? 'teaching.agent' : 'teaching.dependencies') {
   const pg = await nativeFixture(), root = await mkdtemp(join(tmpdir(), 'xj-transfer-client-'));
   const serverRoot = join(pg.root, 'receiver'); await mkdir(serverRoot);
   const migrations = [{ version: 1, name: 'chunks', sql: chunkChannelMigrationSql }];
@@ -115,13 +115,14 @@ test('formal Agent connection reuses one large transfer through 20 lost begin re
   await assert.rejects(f.client()({ ...renewed, args: [{ ...input.args[0], args: [{ ...input.args[0].args[0], text: 'different fixed input' }] }] }), { code: 'identity-conflict' });
 });
 
-test('an interrupted conversation query retires only its original transport and reopens without replaying effects', { timeout: 60000 }, async t => {
+for (const [capability, operation] of [['teaching.agent', 'conversation'], ['teaching.dependencies', 'activity']])
+test(`an interrupted ${operation} query retires only its original transport and reopens without replaying effects`, { timeout: 60000 }, async t => {
   let interrupted = true;
   const f = await fixture(t, input => {
-    if (input.operation === 'conversation' && interrupted) throw new Error('query interrupted by owner restart');
+    if (input.operation === operation && interrupted) throw new Error('query interrupted by owner restart');
     return { accepted: input.args };
-  }, input => input.operation === 'conversation');
-  const input = { version: 1, operation: 'conversation', identity: randomUUID(), activityId: randomUUID(), args: [0] };
+  }, input => input.operation === operation, capability);
+  const input = { version: 1, operation, identity: randomUUID(), activityId: randomUUID(), args: [0] };
   await assert.rejects(f.client()(input), { code: 'commit-unknown' });
   const [original] = await agentTransferEntries(f.root);
   interrupted = false;

@@ -523,7 +523,8 @@ export async function createProductLearningApplication(context: {
               () => agentDependencyAuthorization.run(scopedAdmission,
                 () => agentDependencyFreshAuthorization.run(admitted.guard, () => dependencyService(payload))));
           } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
-        }, { successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
+        }, { readOnly: value => teachingDependencyCallSchema.parse(value).operation === 'activity',
+        successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
           && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
         authorize: async payload => {
           // Initial admission and reply/chunk reads always perform a fresh authorization.

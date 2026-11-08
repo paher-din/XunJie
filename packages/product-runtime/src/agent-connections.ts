@@ -42,6 +42,8 @@ export function createAgentConnection(root: string, connectionId: string, capabi
     // check current authority. Keeping them out of the effect journal also avoids
     // multiplying reverse authorization calls into several durable round trips.
     const operation = (payload as { operation?: string }).operation;
+    const readOnlyQuery = capability === 'teaching.agent' && operation === 'conversation'
+      || capability === 'teaching.dependencies' && operation === 'activity';
     if (['authorize', 'identityFor', 'assertCommandDispatch', 'assertModelDispatch'].includes(operation ?? ''))
       return send(payload);
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
@@ -70,7 +72,7 @@ export function createAgentConnection(root: string, connectionId: string, capabi
           // Activity and pinned model/switch receipts require current authorization.
           // Their domain IDs make rechecking an already completed operation idempotent;
           // consume the original transport before asking the domain to check again.
-          return entry.result === null && capability === 'teaching.agent' && operation === 'conversation'
+          return entry.result === null && readOnlyQuery
             ? retryQuery : entry.result;
         }
         if (entry.origin.grantId !== grantId || entry.origin.sourceInstallationId !== environment.installationId) {
@@ -88,7 +90,7 @@ export function createAgentConnection(root: string, connectionId: string, capabi
           ...(authority ? { authority } : {}), receive, acknowledge: true });
         try { return await read(); }
         catch (error) {
-          if (!recoverQuery || capability !== 'teaching.agent' || operation !== 'conversation'
+          if (!recoverQuery || !readOnlyQuery
             || !(error instanceof StorageError) || !['commit-unknown', 'conflict'].includes(error.code)) throw error;
           // The original owner reconstructs and authorizes the retained input before it may
           // retire a pure query. Effects keep their original unknown transport and never retry.

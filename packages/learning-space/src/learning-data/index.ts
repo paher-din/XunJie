@@ -9,6 +9,7 @@ import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage, Migration } from '@xunjie/storage';
 import { createActivitySchema, activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import type { CreateActivity, LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data';
+import { teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
 import { createCourseActivitySchema, courseActivityBindingSchema } from '@xunjie/contracts/courses';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
@@ -71,7 +72,10 @@ export async function validateLearningData(storage: OwnedStorage) {
   await validatePdfMaterials(storage);
   await validatePersonalMaterials(storage);
   await validateAgentPreferences(storage);
-  await createChunkChannel(storage).validate();
+  await createChunkChannel(storage).validate(value => {
+    const call = teachingDependencyCallSchema.safeParse(value);
+    return call.success && call.data.operation === 'activity';
+  });
   await validateActivityAgentRoutes(storage);
   await validateWorks(storage);
   await validateQuestionDrafts(storage);

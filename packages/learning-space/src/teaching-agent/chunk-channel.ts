@@ -322,13 +322,19 @@ export function createChunkChannel(storage: OwnedStorage) {
   /** Owner maintenance must run this before resource collection/snapshot validation.
    * Incomplete publication fails closed; it never retries an external handler or discards unknown work.
    */
-  async function validate() {
-    const { rows } = await storage.read(`SELECT p.*,t.state FROM agent_chunk_parts p JOIN agent_chunk_transfers t USING(source_key,transfer_id)
+  async function validate(readOnly?: ChunkChannelOptions['readOnly']) {
+    const { rows } = await storage.read(`SELECT p.*,t.state,t.input_bytes,t.input_sha FROM agent_chunk_parts p JOIN agent_chunk_transfers t USING(source_key,transfer_id)
       WHERE t.state<>'acknowledged'`);
     for (const part of rows) {
       // A receiving input has never claimed execution. Retain its reservation so the
       // original sender can finish it after maintenance/restore; no effect is replayed.
       if (!part.resource_id && part.state === 'receiving') continue;
+      // Keep an interrupted pure query unknown, including its incomplete reply. Its
+      // owner can authorize a fresh read after reopening; validation never invokes it.
+      if (!part.resource_id && part.state === 'unknown' && part.direction === 'reply' && readOnly) {
+        const input = await assemble(String(part.source_key), String(part.transfer_id), 'input', Number(part.input_bytes), String(part.input_sha));
+        if (readOnly(input)) continue;
+      }
       if (!part.resource_id) throw new StorageError('resource-busy');
       const bytes = await storage.readResource(String(part.resource_id));
       if (bytes.length !== part.byte_length || sha(bytes) !== part.sha256) throw new StorageError('corrupt');

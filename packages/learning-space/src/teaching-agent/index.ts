@@ -10,7 +10,7 @@ import {
   teachingAgentReceiverId, teachingContinueInputSchema, teachingConversationSchema, teachingEventSchema,
   teachingModelSwitchInputSchema, teachingModelSwitchSchema,
   teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingDispatchAuthoritySchema,
-  isRecoverableTeachingPause,
+  isRecoverableTeachingPause, teachingAgentCallSchema,
 } from '@xunjie/contracts/teaching-agent';
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot, AgentDefinition,
@@ -1213,7 +1213,10 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
   await validateTeachingSkills(storage);
   await validateTeachingSkillLoads(storage);
   await validateTeachingStudentFacts(storage);
-  await createChunkChannel(storage).validate();
+  await createChunkChannel(storage).validate(value => {
+    const call = teachingAgentCallSchema.safeParse(value);
+    return call.success && call.data.operation === 'conversation';
+  });
   await validateTeachingSegmentTransitions(storage);
   await validateTeachingDependencyBindings(storage);
   const { rows: requests } = await storage.read('SELECT * FROM teaching_requests');
