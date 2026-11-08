@@ -36,7 +36,8 @@ export function createAgentConnection(root: string, connectionId: string, capabi
     }
   };
   const chunked = createChunkClient(send);
-  const invoke = async (payload: unknown): Promise<unknown> => {
+  const retryQuery = Symbol('retry-query');
+  const invoke = async (payload: unknown, recoverQuery = true): Promise<unknown> => {
     // These pure queries have bounded replies (identity or void) and must always
     // check current authority. Keeping them out of the effect journal also avoids
     // multiplying reverse authorization calls into several durable round trips.
@@ -82,9 +83,22 @@ export function createAgentConnection(root: string, connectionId: string, capabi
               sourceServiceId: connection.sourceServiceId, sourceInstallationId: environment.installationId });
           }
         }
-        return chunked(entry.payload, { transferId: entry.transferId, durable: true, origin: entry.origin,
+        const read = () => chunked(entry.payload, { transferId: entry.transferId, durable: true, origin: entry.origin,
           ...(authority ? { authority } : {}), receive, acknowledge: true });
+        try { return await read(); }
+        catch (error) {
+          if (!recoverQuery || capability !== 'teaching.agent' || operation !== 'conversation'
+            || !(error instanceof StorageError) || !['commit-unknown', 'conflict'].includes(error.code)) throw error;
+          // The original owner reconstructs and authorizes the retained input before it may
+          // retire a pure query. Effects keep their original unknown transport and never retry.
+          const state = await send({ chunkChannel: 1, operation: 'discard-query', transferId: entry.transferId,
+            origin: entry.origin }) as { state?: string };
+          if (state.state !== 'acknowledged') return read();
+          await receive(null);
+          return retryQuery;
+        }
       });
+    if (value === retryQuery) return invoke(payload, false);
     if (recheckAuthorization) return invoke(payload);
     const error = failure.safeParse(value);
     if (error.success) throw new StorageError(error.data.error);
