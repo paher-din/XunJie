@@ -1,6 +1,6 @@
 import { ReliableStateCoordinator, LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts'
-import type { QuestionDraftSync, QuestionDraftView, QuestionReferenceInput, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
+import type { QuestionDraftSync, QuestionDraftView, QuestionReferenceInput, QuestionWorkBasis, QuestionSkill } from '@xunjie/contracts/question-drafts'
 import { DraftStore, DraftLocalCompetition, initialDraftRecord, sameDraftContent } from './draft-store'
 import type { DraftConflict, DraftContent, DraftRecord, DraftSync } from './draft-store'
 
@@ -14,7 +14,7 @@ export interface QuestionDraftTransport {
   sync(input: QuestionDraftSync): Promise<QuestionDraftView>
 }
 export interface QuestionDraftState { ready: boolean; error: string; question: string
-  references: QuestionReferenceInput[]; revision: number; revisionId: string | null
+  references: QuestionReferenceInput[]; skills?: QuestionSkill[]; revision: number; revisionId: string | null
   conflict?: DraftConflict; conflictReady: boolean }
 
 const inputReference = (reference: QuestionReferenceInput): QuestionReferenceInput => ({
@@ -23,11 +23,12 @@ const inputReference = (reference: QuestionReferenceInput): QuestionReferenceInp
   copy: reference.copy, sourceName: reference.sourceName,
 })
 const inputReferences = (references: QuestionReferenceInput[]) => references.map(inputReference)
+const skillFields = (value: { skills?: QuestionSkill[] }) => value.skills === undefined ? {} : { skills: structuredClone(value.skills) }
 const contentOf = (value: DraftContent): DraftContent => ({ question: value.question,
-  references: structuredClone(inputReferences(value.references)), bases: structuredClone(value.bases ?? []) })
+  references: structuredClone(inputReferences(value.references)), bases: structuredClone(value.bases ?? []), ...skillFields(value) })
 function pendingFor(value: DraftContent, revision: number, bases: QuestionWorkBasis[], draftId: string): DraftSync {
   return { requestId: crypto.randomUUID(), draftId, baseRevision: revision,
-    question: value.question, references: structuredClone(inputReferences(value.references)), bases: structuredClone(bases) }
+    question: value.question, references: structuredClone(inputReferences(value.references)), bases: structuredClone(bases), ...skillFields(value) }
 }
 
 function mergeBases(existing: QuestionWorkBasis[], added: QuestionWorkBasis[], references: QuestionReferenceInput[]) {
@@ -64,7 +65,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   }
   private apply(record: DraftRecord, extra: Partial<QuestionDraftState> = {}) {
     this.contentToken = record.contentToken ?? `${record.draftId}:${record.localRevision}`
-    this.notify({ question: record.question, references: structuredClone(record.references),
+    this.notify({ skills: record.skills, question: record.question, references: structuredClone(record.references),
       revision: record.remoteRevision, revisionId: record.revisionId,
       conflict: record.conflict, ...extra })
   }
@@ -76,7 +77,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       if (this.readOnly) {
         const remote = questionDraftViewSchema.parse(await this.transport.read())
         this.record = { ...initialDraftRecord(this.key, remote.draftId), remoteRevision: remote.revision,
-          revisionId: remote.revisionId, question: remote.question, references: inputReferences(remote.references) }
+          revisionId: remote.revisionId, question: remote.question, references: inputReferences(remote.references), ...skillFields(remote) }
         this.apply(this.record, { ready: true, error: '' })
         return
       }
@@ -85,7 +86,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
         if (this.stopped) throw new Error('原问题草稿未缓存在本机。')
         const remote = questionDraftViewSchema.parse(await this.transport.read())
         this.record = { ...initialDraftRecord(this.key, remote.draftId), remoteRevision: remote.revision,
-          revisionId: remote.revisionId, question: remote.question, references: inputReferences(remote.references) }
+          revisionId: remote.revisionId, question: remote.question, references: inputReferences(remote.references), ...skillFields(remote) }
         this.record = await this.store.change(this.key, existing => existing ?? this.record!)
         local = this.record
       }
@@ -100,26 +101,32 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       if (!this.disposed) {
         this.record = { ...local, conflict }
         this.notify({ ready: true, error: local.pendingRejected ? REJECTED_PENDING_TEXT : '',
-          question: conflict?.local.question ?? local.question,
+          question: conflict?.local.question ?? local.question, skills: (conflict?.local ?? local).skills,
           references: structuredClone((conflict?.local ?? local).references),
           revision: local.remoteRevision, revisionId: local.revisionId, conflict })
       }
     } catch (error) {
       if ((error as { code?: unknown }).code === 'forbidden') this.denied = true
-      if (!this.disposed) this.notify({ question: this.record.question, references: structuredClone(this.record.references),
+      if (!this.disposed) this.notify({ skills: this.record.skills, question: this.record.question, references: structuredClone(this.record.references),
         error: this.denied ? '原空间访问资格已失效，问题草稿仍保留在本机；请重新登录原空间。'
           : '暂时无法读取或保护问题草稿，内容不会被替换为空；系统会自动重试。' })
       throw error
     }
   }
-  change(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
+  change(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = [], skills = this.state.skills) {
+    this.changeContent(question, references, addedBases, skills)
+  }
+  selectSkills(skills?: QuestionSkill[]) {
+    this.changeContent(this.state.question, this.state.references, [], skills)
+  }
+  private changeContent(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[], skills?: QuestionSkill[]) {
     if (this.readOnly) throw new Error('还原校验环境中的问题草稿只读。')
     // Preserve a basis added after the last IndexedDB protection; typing must not drop it.
     const bases = mergeBases([...this.record.bases, ...this.pendingBases], addedBases, references)
     this.editEpoch++; this.dirty = true; this.contentToken = crypto.randomUUID()
     this.pendingBases = bases
-    const content = { question, references: structuredClone(inputReferences(references)), bases }
-    this.notify({ question, references: structuredClone(content.references),
+    const content = { question, references: structuredClone(inputReferences(references)), bases, ...skillFields({ skills }) }
+    this.notify({ question, skills, references: structuredClone(content.references),
       ...(this.state.conflict ? { conflict: { ...this.state.conflict, local: content } } : {}) })
   }
   private pendingBases: QuestionWorkBasis[] = []
@@ -131,11 +138,11 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   capture() {
     if (!this.state.ready || this.state.conflict) throw new Error('请先读取问题草稿并处理分歧。')
     return { token: this.contentToken, question: this.state.question, references: structuredClone(inputReferences(this.state.references)),
-      bases: structuredClone(mergeBases(this.record.bases, this.pendingBases, this.state.references)) }
+      bases: structuredClone(mergeBases(this.record.bases, this.pendingBases, this.state.references)), ...skillFields(this.state) }
   }
   acknowledge(token: string) {
     if (this.contentToken !== token || !this.state.ready || this.state.conflict) return false
-    this.change('', []); return true
+    this.changeContent('', [], [], undefined); return true
   }
   protected async persist() {
     const epoch = this.editEpoch
@@ -158,7 +165,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
           const reused = previous.pending && !previous.pendingRejected ? previous.pending : undefined
           const nextPending = reused ?? pendingFor(content, previous.remoteRevision, bases, previous.draftId)
           return { ...previous, contentToken, localRevision: previous.localRevision + 1, question: content.question,
-            references: content.references, bases,
+            references: content.references, bases, skills: content.skills,
             pending: nextPending, pendingRejected: nextPending === previous.pending ? previous.pendingRejected : false,
             ...(conflict ? { conflict: { ...conflict, local: content, at: previous.localRevision + 1 } } : {}) }
         }, { expected: this.record.localRevision, content })
@@ -209,7 +216,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
             if (!saved || saved.pending || saved.localRevision !== current?.localRevision) return saved ?? this.record
             const references = inputReferences(remote.references)
             return { ...saved, contentToken: crypto.randomUUID(), remoteRevision: remote.revision, revisionId: remote.revisionId,
-              question: remote.question, references, bases: mergeBases([], [], references),
+              question: remote.question, references, skills: remote.skills, bases: mergeBases([], [], references),
               localRevision: saved.localRevision + 1 }
           })
           if (!this.dirty) { this.record = next; this.apply(next) }
@@ -248,7 +255,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
           this.dirty = true
           const local = contentOf({ ...this.state, bases: this.pendingBases })
           this.notify({ conflict: { source: 'remote', local, other: { question: other.question,
-            references: inputReferences(other.references) }, at: this.record.localRevision,
+            references: inputReferences(other.references), ...skillFields(other) }, at: this.record.localRevision,
             remoteRevision: other.revision }, error: '另一客户端修改了问题草稿，请比较并选择。' })
           await this.protect()
         } catch { /* keep the original pending request until the service is available */ }
@@ -275,15 +282,15 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       }
     } finally { this.sending = false }
   }
-  async resolve(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
+  async resolve(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = [], skills?: QuestionSkill[]) {
     await this.protect()
-    await this.withProtection(() => this.resolveProtected(question, references, addedBases))
+    await this.withProtection(() => this.resolveProtected(question, references, addedBases, skills))
   }
-  private async resolveProtected(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[]) {
+  private async resolveProtected(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[], skills?: QuestionSkill[]) {
     const conflict = this.state.conflict
     if (!conflict) return
     if (this.dirty) throw new Error('当前比较内容仍在保护中。')
-    const selected = contentOf({ question, references })
+    const selected = contentOf({ question, references, ...skillFields({ skills }) })
     const bases = mergeBases([...this.record.bases, ...this.pendingBases,
       ...(conflict.local.bases ?? []), ...(conflict.other.bases ?? [])], addedBases, selected.references)
     const content = { ...selected, bases }
@@ -294,7 +301,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       if (!current) throw new Error('本机草稿记录不可读。')
       const revision = conflict.source === 'remote' ? conflict.remoteRevision : current.remoteRevision
       return { ...current, contentToken: crypto.randomUUID(), localRevision: current.localRevision + 1, remoteRevision: revision,
-        question: content.question, references: content.references, bases,
+        question: content.question, references: content.references, bases, skills: content.skills,
         conflict: undefined, pendingRejected: false, pending: pendingFor(content, revision, bases, current.draftId) }
     }, { expected: conflict.at, content }, conflict.candidateId)
     this.record = saved
@@ -306,7 +313,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     this.dirty = false
     this.pendingBases = saved.bases
     this.contentToken = saved.contentToken!
-    this.notify({ question: saved.question, references: structuredClone(saved.references), conflict: undefined,
+    this.notify({ skills: saved.skills, question: saved.question, references: structuredClone(saved.references), conflict: undefined,
       revision: saved.remoteRevision, revisionId: saved.revisionId, error: '' })
     void this.synchronize()
   }

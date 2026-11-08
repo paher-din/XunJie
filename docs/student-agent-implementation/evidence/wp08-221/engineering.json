@@ -1,0 +1,84 @@
+{
+  "issue": 221,
+  "at": "2026-11-08T11:04:30.428Z",
+  "node": "v24.21.0",
+  "postgres": "18.6 (packaged)",
+  "fullVerify": {
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-08T10:49:44.910Z",
+    "finishedAt": "2026-11-08T10:55:45.406Z",
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "tasks": 4,
+        "passed": 4,
+        "failed": 0
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "tasks": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "tasks": 36,
+        "passed": 36,
+        "failed": 0
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "tasks": 95,
+        "passed": 95,
+        "failed": 0
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "tasks": 45,
+        "passed": 45,
+        "failed": 0
+      }
+    ],
+    "totalTasks": 181,
+    "skippedTestCases": 20
+  },
+  "newUnitTests": {
+    "files": [
+      "apps/server/tests/wp08-221-cross-service.test.mjs",
+      "apps/server/tests/wp08-221-source-closure.test.mjs",
+      "packages/product-runtime/test/recovery-set.test.mjs"
+    ],
+    "passed": 16,
+    "failed": 0
+  },
+  "runtimeRegression": {
+    "passed": 49,
+    "failed": 0,
+    "total": 49
+  },
+  "reviewFollowUp": "foreign cross-owner resource references stay row data; owned-but-missing originals fail collection",
+  "typecheck": "passed",
+  "build": "passed",
+  "docLinks": {
+    "markdown": 282,
+    "targets": 2797,
+    "failures": 0
+  },
+  "realProtocols": {
+    "sourceBuild": "6/6 HTTP 200",
+    "packaged": "6/6 HTTP 200",
+    "continuation": "8 real HTTPS requests, 4/4 scenarios"
+  },
+  "chrome": {
+    "pdf": "6/6",
+    "skills": "8/8",
+    "version": "156.0.8078.80"
+  },
+  "windowsPdfSmoke": "7/7 cases passed on Windows 11 x64 with packaged Node/PDF.js/canvas"
+}

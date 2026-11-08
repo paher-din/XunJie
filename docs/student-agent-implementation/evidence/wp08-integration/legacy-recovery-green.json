@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "measuredAt": "2026-11-08T06:40:30.351Z",
+  "legacyCommit": "e7eab19bf1be16d615e500d4e301d90b1f659360",
+  "skills11Checksum": "4572fa1a2eb9e9a9a54e86212a60f48eb6f8d0f6e83b8c5c2ebc74f02d588baa",
+  "artifacts": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp08-legacy-recovery-DJXdmv",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "backupId": "c28065d2-9300-484c-af6d-beeb670c0dad",
+  "originalMaterialSha256": "31d1b1c3ba9dcc438d25f836a6838d86f16dab03d19608198742f2a0f0dce56b",
+  "originalBackupManifestSha256": "9bb5b534d89c7252a9b628a405e6f88c86661bf03e713a771a8e1a4bf960caa1",
+  "sameProducerArtifactVerified": true,
+  "counts": {
+    "teaching_runs": 1,
+    "teaching_steps": 2,
+    "teaching_segment_transitions": 1,
+    "teaching_skill_loads": 1
+  },
+  "originalModelCalls": 2,
+  "targetMaintenanceSha256": "df571d8865e22e88535d5544969bce7414fe1bd2fd8b3f0f3b9d977791134215",
+  "targetFormatVersion": 3,
+  "domainBoundaryValidated": true,
+  "historyPreserved": true,
+  "resourcesVerified": 3,
+  "restartVerified": true,
+  "modelAttemptsPreserved": 2,
+  "apiProjectionAdditions": [
+    "tools[].basis.capability: exactly the original immutable binding"
+  ],
+  "publicReads": 10,
+  "outboundRequests": 0,
+  "controlRequests": 5,
+  "modelOutboundRequests": 0,
+  "privateArtifactsRemoved": true,
+  "sameRedBackupVerified": true
+}

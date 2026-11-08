@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { openProductRuntime, resolveCredential, restoreProductRecovery, upgradeProductRecovery, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
+import { openProductRuntime, resolveCredential, restoreProductRecovery, upgradeProductRecovery,
+  sealRecoverySet, verifyRecoverySet, recoverySetMemberDirectory,
+  ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
 import type { BackupPolicy } from '@xunjie/product-runtime';
 
 type Runtime = ReturnType<typeof openProductRuntime>;
@@ -33,8 +35,10 @@ const commands: Record<string, readonly string[]> = {
   'recovery-key': ['out'],
   'backup-policy': ['file', 'resources'],
   backup: ['file', 'resources'],
+  'backup-set': ['file'],
   'backup-list': ['file', 'resources'],
   restore: ['file', 'resources'],
+  'restore-set': ['file'],
   upgrade: ['file', 'resources'],
   takeover: ['file', 'resources'],
   'fence-source': ['file', 'resources'],
@@ -297,6 +301,32 @@ async function main(): Promise<void> {
     case 'backup-list': {
       const input = values.file ? await jsonFile(required('file'), '备份目录') : {};
       output(await run(() => runtime.recovery.catalog(typeof input.directory === 'string' ? input.directory : undefined))); break;
+    }
+    case 'backup-set': {
+      const input = await jsonFile(required('file'), '恢复集合');
+      if (typeof input.keyFile !== 'string' || typeof input.directory !== 'string' || !Array.isArray(input.members))
+        throw new Error('恢复集合需要 keyFile、directory 与 members');
+      const key = await readFile(resolve(input.keyFile)); rememberSecret(key.toString('base64'));
+      if (key.length < 32) throw new Error('恢复密钥至少需要 32 字节');
+      const members = input.members.map(item => {
+        const member = object(item, '恢复集合成员');
+        if (typeof member.installationId !== 'string' || typeof member.environmentId !== 'string'
+          || typeof member.backupDirectory !== 'string') throw new Error('恢复集合成员需要安装、环境与备份目录');
+        return { installationId: member.installationId, environmentId: member.environmentId, backupDirectory: member.backupDirectory };
+      });
+      output(await sealRecoverySet({ directory: resolve(input.directory), key, members })); break;
+    }
+    case 'restore-set': {
+      const input = await jsonFile(required('file'), '恢复集合');
+      if (typeof input.setDirectory !== 'string' || typeof input.keyFile !== 'string') throw new Error('恢复集合校验需要 setDirectory 与 keyFile');
+      const key = await readFile(resolve(input.keyFile)); rememberSecret(key.toString('base64'));
+      const setDirectory = resolve(input.setDirectory);
+      const verified = await verifyRecoverySet(setDirectory, key);
+      output({ setId: verified.manifest.setId, verified: true, members: verified.members.map(({ member, manifest }) =>
+        ({ installationId: member.installationId, backupId: member.backupId, boundaryAt: member.boundaryAt,
+          services: member.services, backupDirectory: recoverySetMemberDirectory(setDirectory, member.backupId),
+          restoreHint: 'restore --file <含该 backupDirectory、keyFile、targetRoot 与 resources 的私有输入>' })) });
+      break;
     }
     case 'restore': {
       const input = await jsonFile(required('file'), '恢复');

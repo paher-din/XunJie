@@ -557,8 +557,7 @@ function LearningView() {
   const closeModels = () => {
     const params = new URLSearchParams(currentSearch.current); params.delete('settings')
     const search = params.toString()
-    // The activity workspace was already protected before settings opened and is
-    // unmounted here, so approve this exact return route instead of protecting it twice.
+    // Settings keeps the protected activity mounted; returning changes visibility only.
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
   }
@@ -570,17 +569,19 @@ function LearningView() {
     onConnections={() => { closeModels(); goHome(); setConnectionsOpen(true) }}>
     {modelsOpen && context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
       identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
-      readOnly={context.readOnly} activityId={opened?.activityId} />
-    : context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
-      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly}>
+      readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} /> : null}
+    {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>
+      <ActivityReferences key={context.clientNamespace + key + opened.activityId}
+      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly} viewActive={!modelsOpen}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
-        error={error || notice ? feedback : null} details={<>
+        error={error || notice ? feedback : null} details={openCoursePdf => <>
           {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
             requirementsContent={<CourseRequirementsReference course={opened.course} />}
-            onMaterial={item => void action(() => readMaterial(opened.course!.releaseId, item))} />
+            onMaterial={item => item.mediaType.toLowerCase().split(';')[0].trim() === 'application/pdf'
+              ? openCoursePdf(item.materialId) : void action(() => readMaterial(opened.course!.releaseId, item))} />
             <CourseMaterialReferences activity={opened} course={opened.course} spaceKey={key} namespace={context.clientNamespace} />
           </> : <><h2>学习目标</h2><p className="preserve-lines">{opened.goal || opened.question || '资料学习'}</p>
             {opened.question && opened.goal && <><h3>起始问题</h3><p className="preserve-lines">{opened.question}</p></>}
@@ -588,7 +589,7 @@ function LearningView() {
           </>}
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />
-    </ActivityReferences> : <div className="content home-page product-home">
+    </ActivityReferences></div> : !(modelsOpen && context && identity) ? <div className="content home-page product-home">
       {context?.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
       <div className="intro"><h1>{greeting}{identity ? `，${identity.name}` : '，从这里开始学习'}</h1><span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span></div>
       {feedback}
@@ -656,6 +657,6 @@ function LearningView() {
           </form>
         </details></section>
       </>}
-    </div>}
+    </div> : null}
   </ProductShell>
 }

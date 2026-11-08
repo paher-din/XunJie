@@ -1,0 +1,288 @@
+{
+  "issue": 216,
+  "label": "wp08-216-label-comparison-aligned",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "headed": false,
+  "model": "controlled external transport; real tools",
+  "startedAt": "2026-11-07T20:27:18.540Z",
+  "cases": [
+    {
+      "id": "formal-entry",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:27:18.543Z",
+      "result": {
+        "endpoint": "http://127.0.0.1:65171",
+        "releaseId": "19200000-0000-4000-8000-000000000205",
+        "definitionDigest": "6f9c2da7c7deffa13904692866a23f071948b8d900533ccfa6a9fdbfb102169e"
+      },
+      "elapsedMs": 5116
+    },
+    {
+      "id": "fixed-failure-observation",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:27:23.659Z",
+      "result": {
+        "requestId": "4370a2b6-1c2b-4431-a3fa-c58fa9f35cdf",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "451437ac575c152b408c4acbc344178fc4f2fef0bc89eb897967bd882a7a44f8",
+          "observationState": "complete"
+        }
+      },
+      "elapsedMs": 3605
+    },
+    {
+      "id": "fixed-student-case-and-waveform",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:27:27.264Z",
+      "result": {
+        "requestId": "515ae6e1-0ce3-4d55-81cf-c9e00f2c4d5d",
+        "fixedPrediction": "1",
+        "actualCout": "0",
+        "waveRange": {
+          "fromTick": "0",
+          "signalIds": [
+            "experiment.Cout"
+          ],
+          "toTick": "2000"
+        }
+      },
+      "elapsedMs": 2698
+    },
+    {
+      "id": "fixed-counterexample-reference",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:27:29.963Z",
+      "result": {
+        "requestId": "79e26a41-2304-4079-9a95-9d8e77bc0fae",
+        "referenceId": "3a06b373-edb7-46ea-8f6d-a58c1d8e5433",
+        "index": 2079
+      },
+      "elapsedMs": 1636
+    },
+    {
+      "id": "real-agent-explains-original-failure",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:27:31.599Z",
+      "result": {
+        "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+        "commandId": "41ffafe0-4d0c-4591-830e-25812abf7985",
+        "originalCodeVerifiedAfterEdit": true,
+        "answerSha256": "1dcda8c20607ad4afe49d0cfff846881b0369c120dbc9762bbd05c7c4617c887"
+      },
+      "elapsedMs": 10855
+    }
+  ],
+  "modelCalls": [
+    {
+      "payloadSha256": "9e06935607797513ab125b488a9dae5fa3526958cdea309658b70a65e3436285",
+      "at": "2026-11-07T20:27:32.498Z"
+    },
+    {
+      "payloadSha256": "794e86f520692763b20c3c3882bdf9e37624b066eddec4c241a9a7d9f98a7f0f",
+      "at": "2026-11-07T20:27:33.007Z"
+    },
+    {
+      "payloadSha256": "5067e437db2a1f2f8127b6aa8d0db3f50d794ffa3a27cfcbb99275a0400a23cd",
+      "at": "2026-11-07T20:27:33.483Z"
+    },
+    {
+      "payloadSha256": "cd5771f65f8c787b16d260c5739340c8ed4c7ecae1bfa93a27ef1d6a5acb1494",
+      "at": "2026-11-07T20:27:34.045Z"
+    },
+    {
+      "payloadSha256": "c60c26de8b90ab65acb4136ed9de4e32c8e6e5ffd34bf4a80be49f0ad68cfbd6",
+      "at": "2026-11-07T20:27:34.646Z"
+    },
+    {
+      "payloadSha256": "b2f16598f919e3f9234978fe6977f7f9315a14f79f95d57f51eb62b61482e8f1",
+      "at": "2026-11-07T20:27:35.155Z"
+    },
+    {
+      "payloadSha256": "662ab0525f7d195a32592b2f9644a576553fb9b2069f8f929b2c4dc14774904c",
+      "at": "2026-11-07T20:27:35.708Z"
+    },
+    {
+      "payloadSha256": "fba94fa6f71083082efb812a665b6f90741bd1b84e4b5aa35553701e9bdcae5e",
+      "at": "2026-11-07T20:27:36.221Z"
+    },
+    {
+      "payloadSha256": "59a79f54272a8e942058b078c39435285e2358068062da3a6a5685db671b6a4c",
+      "at": "2026-11-07T20:27:40.260Z"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "a5ffa9af-a56e-4595-8220-000ed6832d80",
+      "snapshotId": "de92de8a-6e19-47b1-83f4-b819cd203dd5",
+      "payloadSha256": "f93b66678912bdb2cee78742f6e6a2a537f015de91ea98c3a25f572291f03252",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "c382833d-5531-43e7-abaa-1a1e69cb7c58",
+      "snapshotId": "74a4eeb6-7f1f-4683-9773-c25fa701343a",
+      "payloadSha256": "b15e43316bc62457011fbf4d572163bbb5de1fc8b50a7c25a1652f63de1fc3a9",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "72437a16-c759-4e35-bf24-03f873351879",
+      "snapshotId": "288a7618-8803-4f14-b480-0c45bf00fa1a",
+      "payloadSha256": "a94a6ce33d524332266a8bdf3c812a86167b38967f25aa5e7216668c70f09653",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "99fa80b2-5ec5-4be3-937d-2c7c120ffb1c",
+      "snapshotId": "ab13bb00-5750-4caa-b725-8b69f292551e",
+      "payloadSha256": "d7a131c196f63a61a70d2a760f4302147afe9b5429c308c50a31ab7ff008b69f",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "f90a7211-b617-40ab-9eb1-e505047f0cfb",
+      "snapshotId": "727016ed-abb8-47fb-b59a-43b4570570db",
+      "payloadSha256": "69fa4859ab8add37fcb36a86a6db56abd56bff4449affe519d3d0766499d6fdb",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "f3045bc8-3888-4171-ab55-c5c993283a25",
+      "snapshotId": "b774a759-8cb9-4d49-b85d-561aba9a67a1",
+      "payloadSha256": "fa2ead4f98cb39d24ab84610c33fa7a3b830c6ffdfc654624a21c9d2bc8fc63e",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "aa7900fb-b34b-4c4e-8418-2dc2121fe38d",
+      "snapshotId": "37e86d94-68c5-4a2c-9287-1cc2b41f556d",
+      "payloadSha256": "1619033769bf3350291f7e68ecec847de036bbf2bf152a1a74ac89546780ed7d",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "538d71e7-1287-4f96-84b9-e03029844076",
+      "snapshotId": "78969760-3813-4107-9120-711c25ea91a7",
+      "payloadSha256": "db103018b895d631b5a3121f28c49717f3273241985451c0f6c551e4612af027",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    },
+    {
+      "runId": "d0084790-b2ba-4bf9-80cd-034975038e45",
+      "attemptId": "f802ebfb-e146-43ed-9df1-dca8157c105c",
+      "snapshotId": "d15fb909-9a87-4746-a160-396a30e819ff",
+      "payloadSha256": "800ac059cff86ff1694d0daaca1d39fc80fa272ad80d84bdc029852704c001e3",
+      "model": {
+        "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+        "version": 1,
+        "protocol": "chat-completions",
+        "modelId": "alu-controlled",
+        "contextWindow": 262144,
+        "maxOutputTokens": 4096
+      },
+      "source": "durable Agent dispatch and actual request snapshot"
+    }
+  ],
+  "workers": [],
+  "errors": [],
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "status": "passed",
+  "product": {
+    "candidate": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-darwin-arm64",
+    "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-alu-211-ime-fE7Mpd",
+    "productNodeVersion": "24.21.0",
+    "distributionSha256": "57a007f2c3b33700f3354eaca03f5e94f792cc802b397e0c6c639bea8dec7cb7"
+  },
+  "browser": "156.0.8078.80",
+  "activityId": "1ff3a59e-5d84-44ac-897c-cdd013f76034",
+  "providerConfiguration": {
+    "connectionId": "f30bebdd-f491-4d70-b189-be51c4572e57",
+    "protocol": "chat-completions",
+    "modelId": "alu-controlled",
+    "baseUrl": "http://127.0.0.1:65243/v1",
+    "limits": {
+      "maxOutputTokens": 4096,
+      "timeoutMs": 30000,
+      "maxGenerations": 24,
+      "retries": 0
+    }
+  },
+  "uiComparison": {
+    "baseline": "cb104e33604cbfcb8c5c4f294dd5c745e723834c:apps/web/src/product/TeachingToolRecords.tsx",
+    "mode": "original renderer on the same final backend and immutable activity",
+    "before": "ui-before.png",
+    "after": "ui-after.png"
+  },
+  "completedAt": "2026-11-07T20:27:42.929Z"
+}

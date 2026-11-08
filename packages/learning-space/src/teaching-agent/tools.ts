@@ -12,9 +12,12 @@ import type { createCourses } from '../courses/index.js';
 import type { AgentExecutionContext, AgentExecutionOrigin } from '../learning-data/agent-executions.js';
 import { verifyPlannedExecution } from '../learning-data/plan.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingToolCleanupScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
-import { teachingDefinitions } from './tools-schema.js';
+import { teachingDefinitions, teachingContributions } from './tools-schema.js';
 import { aluVerificationAction } from './alu-tools.js';
 import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-images.js';
+import { pdfReadingOutcome, pdfSearchOutcome, pdfTextInputSchema, pdfTextOutcome } from './tools-pdf.js';
+import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
+import { materialSearchInputSchema, personalMaterialReadSchema } from '@xunjie/contracts/personal-materials';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
@@ -33,6 +36,12 @@ export function createTeachingTools(options: {
   authorizeDispatch?: (scope: TeachingToolScope, command: TeachingPreparedTool) => Promise<void>;
   device?: (scope: TeachingToolScope) => Promise<ExecutionDevice | undefined>;
   environment?: (scope: TeachingToolScope) => Promise<{ device: ExecutionDevice; remoteAvailable: boolean }>;
+  /** Narrow teaching-agent owner read; facts never come from the browser or a demo profile. */
+  studentFacts?: { read(identity: TeachingToolScope['identity'], activityId: string, input: unknown):
+    Promise<{ facts: unknown[]; activity: { activityId: string; goal: string; courseId: string | null };
+      continuation: { state: string; detail: string }; unknown: string[] }> };
+  /** Read one permitted skill attachment through the selected-skill guard. */
+  skillRead?: (scope: TeachingToolScope, skillId: string, version: number, path: string) => Promise<{ content: string; digest: string }>;
 }): TeachingToolHost {
   const learning = options.learning;
   async function authorize(scope: TeachingToolCleanupScope) {
@@ -81,7 +90,8 @@ export function createTeachingTools(options: {
   }
   async function prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string, fixed?: AnyExecutionAction): Promise<TeachingPreparedTool> {
     await authorize(scope); z.uuid().parse(commandId);
-    const definition = teachingDefinitions(scope).find(item => item.name === intent.name);
+    const definition = teachingContributions(scope).find(item => item.definition.name === intent.name
+      && (intent.name !== 'course_operation' || item.source.componentKey === intent.arguments.componentKey))?.definition;
     if (!definition || !compileOutputSchema(definition.inputSchema)(intent.arguments)) fail('invalid');
     for (const key of ['objectId', 'contentId', 'referenceId', 'materialId', 'requestId'])
       if (Object.hasOwn(intent.arguments, key) && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');
@@ -97,10 +107,40 @@ export function createTeachingTools(options: {
       detail = { ...(file ? { file } : {}), ...(ref ? { reference: ref } : {}), objectId: args.objectId, contentId: args.contentId,
         provenance: { ...version, sourceState },
         ...(file?.mediaType === 'image/png' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_pdf_text') {
+      const input = pdfTextInputSchema.parse(args);
+      const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      const reading = await learning().pdf.reading(scope.identity, scope.activity.activityId, input.readingId);
+      if (!reading || reading.documentId !== reference.source.documentId
+        || reading.documentSha256 !== reference.source.documentSha256) fail('forbidden');
+      detail = { reference, input };
+    } else if (name === 'read_pdf' || name === 'find_pdf') {
+      const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      const input = name === 'find_pdf' ? pdfFindInputSchema.parse({ requestId: commandId, documentId: reference.source.documentId,
+        pages: args.pages, query: args.query }) : pdfReadInputSchema.parse({ requestId: commandId, documentId: reference.source.documentId,
+        pages: args.pages, region: args.region });
+      detail = { reference, input, ...(name === 'read_pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
     } else if (name === 'read_reference') {
       const reference = scope.input.draft.references.find(item => item.referenceId === args.referenceId);
       if (!reference) fail('forbidden');
-      detail = { reference };
+      detail = { reference, ...(reference.source.kind === 'pdf' ? { imageRoute: await imageRoute(scope, options.models) } : {}) };
+    } else if (name === 'read_personal_material') {
+      const materialId = z.uuid().parse(args.materialId), version = z.number().int().positive().max(64).parse(args.version);
+      const input = personalMaterialReadSchema.parse({ start: args.start, length: args.length });
+      const reference = scope.input.draft.references.find(item => item.source.kind === 'personal-material'
+        && item.source.materialId === materialId && item.source.version === version);
+      if (!reference) fail('forbidden');
+      await learning().drafts.verifyReferences(scope.identity, scope.activity.activityId, { references: [reference], bases: [] });
+      detail = { reference, input: { materialId, version, ...input } };
+    } else if (name === 'search_materials') {
+      detail = { input: materialSearchInputSchema.parse({ query: args.query, ...(args.scope == null ? {} : { scope: args.scope }) }) };
+    } else if (name === 'read_student_facts') {
+      if (!options.studentFacts) fail('unavailable');
+      detail = { input: { ...(args.query == null ? {} : { query: args.query }), scope: args.scope } };
     } else if (name === 'read_material') {
       const course = scope.activity.course, material = course?.materials.find(item => item.materialId === args.materialId);
       if (!course || !material) fail('forbidden');
@@ -240,6 +280,28 @@ export function createTeachingTools(options: {
   async function dispatch(scope: TeachingToolScope, command: TeachingPreparedTool): Promise<TeachingToolOutcome> {
     await check(scope, command);
     const a = command.arguments, id = scope.activity.activityId;
+    if (command.name === 'read_pdf_text') {
+      const input = pdfTextInputSchema.parse(command.basis.input);
+      const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
+      if (!reference || reference.source.kind !== 'pdf') fail('forbidden');
+      const reading = await learning().pdf.reading(scope.identity, id, input.readingId);
+      if (!reading || reading.documentId !== reference.source.documentId
+        || reading.documentSha256 !== reference.source.documentSha256) fail('forbidden');
+      return pdfTextOutcome(reading, input);
+    }
+    if (command.name === 'find_pdf') {
+      await context(scope, command, true).assertDispatch();
+      const result = await learning().pdf.find(scope.identity, id, command.basis.input);
+      return pdfSearchOutcome(result, String(a.referenceId));
+    }
+    if (command.name === 'read_pdf') {
+      let reading = await learning().pdf.reading(scope.identity, id, command.commandId);
+      if (!reading) {
+        await context(scope, command, true).assertDispatch();
+        reading = await learning().pdf.read(scope.identity, id, command.basis.input);
+      }
+      return pdfReadingOutcome(scope, options.models, command, reading);
+    }
     if (command.name === 'read_work') {
       const { file, ref } = approvedFile(scope, String(a.objectId), String(a.contentId));
       let stored;
@@ -275,7 +337,38 @@ export function createTeachingTools(options: {
       const reference = scope.input.draft.references.find(item => item.referenceId === a.referenceId)!;
       await learning().drafts.verifyReferences(scope.identity, id, { references: [reference], bases: scope.input.draft.bases
         .filter(file => 'contentId' in reference.source && file.contentId === reference.source.contentId) });
+      if (reference.source.kind === 'pdf') {
+        const reading = await learning().pdf.reading(scope.identity, id, reference.source.readingId);
+        if (!reading) fail('missing');
+        return pdfReadingOutcome(scope, options.models, command, reading, reference);
+      }
       return outcome(command, 'completed', { reference }, reference.sourceName);
+    }
+    if (command.name === 'read_personal_material') {
+      const input = command.basis.input as { materialId: string; version: number; start: number; length: number };
+      const content = await learning().materials.readRange(scope.identity, id, input.materialId, input.version,
+        { start: input.start, length: input.length });
+      return outcome(command, 'completed', { reference: command.basis.reference, ...content }, content.name);
+    }
+    if (command.name === 'search_materials') {
+      const input = materialSearchInputSchema.parse(command.basis.input);
+      const references = scope.input.draft.references;
+      const result = await learning().search.search(scope.identity, id, input, {
+        pdfReferences: references.filter(reference => reference.source.kind === 'pdf'),
+        personalReferences: references.filter(reference => reference.source.kind === 'personal-material'),
+        ...(scope.input.draft.skills ? { skillReferences: scope.input.draft.skills } : {}),
+        ...(scope.skillState ? { skillState: scope.skillState } : {}),
+        ...(options.skillRead ? { skillRead: (skillId: string, version: number, path: string) =>
+          options.skillRead!(scope, skillId, version, path).then(item => ({ content: item.content, digest: item.digest })) } : {}) });
+      return outcome(command, 'completed', { search: result }, '材料检索');
+    }
+    if (command.name === 'read_student_facts') {
+      if (!options.studentFacts) fail('unavailable');
+      const stored = command.basis.input as { query?: string | null; scope?: string } | undefined;
+      const result = await options.studentFacts.read(scope.identity, id,
+        { ...(stored?.query == null ? {} : { query: stored.query }), ...(stored?.scope ? { scope: stored.scope } : {}) });
+      return outcome(command, 'completed', { facts: result.facts, activity: result.activity, continuation: result.continuation,
+        unknown: result.unknown }, '学生事实与偏好');
     }
     if (command.name === 'read_material') {
       const source = command.basis.source;
@@ -336,7 +429,8 @@ export function createTeachingTools(options: {
       { query, cleanup: true, stopId: stopId(command.commandId), cleanupCompleted: completed, operationCompleted: state === 'completed',
         sessionStopped: !!query.session && completed, sessionOngoing: !!query.session && ['running', 'paused'].includes(query.state) }, '原执行清理', query);
   }
-  return { definitions: async scope => { await authorize(scope); return teachingDefinitions(scope); }, prepare, dispatch, reconcile, stop };
+  return { contributions: async scope => { await authorize(scope); return teachingContributions(scope); },
+    definitions: async scope => { await authorize(scope); return teachingDefinitions(scope); }, prepare, dispatch, reconcile, stop };
 }
 function stopId(commandId: string) {
   const hex = createHash('sha256').update('agent-stop:' + commandId).digest('hex');

@@ -3,6 +3,7 @@ import { StorageError } from '@xunjie/storage';
 import type { WorkFile } from '@xunjie/contracts/learning-data';
 import type { LearningModelPort } from '../model-connections/service.js';
 import type { TeachingToolScope } from './tool-types.js';
+import type { PdfReading } from '@xunjie/contracts/pdf-materials';
 export type TeachingImageModels = Pick<LearningModelPort, 'images' | 'segments'>;
 export async function imageRoute(scope: TeachingToolScope, models?: TeachingImageModels) {
   if (!models || !scope.segmentId) return { available: false as const, reason: 'fixed-model-segment-required' };
@@ -24,4 +25,21 @@ export async function retainWorkImage(scope: TeachingToolScope, models: Teaching
     imageId: reference.imageId, mediaType: 'image/png', dataBase64: file.value });
   const image = await models.images.read(scope.identity, reference);
   return { reference, image, byteLength: bytes.length };
+}
+
+/** Image identities are tied to the original command and retained PDF rendition, never a filename. */
+export async function retainPdfImages(scope: TeachingToolScope, models: TeachingImageModels, commandId: string, reading: PdfReading) {
+  const retained = [];
+  for (const page of reading.pages) {
+    if (page.state !== 'ready' || !page.image) continue;
+    const bytes = Buffer.from(page.image.dataBase64, 'base64');
+    if (createHash('sha256').update(bytes).digest('hex') !== page.image.sha256) throw new StorageError('corrupt');
+    const key = reading.readingId + ':' + page.page;
+    const reference = { imageId: imageIdentity('teaching-pdf-image', commandId, key), version: 1 as const };
+    await models.images.upload(scope.identity, { requestId: imageIdentity('teaching-pdf-image-upload', commandId, key),
+      imageId: reference.imageId, mediaType: 'image/png', dataBase64: page.image.dataBase64 });
+    const image = await models.images.read(scope.identity, reference);
+    retained.push({ page: page.page, reference, sha256: image.sha256 });
+  }
+  return retained;
 }

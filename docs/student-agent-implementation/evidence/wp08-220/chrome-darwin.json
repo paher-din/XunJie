@@ -1,0 +1,15 @@
+{
+  "measuredAt": "2026-11-07T20:12:52.888Z",
+  "platform": "darwin",
+  "browser": "156.0.8078.80",
+  "channel": "chrome",
+  "headed": true,
+  "modelRequests": 10,
+  "compactions": 1,
+  "completeHistory": true,
+  "draftAndFocus": true,
+  "compositionEventsOnly": true,
+  "restartPureRead": true,
+  "originalModelSelection": true,
+  "stop": true
+}

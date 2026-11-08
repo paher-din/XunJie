@@ -24,13 +24,15 @@ import { createExecutionTransport, createSessionTransport } from './executionTra
 import { NativeSessionController } from '../tool-execution/session-controller'
 import { SessionRequests } from '../tool-execution/session-requests'
 import { useAgentInteraction } from './AgentInteraction'
+import { useSkillCatalog, draftSkillOption } from './skills'
 
 const readable = cacheableMaterial
 
-export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children }: {
-  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode
+export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children, viewActive = true }: {
+  activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode; viewActive?: boolean
 }) {
   const scope = workspaceScope(namespace, activity)
+  const skills = useSkillCatalog(activity.identity, spaceKey, namespace, activity.activityId)
   const inputInteraction = useAgentInteraction(activity.identity, spaceKey, namespace, authorized && !readOnly)
   const access = useRef(authorized)
   access.current = authorized
@@ -107,6 +109,10 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
   }, [draft, workspace, actions, execution, authorized])
   return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions} delivery={inputInteraction.delivery}
+      viewActive={viewActive}
+      skillCatalog={{ options: (skills.data?.skills ?? []).map(draftSkillOption),
+        defaults: (skills.data?.skills ?? []).filter(skill => skill.selected && skill.origin === 'personal').map(skill => ({ skillId: skill.skillId, version: skill.version })),
+        loading: skills.loading, error: skills.error, isCurrent: skills.isCurrent, reload: () => { void skills.reload() } }}
       deliveryReady={inputInteraction.ready} onCreated={inputInteraction.reset}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }

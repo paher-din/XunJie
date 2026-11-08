@@ -5,6 +5,11 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { teachingPreparedToolSchema, teachingToolOutcomeSchema } from '@xunjie/contracts/teaching-agent';
 import type { z } from 'zod';
 import type { TeachingDispatchAuthority } from './remote-state.js';
+import type { AgentToolBinding } from '@xunjie/contracts/teaching-agent';
+import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
+
+/** Fixed definitions and their owning executor; model aliases never select code. */
+export type TeachingToolContribution = Omit<AgentToolBinding, 'bindingId' | 'modelName'>;
 
 /** Trusted caller context supplied by RunDriver, never accepted from a model or browser. */
 export interface TeachingToolScope {
@@ -20,6 +25,8 @@ export interface TeachingToolScope {
   authority?: TeachingDispatchAuthority;
   /** Reconstructed from the durable Run permit; never serialized or model supplied. */
   assertDispatch?: () => Promise<void>;
+  /** Snapshot-frozen selected skills for this step; search covers only permitted text attachments. */
+  skillState?: TeachingSkillState;
 }
 
 /** Cleanup uses only the original stored scope, never current activity or source-content reads. */
@@ -34,6 +41,7 @@ export type TeachingPreparedTool = z.infer<typeof teachingPreparedToolSchema>;
 export type TeachingToolOutcome = z.infer<typeof teachingToolOutcomeSchema>;
 
 export interface TeachingToolHost {
+  contributions?(scope: TeachingToolScope): Promise<TeachingToolContribution[]>;
   definitions(scope: TeachingToolScope): Promise<ModelTool[]>;
   /** Validation and freezing only; must not execute a course operation. */
   prepare(scope: TeachingToolScope, intent: ModelToolIntent, commandId: string): Promise<TeachingPreparedTool>;

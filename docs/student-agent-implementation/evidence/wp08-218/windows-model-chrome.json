@@ -1,0 +1,265 @@
+{
+  "issue": 218,
+  "status": "passed",
+  "measuredAt": "2026-11-07T20:13:27.324Z",
+  "limits": {
+    "maxGenerations": 3,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "topology": "Windows interactive Chrome -> direct LAN HTTPS -> Mac school, materials, Agent and model owners",
+  "browser": "passed",
+  "engineering": "owned-by-main",
+  "teachingEffect": "not-assessed",
+  "stages": [
+    {
+      "name": "isolated-Mac-school-owner-on-current-product",
+      "status": "passed",
+      "fact": {
+        "endpoint": "https://192.168.3.39:38228",
+        "environmentId": "5e509526-bdf6-4b59-9e25-6301aad75e71",
+        "serviceIds": [
+          {
+            "unit": "client",
+            "serviceId": "43dafc8c-3e37-4272-b228-736f6fb5a45d"
+          },
+          {
+            "unit": "space-course",
+            "serviceId": "44cfb86c-e62c-47a4-bda1-2b55b43381dd"
+          },
+          {
+            "unit": "learning-data",
+            "serviceId": "4f681b0c-bf41-41fc-88fd-ccfe0f06febc"
+          },
+          {
+            "unit": "model-connection",
+            "serviceId": "f9a3767d-f6fa-4105-9048-4560d7aefcb4"
+          },
+          {
+            "unit": "teaching-agent",
+            "serviceId": "0c5e6e84-fe09-4458-af22-7763abb4e984"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Mac-only-provider-and-student-model-selection",
+      "status": "passed",
+      "fact": {
+        "connectionId": "134d21d3-bfc6-4d0e-8220-13386c8e1ca1",
+        "credentialOwner": "Mac",
+        "providerCredentialExported": false,
+        "images": "verified"
+      }
+    },
+    {
+      "name": "acquire-Windows-desktop-after-current-owner-releases",
+      "status": "passed",
+      "fact": {
+        "owner": "01a1b761-4bc5-7933-aba8-cf8247a4746b",
+        "heldAcrossScheduledTaskStartupWaitAndCleanup": true
+      }
+    },
+    {
+      "name": "start-Interactive-Limited-Windows-Chrome-task",
+      "status": "passed",
+      "fact": {
+        "taskName": "XunJie-218-Model-Chrome-0ca85281-3d5d-48a4-9b88-2dd9bf3cdd15",
+        "logonType": "Interactive",
+        "runLevel": "Limited",
+        "port": 38228,
+        "transport": "direct HTTPS with pinned test-certificate SPKI"
+      }
+    },
+    {
+      "name": "Windows-formal-upload-quote-real-model-source-and-followup",
+      "status": "passed",
+      "fact": {
+        "checks": [
+          "student-login-through-form",
+          "formal-upload-page2-label7",
+          "fixed-pdf-reference-in-reliable-draft",
+          "real-read-reference-and-voltage-answer",
+          "tool-record-source-opens-original-page",
+          "followup-without-another-pdf-command"
+        ],
+        "source": {
+          "documentId": "04f421c8-48f6-4289-8205-80137a6732d4",
+          "documentSha256": "c7efb3855bcc90f5c14205cce7a8273c2fbbd47f2383c835023cbf02818bf0f9",
+          "readingId": "d4393d76-e99d-4c93-b6f2-938523eb9f7f",
+          "page": 2,
+          "label": "7",
+          "imageSha256": "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46",
+          "retainedReadingSha256": "7802cca49887df0154aa2a74e48c82aa43da27e9c1f5c62e6a214edacfb20417"
+        },
+        "modelRequests": 3,
+        "snapshots": [
+          {
+            "snapshotId": "5528c1c0-5877-4d3d-b5d8-3a2c89f72fab",
+            "payloadSha256": "e255edcc0731abe04e80d532ef31aedc6f4dadc017cd7db4907395bceb7bd0e8",
+            "snapshotSha256": "7aec5ebee6789ff01115d8c2b45ecee55950c13bd42d18d5219b9d45cf38f45d"
+          },
+          {
+            "snapshotId": "03f7341b-607f-472a-ae4e-b4be4c79acfb",
+            "payloadSha256": "b2e744a57f163473ec615480340273bde7056792ba142d0d293a363238508efb",
+            "snapshotSha256": "52721bf31a4ebd3df05d821a94d3e87b3c2a4ac7e945d3365ecf02eb28770256"
+          },
+          {
+            "snapshotId": "71fdd559-174a-43a9-a4d6-e63d8f887404",
+            "payloadSha256": "96ec01d2650a8ee76f1188d93fafe09800d8269132f6b475a4f23fa328698679",
+            "snapshotSha256": "f2af24ddf52a9abd0d43164177cf544f0ed04fee3ddb132fc88585c5a110a337"
+          }
+        ],
+        "desktopSessionId": 1
+      }
+    },
+    {
+      "name": "restart-Mac-host-and-reopen-source-in-same-Windows-Chrome",
+      "status": "passed",
+      "fact": {
+        "checks": [
+          "student-login-through-form",
+          "formal-upload-page2-label7",
+          "fixed-pdf-reference-in-reliable-draft",
+          "real-read-reference-and-voltage-answer",
+          "tool-record-source-opens-original-page",
+          "followup-without-another-pdf-command",
+          "Chrome-source-click-after-host-restart-retains-original-reading"
+        ],
+        "newModelRequests": 0,
+        "conversationSha256": "24a468c17690626d1ffc5612c5ad9c29b40fb235a56df6e073316b405cc87904",
+        "readingId": "d4393d76-e99d-4c93-b6f2-938523eb9f7f",
+        "imageSha256": "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46"
+      }
+    }
+  ],
+  "cleanup": {
+    "windowsTaskAndTemporaryFilesRemoved": true,
+    "windowsDesktopReleased": true,
+    "mac": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    },
+    "providerTransportRestored": true,
+    "firewallChanges": "none-required: Windows outbound HTTPS; Mac firewall already disabled"
+  },
+  "macProduct": {
+    "path": "/Users/robertwu/.codex/worktrees/f50c/XunJie/dist/product-darwin-arm64-218-final-r3",
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "distributionSha256": "9f7e29c2c3f53c26759bad48623ef4c9a8ace29f7e1d49f7f405ba85e9b85c24",
+    "applicationSha256": "c8bdf668e77c69d02bb4ba3d8e44fcb08cab344fd4091d69f1ee513b2791244a",
+    "createdAt": "2026-11-07T20:08:40.275Z",
+    "latestDriverAndHostFixes": true,
+    "boundedPdfFeedbackAndRetainedTextContinuation": true,
+    "nodeVersion": "v24.21.0"
+  },
+  "windowsProductPath": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449/product-win32-x64-218-final-r3",
+  "probeSha256": "0ee2604cd43d07ebcff6c241f2edb55cf285d0e77fade8a17ea363201e7dbeed",
+  "windows": {
+    "status": "passed",
+    "platform": "win32",
+    "workerProcessId": 26892,
+    "checks": [
+      "student-login-through-form",
+      "formal-upload-page2-label7",
+      "fixed-pdf-reference-in-reliable-draft",
+      "real-read-reference-and-voltage-answer",
+      "tool-record-source-opens-original-page",
+      "followup-without-another-pdf-command",
+      "Chrome-source-click-after-host-restart-retains-original-reading"
+    ],
+    "browser": "Chrome",
+    "teachingEffect": "not-assessed",
+    "desktopSessionId": 1,
+    "product": {
+      "path": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449/product-win32-x64-218-final-r3",
+      "distributionSha256": "b45eceaa7f590598e22f7f63738eb920bcbdc95d40bb3ff497ff43cc5d96260e",
+      "createdAt": "2026-11-07T20:09:32.884Z",
+      "applicationSha256": "c8bdf668e77c69d02bb4ba3d8e44fcb08cab344fd4091d69f1ee513b2791244a"
+    },
+    "chromeVersion": "156.0.8078.81",
+    "source": {
+      "documentId": "04f421c8-48f6-4289-8205-80137a6732d4",
+      "documentSha256": "c7efb3855bcc90f5c14205cce7a8273c2fbbd47f2383c835023cbf02818bf0f9",
+      "readingId": "d4393d76-e99d-4c93-b6f2-938523eb9f7f",
+      "page": 2,
+      "label": "7",
+      "imageSha256": "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46",
+      "retainedReadingSha256": "7802cca49887df0154aa2a74e48c82aa43da27e9c1f5c62e6a214edacfb20417"
+    },
+    "firstRun": {
+      "runId": "dfe24162-5418-4510-9f89-d01b0f8f7c55",
+      "requestId": "6f796c85-0532-4dd1-9bf7-2b206fb7ff55",
+      "commandId": "1d9ab809-5214-48d1-a00b-543afe69cec9",
+      "answerSha256": "7efded949eeae571f5d76662aad2f12e5aa810b95eb867c0c6eae66eb1315ed8",
+      "voltage37": true
+    },
+    "followup": {
+      "runId": "8499ca17-ee84-4054-845b-be973c0ca998",
+      "conversationSha256": "24a468c17690626d1ffc5612c5ad9c29b40fb235a56df6e073316b405cc87904",
+      "toolCount": 1,
+      "answerSha256": "31f2cbf80dab18fae1d9b1b952348bca89cc0c19c012ecd13f665d2d0740795b"
+    },
+    "snapshots": [
+      {
+        "snapshotId": "5528c1c0-5877-4d3d-b5d8-3a2c89f72fab",
+        "payloadSha256": "e255edcc0731abe04e80d532ef31aedc6f4dadc017cd7db4907395bceb7bd0e8",
+        "snapshotSha256": "7aec5ebee6789ff01115d8c2b45ecee55950c13bd42d18d5219b9d45cf38f45d"
+      },
+      {
+        "snapshotId": "03f7341b-607f-472a-ae4e-b4be4c79acfb",
+        "payloadSha256": "b2e744a57f163473ec615480340273bde7056792ba142d0d293a363238508efb",
+        "snapshotSha256": "52721bf31a4ebd3df05d821a94d3e87b3c2a4ac7e945d3365ecf02eb28770256"
+      },
+      {
+        "snapshotId": "71fdd559-174a-43a9-a4d6-e63d8f887404",
+        "payloadSha256": "96ec01d2650a8ee76f1188d93fafe09800d8269132f6b475a4f23fa328698679",
+        "snapshotSha256": "f2af24ddf52a9abd0d43164177cf544f0ed04fee3ddb132fc88585c5a110a337"
+      }
+    ],
+    "pdfRenderRequestsBeforeRestart": 2,
+    "restart": {
+      "newPdfRenderRequests": 0
+    },
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "pageErrors": [],
+    "finishedAt": "2026-11-07T20:14:00.409Z"
+  },
+  "providerRequests": [
+    {
+      "index": 1,
+      "payloadSha256": "e255edcc0731abe04e80d532ef31aedc6f4dadc017cd7db4907395bceb7bd0e8",
+      "status": 200,
+      "finished": true,
+      "imageSha256": [],
+      "toolSchemaSha256": "cfc48add487427a7f319d446c4f9417282e488f48855bc7eddf10006610af038",
+      "elapsedMs": 1423
+    },
+    {
+      "index": 2,
+      "payloadSha256": "b2e744a57f163473ec615480340273bde7056792ba142d0d293a363238508efb",
+      "status": 200,
+      "finished": true,
+      "imageSha256": [
+        "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46"
+      ],
+      "toolSchemaSha256": "cfc48add487427a7f319d446c4f9417282e488f48855bc7eddf10006610af038",
+      "elapsedMs": 2603
+    },
+    {
+      "index": 3,
+      "payloadSha256": "96ec01d2650a8ee76f1188d93fafe09800d8269132f6b475a4f23fa328698679",
+      "status": 200,
+      "finished": true,
+      "imageSha256": [],
+      "toolSchemaSha256": "719b763123c7de76f6595978d3c758a705d3a254c860abffec1e691eafa17160",
+      "elapsedMs": 1747
+    }
+  ],
+  "providerRefusals": [],
+  "screenshotSha256": "1d2e9999ec5b5d4cf9a97bae7a35e137436ff89d69043e8a5f97012b4c05ed2a",
+  "finishedAt": "2026-11-07T20:14:09.717Z"
+}

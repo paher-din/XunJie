@@ -1,0 +1,30 @@
+.pdf-materials { height: 100%; min-height: 0; overflow: auto; padding: 16px 20px; color: var(--ink); background: var(--paper); font-size: 13px; }
+.pdf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.pdf-toolbar > strong { flex: 1; min-width: 100px; overflow-wrap: anywhere; font-size: 15px; font-weight: 600; }
+.pdf-materials .ws-btn, .pdf-material-entries .ws-btn { flex: none; white-space: normal; }
+.pdf-toolbar button[aria-pressed='true'] { color: var(--accent-deep); background: var(--accent-soft); border-color: var(--accent-line); }
+.pdf-toolbar form, .pdf-toolbar label { display: flex; align-items: center; gap: 6px; }
+.pdf-toolbar input { min-width: 0; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); background: var(--paper); font: inherit; }
+.pdf-page-controls input { width: 52px; font-variant-numeric: tabular-nums; }
+.pdf-find input { width: 160px; }
+.pdf-muted, .pdf-hint, .pdf-find, .pdf-page h3 span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.pdf-hint { margin: 8px 0 12px; }
+.pdf-reading:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.pdf-page { margin: 16px auto 24px; max-width: 960px; }
+.pdf-page h3 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px; font-size: 17px; }
+.pdf-page-image { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; box-shadow: var(--panel-shadow); outline: 1px solid var(--line); }
+.pdf-page-image img { display: block; width: auto; max-width: 100%; height: auto; }
+.pdf-page-image.selecting { cursor: crosshair; touch-action: none; user-select: none; }
+.pdf-region { position: absolute; box-sizing: border-box; pointer-events: none; border: 2px solid var(--accent); background: var(--accent-line); }
+.pdf-text { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.pdf-text summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.pdf-text pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.7; }
+.pdf-text mark { color: var(--status-pending-fg); background: var(--status-pending-bg); }
+.pdf-error { color: var(--danger-deep); overflow-wrap: anywhere; font-size: 13px; }
+.pdf-empty { padding: 24px 0; color: var(--muted); }
+.pdf-empty h2 { color: var(--ink); font-size: 20px; }
+.pdf-material-entries { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; }
+.pdf-material-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pdf-material-heading h3 { margin: 0; }
+.pdf-pending { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 12px 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .pdf-materials { padding: 12px; } .pdf-find label { flex-wrap: wrap; } }

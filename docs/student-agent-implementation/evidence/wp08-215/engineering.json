@@ -1,0 +1,192 @@
+{
+  "engineering": {
+    "status": "passed",
+    "startedAt": "2026-11-07T19:31:31.626Z",
+    "finishedAt": "2026-11-07T19:37:37.178Z",
+    "nodeVersion": "v24.21.0",
+    "exitCode": 0,
+    "group": "full",
+    "jobs": 2,
+    "testsCached": false,
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "taskCount": 4,
+        "failed": []
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "taskCount": 1,
+        "failed": []
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "taskCount": 35,
+        "failed": []
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "taskCount": 92,
+        "failed": []
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "taskCount": 45,
+        "failed": []
+      }
+    ],
+    "scope": "Complete engineering verification after native-turn intent and required-scope follow-up."
+  },
+  "snapshotRecovery": {
+    "status": "passed",
+    "testFile": "apps/server/tests/teaching-agent.snapshot-recovery.runtime.test.mjs",
+    "tests": 1,
+    "pass": 1,
+    "fail": 0,
+    "originalFailure": "identity-conflict after pending/accepted facts changed to consumed/completed between resource commit and recovery",
+    "retryUploads": [
+      {
+        "uploadId": "7e964c93-0620-415e-981c-c5707de43dcd",
+        "sha256": "483aae2eeedf4cda934a80e68a9b46f89d5fa89a508b8190289160587494eb67",
+        "waits": [
+          "pending"
+        ],
+        "effects": [
+          "accepted"
+        ]
+      },
+      {
+        "uploadId": "7e964c93-0620-415e-981c-c5707de43dcd",
+        "sha256": "483aae2eeedf4cda934a80e68a9b46f89d5fa89a508b8190289160587494eb67",
+        "waits": [
+          "pending"
+        ],
+        "effects": [
+          "accepted"
+        ]
+      }
+    ],
+    "beforeFixUploadAttempts": [
+      {
+        "uploadId": "cdebafed-54e5-4ff3-93cc-72e7850c554f",
+        "sha256": "4d3746767827bfb8090a10fe2c8ce1d2589a83371ae317186e666e8f472fba89",
+        "waits": [
+          "pending"
+        ],
+        "effects": [
+          "accepted"
+        ]
+      },
+      {
+        "uploadId": "cdebafed-54e5-4ff3-93cc-72e7850c554f",
+        "sha256": "d0e7665163aaeadd780ad6d4b0225eb06514501ebc0b53fc888ddb2c6ff32860",
+        "waits": [
+          "consumed"
+        ],
+        "effects": [
+          "completed"
+        ]
+      }
+    ],
+    "sourceCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c"
+  },
+  "review": {
+    "standards": {
+      "findings": 0
+    },
+    "spec": {
+      "findings": 0
+    }
+  },
+  "chromeConversation": {
+    "status": "passed",
+    "tests": 4,
+    "source": "apps/web/e2e/teachingConversation.spec.ts",
+    "platform": "darwin-arm64",
+    "browser": "installed headed Chrome",
+    "scope": [
+      "first question and follow-up",
+      "refresh",
+      "stop",
+      "course conversation",
+      "process restart"
+    ],
+    "candidate": "Before final snapshot-recovery delta; final delta covered by native PostgreSQL regression."
+  },
+  "cleanup": {
+    "macTaskProductPackagesRemoved": true,
+    "testKeysRemoved": true,
+    "windowsTaskAndTemporaryDirectoryRemoved": true,
+    "windowsScopedFirewallRuleRemoved": true,
+    "environments": "Both cross-owner temporary environments stopped, deleted and removed as recorded in cross-owner.json."
+  },
+  "docs": {
+    "status": "passed",
+    "markdownFiles": 260,
+    "localTargets": 2571,
+    "failures": 0
+  },
+  "nativeAgentRegression": {
+    "status": "passed",
+    "nodeVersion": "v24.21.0",
+    "postgresVersion": "18.6",
+    "testFiles": 16,
+    "tests": 132,
+    "pass": 132,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "durationMs": 496966.058917,
+    "scope": [
+      "all teaching-agent runtime files except separately reported snapshot-recovery",
+      "teaching-tools-host.runtime.test.mjs",
+      "agent-transfer-recovery.runtime.test.mjs"
+    ],
+    "warnings": [
+      "Existing fixture accumulation emitted MaxListenersExceededWarning; no test failed."
+    ],
+    "sourceCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c"
+  },
+  "nativeTurnFollowup": {
+    "status": "passed",
+    "regression": {
+      "files": [
+        "teaching-agent.assembly-config.runtime.test.mjs",
+        "teaching-agent.context-portable.runtime.test.mjs",
+        "teaching-agent.snapshot-recovery.runtime.test.mjs",
+        "teaching-agent.segments.runtime.test.mjs"
+      ],
+      "tests": 23,
+      "pass": 23,
+      "fail": 0,
+      "scope": "Native-turn fix; before subsequent required-scope diagnostic refinement."
+    },
+    "finalTargeted": {
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "scope": [
+        "actual new native turn ends with fixed student intent",
+        "capacity reports adopted question and work when no input is pending"
+      ]
+    },
+    "redEvidence": [
+      "actual last role was assistant instead of user",
+      "requiredScope.questions was empty instead of the adopted request ID"
+    ],
+    "realProtocols": "real-model-native-intent.json",
+    "standardsFindings": 0,
+    "specFindings": 0,
+    "sources": {
+      "packages/learning-space/src/teaching-agent/driver.ts": "65a0c2df9521da6fac0f0c7e276d7d31e0546edc4233a1ab228fbf8d2865dee4",
+      "apps/server/tests/teaching-agent.assembly-config.runtime.test.mjs": "587491a94641f6a20773481fd096bf8c8fdf6e1bd84ce6cedacffd291c511810",
+      "scripts/probe-teaching-assembly-transition.mjs": "cbe096abfeb33aec05b93a6d69ab567e9843839c9e191e8348564ccd93180791"
+    }
+  }
+}

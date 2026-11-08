@@ -5,6 +5,7 @@ import { teachingContinueSelectionSchema, teachingRunControlReceiptSchema,
 import type { LearningModelPort } from '../model-connections/service.js';
 import { canonicalDigest, operationId } from './identity.js';
 import { insertTeachingRun } from './run-records.js';
+import { abandonTeachingCompactions } from './compaction.js';
 
 /** Explicit controls use the same durable order and original-identity ledger as input revision. */
 export function createTeachingRunControls(storage: OwnedStorage, owner: {
@@ -21,6 +22,7 @@ export function createTeachingRunControls(storage: OwnedStorage, owner: {
       const reason = terminal ? 'already-terminated' : run.stop_requested ? 'already-requested' : 'stop-requested';
       if (!terminal && !run.stop_requested) {
         await tx.query('UPDATE teaching_runs SET stop_requested=true,updated_at=clock_timestamp() WHERE run_id=$1', [runId]);
+        await abandonTeachingCompactions(tx, runId, 'stop-requested');
         await owner.appendEvent(tx, activityId, 'stop-requested', { runId, requestId: input.requestId, source: 'student' });
       }
       const receipt: TeachingRunControlReceipt = { version: 1, requestId: input.requestId, operation: 'stop',

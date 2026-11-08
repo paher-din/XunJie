@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: Skills versions and actual attachment loads survive formal backup and isolated restore without model or tool replay
+ok 1 - Skills versions and actual attachment loads survive formal backup and isolated restore without model or tool replay
+  ---
+  duration_ms: 6830.904
+  type: 'test'
+  ...
+# Subtest: maintenance accepts the published v1 empty-Skills inventory but refuses to hide new Skills facts behind it
+ok 2 - maintenance accepts the published v1 empty-Skills inventory but refuses to hide new Skills facts behind it
+  ---
+  duration_ms: 2207.249792
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9353.589458

@@ -11,25 +11,39 @@
 | `teaching_events` | 活动级稳定 `seq` 的输入、上下文装配、派发、增量进度、答复、终态与系统说明 |
 | `teaching_sessions` | 活动连续的 native segment、固定前缀指纹 |
 | `teaching_snapshots` | 外发前的不可变装配正文、来源、模型参数、`payloadSha256` 与资源引用 |
+| `teaching_agent_definitions` / `teaching_resolved_agents` | 固定 AgentDefinition 正文与版本、按主体/活动/课程解析的实际 Prompt、工具与 executor 来源；Run 保存初始身份，步骤绑定当时身份 |
+| `teaching_segment_transitions` | 首段、装配变化及模型切换的共同接收/完成记录，固定原段/新段、装配、close/create 请求正文与原操作回执 |
 | `teaching_steps` | 稳定模型 attempt、完整输入计划、请求快照、原生结果关联、工具配对与输出预留/结算 |
+| `teaching_compactions` | 闭合源区间、顺序与内容摘要、结构化必保留清单、摘要结果、原尝试及实际采用换段身份 |
 | `teaching_commands` | 独立 command ID、原生 call ID、固定命令依据、派发许可、原回执与完整结果资源 |
 | `teaching_waits` | 原命令、身份与摘要、期限、确定性查询时点和唯一消费事实 |
 | `teaching_budgets` | 本 Run 固定的模型步骤、工具命令、并行和 Wait 配置 |
 | `teaching_student_questions` | 固定 `student.ask` 问题、来源、问题/Wait 版本、呈现与明确回答状态 |
 | `teaching_student_presentations` | 幂等呈现回执；不代表学生回答或模型已采用 |
 | `teaching_student_responses` | 独立输入身份、原文摘要、接受/拒绝结果及原回应查询 |
+| `teaching_student_facts` | 学生明确表达的第一人称偏好/指令、原事件与时间、内容版本、作用范围和复核/修正链；缺失不等于已确认 |
 
 接收、Run、输入与事件在同一事务提交；同身份同内容返回原回执，换内容冲突。接收前取消写入持久取消记录，迟到派发不能复活。`RunDriver` 用 `clock_timestamp()` 领取代际与 lease，条件提交保证单一推进权；lease 只决定推进权，不是生成期限。过期接管先按原 attempt 身份查询/续接，已接受未派发的 attempt 由新推进者继续派发，不第二次付费生成。
 
 停止先持久标记 `stop_requested`，等待中的 Run 取消原调用；已经发生的结果按 `assistant` + 终态事件保存，未确认的外发保持 unknown 并暂停。符合恢复条件的非终态按原身份继续，失败或停止等终态后须明确选择输入建立关联后继，原终态不复活。
 
-## 固定工具与执行
+## 版本化装配与执行
+
+按需目录、固定绑定加载及大结果范围读取见 [#216 实施说明](../../../../docs/student-agent-implementation/wp08-216-tool-discovery.md)。它们沿原 Command、原生配对、预算及资源保留边界，不新增运行循环；小结果反馈保持原字段位置。
+
+`assembly.ts` 是普通步骤与显式换模型共同使用的装配入口。`AgentDefinition` 固定目的、Prompt 模板、能力引用、上下文策略、输出契约和预算规则；`ResolvedAgent` 固定实际交集、模型、分层规则、工具完整定义和 executor 绑定。同逻辑名称的不同来源产生稳定协议别名，调用只按已保存绑定进入原 executor。生产工具 host 从实际平台与课程贡献生成装配，跨 owner 的 `tool.contributions` 保留同一来源；执行前重新核对当前来源、版本、对象资格和原 Run 许可。
+
+新步骤使用快照 v2，内含完整 `resolvedAgent` 与 `contextManifest`；旧 v1 继续可读。清单保存已采用输入、规则、原效果、Command/Wait、实际观察与原生 payload 的固定内容、范围、摘要及容量未知项。旧请求查询只读已保留的 JSON 和资源，不重新装配、检索或调用模型。未消费 queue 不进入装配；steering 仍按原顺序采用。
+
+`segments.ts` 的 `receive` / `advance` 接口由原 Run 或模型切换的持久权限推进，记录原操作身份后才接触模型 owner。接管核对同一段、前缀与路线；父权限代际改变时不能被旧的内部 lease 阻塞。未闭合原生工具配对拒绝换段，accepted 已闭合配对可保留原 Wait。配置变化不伪造学生换模型事件，换段不重置预算或重新派发工具。工具发现与加载沿这个入口追加真实变化；Skills 和压缩继续复用同一边界。
+
+`skills.ts` 保存独立说明包的固定版本、个人范围选择、停用与实际读取；课程包随原发布固定，正文/附件由所属 Agent 授权读取。`skill-runtime.ts` 把渐进读取接入同一工具命令账本：普通读取保留原生配对，配置变化沿共同装配和换段生效。正文低于课程帮助规则和学生当前意图，scripts 只作为资料，allowed-tools 不授予执行权限。旧步骤从原快照和来源纯读，不重新加载当前版本。正式设置/草稿、范围与维护细节见 [#217](../../../../docs/student-agent-implementation/wp08-217-skills.md)。
 
 运行中补充与排队由同一 owner 的迁移 8 保存：`teaching_inputs` 是当前输入投影，`teaching_input_revisions` 保留不可变版本，`teaching_controls` 保存原控制回执，`teaching_run_input_selections` 固定显式续接选择。短元数据事务共用持久顺序屏障；外部调用不持锁。步骤计划固定本次输入版本和所观察的 Wait 结果，接收、采纳、许可和收尾竞争有统一顺序。正常完整轮只自动推进明确 queue；失败、停止或预算到期暂停未消费输入。可恢复的非终态续原 Run，终态后须明确选择输入建立关联后继。详见 [#200 实施选择](../../../../docs/student-agent-implementation/specs/wp07-input-control.md)。
 
 `driver.ts` 使用同一状态机推进模型和工具。模型外发前先保存完整步骤计划和稳定 attempt 身份，再保存实际请求快照并取得派发许可。模型结果保存后，原件关联、步骤完成与工具意图在一个所属事务提交；恢复重读原结果，不重新生成。不可消费的输出不产生工具命令。
 
-`tools.ts` 提供版本化的 `read_work`、`read_reference`、`read_material`、`read_result`、`execution_query`、`execution_stop`；活动有对应组件时增加 `course_operation`。模型选择工具，宿主按本次固定授权取证与执行。课程操作从 manifest 与课程运行方案派生，不在 Driver 内硬编码课程信号。图像只接受 WP06 支持的固定 PNG，并核对原生段已核实的图像能力。
+`tools.ts` 提供版本化的 `read_work`、`read_reference`、`read_material`、`read_personal_material`、`read_result`、`execution_query`、`execution_stop`、`search_materials`、`read_student_facts`；活动有对应组件时增加 `course_operation`。模型选择工具，宿主按本次固定授权取证与执行。课程操作从 manifest 与课程运行方案派生，不在 Driver 内硬编码课程信号。图像只接受 WP06 支持的固定 PNG，并核对原生段已核实的图像能力。
 
 WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／命令／快照关联及执行点资格回调；普通学生 HTTP 入口不能自报 Agent 发起者。查询与停止限定原 Run 发起的执行，学生独立实验不受影响。已完成输入与其仍在运行的原生会话分别记录，后续停止不改写原输入结果。
 
@@ -41,7 +55,7 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 ## 上下文与模型
 
-`context.ts` 分开平台指令、平台运行职责、课程规则、本次引用/作品/问题和跨 Run 历史。课程发布固定帮助策略；策略禁止问答时在接收前直接取消，不产生模型调用。历史按真实 `student/assistant` 角色进入段的可移植前缀；只有连接、前缀或配置变化时才封存旧段并建新段。
+`context.ts` 分开平台指令、Agent 输出契约、运行职责、课程帮助规则与学生输入/事实。活动目标、材料目录、固定引用和作品进入用户数据层，材料不能提高指令优先级。课程发布固定帮助策略；策略禁止问答时在接收前直接取消，不产生模型调用。历史按真实 `student/assistant` 角色进入可移植前缀；换段只携带获准事实与原业务身份。
 
 每次外发使用保存的 `contextWindow` / `maxOutputTokens`，不套用探针的次数、步数、输出或时间限制。容量事实以最终原生 payload 字符数、输出预留和配置窗口记录为 `counter:"unavailable"` 的不确定性事实，不换算成 token，也不据粗略估算缩小配置窗口；输入超过学习传输边界（前缀 400,000 字符、用户文本 1,000,000 字符）时保留完整输入并暂停，不截断作品或历史。
 
@@ -75,11 +89,18 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 
 `validateTeachingBoundary` 在独立目标重新导出相同事实后核对清单。受支持的旧通用清单仍走原服务/资源校验；未知必需清单版本拒绝恢复。日志外壳仍为 v1，可忽略扩展使用 `kind: extension` 和显式 `ignorable: true` 的版本化正文，查询保留原件，推进不解释其语义。未知必需事件及外壳版本拒绝推进，已发布迁移保持不变。
 
+WP08 整合后的领域清单为 v4，覆盖 Skills、压缩、个人明确事实及所有历史工具结果资源；事实表使用迁移 13 `teaching_student_facts`。旧清单只接受明确已发布的表集和行形状，不允许用旧版本遗漏新事实。Skills 保持迁移 11，压缩注册为迁移 12；只对名称、SQL 摘要及前缀完全匹配的旧压缩尾项识别原版本 11。严格打开仍核对当前完整链，恢复先核验原链再在关闸状态升级。实际旧备份与组合回归见[整合说明](../../../../docs/student-agent-implementation/wp08-integration.md)。
+
 接收端撤权使用同一 owner 的 `collectTeachingReceiverBoundary`：休眠的已确认逻辑 Wait 可保留，未知派发和停止待确认仍阻断；真实模型/执行 owner 仍须各自确认物理边界。完整备份始终保存全部逻辑未结项，不因接收端投影而丢失等待记录。
 
 完整流程及实际平台范围见 [#204 交付](../../../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)；Mac 与真实跨机交接见 [#212](https://github.com/paher-din/XunJie/issues/212)。隔离副本只读，维护者通过正式 CLI 接管；恢复不重置原预算、Wait 或命令，不重放未知效果。
 
 ## 验证
+
+长历史压缩使用同一 RunDriver 的付费步骤、原获准模型和预算。`compaction.ts` 选择已闭合区间并保留当前输入、规则、引用、已接受效果和未结 Wait；`compaction-validation.ts` 在恢复时关联核对源事件、生成尝试及采用换段。摘要段不提供工具，不进入学生完整对话；续接明确携带原操作状态，不把原问题当作再次执行的请求。来源变化撤销尚未生效的换段；未知尝试只查询原身份。具体阈值、真实协议结果和失败边界见 [#220 交付](../../../../docs/student-agent-implementation/wp08-220-context-compaction.md)。
+
+- `apps/server/tests/teaching-agent.compaction*.runtime.test.mjs`：真实 PostgreSQL 的来源、预算、容量拒绝、并发、accepted Command/Wait、跨协议与备份接管。
+- `apps/web/e2e/teachingCompaction.spec.ts`：正式 Chrome 的完整对话、草稿/焦点、组合事件、刷新/重启、模型选择与停止。
 
 - `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、增量发布、重启/停止/继续、快照重建、备份/还原/接管。
 - `apps/server/tests/teaching-agent.driver.runtime.test.mjs`：两个独立 `driverId` 竞争同一 Run，验证 lease/generation 单一派发。

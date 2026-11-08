@@ -1,0 +1,367 @@
+{
+  "formatVersion": 1,
+  "startedAt": "2026-11-07T20:08:52.052Z",
+  "state": "passed",
+  "platform": "darwin-arm64",
+  "nodeVersion": "v24.21.0",
+  "cases": [
+    {
+      "name": "inspect-labels",
+      "inputSha256": "0e487708ea9eeae76090dfae0c6c4052a7480726f1a981f0fdebc0eff918dd3c",
+      "result": {
+        "state": "ready",
+        "pageCount": 3,
+        "pageLabels": [
+          "i",
+          "A-1",
+          "scan"
+        ]
+      }
+    },
+    {
+      "name": "native-text-and-rotated-page",
+      "pages": [
+        {
+          "page": 1,
+          "label": "i",
+          "state": "ready",
+          "textSha256": "135ced1f7e0fbf901f397d56bf35235988698ad927cbba7a0458b397697ea7f9",
+          "textBytes": 28,
+          "pngSha256": "687c9f97cd2e6491521bee739bd6ef79d02f5bc7a6367e70cba7208dcc8f869f",
+          "pngBytes": 64144,
+          "width": 2048,
+          "height": 1536,
+          "center": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "transform": {
+            "rotation": 0,
+            "cropBox": [
+              0,
+              0,
+              400,
+              300
+            ],
+            "region": null,
+            "scale": 5.12,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层。页图长边 2048px，细节可能不足；未执行 OCR。"
+        },
+        {
+          "page": 2,
+          "label": "A-1",
+          "state": "ready",
+          "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "textBytes": 0,
+          "pngSha256": "ca5d74f37905db4dcb5d46938e670f139674c2fbe757569cf0520ede5c0de1d3",
+          "pngBytes": 15504,
+          "width": 1326,
+          "height": 2048,
+          "center": [
+            255,
+            255,
+            0,
+            255
+          ],
+          "transform": {
+            "rotation": 90,
+            "cropBox": [
+              30,
+              40,
+              370,
+              260
+            ],
+            "region": null,
+            "scale": 6.023529411764706,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层。页图长边 2048px，细节可能不足；未执行 OCR。"
+        }
+      ]
+    },
+    {
+      "name": "rotated-cropbox-region-and-scan",
+      "pages": [
+        {
+          "page": 2,
+          "label": "A-1",
+          "state": "ready",
+          "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "textBytes": 0,
+          "pngSha256": "a697bfeb3e2014b758871c1b4dd79d9f92a0f247bc4335fca7238f7d15159f2a",
+          "pngBytes": 15367,
+          "width": 1326,
+          "height": 2048,
+          "center": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "transform": {
+            "rotation": 90,
+            "cropBox": [
+              30,
+              40,
+              370,
+              260
+            ],
+            "region": {
+              "x": 0,
+              "y": 0,
+              "width": 0.5,
+              "height": 0.5
+            },
+            "scale": 12.047058823529412,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层，未按所选区域过滤。页图长边 2048px，细节可能不足；未执行 OCR。"
+        },
+        {
+          "page": 3,
+          "label": "scan",
+          "state": "ready",
+          "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "textBytes": 0,
+          "pngSha256": "10ee482d3a0bebbeea32bd3860eb6f1334ea9415a7aba934159962c9fd7a8565",
+          "pngBytes": 16438,
+          "width": 2048,
+          "height": 1536,
+          "center": [
+            210,
+            230,
+            40,
+            255
+          ],
+          "transform": {
+            "rotation": 0,
+            "cropBox": [
+              0,
+              0,
+              400,
+              300
+            ],
+            "region": {
+              "x": 0,
+              "y": 0,
+              "width": 0.5,
+              "height": 0.5
+            },
+            "scale": 10.24,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层，未按所选区域过滤。页图长边 2048px，细节可能不足；未执行 OCR。"
+        }
+      ]
+    },
+    {
+      "name": "ordered-independent-page-error",
+      "pages": [
+        {
+          "page": 100000,
+          "label": "100000",
+          "state": "out-of-range",
+          "text": "",
+          "textOrigin": "native",
+          "ocr": "not-performed",
+          "image": null,
+          "transform": {
+            "rotation": 0,
+            "cropBox": [],
+            "region": null,
+            "scale": 0,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "Actual PDF page index is outside the document; page geometry is unavailable."
+        },
+        {
+          "page": 1,
+          "label": "i",
+          "state": "ready",
+          "textSha256": "135ced1f7e0fbf901f397d56bf35235988698ad927cbba7a0458b397697ea7f9",
+          "textBytes": 28,
+          "pngSha256": "687c9f97cd2e6491521bee739bd6ef79d02f5bc7a6367e70cba7208dcc8f869f",
+          "pngBytes": 64144,
+          "width": 2048,
+          "height": 1536,
+          "center": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "transform": {
+            "rotation": 0,
+            "cropBox": [
+              0,
+              0,
+              400,
+              300
+            ],
+            "region": null,
+            "scale": 5.12,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层。页图长边 2048px，细节可能不足；未执行 OCR。"
+        }
+      ]
+    },
+    {
+      "name": "damaged",
+      "result": {
+        "state": "damaged",
+        "pageCount": 0,
+        "pageLabels": [],
+        "detail": "PDF structure is damaged."
+      }
+    },
+    {
+      "name": "page-limit",
+      "result": {
+        "state": "limit",
+        "pageCount": 201,
+        "pageLabels": [],
+        "detail": "PDF exceeds 200 pages."
+      }
+    },
+    {
+      "name": "public-course-pdf",
+      "source": "实验03题目-ALU.pdf",
+      "inputSha256": "313bd19d014be18c4b5018e46cad3d2fcf0f1eadc0106596ad6a7f4858c9da65",
+      "inspection": {
+        "state": "ready",
+        "pageCount": 2,
+        "pageLabels": [
+          "1",
+          "2"
+        ]
+      },
+      "pages": [
+        {
+          "page": 1,
+          "label": "1",
+          "state": "ready",
+          "textSha256": "1ba1cfd34934130bc8569d4d641833a30736c95d03cba92af74e156a6948e63c",
+          "textBytes": 1553,
+          "pngSha256": "28c6ad78188700251e20109e44140f71d942cd268c4504fdf22ec3ac2ae4f623",
+          "pngBytes": 227274,
+          "width": 1087,
+          "height": 1536,
+          "center": [
+            217,
+            217,
+            217,
+            255
+          ],
+          "transform": {
+            "rotation": 0,
+            "cropBox": [
+              0,
+              0,
+              595.32,
+              841.92
+            ],
+            "region": null,
+            "scale": 1.8244013683010263,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层。页图长边 1536px，细节可能不足；未执行 OCR。"
+        },
+        {
+          "page": 2,
+          "label": "2",
+          "state": "ready",
+          "textSha256": "fea48ea2da7eb66f671776d0fadf919e1fa83df6d95da0b2bd614e1c98e2adb1",
+          "textBytes": 347,
+          "pngSha256": "3bd5b4d40670779d0c91a5007015f7f822764f96ba980da83948397f10ec59f4",
+          "pngBytes": 230256,
+          "width": 725,
+          "height": 1024,
+          "center": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "transform": {
+            "rotation": 0,
+            "cropBox": [
+              0,
+              0,
+              595.32,
+              841.92
+            ],
+            "region": null,
+            "scale": 1.216267578867351,
+            "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0"
+          },
+          "detail": "文字来自整页原生文字层。页图长边 1024px，细节可能不足；未执行 OCR。"
+        }
+      ]
+    }
+  ],
+  "distribution": {
+    "sha256": "9f7e29c2c3f53c26759bad48623ef4c9a8ace29f7e1d49f7f405ba85e9b85c24",
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "workerSha256": "0efd770caaf7d02f5b7d7bb068c2c7769ddf2b5c7046474e1ab258648feec489",
+    "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b",
+    "nativeSha256": "cbb47482c01dcc92cf2488ae8a8b0e26c61e49e21060ed78976b929080757ec9",
+    "nativePackage": "@napi-rs/canvas-darwin-arm64",
+    "nativeIntegrity": "sha512-iqwST4g0oH+x8VCpBIYh+MYokv/mVvkM+v9oJGB0d9A3P2qBh42ogJlVyWq9SpPCrAjS7tplMb1D3OIfxl+utw==",
+    "bytes": {
+      "product": 453435802,
+      "pdfjs": 6915285,
+      "canvas": 80941,
+      "native": 29785379,
+      "pdfNativeLicenses": 556977
+    },
+    "licenseRecords": [
+      {
+        "name": "@napi-rs/canvas-darwin-arm64",
+        "version": "1.1.0",
+        "license": "MIT",
+        "notices": [
+          "licenses/@napi-rs+canvas@1.1.0/LICENSE",
+          "licenses/pdf-native/NOTICE-PDF.txt",
+          "licenses/pdf-native/NOTICE-canvas-rust-1.1.0.txt",
+          "licenses/pdf-native/NOTICE-canvas-skia-1.1.0.txt"
+        ],
+        "sbom": "node_modules/@napi-rs/canvas-darwin-arm64/sbom.cdx.json"
+      },
+      {
+        "name": "@napi-rs/canvas",
+        "version": "1.1.0",
+        "license": "MIT",
+        "notices": [
+          "licenses/@napi-rs+canvas@1.1.0/LICENSE"
+        ]
+      },
+      {
+        "name": "pdfjs-dist",
+        "version": "6.5.438",
+        "license": "Apache-2.0",
+        "notices": [
+          "licenses/pdfjs-dist@6.5.438/cmaps/LICENSE",
+          "licenses/pdfjs-dist@6.5.438/iccs/LICENSE",
+          "licenses/pdfjs-dist@6.5.438/LICENSE",
+          "licenses/pdfjs-dist@6.5.438/standard_fonts/LICENSE_FOXIT",
+          "licenses/pdfjs-dist@6.5.438/standard_fonts/LICENSE_LIBERATION",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_JBIG2",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_OPENJPEG",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_JBIG2",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_OPENJPEG",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_QCMS",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_QUICKJS",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_QCMS",
+          "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_QUICKJS"
+        ]
+      }
+    ]
+  },
+  "finishedAt": "2026-11-07T20:09:02.149Z"
+}

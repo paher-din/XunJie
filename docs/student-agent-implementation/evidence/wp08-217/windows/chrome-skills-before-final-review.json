@@ -1,0 +1,46 @@
+{
+  "issue": 217,
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "startedAt": "2026-11-07T19:54:08.768Z",
+  "headed": true,
+  "model": "controlled external transport; production Gateway and owners",
+  "distributionSha256": "2c08d8161f9f1d418411e2f9a6dc4106f7d08226d19fe6f458f217bb159a21b9",
+  "applicationSha256": "4f36d24d5556ba9642eaad55930920b7b00bced81d5f5ecc9507cc4845f6cf18",
+  "cases": [
+    {
+      "name": "Formal settings import preserves package paths and metadata",
+      "status": "passed"
+    },
+    {
+      "name": "Explicit Skill selection retains draft focus and selected text",
+      "status": "passed"
+    },
+    {
+      "name": "Settings and browser back-forward retain the original draft and caret",
+      "status": "passed"
+    },
+    {
+      "name": "Chrome composition Enter keeps Chinese input in the same draft",
+      "status": "passed",
+      "detail": "CDP IME composition path; no OS candidate-window claim"
+    },
+    {
+      "name": "Formal draft sends the fixed Skill through the production model and tool loop",
+      "status": "passed"
+    },
+    {
+      "name": "Settings update and disable plus a real process restart preserve the original source and answer",
+      "status": "passed"
+    },
+    {
+      "name": "Dark narrow desktop remains usable",
+      "status": "passed"
+    }
+  ],
+  "status": "passed",
+  "chrome": "156.0.8078.81",
+  "finishedAt": "2026-11-07T19:54:35.283Z",
+  "modelRequests": 2
+}

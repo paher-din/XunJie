@@ -8,6 +8,9 @@ import { createLearningModelService, learningModelRequestSchema, type LearningMo
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { teachingDependencyCallSchema, teachingPreparedToolSchema, teachingToolOutcomeSchema } from '@xunjie/contracts/teaching-agent';
 import { modelToolSchema } from '@xunjie/contracts/model-connections';
+import { agentToolBindingSchema } from '@xunjie/contracts/teaching-agent';
+import { teachingSkillStateSchema, type TeachingSkillState } from '@xunjie/contracts/agent-skills';
+import { toolContributions } from './assembly.js';
 export { teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
 
 const scopeSchema = z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict();
@@ -16,13 +19,14 @@ export type TeachingDependencyCall = z.infer<typeof teachingDependencyCallSchema
 /** Function capabilities stay local. The actual execution owner reconstructs the dispatch check. */
 export function createTeachingDependencyClient(call: (input: TeachingDependencyCall) => Promise<unknown>) {
   const invoke = (operation: TeachingDependencyCall['operation'], identity: SpaceIdentity, args: unknown[] = []) => call({ version: 1, operation, identity, args });
-  const operations = { definitions: 'tool.definitions', prepare: 'tool.prepare', dispatch: 'tool.dispatch', reconcile: 'tool.reconcile', stop: 'tool.stop' } as const;
+  const operations = { definitions: 'tool.definitions', contributions: 'tool.contributions', prepare: 'tool.prepare', dispatch: 'tool.dispatch', reconcile: 'tool.reconcile', stop: 'tool.stop' } as const;
   const tool = (operation: keyof typeof operations, scope: TeachingToolScope | TeachingToolCleanupScope, args: unknown[]) => {
     const { assertDispatch: _guard, authority, ...fixed } = scope;
     return call({ version: 1, operation: operations[operation], identity: scope.identity, activityId: scope.activity.activityId,
       ...(authority ? { authority } : {}), args: [fixed, ...args] });
   };
   const tools: TeachingToolHost = {
+    contributions: async scope => z.array(agentToolBindingSchema.omit({ bindingId: true, modelName: true })).parse(await tool('contributions', scope, [])),
     definitions: async scope => z.array(modelToolSchema).parse(await tool('definitions', scope, [])),
     prepare: async (scope, intent, commandId) => teachingPreparedToolSchema.parse(await tool('prepare', scope, [intent, commandId])),
     dispatch: async (scope, command) => teachingToolOutcomeSchema.parse(await tool('dispatch', scope, [command])),
@@ -72,18 +76,28 @@ export function createTeachingDependencyService(options: {
       return options.modelRequest ? options.modelRequest(request) : models(request);
     }
     if (input.operation.startsWith('tool.')) {
-      const raw = z.object({ identity: spaceIdentitySchema, activity: input.operation === 'tool.stop'
+      // The fixed step state is public wire data: it must be schema-validated before the
+      // material owner may use it. No local guard function is ever accepted from the caller.
+      const scopeSchema = z.object({ identity: spaceIdentitySchema, activity: input.operation === 'tool.stop'
         ? activitySchema.pick({ identity: true, activityId: true, course: true }) : activitySchema, input: actionInputSchema,
-        runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(), segmentId: z.uuid().optional() }).strict().parse(input.args[0]);
+        runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(), segmentId: z.uuid().optional(),
+        skillState: teachingSkillStateSchema.optional() }).strict()
+        .refine(value => JSON.stringify(value.skillState ?? null).length <= 2_000_000,
+          'fixed skill state exceeds the public wire budget');
+      const raw = scopeSchema.parse(input.args[0]);
       if (JSON.stringify(raw.identity) !== JSON.stringify(identity)) throw new StorageError('forbidden');
       if (input.authority && (input.authority.runId !== raw.runId || input.authority.activityId !== raw.activity.activityId))
         throw new StorageError('forbidden');
       if (input.operation === 'tool.dispatch' && !input.authority) throw new StorageError('forbidden');
-      const { segmentId, ...fixed } = raw;
-      if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...(segmentId ? { segmentId } : {}) }, teachingPreparedToolSchema.parse(input.args[1]));
-      const scope: TeachingToolScope = { ...fixed, ...(segmentId ? { segmentId } : {}),
+      const { segmentId, skillState, ...fixed } = raw;
+      // The state is fixed by the original step, not frozen here; the wire schema is its authority.
+      const fixedSkillState = skillState ? { skillState: skillState as TeachingSkillState } : {};
+      if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...fixedSkillState,
+        ...(segmentId ? { segmentId } : {}) }, teachingPreparedToolSchema.parse(input.args[1]));
+      const scope: TeachingToolScope = { ...fixed, ...fixedSkillState, ...(segmentId ? { segmentId } : {}),
         ...(input.authority ? { authority: input.authority } : {}), activity: await options.activity(identity, raw.activity.activityId) };
       switch (input.operation) {
+        case 'tool.contributions': return toolContributions(options.tools, scope);
         case 'tool.definitions': return options.tools.definitions(scope);
         case 'tool.prepare': return options.tools.prepare(scope,
           z.object({ callId: z.string().min(1), name: z.string().min(1), arguments: z.record(z.string(), z.unknown()) }).strict().parse(input.args[1]), z.uuid().parse(input.args[2]));

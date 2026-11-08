@@ -1,0 +1,86 @@
+{
+  "measuredAt": "2026-11-07T19:18:47.987Z",
+  "model": "deepseek-flash",
+  "capability": "fixed-skill-body-and-attachment",
+  "limits": {
+    "maxGenerations": 2,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": true,
+      "state": "completed",
+      "reason": "stop",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 5120,
+        "outputTokens": 589,
+        "totalTokens": 5709,
+        "cachedTokens": 2944,
+        "reasoningTokens": 256
+      },
+      "answerSha256": "2c86d15ebba49478ea077ff77216a7eb8058467acb26d935d67482e58951c8f9",
+      "assemblies": [
+        {
+          "resolvedId": "fd87f285-e1cd-47e8-bf3d-3616e696d414",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "be3f0ade-99aa-4a0a-b6af-d2c69eab53d7",
+          "payloadSha256": "89370ab73d4fd8d25191eec56e34030a4d080bb19ac6cd763448f9b27295e75c",
+          "contextManifestId": "c4c2b025-dcaf-4054-abda-38efe0ae2034",
+          "counting": "unknown",
+          "transportMatched": true
+        },
+        {
+          "resolvedId": "f298eec2-1a84-45ff-8a94-5d608531e02b",
+          "definitionId": "xunjie.learning",
+          "definitionVersion": 1,
+          "snapshotId": "858beec4-fb43-43eb-9013-afcdcd66cf7e",
+          "payloadSha256": "b648632624c65f008693d12a0c4ce9ffca3fa5194d16bcf388505e436e16f5cd",
+          "contextManifestId": "56ef89fb-8852-4a5c-8835-5b291eb069d3",
+          "counting": "unknown",
+          "transportMatched": true
+        }
+      ],
+      "skill": {
+        "skillId": "ba046eef-3c73-46f8-81a1-770af2080318",
+        "version": 1,
+        "packageDigest": "81416b3e776782966c30030f78e2f4caad1b338cb5ed57f5ef4dd59654321b38",
+        "loadedPaths": [
+          "SKILL.md",
+          "references/observations.md"
+        ],
+        "scriptsExecuted": false,
+        "bodyAndAttachmentTransportMatched": true
+      }
+    }
+  ],
+  "generations": 2,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1625,
+      "payloadSha256": "89370ab73d4fd8d25191eec56e34030a4d080bb19ac6cd763448f9b27295e75c"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 3187,
+      "payloadSha256": "b648632624c65f008693d12a0c4ce9ffca3fa5194d16bcf388505e436e16f5cd"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import { actionInputSchema } from '@xunjie/contracts/action-intents';
 import { verifySemanticReference } from './semantic-references.js';
+import { verifyPdfReference } from './pdf-materials.js';
+import { personalMaterialResourceId, verifyPersonalMaterialReference } from './personal-materials.js';
 import { validateComponentFiles } from './component-state.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -26,6 +28,8 @@ export const questionDraftMigration: Migration = { version: 4, name: 'question-d
 ` };
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const draftContent = (draft: Pick<QuestionDraftView, 'question' | 'references' | 'skills'>) => ({ question: draft.question,
+  references: draft.references, ...(draft.skills === undefined ? {} : { skills: draft.skills }) });
 const copyDigest = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
 const fail = (code: 'forbidden' | 'invalid' | 'missing' | 'corrupt' | 'identity-conflict' | 'conflict'): never => {
   throw new StorageError(code);
@@ -116,7 +120,7 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
       } else {
         const draft = questionDraftViewSchema.parse(row.body);
         if (draft.draftId !== draftId || draft.revisionId !== row.revision_id || draft.revision !== Number(row.revision)
-          || digest({ question: draft.question, references: draft.references }) !== row.content_digest) return fail('corrupt');
+          || digest(draftContent(draft)) !== row.content_digest) return fail('corrupt');
         if (draft.references.some(item => item.copyDigest !== copyDigest(item.copy))) return fail('corrupt');
         references = draft.references;
         pin = `question-reference/${draftId}/${draft.revisionId}/${reference.referenceId}`;
@@ -139,6 +143,14 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     const used = new Set<string>();
     for (const reference of input.references) {
       const source = reference.source;
+      if (source.kind === 'pdf') {
+        await verifyPdfReference(storage, activity.activityId, reference);
+        continue;
+      }
+      if (source.kind === 'personal-material') {
+        await verifyPersonalMaterialReference(storage, activity.activityId, reference);
+        continue;
+      }
       if (source.kind === 'component') {
         used.add(source.contentId);
         const basis = bases.get(source.contentId);
@@ -211,8 +223,8 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
       if (row && Number(row.revision) !== input.baseRevision) throw new StorageError('conflict');
       const revisionId = randomUUID();
       const draft = questionDraftViewSchema.parse({ draftId, revision: input.baseRevision + 1, revisionId,
-        question: input.question, references });
-      const contentDigest = digest({ question: draft.question, references: draft.references });
+        question: input.question, references, ...(input.skills === undefined ? {} : { skills: input.skills }) });
+      const contentDigest = digest(draftContent(draft));
       if (!row) {
         await tx.query(`INSERT INTO question_drafts(draft_id,activity_id,space_environment_id,space_id,principal_id,revision,revision_id)
           VALUES($1,$2,$3,$4,$5,$6,$7)`, [draftId, ...scope(identity, activityId), draft.revision, revisionId]);
@@ -227,6 +239,14 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
         // only links work content it actually stores.
         if (reference.source.kind === 'work' || reference.source.kind === 'component')
           await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`, reference.source.contentId);
+        if (reference.source.kind === 'pdf') {
+          await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`, reference.source.readingId);
+          await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}/original`, reference.source.documentId);
+        }
+        if (reference.source.kind === 'personal-material') {
+          await tx.reference(`question-reference/${draftId}/${revisionId}/${reference.referenceId}`,
+            personalMaterialResourceId(reference.source.materialId, reference.source.version));
+        }
       }
       await tx.query('INSERT INTO question_draft_receipts(request_id,draft_id) VALUES($1,$2)', [input.requestId, draftId]);
       return { draft };
@@ -248,7 +268,7 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
       const draft = questionDraftViewSchema.parse(row.body);
       if (draft.draftId !== row.draft_id || draft.draftId !== draftIdFor(String(row.activity_id))
         || draft.revision !== Number(row.revision) || draft.revisionId !== row.revision_id
-        || row.content_digest !== digest({ question: draft.question, references: draft.references })) fail('corrupt');
+        || row.content_digest !== digest(draftContent(draft))) fail('corrupt');
       for (const reference of draft.references) {
         if (reference.copyDigest !== copyDigest(reference.copy)
           || reference.copy.length !== reference.range.end - reference.range.start) fail('corrupt');
@@ -265,7 +285,7 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
     for (const row of revisions) {
       const draft = questionDraftViewSchema.parse(row.body);
       if (draft.draftId !== row.draft_id || draft.revision !== Number(row.revision) || draft.revisionId !== row.revision_id
-        || row.content_digest !== digest({ question: draft.question, references: draft.references })) fail('corrupt');
+        || row.content_digest !== digest(draftContent(draft))) fail('corrupt');
       await validateSemanticRevision(storage, String(row.activity_id), draft);
     }
     const { rows: receipts } = await storage.read('SELECT request_id,draft_id FROM question_draft_receipts');
@@ -283,12 +303,33 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
 
 /** All revisions retain their own resource pins, including copies no longer in the current draft. */
 async function validateSemanticRevision(storage: OwnedStorage, activityId: string, draft: QuestionDraftView) {
-  const references = draft.references.filter(reference => reference.source.kind === 'component');
+  const references = draft.references.filter(reference => reference.source.kind === 'component' || reference.source.kind === 'pdf'
+    || reference.source.kind === 'personal-material');
   if (!references.length) return;
   const { rows: [row] } = await storage.read('SELECT body FROM activities WHERE id=$1', [activityId]);
   if (!row) return fail('corrupt');
   const activity = activitySchema.parse(row.body);
   for (const reference of references) {
+    if (reference.source.kind === 'pdf') {
+      const source = reference.source;
+      await verifyPdfReference(storage, activityId, reference);
+      if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
+      const { rows: pins } = await storage.read('SELECT reference_id,resource_id FROM _storage_references WHERE reference_id=$1 OR reference_id=$2',
+        [`question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}`,
+          `question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}/original`]);
+      if (pins.length !== 2 || !pins.some(pin => pin.resource_id === source.readingId)
+        || !pins.some(pin => pin.resource_id === source.documentId)) return fail('corrupt');
+      continue;
+    }
+    if (reference.source.kind === 'personal-material') {
+      await verifyPersonalMaterialReference(storage, activityId, reference);
+      if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
+      const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
+        [`question-reference/${draft.draftId}/${draft.revisionId}/${reference.referenceId}`]);
+      if (links.length !== 1 || links[0]!.resource_id !== personalMaterialResourceId(reference.source.materialId, reference.source.version))
+        return fail('corrupt');
+      continue;
+    }
     if (reference.source.kind !== 'component') continue;
     if (reference.copyDigest !== copyDigest(reference.copy)) return fail('corrupt');
     await verifySemanticReference(storage, activity, reference, true);

@@ -38,6 +38,8 @@ export interface OwnerBoundaryMaterial {
   blocking: { code: string; detail: string }[];
   /** Owner-specific, versioned payload. Encryption keeps it out of the public catalog. */
   evidence?: unknown;
+  /** Read-only owner source closure (#221). Absent in backups sealed before this version. */
+  sources?: { formatVersion: 1; kind: 'xunjie.owner-sources/1'; owner: string; entries: unknown[] };
 }
 
 /** Owner data is encrypted with the artifacts, never copied into the public catalog. */

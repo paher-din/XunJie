@@ -1,0 +1,194 @@
+{
+  "measuredAt": "2026-11-07T19:39:12.935Z",
+  "status": "passed",
+  "model": "deepseek-flash",
+  "limits": {
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0,
+    "maxGenerations": 6
+  },
+  "transport": "byte-preserving Mac relay; verified upstream TLS",
+  "ownerReopen": "same-process public Agent owner recreation against original PostgreSQL",
+  "browser": "not-run",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "status": "passed",
+      "cleanup": {
+        "relayClosed": true,
+        "ownersClosed": true,
+        "rootRemoved": true
+      },
+      "runState": "completed",
+      "runId": "64feb770-e9e2-4a0e-a831-0a85365e68f7",
+      "snapshots": [
+        {
+          "version": 1,
+          "runId": "64feb770-e9e2-4a0e-a831-0a85365e68f7",
+          "segmentId": "89efb8b6-2e09-44f9-b0b3-e43a2784c351",
+          "resolvedId": "a5e056e2-6761-495b-9bb1-a947e5aa9064",
+          "snapshotId": "315cdb14-2fc2-4ca6-a0cf-4e35d5df0e12",
+          "payloadSha256": "e15dbe8c6d34de6563474642326c0d65d3aab6d0419eabd3008fa5170c277a18"
+        },
+        {
+          "version": 2,
+          "runId": "64feb770-e9e2-4a0e-a831-0a85365e68f7",
+          "segmentId": "d875960a-0260-49d6-a816-350019c4f96e",
+          "resolvedId": "01f9a340-a450-4013-bba6-5d709ff9bc88",
+          "snapshotId": "62653aea-f233-4eb6-a581-d291bc24a049",
+          "payloadSha256": "332927f22068e233d44344acccf6c07cf28199618c6b2431a9dd98faaac74a4f"
+        }
+      ],
+      "lastRole": "user",
+      "intentIncluded": true,
+      "nativeStateMigrated": false,
+      "sameRun": true,
+      "effectIncluded": true,
+      "promptMatched": true,
+      "reopenedSameSnapshots": true,
+      "reopenNewRequests": 0,
+      "toolDispatches": 1,
+      "requests": [
+        {
+          "index": 1,
+          "status": 200,
+          "finished": true,
+          "payloadSha256": "e15dbe8c6d34de6563474642326c0d65d3aab6d0419eabd3008fa5170c277a18",
+          "wireSha256": "c9418c729e36b26c428dd8c435113331ae7b7520cc03ce22e7cfe656392fd1d7",
+          "elapsedMs": 1374
+        },
+        {
+          "index": 2,
+          "status": 200,
+          "finished": true,
+          "payloadSha256": "332927f22068e233d44344acccf6c07cf28199618c6b2431a9dd98faaac74a4f",
+          "wireSha256": "2d0f418d1bf0fd9821e0bc40bf2c19ae3374c80994a06c4ced17c5d6cf77267b",
+          "elapsedMs": 2027
+        }
+      ],
+      "refusals": [],
+      "requestCount": 2,
+      "entryCount": 2
+    },
+    {
+      "protocol": "responses",
+      "status": "passed",
+      "cleanup": {
+        "relayClosed": true,
+        "ownersClosed": true,
+        "rootRemoved": true
+      },
+      "runState": "completed",
+      "runId": "2a82a876-4c41-4c35-a339-cbb11e671dc7",
+      "snapshots": [
+        {
+          "version": 1,
+          "runId": "2a82a876-4c41-4c35-a339-cbb11e671dc7",
+          "segmentId": "cd75b480-bb9d-4e01-871e-b4b0f2b284f7",
+          "resolvedId": "1031e1f1-f361-4490-b1a1-450f91f3d8a7",
+          "snapshotId": "cea16f80-f319-4dec-ab87-9e5f0546b81a",
+          "payloadSha256": "4f68689d172031ed0a5013a4d601e2068e5df1a96cd2743d0b584b1db4a62b22"
+        },
+        {
+          "version": 2,
+          "runId": "2a82a876-4c41-4c35-a339-cbb11e671dc7",
+          "segmentId": "0a3ab517-9af8-4911-b8f5-3c86e029247b",
+          "resolvedId": "c82e66ad-bee9-43c4-b2e5-705ad9f68b7f",
+          "snapshotId": "fd40f03c-4ce5-4d08-9ccb-8fdab13304f4",
+          "payloadSha256": "9c6c5f2a70f0654550f1d6fed296b373b156e65d2df132c8793775df05e3fa68"
+        }
+      ],
+      "lastRole": "user",
+      "intentIncluded": true,
+      "nativeStateMigrated": false,
+      "sameRun": true,
+      "effectIncluded": true,
+      "promptMatched": true,
+      "reopenedSameSnapshots": true,
+      "reopenNewRequests": 0,
+      "toolDispatches": 1,
+      "requests": [
+        {
+          "index": 1,
+          "status": 200,
+          "finished": true,
+          "payloadSha256": "4f68689d172031ed0a5013a4d601e2068e5df1a96cd2743d0b584b1db4a62b22",
+          "wireSha256": "5ea2bda661e07b225fcf1f82adab908f9f722df78fe329d96c0da728899efe3a",
+          "elapsedMs": 1371
+        },
+        {
+          "index": 2,
+          "status": 200,
+          "finished": true,
+          "payloadSha256": "9c6c5f2a70f0654550f1d6fed296b373b156e65d2df132c8793775df05e3fa68",
+          "wireSha256": "2edd44db9afbf8c40ee846c20fe7a35b4096f4113b7c18178a11809789cbeacc",
+          "elapsedMs": 1188
+        }
+      ],
+      "refusals": [],
+      "requestCount": 2,
+      "entryCount": 2
+    },
+    {
+      "protocol": "messages",
+      "status": "passed",
+      "cleanup": {
+        "relayClosed": true,
+        "ownersClosed": true,
+        "rootRemoved": true
+      },
+      "runState": "completed",
+      "runId": "799701da-22cc-41f1-b53e-01e5c10c4303",
+      "snapshots": [
+        {
+          "version": 1,
+          "runId": "799701da-22cc-41f1-b53e-01e5c10c4303",
+          "segmentId": "77baa414-b495-4492-9da6-b184409cd68f",
+          "resolvedId": "d5d79443-1dad-439e-b4f8-e65f1d85ed6f",
+          "snapshotId": "4ba053b9-09ad-4246-b908-6bc1241bee6d",
+          "payloadSha256": "d6e8c9a05bff3648ed38752200e463b35cc0c305e9e9890ca9e9b559a7b96036"
+        },
+        {
+          "version": 2,
+          "runId": "799701da-22cc-41f1-b53e-01e5c10c4303",
+          "segmentId": "778bda18-0460-44ef-b989-854f8d3dd9c2",
+          "resolvedId": "eb43b094-3554-4af4-ba5c-fc9b0cc0ee2f",
+          "snapshotId": "5380a74d-5715-4bbb-97d0-5d6f095aa5c7",
+          "payloadSha256": "b3f39daca43708051200f17d595f9fe4a6f0fe97ca1b9677e6bcabe2714e4e77"
+        }
+      ],
+      "lastRole": "user",
+      "intentIncluded": true,
+      "nativeStateMigrated": false,
+      "sameRun": true,
+      "effectIncluded": true,
+      "promptMatched": true,
+      "reopenedSameSnapshots": true,
+      "reopenNewRequests": 0,
+      "toolDispatches": 1,
+      "requests": [
+        {
+          "index": 1,
+          "status": 200,
+          "finished": true,
+          "payloadSha256": "d6e8c9a05bff3648ed38752200e463b35cc0c305e9e9890ca9e9b559a7b96036",
+          "wireSha256": "6f49d0169af686c1098da2c7cebd25f41e8928865b7bdf81ee4cfeb7698d6e40",
+          "elapsedMs": 1267
+        },
+        {
+          "index": 2,
+          "status": 200,
+          "finished": true,
+          "payloadSha256": "b3f39daca43708051200f17d595f9fe4a6f0fe97ca1b9677e6bcabe2714e4e77",
+          "wireSha256": "b7139a2c2ccdc3859c110fb33b5ba2f7ff246bf83d56e6373f4abd229b99e627",
+          "elapsedMs": 1183
+        }
+      ],
+      "refusals": [],
+      "requestCount": 2,
+      "entryCount": 2
+    }
+  ]
+}

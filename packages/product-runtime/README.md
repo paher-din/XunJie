@@ -11,6 +11,8 @@ import {
   openProductRuntime, createProductRuntimeHost,
   createMaintenanceCoordinator, createRecoveryManager,
   restoreRecoverySet, restoreProductRecovery, upgradeProductRecovery,
+  sealRecoverySet, verifyRecoverySet, restoreRecoverySetBundle,
+  recoverySetMemberDirectory, newRecoverySetKey,
   createStorageRecoveryOwner, createStorageRecoveryTarget, openRecoveredStorage,
   storage,
 } from '@xunjie/product-runtime';
@@ -25,6 +27,9 @@ import {
 | `createProductRuntimeHost` | 通过 `recoveryOwners` 或数据库可用后执行的 `createRecoveryOwners` 装配业务 owner；`participants` 可登记其他维护参与者 |
 | `createRecoveryManager` | 绑定 environment、maintenance、owners、requiredServiceIds、receiverIds，编排同一关闭边界备份与目标接管 |
 | `restoreRecoverySet` | 认证完整备份，精确匹配全部 targets，空的独立目标恢复并验证，返回 `{ manifest, owners }`，保持 isolated |
+| `sealRecoverySet` | 逐个验证多个安装已密封的原备份，生成带认证清单的恢复集合；目录写入 `members/<backupId>/` |
+| `verifyRecoverySet` | 全量验证集合认证、成员目录、原备份摘要与构件；任一缺成员/原件/损坏/引用不匹配在还原前整体拒绝 |
+| `restoreRecoverySetBundle` | 先全量验证，再按与成员精确匹配的 restores 逐个执行隔离还原；集合不完整或还原数不符则拒绝 |
 | `restoreProductRecovery` | 默认按认证后的备份装配 runtime、空间身份和学习数据 target；自定义宿主可用 `targets` 显式提供完整业务目标集合；可提供目标 `database`、`databaseCredential` 与 `installation` |
 | `upgradeProductRecovery` | `schema` / `pg-minor` / `pg-major`：从 callback 取得 held 备份，以目标 resources、database、databaseCredential、installation 在独立 root 恢复，完成后仍隔离 |
 | `createStorageRecoveryOwner/Target` | 对接 [storage](../storage/README.md) 的真实快照、schema、原资源、pin、迁移与 owner 服务验证 |

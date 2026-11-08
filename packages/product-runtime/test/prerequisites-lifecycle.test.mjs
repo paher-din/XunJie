@@ -22,7 +22,8 @@ console.log(JSON.stringify({status:'downloaded-and-verified-not-installed',signa
     await chmod(executable, 0o700);
     process.env.SystemRoot = join(dir, 'Windows'); process.env.PREREQ_TEST_LOG = log;
     const entry = join(dir, 'api.mjs');
-    await build({ entryPoints: [fileURLToPath(new URL('../src/index.ts', import.meta.url))], outfile: entry, bundle: true, platform: 'node', format: 'esm', external: ['pg'], logLevel: 'silent',
+    // Keep Node's CJS dependency resolution in this lifecycle fixture; the shipped bundle has its own require bridge.
+    await build({ entryPoints: [fileURLToPath(new URL('../src/index.ts', import.meta.url))], outfile: entry, bundle: true, platform: 'node', format: 'esm', external: ['pg', 'yaml'], logLevel: 'silent',
       plugins: [{ name: 'windows-prerequisite-host-only', setup(b) { b.onLoad({ filter: /[\\/]prerequisites\.ts$/ }, async ({ path }) => ({ contents: (await readFile(path, 'utf8')).replace('platform: process.platform', 'platform: "win32"'), loader: 'ts' })); } }] });
     const { openProductRuntime } = await import(pathToFileURL(entry).href);
     const helper = join(dir, 'helper.ps1'); await writeFile(helper, '# fixture');

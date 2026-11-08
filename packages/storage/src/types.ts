@@ -7,7 +7,13 @@ export interface DatabaseConnection {
   ssl?: { ca: string };
 }
 export interface StorageBinding { owner: StorageOwner; schema: string; migratorRole: string; connection: DatabaseConnection; }
-export interface Migration { version: number; name: string; sql: string; }
+export interface Migration {
+  version: number; name: string; sql: string;
+  /** A published branch used this earlier tail version with exactly the same name and SQL.
+   * Provisioning may relocate that journal entry and apply missing migrations; opening stays strict.
+   */
+  formerVersion?: number;
+}
 export interface QueryResult<T> { rows: T[]; rowCount: number; }
 
 /** Only the owner module receives this interface; its database role cannot write another owner. */

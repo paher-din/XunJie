@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { TeachingToolRecord } from '@xunjie/contracts/teaching-agent'
 import { executionQuerySchema, isTerminalExecutionState } from '@xunjie/contracts/execution'
+import { teachingSkillLoadedSchema } from '@xunjie/contracts/agent-skills'
 import { stateLabel } from '../tool-execution/ledger'
 import type { LocateResult } from '../components/workspace/references/model'
 import './teaching-tool-records.css'
@@ -16,8 +17,11 @@ const stateLabels = {
   waiting: '等待核对结果', settled: '结果尚未确认',
 }
 const toolLabels: Record<string, string> = {
-  read_work: '读取作品', read_reference: '读取引用', read_material: '读取材料', read_result: '读取结果',
+  read_work: '读取作品', read_reference: '读取引用', read_material: '读取材料', read_personal_material: '读取个人笔记', read_result: '读取结果',
+  discover_tools: '查找工具', load_tools: '使用工具', read_tool_result: '继续读取结果',
   course_operation: '课程操作', execution_query: '核对执行', execution_stop: '停止执行',
+  skill_load: '加载 Skill', skill_read: '读取 Skill 文件',
+  search_materials: '检索材料', read_student_facts: '读取学生偏好',
 }
 const sourceLabels: Record<string, string> = {
   'fixed-current': '本次使用固定时的当前版本。',
@@ -26,16 +30,27 @@ const sourceLabels: Record<string, string> = {
   missing: '固定来源缺失。', corrupt: '固定来源无法通过内容校验。', unavailable: '固定来源暂不可用。',
 }
 const fieldLabels: Record<string, string> = {
-  parameters: '参数', groupColumn: '分组列', valueColumn: '数值列', aggregate: '聚合方式',
+  capability: '工具来源与版本', source: '来源', sourceId: '来源标识', version: '版本',
+  parameters: '参数', search: '检索结果', matches: '匹配片段', coverage: '实际覆盖', sourceCount: '来源数',
+  searchedSourceCount: '已搜索来源数', excludedSourceCount: '未纳入来源数', searchedChars: '已搜索字符数',
+  kinds: '来源类型', truncated: '是否截断', locator: '页/行位置', readMethod: '读取方式', excerpt: '片段',
+  continuation: '延续范围', unknown: '未知状态', facts: '事实', activity: '活动', topic: '主题', statement: '原话',
+  reviewStatus: '复核状态', contentVersion: '内容版本', scope: '作用范围', supersedes: '替代事实', retractedBy: '撤回链接',
+  eventId: '原事件', seq: '事件序号', createdAt: '记录时间', kind: '类型', page: '页码', start: '起始', end: '结束',
+  groupColumn: '分组列', valueColumn: '数值列', aggregate: '聚合方式',
   table: '表格', columns: '列', rows: '行', groups: '分组', key: '分组名', value: '内容', file: '固定作品',
   count: '数量', sum: '合计', mean: '平均值', min: '最小值', max: '最大值', rejected: '未参与计算的行',
-  name: '名称', text: '文本', content: '内容', copy: '固定副本', works: '作品', references: '引用',
+  name: '名称', text: '固定原文', content: '内容', copy: '固定副本', works: '作品', references: '引用',
+  total: '原文总长', coordinates: '坐标单位',
   state: '状态', output: '输出', result: '结果', reason: '原因', detail: '详情', error: '错误',
   observation: '实际观察', observations: '观察记录', session: '会话', appliedSeq: '已应用输入序号',
   message: '说明', line: '行号', column: '列号', path: '路径', diagnostics: '诊断',
   operationId: '操作', componentKey: '组件', contentId: '内容版本', requestId: '原请求', expectedSeq: '预期输入序号',
   query: '执行记录', confirmedSeq: '状态序号', stopRequested: '已请求停止', artifact: '结果文件',
   stoppedExecution: '原执行停止结果', cleanupCompleted: '已确认停止', sessionStopped: '会话已停止', stopId: '停止请求',
+  loaded: '已读取的 Skill', skillId: 'Skill 身份', packageVersion: '包版本',
+  packageDigest: '包摘要', digest: '内容摘要', originalDigest: '原文件摘要', encoding: '编码', mediaType: '文件类型', byteLength: '本次读取字节数',
+  offset: '起始字节', totalByteLength: '文件总字节数', complete: '已读取完整文件',
 }
 
 function learningResult(result: Record<string, unknown>) {
@@ -78,6 +93,9 @@ function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate
   const [notice, setNotice] = useState('')
   const [locating, setLocating] = useState(false)
   const title = toolLabels[record.name] ?? record.name
+  const skillTool = record.name === 'skill_load' || record.name === 'skill_read'
+  const loaded = teachingSkillLoadedSchema.safeParse(skillTool ? record.result?.loaded : undefined)
+  const skillSource = useRef<HTMLDetailsElement>(null)
   const query = executionQuerySchema.safeParse(record.result?.query)
   const cleanup = record.result?.stoppedExecution as Record<string, unknown> | undefined
   const stopped = executionQuerySchema.safeParse(cleanup?.query)
@@ -88,6 +106,12 @@ function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate
     ? sessionStopped ? '操作完成，会话已停止' : cleanup ? '操作完成，正在停止会话' : '操作完成，会话仍在运行'
     : record.outcome ? outcomeLabels[record.outcome] : stateLabels[record.state]
   const locate = async () => {
+    if (loaded.success && skillSource.current) {
+      skillSource.current.open = true
+      skillSource.current.querySelector('summary')?.focus()
+      skillSource.current.scrollIntoView({ block: 'nearest' })
+      return
+    }
     if (!onLocate) return
     setLocating(true); setNotice('')
     try {
@@ -110,11 +134,18 @@ function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate
       <ToolDetails label="参数" value={record.arguments} />
       <ToolDetails label="固定依据" value={Object.fromEntries(Object.entries(record.basis).filter(([key]) => key !== 'scope'))} />
       {record.result !== null && <ToolDetails label={record.outcome === 'failed' ? '错误与实际结果' : '实际结果'} value={learningResult(record.result)} />}
+      {loaded.success && <details ref={skillSource} className="teaching-skill-source">
+        <summary>固定 Skill 来源 · v{loaded.data.version} · {loaded.data.path}</summary>
+        <p>{loaded.data.source} · {loaded.data.packageVersion}</p>
+        <p className="detail">字节范围：{loaded.data.offset}–{loaded.data.offset + loaded.data.byteLength} / {loaded.data.totalByteLength}
+          {' · '}{loaded.data.complete ? '已读取完整文件' : '本次读取片段'} · {loaded.data.encoding}</p>
+        <pre className="teaching-tool-data preserve-lines">{loaded.data.content}</pre>
+      </details>}
       {record.source && <div className="teaching-tool-source">
         <span>来源：{record.source.label}</span>
-        {onLocate &&
+        {(loaded.success || onLocate && !skillTool) &&
           <button type="button" className="outline" disabled={locating} onClick={() => void locate()}>
-            {record.source.requestId ? '定位原结果' : '定位来源'}</button>}
+            {loaded.success ? '查看固定 Skill 来源' : record.source.requestId ? '定位原结果' : '定位来源'}</button>}
       </div>}
       {notice && <p role="status" className="teaching-tool-notice">{notice}</p>}
     </div>

@@ -1,0 +1,15 @@
+✔ bounded discovery loads a fixed approved executor only after its native pair and survives reopening (10217.36075ms)
+✔ repeated pages are stable, changed catalogs reject old cursors and discovered versions do not grant permission (12204.618041ms)
+✔ the page ceiling cannot be bypassed by editing the public cursor and directory failure never becomes an empty success (16387.219208ms)
+✔ a retained binding without newly added metadata still invokes the unchanged approved executor after upgrade (9580.220917ms)
+✔ only a permitted discovery command reads the real catalog when eight intents share one remaining tool slot (6170.966334ms)
+✔ two loads in one native step share the same 32-tool ceiling before their pair is adopted (12521.529792ms)
+✔ a segment continuation that exceeds capacity identifies the original adopted question and work without pending input (7201.087209ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75201.238459

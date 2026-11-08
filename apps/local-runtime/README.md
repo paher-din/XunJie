@@ -168,6 +168,8 @@ xunjie takeover --root /srv/xunjie/restored-new --file /secure/xunjie/takeover.j
 | `backup-policy --file` | JSON 含 directory、intervalMs、keep、minimumFreeBytes、keyFile；导入独立 key 并持久配置策略，宿主在线时调度 |
 | `backup-list [--file]` | 可选 `{ directory }`；使用策略或最近备份保存的 key 验证目录，返回 backups、unavailable 和操作记录 |
 | `backup [--file]` | 使用策略或本次 directory/keyFile 等输入；默认成功后 resume，`leaveClosed: true` 保持最后接管边界 |
+| `backup-set --file` | JSON 含 keyFile、directory、members（每项 installationId、environmentId、backupDirectory）；逐个以原 key 验证已密封备份后生成认证恢复集合，写入 `members/<backupId>/` 与 `recovery-set.json` |
+| `restore-set --file` | JSON 含 setDirectory、keyFile；验证集合认证、成员目录、每个原备份摘要与构件后返回各成员 backupDirectory 和 restoreHint，不自动执行多 root 还原 |
 | `restore --file --resources` | `--root` 是新的空目标；JSON 含单个备份路径 backupDirectory、keyFile、可选 minimumFreeBytes、database、databaseCredentialFile、installation；成功 isolated 并停止目标 runtime |
 | `upgrade --file --resources` | `--root` 是源，JSON 含 kind、targetRoot、备份集合 backupDirectory、keyFile，以及可选目标 database、databaseCredentialFile、installation；生成 held 备份并用目标资源恢复，结果仍 isolated |
 | `takeover --file` | `--root` 是恢复目标，JSON 含 sourceRoot、完整 receivers（id、root）；确认源退休及接收方代际 fencing 后才开闸 |

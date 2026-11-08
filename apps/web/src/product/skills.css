@@ -1,0 +1,16 @@
+.personal-skills { display: grid; gap: 16px; }
+.skill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 12px 0; }
+.skill-fields label, .skill-range { display: grid; gap: 8px; color: var(--ink-soft); font-size: 13px; }
+.skill-range { max-width: 320px; }
+.skill-entry { padding: 16px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.skill-entry p { margin: 8px 0; }
+.skill-entry details { margin-top: 12px; color: var(--muted); font-size: 13px; }
+.skill-entry summary { cursor: pointer; }
+.skill-check { display: flex; align-items: start; gap: 8px; font-size: 15px; }
+.skill-check input { margin-top: 4px; accent-color: var(--accent); }
+.skill-check strong { font-weight: 500; }
+.skill-check small { display: block; }
+.skill-version { margin-left: 8px; color: var(--muted); font-size: 13px; }
+.skill-import h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.skill-import .detail { overflow-wrap: anywhere; }

@@ -1,0 +1,193 @@
+{
+  "formatVersion": 1,
+  "completedAt": "2026-11-07T20:14:29.126129+00:00",
+  "sourceCommit": "78432257227c30878a6418fd372adf203cd520b5",
+  "sourceInputs": "product-r3-source-inputs.json",
+  "sourceInputsMatchCandidate": true,
+  "standards": "standards-final.json",
+  "products": [
+    {
+      "platform": "darwin-arm64",
+      "localPath": "/Users/robertwu/.codex/worktrees/f50c/XunJie/dist/product-darwin-arm64-218-final-r3",
+      "remotePath": null,
+      "distributionSha256": "9f7e29c2c3f53c26759bad48623ef4c9a8ace29f7e1d49f7f405ba85e9b85c24",
+      "applicationSha256": "c8bdf668e77c69d02bb4ba3d8e44fcb08cab344fd4091d69f1ee513b2791244a",
+      "workerSha256": "0efd770caaf7d02f5b7d7bb068c2c7769ddf2b5c7046474e1ab258648feec489",
+      "profile": "full",
+      "bytes": {
+        "product": 453435802,
+        "pdfjs": 6915285,
+        "canvas": 80941,
+        "native": 29785379,
+        "pdfNativeLicenses": 556977
+      },
+      "nodeVersion": "v24.21.0",
+      "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0",
+      "nativePackage": "@napi-rs/canvas-darwin-arm64",
+      "nativeIntegrity": "sha512-iqwST4g0oH+x8VCpBIYh+MYokv/mVvkM+v9oJGB0d9A3P2qBh42ogJlVyWq9SpPCrAjS7tplMb1D3OIfxl+utw==",
+      "shippedPdfResources": [
+        "cmaps",
+        "standard_fonts",
+        "wasm",
+        "iccs"
+      ],
+      "licenses": [
+        {
+          "name": "@napi-rs/canvas-darwin-arm64",
+          "version": "1.1.0",
+          "license": "MIT",
+          "notices": [
+            "licenses/@napi-rs+canvas@1.1.0/LICENSE",
+            "licenses/pdf-native/NOTICE-PDF.txt",
+            "licenses/pdf-native/NOTICE-canvas-rust-1.1.0.txt",
+            "licenses/pdf-native/NOTICE-canvas-skia-1.1.0.txt"
+          ],
+          "sbom": "node_modules/@napi-rs/canvas-darwin-arm64/sbom.cdx.json"
+        },
+        {
+          "name": "@napi-rs/canvas",
+          "version": "1.1.0",
+          "license": "MIT",
+          "notices": [
+            "licenses/@napi-rs+canvas@1.1.0/LICENSE"
+          ]
+        },
+        {
+          "name": "pdfjs-dist",
+          "version": "6.5.438",
+          "license": "Apache-2.0",
+          "notices": [
+            "licenses/pdfjs-dist@6.5.438/cmaps/LICENSE",
+            "licenses/pdfjs-dist@6.5.438/iccs/LICENSE",
+            "licenses/pdfjs-dist@6.5.438/LICENSE",
+            "licenses/pdfjs-dist@6.5.438/standard_fonts/LICENSE_FOXIT",
+            "licenses/pdfjs-dist@6.5.438/standard_fonts/LICENSE_LIBERATION",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_JBIG2",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_OPENJPEG",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_JBIG2",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_OPENJPEG",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_QCMS",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_QUICKJS",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_QCMS",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_QUICKJS"
+          ]
+        }
+      ],
+      "nativeSmoke": {
+        "state": "passed",
+        "caseCount": 7,
+        "evidence": "mac-native-r3.json"
+      },
+      "buildChecks": {
+        "archiveChecksums": "passed",
+        "productionDependencyGraph": "passed",
+        "workspacePathsInBundles": "absent",
+        "nativeProcessProbes": "not-run",
+        "backupUpgradeProbes": "not-run",
+        "cleanMachineAcceptance": "cancelled-by-owner",
+        "productSigning": "deferred-by-user",
+        "notarization": "deferred-by-user",
+        "gatekeeper": "not-run"
+      }
+    },
+    {
+      "platform": "win32-x64",
+      "localPath": "/Users/robertwu/.codex/worktrees/f50c/XunJie/dist/product-win32-x64-218-final-r3",
+      "remotePath": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449/product-win32-x64-218-final-r3",
+      "distributionSha256": "b45eceaa7f590598e22f7f63738eb920bcbdc95d40bb3ff497ff43cc5d96260e",
+      "applicationSha256": "c8bdf668e77c69d02bb4ba3d8e44fcb08cab344fd4091d69f1ee513b2791244a",
+      "workerSha256": "0efd770caaf7d02f5b7d7bb068c2c7769ddf2b5c7046474e1ab258648feec489",
+      "profile": "full",
+      "bytes": {
+        "product": 296822855,
+        "pdfjs": 6915285,
+        "canvas": 80941,
+        "native": 39783710,
+        "pdfNativeLicenses": 556977
+      },
+      "nodeVersion": "v24.21.0",
+      "engine": "pdfjs-dist@6.5.438/@napi-rs/canvas@1.1.0",
+      "nativePackage": "@napi-rs/canvas-win32-x64-msvc",
+      "nativeIntegrity": "sha512-08575bFk7iiadxap4h+JxgGut9xDCHAGum6wh0eInN53zEMImkmEHi5MushX2FOmNO7qRNX7BPiDC5ZYBwHeEg==",
+      "shippedPdfResources": [
+        "cmaps",
+        "standard_fonts",
+        "wasm",
+        "iccs"
+      ],
+      "licenses": [
+        {
+          "name": "@napi-rs/canvas-win32-x64-msvc",
+          "version": "1.1.0",
+          "license": "MIT",
+          "notices": [
+            "licenses/@napi-rs+canvas@1.1.0/LICENSE",
+            "licenses/pdf-native/NOTICE-PDF.txt",
+            "licenses/pdf-native/NOTICE-canvas-rust-1.1.0.txt",
+            "licenses/pdf-native/NOTICE-canvas-skia-1.1.0.txt"
+          ],
+          "sbom": "node_modules/@napi-rs/canvas-win32-x64-msvc/sbom.cdx.json"
+        },
+        {
+          "name": "@napi-rs/canvas",
+          "version": "1.1.0",
+          "license": "MIT",
+          "notices": [
+            "licenses/@napi-rs+canvas@1.1.0/LICENSE"
+          ]
+        },
+        {
+          "name": "pdfjs-dist",
+          "version": "6.5.438",
+          "license": "Apache-2.0",
+          "notices": [
+            "licenses/pdfjs-dist@6.5.438/cmaps/LICENSE",
+            "licenses/pdfjs-dist@6.5.438/iccs/LICENSE",
+            "licenses/pdfjs-dist@6.5.438/LICENSE",
+            "licenses/pdfjs-dist@6.5.438/standard_fonts/LICENSE_FOXIT",
+            "licenses/pdfjs-dist@6.5.438/standard_fonts/LICENSE_LIBERATION",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_JBIG2",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_OPENJPEG",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_JBIG2",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_OPENJPEG",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_QCMS",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_PDFJS_QUICKJS",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_QCMS",
+            "licenses/pdfjs-dist@6.5.438/wasm/LICENSE_QUICKJS"
+          ]
+        }
+      ],
+      "nativeSmoke": {
+        "state": "passed",
+        "caseCount": 7,
+        "evidence": "windows-native-r3.json"
+      },
+      "buildChecks": {
+        "archiveChecksums": "passed",
+        "productionDependencyGraph": "passed",
+        "workspacePathsInBundles": "absent",
+        "nativeProcessProbes": "not-run",
+        "backupUpgradeProbes": "not-run",
+        "cleanMachineAcceptance": "cancelled-by-owner",
+        "productSigning": "deferred-by-user",
+        "notarization": "deferred-by-user",
+        "gatekeeper": "not-run"
+      }
+    }
+  ],
+  "preservedUiEvidence": {
+    "windows": "windows-ui-r2-durable.json",
+    "windowsSystem": "windows-ui-r2-system.json",
+    "repeatedForR3": false,
+    "reason": "UI and PDF engine unchanged; owner requested preserving the passing r2 durable run"
+  },
+  "remoteRetention": {
+    "root": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449",
+    "keepForAquinasChromeAndCross": false,
+    "cleanupOwner": "main",
+    "cleanupState": "completed",
+    "verifiedAt": "2026-11-07T20:37:14.884873+00:00",
+    "evidence": "windows-cleanup.json"
+  },
+  "committedByThisTask": false
+}

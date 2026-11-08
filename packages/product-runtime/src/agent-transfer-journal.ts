@@ -45,8 +45,9 @@ function semantics(payload: unknown) {
   // after durable consumption is safe; an unknown transport is never consumed or reissued.
   const dynamic = item.operation === 'model'
     ? /^(selection\.(read|snapshot|resolve|pin|pinned)|checks\.(read|list|progress|summary|requestPayload|dispatch)|segments\.read|images\.read|results\.(read|native)|capabilities\.decide)$/.test(operation)
-    : ['authorize', 'identityFor', 'activity', 'tool.definitions', 'tool.reconcile', 'tool.stop', 'conversation', 'events',
-      'capabilities', 'run', 'request', 'snapshot', 'query', 'response', 'inputControlReceipt', 'switchModel', 'assertCommandDispatch', 'assertModelDispatch'].includes(operation);
+    : ['authorize', 'identityFor', 'activity', 'tool.definitions', 'tool.contributions', 'tool.reconcile', 'tool.stop', 'conversation', 'events',
+      'capabilities', 'run', 'request', 'snapshot', 'query', 'response', 'inputControlReceipt', 'switchModel', 'assertCommandDispatch', 'assertModelDispatch',
+      'skills.list', 'skills.read', 'facts.read'].includes(operation);
   const identifiers: Array<[string, unknown]> = [];
   const collect = (value: unknown) => {
     if (!value || typeof value !== 'object') return;

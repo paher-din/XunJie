@@ -1,0 +1,144 @@
+{
+  "issue": 216,
+  "status": "passed",
+  "candidate": {
+    "issue": 216,
+    "session": "01a1b761-4bc5-7933-aba8-cf59c19d408c",
+    "marker": {
+      "issue": 216,
+      "branch": "codex/wp08-216-tool-discovery",
+      "baseCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c",
+      "sourceCommit": "8cdd22bf8d6cc17d059f977cb6ba0a0f0fe21817",
+      "sourceDiffSha256": "7ab035dfbd5a1ce9644520a80fa12327fdac1bffd58749af54be44d26ec84430",
+      "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+      "macProduct": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-darwin-arm64",
+      "windowsProduct": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-win32-x64",
+      "aluPackages": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/alu-packages",
+      "preparedAt": "2026-11-07T19:56:14.288384+00:00"
+    },
+    "sourceWorktree": "/Users/robertwu/.codex/worktrees/164f/XunJie",
+    "product": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/product-win32-x64",
+    "packages": "/Users/robertwu/.codex/worktrees/164f/XunJie/.verification/wp08-216/alu-packages",
+    "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+    "distributionSha256": "9f028159d1c07e21fd85083498dc1b74abd4a35640744388b019731448930494",
+    "probeSha256": "af11c9e5e00f12041ea7a6bd5cd45ec3a2153eb8db838bcfc23d0afee41d66b8",
+    "runtimeHelperSha256": "a4645852ef177dbc88819f91b9eb8344b99c9aff69e07519af451cbd4530a611",
+    "packageLockSha256": "aead047bcdb4c722fd6ffe65d558ba4aea61202515dfaf48d7d7958030f06091",
+    "payloadSha256": "f07a34f7eeb8bb28edb3202d9ff3773086c2d0b6a2678caa394cbefca209f0ec",
+    "aluImportSha256": {
+      "component.json": "5b1d64c4dc3ab56ff5ff671da887f3383bb44dd2c5f7bd07406010ecf0521741",
+      "course.json": "43ac588cbbcff9aa7e2a6278f4349748ccdd7a5ca7734558b90feb6b21db913e"
+    }
+  },
+  "engineering": "not executed by this side task; see main agent results",
+  "model": "controlled Chat Completions transport; no real supplier credentials or supplier-model evaluation on Windows",
+  "realProductionTools": {
+    "app": true,
+    "bundledNode": "24.21.0",
+    "postgres": true,
+    "icarusWorkerWasm": true,
+    "discoveryLoadInvokeChains": [
+      {
+        "runId": "8a71b45e-3eb7-4acd-add0-92f3263cdd09",
+        "calls": [
+          "discover_tools",
+          "load_tools",
+          "read_work",
+          "read_reference",
+          "read_reference",
+          "read_reference",
+          "read_reference",
+          "course_operation"
+        ],
+        "commandId": "7bd8d9a0-1421-4e99-875f-2850e369a064",
+        "queryState": "succeeded",
+        "output": {
+          "f": "0000",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "451437ac575c152b408c4acbc344178fc4f2fef0bc89eb897967bd882a7a44f8",
+          "observationState": "complete"
+        }
+      },
+      {
+        "runId": "b66acb1e-e328-49d6-9ad6-3f5708d84656",
+        "calls": [
+          "discover_tools",
+          "load_tools",
+          "read_work",
+          "course_operation"
+        ],
+        "commandId": "385bba4e-4903-4b33-ab6e-ddb3beef0f8f",
+        "queryState": "succeeded",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        }
+      },
+      {
+        "runId": "faa61dcb-d54d-4e7c-a063-5f05d613ebd3",
+        "calls": [
+          "discover_tools",
+          "load_tools",
+          "read_work",
+          "course_operation"
+        ],
+        "commandId": "4789a3a6-34e2-4afc-a336-f950e9f2c2e0",
+        "queryState": "succeeded",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "f3e9e3ee5dfe547e0260c72a2fb245d38ecc9890eedfe8d6f96fb9136f8d0302",
+          "observationState": "complete"
+        }
+      }
+    ]
+  },
+  "desktopChrome": {
+    "headed": true,
+    "browser": "156.0.8078.81",
+    "sessionId": 1,
+    "logonType": "InteractiveToken",
+    "runLevel": "Limited",
+    "casesPassed": 10,
+    "pageReopenAndOriginalWait": {
+      "id": "normal-input-real-agent",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:03:36.757Z",
+      "result": {
+        "runId": "b66acb1e-e328-49d6-9ad6-3f5708d84656",
+        "commandId": "385bba4e-4903-4b33-ab6e-ddb3beef0f8f",
+        "output": {
+          "f": "0110",
+          "cout": "0",
+          "operationId": "run-single",
+          "dependencyId": "81188903297311869f60c68caab6cf2ceaab3b1e1d6dfc761940a568163bda7a",
+          "observationState": "complete"
+        },
+        "answerSha256": "1dcda8c20607ad4afe49d0cfff846881b0369c120dbc9762bbd05c7c4617c887"
+      },
+      "elapsedMs": 25697
+    },
+    "draftReopen": {
+      "id": "daily-reopen-and-source-retention",
+      "status": "passed",
+      "startedAt": "2026-11-07T20:04:23.761Z",
+      "result": {
+        "retainedRuns": 3,
+        "originalAgentCommands": 3
+      },
+      "elapsedMs": 2301
+    }
+  },
+  "teachingEffect": "not evaluated",
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "completedAt": "2026-11-07T20:04:29.937Z"
+}

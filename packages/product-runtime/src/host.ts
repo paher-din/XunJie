@@ -281,7 +281,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     response.writeHead(200, { 'content-type': contentType, 'x-content-type-options': 'nosniff',
       // The execution path compiles a pinned, digest-checked WebAssembly algorithm in a dedicated
       // worker; `wasm-unsafe-eval` permits exactly that compilation. `unsafe-eval` stays forbidden.
-      'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; frame-ancestors 'none'", 'cache-control': 'no-cache' });
+      'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; frame-ancestors 'none'", 'cache-control': 'no-cache' });
     response.end(request.method === 'HEAD' ? undefined : await readFile(file));
   }
   const handle = (action: (req: IncomingMessage, res: ServerResponse) => Promise<void>) => (req: IncomingMessage, res: ServerResponse) => {

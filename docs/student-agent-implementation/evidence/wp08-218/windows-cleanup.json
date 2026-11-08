@@ -1,0 +1,21 @@
+{
+  "taskProcesses": 0,
+  "firewallRemaining": 0,
+  "uiPostgresStopped": true,
+  "roots": [
+    {
+      "exists": false,
+      "path": "C:/Users/h/AppData/Local/Temp/XunJie-218-5d98c7a2bf074edab3428b0eb6ac1449"
+    },
+    {
+      "exists": false,
+      "path": "C:/Users/h/AppData/Local/Temp/wp08-218-cross-r3-20f46fd8"
+    },
+    {
+      "exists": false,
+      "path": "C:/Users/h/AppData/Local/Temp/xj-pdf-ui-218-t5QYR3"
+    }
+  ],
+  "verifiedAt": "2026-11-07T20:37:14.884873+00:00",
+  "status": "passed"
+}

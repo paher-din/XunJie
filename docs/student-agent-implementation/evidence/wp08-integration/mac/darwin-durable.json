@@ -1,0 +1,15 @@
+{
+  "platform": "darwin",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/wp08-integrated-macos",
+  "checks": [
+    "lost-upload-confirmation-reload-original-identity",
+    "Chrome-IME-composition-Enter-does-not-send",
+    "adjacent-pages-region-real-crop-single-draft",
+    "same-name-refresh-opens-original-rendition",
+    "host-restart-pure-fixed-reading",
+    "browser-back-preserves-question-and-fixed-references"
+  ],
+  "ime": null,
+  "chrome": "156.0.8078.80",
+  "passed": true
+}

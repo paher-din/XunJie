@@ -1,0 +1,29 @@
+.personal-materials { height: 100%; min-height: 0; overflow: auto; padding: 16px 20px; color: var(--ink); background: var(--paper); font-size: 13px; }
+.personal-material-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.personal-material-toolbar > strong { flex: 1; min-width: 100px; overflow-wrap: anywhere; font-size: 15px; font-weight: 600; }
+.personal-materials .ws-btn, .personal-material-entries .ws-btn { flex: none; white-space: normal; }
+.personal-material-muted { margin: 8px 0; color: var(--muted); font-size: 12px; }
+.personal-material-version { border: 1px solid var(--accent-line); border-radius: 6px; padding: 1px 8px; color: var(--accent-deep); background: var(--accent-soft); font-size: 12px; }
+.personal-material-reading { max-width: 960px; margin: 8px auto 20px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); box-shadow: var(--panel-shadow); }
+.personal-material-reading .wr-text-source { min-height: 180px; max-height: calc(100vh - 280px); overflow: auto; padding: 4px; }
+.personal-material-reading .wr-text-source:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.personal-material-entries { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; }
+.personal-material-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.personal-material-heading h3 { margin: 0; }
+.personal-material-form { display: grid; gap: 8px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); }
+.personal-material-form label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+.personal-material-form input, .personal-material-form textarea { box-sizing: border-box; width: 100%; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); background: var(--paper); font: inherit; }
+.personal-material-form textarea { min-height: 120px; resize: vertical; white-space: pre-wrap; }
+.personal-material-editor { max-width: 960px; margin: 0 auto 20px; }
+.personal-material-list { margin: 8px 0; padding: 0; list-style: none; }
+.personal-material-list li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.personal-material-row { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.personal-material-row strong { font-weight: 600; }
+.personal-material-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.personal-material-actions .ws-btn { min-height: 28px; padding: 2px 8px; font-size: 13px; }
+.personal-material-pending { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 12px 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.personal-material-error { color: var(--danger-deep); overflow-wrap: anywhere; font-size: 13px; }
+.personal-material-notice { color: var(--muted); overflow-wrap: anywhere; font-size: 12px; }
+.personal-material-empty { padding: 24px 0; color: var(--muted); }
+.personal-material-empty h2 { color: var(--ink); font-size: 20px; }
+@media (max-width: 640px) { .personal-materials { padding: 12px; } .personal-material-reading { padding: 12px; } }

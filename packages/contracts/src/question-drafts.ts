@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { aluReferenceAdapters, aluReferenceCopy, normalizeAluReferenceTarget } from './alu-references.js';
+import { teachingSkillReferencesSchema } from './agent-skills.js';
+import { pdfReferenceSourceSchema, pdfReferenceTargetSchema, pdfReferenceCopy } from './pdf-materials.js';
+import { personalMaterialReferenceSourceSchema } from './personal-materials.js';
 const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** UTF-16 half-open offsets in the selected source's original text. */
@@ -33,11 +36,14 @@ export const componentReferenceSourceSchema = z.object({ kind: z.literal('compon
   : value.requestId !== null && value.executionRef !== null);
 /** Stable source object plus immutable content identity. Display names and paths are never identity. */
 export const questionReferenceSourceSchema = z.discriminatedUnion('kind',
-  [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema]);
+  [workSourceSchema, courseMaterialSourceSchema, courseFieldSourceSchema, componentReferenceSourceSchema, pdfReferenceSourceSchema,
+    personalMaterialReferenceSourceSchema]);
 export type QuestionReferenceSource = z.infer<typeof questionReferenceSourceSchema>;
 
 export function questionReferenceSourceId(source: QuestionReferenceSource): string {
   switch (source.kind) {
+    case 'pdf': return `pdf:${source.activityId}:${source.documentId}`;
+    case 'personal-material': return `personal-material:${source.activityId}:${source.materialId}:${source.version}`;
     case 'component': return `component:${source.activityId}:${source.instanceId}:${source.objectId}`;
     case 'work': return `work:${source.objectId}`;
     case 'course-material': return `course-material:${source.releaseId}:${source.materialId}`;
@@ -67,12 +73,16 @@ export const questionReferencesSchema = z.array(questionReferenceInputSchema).ma
     && new Set(references.map(item => questionReferenceKey(item))).size === references.length
     && references.reduce((sum, item) => sum + item.copy.length, 0) <= 1000000);
 
+/** Explicit version pins travel with the original question, never a mutable catalog alias. */
+export const questionSkillsSchema = teachingSkillReferencesSchema;
+export type QuestionSkill = z.infer<typeof questionSkillsSchema>[number];
+
 /** Revision zero means no draft has been saved; it has no revision identity yet. */
 export const questionDraftViewSchema = z.object({ draftId: z.uuid(),
   revision: z.number().int().nonnegative(), revisionId: z.uuid().nullable(),
-  question: questionTextSchema, references: z.array(questionReferenceSchema).max(64) }).strict()
+  question: questionTextSchema, references: z.array(questionReferenceSchema).max(64), skills: questionSkillsSchema.optional() }).strict()
   .refine(view => view.revision === 0
-    ? view.revisionId === null && view.question === '' && view.references.length === 0
+    ? view.revisionId === null && view.question === '' && view.references.length === 0 && !view.skills?.length
     : view.revisionId !== null, { message: 'revision zero is the empty draft' });
 export type QuestionDraftView = z.infer<typeof questionDraftViewSchema>;
 
@@ -84,7 +94,7 @@ export type QuestionWorkBasis = z.infer<typeof questionWorkBasisSchema>;
 
 export const questionDraftSyncSchema = z.object({ requestId: z.uuid(), draftId: z.uuid(),
   baseRevision: z.number().int().nonnegative(), question: questionTextSchema,
-  references: questionReferencesSchema, bases: z.array(questionWorkBasisSchema).max(64) }).strict();
+  references: questionReferencesSchema, bases: z.array(questionWorkBasisSchema).max(64), skills: questionSkillsSchema.optional() }).strict();
 export type QuestionDraftSync = z.infer<typeof questionDraftSyncSchema>;
 
 /** A finite registry, shared by source owners and view adapters; names/coordinates never establish identity. */
@@ -95,10 +105,12 @@ const arraySemanticAdapters = {
   'annotation-objects': { version: 1, origin: 'state', target: annotationTarget },
   'aggregation-groups': { version: 1, origin: 'execution-result', target: aggregationTarget },
 } as const;
-export const semanticAdapters = { ...arraySemanticAdapters, ...aluReferenceAdapters } as const;
+export const semanticAdapters = { ...arraySemanticAdapters, ...aluReferenceAdapters,
+  'pdf-pages': { version: 1, origin: 'pdf', target: pdfReferenceTargetSchema } } as const;
 export function normalizeSemanticRange(range: z.infer<typeof semanticRangeSchema>): { typeId: string; version: number; target: Record<string, unknown> } {
   const adapter = semanticAdapters[range.typeId as keyof typeof semanticAdapters];
   if (!adapter || range.version !== adapter.version) throw new Error('unsupported-version');
+  if (range.typeId === 'pdf-pages') return { typeId: range.typeId, version: 1, target: pdfReferenceTargetSchema.parse(range.target) };
   if (Object.hasOwn(aluReferenceAdapters, range.typeId))
     return { typeId: range.typeId, version: range.version, target: normalizeAluReferenceTarget(range.typeId, range.target) };
   const target = arraySemanticAdapters[range.typeId as keyof typeof arraySemanticAdapters].target.parse(range.target);
@@ -107,6 +119,7 @@ export function normalizeSemanticRange(range: z.infer<typeof semanticRangeSchema
 }
 export function semanticReferenceCopy(range: z.infer<typeof semanticRangeSchema>, content: unknown): string {
   const { target } = normalizeSemanticRange(range);
+  if (range.typeId === 'pdf-pages') return pdfReferenceCopy(content);
   if (Object.hasOwn(aluReferenceAdapters, range.typeId)) return aluReferenceCopy(range.typeId, target, content);
   if (range.typeId === 'annotation-objects') {
     const parsed = z.object({ annotations: z.array(z.object({ id: z.uuid(), quote: z.string().max(4000), note: z.string().max(4000) }).strict()).max(100) }).strict().parse(content);

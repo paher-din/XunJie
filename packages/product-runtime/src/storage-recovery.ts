@@ -22,6 +22,28 @@ interface StorageRecoveryData {
   databaseIdentity: { systemIdentifier: string; databaseOid: string };
   resourceRoots: string[];
 }
+
+/** Authenticate a backup's SQL against the owner's registry before any restore-side DDL.
+ * A former version is allowed only as the last entry after an unchanged canonical prefix.
+ * Use trusted SQL and discard backup-supplied compatibility metadata for strict finalization.
+ */
+function restoreMigrations(source: readonly Migration[], target: readonly Migration[]): Migration[] {
+  const same = (item: Migration, expected: Migration | undefined) => expected !== undefined
+    && item.name === expected.name && item.sql === expected.sql;
+  if (source.length > target.length) throw new RecoveryError('incompatible-schema');
+  return source.map((item, index) => {
+    if (!item || item.version !== index + 1) throw new RecoveryError('incompatible-schema');
+    let expected = target[index];
+    if (!same(item, expected) || expected?.version !== item.version) {
+      if (index !== source.length - 1) throw new RecoveryError('incompatible-schema');
+      const alternatives = target.filter(candidate => candidate.formerVersion === item.version
+        && Number.isInteger(candidate.formerVersion) && candidate.version > item.version && same(item, candidate));
+      if (alternatives.length !== 1) throw new RecoveryError('incompatible-schema');
+      expected = alternatives[0];
+    }
+    return { version: item.version, name: expected!.name, sql: expected!.sql };
+  });
+}
 /**
  * Owner-specific boundary evidence. The storage owner supplies resource facts; an execution
  * owner adds its accepted commands and their dispositions through the same hook.
@@ -45,6 +67,8 @@ export function createStorageRecoveryOwner(options: {
   receiverBoundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
   /** The owner, not backup orchestration, knows how to re-read its domain through its API. */
   validateService: (storage: OwnedStorage) => Promise<void>;
+  /** Read-only source closure emitted at the same closed boundary (#221). */
+  sources?: (storage: OwnedStorage) => Promise<NonNullable<OwnerBoundaryMaterial['sources']>>;
 }): RecoveryOwner {
   const participant = options.storage.participant();
   const validateStorage = participant.validate.bind(participant);
@@ -61,6 +85,7 @@ export function createStorageRecoveryOwner(options: {
         retained: evidence.retained ?? { resources: 0, checkpoints: 0 },
         blocking: evidence.blocking.map(item => ({ ...item })),
         ...(evidence.evidence === undefined ? {} : { evidence: evidence.evidence }),
+        ...(options.sources ? { sources: await options.sources(options.storage) } : {}),
       };
       return material;
   }
@@ -117,6 +142,9 @@ export function createStorageRecoveryTarget(options: {
   validateService: (storage: OwnedStorage) => Promise<void>;
   /** The owner re-derives its evidence from the restored data and compares it with the material. */
   validateMaterial?: (storage: OwnedStorage, material: OwnerBoundaryMaterial) => Promise<void>;
+  /** Read-only source closure for backups produced after #221; absent on published legacy backups. */
+  sources?: (storage: OwnedStorage) => Promise<NonNullable<OwnerBoundaryMaterial['sources']>>;
+  validateSources?: (storage: OwnedStorage, sources: NonNullable<OwnerBoundaryMaterial['sources']>) => Promise<void>;
   boundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
   receiverBoundary?: (storage: OwnedStorage, input: { boundaryAt: string }) => Promise<StorageBoundaryEvidence>;
 }): RecoveryTarget {
@@ -128,10 +156,7 @@ export function createStorageRecoveryTarget(options: {
       if (data.owner?.environmentId !== options.owner.environmentId || data.owner?.serviceId !== options.owner.serviceId
         || data.manifest?.owner.environmentId !== options.owner.environmentId || data.manifest.owner.serviceId !== options.owner.serviceId
         || data.manifest.formatVersion !== 1 || !Array.isArray(data.migrations)) throw new RecoveryError('incompatible-storage-owner');
-      if (data.migrations.length > options.migrations.length || data.migrations.some((item, index) => {
-        const target = options.migrations[index];
-        return item.version !== target?.version || item.name !== target?.name || item.sql !== target?.sql;
-      })) throw new RecoveryError('incompatible-schema');
+      const sourceMigrations = restoreMigrations(data.migrations, options.migrations);
       if (!Array.isArray(data.resourceRoots)) throw new RecoveryError('missing-resource-location');
       const location = options.backend.location;
       if (!location) throw new RecoveryError('unverifiable-resource-target');
@@ -160,8 +185,8 @@ export function createStorageRecoveryTarget(options: {
           if (location.kind === 'file') await ensureRecoverySpace(location.root, bytes.byteLength);
           await options.backend.put(reference.locator.key, bytes);
         }
-        restored = await finalizeStorageRestore({ binding, admin, migrations: data.migrations, manifest: data.manifest, backend: options.backend });
-        if (options.migrations.length > data.migrations.length) {
+        restored = await finalizeStorageRestore({ binding, admin, migrations: sourceMigrations, manifest: data.manifest, backend: options.backend });
+        if (options.migrations.length > sourceMigrations.length) {
           await restored.close(); restored = undefined;
           await provisionStorage({ admin, owner: options.owner, password, migrations: options.migrations });
           restored = await openStorage({ binding, migrations: options.migrations, backend: options.backend });
@@ -170,7 +195,8 @@ export function createStorageRecoveryTarget(options: {
         await options.onRestored?.(restored, binding);
         return createStorageRecoveryOwner({ storage: restored, binding, migrations: options.migrations, resources: options.resources,
           resourceRoots: options.resourceRoots, installationId: options.installationId, validateService: options.validateService,
-          boundary: options.boundary, receiverBoundary: options.receiverBoundary });
+          boundary: options.boundary, receiverBoundary: options.receiverBoundary,
+          ...(options.sources ? { sources: options.sources } : {}) });
       } catch (error) { await restored?.close(); restored = undefined; throw error; }
     },
     async validate() {
@@ -181,6 +207,8 @@ export function createStorageRecoveryTarget(options: {
       if (!restored) throw new RecoveryError('restore-incomplete');
       if (material.serviceId !== options.owner.serviceId) throw new RecoveryError('incompatible-boundary-material');
       await options.validateMaterial?.(restored, material);
+      if (material.sources !== undefined && options.validateSources)
+        await options.validateSources(restored, material.sources);
     },
   };
 }

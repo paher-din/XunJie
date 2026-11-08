@@ -8,22 +8,41 @@ import { teachingEventKindSchema, teachingIgnorableExtensionSchema, teachingSnap
   type TeachingRun, type TeachingEventKind, type TeachingSnapshot } from '@xunjie/contracts/teaching-agent';
 import type { LearningModelPort } from '../model-connections/service.js';
 import { cleanupScopeFor } from './tools-execution.js';
-import { buildContext, type ContextMessage } from './context.js';
+import { buildContext, fixedInputText, type ContextMessage } from './context.js';
 import { teachingExplanationText, teachingPublicArguments } from './help-policy.js';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
 import { studentAskDefinition, prepareStudentAsk, type createStudentQuestions } from './student-questions.js';
 import { studentResponseObservations } from './student-response-context.js';
 import type { createTeachingInputs } from './inputs.js';
+import { assembleTeachingAgent, retainTeachingAssembly, manifestFor, TeachingAssemblyError, toolContributions } from './assembly.js';
+import { projectToolOutcome, readToolResult, readToolResultDefinition } from './tool-results.js';
+import { discoveryContributions, discoveryOutcome, permittedContributions, loadedTools } from './tool-discovery.js';
+import { compileOutputSchema } from '../model-connections/chat-native.js';
+import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/contracts/teaching-agent';
+import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
+import { teachingSkillContext } from './skill-runtime.js';
+import { TeachingSkillError } from './skills.js';
+import { compactionPolicy, createTeachingCompaction, needsCompaction, parseCompactionResult, summaryInstructions, summaryMessage,
+  type CompactionSource } from './compaction.js';
+import type { FixedTeachingInput } from './inputs.js';
 
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
 type Model = NonNullable<TeachingRun['model']>;
+interface ContextFacts { inputs: unknown[]; effects: unknown[]; waits: unknown[]; activity: LearningActivity }
 interface Plan {
   input: ModelLearningInput; model: Model; modelSource?: 'school' | 'personal'; sources: TeachingSnapshot['sources']; createdAt: string;
   inputBasis?: ActionInput; inputSequence?: number;
   inputVersions?: { inputId: string; version: number; inputDigest: string }[];
   waitVersions?: { waitId: string; outcomeDigest: string }[];
+  resolvedAgent?: ResolvedAgent;
+  skillState?: TeachingSkillState;
+  contextHistory?: ContextMessage[];
+  selectionVersion?: number;
+  selectionPinId?: string;
+  contextFacts?: ContextFacts;
+  compaction?: CompactionSource;
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
@@ -40,8 +59,18 @@ const defaultLimits: TeachingRunLimits = { maxModelSteps: 16, maxToolCommands: 6
 export class TeachingBudgetError extends Error {}
 const terminal = (state: unknown) => ['completed', 'failed', 'stopped', 'paused'].includes(String(state));
 const pending = (outcome: TeachingToolOutcome) => outcome.state === 'accepted' || outcome.state === 'unknown';
+const registryCommand = (command: TeachingPreparedTool) =>
+  (command.basis.executorBinding as AgentToolBinding | undefined)?.source?.sourceId === 'platform.tools';
 const unsent = (reason: string): TeachingToolOutcome => ({ state: 'not-dispatched',
   feedback: { outcome: 'not-executed', text: reason, images: [] }, result: { reason }, source: { label: '平台执行检查' } });
+
+function requiredInputScope(inputs: ActionInput[]) {
+  return { questions: inputs.map(input => input.requestId),
+    references: inputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+    works: inputs.flatMap(input => input.works.map(work => work.contentId)),
+    workNames: [...new Set(inputs.flatMap(input => input.works.map(work => work.name)))],
+    referenceNames: [...new Set(inputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] };
+}
 
 function combinedUsage(facts: ModelUsage[]): ModelUsage {
   const total: ModelUsage = { state: facts.length && facts.every(fact => fact.state === 'final') ? 'final'
@@ -57,6 +86,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   driverId: string;
   models: LearningModelPort;
   tools?: TeachingToolHost;
+  skillState?(scope: TeachingToolScope): Promise<TeachingSkillState>;
+  definition?: AgentDefinition | ((scope: TeachingToolScope) => Promise<AgentDefinition>);
   studentQuestions: ReturnType<typeof createStudentQuestions>;
   inputs: ReturnType<typeof createTeachingInputs>;
   limits?: Partial<TeachingRunLimits>;
@@ -70,16 +101,19 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   assertAuthority(tx: OwnedTransaction, runId: string, generation: number): Promise<unknown>;
   appendEvent(tx: OwnedTransaction, activityId: string, kind: TeachingEventKind, body: Record<string, unknown>): Promise<unknown>;
   historyBefore(activityId: string, runId: string): Promise<ContextMessage[]>;
+  historyForAssembly(activityId: string): Promise<ContextMessage[]>;
   ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
     choice: Awaited<ReturnType<LearningModelPort['selection']['snapshot']>>,
-    selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[]):
-    Promise<{ segmentId: string; sequence: number; model: Model }>;
+    selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string,
+    change?: { reason: 'compaction-generation' | 'compaction'; compactionId: string }):
+    Promise<{ segmentId: string; sequence: number; model: Model; assemblyId?: string | null }>;
   awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttempt): Promise<ModelAttempt>;
   finish(run: TeachingRun, generation: number, state: TeachingRun['state'], reason: string, usage: ModelUsage,
     model: TeachingRun['model'], event: Event | null, extras?: Event[]): Promise<boolean>;
 }) {
   const limits = { ...defaultLimits, ...owner.limits };
+  const compactions = createTeachingCompaction(storage);
   for (const value of Object.values(limits)) if (!Number.isSafeInteger(value) || value < 1) throw new StorageError('invalid');
   const event = owner.appendEvent;
   async function freezeBudget(tx: OwnedTransaction, runId: string) {
@@ -140,6 +174,15 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       ORDER BY w.consumed_at,w.wait_id`, [run.runId]);
     return rows;
   }
+  async function fixedContextFacts(tx: OwnedTransaction, run: TeachingRun, activity: LearningActivity, inputIds: string[]): Promise<ContextFacts> {
+    const { rows: inputs } = await tx.query(`SELECT i.input_id,i.version,i.seq,v.body FROM teaching_inputs i
+      JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
+      WHERE i.adopted_run_id=$1 OR i.input_id=ANY($2::uuid[]) ORDER BY i.seq`, [run.runId, inputIds]);
+    const { rows: effects } = await tx.query(`SELECT command_id,call_id,command,outcome FROM teaching_commands
+      WHERE run_id=$1 AND outcome IS NOT NULL ORDER BY step_id,ordinal`, [run.runId]);
+    const { rows: waits } = await tx.query('SELECT * FROM teaching_waits WHERE run_id=$1 ORDER BY wait_id', [run.runId]);
+    return JSON.parse(JSON.stringify({ inputs, effects, waits, activity })) as ContextFacts;
+  }
   function outcomeObservations(row: Row) {
     const outcome = row.outcome as TeachingToolOutcome;
     if ((row.command as TeachingPreparedTool).name === studentAskDefinition.name && typeof outcome.result.responseId === 'string')
@@ -152,18 +195,161 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     const identity = owner.identity(await owner.runRow(run.runId));
     const request = await owner.requestRow(run.requestId);
     if (!request) throw new StorageError('corrupt');
+    const plan = saved.plan as Plan | undefined;
     return { identity, activity: await owner.activity(identity, run.activityId),
-      input: actionInputSchema.parse((saved.plan as Plan | undefined)?.inputBasis ?? request.body),
+      input: actionInputSchema.parse(plan?.inputBasis ?? request.body),
+      ...(plan?.skillState ? { skillState: plan.skillState } : {}),
       runId: run.runId, stepId: String(saved.step_id), snapshotId: String(saved.snapshot_id),
       ...(typeof saved.segment_id === 'string' ? { segmentId: saved.segment_id } : {}),
       ...(generation === undefined ? {} : { authority: { runId: run.runId, activityId: run.activityId,
         driverId: owner.driverId, generation }, assertDispatch: () => assertDispatch(run, generation) }) };
+  }
+  async function assertCurrentBinding(scope: TeachingToolScope, binding: AgentToolBinding) {
+    if (binding.executor.executorId === 'teaching-student-questions:ask') {
+      if (binding.source.contentDigest !== canonicalDigest(studentAskDefinition)) throw new StorageError('forbidden');
+      return;
+    }
+    const internal = [...discoveryContributions(scope), ...discoveryContributions(scope, [readToolResultDefinition])];
+    const current = binding.source.sourceId === 'platform.tools' ? internal : await toolContributions(owner.tools, scope);
+    if (!current.some(item => {
+      const compatible = { ...item };
+      // Published v1 bindings predate these descriptive fields; all executable facts still match exactly.
+      if (binding.purpose === undefined) delete compatible.purpose;
+      if (binding.resultSchema === undefined) delete compatible.resultSchema;
+      return canonicalDigest(compatible) === binding.bindingId;
+    })) throw new StorageError('forbidden');
+  }
+  async function internalToolOutcome(scope: TeachingToolScope, command: TeachingPreparedTool, definition: AgentDefinition) {
+    if (command.name === 'read_tool_result') {
+      let originalId = String(command.arguments.commandId);
+      const visited = new Set<string>();
+      const originals: Row[] = [];
+      const assertOriginalAccess = async (original: Row) => {
+        const plan = original.plan as Plan;
+        const binding = plan.resolvedAgent?.tools.find(item => item.bindingId === original.binding_id);
+        if (!binding) throw new StorageError('forbidden');
+        await assertCurrentBinding(scope, binding);
+        if (['teaching-skills:skill_load', 'teaching-skills:skill_read'].includes(binding.executor.executorId)) {
+          const args = (original.command as TeachingPreparedTool).arguments;
+          const matches = (item: TeachingSkillState['catalog'][number]) => item.skillId === args.skillId && item.version === args.version;
+          const fixed = (plan.skillState ?? plan.resolvedAgent?.skills)?.catalog.find(matches);
+          let current: TeachingSkillState | undefined;
+          try { current = await owner.skillState?.(scope); }
+          catch (error) {
+            if (error instanceof TeachingSkillError) throw new StorageError('forbidden');
+            if (error instanceof TeachingAssemblyError) throw new StorageError('unavailable');
+            throw error;
+          }
+          // A shared Skill tool can remain available for another package. Only
+          // this original package's current eligibility permits its bytes.
+          if (!fixed || !current?.catalog.some(item => matches(item) && item.selected && !item.unavailable && item.digest === fixed.digest))
+            throw new StorageError('forbidden');
+        }
+        return binding;
+      };
+      for (;;) {
+        if (visited.has(originalId) || visited.size >= 64) throw new StorageError('forbidden');
+        visited.add(originalId);
+        const { rows: [original] } = await storage.read(`SELECT c.binding_id,c.command,s.plan FROM teaching_commands c
+          JOIN teaching_steps s USING(step_id) WHERE c.command_id=$1 AND c.run_id=$2`, [originalId, scope.runId]);
+        if (!original) throw new StorageError('forbidden');
+        const binding = await assertOriginalAccess(original);
+        originals.push(original);
+        if (binding.executor.executorId !== 'teaching-discovery:read_tool_result') break;
+        originalId = String((original!.command as TeachingPreparedTool).arguments.commandId);
+      }
+      const outcome = await readToolResult(storage, scope, command.arguments);
+      for (const original of originals) await assertOriginalAccess(original);
+      return outcome;
+    }
+    const outcome = await discoveryOutcome(storage, scope, command.name, command.arguments,
+      permittedContributions(await toolContributions(owner.tools, scope), definition));
+    return outcome;
   }
   async function pause(run: TeachingRun, generation: number, reason: string, model = run.model) {
     const current = owner.toRun(await owner.runRow(run.runId));
     await owner.finish(run, generation, 'paused', reason, current.usage, model ?? current.model,
       { kind: ['model-not-selected', 'model-unavailable', 'model-capability-unavailable', 'max-output-missing'].includes(reason) ? 'model-unavailable' : 'system-notice',
         body: { runId: run.runId, reason } });
+  }
+  async function pauseAssembly(run: TeachingRun, generation: number, error: TeachingAssemblyError) {
+    const current = owner.toRun(await owner.runRow(run.runId));
+    await owner.finish(run, generation, 'paused', error.reason, current.usage, current.model,
+      { kind: 'system-notice', body: { runId: run.runId, reason: error.reason, unavailable: error.unavailable } });
+  }
+  async function prepareCompaction(run: TeachingRun, generation: number, scope: TeachingToolScope,
+    assembly: Awaited<ReturnType<typeof assembleTeachingAgent>>, history: ContextMessage[], fixed: FixedTeachingInput[], previous?: Row) {
+    const existing = await compactions.pending(run.runId);
+    if (existing) {
+      let changed = false;
+      await transaction(run, generation, async tx => {
+        changed = !await compactions.matches(tx, run.activityId, existing.source);
+        if (changed && await compactions.reject(tx, existing.source.compactionId, 'compaction-source-changed'))
+          await event(tx, run.activityId, 'context-compaction-rejected', { runId: run.runId,
+            compactionId: existing.source.compactionId, reason: 'compaction-source-changed' });
+      });
+      if (changed) { await pause(run, generation, 'compaction-source-changed'); return null; }
+    }
+    if (!existing && !previous?.capacity_rejected
+      && !needsCompaction(history, assembly.resolvedAgent, fixed.map(item => fixedInputText(item.input)).join('\n')))
+      return { assembly, history, source: undefined };
+    let source = existing?.source;
+    if (!source) await transaction(run, generation, async tx => {
+      if (!await owner.inputs.matches(tx, run, fixed)) throw new StorageError('conflict');
+      const id = operationId(`step:${run.runId}:${previous ? Number(previous.step_no) + 1 : 0}`);
+      source = await compactions.select(tx, run, id, assembly.resolvedAgent, history, fixed) ?? undefined;
+      if (source) await event(tx, run.activityId, 'context-compaction-selected', { runId: run.runId,
+        compactionId: source.compactionId, stepId: id, sourceStart: source.sourceStart, sourceEnd: source.sourceEnd,
+        sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest, policy: source.policy });
+    });
+    if (!source) {
+      const current = owner.toRun(await owner.runRow(run.runId));
+      await owner.finish(run, generation, 'paused', 'compaction-source-capacity-exceeded', current.usage,
+        assembly.resolvedAgent.model as Model, { kind: 'capacity-paused', body: { runId: run.runId,
+          reason: 'compaction-source-capacity-exceeded', counting: 'estimated', policy: compactionPolicy,
+          requiredScope: requiredInputScope(fixed.length ? fixed.map(item => item.input) : [scope.input]) } });
+      return null;
+    }
+    const original = source.resolvedAgent.definition;
+    const definition: AgentDefinition = { ...original, definitionId: original.definitionId + '.context-summary',
+      capabilities: [], prompt: { ...original.prompt, runtime: original.prompt.runtime + '\n\n' + summaryInstructions },
+      outputContract: { kind: 'text', instructions: summaryInstructions } };
+    const summary = await assembleTeachingAgent(scope, undefined, source.resolvedAgent.model as Model, [], definition);
+    summary.context.userText = JSON.stringify({ kind: 'xunjie.context-compaction', version: 1,
+      sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest, messages: source.messages, retained: source.retained });
+    return { assembly: summary, history: [] as ContextMessage[], source };
+  }
+  async function adoptCompaction(run: TeachingRun, generation: number, previous: Row, scope: TeachingToolScope) {
+    const plan = previous.plan as Plan;
+    if (!plan.compaction) return true;
+    const record = await compactions.read(plan.compaction.compactionId);
+    if (record.state === 'adopted') return true;
+    if (record.state !== 'generated' || !record.result || !plan.selectionPinId || plan.selectionVersion === undefined) {
+      await pause(run, generation, record.reason || 'compaction-not-available'); return false;
+    }
+    const history = await owner.historyForAssembly(run.activityId);
+    const current = await assembleTeachingAgent(scope, owner.tools, record.source.resolvedAgent.model as Model, history,
+      typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition,
+      { loaded: await loadedTools(storage, scope), skills: await owner.skillState?.(scope) });
+    let rejection = current.resolvedAgent.resolvedId !== record.source.resolvedAgent.resolvedId ? 'compaction-basis-changed' : '';
+    await transaction(run, generation, async tx => {
+      if (!await compactions.matches(tx, run.activityId, record.source)) rejection = 'compaction-source-changed';
+    });
+    if (rejection) {
+      await transaction(run, generation, async tx => {
+        if (await compactions.reject(tx, record.source.compactionId, rejection))
+          await event(tx, run.activityId, 'context-compaction-rejected', { runId: run.runId, compactionId: record.source.compactionId,
+            reason: rejection });
+      });
+      await pause(run, generation, rejection); return false;
+    }
+    const portable = [summaryMessage(record, true), ...history.filter(item => !item.eventSeq || item.eventSeq > record.source.sourceEnd)];
+    const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
+    await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, current.resolvedAgent); });
+    await owner.ensureSegment(scope.identity, scope.activity, run, choice, plan.selectionVersion,
+      current.context.system, portable, generation, current.tools, current.resolvedAgent.resolvedId, plan.selectionPinId,
+      { reason: 'compaction', compactionId: record.source.compactionId });
+    return true;
   }
   async function planNext(run: TeachingRun, generation: number, previous?: Row): Promise<Row | null> {
     const scope = await scopeFor(run, previous ?? { step_id: operationId('step:' + run.runId + ':0'), snapshot_id: run.runId });
@@ -179,6 +365,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if (firstInput) scope.input = firstInput.input;
     if (scope.activity.status !== 'open' || scope.activity.course && scope.activity.course.helpPolicy?.questions !== 'allowed')
       throw new StorageError('forbidden');
+    if (previous && !await adoptCompaction(run, generation, previous, scope)) return null;
     let plan: Plan;
     if (previous) {
       const priorPlan = previous.plan as unknown as Plan;
@@ -197,43 +384,232 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       });
       const { rows: [switched] } = segmentId !== previous.segment_id ? await storage.read(`SELECT target FROM teaching_model_switches
         WHERE activity_id=$1 AND to_segment_id=$2 AND state='completed'`, [run.activityId, segmentId]) : { rows: [] };
-      const target = switched?.target as { model: Model; source: { kind: 'school' | 'personal' } } | undefined;
+      const { rows: [transition] } = await storage.read(`SELECT t.*,a.body AS assembly FROM teaching_segment_transitions t
+        LEFT JOIN teaching_resolved_agents a ON a.resolved_id::text=t.assembly_id
+        WHERE t.activity_id=$1 AND t.to_segment_id=$2 AND t.state='completed'`, [run.activityId, segmentId]);
+      const target = (transition?.target ?? switched?.target) as { model: Model; source: { kind: 'school' | 'personal' } } | undefined;
       if (segmentId !== previous.segment_id && !target) throw new StorageError('conflict');
       if (target && !target.model.maxOutputTokens) { await pause(run, generation, 'max-output-missing', target.model); return null; }
       plan = { input: { ...priorPlan.input, segmentId, expectedSequence: native.sequence,
         ...(target?.model.maxOutputTokens ? { limits: { maxOutputTokens: target.model.maxOutputTokens } } : {}),
         input: { text: '', images: [], toolResults: [], observations } }, model: target?.model ?? priorPlan.model,
         ...((target?.source.kind ?? priorPlan.modelSource) ? { modelSource: (target?.source.kind ?? priorPlan.modelSource)! } : {}),
-        sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString() };
+        sources: [...priorPlan.sources, ...responses], createdAt: new Date().toISOString(),
+        ...(priorPlan.resolvedAgent ? { resolvedAgent: priorPlan.resolvedAgent } : {}),
+        ...(priorPlan.skillState ? { skillState: priorPlan.skillState } : {}),
+        ...(priorPlan.contextHistory ? { contextHistory: priorPlan.contextHistory } : {}),
+        ...(priorPlan.selectionVersion !== undefined ? { selectionVersion: priorPlan.selectionVersion } : {}),
+        ...(priorPlan.selectionPinId ? { selectionPinId: priorPlan.selectionPinId } : {}) };
+      if (transition) {
+        if (transition.assembly) {
+          plan.resolvedAgent = transition.assembly as ResolvedAgent;
+          plan.skillState = plan.resolvedAgent.skills ?? { catalog: [], loaded: [] };
+        }
+        plan.selectionVersion = Number(transition.selection_version);
+        if ((priorPlan.compaction || segmentId !== previous.segment_id) && transition.create_body)
+          plan.contextHistory = (transition.create_body as { portable: { role?: string; text: string }[] }).portable
+            .map(item => ({ role: item.role === 'assistant' ? 'assistant' : 'student', text: item.text }));
+        const source = (transition.create_body as { source: { pinId?: string } }).source;
+        if (source.pinId) plan.selectionPinId = source.pinId;
+      }
+      const { rows: [received] } = await storage.read(`SELECT t.*,a.body AS assembly FROM teaching_segment_transitions t
+        JOIN teaching_resolved_agents a ON a.resolved_id::text=t.assembly_id
+        WHERE t.activity_id=$1 AND t.reason<>'model-switch' AND t.state='accepted'`, [run.activityId]);
+      if (received) {
+        const fixed = received.assembly as ResolvedAgent;
+        const body = received.create_body as { source: { pinId?: string }; portable: { role?: 'user' | 'assistant'; text: string }[] };
+        if (!body.source.pinId) throw new StorageError('corrupt');
+        const history: ContextMessage[] = body.portable.map(message => ({
+          role: message.role === 'assistant' ? 'assistant' : 'student', text: message.text }));
+        const prepared = received.reason === 'compaction-generation'
+          ? await prepareCompaction(run, generation, scope, { resolvedAgent: fixed,
+            context: buildContext(scope.activity, scope.input, history, { definition: fixed.definition }),
+            tools: fixed.tools.map(item => item.definition) }, history, fixedInputs, previous) : undefined;
+        if (prepared === null) return null;
+        if (prepared && (!prepared.source || prepared.assembly.resolvedAgent.resolvedId !== fixed.resolvedId))
+          throw new StorageError('corrupt');
+        const selectionVersion = Number(received.selection_version);
+        const choice = await owner.models.selection.pinned(scope.identity, body.source.pinId, selectionVersion);
+        const restored = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selectionVersion,
+          fixed.prompt.system, history, generation, fixed.tools.map(item => item.definition), fixed.resolvedId, body.source.pinId);
+        if (restored.assemblyId !== fixed.resolvedId) throw new StorageError('corrupt');
+        plan.input.segmentId = restored.segmentId; plan.input.expectedSequence = restored.sequence;
+        plan.model = restored.model; plan.resolvedAgent = fixed; plan.contextHistory = history;
+        if (fixed.skills) plan.skillState = fixed.skills;
+        plan.selectionVersion = selectionVersion; plan.selectionPinId = body.source.pinId;
+        if (prepared?.source) {
+          plan.compaction = prepared.source; delete plan.skillState; plan.contextHistory = [];
+          plan.input.input = { text: prepared.assembly.context.userText, images: [], toolResults: [], observations: [] };
+          plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, prepared.source.policy.maxSummaryTokens);
+        }
+      } else if (segmentId === previous.segment_id && plan.resolvedAgent && plan.selectionVersion !== undefined && plan.selectionPinId) {
+        let history = await owner.historyForAssembly(run.activityId);
+        let next;
+        try { next = await assembleTeachingAgent(scope, owner.tools, plan.model, history,
+          typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition,
+          { loaded: await loadedTools(storage, scope), skills: await owner.skillState?.(scope) }); }
+        catch (error) {
+          if (!(error instanceof TeachingAssemblyError)) throw error;
+          await pauseAssembly(run, generation, error); return null;
+        }
+        const prepared = await prepareCompaction(run, generation, scope, next, history, fixedInputs, previous);
+        if (!prepared) return null;
+        next = prepared.assembly; history = prepared.history;
+        if (next.skillState) plan.skillState = next.skillState;
+        if (prepared.source || next.resolvedAgent.resolvedId !== plan.resolvedAgent.resolvedId) {
+          await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, next.resolvedAgent); });
+          const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
+          const segment = await owner.ensureSegment(scope.identity, scope.activity, run, choice, plan.selectionVersion,
+            next.context.system, history, generation, next.tools, next.resolvedAgent.resolvedId, plan.selectionPinId,
+            prepared.source ? { reason: 'compaction-generation', compactionId: prepared.source.compactionId } : undefined);
+          if (segment.assemblyId !== next.resolvedAgent.resolvedId) throw new StorageError('conflict');
+          plan.input.segmentId = segment.segmentId; plan.input.expectedSequence = segment.sequence;
+          plan.resolvedAgent = next.resolvedAgent; plan.contextHistory = history;
+          if (prepared.source) {
+            plan.compaction = prepared.source; delete plan.skillState;
+            plan.input.input = { text: next.context.userText, images: [], toolResults: [], observations: [] };
+            plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, prepared.source.policy.maxSummaryTokens);
+          }
+        }
+      }
+      if (!plan.compaction && transition?.reason === 'compaction-generation') {
+        const pending = await compactions.pending(run.runId);
+        if (pending?.state === 'selected' && pending.source.compactionId === transition.compaction_id) {
+          const fixed = transition.assembly as ResolvedAgent;
+          const prepared = await prepareCompaction(run, generation, scope, { resolvedAgent: fixed,
+            context: buildContext(scope.activity, scope.input, [], { definition: fixed.definition }),
+            tools: fixed.tools.map(item => item.definition) }, [], fixedInputs, previous);
+          if (!prepared?.source) throw new StorageError('corrupt');
+          plan.compaction = prepared.source; delete plan.skillState; plan.resolvedAgent = fixed; plan.contextHistory = [];
+          plan.input.input = { text: prepared.assembly.context.userText, images: [], toolResults: [], observations: [] };
+          plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, prepared.source.policy.maxSummaryTokens);
+        }
+      }
+      if (!plan.compaction && owner.skillState && (segmentId !== previous.segment_id || received)) {
+        try { plan.skillState = await owner.skillState(scope); }
+        catch (error) {
+          if (!(error instanceof TeachingAssemblyError)) throw error;
+          await pauseAssembly(run, generation, error); return null;
+        }
+      }
     } else {
-      const selection = await owner.models.selection.read(scope.identity);
-      if (!selection.selected) { await pause(run, generation, selection.unavailableReason ?? 'model-not-selected'); return null; }
-      const choice = await owner.models.selection.snapshot(scope.identity, selection.version);
+      const { rows: [receivedTransition] } = await storage.read(`SELECT t.*,a.body AS assembly FROM teaching_segment_transitions t
+        JOIN teaching_resolved_agents a ON a.resolved_id::text=t.assembly_id WHERE t.activity_id=$1
+        AND t.reason<>'model-switch' AND (t.state='accepted' OR t.create_body->'source'->>'pinId'=$2)
+        ORDER BY t.accepted_at DESC LIMIT 1`, [run.activityId, run.runId]);
+      const receivedSource = (receivedTransition?.create_body as { source?: { pinId?: string } } | undefined)?.source;
+      const selection = receivedTransition ? { version: Number(receivedTransition.selection_version), selected: true }
+        : await owner.models.selection.read(scope.identity);
+      if (!selection.selected) { await pause(run, generation,
+        ('unavailableReason' in selection ? selection.unavailableReason : undefined) ?? 'model-not-selected'); return null; }
+      const selectionPinId = receivedSource?.pinId ?? run.runId;
+      const choice = receivedTransition ? await owner.models.selection.pinned(scope.identity, selectionPinId, selection.version)
+        : await owner.models.selection.pin(scope.identity, run.runId, selection.version);
       const connection = choice.choice.connection;
       if (!connection.maxOutputTokens) { await pause(run, generation, 'max-output-missing'); return null; }
-      const history = await owner.historyBefore(run.activityId, run.runId);
-      const context = buildContext(scope.activity, scope.input, history, { maxOutputTokens: connection.maxOutputTokens,
-        ...(connection.contextWindow !== undefined ? { contextWindow: connection.contextWindow } : {}) });
-      if (context.system.length > 400000 || context.userText.length > 1000000) {
-        await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
-          { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded' } }); return null;
+      let history: ContextMessage[] = receivedTransition
+        ? (receivedTransition.create_body as { portable: { role?: 'user' | 'assistant'; text: string }[] }).portable
+          .map(message => ({ role: message.role === 'assistant' ? 'assistant' : 'student', text: message.text }))
+        : await owner.historyBefore(run.activityId, run.runId);
+      const model = { connectionId: connection.connectionId, version: connection.version, protocol: connection.protocol,
+        modelId: connection.modelId, ...(connection.contextWindow ? { contextWindow: connection.contextWindow } : {}),
+        maxOutputTokens: connection.maxOutputTokens };
+      let assembly;
+      try {
+        const receivedAgent = receivedTransition?.assembly as ResolvedAgent | undefined;
+        // The received assembly fixes the original segment, not current permission to load guidance.
+        const skillState = await owner.skillState?.(scope);
+        assembly = receivedAgent ? { resolvedAgent: receivedAgent,
+          context: buildContext(scope.activity, scope.input, history, { definition: receivedAgent.definition }),
+          tools: receivedAgent.tools.map(item => item.definition),
+          ...(skillState ? { skillState } : receivedAgent.skills ? { skillState: receivedAgent.skills } : {}) }
+          : await assembleTeachingAgent(scope, owner.tools, model, history,
+            typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition,
+            { loaded: await loadedTools(storage, scope), skills: skillState });
       }
-      const tools = [studentAskDefinition, ...(owner.tools ? await owner.tools.definitions(scope) : [])];
+      catch (error) {
+        if (!(error instanceof TeachingAssemblyError)) throw error;
+        await pauseAssembly(run, generation, error); return null;
+      }
+      const prepared = await prepareCompaction(run, generation, scope, assembly, history, fixedInputs);
+      if (!prepared) return null;
+      assembly = prepared.assembly; history = prepared.history;
+      const { context, resolvedAgent, tools } = assembly;
+      // Reusing a native segment does not resend portable history. A new student
+      // turn must still learn later physical cleanup facts from earlier Runs.
+      const cleanupHistory = history.filter(message => message.source?.label === '原命令清理状态');
+      if (cleanupHistory.length) context.userText += '\n\n' + cleanupHistory.map(message => message.text).join('\n');
+      if (context.system.length > Math.min(400000, resolvedAgent.definition.contextPolicy.maxSystemChars)
+        || context.userText.length > Math.min(1000000, resolvedAgent.definition.contextPolicy.maxInputChars)
+        || model.contextWindow !== undefined && connection.maxOutputTokens >= model.contextWindow) {
+        await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
+          { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded',
+            requiredScope: { question: scope.input.requestId, references: scope.input.draft.references.map(ref => ref.referenceId),
+              works: scope.input.works.map(work => work.contentId), workNames: scope.input.works.map(work => work.name),
+              referenceNames: scope.input.draft.references.map(ref => ref.sourceName) },
+            systemChars: context.system.length, inputChars: context.userText.length,
+            outputReserve: connection.maxOutputTokens, contextWindow: model.contextWindow, counting: 'unknown' } }); return null;
+      }
+      await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, resolvedAgent); });
       const native = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selection.version,
-        context.system, history, generation, tools);
+        context.system, history, generation, tools, resolvedAgent.resolvedId, selectionPinId,
+        prepared.source ? { reason: 'compaction-generation', compactionId: prepared.source.compactionId } : undefined);
       plan = { input: { attemptId: run.runId, purpose: 'learning', segmentId: native.segmentId, expectedSequence: native.sequence,
-        input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
-        model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString() };
+        input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: {
+          maxOutputTokens: prepared.source ? Math.min(connection.maxOutputTokens, prepared.source.policy.maxSummaryTokens) : connection.maxOutputTokens } },
+        model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString(),
+        resolvedAgent, ...(assembly.skillState ? { skillState: assembly.skillState } : {}),
+        contextHistory: history, selectionVersion: selection.version, selectionPinId,
+        ...(prepared.source ? { compaction: prepared.source } : {}) };
     }
-    const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
-    const texts = additions.map(item => buildContext(scope.activity, item.input, [],
-      { maxOutputTokens: plan.input.limits.maxOutputTokens }).userText);
+    if (previous && plan.input.segmentId !== previous.segment_id && !plan.compaction) {
+      // A new native segment carries the accepted intent and real operation states,
+      // without reopening reasoning or dispatching the original tools again.
+      if (!plan.input.input.text && !fixedInputs.length) {
+        const { rows: adopted } = await storage.read(`SELECT v.body FROM teaching_inputs i
+          JOIN teaching_input_revisions v ON v.input_id=i.input_id AND v.version=i.version
+          WHERE i.adopted_run_id=$1 ORDER BY i.seq`, [run.runId]);
+        const intent = adopted.map(row => fixedInputText(actionInputSchema.parse(row.body))).filter(Boolean).join('\n\n---\n\n')
+          || fixedInputText(scope.input);
+        const { rows: effects } = await storage.read('SELECT command_id,command,state,outcome FROM teaching_commands WHERE run_id=$1 ORDER BY created_at,ordinal', [run.runId]);
+        const operations = effects.map(row => ({ commandId: row.command_id,
+          name: (row.command as TeachingPreparedTool).name, arguments: (row.command as TeachingPreparedTool).arguments,
+          state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state,
+          source: (row.outcome as TeachingToolOutcome | null)?.source ?? null,
+          execution: (row.outcome as TeachingToolOutcome | null)?.execution ?? null }));
+        plan.input.input.text = '同一已接受问题的后续步骤。原操作状态如下；已完成的不重跑，已接受或未知不当作完成，按原身份核对：\n'
+          + JSON.stringify(operations) + '\n\n当前固定学生意图与依据：\n' + intent;
+      }
+      // Textual portable facts do not replace the exact retained image bytes.
+      const { rows: effects } = await storage.read(`SELECT outcome FROM teaching_commands
+        WHERE run_id=$1 AND state='settled' ORDER BY created_at,ordinal`, [run.runId]);
+      const images = effects.flatMap(row => (row.outcome as TeachingToolOutcome).feedback.images);
+      plan.input.input.images = [...new Map(images.map(image => [image.imageId + ':' + image.version, image])).values()];
+    }
+    const additions = plan.compaction ? [] : fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
+    const texts = additions.map(item => fixedInputText(item.input));
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
-    if (plan.input.input.text.length > 1000000) { await pause(run, generation, 'capacity-exceeded'); return null; }
+    const skillText = plan.compaction ? '' : teachingSkillContext(plan.skillState ?? plan.resolvedAgent?.skills);
+    if (skillText) plan.input.input.text = [skillText, plan.input.input.text].filter(Boolean).join('\n\n---\n\n');
+    const policy = plan.resolvedAgent?.definition.contextPolicy;
+    const capacityInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
+    if (plan.input.input.images.length > 8
+      || plan.input.input.text.length > Math.min(1000000, policy?.maxInputChars ?? 1000000)
+      || (plan.resolvedAgent?.prompt.system.length ?? 0) > Math.min(400000, policy?.maxSystemChars ?? 400000)) {
+      await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
+        { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded', counting: 'unknown',
+          inputChars: plan.input.input.text.length, imageCount: plan.input.input.images.length, policy,
+          requiredScope: { questions: capacityInputs.map(input => input.requestId),
+            references: capacityInputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+            works: capacityInputs.flatMap(input => input.works.map(work => work.contentId)),
+            workNames: [...new Set(capacityInputs.flatMap(input => input.works.map(work => work.name)))],
+            referenceNames: [...new Set(capacityInputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] } } });
+      return null;
+    }
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
     plan.inputSequence = Math.max((previous?.plan as Plan | undefined)?.inputSequence ?? 0, ...fixedInputs.map(item => item.sequence));
     plan.inputVersions = fixedInputs.map(({ inputId, version, inputDigest }) => ({ inputId, version, inputDigest }));
-    plan.waitVersions = ready.map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
+    plan.waitVersions = plan.compaction ? [] : ready.map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
     plan.sources.push(...ready.map(row => ({ kind: 'history' as const, id: String(row.wait_id), label: '原操作已核实的结果或回应' })));
     plan.sources.push(...fixedInputs.map(item => ({ kind: 'input' as const, id: item.inputId + ':' + item.version,
       label: item.inputId === run.inputId ? '本次固定输入版本' : '已纳入的学生补充' })));
@@ -246,7 +622,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     await transaction(run, generation, async tx => {
       if (!await owner.inputs.matches(tx, run, fixedInputs)) { changed = true; return; }
       const currentWaits = (await readyWaits(run, tx)).map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
-      if (JSON.stringify(currentWaits) !== JSON.stringify(plan.waitVersions)) { changed = true; return; }
+      if (!plan.compaction && JSON.stringify(currentWaits) !== JSON.stringify(plan.waitVersions)) { changed = true; return; }
       const { rows: [current] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
       if (current?.stop_requested) throw new StorageError('conflict');
       const { rows: [session] } = await tx.query('SELECT activity_id,segment_id FROM teaching_sessions WHERE activity_id=$1 FOR UPDATE', [run.activityId]);
@@ -285,12 +661,25 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       if (callRemaining < 250) { exhausted = Number(budget!.remaining_ms) < 250 ? 'run-deadline-exceeded' : 'model-call-budget-exhausted'; return; }
       plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, outputRemaining);
       plan.input.limits.timeoutMs = Math.min(plan.input.limits.timeoutMs ?? callRemaining, callRemaining, 2_147_483_647);
+      if (plan.resolvedAgent) plan.contextFacts = await fixedContextFacts(tx, run, scope.activity, fixedInputs.map(item => item.inputId));
+      const priorSkills = (previous?.plan as Plan | undefined)?.skillState?.loaded ?? [];
+      for (const loaded of plan.skillState?.loaded ?? []) if (!priorSkills.some(prior => canonicalDigest(prior) === canonicalDigest(loaded)))
+        await event(tx, run.activityId, 'system-notice', { runId: run.runId, stepId, snapshotId, reason: 'skill-loaded',
+          skillId: loaded.skillId, version: loaded.version, source: loaded.source, packageVersion: loaded.packageVersion,
+          path: loaded.path, digest: loaded.digest, offset: loaded.offset, byteLength: loaded.byteLength, totalByteLength: loaded.totalByteLength,
+          loaded });
       await tx.query(`INSERT INTO teaching_steps(step_id,run_id,step_no,attempt_id,segment_id,snapshot_id,phase,plan,output_reserved,input_reserved,call_reserved_ms)
         VALUES($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10)`, [stepId, run.runId, number, attemptId,
         plan.input.segmentId, snapshotId, JSON.stringify(plan), plan.input.limits.maxOutputTokens, inputReserve, plan.input.limits.timeoutMs]);
+      if (plan.resolvedAgent) {
+        await retainTeachingAssembly(tx, plan.resolvedAgent);
+        await tx.query('UPDATE teaching_steps SET resolved_agent_id=$2 WHERE step_id=$1', [stepId, plan.resolvedAgent.resolvedId]);
+        await tx.query('UPDATE teaching_runs SET initial_resolved_agent_id=COALESCE(initial_resolved_agent_id,$2) WHERE run_id=$1',
+          [run.runId, plan.resolvedAgent.resolvedId]);
+      }
       await tx.query(`UPDATE teaching_runs SET attempt_id=$2,segment_id=$3,model=$4,state='running',updated_at=clock_timestamp()
         WHERE run_id=$1`, [run.runId, attemptId, plan.input.segmentId, JSON.stringify(plan.model)]);
-      await owner.inputs.adopt(tx, run, stepId, fixedInputs);
+      if (!plan.compaction) await owner.inputs.adopt(tx, run, stepId, fixedInputs);
       for (const wait of plan.waitVersions!) {
         await tx.query('UPDATE teaching_waits SET observed_step_id=$2 WHERE wait_id=$1 AND observed_step_id IS NULL', [wait.waitId, stepId]);
         await event(tx, run.activityId, 'wait-observed', { runId: run.runId, stepId, waitId: wait.waitId,
@@ -308,12 +697,26 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   async function receiveModel(run: TeachingRun, generation: number, saved: Row, scope: TeachingToolScope) {
     const plan = saved.plan as unknown as Plan;
     await assertDispatch(run, generation);
+    // Older planned records did not freeze continuity facts. Append them once before
+    // the first snapshot write; subsequent retries always read the same retained data.
+    if (plan.resolvedAgent && !plan.contextFacts) await transaction(run, generation, async tx => {
+      const { rows: [current] } = await tx.query('SELECT plan FROM teaching_steps WHERE step_id=$1 FOR UPDATE', [saved.step_id]);
+      const original = current!.plan as Plan;
+      plan.contextFacts = original.contextFacts ?? await fixedContextFacts(tx, run, scope.activity, []);
+      if (!original.contextFacts) await tx.query('UPDATE teaching_steps SET plan=$2 WHERE step_id=$1',
+        [saved.step_id, JSON.stringify({ ...original, contextFacts: plan.contextFacts })]);
+    });
     await owner.models.checks.receive(scope.identity, plan.input);
     const payload = await owner.models.checks.requestPayload(scope.identity, String(saved.attempt_id));
+    const contextManifest = plan.resolvedAgent ? manifestFor(plan.resolvedAgent, payload, { ...plan.contextFacts!,
+      ...(plan.skillState ? { skills: plan.skillState } : {}),
+      history: plan.contextHistory ?? [], observations: plan.input.input.observations ?? [],
+      maxOutputTokens: plan.input.limits.maxOutputTokens }) : undefined;
     const snapshot = teachingSnapshotSchema.parse({ snapshotId: saved.snapshot_id, activityId: run.activityId, runId: run.runId,
-      attemptId: saved.attempt_id, segmentId: saved.segment_id, assemblyVersion: 1, model: plan.model,
+      attemptId: saved.attempt_id, segmentId: saved.segment_id, assemblyVersion: plan.resolvedAgent ? 2 : 1, model: plan.model,
       maxOutputTokens: plan.input.limits.maxOutputTokens, ...(plan.model.contextWindow ? { contextWindow: plan.model.contextWindow } : {}),
-      sources: plan.sources, payloadSha256: canonicalDigest(payload), payload, createdAt: plan.createdAt });
+      sources: plan.sources, payloadSha256: canonicalDigest(payload), payload, createdAt: plan.createdAt,
+      ...(plan.resolvedAgent ? { resolvedAgent: plan.resolvedAgent, contextManifest } : {}) });
     const resource = await storage.stageResource({ uploadId: snapshot.snapshotId, scope: 'teaching-snapshot:' + snapshot.snapshotId,
       bytes: Buffer.from(JSON.stringify(snapshot)), mediaType: 'application/json', contentVersion: 1 });
     await transaction(run, generation, async tx => {
@@ -322,6 +725,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         snapshot.attemptId, snapshot.segmentId, JSON.stringify(snapshot), resource.resourceId]);
       await tx.reference('teaching-snapshot:' + snapshot.snapshotId, resource.resourceId);
       await tx.query("UPDATE teaching_steps SET phase='model' WHERE step_id=$1", [saved.step_id]);
+      if (contextManifest) await tx.query('UPDATE teaching_steps SET context_manifest=$2 WHERE step_id=$1', [saved.step_id, JSON.stringify(contextManifest)]);
       await event(tx, run.activityId, 'context-assembled', { runId: run.runId, stepId: saved.step_id,
         snapshotId: snapshot.snapshotId, attemptId: snapshot.attemptId, segmentId: snapshot.segmentId,
         payloadSha256: snapshot.payloadSha256, sources: snapshot.sources,
@@ -387,6 +791,61 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if (fact.state === 'completed' && !fact.resultRef) {
       await pause(run, generation, 'native-result-unavailable'); return false;
     }
+    const compaction = (saved.plan as Plan).compaction;
+    if (!compaction && fact.state === 'failed' && fact.reason === 'context-capacity-exceeded') {
+      // Failed native results are retained by their attempt/segment owner; they
+      // cannot be promoted to the completed portable-result contract.
+      let refusals = 0;
+      await transaction(run, generation, async tx => {
+        const { rows: changed } = await tx.query('UPDATE teaching_steps SET capacity_rejected=true WHERE step_id=$1 AND NOT capacity_rejected RETURNING step_id', [saved.step_id]);
+        const { rows: [count] } = await tx.query('SELECT count(*)::integer AS count FROM teaching_steps WHERE run_id=$1 AND capacity_rejected', [run.runId]);
+        refusals = Number(count!.count);
+        if (changed.length) await event(tx, run.activityId, 'model-capacity-rejected', { runId: run.runId,
+          stepId: saved.step_id, attemptId: saved.attempt_id, resultRef: fact.resultRef, reason: fact.reason, usage: fact.usage });
+      });
+      await settleUsage(run, generation, saved, fact, refusals > compactionPolicy.capacityRetries ? 'final' : 'completed');
+      if (refusals > compactionPolicy.capacityRetries) { await pause(run, generation, 'capacity-exceeded'); return false; }
+      return true;
+    }
+    if (compaction) {
+      if (fact.state === 'unknown') {
+        // No result decision exists yet. Keep the original model phase and all
+        // reservations so explicit recovery can only query this same attempt.
+        await transaction(run, generation, async tx => {
+          const { rows } = await tx.query('SELECT usage FROM teaching_steps WHERE run_id=$1 ORDER BY step_no', [run.runId]);
+          await tx.query('UPDATE teaching_runs SET usage=$2 WHERE run_id=$1', [run.runId,
+            JSON.stringify(combinedUsage(rows.map(row => row.usage as ModelUsage ?? { state: 'unknown' })))]);
+        });
+        await pause(run, generation, 'result-unknown'); return false;
+      }
+      if (fact.state === 'completed' && fact.resultRef) await owner.models.results?.retain(scope.identity, {
+        requestId: operationId('retain-model:' + run.runId + ':' + fact.resultRef), resultRef: fact.resultRef,
+        consumer: 'run', consumerId: run.runId });
+      let result = null, reason = fact.state === 'completed' ? '' : fact.reason || 'compaction-generation-failed';
+      if (!reason) {
+        try { result = parseCompactionResult(fact.text, compaction); }
+        catch { reason = 'compaction-invalid-summary'; }
+      }
+      const stopped = owner.toRun(await owner.runRow(run.runId)).stopRequested || fact.state === 'cancelled';
+      if (stopped) reason = 'stop-requested';
+      await transaction(run, generation, async tx => {
+        const { rows: current } = await tx.query(`UPDATE teaching_compactions SET state=$2,result=$3,result_ref=$4,reason=$5
+          WHERE compaction_id=$1 AND state='selected' RETURNING compaction_id`, [compaction.compactionId,
+          reason ? 'rejected' : 'generated', result ? JSON.stringify(result) : null, fact.resultRef, reason]);
+        if (current.length) await event(tx, run.activityId, reason ? 'context-compaction-rejected' : 'context-compaction-generated', {
+          runId: run.runId, stepId: saved.step_id, attemptId: saved.attempt_id, compactionId: compaction.compactionId,
+          resultRef: fact.resultRef, result, reason, usage: fact.usage });
+      });
+      await settleUsage(run, generation, saved, fact, reason ? 'final' : 'completed');
+      if (reason) {
+        if (stopped) await owner.finish(run, generation, 'stopped', reason,
+          owner.toRun(await owner.runRow(run.runId)).usage, (saved.plan as Plan).model,
+          { kind: 'run-stopped', body: { runId: run.runId, reason } });
+        else await pause(run, generation, reason);
+        return false;
+      }
+      return true;
+    }
     const originalSummary = fact.state === 'completed' ? await owner.models.checks.summary?.(scope.identity, fact.attemptId) : null;
     const summary = originalSummary ? { ...originalSummary, text: teachingExplanationText(scope.activity, originalSummary.text) } : null;
     const publicText = teachingExplanationText(scope.activity, fact.text);
@@ -416,21 +875,34 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     // All prepared commands, the native result association, and step completion share one commit.
     const prepared = await Promise.all(intents.map(async (intent, ordinal) => {
       const commandId = operationId('teaching-command:' + saved.step_id + ':' + intent.callId);
+      const resolved = (saved.plan as Plan).resolvedAgent;
+      const binding = resolved?.tools.find(item => item.modelName === intent.name);
       let command: TeachingPreparedTool, outcome: TeachingToolOutcome | null = null;
       try {
-        if (intent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, intent, commandId);
+        if (stopped) throw new StorageError('forbidden');
+        if (resolved && !binding) throw new StorageError('forbidden');
+        if (binding && !compileOutputSchema(binding.definition.inputSchema)(intent.arguments)) throw new StorageError('invalid');
+        if (binding) await assertCurrentBinding(scope, binding);
+        const fixedIntent = binding ? { ...intent, name: binding.executor.toolName } : intent;
+        if (fixedIntent.name === studentAskDefinition.name) command = prepareStudentAsk(scope, fixedIntent, commandId);
+        else if (binding?.source.sourceId === 'platform.tools') {
+          command = { version: 1, commandId, name: fixedIntent.name,
+            arguments: structuredClone(fixedIntent.arguments), effect: 'read', location: 'owner', conflictKey: run.activityId,
+            basis: { executorBinding: binding, scope: { identity: scope.identity, activityId: run.activityId, runId: run.runId } } };
+        }
         else {
           if (!owner.tools) throw new StorageError('forbidden');
-          command = await owner.tools.prepare(scope, intent, commandId);
+          command = await owner.tools.prepare(scope, fixedIntent, commandId);
         }
       } catch (error) {
-        if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict'].includes(error.code)) throw error;
+        if (!(error instanceof StorageError) || !['forbidden', 'invalid', 'missing', 'identity-conflict', 'unavailable'].includes(error.code)) throw error;
         command = { version: 1, commandId, name: teachingExplanationText(scope.activity, intent.name) === intent.name ? intent.name : 'unsupported_tool',
           arguments: teachingPublicArguments(scope.activity, intent.arguments), effect: 'read',
           conflictKey: run.activityId, location: 'owner', basis: { rejected: error.code } };
         outcome = unsent(error.code);
       }
-      return { command, outcome: stopped ? unsent('run-stopped-before-dispatch') : outcome, callId: intent.callId, ordinal };
+      return { command, bindingId: binding?.bindingId ?? null,
+        outcome: stopped ? unsent('run-stopped-before-dispatch') : outcome, callId: intent.callId, ordinal };
     }));
     await transaction(run, generation, async tx => {
       const { rows: [existing] } = await tx.query('SELECT phase FROM teaching_steps WHERE step_id=$1 FOR UPDATE', [saved.step_id]);
@@ -445,9 +917,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       for (const item of prepared) {
         const outcome = current?.stop_requested ? unsent('run-stopped-before-dispatch')
           : Number(used?.total) + item.ordinal >= Number(budget?.max_tool_commands) ? unsent('tool-budget-exhausted') : item.outcome;
-        await tx.query(`INSERT INTO teaching_commands(command_id,run_id,step_id,call_id,ordinal,command,state,outcome,initial_outcome)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8)`, [item.command.commandId, run.runId, saved.step_id, item.callId, item.ordinal,
-          JSON.stringify(item.command), outcome ? 'settled' : 'prepared', outcome ? JSON.stringify(outcome) : null]);
+        await tx.query(`INSERT INTO teaching_commands(command_id,run_id,step_id,call_id,ordinal,command,state,outcome,initial_outcome,binding_id)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8,$9)`, [item.command.commandId, run.runId, saved.step_id, item.callId, item.ordinal,
+          JSON.stringify(item.command), outcome ? 'settled' : 'prepared', outcome ? JSON.stringify(outcome) : null, item.bindingId]);
         await event(tx, run.activityId, 'tool-intent', { runId: run.runId, stepId: saved.step_id, snapshotId: saved.snapshot_id,
           attemptId: saved.attempt_id, resultRef: fact.resultRef, callId: item.callId, command: item.command });
       }
@@ -495,6 +967,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   async function saveOutcome(run: TeachingRun, saved: Row, row: Row, outcome: TeachingToolOutcome,
     generation?: number) {
     const command = row.command as unknown as TeachingPreparedTool;
+    outcome = projectToolOutcome(outcome, command.commandId);
     const bytes = Buffer.from(JSON.stringify(outcome));
     const uploadId = operationId('tool-result:' + command.commandId + ':' + canonicalDigest(outcome));
     const resource = await storage.stageResource({ uploadId, scope: 'teaching-tool:' + command.commandId,
@@ -575,7 +1048,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           });
           continue;
         }
-        if (!owner.tools) throw new StorageError('forbidden');
+        if (!owner.tools && !registryCommand(command)) throw new StorageError('forbidden');
         await assertDispatch(run, generation);
         let permitted = false;
         await transaction(run, generation, async tx => {
@@ -599,8 +1072,24 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         });
         if (!permitted) continue;
         await assertDispatch(run, generation);
+        const resolved = (saved.plan as Plan).resolvedAgent;
+        if (resolved) {
+          const binding = resolved.tools.find(item => item.bindingId === row.binding_id);
+          try {
+            if (!binding) throw new StorageError('forbidden');
+            await assertCurrentBinding(scope, binding);
+          } catch (error) {
+            if (!(error instanceof StorageError)) throw error;
+            await saveOutcome(run, saved, row, unsent('capability-unavailable:' + error.code), generation);
+            continue;
+          }
+        }
         let outcome: TeachingToolOutcome;
-        try { outcome = await owner.tools.dispatch(scope, command); }
+        try {
+          if (registryCommand(command)) {
+            outcome = await internalToolOutcome(scope, command, (saved.plan as Plan).resolvedAgent!.definition);
+          } else outcome = await owner.tools!.dispatch(scope, command);
+        }
         catch (error) {
           // A failed source read has no mutating effect to reconcile. An effectful operation's
           // exception may instead be a lost acceptance reply and must keep its original identity.
@@ -615,7 +1104,16 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await saveOutcome(run, saved, row, outcome, generation);
       } else if (row.state === 'dispatching') {
         // A previous worker could have lost its reply. Only read the original command identity.
-        const known = await owner.tools?.reconcile(scope, command);
+        let known: TeachingToolOutcome | null | undefined;
+        if (registryCommand(command)) {
+          if (stopped) known = unsent('run-stopped-before-read-recovery');
+          else try { known = await internalToolOutcome(scope, command, (saved.plan as Plan).resolvedAgent!.definition); }
+          catch (error) {
+            if (!(error instanceof StorageError)) throw error;
+            known = { state: 'failed', feedback: { outcome: 'error', text: error.code, images: [] },
+              result: { reason: error.code }, source: { label: '固定目录或原件读取' } };
+          }
+        } else known = await owner.tools?.reconcile(scope, command);
         await saveOutcome(run, saved, row, known ?? { state: 'unknown', feedback: { outcome: 'error',
           text: '原命令效果尚未确认；查无记录不作为重跑依据。', images: [] },
           result: { commandId: command.commandId, reason: 'original-command-unknown' }, source: { label: '原命令核对' } }, generation);
@@ -775,8 +1273,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         await tx.query('UPDATE teaching_commands SET outcome=$2,resource_id=$3,updated_at=clock_timestamp() WHERE command_id=$1',
           [command.commandId, JSON.stringify(updated), resource.resourceId]);
         await tx.reference('teaching-tool-cleanup:' + uploadId, resource.resourceId);
-        await event(tx, run.activityId, 'tool-result', { runId: run.runId, commandId: command.commandId,
-          phase: 'stop-original-execution', outcome: stopped });
+        await event(tx, run.activityId, 'tool-result', { runId: run.runId, stepId: row.step_id,
+          commandId: command.commandId, callId: row.call_id, resourceId: resource.resourceId,
+          phase: 'stop-original-execution', cleanupState: stopped.state, outcome: updated });
       }
       if (pending(stopped)) await createWait(tx, run, row, command, stopped, 'cleanup');
       else {
@@ -864,23 +1363,30 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     return [...awakened];
   }
   async function records(activityId: string) {
-    const { rows } = await storage.read(`SELECT c.*,s.snapshot_id FROM teaching_commands c JOIN teaching_steps s USING(step_id)
-      JOIN teaching_runs r ON r.run_id=c.run_id WHERE r.activity_id=$1 ORDER BY c.created_at,c.ordinal`, [activityId]);
-    return rows.map(row => {
+    // A cleanup transaction changes its Command and Wait together. Read both in
+    // one PostgreSQL statement so a poll cannot pair an old result with a new Wait.
+    const { rows: [facts] } = await storage.read<{ commands: Row[]; waits: Row[] }>(`SELECT
+      COALESCE((SELECT jsonb_agg(to_jsonb(c) || jsonb_build_object('snapshot_id',s.snapshot_id,'step_plan',s.plan)
+        ORDER BY c.created_at,c.ordinal) FROM teaching_commands c JOIN teaching_steps s USING(step_id)
+        JOIN teaching_runs r ON r.run_id=c.run_id WHERE r.activity_id=$1),'[]'::jsonb) AS commands,
+      COALESCE((SELECT jsonb_agg(to_jsonb(w) ORDER BY w.deadline) FROM teaching_waits w
+        JOIN teaching_runs r USING(run_id) WHERE r.activity_id=$1),'[]'::jsonb) AS waits`, [activityId]);
+    if (!facts) throw new StorageError('corrupt');
+    const tools = facts.commands.map(row => {
       const command = row.command as unknown as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome | null;
+      const binding = (row.step_plan as Plan).resolvedAgent?.tools.find(item => item.bindingId === row.binding_id);
       return teachingToolRecordSchema.parse({ commandId: row.command_id, runId: row.run_id, stepId: row.step_id,
         snapshotId: row.snapshot_id, callId: row.call_id, name: command.name, version: command.version, state: row.state,
         effect: command.effect, location: command.location, arguments: command.arguments,
-        basis: Object.fromEntries(Object.entries(command.basis).filter(([key]) => key !== 'scope')),
+        basis: { ...Object.fromEntries(Object.entries(command.basis).filter(([key]) => !['scope', 'frozenOutcome'].includes(key))),
+          ...(binding ? { capability: { bindingId: binding.bindingId, source: binding.source, executor: binding.executor } } : {}) },
         outcome: outcome?.state ?? null, feedback: outcome?.feedback.text ?? '', result: outcome?.result ?? null,
         source: outcome?.source ?? null, createdAt: new Date(row.created_at as string).toISOString(), updatedAt: new Date(row.updated_at as string).toISOString() });
     });
-  }
-  async function waits(activityId: string) {
-    const { rows } = await storage.read('SELECT w.* FROM teaching_waits w JOIN teaching_runs r USING(run_id) WHERE r.activity_id=$1 ORDER BY w.deadline', [activityId]);
-    return rows.map(row => teachingWaitSchema.parse({ waitId: row.wait_id, runId: row.run_id, stepId: row.step_id,
+    const waits = facts.waits.map(row => teachingWaitSchema.parse({ waitId: row.wait_id, runId: row.run_id, stepId: row.step_id,
       commandId: row.command_id, state: row.state, reason: row.reason, deadline: new Date(row.deadline as string).toISOString(),
       nextCheckAt: new Date(row.next_check_at as string).toISOString(), consumedAt: row.consumed_at ? new Date(row.consumed_at as string).toISOString() : null }));
+    return { tools, waits };
   }
-  return { execute, pollWaits, records, waits, stopTools, freezeBudget };
+  return { execute, pollWaits, records, stopTools, freezeBudget };
 }

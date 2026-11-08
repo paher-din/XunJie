@@ -8,6 +8,7 @@ import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
+import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema } from '@xunjie/contracts/agent-skills';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
@@ -65,6 +66,7 @@ export function createLearningEntry(options: {
   models?: Awaited<ReturnType<typeof createModelGateway>>;
   teaching?: TeachingAgentPort;
   teachingFor?(identity: SpaceIdentity, activityId: string): Promise<TeachingAgentPort>;
+  teachingSettingsFor?(identity: SpaceIdentity): Promise<TeachingAgentPort>;
   bindAgent?(input: unknown): Promise<unknown>;
   bindModelDevice?(input: unknown): Promise<unknown>;
   restoredInstallation?(): Promise<boolean>;
@@ -153,8 +155,9 @@ export function createLearningEntry(options: {
         request.headers['x-xj-expected-subject'] = expected;
         route = route.slice(0, -5);
       }
-      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')
-        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')) && request.headers['x-xj-namespace']
+      if ((route.startsWith('workspaces/') || route.startsWith('pdf/') || route.startsWith('materials/') || route.startsWith('drafts/') || route.startsWith('intents/')
+        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')
+        || route === 'skills' || route.startsWith('skills/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -165,9 +168,10 @@ export function createLearningEntry(options: {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
+          route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
-            : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
+            : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
+              || /^agent\/[0-9a-f-]{36}\/skills\//.test(route) ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -340,7 +344,21 @@ export function createLearningEntry(options: {
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
-      else if (route === 'agent-settings' || route.startsWith('agent-settings/')) {
+      else if (route === 'skills' || route.startsWith('skills/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const selectedActivity = new URL(request.url!, endpoint).searchParams.get('activityId');
+        const activityId = selectedActivity === null ? undefined : z.uuid().parse(selectedActivity);
+        const teaching = activityId ? await options.teachingFor?.(identity, activityId) ?? options.teaching
+          : await options.teachingSettingsFor?.(identity) ?? options.teaching;
+        if (!teaching) throw new StorageError('unavailable');
+        if (route === 'skills' && method === 'GET') result = await teaching.skills.list(identity, activityId);
+        else if (route === 'skills/import' && method === 'POST') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(await readLearningBody(request, 8000000)));
+        else if (route === 'skills/select' && method === 'POST') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(await readLearningBody(request)));
+        else if (route === 'skills/disable' && method === 'POST') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(await readLearningBody(request)));
+        else throw new StorageError('missing');
+      } else if (route === 'agent-settings' || route.startsWith('agent-settings/')) {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
@@ -369,6 +387,15 @@ export function createLearningEntry(options: {
           result = await teaching.events(identity, activityId, cursor);
         else if (parts.length === 3 && parts[2] === 'capabilities' && method === 'GET')
           result = await teaching.capabilities(identity, activityId);
+        else if (parts.length === 3 && parts[2] === 'skills' && method === 'GET')
+          result = await teaching.skills.list(identity, activityId);
+        else if (parts.length === 4 && parts[2] === 'skills' && method === 'POST') {
+          const body = await readLearningBody(request, parts[3] === 'import' ? 8000000 : 65536);
+          if (parts[3] === 'import') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(body));
+          else if (parts[3] === 'select') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(body));
+          else if (parts[3] === 'disable') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(body));
+          else throw new StorageError('missing');
+        }
         else if (parts.length === 3 && parts[2] === 'model-switches' && method === 'POST')
           result = await teaching.switchModel(identity, activityId, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'runs' && method === 'GET')
@@ -446,6 +473,35 @@ export function createLearningEntry(options: {
         else if (parts.length === 3 && method === 'GET') result = await learning.intents.read(identity, parts[1]!, parts[2]!);
         else if (parts.length === 4 && parts[3] === 'dispatch' && method === 'POST') result = await learning.intents.dispatch(identity, parts[1]!, parts[2]!);
         else if (parts.length === 4 && parts[3] === 'cancel' && method === 'POST') result = await learning.intents.cancel(identity, parts[1]!, parts[2]!);
+        else throw new StorageError('missing');
+      } else if (route.startsWith('pdf/')) {
+        const parts = route.split('/'), identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (parts.length === 2 && method === 'GET') result = await learning.pdf.list(identity, parts[1]!);
+        else if (parts.length === 2 && method === 'POST') result = await learning.pdf.upload(identity, parts[1]!, await readLearningBody(request, 29*1024*1024));
+        else if (parts.length === 3 && parts[2] === 'read' && method === 'POST') result = await learning.pdf.read(identity, parts[1]!, await readLearningBody(request));
+        else if (parts.length === 3 && parts[2] === 'find' && method === 'POST') result = await learning.pdf.find(identity, parts[1]!, await readLearningBody(request));
+        else if (parts.length === 3 && parts[2] === 'course' && method === 'POST') result = await learning.pdf.importCourse(identity, parts[1]!, await readLearningBody(request));
+        else if (parts.length === 4 && parts[2] === 'reads' && method === 'GET') result = await learning.pdf.reading(identity, parts[1]!, parts[3]!);
+        else if (parts.length === 4 && parts[2] === 'documents' && method === 'GET') result = await learning.pdf.document(identity, parts[1]!, parts[3]!);
+        else if (parts.length === 4 && parts[2] === 'originals' && method === 'GET') {
+          const original = await learning.pdf.original(identity, parts[1]!, parts[3]!);
+          result = { document: original.document, dataBase64: Buffer.from(original.bytes).toString('base64') };
+        } else throw new StorageError('missing');
+      } else if (route.startsWith('materials/')) {
+        const parts = route.split('/'), identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (parts.length === 2 && method === 'GET') result = await learning.materials.list(identity, parts[1]!);
+        else if (parts.length === 2 && method === 'POST') result = await learning.materials.receive(identity, parts[1]!, await readLearningBody(request, 3*1024*1024));
+        else if (parts.length === 3 && method === 'POST') result = await learning.materials.update(identity, parts[1]!, parts[2]!, await readLearningBody(request, 3*1024*1024));
+        else if (parts.length === 4 && parts[2] === 'requests' && method === 'GET') result = await learning.materials.receipt(identity, parts[1]!, parts[3]!);
+        else if (parts.length === 4 && parts[3] === 'remove' && method === 'POST') result = await learning.materials.remove(identity, parts[1]!, parts[2]!, await readLearningBody(request));
+        else if (parts.length === 6 && parts[3] === 'versions' && parts[5] === 'read' && method === 'POST')
+          result = await learning.materials.readRange(identity, parts[1]!, parts[2]!, Number(parts[4]), await readLearningBody(request));
+        else if (parts.length === 5 && parts[3] === 'versions' && method === 'GET')
+          result = await learning.materials.versionContent(identity, parts[1]!, parts[2]!, Number(parts[4]));
         else throw new StorageError('missing');
       } else if (route.startsWith('drafts/')) {
         const parts = route.split('/');

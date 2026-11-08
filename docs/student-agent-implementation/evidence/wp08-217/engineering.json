@@ -1,0 +1,119 @@
+{
+  "issue": 217,
+  "branch": "codex/wp08-217-skills",
+  "baseCommit": "cb104e33604cbfcb8c5c4f294dd5c745e723834c",
+  "compatibilityFix": {
+    "commit": "32720f983b40a0c3d173df312f73d5c733032af3",
+    "integration": "Equivalent continuation intent/effect and capacity-scope changes, without merging another branch"
+  },
+  "verify": {
+    "status": "passed",
+    "startedAt": "2026-11-07T20:06:44.231Z",
+    "finishedAt": "2026-11-07T20:14:11.708Z",
+    "nodeVersion": "v24.21.0",
+    "exitCode": 0,
+    "group": "full",
+    "jobs": 4,
+    "testsCached": false,
+    "command": "npm run verify",
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "durationMs": 24826,
+        "passedTasks": 4,
+        "totalTasks": 4
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "durationMs": 569,
+        "passedTasks": 1,
+        "totalTasks": 1
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "durationMs": 422074,
+        "passedTasks": 35,
+        "totalTasks": 35
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "durationMs": 415018,
+        "passedTasks": 92,
+        "totalTasks": 92
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "durationMs": 274764,
+        "passedTasks": 45,
+        "totalTasks": 45
+      }
+    ],
+    "nodeSkippedTests": 20,
+    "webTests": {
+      "passed": 1029,
+      "failed": 0,
+      "files": 97
+    },
+    "skipNote": "Existing platform/environment conditional skips remain skipped, not counted as passes; raw verification log preserves individual reasons."
+  },
+  "native": {
+    "status": "passed",
+    "command": "node --test --test-reporter=spec --test-concurrency=2 apps/server/tests/teaching-agent*.runtime.test.mjs apps/server/tests/teaching-tools-host.runtime.test.mjs apps/server/tests/agent-transfer-recovery.runtime.test.mjs",
+    "node": "24.21.0",
+    "postgres": "18.6",
+    "buildsOverlapped": false,
+    "tests": 151,
+    "passed": 151,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 545123.510833,
+    "rawLog": "engineering-native.log.gz"
+  },
+  "review": {
+    "standardsUnresolved": 0,
+    "specUnresolved": 0,
+    "reference": "review.md"
+  },
+  "browser": {
+    "mac": {
+      "passed": 8,
+      "total": 8,
+      "report": "mac/chrome-skills.json"
+    },
+    "windows": {
+      "passed": 8,
+      "total": 8,
+      "report": "windows/chrome-skills.json",
+      "capture": "Original final report and screenshots copied after SSH recovery; verified against runner stdout, see windows/capture.json"
+    }
+  },
+  "realModels": {
+    "passedProtocols": [
+      "chat-completions",
+      "responses",
+      "messages"
+    ],
+    "report": "real-model-skills-native-pair.json"
+  },
+  "crossOwner": {
+    "passed": 10,
+    "total": 10,
+    "report": "cross-owner.json"
+  },
+  "maintenance": {
+    "passed": 2,
+    "report": "maintenance-runtime.json"
+  },
+  "teachingEffect": "not evaluated",
+  "remoteCloseout": {
+    "status": "passed",
+    "report": "final-cleanup.json",
+    "pendingItems": 0
+  }
+}

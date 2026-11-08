@@ -17,5 +17,8 @@ export * from './recovery.js';
 export type * from './recovery-types.js';
 export { restoreProductRecovery, upgradeProductRecovery, createRuntimeRecoveryTarget, recoveryDatabase } from './runtime-recovery.js';
 export { createStorageRecoveryOwner, createStorageRecoveryTarget, openRecoveredStorage } from './storage-recovery.js';
+export { sealRecoverySet, verifyRecoverySet, restoreRecoverySetBundle, recoverySetManifestSchema,
+  recoverySetMemberSchema, recoverySetMemberDirectory, newRecoverySetKey } from './recovery-set.js';
+export type { RecoverySetManifest, RecoverySetMember } from './recovery-set.js';
 /** Deployment assembly can provision owners using the same distributed storage implementation. */
 export * as storage from '@xunjie/storage';

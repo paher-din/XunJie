@@ -1,0 +1,29 @@
+{
+  "issue": 216,
+  "attempts": [
+    {
+      "id": 1,
+      "status": "failed-before-browser-start",
+      "reason": "CLI ALU package paths were supplied to the HTTP import helper; main agent replaced component/course payloads using aluPackage/aluCoursePackage exports. Application candidate unchanged.",
+      "startedAt": "2026-11-07T19:57:02.098Z",
+      "completedAt": "2026-11-07T19:57:18.903Z",
+      "failure": "manage/component-import status 400\n\n400 !== 200\n"
+    },
+    {
+      "id": 2,
+      "status": "desktop-not-accepted",
+      "productionProbeStatus": "passed",
+      "productionCasesPassed": 10,
+      "reason": "Desktop Duplication screenshot access denial terminated the outer harness before its child probe. The production probe finished 10/10, but the shared desktop lock was released early; discard this run as final desktop evidence.",
+      "startedAt": "2026-11-07T19:58:55.369Z",
+      "completedAt": "2026-11-07T20:00:53.356Z"
+    },
+    {
+      "id": 3,
+      "status": "passed",
+      "report": "windows-chrome-alu.json",
+      "desktop": "windows-desktop-session.json",
+      "reason": "GDI screenshot errors are isolated and the parent always waits for the child before desktop lock release."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "issue": 216,
+  "status": "passed",
+  "platform": "darwin",
+  "arch": "arm64",
+  "browser": "156.0.8078.80",
+  "applicationSha256": "c802447d0de569fb8f4c638f49920e5dd986b2d658d19d137dd7777d9c175b1e",
+  "distributionSha256": "57a007f2c3b33700f3354eaca03f5e94f792cc802b397e0c6c639bea8dec7cb7",
+  "casesPassed": 10,
+  "casesTotal": 10,
+  "realProviderRequests": 10,
+  "realProviderAll200TlsVerified": true,
+  "modelLimits": {
+    "maxOutputTokens": 4096,
+    "timeoutMs": 30000,
+    "maxGenerations": 24,
+    "retries": 0
+  },
+  "cleanup": [
+    "Chrome profile closed",
+    "owned product stopped and temporary environment deleted",
+    "temporary Chrome profile removed"
+  ],
+  "teachingEffect": "not-assessed",
+  "report": "mac-chrome-alu.json"
+}

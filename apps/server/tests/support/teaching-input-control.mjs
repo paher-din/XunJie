@@ -36,7 +36,7 @@ export function reply(response, { text = '', calls = [] } = {}) {
 }
 
 /** Real public HTTP, production owners, native PostgreSQL and resources; only the upstream model is controlled. */
-export async function fixture(answer = (_payload, response) => reply(response, { text: '已按当前问题完成。' }), installation = {}) {
+export async function fixture(answer = (_payload, response) => reply(response, { text: '已按当前问题完成。' }), installation = {}, protocol = 'chat-completions') {
   const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
   if (!postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
   const payloads = [], failures = [], ownedAgents = [], ownedStorages = [], ownedServices = [];
@@ -49,6 +49,9 @@ export async function fixture(answer = (_payload, response) => reply(response, {
     } catch (error) { failures.push(error); response.destroy(error); }
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const modelRoute = { protocol,
+    baseUrl: `http://127.0.0.1:${upstream.address().port}/${protocol === 'messages' ? 'anthropic' : 'v1'}`,
+    path: protocol === 'messages' ? '/v1/messages' : protocol === 'responses' ? '/responses' : '/chat/completions' };
   const external = process.env.XUNJIE_INPUT_CONTROL_ENDPOINT;
   const root = external ? '' : await mkdtemp(join(tmpdir(), 'xj-input-control-'));
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
@@ -73,8 +76,8 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       const modelApi = (route, body) => api(route, body, headers);
       const connectionId = randomUUID(), grantId = randomUUID();
       await modelApi('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
-        name: '运行中输入验收', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
-        path: '/chat/completions', modelId: 'fixture-input-control', dialect: 'standard', parameterMode: 'plain', enabled: true,
+        name: '运行中输入验收', ...modelRoute,
+        modelId: 'fixture-input-control', dialect: 'standard', parameterMode: 'plain', enabled: true,
         contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-input-control-key' } });
       await modelApi('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
       const selected = await modelApi('models/selection');
@@ -121,8 +124,8 @@ export async function fixture(answer = (_payload, response) => reply(response, {
       ownedServices.push({ learning, models });
       const identity = activity.identity, connectionId = randomUUID(), grantId = randomUUID();
       await models.save(identity, { requestId: randomUUID(), connectionId, expectedVersion: 0,
-        name: '真实工具控制时序', protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
-        path: '/chat/completions', modelId: 'fixture-input-control', dialect: 'standard', parameterMode: 'plain', enabled: true,
+        name: '真实工具控制时序', ...modelRoute,
+        modelId: 'fixture-input-control', dialect: 'standard', parameterMode: 'plain', enabled: true,
         contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-input-control-key' } });
       await models.selection.createGrant(identity, identity, { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
       const selection = await models.selection.read(identity);
@@ -142,7 +145,7 @@ export async function fixture(answer = (_payload, response) => reply(response, {
         ownedAgents.push(agent); return agent;
       };
       const agent = makeAgent();
-      return { agent, makeAgent, models, modelStorage, learning, tools, storage, identity,
+      return { agent, makeAgent, models, modelStorage, learning, spaces, courses, tools, storage, identity,
         async send(question, delivery, works = [], target = agent) {
           const input = actionInputSchema.parse({ requestId: randomUUID(), scope: { environmentId: identity.environmentId,
             spaceId: identity.spaceId, principalId: identity.principalId, activityId: activity.activityId },

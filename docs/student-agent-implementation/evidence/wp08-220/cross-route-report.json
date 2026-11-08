@@ -1,0 +1,318 @@
+{
+  "issue": 220,
+  "startedAt": "2026-11-07T20:27:12.360Z",
+  "status": "passed",
+  "phase": "original-browser-late-result-and-real-Responses-continuation",
+  "route": "real deepseek-flash Chat -> Responses, plain mode, TLS verified",
+  "execution": "real headed Chrome table Worker/WASM; delayed result delivery, not long-running computation",
+  "credentialBoundary": "real provider key exists only in relay memory; production holder stores a synthetic loopback key",
+  "limits": {
+    "chatRequests": 6,
+    "responsesRequests": 2,
+    "maxOutputTokens": 2048,
+    "providerTimeoutMs": 120000,
+    "retries": 0
+  },
+  "steps": [
+    {
+      "name": "production-course-and-Chrome",
+      "startedAt": "2026-11-07T20:27:12.363Z",
+      "passed": true,
+      "elapsedMs": 4067
+    },
+    {
+      "name": "real-Chat-accepted-Worker-and-held-result",
+      "startedAt": "2026-11-07T20:27:16.431Z",
+      "passed": true,
+      "elapsedMs": 2567
+    },
+    {
+      "name": "real-long-history-summary-and-continuation",
+      "startedAt": "2026-11-07T20:27:18.999Z",
+      "passed": true,
+      "elapsedMs": 15235
+    },
+    {
+      "name": "explicit-real-Responses-route-with-original-pending-Wait",
+      "startedAt": "2026-11-07T20:27:34.235Z",
+      "passed": true,
+      "elapsedMs": 205
+    },
+    {
+      "name": "original-browser-late-result-and-real-Responses-continuation",
+      "startedAt": "2026-11-07T20:27:34.442Z",
+      "passed": true,
+      "elapsedMs": 7172
+    }
+  ],
+  "requests": [
+    {
+      "protocol": "chat",
+      "path": "/v1/chat/completions",
+      "phase": "real-Chat-accepted-Worker-and-held-result",
+      "payloadSha256": "f45d321d8ccaf12ca732fdec8736811b1b1f471c4a62d4bed59af0124ef9ac25",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:27:16.802Z",
+      "elapsedMs": 951
+    },
+    {
+      "protocol": "chat",
+      "path": "/v1/chat/completions",
+      "phase": "real-long-history-summary-and-continuation",
+      "payloadSha256": "5dc035217022452ed6576368b3734c14ae29021889ff2076f25eeb2942e69a07",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:27:19.350Z",
+      "elapsedMs": 4079
+    },
+    {
+      "protocol": "chat",
+      "path": "/v1/chat/completions",
+      "phase": "real-long-history-summary-and-continuation",
+      "payloadSha256": "18982d48e1ef867114ad480c9a878c946bbae2288be729a93bfa029b0a70c615",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:27:23.986Z",
+      "elapsedMs": 6399
+    },
+    {
+      "protocol": "chat",
+      "path": "/v1/chat/completions",
+      "phase": "real-long-history-summary-and-continuation",
+      "payloadSha256": "ec50cf1494558bd44a26d9c6c146c032dd13ff0106d51230e34133f69164e99b",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:27:30.796Z",
+      "elapsedMs": 3123
+    },
+    {
+      "protocol": "responses",
+      "path": "/v1/responses",
+      "phase": "original-browser-late-result-and-real-Responses-continuation",
+      "payloadSha256": "9f1e205d3dffd0578287c4e3c88d2a9781a095aa3d66485b0bd7afd54d4ccab4",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:27:38.663Z",
+      "elapsedMs": 2392
+    }
+  ],
+  "workerEvents": [
+    {
+      "at": "2026-11-07T20:27:18.852Z",
+      "url": "http://127.0.0.1:65088/assets/worker-B_5653QL.js"
+    }
+  ],
+  "assertions": {
+    "realBrowserAcceptance": true,
+    "actualWorkerWithHeldResult": true,
+    "realSummaryAndContinuationWithPendingWait": true,
+    "pendingEffectSurvivesExplicitCrossRoute": true,
+    "originalIdentityAndArtifactPreserved": true,
+    "realCrossRoutePayloadMatched": true,
+    "onlyOneWaitConsumption": true,
+    "pureReadDoesNotGenerate": true
+  },
+  "cleanup": [
+    "isolated product and owned Chrome closed"
+  ],
+  "browserVersion": "156.0.8078.80",
+  "activeHttp": null,
+  "activityId": "bb647cd2-5699-4987-931b-1bc037f78f4b",
+  "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+  "owner": {
+    "at": "2026-11-07T20:27:38.712Z",
+    "runs": [
+      {
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "state": "dispatching",
+        "reason": "",
+        "attemptId": "9e9a0362-7c72-418a-bd74-f8827cf29443",
+        "usage": {
+          "state": "final",
+          "inputTokens": 75180,
+          "outputTokens": 2185,
+          "totalTokens": 77365,
+          "cachedTokens": 5504
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "inputId": "b23502c6-bf57-4925-a2c3-a54017857e5f",
+        "state": "adopted",
+        "adoptedRunId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc"
+      },
+      {
+        "inputId": "dc698506-ada4-4819-86d8-5ecd20077b86",
+        "state": "adopted",
+        "adoptedRunId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc"
+      },
+      {
+        "inputId": "6a4e2612-bac7-4cdb-89cc-b2f59d879e67",
+        "state": "adopted",
+        "adoptedRunId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc"
+      }
+    ],
+    "tools": [
+      {
+        "commandId": "fbbf5d59-49d5-43da-b219-d60218bb0e6d",
+        "name": "course_operation",
+        "state": "settled",
+        "outcome": "completed"
+      }
+    ],
+    "waits": [
+      {
+        "waitId": "27d4c161-dc94-4d3a-99cc-06a2176dda6b",
+        "commandId": "fbbf5d59-49d5-43da-b219-d60218bb0e6d",
+        "state": "consumed"
+      }
+    ],
+    "lastAssistant": "当前仍在等待原 `course_operation`（componentKey=table，operationId=aggregate，aggregate=mean，groupColumn=小组，valueColumn=得分）在浏览器侧的实际返回结果，因此 A、B、C 三组的分组均值都还没有核实，不能声称已完成。\n\n依据（核对原身份，不重跑）：\n- 原执行 runId=ef0cb7d2-57af-409d-9e54-f52fea2619cc，commandId=fbbf5d59-49d5-43da-b219-d60218bb0e6d，其状态是 `accepted`，投递为 `waiting-browser`。已接受只表示任务已接收。\n- 对应等待 waitId=27d4c161-dc94-4d3a-99cc-06a2176dda6b 仍为 `pending`，原因是 `browser`，已检查 1 次，observed_step_id 为空，截止时间为 2026-11-08T20:27:16.553Z。\n\n未知项：原计算返回的 `value`、`groups[].mean/count/sum`、`rows`、`rejected` 均未出现。\n\n下一步（不发起新操作）：按活动目标“核对真实计算与补充的顺序”，等该等待项观察到结果后，先把返回的 A、B、C 均值原样记录下来；如果你愿意",
+    "recentEvents": [
+      {
+        "seq": 57,
+        "kind": "assistant-progress",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "attemptId": "38c768fc-bb67-4def-910a-4f083c36128d"
+      },
+      {
+        "seq": 58,
+        "kind": "assistant-progress",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "attemptId": "38c768fc-bb67-4def-910a-4f083c36128d"
+      },
+      {
+        "seq": 59,
+        "kind": "budget-settled",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "d3003e2a-6c58-4727-bcfa-88c7b5320852"
+      },
+      {
+        "seq": 60,
+        "kind": "assistant",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "attemptId": "38c768fc-bb67-4def-910a-4f083c36128d"
+      },
+      {
+        "seq": 61,
+        "kind": "model-switch-requested"
+      },
+      {
+        "seq": 62,
+        "kind": "model-switch-completed"
+      },
+      {
+        "seq": 63,
+        "kind": "tool-result",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "1bcc27ca-f98e-4dfb-8724-7f6d9959b71e"
+      },
+      {
+        "seq": 64,
+        "kind": "wait-consumed",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "1bcc27ca-f98e-4dfb-8724-7f6d9959b71e"
+      },
+      {
+        "seq": 65,
+        "kind": "wait-observed",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "5082b26d-c5bb-41a6-8ef7-e73c080196f6"
+      },
+      {
+        "seq": 66,
+        "kind": "budget-reserved",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "5082b26d-c5bb-41a6-8ef7-e73c080196f6",
+        "attemptId": "9e9a0362-7c72-418a-bd74-f8827cf29443"
+      },
+      {
+        "seq": 67,
+        "kind": "context-assembled",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "5082b26d-c5bb-41a6-8ef7-e73c080196f6",
+        "attemptId": "9e9a0362-7c72-418a-bd74-f8827cf29443"
+      },
+      {
+        "seq": 68,
+        "kind": "attempt-dispatched",
+        "runId": "ef0cb7d2-57af-409d-9e54-f52fea2619cc",
+        "stepId": "5082b26d-c5bb-41a6-8ef7-e73c080196f6",
+        "attemptId": "9e9a0362-7c72-418a-bd74-f8827cf29443"
+      }
+    ]
+  },
+  "commandId": "fbbf5d59-49d5-43da-b219-d60218bb0e6d",
+  "waitId": "27d4c161-dc94-4d3a-99cc-06a2176dda6b",
+  "executionRef": "3347f6b2-a71a-4b6d-b74e-0391717d61ab",
+  "compaction": {
+    "compactionId": "2c1cc404-a5fd-490a-ae9f-0108c00f882c",
+    "sourceDigest": "a842f59882ab47daca9357ac8f18734b2d8ae518607997e35f11d377276b0196",
+    "resultRef": "66ce7742-e3af-4016-b585-5b26251b3cd1",
+    "transitionId": "b8cb27da-815b-40a6-9f3a-960eb224c41c"
+  },
+  "switch": {
+    "fromSegmentId": "9f4ae579-e946-47df-8e6b-7fe47c8b109d",
+    "toSegmentId": "78bb2a14-0fc6-4620-90e8-fb82ba2441a6",
+    "protocol": "responses"
+  },
+  "snapshots": [
+    {
+      "snapshotId": "32defb8a-5079-4376-960a-f73b4614c2d9",
+      "segmentId": "aeea846a-f2cf-486a-a6ba-ea2897c8c9bc",
+      "protocol": "chat-completions",
+      "definitionId": "xunjie.learning",
+      "payloadSha256": "f45d321d8ccaf12ca732fdec8736811b1b1f471c4a62d4bed59af0124ef9ac25"
+    },
+    {
+      "snapshotId": "07113fe6-856d-4334-95a8-d0aebe40c673",
+      "segmentId": "aeea846a-f2cf-486a-a6ba-ea2897c8c9bc",
+      "protocol": "chat-completions",
+      "definitionId": "xunjie.learning",
+      "payloadSha256": "5dc035217022452ed6576368b3734c14ae29021889ff2076f25eeb2942e69a07"
+    },
+    {
+      "snapshotId": "ea174463-4fd2-4628-81a1-0b334348a784",
+      "segmentId": "0809e20e-5d6c-4e1b-9f42-8f82e39093ff",
+      "protocol": "chat-completions",
+      "definitionId": "xunjie.learning.context-summary",
+      "payloadSha256": "18982d48e1ef867114ad480c9a878c946bbae2288be729a93bfa029b0a70c615"
+    },
+    {
+      "snapshotId": "54fdfaf1-0f21-42f9-b5fe-71086230ea6b",
+      "segmentId": "9f4ae579-e946-47df-8e6b-7fe47c8b109d",
+      "protocol": "chat-completions",
+      "definitionId": "xunjie.learning",
+      "payloadSha256": "ec50cf1494558bd44a26d9c6c146c032dd13ff0106d51230e34133f69164e99b"
+    },
+    {
+      "snapshotId": "899a371b-051e-4167-a592-03025d171d08",
+      "segmentId": "78bb2a14-0fc6-4620-90e8-fb82ba2441a6",
+      "protocol": "responses",
+      "definitionId": "xunjie.learning",
+      "payloadSha256": "9f1e205d3dffd0578287c4e3c88d2a9781a095aa3d66485b0bd7afd54d4ccab4"
+    }
+  ],
+  "result": {
+    "value": 83.33333333333333,
+    "sha256": "4f2cc99a3ec4ac6499450d423fef467133e44921b4ece754d1e9b02173448971",
+    "contentId": "ce41e142-b7db-414a-9030-d5a8c6d35146",
+    "usage": {
+      "state": "final",
+      "inputTokens": 103330,
+      "outputTokens": 2550,
+      "totalTokens": 105880,
+      "cachedTokens": 23552
+    }
+  },
+  "blockedResultDeliveries": [
+    {
+      "path": "/api/learning/executions/bb647cd2-5699-4987-931b-1bc037f78f4b/fbbf5d59-49d5-43da-b219-d60218bb0e6d/result",
+      "bodySha256": "ddd2cd46b31e55a1033d1484f5655635ccdc5ae82c85332eeed82959e104e05f",
+      "attempts": 31
+    }
+  ],
+  "completedAt": "2026-11-07T20:27:42.285Z"
+}

@@ -7,7 +7,8 @@ import { z } from 'zod';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
   createCourses, spaceCourseMigrations, createLearningAuthority, linuxSessionEntry, productNativeAdapters, createNativeChannel,
-  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, createTeachingTools, teachingAgentMigrations, validateTeachingAgent } from '@xunjie/learning-space';
+  collectExecutionBoundary, validateExecutionBoundary, createTeachingAgent, createTeachingTools, teachingAgentMigrations, validateTeachingAgent,
+  collectLearningSources, validateLearningSources, collectTeachingSources, validateTeachingSources } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { ExecutionDevice } from '@xunjie/contracts/execution';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -222,6 +223,17 @@ export async function createProductLearningApplication(context: {
         return (await teachingFor(identity, activityId)).assertCommandDispatch(identity, activityId, association);
       },
     }) : undefined;
+    // Activity facts and Skill attachments belong to the activity's fixed Agent owner. The local
+    // teaching client and the dependency service must reach that owner through this single seam;
+    // changing one without the other would make local and independent Agents diverge again.
+    const activityAgentReads: Pick<Parameters<typeof createTeachingTools>[0], 'studentFacts' | 'skillRead'> = {
+      studentFacts: { read: async (identity, activityId, input) =>
+        (await teachingFor(identity, activityId)).studentFacts.read(identity, activityId, input) },
+      skillRead: async (scope, skillId, version, path) =>
+        (await teachingFor(scope.identity, scope.activity.activityId)).skills.read(
+          scope.identity, scope.activity.activityId, skillId, version, path,
+          { references: scope.input.draft.skills }),
+    };
     const agent = data && models ? await owner('teaching-agent', teachingAgentMigrations) : undefined;
     teaching = agent && models ? createTeachingAgent(agent.storage, {
       authorize: identity => spaces.authorize(identity),
@@ -232,6 +244,8 @@ export async function createProductLearningApplication(context: {
       },
       activity: (identity, activityId) => learning!.open(identity, activityId),
       models, tools: createTeachingTools({ learning: () => learning!, courses, models, executionOrigin: currentExecutionOrigin,
+        // Activity facts and Skill attachments come from the shared fixed-owner read seam.
+        ...activityAgentReads,
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return teachingFor(scope.identity, scope.activity.activityId).then(agent => agent.assertCommandDispatch(scope.identity,
@@ -254,6 +268,14 @@ export async function createProductLearningApplication(context: {
       });
       if (binding.target.environmentId === environment.environmentId && binding.target.serviceId === agent.storage.owner.serviceId) return teaching;
       return createTeachingAgentClient(binding.target.serviceId, identity, activityId,
+        createAgentConnection(root, binding.connectionId, 'teaching.agent', binding.target));
+    }
+    async function teachingSettingsFor(identity: SpaceIdentity): Promise<TeachingAgentPort> {
+      if (!teaching || !agent) throw new StorageError('unavailable');
+      const binding = await agentBindings.read(identity);
+      if (!binding || binding.target.environmentId === environment.environmentId && binding.target.serviceId === agent.storage.owner.serviceId)
+        return teaching;
+      return createTeachingAgentClient(binding.target.serviceId, identity, undefined,
         createAgentConnection(root, binding.connectionId, 'teaching.agent', binding.target));
     }
     const receivers = [...(actions.receivers ?? [])];
@@ -316,6 +338,7 @@ export async function createProductLearningApplication(context: {
       },
       activity: learning.open, models, modelRequest,
       tools: createTeachingTools({ learning: () => learning!, courses, ...(toolModels ? { models: toolModels } : {}), executionOrigin: currentExecutionOrigin,
+        ...activityAgentReads,
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return (await teachingFor(scope.identity, scope.activity.activityId)).assertCommandDispatch(
@@ -347,6 +370,10 @@ export async function createProductLearningApplication(context: {
             blocking: boundary.blocking, retained: { resources: 0, checkpoints: boundary.checkpoints },
             evidence: boundary };
         } } : module === agent ? { boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary } : {}),
+        // #221: every business owner emits a read-only fixed-source closure at this same closed
+        // boundary, so an isolated restore can prove it holds the originals without recomputation.
+        ...(module === data ? { sources: collectLearningSources }
+          : module === agent ? { sources: collectTeachingSources } : {}),
         validateService: validate });
       const participant = recoveryOwner.participant;
       let dispatchClosing: Promise<void> | undefined;
@@ -536,7 +563,7 @@ export async function createProductLearningApplication(context: {
         if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
       },
       handle: createLearningEntry({ environment, spaces, ...(learning ? { learning } : {}), courses,
-        ...(models ? { models } : {}), ...(teaching ? { teaching, teachingFor } : {}), client: schoolClient, readOnly, requiresNamespace,
+        ...(models ? { models } : {}), ...(teaching ? { teaching, teachingFor, teachingSettingsFor } : {}), client: schoolClient, readOnly, requiresNamespace,
         async bindAgent(value) {
           const input = teachingAgentBindingInputSchema.parse(value);
           const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
@@ -596,8 +623,10 @@ export function createLearningRecoveryTargets(options: {
       migrations: unit === 'space-course' ? spaceCourseMigrations : unit === 'model-connection' ? modelMigrations
         : unit === 'teaching-agent' ? teachingAgentMigrations : learningMigrations,
       ...(unit === 'learning-data' ? { validateMaterial: async (storage: OwnedStorage, material: OwnerBoundaryMaterial) =>
-        validateExecutionBoundary(storage, material.evidence) } : unit === 'teaching-agent' ? {
+        validateExecutionBoundary(storage, material.evidence), sources: collectLearningSources, validateSources: validateLearningSources }
+        : unit === 'teaching-agent' ? {
           boundary: collectTeachingBoundary, receiverBoundary: collectTeachingReceiverBoundary, validateMaterial: validateTeachingBoundary,
+          sources: collectTeachingSources, validateSources: validateTeachingSources,
         } : {}),
       validateService: async storage => {
         if (unit === 'learning-data') return validateLearningData(storage);

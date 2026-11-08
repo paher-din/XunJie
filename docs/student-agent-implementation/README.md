@@ -10,6 +10,7 @@
 
 | 需要了解什么 | 阅读入口 |
 | --- | --- |
+| WP08 正式 PDF 添加、页/区域固定引用、真实页图入模与两平台证据 | [#218 PDF 交付](wp08-218-pdf.md) · [验收证据](evidence/wp08-218/README.md) |
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
@@ -37,6 +38,13 @@
 | WP07 Windows 工程检查的 20 项后续修复与重新验收 | [实施与复验](wp07-engineering-checks.md) · [双轴审查](wp07-engineering-code-review.md) |
 | WP07 与已合入 main 的最终 WP04 整合、组合回归及清理 | [合并与复验](wp07-main-integration.md) |
 | WP08 的能力装配、独立 Skills、上下文压缩、记忆读取及 PDF 资料来源；MCP/Plugin 暂缓 | [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) |
+| WP08 现有学习对话的版本化能力装配、固定上下文与持久换段 | [#215 实现与验收](wp08-215-versioned-assembly.md) · [实际验收证据](evidence/wp08-215/README.md) |
+| WP08 平台与课程工具的按需发现、固定加载、大结果原件与范围读取 | [#216 实现与验收](wp08-216-tool-discovery.md) · [实际验收证据](evidence/wp08-216/README.md) |
+| WP08 课程与个人独立 Skills、正式设置和问题草稿、固定版本及渐进读取 | [#217 实现与验收](wp08-217-skills.md) · [实际验收证据](evidence/wp08-217/README.md) |
+| WP08 长历史的有界压缩、原操作延续及摘要恢复 | [#220 实现与验收](wp08-220-context-compaction.md) · [实际验收证据](evidence/wp08-220/README.md) |
+| WP08 四项能力合入 `wp08`、旧分支迁移与备份兼容、组合验证 | [整合说明](wp08-integration.md) · [本次验证证据](evidence/wp08-integration/README.md) |
+| WP08 个人资料、统一检索与明确事实读取 | [#219 实现与验收](wp08-219-personal-materials.md) · [实际验收证据](evidence/wp08-219/README.md) |
+| WP08 最后交付：跨服务接线、恢复来源闭包、跨安装备份与接管凭据门禁 | [#221 实现与验收](wp08-221.md) · [实际验收证据](evidence/wp08-221/README.md) |
 | PR #177 审查报告的 12 项修复与回归 | [审查修复记录](wp06-pr177-review-fixes.md) |
 | WP06 Responses 原生结果、工具图像和持久续接 | [Responses 交付与验收](wp06-responses-acceptance.md) |
 | WP06 Messages 思考/签名、工具图像和持久续接 | [Messages 交付与验收](wp06-messages-acceptance.md) |

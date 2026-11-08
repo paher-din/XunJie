@@ -1,0 +1,651 @@
+{
+  "kind": "wp08-218-real-pdf-continuation",
+  "at": "2026-11-08T09:54:43.868Z",
+  "platform": "darwin",
+  "nodeVersion": "v24.21.0",
+  "build": "source-build",
+  "limits": {
+    "perProtocol": 3,
+    "totalRequests": 8,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0,
+    "maxRequestsIncludingFailedAttempts": 16
+  },
+  "status": "failed",
+  "actual": [
+    "DeepSeek HTTPS responses",
+    "native PDF render and retained PNG",
+    "production owners and HTTP entry",
+    "RunDriver segment transitions, tool pairing, Wait and budgets"
+  ],
+  "controlled": [
+    "definition version changes at the public host seam",
+    "probe_long_job acceptance and reconciliation only; no real long-running execution"
+  ],
+  "notMeasured": [
+    "Windows",
+    "desktop/browser UI",
+    "teaching effect",
+    "real long-running execution"
+  ],
+  "requests": [
+    {
+      "index": 1,
+      "at": "2026-11-08T09:54:45.966Z",
+      "scenarioId": "chat-completions-assembly-change",
+      "path": "/v1/chat/completions",
+      "payloadSha256": "9008f5bda6a6d0cde093549e8368127714e0372d5fa6a88ecffc2982689fae46",
+      "imageSha256": [],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 917,
+      "responseSha256": "5b9d6d72dbcf71461b249299c113536db0b3ccd9f18ff08ddf7ca8fb6295b1f4",
+      "responseTools": [
+        "read_reference"
+      ],
+      "finishReasons": [
+        "tool_calls"
+      ]
+    },
+    {
+      "index": 2,
+      "at": "2026-11-08T09:54:47.220Z",
+      "scenarioId": "chat-completions-assembly-change",
+      "path": "/v1/chat/completions",
+      "payloadSha256": "92e9b84375212aa76e93838efd821ef383e8390fe569dccdc21f360699a65485",
+      "imageSha256": [
+        "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46"
+      ],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 2382,
+      "responseSha256": "8857afcac3307d85fd5c17beb48852bb88899081fd2ff3ab07072910e203654d",
+      "responseTools": [],
+      "finishReasons": [
+        "stop"
+      ]
+    },
+    {
+      "index": 3,
+      "at": "2026-11-08T09:54:52.017Z",
+      "scenarioId": "responses-assembly-change",
+      "path": "/v1/responses",
+      "payloadSha256": "254300cd901f4f880e82ac6d60e09c35148bde475028a016b8626fc348279d9b",
+      "imageSha256": [],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 952,
+      "responseSha256": "e9e56a6349e19ef21397b4460fc99e491d8c2f756221d7dac5f7fd2c8eb83e1b",
+      "responseTools": [
+        "read_reference",
+        "read_reference",
+        "read_reference"
+      ],
+      "finishReasons": []
+    },
+    {
+      "index": 4,
+      "at": "2026-11-08T09:54:53.287Z",
+      "scenarioId": "responses-assembly-change",
+      "path": "/v1/responses",
+      "payloadSha256": "79980067224915d79b1bb13bab529edc29a109050df45d32741e1d4c619a3eda",
+      "imageSha256": [
+        "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46"
+      ],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 1993,
+      "responseSha256": "3c564f1df36bc3fac759d24216c4278196e6cf2b5a8c72cb5148f20f763337ac",
+      "responseTools": [],
+      "finishReasons": []
+    },
+    {
+      "index": 5,
+      "at": "2026-11-08T09:54:57.730Z",
+      "scenarioId": "messages-assembly-change",
+      "path": "/anthropic/v1/messages",
+      "payloadSha256": "8a8451e9eab4bb917b7545ae098b50fae37a1900cdb3b27150ea64832f7d457e",
+      "imageSha256": [],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 1659,
+      "responseSha256": "e650ceedb81f327455f911e4ca6b30fedcf3f9ab2c138dabebca4f9ac110f77b",
+      "responseTools": [
+        "read_reference"
+      ],
+      "finishReasons": [
+        "tool_use"
+      ]
+    },
+    {
+      "index": 6,
+      "at": "2026-11-08T09:54:59.830Z",
+      "scenarioId": "messages-assembly-change",
+      "path": "/anthropic/v1/messages",
+      "payloadSha256": "9ee5fc42bc1fff184f9066fb1e51486f21363d4768cecc7c5e912ac0395744ee",
+      "imageSha256": [
+        "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46"
+      ],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 2329,
+      "responseSha256": "107d6ff277bcd975cc9bc4d0035d865a59f9d46d39a71ce2686a163a8713df00",
+      "responseTools": [],
+      "finishReasons": [
+        "end_turn"
+      ]
+    },
+    {
+      "index": 7,
+      "at": "2026-11-08T09:55:04.516Z",
+      "scenarioId": "chat-to-responses-image-and-accepted-job",
+      "path": "/v1/chat/completions",
+      "payloadSha256": "3077719e81720d9f3d00390df25a47f4d975b49158a077c37a0314d2efc4f1f8",
+      "imageSha256": [],
+      "status": 200,
+      "tlsVerified": true,
+      "finished": true,
+      "elapsedMs": 848,
+      "responseSha256": "2f8b041cc7cdb4c662a9fdfcc6bd7a857457263c0002f6ed02d93d27b2259602",
+      "responseTools": [
+        "read_reference"
+      ],
+      "finishReasons": [
+        "tool_calls"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "scenarioId": "chat-completions-assembly-change",
+      "fromProtocol": "chat-completions",
+      "toProtocol": "chat-completions",
+      "at": "2026-11-08T09:54:43.869Z",
+      "transition": "assembly-change",
+      "passed": true,
+      "jobExecution": "not-used",
+      "lastRun": {
+        "runId": "8cf3fd5f-b6b7-474a-bb2a-7c5870b2aca3",
+        "state": "completed",
+        "reason": "stop",
+        "usage": {
+          "state": "final",
+          "inputTokens": 3643,
+          "outputTokens": 377,
+          "totalTokens": 4020,
+          "cachedTokens": 512,
+          "reasoningTokens": 107
+        }
+      },
+      "lastTools": [
+        {
+          "commandId": "70d32e1b-f172-4981-8b75-e9b2c15b6ff7",
+          "name": "read_reference",
+          "state": "settled",
+          "outcome": "completed"
+        }
+      ],
+      "runId": "8cf3fd5f-b6b7-474a-bb2a-7c5870b2aca3",
+      "requestId": "23e84ef5-eba0-4470-87f5-37b8ecf1fd74",
+      "activityId": "732b914c-b0b0-42a6-a0db-0b95baab3a55",
+      "source": {
+        "kind": "pdf",
+        "activityId": "732b914c-b0b0-42a6-a0db-0b95baab3a55",
+        "documentId": "7ec2160e-c739-439a-bdee-910fcd81483d",
+        "documentSha256": "c7efb3855bcc90f5c14205cce7a8273c2fbbd47f2383c835023cbf02818bf0f9",
+        "readingId": "835b0eda-6eb7-4e8a-b3d8-1e2930b786a9",
+        "referenceId": "09793fee-5b3c-4709-81f2-e2f43b52e5df",
+        "commandId": "70d32e1b-f172-4981-8b75-e9b2c15b6ff7",
+        "page": 2,
+        "imageSha256": "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46",
+        "readingSha256": "1d9b71f1ab75c98108331bc96dffab28a40315373678c81e5a5a64c973c28c9b"
+      },
+      "oldNativeIds": [
+        "call_00_Dmou2Cfb4CIoqCfIfqiZ5660"
+      ],
+      "oldNativeIdsAbsent": true,
+      "oldReasoningAbsent": true,
+      "currentIntentPresent": true,
+      "answer": {
+        "sha256": "23ddfc34c8b6992afe99e761b3289e331c7300ca003faaf29095e25fe9edad68",
+        "chars": 387,
+        "exactContentMatched": false
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 3643,
+        "outputTokens": 377,
+        "totalTokens": 4020,
+        "cachedTokens": 512,
+        "reasoningTokens": 107
+      },
+      "budget": {
+        "sameRun": true,
+        "maxModelSteps": 2,
+        "reservations": [
+          {
+            "runId": "8cf3fd5f-b6b7-474a-bb2a-7c5870b2aca3",
+            "stepId": "1986e13f-76c5-4eb9-85f3-2f6329bc9060",
+            "deadline": "2026-11-09T09:54:45.764Z",
+            "attemptId": "5cb48137-e0bd-45ac-adf7-bbc53566dfe3",
+            "modelSteps": 1,
+            "inputTokens": "unknown",
+            "inputReserve": 262144,
+            "outputTokens": 2048,
+            "callReserveMs": 60000
+          },
+          {
+            "runId": "8cf3fd5f-b6b7-474a-bb2a-7c5870b2aca3",
+            "stepId": "27b3718b-8a7f-4bb9-b2c8-8e8a637fbf4a",
+            "deadline": "2026-11-09T09:54:45.764Z",
+            "attemptId": "548eacb0-423c-4125-ac5e-9c676558af41",
+            "modelSteps": 1,
+            "inputTokens": "unknown",
+            "inputReserve": 262144,
+            "outputTokens": 2048,
+            "callReserveMs": 58955
+          }
+        ],
+        "settlements": [
+          {
+            "runId": "8cf3fd5f-b6b7-474a-bb2a-7c5870b2aca3",
+            "usage": {
+              "state": "final",
+              "inputTokens": 751,
+              "totalTokens": 839,
+              "cachedTokens": 256,
+              "outputTokens": 88,
+              "reasoningTokens": 25
+            },
+            "stepId": "1986e13f-76c5-4eb9-85f3-2f6329bc9060",
+            "unknownReservationHeld": false
+          },
+          {
+            "runId": "8cf3fd5f-b6b7-474a-bb2a-7c5870b2aca3",
+            "usage": {
+              "state": "final",
+              "inputTokens": 2892,
+              "totalTokens": 3181,
+              "cachedTokens": 256,
+              "outputTokens": 289,
+              "reasoningTokens": 82
+            },
+            "stepId": "27b3718b-8a7f-4bb9-b2c8-8e8a637fbf4a",
+            "unknownReservationHeld": false
+          }
+        ]
+      },
+      "snapshots": [
+        {
+          "snapshotId": "434be662-b18d-4706-8b96-b9c4f15a9e98",
+          "attemptId": "5cb48137-e0bd-45ac-adf7-bbc53566dfe3",
+          "segmentId": "9bac0b01-1951-4667-9d05-eea5bd0ffc31",
+          "payloadSha256": "9008f5bda6a6d0cde093549e8368127714e0372d5fa6a88ecffc2982689fae46",
+          "definitionVersion": 1,
+          "model": {
+            "connectionId": "939d0afc-5887-4067-a336-061f6c985319",
+            "version": 1,
+            "protocol": "chat-completions",
+            "modelId": "deepseek-flash",
+            "contextWindow": 262144,
+            "maxOutputTokens": 2048
+          }
+        },
+        {
+          "snapshotId": "dd2705f3-fcab-4f2e-bca7-ac31d347a4ce",
+          "attemptId": "548eacb0-423c-4125-ac5e-9c676558af41",
+          "segmentId": "181eaf0f-8fb8-4dfd-b591-b3902eb2261e",
+          "payloadSha256": "92e9b84375212aa76e93838efd821ef383e8390fe569dccdc21f360699a65485",
+          "definitionVersion": 2,
+          "model": {
+            "connectionId": "939d0afc-5887-4067-a336-061f6c985319",
+            "version": 1,
+            "protocol": "chat-completions",
+            "modelId": "deepseek-flash",
+            "contextWindow": 262144,
+            "maxOutputTokens": 2048
+          }
+        }
+      ],
+      "cleanup": "completed",
+      "finishedAt": "2026-11-08T09:54:50.104Z"
+    },
+    {
+      "scenarioId": "responses-assembly-change",
+      "fromProtocol": "responses",
+      "toProtocol": "responses",
+      "at": "2026-11-08T09:54:50.105Z",
+      "transition": "assembly-change",
+      "passed": true,
+      "jobExecution": "not-used",
+      "lastRun": {
+        "runId": "48581997-ee6f-466a-8eb7-f060152a634c",
+        "state": "completed",
+        "reason": "completed",
+        "usage": {
+          "state": "final",
+          "inputTokens": 3584,
+          "outputTokens": 367,
+          "totalTokens": 3951,
+          "cachedTokens": 512,
+          "reasoningTokens": 81
+        }
+      },
+      "lastTools": [
+        {
+          "commandId": "118aa67b-245b-4666-978d-e1ae537a2be4",
+          "name": "read_reference",
+          "state": "settled",
+          "outcome": "completed"
+        }
+      ],
+      "runId": "48581997-ee6f-466a-8eb7-f060152a634c",
+      "requestId": "266ff7f6-3b2e-4d37-87e0-11c561339364",
+      "activityId": "f167ac9c-a7a9-4a3e-8127-e143f9acc249",
+      "source": {
+        "kind": "pdf",
+        "activityId": "f167ac9c-a7a9-4a3e-8127-e143f9acc249",
+        "documentId": "4097509f-2a66-4026-9c2f-5620f1a97407",
+        "documentSha256": "c7efb3855bcc90f5c14205cce7a8273c2fbbd47f2383c835023cbf02818bf0f9",
+        "readingId": "ccde212a-12ef-487c-9533-64ba8d38b128",
+        "referenceId": "397ea65f-46fa-4391-b203-ec4087d1585b",
+        "commandId": "118aa67b-245b-4666-978d-e1ae537a2be4",
+        "page": 2,
+        "imageSha256": "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46",
+        "readingSha256": "ce2b52c4d72e8c72fe9b9e2d7ffab95c2f9b6e5d20c4e14b8ea9e33791f76b60"
+      },
+      "oldNativeIds": [
+        "call_00_ZabDxVhLaXvEXaIUimG62010"
+      ],
+      "oldNativeIdsAbsent": true,
+      "oldReasoningAbsent": true,
+      "currentIntentPresent": true,
+      "answer": {
+        "sha256": "aaa13a4a6f7dd8ab04d05bd93dcfd6064f0a1abef28a1feedeef75f170a9be19",
+        "chars": 434,
+        "exactContentMatched": false
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 3584,
+        "outputTokens": 367,
+        "totalTokens": 3951,
+        "cachedTokens": 512,
+        "reasoningTokens": 81
+      },
+      "budget": {
+        "sameRun": true,
+        "maxModelSteps": 2,
+        "reservations": [
+          {
+            "runId": "48581997-ee6f-466a-8eb7-f060152a634c",
+            "stepId": "ff39c277-850d-4ca3-ab26-d30ca1daa7b7",
+            "deadline": "2026-11-09T09:54:51.884Z",
+            "attemptId": "b6fbf22b-f697-42ca-a559-d9ada2e4aa3d",
+            "modelSteps": 1,
+            "inputTokens": "unknown",
+            "inputReserve": 262144,
+            "outputTokens": 2048,
+            "callReserveMs": 60000
+          },
+          {
+            "runId": "48581997-ee6f-466a-8eb7-f060152a634c",
+            "stepId": "85c23050-544d-4c21-818a-65db3e6cd8d9",
+            "deadline": "2026-11-09T09:54:51.884Z",
+            "attemptId": "d2cfdde4-debe-4b44-be21-4072439935ee",
+            "modelSteps": 1,
+            "inputTokens": "unknown",
+            "inputReserve": 262144,
+            "outputTokens": 2048,
+            "callReserveMs": 58960
+          }
+        ],
+        "settlements": [
+          {
+            "runId": "48581997-ee6f-466a-8eb7-f060152a634c",
+            "usage": {
+              "state": "final",
+              "inputTokens": 741,
+              "totalTokens": 851,
+              "cachedTokens": 256,
+              "outputTokens": 110,
+              "reasoningTokens": 51
+            },
+            "stepId": "ff39c277-850d-4ca3-ab26-d30ca1daa7b7",
+            "unknownReservationHeld": false
+          },
+          {
+            "runId": "48581997-ee6f-466a-8eb7-f060152a634c",
+            "usage": {
+              "state": "final",
+              "inputTokens": 2843,
+              "totalTokens": 3100,
+              "cachedTokens": 256,
+              "outputTokens": 257,
+              "reasoningTokens": 30
+            },
+            "stepId": "85c23050-544d-4c21-818a-65db3e6cd8d9",
+            "unknownReservationHeld": false
+          }
+        ]
+      },
+      "snapshots": [
+        {
+          "snapshotId": "0a63e16b-8a14-45e6-8741-2ebb69bc619d",
+          "attemptId": "b6fbf22b-f697-42ca-a559-d9ada2e4aa3d",
+          "segmentId": "0b4ded16-ddc3-4fd0-a20b-bded9fa0de4f",
+          "payloadSha256": "254300cd901f4f880e82ac6d60e09c35148bde475028a016b8626fc348279d9b",
+          "definitionVersion": 1,
+          "model": {
+            "connectionId": "be021647-7416-4b71-9062-ba7be10f97cb",
+            "version": 1,
+            "protocol": "responses",
+            "modelId": "deepseek-flash",
+            "contextWindow": 262144,
+            "maxOutputTokens": 2048
+          }
+        },
+        {
+          "snapshotId": "54bd504d-aa52-446c-8483-df3a3acdcaae",
+          "attemptId": "d2cfdde4-debe-4b44-be21-4072439935ee",
+          "segmentId": "3022fe8a-d587-48ac-97ce-356ab1cd8497",
+          "payloadSha256": "79980067224915d79b1bb13bab529edc29a109050df45d32741e1d4c619a3eda",
+          "definitionVersion": 2,
+          "model": {
+            "connectionId": "be021647-7416-4b71-9062-ba7be10f97cb",
+            "version": 1,
+            "protocol": "responses",
+            "modelId": "deepseek-flash",
+            "contextWindow": 262144,
+            "maxOutputTokens": 2048
+          }
+        }
+      ],
+      "cleanup": "completed",
+      "finishedAt": "2026-11-08T09:54:55.851Z"
+    },
+    {
+      "scenarioId": "messages-assembly-change",
+      "fromProtocol": "messages",
+      "toProtocol": "messages",
+      "at": "2026-11-08T09:54:55.851Z",
+      "transition": "assembly-change",
+      "passed": true,
+      "jobExecution": "not-used",
+      "lastRun": {
+        "runId": "b7c396bf-7663-4967-aec2-22c8ae09a441",
+        "state": "completed",
+        "reason": "end_turn",
+        "usage": {
+          "state": "final",
+          "inputTokens": 3112,
+          "outputTokens": 427,
+          "cachedTokens": 512
+        }
+      },
+      "lastTools": [
+        {
+          "commandId": "c6abd5ad-b41f-4463-8b91-ea62dc7718aa",
+          "name": "read_reference",
+          "state": "settled",
+          "outcome": "completed"
+        }
+      ],
+      "runId": "b7c396bf-7663-4967-aec2-22c8ae09a441",
+      "requestId": "455f8998-2361-40fe-9297-e4f1c21a809f",
+      "activityId": "f5625110-9796-48fe-9eef-6c8b0427b9ec",
+      "source": {
+        "kind": "pdf",
+        "activityId": "f5625110-9796-48fe-9eef-6c8b0427b9ec",
+        "documentId": "2f9ae4ef-ce20-4195-ae6b-b8e33e811a56",
+        "documentSha256": "c7efb3855bcc90f5c14205cce7a8273c2fbbd47f2383c835023cbf02818bf0f9",
+        "readingId": "9c880d65-758a-4376-b7b7-a2376f7fefc9",
+        "referenceId": "4669495c-21a6-46fd-8475-432e8d33602c",
+        "commandId": "c6abd5ad-b41f-4463-8b91-ea62dc7718aa",
+        "page": 2,
+        "imageSha256": "bfe33d85219f7f3fa565fe2ae7e5c0c2ac7f6abfa040b231ab238819e2908a46",
+        "readingSha256": "279a0df6b8ca3dd0acc760137a959231e4702a0715038bc47ba9db7c46a7c3ce"
+      },
+      "oldNativeIds": [
+        "call_00_OGs3OQKgVADPWMkt7CNz6769"
+      ],
+      "oldNativeIdsAbsent": true,
+      "oldReasoningAbsent": true,
+      "currentIntentPresent": true,
+      "answer": {
+        "sha256": "578d98bab5671bd65e57f5e89a8669ff5fdc8c7bb09426d37ff2bd39ffe864a2",
+        "chars": 373,
+        "exactContentMatched": false
+      },
+      "usage": {
+        "state": "final",
+        "inputTokens": 3112,
+        "outputTokens": 427,
+        "cachedTokens": 512
+      },
+      "budget": {
+        "sameRun": true,
+        "maxModelSteps": 2,
+        "reservations": [
+          {
+            "runId": "b7c396bf-7663-4967-aec2-22c8ae09a441",
+            "stepId": "e9e1383e-a2fc-4f8d-a10e-d43e7e7cf412",
+            "deadline": "2026-11-09T09:54:57.594Z",
+            "attemptId": "4c0364c7-4a46-481d-a35e-83e3092950ed",
+            "modelSteps": 1,
+            "inputTokens": "unknown",
+            "inputReserve": 262144,
+            "outputTokens": 2048,
+            "callReserveMs": 60000
+          },
+          {
+            "runId": "b7c396bf-7663-4967-aec2-22c8ae09a441",
+            "stepId": "ae832740-10a7-4813-a1c4-73f971f85302",
+            "deadline": "2026-11-09T09:54:57.594Z",
+            "attemptId": "78c0b5a4-5f44-41aa-a56c-372493cbacbd",
+            "modelSteps": 1,
+            "inputTokens": "unknown",
+            "inputReserve": 262144,
+            "outputTokens": 2048,
+            "callReserveMs": 58139
+          }
+        ],
+        "settlements": [
+          {
+            "runId": "b7c396bf-7663-4967-aec2-22c8ae09a441",
+            "usage": {
+              "state": "final",
+              "inputTokens": 492,
+              "cachedTokens": 256,
+              "outputTokens": 163
+            },
+            "stepId": "e9e1383e-a2fc-4f8d-a10e-d43e7e7cf412",
+            "unknownReservationHeld": false
+          },
+          {
+            "runId": "b7c396bf-7663-4967-aec2-22c8ae09a441",
+            "usage": {
+              "state": "final",
+              "inputTokens": 2620,
+              "cachedTokens": 256,
+              "outputTokens": 264
+            },
+            "stepId": "ae832740-10a7-4813-a1c4-73f971f85302",
+            "unknownReservationHeld": false
+          }
+        ]
+      },
+      "snapshots": [
+        {
+          "snapshotId": "69a39138-4f0c-4c18-bb2b-c56b32cf683d",
+          "attemptId": "4c0364c7-4a46-481d-a35e-83e3092950ed",
+          "segmentId": "a526a568-fe23-4b68-84d0-231a78c82620",
+          "payloadSha256": "8a8451e9eab4bb917b7545ae098b50fae37a1900cdb3b27150ea64832f7d457e",
+          "definitionVersion": 1,
+          "model": {
+            "connectionId": "2c3f0254-71a5-47a6-9494-8ee4b69700ce",
+            "version": 1,
+            "protocol": "messages",
+            "modelId": "deepseek-flash",
+            "contextWindow": 262144,
+            "maxOutputTokens": 2048
+          }
+        },
+        {
+          "snapshotId": "ce0f9681-08f9-4f6a-ad7a-40a566bad970",
+          "attemptId": "78c0b5a4-5f44-41aa-a56c-372493cbacbd",
+          "segmentId": "55c381f9-a9c7-414c-9866-405e0baac718",
+          "payloadSha256": "9ee5fc42bc1fff184f9066fb1e51486f21363d4768cecc7c5e912ac0395744ee",
+          "definitionVersion": 2,
+          "model": {
+            "connectionId": "2c3f0254-71a5-47a6-9494-8ee4b69700ce",
+            "version": 1,
+            "protocol": "messages",
+            "modelId": "deepseek-flash",
+            "contextWindow": 262144,
+            "maxOutputTokens": 2048
+          }
+        }
+      ],
+      "cleanup": "completed",
+      "finishedAt": "2026-11-08T09:55:02.651Z"
+    },
+    {
+      "scenarioId": "chat-to-responses-image-and-accepted-job",
+      "fromProtocol": "chat-completions",
+      "toProtocol": "responses",
+      "at": "2026-11-08T09:55:02.651Z",
+      "transition": "model-switch",
+      "passed": false,
+      "jobExecution": "controlled-accepted-only",
+      "lastRun": {
+        "runId": "4d73113d-fa90-4d69-baeb-bfecfac14288",
+        "state": "paused",
+        "reason": "upstream-stream",
+        "usage": {
+          "state": "partial"
+        }
+      },
+      "lastTools": [
+        {
+          "commandId": "866efec4-1620-47e2-8825-9a007a76e013",
+          "name": "read_reference",
+          "state": "settled",
+          "outcome": "completed"
+        }
+      ],
+      "error": "run-paused",
+      "cleanup": "completed",
+      "finishedAt": "2026-11-08T09:55:06.318Z"
+    }
+  ],
+  "finishedAt": "2026-11-08T09:55:06.318Z",
+  "totalRealRequestsIncludingFailedAttempts": 7
+}

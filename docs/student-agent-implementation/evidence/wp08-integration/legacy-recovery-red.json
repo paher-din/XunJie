@@ -1,0 +1,14 @@
+{
+  "status": "failed",
+  "measuredAt": "2026-11-08T06:19:40.270Z",
+  "legacyCommit": "e7eab19bf1be16d615e500d4e301d90b1f659360",
+  "skills11Checksum": "4572fa1a2eb9e9a9a54e86212a60f48eb6f8d0f6e83b8c5c2ebc74f02d588baa",
+  "artifacts": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp08-legacy-recovery-DJXdmv",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "phase": "new-target-restore-with-original-domain-boundary",
+  "error": {
+    "name": "RecoveryError",
+    "code": "corrupt"
+  }
+}

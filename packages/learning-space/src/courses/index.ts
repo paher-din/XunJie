@@ -1,6 +1,7 @@
 import { courseComponentReferenceVerificationSchema } from '@xunjie/contracts/courses';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { parseTeachingSkillPackage } from '../teaching-agent/skills-package.js';
 import { StorageError } from '@xunjie/storage';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import {
@@ -73,6 +74,7 @@ const storedContentSchema = z.object({
   }).strict()).max(50), capabilities: z.array(z.object({
     kind: z.enum(['component', 'executor']), objectId: uuid, version: z.number().int().positive(),
   }).strict()).max(50), components: componentBindingsSchema.optional(),
+  skills: courseReleaseSchema.shape.skills,
   executionPlan: courseExecutionPlanSchema.optional(),
   helpPolicy: courseReleaseSchema.shape.helpPolicy,
 }).strict();
@@ -81,7 +83,12 @@ type StoredContent = z.infer<typeof storedContentSchema>;
 function contentDigest(content: StoredContent): string { return digest(content); }
 
 function parseContent(value: unknown): StoredContent {
-  try { return storedContentSchema.parse(value); } catch { return fail('corrupt'); }
+  try {
+    const content = storedContentSchema.parse(value);
+    for (const skill of content.skills ?? []) parseTeachingSkillPackage({ requestId: skill.skillId, skillId: skill.skillId,
+      source: skill.source, packageVersion: skill.packageVersion, files: skill.files });
+    return content;
+  } catch { return fail('corrupt'); }
 }
 
 function studentMaterials(content: StoredContent) {
@@ -157,6 +164,7 @@ function bindingOf(associationId: string, courseName: string, taskTitle: string,
     objectives: content.objectives, requirements: content.requirements, materials: studentMaterials(content),
     starterWorks: content.starterWorks, capabilities: content.capabilities, helpPolicy: content.helpPolicy,
     ...(content.components ? { components: content.components } : {}),
+    ...(content.skills ? { skills: content.skills } : {}),
     ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}) });
 }
 
@@ -202,9 +210,12 @@ function planImport(value: unknown) {
     releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
     materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[],
     ...(input.release.components ? { components: input.release.components } : {}),
+    ...(input.release.skills ? { skills: input.release.skills } : {}),
     ...(input.release.executionPlan ? { executionPlan: input.release.executionPlan } : {}),
     helpPolicy: input.release.helpPolicy };
   storedContentSchema.parse(content);
+  for (const skill of content.skills ?? []) parseTeachingSkillPackage({ requestId: skill.skillId, skillId: skill.skillId,
+    source: skill.source, packageVersion: skill.packageVersion, files: skill.files });
   verifyExecutionPlan(content);
   return { input, content, materials, contentHash: contentDigest(content) };
 }
@@ -391,6 +402,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       requirements: content.requirements, materials: studentMaterials(content), starterWorks: content.starterWorks,
       capabilities: content.capabilities, helpPolicy: content.helpPolicy,
       ...(content.components ? { components: content.components } : {}),
+      ...(content.skills ? { skills: content.skills } : {}),
       ...(content.executionPlan ? { executionPlan: content.executionPlan } : {}),
       publishedAt: row.published_at.toISOString(), courseName: row.course_name,
       taskTitle: row.task_title });

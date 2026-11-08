@@ -1,0 +1,55 @@
+{
+  "status": "passed",
+  "startedAt": "2026-11-08T06:51:13.354Z",
+  "finishedAt": "2026-11-08T06:56:30.205Z",
+  "nodeVersion": "v24.21.0",
+  "exitCode": 0,
+  "group": "full",
+  "jobs": 2,
+  "testsCached": false,
+  "verifiedHead": "469b867ea70a32ba8966e423bdd473a2ad078df8",
+  "verifiedTree": "23a20da91cdf238b77fd48bcb61c5d1797ba94e7",
+  "stages": [
+    {
+      "name": "prepare",
+      "status": "passed",
+      "durationMs": 7205,
+      "passedTasks": 4,
+      "totalTasks": 4
+    },
+    {
+      "name": "build:test",
+      "status": "passed",
+      "durationMs": 511,
+      "passedTasks": 1,
+      "totalTasks": 1
+    },
+    {
+      "name": "unit",
+      "status": "passed",
+      "durationMs": 309131,
+      "passedTasks": 35,
+      "totalTasks": 35
+    },
+    {
+      "name": "server",
+      "status": "passed",
+      "durationMs": 306006,
+      "passedTasks": 92,
+      "totalTasks": 92
+    },
+    {
+      "name": "tools",
+      "status": "passed",
+      "durationMs": 208295,
+      "passedTasks": 45,
+      "totalTasks": 45
+    }
+  ],
+  "web": {
+    "files": 97,
+    "tests": 1029,
+    "failed": 0
+  },
+  "conditionalSkippedCases": 20
+}

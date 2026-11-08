@@ -1,0 +1,263 @@
+TAP version 13
+# Subtest: compaction preserves an accepted course Command/Wait with result delivery during-summary and a Chat → responses switch
+ok 1 - compaction preserves an accepted course Command/Wait with result delivery during-summary and a Chat → responses switch
+  ---
+  duration_ms: 28056.9438
+  type: 'test'
+  ...
+# Subtest: compaction preserves an accepted course Command/Wait with result delivery after-switch and a Chat → messages switch
+ok 2 - compaction preserves an accepted course Command/Wait with result delivery after-switch and a Chat → messages switch
+  ---
+  duration_ms: 25802.767
+  type: 'test'
+  ...
+# Subtest: restore rejects summary results and adoption receipts belonging to another durable identity
+    # Subtest: summary result reference
+    ok 1 - summary result reference
+      ---
+      duration_ms: 515.0665
+      type: 'test'
+      ...
+    # Subtest: settled step result reference
+    ok 2 - settled step result reference
+      ---
+      duration_ms: 537.9731
+      type: 'test'
+      ...
+    # Subtest: missing settled step result
+    ok 3 - missing settled step result
+      ---
+      duration_ms: 495.2817
+      type: 'test'
+      ...
+    # Subtest: generation result reference
+    ok 4 - generation result reference
+      ---
+      duration_ms: 491.9628
+      type: 'test'
+      ...
+    # Subtest: generation attempt identity
+    ok 5 - generation attempt identity
+      ---
+      duration_ms: 804.1627
+      type: 'test'
+      ...
+    # Subtest: generation step identity
+    ok 6 - generation step identity
+      ---
+      duration_ms: 492.7528
+      type: 'test'
+      ...
+    # Subtest: generation Run identity
+    ok 7 - generation Run identity
+      ---
+      duration_ms: 496.9236
+      type: 'test'
+      ...
+    # Subtest: generation missing generation identity
+    ok 8 - generation missing generation identity
+      ---
+      duration_ms: 622.674
+      type: 'test'
+      ...
+    # Subtest: generation generated result content
+    ok 9 - generation generated result content
+      ---
+      duration_ms: 492.2377
+      type: 'test'
+      ...
+    # Subtest: adoption result reference
+    ok 10 - adoption result reference
+      ---
+      duration_ms: 490.9196
+      type: 'test'
+      ...
+    # Subtest: adoption transition identity
+    ok 11 - adoption transition identity
+      ---
+      duration_ms: 553.3873
+      type: 'test'
+      ...
+    # Subtest: adoption Run identity
+    ok 12 - adoption Run identity
+      ---
+      duration_ms: 465.5472
+      type: 'test'
+      ...
+    # Subtest: adopted portable summary
+    ok 13 - adopted portable summary
+      ---
+      duration_ms: 525.5256
+      type: 'test'
+      ...
+    1..13
+ok 3 - restore rejects summary results and adoption receipts belonging to another durable identity
+  ---
+  duration_ms: 26595.6401
+  type: 'test'
+  ...
+# Subtest: restore accepts a committed generation before budget settlement and resumes its original attempt
+ok 4 - restore accepts a committed generation before budget settlement and resumes its original attempt
+  ---
+  duration_ms: 18572.1755
+  type: 'test'
+  ...
+# Subtest: compaction survives formal backup, isolated restore and takeover without regenerating history
+ok 5 - compaction survives formal backup, isolated restore and takeover without regenerating history
+  ---
+  duration_ms: 42950.1904
+  type: 'test'
+  ...
+# Subtest: long conversation uses a bounded tool-free paid summary then continues without replacing the original record
+ok 6 - long conversation uses a bounded tool-free paid summary then continues without replacing the original record
+  ---
+  duration_ms: 19396.5146
+  type: 'test'
+  ...
+# Subtest: a changed required input rejects the old summary before adopting a new context
+ok 7 - a changed required input rejects the old summary before adopting a new context
+  ---
+  duration_ms: 17360.1806
+  type: 'test'
+  ...
+# Subtest: stop after native successor creation prevents adoption and leaves an explicit later question usable
+ok 8 - stop after native successor creation prevents adoption and leaves an explicit later question usable
+  ---
+  duration_ms: 18839.9254
+  type: 'test'
+  ...
+# Subtest: compacting a closed native tool pair preserves the current adopted question, fixed work and original effect identities
+ok 9 - compacting a closed native tool pair preserves the current adopted question, fixed work and original effect identities
+  ---
+  duration_ms: 14704.0984
+  type: 'test'
+  ...
+# Subtest: restart reconciles the original summary and native segments after summary-close acknowledgement loss
+ok 10 - restart reconciles the original summary and native segments after summary-close acknowledgement loss
+  ---
+  duration_ms: 14633.8458
+  type: 'test'
+  ...
+# Subtest: restart reconciles the original summary and native segments after summary-create acknowledgement loss
+ok 11 - restart reconciles the original summary and native segments after summary-create acknowledgement loss
+  ---
+  duration_ms: 15202.2729
+  type: 'test'
+  ...
+# Subtest: restart reconciles the original summary and native segments after summary-return acknowledgement loss
+ok 12 - restart reconciles the original summary and native segments after summary-return acknowledgement loss
+  ---
+  duration_ms: 15186.8248
+  type: 'test'
+  ...
+# Subtest: restart reconciles the original summary and native segments after adoption-close acknowledgement loss
+ok 13 - restart reconciles the original summary and native segments after adoption-close acknowledgement loss
+  ---
+  duration_ms: 14818.8774
+  type: 'test'
+  ...
+# Subtest: restart reconciles the original summary and native segments after adoption-create acknowledgement loss
+ok 14 - restart reconciles the original summary and native segments after adoption-create acknowledgement loss
+  ---
+  duration_ms: 14596.747
+  type: 'test'
+  ...
+# Subtest: an unknown summary outcome keeps its original attempt and budget until that same result is confirmed
+ok 15 - an unknown summary outcome keeps its original attempt and budget until that same result is confirmed
+  ---
+  duration_ms: 16233.6766
+  type: 'test'
+  ...
+# Subtest: two generations adopt one summary while steering and queue keep their original order
+ok 16 - two generations adopt one summary while steering and queue keep their original order
+  ---
+  duration_ms: 17359.8424
+  type: 'test'
+  ...
+# Subtest: a confirmed provider capacity refusal keeps its failed attempt and uses one budgeted compaction continuation
+ok 17 - a confirmed provider capacity refusal keeps its failed attempt and uses one budgeted compaction continuation
+  ---
+  duration_ms: 13381.8399
+  type: 'test'
+  ...
+# Subtest: a missing-retained-id summary is charged but never replaces the original context
+ok 18 - a missing-retained-id summary is charged but never replaces the original context
+  ---
+  duration_ms: 16183.596
+  type: 'test'
+  ...
+# Subtest: a unverifiable-source summary is charged but never replaces the original context
+ok 19 - a unverifiable-source summary is charged but never replaces the original context
+  ---
+  duration_ms: 15942.6258
+  type: 'test'
+  ...
+# Subtest: a malformed-json summary is charged but never replaces the original context
+ok 20 - a malformed-json summary is charged but never replaces the original context
+  ---
+  duration_ms: 16020.7288
+  type: 'test'
+  ...
+# Subtest: a provider-failure summary is charged but never replaces the original context
+ok 21 - a provider-failure summary is charged but never replaces the original context
+  ---
+  duration_ms: 16692.8766
+  type: 'test'
+  ...
+# Subtest: a second explicit context refusal pauses the original Run without another compaction or reset budget
+ok 22 - a second explicit context refusal pauses the original Run without another compaction or reset budget
+  ---
+  duration_ms: 13114.8966
+  type: 'test'
+  ...
+# Subtest: source rejection after a lost adoption receipt releases the transition for an explicit successor
+ok 23 - source rejection after a lost adoption receipt releases the transition for an explicit successor
+  ---
+  duration_ms: 18410.6564
+  type: 'test'
+  ...
+# Subtest: the summary consumes the original model step allowance and cannot reset it by changing segments
+ok 24 - the summary consumes the original model step allowance and cannot reset it by changing segments
+  ---
+  duration_ms: 15691.4807
+  type: 'test'
+  ...
+# Subtest: required fixed work that leaves no summary source capacity is preserved with a specific pause scope
+ok 25 - required fixed work that leaves no summary source capacity is preserved with a specific pause scope
+  ---
+  duration_ms: 12590.9496
+  type: 'test'
+  ...
+# Subtest: chat-completions explicit capacity rejection retains its native attempt and never retries an uncompressible source
+ok 26 - chat-completions explicit capacity rejection retains its native attempt and never retries an uncompressible source
+  ---
+  duration_ms: 12136.247
+  type: 'test'
+  ...
+# Subtest: responses explicit capacity rejection retains its native attempt and never retries an uncompressible source
+ok 27 - responses explicit capacity rejection retains its native attempt and never retries an uncompressible source
+  ---
+  duration_ms: 12376.6334
+  type: 'test'
+  ...
+# Subtest: messages explicit capacity rejection retains its native attempt and never retries an uncompressible source
+ok 28 - messages explicit capacity rejection retains its native attempt and never retries an uncompressible source
+  ---
+  duration_ms: 12441.1319
+  type: 'test'
+  ...
+# Subtest: responses-terminal explicit capacity rejection retains its native attempt and never retries an uncompressible source
+ok 29 - responses-terminal explicit capacity rejection retains its native attempt and never retries an uncompressible source
+  ---
+  duration_ms: 12307.213
+  type: 'test'
+  ...
+1..29
+# tests 42
+# suites 0
+# pass 42
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 509448.3659
