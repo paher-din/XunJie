@@ -1,0 +1,22 @@
+{
+  "issue": 217,
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "startedAt": "2026-11-07T19:30:11.395Z",
+  "headed": true,
+  "model": "controlled external transport; production Gateway and owners",
+  "distributionSha256": "6cd083c5ba78e1f97adda30a3d3adc9658cfc02ddde8bb1d010227b829463833",
+  "applicationSha256": "37cd20484c1be3464d9730fabbf65326e15495e53f1e48ada9419a33d5283ffb",
+  "cases": [
+    {
+      "name": "Formal settings import preserves package paths and metadata",
+      "status": "passed"
+    }
+  ],
+  "status": "failed",
+  "chrome": "156.0.8078.80",
+  "failure": "expect(locator).toBeFocused() failed\n\nLocator:  getByPlaceholder('写下想讨论的问题…')\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n  - Expect \"toBeFocused\" getByPlaceholder('写下想讨论的问题…') with timeout 5000ms\n  - waiting for getByPlaceholder('写下想讨论的问题…')\n    14 × locator resolved to <textarea id=\"_r_13_\" maxlength=\"10000\" placeholder=\"写下想讨论的问题…\">请帮我核对原观察与预测的差异。</textarea>\n       - unexpected value \"inactive\"\n",
+  "finishedAt": "2026-11-07T19:30:26.192Z",
+  "modelRequests": 0
+}

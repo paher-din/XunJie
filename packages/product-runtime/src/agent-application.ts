@@ -21,7 +21,7 @@ export function createStandaloneAgentApplication(options: {
 }) {
   const { root, environment, configuration, storage, binding } = options;
   const authority = new AsyncLocalStorage<TeachingDispatchAuthority>();
-  const activityContext = new AsyncLocalStorage<string>();
+  const activityContext = new AsyncLocalStorage<string | undefined>();
   const bindDependency = createTeachingDependencyBinding(storage);
   const dependencyConnectionId = configuration.agent?.dependencyConnectionId;
   const connection = dependencyConnectionId ? createAgentConnection(root, dependencyConnectionId, 'teaching.dependencies') : undefined;
@@ -41,7 +41,8 @@ export function createStandaloneAgentApplication(options: {
   const teaching = createTeachingAgent(storage, { ...dependencies, models, start: false,
     withAuthority: (value, work) => authority.run(value, work) });
   const service = createTeachingAgentService(teaching, async (identity, activityId) => {
-    await dependencies.authorizeActivity(identity, activityId);
+    if (activityId) await dependencies.authorizeActivity(identity, activityId);
+    else await dependencies.authorize(identity);
   });
   const chunks = createChunkChannel(storage);
   const chunked = chunks.wrap(async value => {
@@ -56,7 +57,8 @@ export function createStandaloneAgentApplication(options: {
     try { await source.assertAuthorized?.(); }
     catch (error) { throw new StorageError(error instanceof RuntimeConnectionError && error.code === 'unauthorized' ? 'forbidden' : 'unavailable'); }
     const input = teachingAgentCallSchema.parse(value);
-    await dependencies.authorizeActivity(input.identity, input.activityId);
+    if (input.activityId) await dependencies.authorizeActivity(input.identity, input.activityId);
+    else await dependencies.authorize(input.identity);
   } });
   const handler: CapabilityHandler = async (value, source) => {
     try {

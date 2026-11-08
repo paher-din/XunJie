@@ -1,0 +1,120 @@
+{
+  "measuredAt": "2026-11-07T19:17:04.898Z",
+  "model": "deepseek-flash",
+  "capability": "fixed-skill-body-and-attachment",
+  "limits": {
+    "maxGenerations": 6,
+    "maxPerProtocol": 2,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "rate-limited",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        },
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "partial"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "protocol": "responses",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "rate-limited",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        },
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "partial"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "protocol": "messages",
+      "sdk": "@anthropic-ai/sdk@1.1.0",
+      "passed": false,
+      "state": "failed",
+      "reason": "rate-limited",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        },
+        {
+          "name": "skill_read",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "partial"
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "generations": 6,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1217,
+      "payloadSha256": "c5cabda08d511154cd9a8ea42840f42334719b4541f44ca019a52439eb0ef4f0"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 3682,
+      "payloadSha256": "d9d6a2eda7e96663e16173ccdc1c7e4070262ea692313ceed7706fcb54202658"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 970,
+      "payloadSha256": "c74475922c012d8f61bcc202744563be261fbd9ea356e68acb29b4a4a7b86b06"
+    },
+    {
+      "path": "/v1/responses",
+      "status": 200,
+      "elapsedMs": 5399,
+      "payloadSha256": "fcb714e2d334590e1e0c91d43639f3cba957c0727dd8c482259f83c5ae0a3ab3"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 1031,
+      "payloadSha256": "3b99721a125cd451b9ff46d38310bab2cf68a6006107c21bc6967f9f86e53a3a"
+    },
+    {
+      "path": "/anthropic/v1/messages",
+      "status": 200,
+      "elapsedMs": 4378,
+      "payloadSha256": "dc65ad790281e230d23d972030cc479c307103b00184774982f2280db4399045"
+    }
+  ]
+}

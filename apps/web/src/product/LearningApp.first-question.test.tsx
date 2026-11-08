@@ -135,6 +135,24 @@ it('retains the authorized first question when creation completes after a view c
   expect(localStorage.getItem(pendingKey)).toBeNull()
 })
 
+it('keeps the same activity tree mounted across settings and browser back/forward navigation', async () => {
+  await fillQuestion('Keep the original activity mounted')
+  await click('建立学习活动')
+  const title = host.querySelector('#activity-title')!
+  expect(title).not.toBeNull()
+  await click('打开模型设置')
+  expect(host.querySelector('#activity-title')).toBe(title)
+  expect(title.closest('[inert]')).not.toBeNull()
+  await act(async () => { history.back(); await settle() })
+  await vi.waitFor(async () => { await act(settle); expect(location.search).not.toContain('settings=models') })
+  expect(host.querySelector('#activity-title')).toBe(title)
+  expect(title.closest('[inert]')).toBeNull()
+  await act(async () => { history.forward(); await settle() })
+  await vi.waitFor(async () => { await act(settle); expect(location.search).toContain('settings=models') })
+  expect(host.querySelector('#activity-title')).toBe(title)
+  expect(title.closest('[inert]')).not.toBeNull()
+})
+
 it('does not recreate a discarded automatic-send intent when the original creation replies late', async () => {
   holdCreation = new Promise(resolve => { releaseCreation = resolve })
   await fillQuestion('This request will be discarded')

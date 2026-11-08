@@ -1,10 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
+import type { QuestionSkill } from '@xunjie/contracts/question-drafts'
 import { submissionReference, referenceKey, snapshotReference, type ReferenceSelection, type ReferenceSource,
   type ReferenceSubmission, type WorkspaceReference } from './model'
 import './references.css'
+import { composerView, rememberComposerCaret, rememberComposerView, beginComposerComposition, endComposerComposition } from './composer-view'
 
 export interface ReferencesController {
+  viewActive?: boolean
+  skills?: DraftSkillsController
   workspaceKey: string
   open: boolean
   setOpen(open: boolean): void
@@ -31,7 +35,14 @@ export interface ReferencesController {
   draftConflictReady: boolean
   resolveDraftConflict?(side: 'local' | 'other'): Promise<void> | void
 }
-export interface DraftReferenceContent { question: string; references: readonly WorkspaceReference[] }
+export interface DraftSkillsController {
+  selected: QuestionSkill[]
+  defaults?: QuestionSkill[]; explicit?: boolean
+  options: { skillId: string; version: number; name: string; description: string; unavailable?: string; fixed?: boolean }[]
+  loading: boolean; error: string; reload(): void; choose(skills?: QuestionSkill[]): void
+  isCurrent?(): boolean
+}
+export interface DraftReferenceContent { question: string; references: readonly WorkspaceReference[]; skills?: QuestionSkill[] }
 export const ReferencesContext = createContext<ReferencesController | null>(null)
 export function useWorkspaceReferences(): ReferencesController {
   const value = useContext(ReferencesContext)
@@ -180,29 +191,109 @@ export function WorkspaceReferenceList() {
       </li>)}</ol>}
   </section>
 }
+
+function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaElement | null> }) {
+  const { skills, draftReady, readOnly, viewActive = true } = useWorkspaceReferences()
+  const pointerInput = useRef<{ input: HTMLTextAreaElement; start: number; end: number; direction: 'forward' | 'backward' | 'none' } | null>(null)
+  if (!skills) return null
+  const known = new Set(skills.options.map(item => `${item.skillId}:${item.version}`))
+  const unknown = skills.selected.filter(item => !known.has(`${item.skillId}:${item.version}`))
+  const selectedCount = skills.selected.length + skills.options.filter(option => option.fixed
+    && !skills.selected.some(item => item.skillId === option.skillId && item.version === option.version)).length
+  return <details className="wr-skills" onPointerDownCapture={event => {
+    pointerInput.current = null
+    const input = inputRef.current
+    if (!viewActive || event.button !== 0 || !input || document.activeElement !== input
+      || !(event.target as Element).closest('summary,button,input,label')) return
+    pointerInput.current = { input, start: input.selectionStart, end: input.selectionEnd, direction: input.selectionDirection }
+    // Pointer activation edits this question's options without moving its insertion point.
+    // Keyboard activation has no pointer capture and retains normal control focus.
+    event.preventDefault()
+  }} onPointerCancel={() => { pointerInput.current = null }} onKeyDownCapture={() => { pointerInput.current = null }}
+    onClick={event => {
+      const saved = pointerInput.current
+      if (!saved) return
+      if (!viewActive || !saved.input.isConnected) { pointerInput.current = null; return }
+      saved.input.focus({ preventScroll: true })
+      saved.input.setSelectionRange(saved.start, saved.end, saved.direction)
+      // A label forwards its activation to the input after its own click bubbles.
+      // Keep the pointer snapshot until that control click has also completed.
+      if ((event.target as Element).closest('input,button,summary')) pointerInput.current = null
+    }}>
+    <summary>本次问题的 Skills{skills.explicit === false ? ' · 按范围设置'
+      : selectedCount ? ` · 已选 ${selectedCount}` : ' · 未选择'}</summary>
+    {skills.loading && <p className="wr-hint" role="status">正在读取 Skills…</p>}
+    {skills.error && <p className="wr-notice" role="alert">{skills.error}</p>}
+    {!skills.loading && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可选 Skill，可在个人设置中导入并配置范围。</p>}
+    {skills.options.map(option => {
+      const checked = option.fixed || skills.selected.some(item => item.skillId === option.skillId && item.version === option.version)
+      return <label className="wr-skill-option" key={`${option.skillId}:${option.version}`}>
+        <input type="checkbox" checked={checked} disabled={readOnly || !draftReady || skills.loading || !!skills.error || option.fixed || !!option.unavailable && !checked}
+          onChange={event => skills.choose(event.target.checked
+            ? [...skills.selected.filter(item => item.skillId !== option.skillId), { skillId: option.skillId, version: option.version }]
+            : skills.selected.filter(item => item.skillId !== option.skillId))} />
+        <span><strong>{option.name} · v{option.version}</strong><small>{option.description}</small>
+          {option.fixed && <small>课程固定选用</small>}
+          {option.unavailable && <small>{option.unavailable}</small>}</span>
+      </label>
+    })}
+    {unknown.map(option => <label className="wr-skill-option" key={`${option.skillId}:${option.version}`}>
+      <input type="checkbox" checked disabled={readOnly || !draftReady || skills.loading || !!skills.error} onChange={() => skills.choose(skills.selected.filter(item => item.skillId !== option.skillId))} />
+      <span>已选 Skill · v{option.version}<small>原版本暂时无法读取；选择仍保留。</small></span>
+    </label>)}
+    <button type="button" disabled={skills.loading} onClick={skills.reload}>重新读取 Skills</button>
+    {skills.explicit && <button type="button" disabled={readOnly || !draftReady || skills.loading || !!skills.error} onClick={() => skills.choose()}>使用范围设置</button>}
+  </details>
+}
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
 export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel }: {
   closeFocusRef?: RefObject<HTMLElement | null>; sendBlocked?: boolean
   blockedHint?: string; blockedLabel?: string; submitLabel?: string
 } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
-    draftConflict, draftConflictReady, resolveDraftConflict, readOnly } = useWorkspaceReferences()
+    draftConflict, draftConflictReady, resolveDraftConflict, readOnly, skills, workspaceKey, viewActive = true } = useWorkspaceReferences()
   const canSend = sendAvailable && !sendBlocked
   const input = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
   const questionId = useId()
-  useEffect(() => { if (open) input.current?.focus() }, [open])
+  useLayoutEffect(() => {
+    if (!open || !viewActive || !input.current || !draftReady) return
+    const element = input.current, saved = composerView(workspaceKey)
+    if (saved.start !== undefined) element.setSelectionRange(saved.start, saved.end ?? saved.start, saved.direction)
+    // Restore once at the visible-view boundary, never after a catalog/draft response.
+    const active = document.activeElement
+    if ((saved.focused || saved.start === undefined) && (!active || active === document.body || active === document.documentElement || active === element
+      || active.closest('[inert]') || active.classList.contains('main')))
+      element.focus({ preventScroll: true })
+  }, [open, viewActive, workspaceKey])
+  useLayoutEffect(() => {
+    if (!open || !viewActive || !input.current || !draftReady) return
+    const saved = composerView(workspaceKey)
+    // A delayed IndexedDB read may restore a range, but cannot initiate focus.
+    if (saved.start !== undefined) input.current.setSelectionRange(saved.start, saved.end ?? saved.start, saved.direction)
+  }, [draftReady, open, viewActive, workspaceKey])
+  useLayoutEffect(() => {
+    const element = input.current
+    return () => {
+      if (element && draftReady) rememberComposerCaret(workspaceKey, element)
+      endComposerComposition(workspaceKey)
+    }
+  }, [open, workspaceKey, draftReady])
   if (!open) return <button className="wr-button" type="button" onClick={() => setOpen(true)}>打开对话</button>
-  return <section className="wr-composer" aria-label="Agent 问题草稿" data-reference-ui>
+  return <section className="wr-composer" aria-label="Agent 问题草稿" data-reference-ui onFocusCapture={event => {
+    if (event.target !== input.current) rememberComposerView(workspaceKey, { focused: false })
+  }}>
     <header><h2>询问 Agent</h2><button type="button" onClick={() => { setOpen(false); closeFocusRef?.current?.focus() }}>收起对话</button></header>
     {draftConflict && <div className="wr-conflict" role="alert">
       <h3>问题草稿存在分歧</h3>
       <p>本页与另一版本均保留，请比较后明确选择。</p>
       <div className="wr-conflict-columns">
         <div><h4>本页草稿</h4><p className="wr-conflict-question">{draftConflict.local.question || '（问题尚未填写）'}</p>
+          {!!draftConflict.local.skills?.length && <p>Skills：{draftConflict.local.skills.map(skill => `${skills?.options.find(option => option.skillId === skill.skillId)?.name ?? '原 Skill'} · v${skill.version}`).join('、')}</p>}
           <ul>{draftConflict.local.references.map(reference => <li key={reference.id}>
             <strong>{reference.sourceName}</strong><pre>{reference.text}</pre></li>)}</ul></div>
         <div><h4>另一版本</h4><p className="wr-conflict-question">{draftConflict.other.question || '（问题尚未填写）'}</p>
+          {!!draftConflict.other.skills?.length && <p>Skills：{draftConflict.other.skills.map(skill => `${skills?.options.find(option => option.skillId === skill.skillId)?.name ?? '原 Skill'} · v${skill.version}`).join('、')}</p>}
           <ul>{draftConflict.other.references.map(reference => <li key={reference.id}>
             <strong>{reference.sourceName}</strong><pre>{reference.text}</pre></li>)}</ul></div>
       </div>
@@ -213,11 +304,19 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
     </div>}
     {draftError && <p role="alert" className="wr-notice">{draftError}</p>}
     <WorkspaceReferenceList />
+    <WorkspaceDraftSkills inputRef={input} />
     <form onSubmit={event => { event.preventDefault(); if (canSend) void submit() }}>
       <label htmlFor={questionId}>你的问题</label>
       <textarea ref={input} id={questionId} value={question} disabled={!draftReady} readOnly={readOnly} maxLength={QUESTION_TEXT_MAX_LENGTH}
-        onChange={event => setQuestion(event.target.value)} placeholder="写下想讨论的问题…"
-        onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
+        onChange={event => { setQuestion(event.target.value); rememberComposerCaret(workspaceKey, event.currentTarget) }} placeholder="写下想讨论的问题…"
+        onFocus={event => rememberComposerCaret(workspaceKey, event.currentTarget, true)}
+        onBlur={event => rememberComposerCaret(workspaceKey, event.currentTarget)}
+        onSelect={event => { if (draftReady) rememberComposerCaret(workspaceKey, event.currentTarget) }}
+        onCompositionStart={() => { composing.current = true; beginComposerComposition(workspaceKey) }} onCompositionEnd={event => {
+          if (event.currentTarget.value !== question) setQuestion(event.currentTarget.value)
+          rememberComposerCaret(workspaceKey, event.currentTarget)
+          composing.current = false; endComposerComposition(workspaceKey)
+        }}
         onKeyDown={event => {
           if (canSend && event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
             event.preventDefault(); void submit()

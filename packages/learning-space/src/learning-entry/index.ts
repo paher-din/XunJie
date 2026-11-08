@@ -8,6 +8,7 @@ import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
+import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema } from '@xunjie/contracts/agent-skills';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
@@ -65,6 +66,7 @@ export function createLearningEntry(options: {
   models?: Awaited<ReturnType<typeof createModelGateway>>;
   teaching?: TeachingAgentPort;
   teachingFor?(identity: SpaceIdentity, activityId: string): Promise<TeachingAgentPort>;
+  teachingSettingsFor?(identity: SpaceIdentity): Promise<TeachingAgentPort>;
   bindAgent?(input: unknown): Promise<unknown>;
   bindModelDevice?(input: unknown): Promise<unknown>;
   restoredInstallation?(): Promise<boolean>;
@@ -154,7 +156,8 @@ export function createLearningEntry(options: {
         route = route.slice(0, -5);
       }
       if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')
-        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')) && request.headers['x-xj-namespace']
+        || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')
+        || route === 'skills' || route.startsWith('skills/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -167,7 +170,8 @@ export function createLearningEntry(options: {
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
           route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
-            : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
+            : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
+              || /^agent\/[0-9a-f-]{36}\/skills\//.test(route) ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -340,7 +344,21 @@ export function createLearningEntry(options: {
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
-      else if (route === 'agent-settings' || route.startsWith('agent-settings/')) {
+      else if (route === 'skills' || route.startsWith('skills/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const selectedActivity = new URL(request.url!, endpoint).searchParams.get('activityId');
+        const activityId = selectedActivity === null ? undefined : z.uuid().parse(selectedActivity);
+        const teaching = activityId ? await options.teachingFor?.(identity, activityId) ?? options.teaching
+          : await options.teachingSettingsFor?.(identity) ?? options.teaching;
+        if (!teaching) throw new StorageError('unavailable');
+        if (route === 'skills' && method === 'GET') result = await teaching.skills.list(identity, activityId);
+        else if (route === 'skills/import' && method === 'POST') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(await readLearningBody(request, 8000000)));
+        else if (route === 'skills/select' && method === 'POST') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(await readLearningBody(request)));
+        else if (route === 'skills/disable' && method === 'POST') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(await readLearningBody(request)));
+        else throw new StorageError('missing');
+      } else if (route === 'agent-settings' || route.startsWith('agent-settings/')) {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
@@ -369,6 +387,15 @@ export function createLearningEntry(options: {
           result = await teaching.events(identity, activityId, cursor);
         else if (parts.length === 3 && parts[2] === 'capabilities' && method === 'GET')
           result = await teaching.capabilities(identity, activityId);
+        else if (parts.length === 3 && parts[2] === 'skills' && method === 'GET')
+          result = await teaching.skills.list(identity, activityId);
+        else if (parts.length === 4 && parts[2] === 'skills' && method === 'POST') {
+          const body = await readLearningBody(request, parts[3] === 'import' ? 8000000 : 65536);
+          if (parts[3] === 'import') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(body));
+          else if (parts[3] === 'select') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(body));
+          else if (parts[3] === 'disable') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(body));
+          else throw new StorageError('missing');
+        }
         else if (parts.length === 3 && parts[2] === 'model-switches' && method === 'POST')
           result = await teaching.switchModel(identity, activityId, await readLearningBody(request));
         else if (parts.length === 4 && parts[2] === 'runs' && method === 'GET')

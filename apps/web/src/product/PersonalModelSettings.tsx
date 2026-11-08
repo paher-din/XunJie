@@ -7,20 +7,21 @@ import { ModelConnectionDialog } from '../components/settings/ModelConnectionDia
 import { z } from 'zod'
 import { ModelSelection, type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
+import { PersonalSkillsSettings } from './PersonalSkillsSettings'
 
 const failures: Record<string, string> = { conflict: '配置已被更新，当前输入保留，请核对后重新读取。', 'identity-conflict': '原检查身份与内容冲突，请查询原记录。',
   forbidden: '原空间资格已失效，请重新登录原空间。', 'resource-busy': '检查频次或并发已达上限，请保留原检查记录并稍后再试。',
   unavailable: '连接或相应适配器不可用，请检查配置。', invalid: '请检查地址、协议、模型及密钥填写。', maintenance: '模型服务正在维护，请稍后重试。' }
 type PersonalModelSettingsProps = {
   identity: SpaceIdentity; spaceKey: string; namespace: string; onBack(): void; selection: ModelSelectionController; readOnly?: boolean
-  activityId?: string
+  activityId?: string; courseId?: string
 }
 export function PersonalModelSettings(props: PersonalModelSettingsProps) {
   const { identity, namespace, spaceKey } = props
   // A subject change must discard old drafts, errors and late async responses together.
   return <PersonalModelSettingsBody key={JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])} {...props} />
 }
-function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId, readOnly = false }: PersonalModelSettingsProps) {
+function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId, courseId, readOnly = false }: PersonalModelSettingsProps) {
   const interaction = useAgentInteraction(identity, spaceKey, namespace, !readOnly)
   const [connections, setConnections] = useState<ModelConnection[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
   const [dialog, setDialog] = useState<{ connection: ModelConnection | null } | null>(null)
@@ -125,8 +126,9 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     }
   }
   return <div className="content product-model-settings">
-    <div className="sectionhead"><h1>个人模型设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
+    <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><AgentInteractionSettings controller={interaction} />
+      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} />
       <ModelSelection controller={selection}
       onSelected={saved => switchConversation(saved.version)}
       onCheck={() => void act('selected', '检查当前模型', () => check({ selected: true, selectionVersion: selection.selection!.version }))} />

@@ -20,11 +20,12 @@ const { values: args } = parseArgs({ options: {
   'mac-host': { type: 'string' }, 'win-host': { type: 'string' },
   'mac-port': { type: 'string' }, 'win-port': { type: 'string' },
   'credentials-file': { type: 'string' }, out: { type: 'string' },
-  worker: { type: 'boolean' }, help: { type: 'boolean' }, discovery: { type: 'boolean' },
+  worker: { type: 'boolean' }, help: { type: 'boolean' }, discovery: { type: 'boolean' }, skills: { type: 'boolean' },
 } });
-const issue = args.discovery ? 216 : 215;
-args['mac-port'] ??= args.discovery ? '38265' : '38215';
-args['win-port'] ??= args.discovery ? '38266' : '38216';
+if (args.discovery && args.skills) throw new Error('Choose at most one of --discovery and --skills.');
+const issue = args.skills ? 217 : args.discovery ? 216 : 215;
+args['mac-port'] ??= args.skills ? '39217' : args.discovery ? '38265' : '38215';
+args['win-port'] ??= args.skills ? '39218' : args.discovery ? '38266' : '38216';
 const limits = Object.freeze({ maxGenerations: args.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 });
 const lifetime = new AbortController();
 const exec = promisify(execFile), sha = value => createHash('sha256').update(value).digest('hex');
@@ -44,16 +45,18 @@ if (args.help) {
   --product MAC_DIR --remote-product WIN_DIR --ssh win --remote-script WIN_FILE
   --certificate PEM --key PEM --remote-certificate WIN_PEM --remote-key WIN_KEY
   --mac-host IP --win-host IP --credentials-file PRIVATE --out JSON
-  [--mac-port 38215 --win-port 38216] [--discovery]
+  [--discovery | --skills] [--mac-port PORT --win-port PORT]
+Default mode uses issue #215, ports 38215/38216 and read_work -> answer.
+--skills uses issue #217, ports 39217/39218 and skill_read -> answer for fixed course Skills.
 Creates an isolated Mac school and Windows Agent. The same test CA/certificate must cover both IPs.
-Open Windows TCP 38216 only to the Mac IP; open Mac TCP 38215 only to the Windows IP.
+Open only the selected Windows TCP port to the Mac IP and Mac TCP port to the Windows IP.
 Copy this script and the test certificates before running. It never copies provider credentials.
 A fresh dependency operation is denied under a revoked grant before any Agent Run/model call;
 renewing only that connection's grant then reconciles and dispatches the same original ActionIntent.
-Two real DeepSeek chat-completions calls maximum, 2048 output tokens and 30 seconds each.
+Default and --skills modes require two real DeepSeek chat-completions calls, 2048 output tokens and 30 seconds each.
 --discovery uses issue #216, ports 38265/38266 and four calls: discover_tools -> load_tools -> read_work -> answer.
 Only hashes, public IDs, hosts, status and counts are written. No browser or teaching-effect claim.
---worker is a private JSON-lines control mode: start/authorize/connect/restart/cleanup only.`);
+--worker is a private JSON-lines control mode: start/authorize/connect/offline/online/restart/cleanup only.`);
   process.exit(0);
 }
 async function trust(certificate) {
@@ -67,10 +70,12 @@ async function product(directory) {
   const resources = Object.fromEntries(Object.entries(manifest).map(([key, value]) => [key,
     typeof value === 'string' && /(?:Path|Bin|Root|Helper)$/.test(key) ? resolve(root, value) : value]));
   const entry = join(root, 'app/product-runtime.js'), bytes = await readFile(entry), source = bytes.toString('utf8');
+  if (args.skills) check(source.includes('independent-fixed-skill-packages') && source.includes('skill_read'), 'candidate-missing-fixed-skills');
   check(source.includes('immutable-agent-assembly') && source.includes('tool.contributions'), 'candidate-missing-versioned-assembly');
   const module = await import(pathToFileURL(entry).href);
   check(typeof module.openProductRuntime === 'function' && typeof module.createProductRuntimeHost === 'function'
     && typeof module.createProductLearningApplication === 'function', 'candidate-missing-public-host-api');
+  if (args.skills) check(typeof module.createOutboundConnection === 'function', 'candidate-missing-public-connection-api');
   return { root, resources, module, fact: { platform: distribution.platform, profile: distribution.profile,
     distributionSha256: sha(distributionBytes), applicationSha256: sha(bytes), nodeVersion: process.version } };
 }
@@ -146,6 +151,8 @@ async function worker() {
       await (input.replace ? runtime.reconnect(connection, input.token) : runtime.connect(connection, input.token));
       return { connected: true, connectionId: dependencyConnectionId, replacement: input.replace === true };
     }
+    if (input.operation === 'offline') { await runtime.stop(); return { offline: true }; }
+    if (input.operation === 'online') { state = await runtime.start(); return publicState(state); }
     if (input.operation === 'restart') { await runtime.stop(); state = await runtime.start(); return publicState(state); }
     throw Object.assign(new Error('unsupported-worker-operation'), { code: 'unsupported-worker-operation' });
   }
@@ -168,7 +175,7 @@ function remoteDevice() {
   const launch = `& ${quote(remoteProduct + '/resources/node/node.exe')} ${quote(args['remote-script'])} --worker${args.discovery ? ' --discovery' : ''}`
     + ` --product ${quote(remoteProduct)} --certificate ${quote(args['remote-certificate'])} --key ${quote(args['remote-key'])}`
     + ` --mac-host ${quote(args['mac-host'])} --win-host ${quote(args['win-host'])}`
-    + ` --mac-port ${port(args['mac-port'])} --win-port ${port(args['win-port'])}; exit $LASTEXITCODE`;
+    + ` --mac-port ${port(args['mac-port'])} --win-port ${port(args['win-port'])}${args.skills ? ' --skills' : ''}; exit $LASTEXITCODE`;
   const child = spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', args.ssh,
     'powershell -NoProfile -EncodedCommand ' + Buffer.from(launch, 'utf16le').toString('base64')], { stdio: ['pipe', 'pipe', 'pipe'] });
   const pending = new Map(); let ended = false;
@@ -314,7 +321,7 @@ async function main() {
                 const model = operation === 'model' ? payload.args?.[0] : null;
                 const name = model ? 'model.' + model.operation : operation;
                 counters.set(name, (counters.get(name) ?? 0) + 1);
-                if (operation === 'tool.contributions' || operation === 'tool.dispatch') wire.push({ operation, transferId: value.transferId ?? null,
+                if (operation === 'tool.contributions' || operation === 'tool.dispatch' || args.skills && operation === 'activity') wire.push({ operation, transferId: value.transferId ?? null,
                   inputSha256: digest(payload), sourceEnvironmentId: source.sourceEnvironmentId, sourceServiceId: source.sourceServiceId,
                   targetServiceId: serviceId, state: result?.state ?? (result?.error ? 'rejected' : 'returned'),
                   ...(operation === 'tool.dispatch' ? { commandId: payload.args?.[1]?.commandId ?? null } : {}) });
@@ -346,13 +353,15 @@ async function main() {
     });
     report.packages.windows = windows.package; report.topology.windows.host = windows.host;
     const agentTarget = windows.target;
-    let dependencyGrant, dependencyConnection;
+    let dependencyGrant, dependencyConnection, agentRpc;
     await stage('bidirectional-runtime-authority-and-binding', async () => {
       const accept = await remote.call('authorize', { source: { sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId,
         sourceInstallationId: state.environment.installationId } });
       const connectionId = randomUUID();
-      await runtime.connect({ connectionId, sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId, target: agentTarget,
-        requiredCapabilities: ['teaching.agent'], optionalCapabilities: [], credentialRef: 'assembly-cross-agent' }, accept.token);
+      const inbound = { connectionId, sourceEnvironmentId: data.environmentId, sourceServiceId: data.serviceId, target: agentTarget,
+        requiredCapabilities: ['teaching.agent'], optionalCapabilities: [], credentialRef: 'assembly-cross-agent' };
+      await runtime.connect(inbound, accept.token);
+      if (args.skills) agentRpc = pkg.module.createOutboundConnection({ connection: inbound, credential: async () => accept.token });
       await schoolApi('manage/agent-binding', { requestId: randomUUID(), identity, connectionId, target: agentTarget,
         installationId: windows.installationId }, admin);
       dependencyGrant = await runtime.authorize({ sourceEnvironmentId: agentTarget.environmentId, sourceServiceId: agentTarget.serviceId,
@@ -378,7 +387,26 @@ async function main() {
       await schoolApi('models/selection', { requestId: randomUUID(), expectedVersion: previous.version, source: { kind: 'school', connectionId } });
       return { model: 'deepseek-flash', protocol: 'chat-completions', connectionId, credentialOwner: 'Mac', credentialExported: false };
     });
-    const activity = await schoolApi('activities', { requestId: randomUUID(), goal: '跨机器核对固定原件与版本化能力装配', question: '', references: [] });
+    const fixedSkill = args.skills ? { skillId: randomUUID(), version: 1, source: 'course:217-cross-diagnosis', packageVersion: '1.0.0', required: true, files: [
+      { path: 'SKILL.md', encoding: 'utf8', content: '---\nname: cross-owner-diagnosis\ndescription: 依据固定附件核对跨机器观察\n---\n仅按学生当前问题解释；读取 references/observation.txt 后核对水位差。' },
+      { path: 'references/observation.txt', encoding: 'utf8', content: '217固定附件：初始水位12 cm，最终37 cm；差值25 cm。' },
+      { path: 'assets/original.bin', encoding: 'base64', content: Buffer.from([0, 217, 255, 12, 37]).toString('base64') },
+      { path: 'scripts/do-not-run.ps1', encoding: 'utf8', content: 'throw "217-script-must-not-execute"' },
+    ] } : null;
+    let activity;
+    if (fixedSkill) {
+      const courseId = randomUUID(), releaseId = randomUUID();
+      await schoolApi('manage/course-import', { formatVersion: 1, requestId: randomUUID(),
+        course: { courseId, name: '217 跨 owner 固定 Skills' }, task: { taskId: randomUUID(), title: '核对固定观察', summary: '' },
+        release: { releaseId, objectives: ['核对真实固定依据'], requirements: '只解释差值，不修改作品。',
+          helpPolicy: { version: 1, questions: 'allowed', scope: 'course' }, materials: [], starterWorks: [], capabilities: [], skills: [fixedSkill] },
+        resources: [] }, admin);
+      await schoolApi('manage/course-access', { requestId: randomUUID(), courseId, principalId: identity.principalId, active: true }, admin);
+      activity = await schoolApi('course-activities', { requestId: randomUUID(), releaseId });
+      assert.deepEqual(activity.course.skills, [fixedSkill]);
+      report.skill = { skillId: fixedSkill.skillId, version: fixedSkill.version, source: fixedSkill.source,
+        packageVersion: fixedSkill.packageVersion, attachmentSha256: sha(fixedSkill.files[1].content), releaseId };
+    } else activity = await schoolApi('activities', { requestId: randomUUID(), goal: '跨机器核对固定原件与版本化能力装配', question: '', references: [] });
     check(activity.target.serviceId === data.serviceId, 'activity-left-mac-owner');
     const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'cross-observation.txt', kind: 'text', encoding: 'utf8',
       mediaType: 'text/plain', value: '跨机固定观测：水位从 12 cm 增至 37 cm。原件核对标记：' + randomUUID() };
@@ -388,7 +416,9 @@ async function main() {
     check(capability.receiver.receiverId === 'teaching-agent:' + agentTarget.serviceId, 'activity-not-routed-to-windows-agent');
     const input = { requestId: randomUUID(), scope: { environmentId: identity.environmentId, spaceId: identity.spaceId,
       principalId: identity.principalId, activityId: activity.activityId }, receiver: capability.receiver,
-      draft: { token: randomUUID(), question: (args.discovery
+      draft: { token: randomUUID(), question: (fixedSkill
+        ? `先且仅调用一次 skill_read，skillId=${fixedSkill.skillId}，version=1，path=references/observation.txt，offset=0，length=6000。收到真实附件后，简短说明水位差并结束。不得调用其他工具或执行脚本。`
+        : args.discovery
         ? '按顺序各调用一次工具：先 discover_tools，参数必须为 {"purpose":"read_work","source":"platform.learning","object":null,"cursor":null,"pageSize":2}；'
           + '再将返回的 read_work bindingId 放入 bindingIds 数组调用 load_tools；'
           + `等加载完成后，仅调用一次 read_work 读取 objectId=${work.objectId}、contentId=${work.contentId} 的固定原件。`
@@ -400,13 +430,24 @@ async function main() {
     const base = 'agent/' + activity.activityId;
     await stage('revoked-dependency-refuses-new-operation-without-replay', async () => {
       check(await runtime.revoke(dependencyGrant.grantId), 'dependency-revocation-not-confirmed');
+      let disconnected;
+      if (args.skills) {
+        check((await remote.call('offline')).offline, 'windows-owner-not-offline');
+        const pending = await schoolApi(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
+        check(pending.state === 'dispatched' && !pending.receipt && pending.inputDigest === prepared.inputDigest,
+          'offline-original-action-not-retained');
+        const online = await remote.call('online');
+        check(online.environmentId === windows.environmentId && online.target.serviceId === agentTarget.serviceId,
+          'disconnect-reconnect-replaced-owner');
+        disconnected = { outage: 'actual Windows Agent service stopped', originalActionRetained: true, originalOwnerRetained: true };
+      }
       const denied = await requestApi(endpoint, base + '/capabilities', undefined, headers);
       check(denied.status === 403 && denied.value.error === 'forbidden', 'revoked-dependency-was-not-refused');
       const blocked = await schoolApi(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       check(blocked.state === 'dispatched' && blocked.input.requestId === input.requestId && !blocked.receipt, 'revoked-action-was-not-preserved-unconfirmed');
       check(blocked.inputDigest === prepared.inputDigest && relay.requests.length === 0, 'revoked-action-changed-or-dispatched');
       return { dependencyGrantId: dependencyGrant.grantId, operationHttpStatus: denied.status, operationError: denied.value.error,
-        requestId: input.requestId, inputSha256: prepared.inputDigest, actionState: blocked.state, modelRequests: 0 };
+        requestId: input.requestId, inputSha256: prepared.inputDigest, actionState: blocked.state, modelRequests: 0, ...(disconnected ? { disconnected } : {}) };
     });
     const receipt = await stage('fresh-grant-resumes-the-original-action-identity', async () => {
       const fresh = await runtime.authorize({ sourceEnvironmentId: agentTarget.environmentId, sourceServiceId: agentTarget.serviceId,
@@ -417,21 +458,35 @@ async function main() {
       check(accepted.state === 'accepted' && accepted.inputDigest === prepared.inputDigest, 'original-action-did-not-recover');
       const runId = JSON.parse(accepted.receipt.detail).runId;
       check(uuid(runId), 'accepted-run-identity-missing');
+      dependencyGrant = fresh;
       return { requestId: input.requestId, runId, inputSha256: prepared.inputDigest, dependencyConnectionId, dependencyGrantId: fresh.grantId };
     });
-    const final = await stage(args.discovery ? 'windows-discovery-load-mac-work-and-four-real-model-calls' : 'windows-assembly-mac-work-and-two-real-model-calls', async () => {
+    const final = await stage(args.skills ? 'windows-skill-reads-fixed-mac-course-with-two-real-model-calls'
+      : args.discovery ? 'windows-discovery-load-mac-work-and-four-real-model-calls' : 'windows-assembly-mac-work-and-two-real-model-calls', async () => {
       const conversation = await until(async () => {
         const value = await schoolApi(base + '/conversation'), run = value.runs.find(item => item.runId === receipt.runId);
-        if (run && ['paused', 'failed', 'stopped'].includes(run.state)) throw Object.assign(new Error('remote-run-not-completed'), { code: 'remote-run-' + run.state });
+        if (run && ['paused', 'failed', 'stopped'].includes(run.state)) {
+          report.failedRun = { runId: run.runId, state: run.state, reason: typeof run.reason === 'string' && /^[A-Za-z0-9_.:-]{1,100}$/.test(run.reason) ? run.reason : 'unclassified' };
+          throw Object.assign(new Error('remote-run-not-completed'), { code: 'remote-run-' + run.state });
+        }
         return run?.state === 'completed' ? value : null;
       }, 'remote-agent-completion-timeout', args.discovery ? 180000 : 90000);
       check(conversation.runs.length === 1 && conversation.runs[0].requestId === input.requestId, 'action-was-replayed-as-another-run');
       check(conversation.inputs.length === 1 && conversation.inputs[0].requestId === input.requestId, 'original-input-identity-changed');
-      const expectedTools = args.discovery ? ['discover_tools', 'load_tools', 'read_work'] : ['read_work'];
+      const expectedTools = fixedSkill ? ['skill_read'] : args.discovery ? ['discover_tools', 'load_tools', 'read_work'] : ['read_work'];
       check(conversation.tools.length === expectedTools.length && expectedTools.every(name =>
         conversation.tools.filter(tool => tool.name === name && tool.outcome === 'completed').length === 1), 'expected-completed-tool-chain');
-      const tool = conversation.tools.find(tool => tool.name === 'read_work');
-      check(tool.name === 'read_work' && tool.outcome === 'completed' && tool.result?.file?.value === work.value, 'mac-fixed-work-not-returned');
+      assert.deepEqual(conversation.tools.map(tool => tool.name), expectedTools);
+      const tool = conversation.tools.find(tool => tool.name === (fixedSkill ? 'skill_read' : 'read_work'));
+      if (fixedSkill) {
+        assert.deepEqual(tool.arguments, { skillId: fixedSkill.skillId, version: fixedSkill.version,
+          path: 'references/observation.txt', offset: 0, length: 6000 });
+        const loaded = tool.result?.loaded;
+        check(tool.name === 'skill_read' && tool.outcome === 'completed' && loaded?.content === fixedSkill.files[1].content
+          && loaded.skillId === fixedSkill.skillId && loaded.version === fixedSkill.version && loaded.complete
+          && loaded.digest === sha(fixedSkill.files[1].content), 'fixed-course-skill-attachment-not-returned');
+        check(!JSON.stringify(conversation).includes('217-script-must-not-execute'), 'script-contents-were-loaded-unasked');
+      } else check(tool.name === 'read_work' && tool.outcome === 'completed' && tool.result?.file?.value === work.value, 'mac-fixed-work-not-returned');
       if (args.discovery) {
         const discovered = conversation.tools.find(tool => tool.name === 'discover_tools');
         const loaded = conversation.tools.find(tool => tool.name === 'load_tools');
@@ -446,12 +501,15 @@ async function main() {
       check(contributions.length > 0 && contributions.every(item => item.sourceEnvironmentId === agentTarget.environmentId
         && item.sourceServiceId === agentTarget.serviceId && item.targetServiceId === data.serviceId), 'cross-owner-tool-contributions-not-witnessed');
       const dispatches = wire.filter(item => item.operation === 'tool.dispatch' && item.state === 'completed');
-      check(dispatches.length === 1 && dispatches[0].commandId === tool.commandId, 'tool-command-owner-not-witnessed');
+      if (fixedSkill) check(wire.some(item => item.operation === 'activity' && item.sourceServiceId === agentTarget.serviceId), 'fixed-course-owner-read-not-witnessed');
+      else check(dispatches.length === 1 && dispatches[0].commandId === tool.commandId, 'tool-command-owner-not-witnessed');
       report.conversationSha256 = digest(conversation); report.wire = wire;
-      report.work = { objectId: work.objectId, contentId: work.contentId, contentSha256: sha(work.value), commandId: tool.commandId };
+      if (fixedSkill) report.skill.commandId = tool.commandId;
+      else report.work = { objectId: work.objectId, contentId: work.contentId, contentSha256: sha(work.value), commandId: tool.commandId };
       // Only the digest of the full public conversation is retained, not its content.
       return { runId: receipt.runId, requestId: input.requestId, activityId: activity.activityId, toolCommandId: tool.commandId,
-        workContentSha256: sha(tool.result.file.value), modelRequests: relay.requests.length,
+        fixedContentSha256: sha(fixedSkill ? tool.result.loaded.content : tool.result.file.value), modelRequests: relay.requests.length,
+        ...(!fixedSkill ? { workContentSha256: sha(tool.result.file.value) } : {}),
         contributionTransfers: contributions.length, toolDispatches: dispatches.length, ...(args.discovery ? { completedTools: expectedTools } : {}) };
     });
     const events = await schoolApi(base + '/events');
@@ -466,10 +524,24 @@ async function main() {
           'snapshot-transport-identity-mismatch');
         check(relay.requests.some(item => item.payloadSha256 === snapshot.payloadSha256), 'actual-provider-payload-not-matched');
         check(snapshot.contextManifest.items.every(item => digest(item.content) === item.contentDigest), 'context-manifest-content-not-fixed');
-        check(snapshot.resolvedAgent.tools.some(tool => tool.modelName === 'read_work' && tool.executor.toolName === 'read_work'
-          && tool.resourceScope.activityId === activity.activityId), 'real-read-work-binding-not-retained');
+        const expectedTool = fixedSkill ? 'skill_read' : 'read_work';
+        check(snapshot.resolvedAgent.tools.some(tool => tool.modelName === expectedTool && tool.executor.toolName === expectedTool
+          && tool.resourceScope.activityId === activity.activityId), 'original-read-binding-not-retained');
+        if (fixedSkill) {
+          check(snapshot.resolvedAgent.skills.catalog.some(item => item.skillId === fixedSkill.skillId && item.origin === 'course'), 'fixed-course-catalog-not-retained');
+          check(!JSON.stringify(snapshot.payload.messages.filter(message => message.role === 'system')).includes('仅按学生当前问题解释'), 'skill-body-promoted-to-system');
+        }
       }
       check(snapshots.length === limits.maxGenerations, args.discovery ? 'expected-four-original-snapshots' : 'expected-two-original-snapshots');
+      for (const request of relay.requests)
+        check(snapshots.filter(snapshot => snapshot.payloadSha256 === request.payloadSha256).length === 1, 'provider-request-without-unique-original-snapshot');
+      if (fixedSkill) {
+        const attachment = snapshots[1].contextManifest.items.find(item => item.selection?.access === 'fixed-skill-content'
+          && item.content?.skillId === fixedSkill.skillId && item.content?.path === 'references/observation.txt');
+        check(attachment?.content?.content === fixedSkill.files[1].content && attachment.content.digest === sha(fixedSkill.files[1].content),
+          'actual-attachment-not-fixed-in-step-manifest');
+        check(snapshots[1].segmentId === snapshots[0].segmentId, 'progressive-skill-read-broke-original-native-pair');
+      }
       report.snapshots = snapshots.map(snapshot => ({ snapshotId: snapshot.snapshotId, attemptId: snapshot.attemptId,
         segmentId: snapshot.segmentId, resolvedId: snapshot.resolvedAgent.resolvedId, definitionId: snapshot.resolvedAgent.definition.definitionId,
         definitionVersion: snapshot.resolvedAgent.definition.version, contextManifestId: snapshot.contextManifest.manifestId,
@@ -492,6 +564,21 @@ async function main() {
         check((counters.get(operation) ?? 0) === (beforeCounts[operation] ?? 0), 'restart-replayed-' + operation.replaceAll('.', '-'));
       return { environmentId: restarted.environmentId, agentServiceId: agentTarget.serviceId, runId: receipt.runId,
         requestId: input.requestId, conversationSha256: report.conversationSha256, modelRequests: 0, newToolOperations: 0 };
+    });
+    if (fixedSkill) await stage('revocation-refuses-new-skill-owner-reads-without-model-replay', async () => {
+      const beforeRequests = relay.requests.length;
+      const read = { version: 1, operation: 'skills.read', identity, activityId: activity.activityId,
+        args: [{ skillId: fixedSkill.skillId, version: fixedSkill.version, path: 'references/observation.txt' }] };
+      const original = await agentRpc.request('teaching.agent', read);
+      check(original?.content === fixedSkill.files[1].content, 'live-attachment-owner-read-not-proven');
+      check(await runtime.revoke(dependencyGrant.grantId), 'skill-dependency-revocation-not-confirmed');
+      const denied = await requestApi(endpoint, base + '/skills', undefined, headers);
+      check(denied.status === 403 && denied.value.error === 'forbidden', 'revoked-skill-read-was-not-refused');
+      const deniedAttachment = await agentRpc.request('teaching.agent', read);
+      check(deniedAttachment?.error === 'forbidden' && !deniedAttachment.content, 'revoked-attachment-bytes-were-disclosed');
+      check(relay.requests.length === beforeRequests, 'revocation-read-generated-model-call');
+      return { newReadHttpStatus: denied.status, error: denied.value.error, attachmentReadError: deniedAttachment.error,
+        attachmentBytesDisclosed: false, newModelRequests: 0, originalRequestId: input.requestId };
     });
     report.status = 'passed';
   } catch (error) { report.status = 'failed'; report.error = safe(error); }

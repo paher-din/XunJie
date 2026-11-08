@@ -13,8 +13,10 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
   'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false },
-  discovery: { type: 'boolean', default: false }, 'input-control': { type: 'boolean', default: false } } });
-if (values['student-ask'] && values['input-control']) throw new Error('Choose one acceptance scenario.');
+  discovery: { type: 'boolean', default: false }, 'input-control': { type: 'boolean', default: false },
+  skills: { type: 'boolean', default: false } } });
+if ([values['student-ask'], values['input-control'], values.discovery, values.skills].filter(Boolean).length > 1)
+  throw new Error('Choose at most one of --student-ask, --input-control, --discovery and --skills.');
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
 if (values['provider-address'] && !net.isIP(values['provider-address'])) throw new Error('--provider-address must be an IP address.');
@@ -33,7 +35,7 @@ try {
 }
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
-  capability: values.discovery ? 'discover-load-read_material' : values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
+  capability: values.skills ? 'fixed-skill-body-and-attachment' : values.discovery ? 'discover-load-read_material' : values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
   limits: { maxGenerations: protocols.length * (values['input-control'] || values.discovery ? 4 : 2), maxPerProtocol: values['input-control'] || values.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
@@ -41,16 +43,17 @@ let generations = 0, releaseInputControl = () => {}, responseGate = Promise.reso
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
   ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, canonical(item)])) : value;
 const payloadDigest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
-const byPath = new Map(), observed = [];
+const byPath = new Map(), observed = [], rejected = [];
 const relay = createServer(async (request, response) => {
   const path = request.url;
   const allowed = ['/v1/chat/completions', '/v1/responses', '/anthropic/v1/messages'];
   if (!allowed.includes(path) || request.method !== 'POST' || generations >= report.limits.maxGenerations
     || (byPath.get(path) ?? 0) >= report.limits.maxPerProtocol) {
+    rejected.push({ code: 'probe-generation-limit' });
     response.writeHead(429, { 'content-type': 'application/json' }); response.end('{"error":{"message":"probe generation limit"}}'); return;
   }
   generations++; byPath.set(path, (byPath.get(path) ?? 0) + 1);
-  const item = { path, status: null, elapsedMs: 0 }; observed.push(item);
+  const item = { path, status: null, elapsedMs: 0, finished: false }; observed.push(item);
   const requestChunks = [];
   request.on('data', chunk => requestChunks.push(chunk));
   request.on('end', () => { item.payloadSha256 = payloadDigest(JSON.parse(Buffer.concat(requestChunks))); });
@@ -75,7 +78,7 @@ const relay = createServer(async (request, response) => {
     await responseGate;
     if (response.destroyed) { result.destroy(); return; }
     response.writeHead(result.statusCode, result.headers);
-    result.pipe(response); result.on('end', () => { item.elapsedMs = Date.now() - started; });
+    result.pipe(response); result.on('end', () => { item.finished = true; item.elapsedMs = Date.now() - started; });
   });
   upstream.on('timeout', () => upstream.destroy(new Error('probe-timeout')));
   upstream.on('error', error => {
@@ -104,10 +107,11 @@ try {
     const value = await response.json(); if (!response.ok) throw new Error('Production boundary: ' + response.status + ':' + value.error); return value;
   };
   let releaseId, materialId;
+  const discoveryText = '本课程的实际记录：水位从 12 cm 增加到 37 cm。这是固定观测，不是学生预测。';
   async function configureDiscoveryCourse() {
     const courseId = randomUUID(), password = randomUUID(), loginName = 'wp08-216-' + randomUUID();
     releaseId = randomUUID(); materialId = randomUUID();
-    const bytes = Buffer.from('本课程的实际记录：水位从 12 cm 增加到 37 cm。这是固定观测，不是学生预测。');
+    const bytes = Buffer.from(discoveryText);
     currentHeaders = { authorization: 'Bearer ' + await resolveCredential(root, 'control') };
     await api('manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '工具发现实际材料' },
       task: { taskId: randomUUID(), title: '按来源读取观测', summary: '' }, release: { releaseId,
@@ -128,7 +132,7 @@ try {
     const item = { protocol, sdk: protocol === 'messages' ? '@anthropic-ai/sdk@1.1.0' : 'openai@7.42.0',
       passed: false, state: null, reason: null, modelRequests: 0, tools: [], usage: null, answerSha256: null };
     report.results.push(item);
-    const before = generations;
+    const before = generations, beforeRejected = rejected.length;
     try {
       if (values.discovery) { await configureDiscoveryCourse(); selectionVersion = 0; }
       if (values['input-control']) responseGate = new Promise(resolve => { releaseInputControl = resolve; });
@@ -154,6 +158,17 @@ try {
           ? '先实际调用 student_ask 工具，只问一个关于“状态 3 加输入 2 后对 4 取余”的预测问题。给出简明来源，允许自由文字，可提供选项；不要把问题只作为普通文字输出。等我明确回应后，依据那份回应简短解释并结束。只提问一次，不读取作品或调用其他工具，不要求任何内部标识。'
           : `请先实际调用 read_work 工具读取 objectId=${work.objectId}、contentId=${work.contentId}，
 然后根据工具结果简短解释水位变化。必须先读取工具；不要再调用其他工具，不要修改作品。`, references: [], bases: [] }, works: values['student-ask'] || values.discovery ? [] : [work], evidence: [] };
+      let skill;
+      const skillAttachment = '固定观察代号 SKILL-EVIDENCE-37：A=15，B=1，Cin=0，加法的低四位为 0，第五位为 1。这是观察资料，不代表学生已经做出独立预测。';
+      if (values.skills) {
+        skill = await api('skills/import', { requestId: randomUUID(), source: 'acceptance:alu-diagnosis:' + protocol, packageVersion: '1.0.0', files: [
+          { path: 'SKILL.md', encoding: 'utf8', content: '---\nname: alu-evidence-diagnosis\ndescription: 按固定观察解释 ALU 排查顺序\n---\n指导正文：先尊重学生本次问题，比较独立预测与实际观察；按需要读取 references/observations.md。只解释，不代改学生作品，不补写预测。' },
+          { path: 'references/observations.md', encoding: 'utf8', content: skillAttachment },
+          { path: 'scripts/inspect.sh', encoding: 'utf8', content: 'This script is inert and must never execute.' },
+        ] });
+        input.draft.skills = [{ skillId: skill.skillId, version: skill.version }]; input.works = [];
+        input.draft.question = `请实际调用 skill_read，读取我明确选择的 Skill ${skill.skillId} 版本 ${skill.version} 的 references/observations.md。先读附件，然后用两句话解释低四位和第五位，包含附件里的观察代号。只调用这一个工具，不修改作品，不把观察冒充我的预测。`;
+      }
       await api('intents/' + activity.activityId, input);
       const receipt = await api(`intents/${activity.activityId}/${input.requestId}/dispatch`, {});
       assert.equal(receipt.state, 'accepted');
@@ -178,7 +193,7 @@ try {
       }
       let conversation;
       let explicitResponse;
-      const deadline = Date.now() + 90000;
+      const deadline = Date.now() + (values.discovery ? 180000 : 90000);
       while (Date.now() < deadline) {
         conversation = await api(`agent/${activity.activityId}/conversation`);
         if (values['student-ask'] && !explicitResponse) {
@@ -209,25 +224,59 @@ try {
       const answer = conversation.messages.filter(message => message.role === 'assistant').map(message => message.text).join('\n');
       item.answerSha256 = createHash('sha256').update(answer).digest('hex');
       assert.equal(run?.state, 'completed');
+      const protocolRequests = observed.slice(before);
+      assert.ok(protocolRequests.length > 0 && protocolRequests.length <= report.limits.maxPerProtocol);
+      if (!values['input-control']) assert.equal(protocolRequests.length, values.discovery ? 4 : 2);
+      assert.ok(protocolRequests.every(request => request.status === 200 && request.finished && !request.connectionError));
+      assert.equal(rejected.length, beforeRejected, 'No extra request may be hidden by the relay budget.');
       const assemblyEvents = await api(`agent/${activity.activityId}/events`);
       const actualSnapshots = await Promise.all(assemblyEvents.filter(event => event.kind === 'context-assembled')
         .map(event => api(`agent/${activity.activityId}/snapshots/${event.body.snapshotId}`)));
-      assert.ok(actualSnapshots.length);
+      assert.equal(actualSnapshots.length, protocolRequests.length);
       for (const snapshot of actualSnapshots) {
         assert.equal(snapshot.assemblyVersion, 2);
         assert.equal(snapshot.resolvedAgent.scope.activityId, activity.activityId);
         assert.equal(snapshot.contextManifest.resolvedId, snapshot.resolvedAgent.resolvedId);
         assert.equal(snapshot.contextManifest.payloadSha256, snapshot.payloadSha256);
         assert.equal(payloadDigest(snapshot.payload), snapshot.payloadSha256);
-        assert.ok(observed.some(request => request.payloadSha256 === snapshot.payloadSha256));
-        assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === 'read_work' && tool.executor.toolName === 'read_work'));
+        assert.ok(protocolRequests.some(request => request.payloadSha256 === snapshot.payloadSha256));
+        assert.ok(snapshot.contextManifest.items.every(entry => payloadDigest(entry.content) === entry.contentDigest));
+        assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === (values.skills ? 'skill_read' : 'read_work')
+          && tool.executor.toolName === (values.skills ? 'skill_read' : 'read_work')));
       }
+      for (const request of protocolRequests)
+        assert.equal(actualSnapshots.filter(snapshot => snapshot.payloadSha256 === request.payloadSha256).length, 1);
       item.assemblies = actualSnapshots.map(snapshot => ({ resolvedId: snapshot.resolvedAgent.resolvedId,
         definitionId: snapshot.resolvedAgent.definition.definitionId, definitionVersion: snapshot.resolvedAgent.definition.version,
         snapshotId: snapshot.snapshotId, payloadSha256: snapshot.payloadSha256,
         contextManifestId: snapshot.contextManifest.manifestId, counting: snapshot.contextManifest.capacity.counting,
         transportMatched: true }));
-      if (values['student-ask']) {
+      if (values.skills) {
+        assert.deepEqual(conversation.tools.map(tool => [tool.name, tool.outcome]), [['skill_read', 'completed']]);
+        const tool = conversation.tools[0], loaded = tool.result?.loaded;
+        assert.equal(tool.arguments.skillId, skill.skillId); assert.equal(tool.arguments.version, skill.version);
+        assert.equal(tool.arguments.path, 'references/observations.md');
+        assert.equal(loaded?.skillId, skill.skillId); assert.equal(loaded?.version, skill.version);
+        assert.equal(loaded?.path, 'references/observations.md'); assert.equal(loaded?.content, skillAttachment);
+        assert.equal(loaded?.complete, true);
+        assert.equal(loaded?.digest, createHash('sha256').update(skillAttachment).digest('hex'));
+        assert.match(answer, /SKILL-EVIDENCE-37/);
+        assert.ok(actualSnapshots[0].resolvedAgent.skills.loaded.some(loaded => loaded.path === 'SKILL.md'));
+        assert.ok(!JSON.stringify(actualSnapshots[0].payload).includes('SKILL-EVIDENCE-37'));
+        const loadedMaterials = actualSnapshots.at(-1).contextManifest.items.filter(entry => entry.selection.access === 'fixed-skill-content').map(entry => entry.content);
+        assert.ok(loadedMaterials.some(entry => entry.path === 'references/observations.md' && payloadDigest(entry) === payloadDigest(loaded)));
+        assert.ok(JSON.stringify(actualSnapshots.at(-1).payload).includes('SKILL-EVIDENCE-37'));
+        assert.equal(actualSnapshots[0].segmentId, actualSnapshots[1].segmentId);
+        assert.ok(!JSON.stringify(conversation).includes('This script is inert and must never execute.'));
+        assert.ok(actualSnapshots.every(snapshot => !JSON.stringify(snapshot.payload).includes('This script is inert and must never execute.')));
+        item.skill = { skillId: skill.skillId, version: skill.version, packageDigest: skill.digest,
+          loadedPaths: loadedMaterials.map(loaded => loaded.path),
+          scriptsExecuted: false, bodyAndAttachmentTransportMatched: true };
+        const beforeRead = generations;
+        await api(`agent/${activity.activityId}/conversation`);
+        for (const snapshot of actualSnapshots) assert.deepEqual(await api(`agent/${activity.activityId}/snapshots/${snapshot.snapshotId}`), snapshot);
+        assert.equal(generations, beforeRead);
+      } else if (values['student-ask']) {
         assert.ok(explicitResponse, 'The real model must actually use student.ask.');
         assert.equal(conversation.questions.filter(question => question.runId === runId).length, 1);
         const events = await api(`agent/${activity.activityId}/events`);
@@ -243,8 +292,16 @@ try {
         assert.equal(generations, beforeHistory);
       } else {
         if (values.discovery) {
-          for (const name of ['discover_tools', 'load_tools', 'read_material'])
-            assert.ok(conversation.tools.some(tool => tool.name === name && tool.outcome === 'completed'), name);
+          assert.deepEqual(conversation.tools.map(tool => [tool.name, tool.outcome]),
+            [['discover_tools', 'completed'], ['load_tools', 'completed'], ['read_material', 'completed']]);
+          const discovered = conversation.tools.find(tool => tool.name === 'discover_tools');
+          const loaded = conversation.tools.find(tool => tool.name === 'load_tools');
+          const material = conversation.tools.find(tool => tool.name === 'read_material');
+          assert.deepEqual(discovered.arguments, { purpose: 'read_material', source: 'platform.learning', object: null, cursor: null, pageSize: 2 });
+          const entry = discovered.result?.entries?.find(entry => entry.definition?.name === 'read_material');
+          assert.ok(entry); assert.deepEqual(loaded.arguments, { bindingIds: [entry.bindingId] });
+          assert.deepEqual(material.arguments, { materialId }); assert.equal(material.result?.text, discoveryText);
+          assert.equal(material.result?.source?.releaseId, releaseId); assert.equal(material.result?.source?.materialId, materialId);
           const events = await api(`agent/${activity.activityId}/events`);
           const snapshots = await Promise.all(events.filter(event => event.kind === 'context-assembled' && event.body.runId === runId)
             .map(event => api(`agent/${activity.activityId}/snapshots/${event.body.snapshotId}`)));
@@ -275,7 +332,7 @@ try {
     item.modelRequests = generations - before;
   }
 } finally {
-  report.generations = generations; report.requests = observed;
+  report.generations = generations; report.requests = observed; report.refusals = rejected;
   await mkdir(dirname(resolve(values.out)), { recursive: true });
   await writeFile(resolve(values.out), JSON.stringify(report, null, 2) + '\n');
   await host?.stop(); await runtime.stop(); relay.closeAllConnections(); await new Promise(resolve => relay.close(resolve));

@@ -1,0 +1,19 @@
+{
+  "remainingTargets": [],
+  "issue": 217,
+  "siblingJobsModified": false,
+  "scheduledTaskPresent": false,
+  "activeTaskProcesses": 0,
+  "measuredAt": "2026-11-07T20:37:50.7980435Z",
+  "sshdOrWindowsRestarted": false,
+  "removedTargets": [
+    "C:/Users/h/AppData/Local/Temp/xj-wp08-217-chrome",
+    "C:/Users/h/.verification/wp08-217-cross-ywisqryz",
+    "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp08-217-ui-2m3SVe",
+    "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp08-217-ui-SVlCJ7"
+  ],
+  "status": "passed",
+  "finalWindowsFilesCopiedAndVerified": true,
+  "localTemporaryHelpersRemoved": true,
+  "localCandidatePolicy": "Keep final reviewed Mac and Windows packages in dist/wp08-217-*-reviewed as intentional runnable handoff artifacts; old candidates removed."
+}

@@ -256,6 +256,14 @@ export async function createProductLearningApplication(context: {
       return createTeachingAgentClient(binding.target.serviceId, identity, activityId,
         createAgentConnection(root, binding.connectionId, 'teaching.agent', binding.target));
     }
+    async function teachingSettingsFor(identity: SpaceIdentity): Promise<TeachingAgentPort> {
+      if (!teaching || !agent) throw new StorageError('unavailable');
+      const binding = await agentBindings.read(identity);
+      if (!binding || binding.target.environmentId === environment.environmentId && binding.target.serviceId === agent.storage.owner.serviceId)
+        return teaching;
+      return createTeachingAgentClient(binding.target.serviceId, identity, undefined,
+        createAgentConnection(root, binding.connectionId, 'teaching.agent', binding.target));
+    }
     const receivers = [...(actions.receivers ?? [])];
     learning = data ? createLearningData(data.storage, spaces, courses,
       { ...actions, receivers, ...(teaching ? { receiversFor: async (identity, activityId) => [(await teachingFor(identity, activityId)).receiver] } : {}) }, native, nativeChannel) : undefined;
@@ -536,7 +544,7 @@ export async function createProductLearningApplication(context: {
         if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
       },
       handle: createLearningEntry({ environment, spaces, ...(learning ? { learning } : {}), courses,
-        ...(models ? { models } : {}), ...(teaching ? { teaching, teachingFor } : {}), client: schoolClient, readOnly, requiresNamespace,
+        ...(models ? { models } : {}), ...(teaching ? { teaching, teachingFor, teachingSettingsFor } : {}), client: schoolClient, readOnly, requiresNamespace,
         async bindAgent(value) {
           const input = teachingAgentBindingInputSchema.parse(value);
           const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));

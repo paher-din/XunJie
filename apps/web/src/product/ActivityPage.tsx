@@ -19,6 +19,7 @@ import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunji
 import { learningRequest, workspaceScope } from './learningTransport'
 import { GuidancePresentation } from '../components/workspace/guidance/GuidancePresentation'
 import { AgentInputMode } from './AgentInteraction'
+import { waitForComposerComposition } from '../components/workspace/references/composer-view'
 
 async function focusLocation(root: HTMLDivElement | null, selector: string) {
   for (let attempt = 0; attempt < 120; attempt++) {
@@ -74,8 +75,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     if (activity.question || localStorage.getItem(firstQuestionKey(activity.activityId))) references.setOpen(true)
   }, [activity.activityId, references])
   useImperativeHandle(workspaceRef, () => ({ leave: async () => {
+    await waitForComposerComposition(scope)
     await workspace.leave(); await draft.leave(); await actions.leave()
-  } }), [workspace, draft, actions])
+  } }), [workspace, draft, actions, scope])
   const [toolError, setToolError] = useState('')
   const locateTool: TeachingToolLocator = async record => {
     const reference = questionReferenceSchema.safeParse(record.result?.reference ?? record.basis.reference)

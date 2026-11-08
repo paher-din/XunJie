@@ -1,0 +1,15 @@
+{
+  "issue": 217,
+  "measuredAt": "2026-11-07T19:34:34.283317+00:00",
+  "status": "passed",
+  "windows": {
+    "firewallRules": 0,
+    "keyPresent": false,
+    "certificatePresent": false,
+    "archivePresent": false,
+    "sharedProductPresent": true
+  },
+  "localTlsAndArchiveRemoved": true,
+  "sharedProduct": "C:/Users/h/.verification/wp08-217-cross-ywisqryz/product",
+  "sharedProductPolicy": "retained for main agent UI acceptance; remove only after both acceptances finish"
+}

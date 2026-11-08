@@ -37,6 +37,8 @@ import type { LearningModelPort } from '../model-connections/service.js';
 import { createTeachingSegments, teachingSegmentMigration, validateTeachingSegmentTransitions } from './segments.js';
 import { loadedTools } from './tool-discovery.js';
 import { assembleTeachingAgent, teachingAssemblyMigration, learningAgentDefinition, validateTeachingAssemblyData } from './assembly.js';
+import { createTeachingSkills, teachingSkillsMigration, validateTeachingSkills } from './skills.js';
+import { createTeachingSkillRuntime } from './skill-runtime.js';
 
 const reasonText = (reason: unknown) => {
   switch (typeof reason === 'string' ? reason : '') {
@@ -100,7 +102,7 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
     ADD COLUMN call_started_at timestamptz,ADD COLUMN call_settled_ms bigint;
   UPDATE teaching_steps SET input_reserved=COALESCE((plan->'model'->>'contextWindow')::bigint,1048576);
   ALTER TABLE teaching_steps ALTER COLUMN input_reserved SET NOT NULL;
-` }, teachingInputMigration, teachingSegmentMigration, teachingAssemblyMigration];
+` }, teachingInputMigration, teachingSegmentMigration, teachingAssemblyMigration, teachingSkillsMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -135,6 +137,10 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   let writesClosed = false;
   let dispatchClosed = false;
   let ticker: ReturnType<typeof setInterval> | undefined;
+  const skills = createTeachingSkills(storage, { authorize: options.authorize, activity: options.activity,
+    assertWritable() { if (writesClosed || dispatchClosed) throw new StorageError('maintenance'); } });
+  const skillRuntime = createTeachingSkillRuntime(skills, options.tools);
+  const tools = skillRuntime.host;
   const segments = createTeachingSegments(storage, { models: options.models, leaseMs,
     assertWritable() { if (writesClosed || dispatchClosed) throw new StorageError('maintenance'); } });
 
@@ -585,7 +591,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
           stepId: operationId('model-switch-step:' + requestId), snapshotId: operationId('model-switch-snapshot:' + requestId),
           ...(oldId ? { segmentId: oldId } : {}) };
         const definition = typeof options.definition === 'function' ? await options.definition(scope) : options.definition ?? learningAgentDefinition;
-        const assembly = await assembleTeachingAgent(scope, options.tools, modelFact(choice.choice.connection), history, definition, await loadedTools(storage, scope));
+        const assembly = await assembleTeachingAgent(scope, tools, modelFact(choice.choice.connection), history, definition,
+          { loaded: await loadedTools(storage, scope), skills: await skillRuntime.state(scope) });
         const portable = modelSegmentInputSchema.shape.portable.safeParse(portableContext(history, activity));
         if (!portable.success) return pauseSwitch(row, 'capacity-exceeded', generation);
         // An in-flight v6 switch keeps the body it received before this migration.
@@ -746,7 +753,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     freezeBudget: (tx, runId) => driver.freezeBudget(tx, runId) });
   const studentQuestions = createStudentQuestions(storage, { activity: options.activity, appendEvent });
   const driver = createTeachingRunDriver(storage, {
-    ...options, driverId: ownerId, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
+    ...options, tools, skillState: skillRuntime.state, driverId: ownerId, dispatchClosed: () => dispatchClosed, runRow, toRun, requestRow, identity: runIdentity,
     assertAuthority, appendEvent, historyBefore, historyForAssembly: fullHistory, ensureSegment, awaitAttempt, finish, studentQuestions, inputs,
   });
 
@@ -887,6 +894,11 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         runId: (body.runId as string) ?? null });
       else if (kind === 'system-notice' && body.reason === 'step-record-unavailable') messages.push({ ...base, role: 'system',
         text: '原任务的恢复依据不完整，已暂停。原请求和结果仍保留，没有重新执行。',
+        runId: (body.runId as string) ?? null });
+      else if (kind === 'system-notice' && body.reason === 'skill-loaded') messages.push({ ...base, role: 'system',
+        text: `已读取 Skill「${String(body.source)}」${String(body.packageVersion)} · v${String(body.version)} / ${String(body.path)}`
+          + `（${Number(body.offset)}–${Number(body.offset) + Number(body.byteLength)} / ${Number(body.totalByteLength)} 字节）。`,
+        ...(body.loaded ? { skillSource: body.loaded as never } : {}),
         runId: (body.runId as string) ?? null });
       else if (kind === 'system-notice' && ['required-capability-unavailable', 'capability-conflict', 'tool-capacity-exceeded'].includes(String(body.reason))) {
         const affected = (Array.isArray(body.unavailable) ? body.unavailable : []).flatMap(item => {
@@ -1070,6 +1082,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   if (options.start !== false) startTicker();
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
+    skills: { list: skills.list, import: skills.import, select: skills.select.bind(skills), disable: skills.disable, read: skills.read },
     run, conversation, events, snapshot, request, stop, continueRun, switchModel, capabilities, assertCommandDispatch, assertModelDispatch, validate,
     respond, response: studentQuestions.response, presentQuestion,
     async controlInput(identity: SpaceIdentity, activityId: string, inputId: string, value: unknown) {
@@ -1104,6 +1117,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
 
 /** Recovery validation reads only this owner's durable facts; it never triggers a model call. */
 export async function validateTeachingAgent(storage: OwnedStorage) {
+  await validateTeachingSkills(storage);
   await createChunkChannel(storage).validate();
   await validateTeachingSegmentTransitions(storage);
   await validateTeachingDependencyBindings(storage);

@@ -26,6 +26,8 @@ export const questionDraftMigration: Migration = { version: 4, name: 'question-d
 ` };
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const draftContent = (draft: Pick<QuestionDraftView, 'question' | 'references' | 'skills'>) => ({ question: draft.question,
+  references: draft.references, ...(draft.skills === undefined ? {} : { skills: draft.skills }) });
 const copyDigest = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
 const fail = (code: 'forbidden' | 'invalid' | 'missing' | 'corrupt' | 'identity-conflict' | 'conflict'): never => {
   throw new StorageError(code);
@@ -116,7 +118,7 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
       } else {
         const draft = questionDraftViewSchema.parse(row.body);
         if (draft.draftId !== draftId || draft.revisionId !== row.revision_id || draft.revision !== Number(row.revision)
-          || digest({ question: draft.question, references: draft.references }) !== row.content_digest) return fail('corrupt');
+          || digest(draftContent(draft)) !== row.content_digest) return fail('corrupt');
         if (draft.references.some(item => item.copyDigest !== copyDigest(item.copy))) return fail('corrupt');
         references = draft.references;
         pin = `question-reference/${draftId}/${draft.revisionId}/${reference.referenceId}`;
@@ -211,8 +213,8 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
       if (row && Number(row.revision) !== input.baseRevision) throw new StorageError('conflict');
       const revisionId = randomUUID();
       const draft = questionDraftViewSchema.parse({ draftId, revision: input.baseRevision + 1, revisionId,
-        question: input.question, references });
-      const contentDigest = digest({ question: draft.question, references: draft.references });
+        question: input.question, references, ...(input.skills === undefined ? {} : { skills: input.skills }) });
+      const contentDigest = digest(draftContent(draft));
       if (!row) {
         await tx.query(`INSERT INTO question_drafts(draft_id,activity_id,space_environment_id,space_id,principal_id,revision,revision_id)
           VALUES($1,$2,$3,$4,$5,$6,$7)`, [draftId, ...scope(identity, activityId), draft.revision, revisionId]);
@@ -248,7 +250,7 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
       const draft = questionDraftViewSchema.parse(row.body);
       if (draft.draftId !== row.draft_id || draft.draftId !== draftIdFor(String(row.activity_id))
         || draft.revision !== Number(row.revision) || draft.revisionId !== row.revision_id
-        || row.content_digest !== digest({ question: draft.question, references: draft.references })) fail('corrupt');
+        || row.content_digest !== digest(draftContent(draft))) fail('corrupt');
       for (const reference of draft.references) {
         if (reference.copyDigest !== copyDigest(reference.copy)
           || reference.copy.length !== reference.range.end - reference.range.start) fail('corrupt');
@@ -265,7 +267,7 @@ export async function validateQuestionDrafts(storage: OwnedStorage) {
     for (const row of revisions) {
       const draft = questionDraftViewSchema.parse(row.body);
       if (draft.draftId !== row.draft_id || draft.revision !== Number(row.revision) || draft.revisionId !== row.revision_id
-        || row.content_digest !== digest({ question: draft.question, references: draft.references })) fail('corrupt');
+        || row.content_digest !== digest(draftContent(draft))) fail('corrupt');
       await validateSemanticRevision(storage, String(row.activity_id), draft);
     }
     const { rows: receipts } = await storage.read('SELECT request_id,draft_id FROM question_draft_receipts');

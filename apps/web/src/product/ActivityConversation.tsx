@@ -128,6 +128,11 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
         ? <Markdown text={message.text} live={message.state === 'streaming'}
           truncated={message.state === 'stopped' || message.state === 'failed'} />
         : <div className="preserve-lines">{message.text}</div>}
+      {message.skillSource && <details className="teaching-skill-source">
+        <summary>查看固定 Skill 来源</summary>
+        <p>{message.skillSource.source} · {message.skillSource.packageVersion} · v{message.skillSource.version} · {message.skillSource.path}</p>
+        <pre className="teaching-tool-data preserve-lines">{message.skillSource.content}</pre>
+      </details>}
       {message.role === 'assistant' && message.model && <span className="detail">
         来源：{message.modelSource === 'school' ? '学校模型' : message.modelSource === 'personal' ? '个人模型' : '原模型'} · {message.model.modelId} · {message.model.protocol}
       </span>}

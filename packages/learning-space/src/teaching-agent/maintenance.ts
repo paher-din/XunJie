@@ -10,6 +10,7 @@ const tables = ['teaching_sessions', 'teaching_requests', 'teaching_runs', 'teac
   'teaching_dependency_bindings', 'teaching_model_switches', 'teaching_inputs',
   'teaching_input_revisions', 'teaching_controls', 'teaching_run_input_selections',
   'teaching_agent_definitions', 'teaching_resolved_agents', 'teaching_segment_transitions',
+  'teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads',
   'agent_chunk_transfers', 'agent_chunk_parts'] as const;
 const terminal = new Set(['completed', 'failed', 'stopped']);
 type Row = Record<string, unknown>;
@@ -87,6 +88,12 @@ export async function validateTeachingBoundary(storage: OwnedStorage, material: 
   if (!material.evidence || typeof material.evidence !== 'object' || version !== 1 && version !== 2) throw new StorageError('incompatible');
   const actual = await collectBoundary(storage, version);
   const { kind, unresolved, settled, retained, blocking, evidence } = material;
+  if ((material.evidence as { formatVersion: number }).formatVersion === 1) {
+    const skillTables = ['teaching_skills', 'teaching_skill_versions', 'teaching_skill_selections', 'teaching_skill_loads'];
+    if (skillTables.some(table => actual.evidence.tables[table]!.count !== 0)) throw new StorageError('corrupt');
+    actual.evidence.formatVersion = 1;
+    for (const table of skillTables) delete actual.evidence.tables[table];
+  }
   if (canonicalDigest({ kind, unresolved, settled, retained, blocking, evidence }) !== canonicalDigest(actual))
     throw new StorageError('corrupt');
 }

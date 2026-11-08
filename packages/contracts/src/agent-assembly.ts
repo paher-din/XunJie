@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { modelToolSchema } from './model-connections.js';
+import { teachingSkillStateSchema } from './agent-skills.js';
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 export const agentDefinitionSchema = z.object({
@@ -35,6 +36,7 @@ export const resolvedAgentSchema = z.object({
     kind: z.enum(['platform', 'output-contract', 'runtime', 'course-rules']), content: z.string(),
   }).strict()) }).strict(),
   tools: z.array(agentToolBindingSchema),
+  skills: teachingSkillStateSchema.optional(),
   unavailable: z.array(z.object({ sourceId: z.string(), required: z.boolean(), reason: z.string() }).strict()),
 }).strict();
 export type ResolvedAgent = z.infer<typeof resolvedAgentSchema>;

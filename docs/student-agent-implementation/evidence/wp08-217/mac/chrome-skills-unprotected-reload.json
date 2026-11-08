@@ -1,0 +1,35 @@
+{
+  "issue": 217,
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "startedAt": "2026-11-07T19:50:37.023Z",
+  "headed": true,
+  "model": "controlled external transport; production Gateway and owners",
+  "distributionSha256": "1c89734036561f3050f1c06c869532d067e78151d411f04eda1cdd400d19adf2",
+  "applicationSha256": "4f36d24d5556ba9642eaad55930920b7b00bced81d5f5ecc9507cc4845f6cf18",
+  "cases": [
+    {
+      "name": "Formal settings import preserves package paths and metadata",
+      "status": "passed"
+    },
+    {
+      "name": "Explicit Skill selection retains draft focus and selected text",
+      "status": "passed"
+    },
+    {
+      "name": "Settings and browser back-forward retain the original draft and caret",
+      "status": "passed"
+    },
+    {
+      "name": "Chrome composition Enter keeps Chinese input in the same draft",
+      "status": "passed",
+      "detail": "CDP IME composition path; no OS candidate-window claim"
+    }
+  ],
+  "status": "failed",
+  "chrome": "156.0.8078.80",
+  "failure": "expect(locator).toHaveValue(expected) failed\n\nLocator: getByPlaceholder('写下想讨论的问题…')\nExpected pattern: /中文输入/\nReceived string:  \"请帮我核对原观察与预测的差异。\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"toHaveValue\" getByPlaceholder('写下想讨论的问题…') with timeout 5000ms\n  - waiting for getByPlaceholder('写下想讨论的问题…')\n    14 × locator resolved to <textarea id=\"_r_10_\" maxlength=\"10000\" placeholder=\"写下想讨论的问题…\">请帮我核对原观察与预测的差异。</textarea>\n       - unexpected value \"请帮我核对原观察与预测的差异。\"\n",
+  "finishedAt": "2026-11-07T19:50:46.950Z",
+  "modelRequests": 0
+}
