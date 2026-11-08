@@ -10,8 +10,10 @@ Thumbs.db
 # Ignored so git add does not follow the link and duplicate every skill file.
 .dsh/
 
-# Codex local skill junction; the source files live in skills/.
-/.agents/skills/
+# Keep local skill links ignored while tracking the shared skills below.
+/.agents/skills/*
+!/.agents/skills/shadcn/
+!/.agents/skills/impeccable/
 
 # Node
 node_modules/

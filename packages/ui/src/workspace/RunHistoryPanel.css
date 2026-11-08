@@ -1,0 +1,18 @@
+/* I0-06B · 沿用 RunPanel 和现役主题，只补比较区与只读文件的排布。 */
+.run-history { min-width: 0; box-sizing: border-box; overflow-wrap: anywhere; }
+.run-history-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin-top: 20px; }
+.run-history-side, .run-history-result, .run-history-files, .run-history-file { min-width: 0; }
+.run-history-select { display: flex; flex-direction: column; gap: 6px; }
+.run-history-select select { width: 100%; min-width: 0; min-height: 32px; box-sizing: border-box; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
+.run-history .ws-btn { max-width: 100%; min-height: 32px; height: auto; padding-block: 4px; white-space: normal; overflow-wrap: anywhere; }
+.run-history-fields { display: grid; gap: 4px; margin: 12px 0; }
+.run-history-fields dt { color: var(--muted); }
+.run-history-fields dd { min-width: 0; margin: 0; color: var(--ink-soft); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; user-select: text; }
+.run-history-fields dd + dt { margin-top: 8px; }
+.run-history details { min-width: 0; margin: 12px 0; }
+.run-history summary { cursor: pointer; color: var(--ink-soft); padding: 4px 0; }
+.run-history summary:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; border-radius: 4px; }
+.run-history pre { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.run-history-files { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; }
+.run-history-file { border: 1px solid var(--line); border-radius: 12px; margin-top: 12px; padding: 12px; }
+.run-history-file h4 { margin: 0; font-size: 13px; font-weight: 600; }

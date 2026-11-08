@@ -1,0 +1,33 @@
+.ui-icon { display: inline-block; flex: none; vertical-align: middle; }
+.icon-tone-blue { color: var(--icon-blue, #3268ca); }
+.icon-tone-green { color: var(--icon-green, #25805c); }
+.icon-tone-orange { color: var(--icon-orange, #bc6424); }
+.icon-tone-violet { color: var(--icon-violet, #7752ba); }
+.icon-tone-rose { color: var(--icon-rose, #b64e79); }
+.icon-tone-teal { color: var(--icon-teal, #197f90); }
+.icon-tone-amber { color: var(--icon-amber, #a87519); }
+/* 单色操作图标跟随控件；emoji 与品牌保留资产内的颜色。 */
+.icon-tone-neutral, .icon-tone-emoji { color: inherit; }
+/* 与控件现有几何保持对齐；彩色只表达内容类型。 */
+.navicon, .ask-symbol { display: inline-flex; align-items: center; justify-content: center; }
+.brand > span { display: inline-flex; align-items: center; justify-content: center; }
+.pt-dismiss::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
+.db-badge .ic { position: relative; width: 40px; height: 40px; border-radius: 50%; background: #fff9ef; color: inherit; }
+.db-badge .badge-level { position: absolute; bottom: -5px; right: -7px; font: 11px/1.4 system-ui; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; background: var(--raised); color: var(--muted); }
+.db-badge.off { opacity: 1; color: var(--muted); }
+.db-badge.off .ui-icon { filter: grayscale(1); opacity: .65; }
+.badge-lock { font-size: 11px; color: var(--faint); }
+
+/* 图文组合只按两个内容盒居中，不以图标大小或字体基线推算偏移。 */
+.icon-text { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
+.icon-text > .ui-icon { display: block; }
+/* 同行操作图形略大于字面；紧凑文字也保留可辨识的 14px 下限。显式 size 不受影响。 */
+.icon-text > .icon-text-auto-size { width: clamp(14px, 1.15em, 18px); height: clamp(14px, 1.15em, 18px); }
+.icon-text-label { min-width: 0; }
+/* 对勾与菜单文字已处于同一 flex 行；容器自身不能再引入内联基线。 */
+.mi-check, .mi-effort-check { display: inline-flex; align-items: center; justify-content: center; }
+.mi-check > .ui-icon, .mi-effort-check > .ui-icon { display: block; }
+/* 原字符按钮没有内容布局，换成 SVG 后也必须以按钮盒居中。 */
+button:has(> .ui-icon:only-child) { display: inline-flex; align-items: center; justify-content: center; }
+/* ④ B_FULL 落地：badge/tag/chip/pill/status 族去胶囊（评审定稿 b_full） */
+[class*="badge"],[class*="tag"],[class*="chip"],[class*="pill"],[class*="status"],.pc-tag,.ws-chip,.db-badge { border-radius: 6px; }

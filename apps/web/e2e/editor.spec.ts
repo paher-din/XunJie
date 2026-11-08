@@ -7,7 +7,9 @@ import { REAL_URL } from './env'
  */
 
 async function enterCodeWorkspace(page: import('@playwright/test').Page): Promise<void> {
-  await page.goto(`${REAL_URL}/`)
+  // Start at a legacy route: the product root now mounts the new application
+  // and does not swap routers when only the hash subsequently changes.
+  await page.goto(`${REAL_URL}/#/icons`)
   // 空库起步：草稿隔离在用例之间，避免互相恢复
   await page.evaluate(
     () =>
@@ -23,8 +25,14 @@ async function enterCodeWorkspace(page: import('@playwright/test').Page): Promis
 
 async function openTaskRoute(page: import('@playwright/test').Page): Promise<void> {
   await page.goto(`${REAL_URL}/#/task/wordfreq`)
+  // The intro may mount after the hash navigation resolves. Wait for the
+  // workspace before checking it so the veil cannot appear over later clicks.
+  await page.locator('.ws').waitFor({ state: 'visible' })
   const gate = page.getByRole('button', { name: '进入任务' })
-  if (await gate.count()) await gate.click()
+  if (await gate.isVisible()) {
+    await gate.click()
+    await expect(gate).toHaveCount(0)
+  }
   const onboard = page.getByRole('button', { name: '开始动手' })
   if (await onboard.count()) await onboard.click()
   await page.locator('.cw-filestrip').waitFor()

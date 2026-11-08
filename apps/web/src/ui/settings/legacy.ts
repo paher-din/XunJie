@@ -1,0 +1,11 @@
+/** 保留原设置状态、模型配置和对话框行为的旧版复合组件。 */
+export * from '../../components/settings/AboutTab'
+export * from '../../components/settings/AccountTab'
+export * from '../../components/settings/AgentTab'
+export * from '../../components/settings/LegacyModelTab'
+export * from '../../components/settings/ModelDialog'
+export * from '../../components/settings/ModelSettingsFeedback'
+export * from '../../components/settings/PortraitTab'
+export * from '../../components/settings/PrivacyTab'
+export * from '../../components/settings/ProviderDialog'
+export { ModelFields } from '../../components/settings/controls'

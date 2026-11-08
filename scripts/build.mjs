@@ -8,11 +8,11 @@ import { buildServer } from './build-server.mjs';
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 const workspaces = {
   contracts: 'packages/contracts', storage: 'packages/storage', 'learning-space': 'packages/learning-space',
-  server: 'apps/server', 'product-runtime': 'packages/product-runtime', web: 'apps/web', 'local-runtime': 'apps/local-runtime',
+  server: 'apps/server', 'product-runtime': 'packages/product-runtime', ui: 'packages/ui', web: 'apps/web', 'local-runtime': 'apps/local-runtime',
 };
 const dependencies = {
   contracts: [], storage: ['contracts'], 'learning-space': ['contracts', 'storage'], server: ['contracts', 'storage', 'learning-space'],
-  'product-runtime': ['contracts', 'storage', 'learning-space'], web: ['contracts'], 'local-runtime': ['product-runtime'],
+  'product-runtime': ['contracts', 'storage', 'learning-space'], ui: [], web: ['contracts', 'ui'], 'local-runtime': ['product-runtime'],
 };
 const excluded = name => /(?:^|\/)(?:node_modules|dist|dist-runtime|\.git|\.cache|\.verification|\.playwright|test-results|playwright-report|evidence)(?:\/|$)/.test(name)
   || /\.tsbuildinfo$/.test(name);
@@ -67,11 +67,15 @@ export async function createBuildTasks({ root = repository, env = process.env } 
   });
   const fingerprint = (workspace, paths, names = [['typescript', 'tsc']]) => async () => ({
     common: await common(),
-    source: await contentManifest(root, paths.map(path => join(workspaces[workspace], path)), { exclude: excluded }),
+    source: await contentManifest(root, [
+      ...paths.map(path => join(workspaces[workspace], path)),
+      // Web consumes the UI workspace directly from source, including its CSS and assets.
+      ...(workspace === 'web' ? ['packages/ui/src', 'packages/ui/package.json'] : []),
+    ], { exclude: excluded }),
     tools: await Promise.all(names.map(async ([name, bin]) => toolIdentity(await tool(workspace, name, bin)))),
   });
   for (const [name, path] of Object.entries(workspaces)) {
-    if (name === 'web') continue;
+    if (name === 'web' || name === 'ui') continue;
     tasks[name] = {
       deps: dependencies[name], outputs: [`${path}/dist`],
       requiredOutputs: [`${path}/dist/${name === 'server' ? 'server/main' : name === 'local-runtime' ? 'cli' : 'index'}.js`],
@@ -114,15 +118,24 @@ export async function createBuildTasks({ root = repository, env = process.env } 
       },
     };
   }
+  // UI is a source workspace consumed directly by Vite. Check every exported
+  // component even when a particular application entry does not import it.
+  tasks.ui = {
+    deps: [], outputs: [], fingerprint: fingerprint('ui', ['.']),
+    async run({ run }) {
+      await run(process.execPath, [(await tool('ui')).path, '--noEmit', '-p', 'tsconfig.json'], { cwd: join(root, workspaces.ui) });
+    },
+  };
+  tasks['ui:typecheck'] = { deps: ['ui'], outputs: [], fingerprint: fingerprint('ui', ['.']), async run() {} };
   tasks['web:src'] = {
-    deps: ['contracts'], outputs: [],
+    deps: ['contracts', 'ui'], outputs: [],
     fingerprint: fingerprint('web', ['src', 'tsconfig.json', 'package.json', '.env', '.env.local', '.env.production', '.env.production.local']),
     async run({ run }) {
       await run(process.execPath, [(await tool('web')).path, '--noEmit', '-p', 'tsconfig.json'], { cwd: join(root, workspaces.web) });
     },
   };
   tasks['web:node'] = {
-    deps: ['contracts'], outputs: [], fingerprint: fingerprint('web', ['.']),
+    deps: ['contracts', 'ui'], outputs: [], fingerprint: fingerprint('web', ['.']),
     async run({ run }) {
       await run(process.execPath, [(await tool('web')).path, '--noEmit', '-p', 'tsconfig.node.json'], { cwd: join(root, workspaces.web) });
     },
@@ -141,7 +154,7 @@ export async function createBuildTasks({ root = repository, env = process.env } 
 }
 
 export function expandTargets(targets = 'all') {
-  const all = ['contracts', 'storage', 'learning-space', 'server', 'product-runtime', 'web', 'web:runtime', 'local-runtime'];
+  const all = ['contracts', 'storage', 'learning-space', 'server', 'product-runtime', 'ui', 'web', 'web:runtime', 'local-runtime'];
   return [...new Set((Array.isArray(targets) ? targets : [targets]).flatMap(value => {
     const target = value.replace(/^@xunjie\//, '');
     if (['all', 'test', 'tools:test'].includes(target)) return all;

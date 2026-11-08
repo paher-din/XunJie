@@ -1,0 +1,56 @@
+{
+  "name": "@xunjie/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "循阶正式界面组件、样式与视觉资源",
+  "sideEffects": ["**/*.css"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./foundation": "./src/foundation/index.ts",
+    "./theme": "./src/foundation/theme.ts",
+    "./icons": "./src/icons/index.ts",
+    "./icons/catalog": "./src/icons/catalog.ts",
+    "./brand": "./src/brand/index.ts",
+    "./brand/artwork": "./src/brand/artwork.ts",
+    "./brand/motion": "./src/brand/motion.ts",
+    "./brand/useSproutAnimation": "./src/brand/useSproutAnimation.ts",
+    "./home": "./src/home/index.ts",
+    "./chat": "./src/chat/index.ts",
+    "./dashboard": "./src/dashboard/index.ts",
+    "./settings": "./src/settings/index.ts",
+    "./settings/model-presentation": "./src/settings/modelPresentation.ts",
+    "./teacher": "./src/teacher/index.ts",
+    "./teacher-shell": "./src/teacher-shell/index.ts",
+    "./teacher-design": "./src/teacher-design/index.ts",
+    "./teacher-review": "./src/teacher-review/index.ts",
+    "./workspace": "./src/workspace/index.ts",
+    "./styles.css": "./src/styles/index.css",
+    "./icons.css": "./src/icons/icons.css",
+    "./styles/*": "./src/styles/*",
+    "./assets/*": "./src/assets/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:boundary": "node ../../scripts/check-ui-boundary.mjs",
+    "list:components": "node ../../scripts/list-ui-components.mjs",
+    "check:catalog": "node ../../scripts/check-ui-catalog.mjs",
+    "test:browser": "node --test src/workspace/CodeEditorHost.browser.test.mjs src/workspace/CompareText.browser.test.mjs"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.6",
+    "marked": "^18.1.0",
+    "monaco-editor": "0.57.0",
+    "remend": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.0"
+  }
+}

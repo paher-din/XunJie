@@ -1,4 +1,4 @@
-import { Icon, IconText } from '../icons'
+import { AgentEmptyState, ChatError, ChatViewport, ChatComposerDock } from '@xunjie/ui/chat'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,17 +15,12 @@ import {
   type PromptAttachment,
 } from '../components/PromptInput'
 import { AgentMessage, type GenCardSlots } from '../components/chat/AgentMessage'
-import { MessageRail } from '../components/chat/MessageRail'
+import { MessageTaskCard } from '../components/chat/MessageTaskCard'
 import { UserMessage } from '../components/chat/UserMessage'
 import { QUEUE_TIP } from '../components/chat/copy'
 import { TaskPicker } from '../components/chat/TaskPicker'
-import { TurnAriaStatus } from '../components/chat/TurnAriaStatus'
 import { useAgentTurn } from '../components/chat/useAgentTurn'
 import { useFollowBottom } from '../components/chat/useFollowBottom'
-import { SuggestionStack } from '../components/SuggestionStack'
-import { MascotSvg } from '../components/Mascot'
-import { ProgressBar } from '../components/ProgressBar'
-import { StatusChip } from '../components/StatusChip'
 import { formatDeadline, progressPercent } from '../lib/tasks'
 import {readChatImages} from '../lib/chatImages'
 
@@ -389,21 +384,10 @@ export default function AgentPage() {
   return (
     <div className="agent-layout">
       <div className="agent-main">
-        {(operationError || turn.error || conversation.error || conversations.error || models.error) && <p role="alert">{operationError || turn.error || (conversation.error || conversations.error ? '会话读取失败，请重新打开或刷新后重试。' : models.error)}</p>}
-        <div className="chat-viewport">
-          <MessageRail scrollerRef={wrapRef} onJump={jumpToMessage} />
-          {/* 只报「开始 / 结束」两件事：逐字上屏的内容不进读屏队列（见组件注释） */}
-          <TurnAriaStatus phase={lastAgent ? lastAgent.phase ?? 'settled' : undefined} />
-          <div className="chat-wrap" ref={wrapRef} onScroll={onChatScroll}>
-            <div
-              className={
-                'chat-inner' + (padSuggest ? ' pad-suggest' : '') + (turn.queued ? ' pad-queue' : '')
-              }
-              role="log"
-              aria-live="off"
-              aria-busy={turn.active}
-              aria-label="对话记录"
-            >
+        <ChatError message={operationError || turn.error || (conversation.error || conversations.error ? '会话读取失败，请重新打开或刷新后重试。' : models.error)} />
+        <ChatViewport scrollerRef={wrapRef} onJump={jumpToMessage} onScroll={onChatScroll}
+          phase={lastAgent ? lastAgent.phase ?? 'settled' : undefined} padSuggestions={padSuggest} queued={!!turn.queued} busy={turn.active}>
+
               {rows.length > 0 ? (
                 rows.map(({ key, msg, stored }, i) =>
                   msg.role === 'user' ? (
@@ -437,51 +421,20 @@ export default function AgentPage() {
                   ),
                 )
               ) : (
-                <div className="chat-empty">
-                  <div style={{ width: 52, margin: 'auto' }}>
-                    <MascotSvg />
-                  </div>
-                  {/* 首次使用（无任何历史会话）：简明定位；已有会话则直入主题，不赘述默认常识 */}
-                  {conversations.data && conversations.data.length === 0 ? (
-                    <>
-                      <h1>你好，我是循阶教学助手</h1>
-                      <p style={{ color: 'var(--muted)' }}>
-                        为你解答课程难点、梳理实验思路，提供针对性项目引导。
-                      </p>
-                    </>
-                  ) : (
-                    <h1>今天想探讨什么？</h1>
-                  )}
-                </div>
+                <AgentEmptyState title={conversations.data && conversations.data.length === 0 ? '你好，我是循阶教学助手' : '今天想探讨什么？'}
+                  description={conversations.data && conversations.data.length === 0 ? '为你解答课程难点、梳理实验思路，提供针对性项目引导。' : undefined} />
               )}
-            </div>
-          </div>
-        </div>
-        <div className="chat-composer">
-          <div className="chat-composer-inner">
-            {/* away = 离底挡：输入框上方那一格从建议叠层换成「回到底部」圆钮（两者互斥，见 app.css） */}
-            <div className={'composer-anchor' + (atBottom ? '' : ' away')} ref={anchorRef}>
-              {/* 初始建议问题：按画像与当前任务生成；新会话、无回合进行、草稿为空、且停在对话流底部时浮在输入框上方 */}
-              <SuggestionStack
-                items={suggestions.data ?? []}
-                onPick={fillSuggestion}
-                show={
-                  atBottom && !conversationId && !turn.active && pendingText===null && input.trim() === ''
-                }
-              />
-              {/* 追问选项：落定后出现（与操作条同刻），同上条件；点击直接发送，生成中点击排队 */}
-              <SuggestionStack
-                items={followUps}
-                onPick={askFollowUp}
-                label="延伸探讨"
-                show={atBottom && !!conversationId && followUps.length > 0 && input.trim() === ''}
-              />
-              {turn.queued && <div className="queue-tip">{turn.active?QUEUE_TIP:'上一轮已中断，排队问题仍保留。'}{!turn.active&&<button onClick={turn.sendQueued}>发送排队问题</button>}</div>}
-              {/* 与叠层同一格、同一基准（composer-anchor 上沿往 8px）：排队提示占位时两者一起上抬，换挡不串位 */}
-              <button className="back-bottom" onClick={backToBottom} aria-label="回到底部">
-                <Icon name="arrow-down" size={15} />
-              </button>
-              <PromptInput
+
+        </ChatViewport>
+        <ChatComposerDock anchorRef={anchorRef} atBottom={atBottom}
+          suggestions={{ items: suggestions.data ?? [], onPick: fillSuggestion,
+            show: atBottom && !conversationId && !turn.active && pendingText===null && input.trim() === '' }}
+          followUps={{ items: followUps, onPick: askFollowUp, label: '延伸探讨',
+            show: atBottom && !!conversationId && followUps.length > 0 && input.trim() === '' }}
+          queue={turn.queued ? { message: turn.active ? QUEUE_TIP : '上一轮已中断，排队问题仍保留。',
+            action: !turn.active ? { label: '发送排队问题', onSend: turn.sendQueued } : undefined } : undefined}
+          onBackToBottom={backToBottom}
+          input={<PromptInput
                 value={input}
                 onChange={setInput}
                 onSend={doSend}
@@ -490,11 +443,10 @@ export default function AgentPage() {
                 onStop={turn.stop}
                 contextTokens={conversation.data?.contextTokens}
                 showContextRing={PREP_BUILD}
-              />
-            </div>
-            <div className="chat-disclaimer">{PREP_BUILD ? '本地模拟环境 · 生成内容仅供教学参考' : '独立对话 · 使用个人模型配置，不自动读取课程私有材料'}{!PREP_BUILD && conversation.data?.contextTokens !== undefined && <span> · 实际用量 {conversation.data.contextTokens} tokens</span>}</div>
-          </div>
-        </div>
+              />}
+          disclaimer={PREP_BUILD ? '本地模拟环境 · 生成内容仅供教学参考' : '独立对话 · 使用个人模型配置，不自动读取课程私有材料'}
+          usageLabel={!PREP_BUILD && conversation.data?.contextTokens !== undefined ? ' · 实际用量 ' + conversation.data.contextTokens + ' tokens' : undefined}
+        />
       </div>
       {/* 生成卡无归属：收纳先弹任务选择器，选定才完成归属（第 19 条） */}
       {picking && (
@@ -513,49 +465,35 @@ export default function AgentPage() {
 }
 
 /** 真实任务仅有分配、课程和开放状态；完成度、阶段与截止日期未由服务端提供。 */
-function AssignedTaskEntryCard({ task }: { task: AssignedTaskCard }) {
+export function AssignedTaskEntryCard({ task }: { task: AssignedTaskCard }) {
   const navigate = useNavigate()
   return (
-    <div className="msg-task-card">
-      <div className="msg-task-top">
-        <StatusChip status={task.availability === 'active' ? '已分配' : '任务已暂停'} />
-        {task.courseName && <span className="msg-task-course">{task.courseName}</span>}
-      </div>
-      <h4>{task.title}</h4>
-      <div className="msg-task-meta">
-        <span>{task.availability === 'active' ? '当前开放' : '当前暂停'}</span>
-        <span>完成状态未知</span>
-      </div>
-      <button className="primary msg-task-enter" onClick={() => navigate('/task/' + encodeURIComponent(task.assignmentId))}>
-        <IconText name="arrow-right" position="end">进入任务</IconText>
-      </button>
-    </div>
+    <MessageTaskCard
+      status={task.availability === 'active' ? '已分配' : '任务已暂停'}
+      course={task.courseName || undefined}
+      title={task.title}
+      metadata={[task.availability === 'active' ? '当前开放' : '当前暂停', '完成状态未知']}
+      onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))}
+    />
   )
 }
 
 /** 消息内任务卡：名称、进度、阶段、截止时间 + 进入入口；卡片留在对话记录中。 */
-function TaskEntryCard({ task }: { task: ProjectTask }) {
+export function TaskEntryCard({ task }: { task: ProjectTask }) {
   const navigate = useNavigate()
   const percent = progressPercent(task)
   return (
-    <div className="msg-task-card">
-      <div className="msg-task-top">
-        <StatusChip status={task.status} />
-        <span className="msg-task-course">{task.course}</span>
-      </div>
-      <h4>{task.name}</h4>
-      <div className="msg-task-meta">
-        <span>{percent}%</span>
-        <span>
-          阶段 {task.stepsDone}/{task.stepsTotal}
-        </span>
-        <span>{task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : '无截止时间'}</span>
-      </div>
-      <ProgressBar percent={percent} done={task.status === '已完成'} />
-      {/* 丝滑展开动效待后续迭代（docs/home-design.md）。 */}
-      <button className="primary msg-task-enter" onClick={() => navigate('/task/' + task.id)}>
-        <IconText name="arrow-right" position="end">进入任务</IconText>
-      </button>
-    </div>
+    <MessageTaskCard
+      status={task.status}
+      course={task.course}
+      title={task.name}
+      metadata={[
+        <>{percent}%</>,
+        <>阶段 {task.stepsDone}/{task.stepsTotal}</>,
+        task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : '无截止时间',
+      ]}
+      progress={{ percent, done: task.status === '已完成' }}
+      onOpen={() => navigate('/task/' + task.id)}
+    />
   )
 }

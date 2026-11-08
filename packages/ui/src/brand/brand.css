@@ -1,0 +1,6 @@
+/* Original art is articulated by a clock with separate, constrained joint tracks. */
+.sprout-mascot { display:block; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.mascot svg.sprout-mascot,.ws-ip svg.sprout-mascot { animation:none; }
+/* 道具换装：透明度过渡 + 眼镜升降位移，相位由 SproutMascot 的 enter/idle/leave 驱动，
+   与骨架 equip 下探-亮出动作同拍；减少动效时全局规则把过渡降为瞬时。 */
+.sprout-mascot [data-accessory] { transition: opacity 300ms cubic-bezier(0.3, 1, 0.35, 1), transform 380ms cubic-bezier(0.3, 1, 0.35, 1); }

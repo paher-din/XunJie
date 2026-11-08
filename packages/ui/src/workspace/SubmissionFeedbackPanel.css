@@ -1,0 +1,26 @@
+.ws-submission { height: 100%; overflow: auto; padding: 24px; color: var(--ink); font-size: 13px; line-height: 1.6; }
+.ws-submission-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 0 auto 20px; max-width: 880px; }
+.ws-submission h2 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.ws-submission h3 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+.ws-submission p { margin: 8px 0; }
+.ws-submission-head p, .ws-submission small, .ws-submission-stage span, .ws-submission-feedback-meta span { color: var(--muted); }
+.ws-submission-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ws-submission-card, .ws-submission > p, .ws-submission > .ws-submission-notice { max-width: 880px; margin: 0 auto 16px; }
+.ws-submission-card { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.ws-submission-card > label { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+.ws-submission select, .ws-submission textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font: inherit; color: var(--ink); background: var(--paper); }
+.ws-submission textarea { resize: vertical; min-height: 90px; }
+.ws-submission-notice, .ws-submission-confirm { padding: 12px 14px; border-radius: 8px; background: var(--hover); border: 1px solid var(--line); }
+.ws-submission-manifest { padding: 0 12px 8px; border-left: 2px solid var(--line); }
+.ws-submission-manifest ul { list-style: none; padding: 0; margin: 8px 0; }
+.ws-submission-manifest li { display: flex; justify-content: space-between; gap: 16px; }
+.ws-submission fieldset { margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.ws-submission-check { display: flex; gap: 8px; align-items: center; }
+.ws-submission-feedback + .ws-submission-feedback { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px; }
+.ws-submission-feedback-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ws-submission-feedback-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ws-submission details { margin-top: 12px; }
+.ws-submission summary { cursor: pointer; color: var(--ink-soft); }
+.ws-submission code { display: block; overflow-wrap: anywhere; font-size: 11px; color: var(--muted); }
+.ws-submission-history { padding: 10px 0; border-top: 1px solid var(--line); }
+@media (max-width: 720px) { .ws-submission { padding: 16px 12px; } .ws-submission-head { flex-direction: column; gap: 12px; } .ws-submission-card { padding: 16px; } }

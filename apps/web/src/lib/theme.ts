@@ -1,4 +1,7 @@
 import { useSyncExternalStore } from 'react'
+import type { ThemePreference } from '@xunjie/ui/theme'
+export { THEME_OPTIONS } from '@xunjie/ui/theme'
+export type { ThemePreference } from '@xunjie/ui/theme'
 
 /**
  * 主题 store：偏好（浅色 / 深色 / 跟随系统）+ 实际生效主题。
@@ -10,7 +13,6 @@ import { useSyncExternalStore } from 'react'
  * 环境读写抽成 ThemeEnv，便于在无 DOM 的测试环境里验证全部分支。
  */
 
-export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 /** localStorage 键（清缓存保留清单见 lib/settings.ts clearCache）。 */
@@ -18,12 +20,6 @@ export const THEME_KEY = 'theme.v1'
 export const THEME_ATTR = 'data-theme'
 export const THEME_PREF_ATTR = 'data-theme-pref'
 export const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)'
-
-export const THEME_OPTIONS: Array<{ value: ThemePreference; label: string }> = [
-  { value: 'light', label: '浅色' },
-  { value: 'dark', label: '深色' },
-  { value: 'system', label: '跟随系统' },
-]
 
 export function isThemePreference(v: unknown): v is ThemePreference {
   return v === 'light' || v === 'dark' || v === 'system'

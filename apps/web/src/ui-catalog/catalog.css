@@ -1,0 +1,127 @@
+/* 目录外壳只存在于独立的开发入口；组件预览使用正式包样式。 */
+.catalog-app { min-height: 100vh; display: grid; grid-template-columns: 264px minmax(0, 1fr); background: var(--paper); }
+.catalog-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 27px 16px 16px; background: var(--shell-bg); border-right: 1px solid var(--line); }
+.catalog-brand { display: flex; align-items: baseline; gap: 9px; color: var(--ink); text-decoration: none; padding: 0 9px 23px; }
+.catalog-brand span { font-family: 'LXGW WenKai', 'Kaiti SC', serif; font-size: 22px; font-weight: 600; }
+.catalog-brand strong { font-size: 13px; font-weight: 500; color: var(--muted); }
+.catalog-search { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--muted); background: var(--paper); }
+.catalog-search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 12px; }
+.catalog-search:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.catalog-search input::placeholder { color: var(--muted); }
+.catalog-nav { flex: 1; min-height: 0; overflow-y: auto; margin: 17px -6px 0; padding: 0 6px 24px; }
+.catalog-nav section + section { margin-top: 22px; }
+.catalog-nav h2 { margin: 0 0 6px; padding: 0 9px; font: 600 12px/1.5 var(--font-sans); color: var(--muted); }
+.catalog-nav a { display: flex; justify-content: space-between; gap: 12px; padding: 7px 9px; border-radius: 8px; color: var(--ink-soft); text-decoration: none; font-size: 13px; }
+.catalog-nav a span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+.catalog-nav a:hover { background: var(--hover-bg); }
+.catalog-nav a.active { background: var(--chip-active); color: var(--ink); font-weight: 600; }
+.catalog-sidebar-footer { padding: 13px 8px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.catalog-empty { padding: 0 9px; color: var(--muted); font-size: 13px; }
+.catalog-main { min-width: 0; }
+.catalog-topbar { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.catalog-theme { padding: 7px 10px; border-radius: 8px; color: var(--ink-soft); }
+.catalog-theme:hover { background: var(--hover-bg); }
+.catalog-content { max-width: 1240px; margin: 0 auto; padding: 36px 40px 80px; }
+.catalog-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.catalog-breadcrumb { margin-bottom: 8px; color: var(--muted); font-size: 12px; }
+.catalog-breadcrumb span { margin: 0 6px; color: var(--faint); }
+.catalog-heading h1 { margin: 0; font: 600 28px/1.25 var(--font-sans); letter-spacing: -0.02em; }
+.catalog-heading p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+.catalog-open { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 8px 10px; border-radius: 8px; color: var(--ink-soft); text-decoration: none; font-size: 13px; }
+.catalog-open:hover { background: var(--hover-bg); }
+.catalog-preview-section { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.catalog-state-bar { min-height: 58px; display: flex; align-items: center; gap: 20px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.catalog-state-bar > span { flex: none; color: var(--muted); font-size: 12px; }
+.catalog-state-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.catalog-state-list a { padding: 6px 8px; border-radius: 8px; color: var(--ink-soft); text-decoration: none; font-size: 12px; }
+.catalog-state-list a:hover { background: var(--hover-bg); }
+.catalog-state-list a.active { background: var(--chip-active); color: var(--ink); font-weight: 600; }
+.catalog-frame-scroll { width: 100%; overflow: auto; background: var(--paper); }
+.catalog-frame { display: block; width: 100%; height: 440px; border: 0; }
+.catalog-frame.wide { width: max(100%, 1200px); }
+.catalog-frame-note { margin: 0; padding: 9px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.catalog-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; padding-top: 30px; }
+.catalog-details h2 { margin: 0 0 8px; font: 600 13px/1.5 var(--font-sans); color: var(--ink); }
+.catalog-details h2:not(:first-child) { margin-top: 23px; }
+.catalog-details code { color: var(--ink-soft); font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.catalog-details ul { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: 13px; }
+.catalog-details li + li { margin-top: 4px; }
+.catalog-missing { padding: 50px 40px; }
+.catalog-missing h1 { font: 600 22px/1.3 var(--font-sans); }
+.catalog-missing p { color: var(--muted); }
+.catalog-missing a { color: var(--accent-deep); }
+.catalog-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* 示例宿主提供的布局，组件外观仍由 @xunjie/ui/styles.css 和组件自身样式负责。 */
+.catalog-preview-root { min-height: 100vh; background: var(--paper); }
+.catalog-preview-stage { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.catalog-preview-stage > .shell { width: 100%; }
+.catalog-preview-stage output { display: block; min-height: 1.5em; color: var(--muted); font-size: 12px; }
+.demo-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.demo-avatar-row > div, .demo-context > div { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.demo-account { position: relative; width: 290px; height: 350px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; }
+.demo-account-anchor { position: relative; }
+.demo-theme-anchor { position: relative; align-self: flex-start; }
+.demo-login { position: relative; width: 100%; }
+.demo-login-controls { position: absolute; top: 16px; right: 16px; z-index: 1; }
+.demo-conversation { width: 240px; min-height: 70px; }
+.demo-conversation output { padding: 8px 10px; }
+.demo-pane-wrap { width: 248px; }
+.demo-pane { display: flex; flex-direction: column; gap: 2px; padding: 10px; background: var(--shell-bg); border-radius: 8px; }
+.demo-pane-wrap > output { padding: 8px 10px; }
+.demo-swap { padding: 18px; border-radius: 8px; background: var(--chip-bg); }
+.demo-stage-top { align-self: stretch; width: 100%; padding: 24px; }
+.demo-stage-top output { margin-top: 8px; }
+.demo-fluid { position: relative; width: 388px; display: flex; gap: 8px; }
+.demo-fluid button { position: relative; z-index: 1; width: 124px; height: 66px; border: 1px solid var(--line); border-radius: 12px; }
+.demo-progress { width: min(360px, 80vw); display: grid; gap: 18px; }
+.demo-progress > div { display: grid; grid-template-columns: 45px 1fr; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+.demo-shell-navigation { display: grid; gap: 12px; padding: 20px 12px; color: var(--ink-soft); }
+.demo-shell-footer { margin-top: auto; padding: 12px; color: var(--muted); font-size: 12px; }
+.demo-shell-content { padding: 38px; }
+.demo-shell-content p { color: var(--muted); }
+.demo-sidebar-navigation { width: 248px; min-height: 240px; display: flex; flex-direction: column; padding: 12px; background: var(--shell-bg); border-radius: 8px; }
+.demo-sidebar-bottom { width: 248px; height: 320px; display: flex; flex-direction: column; padding: 10px; background: var(--shell-bg); border-radius: 8px; }
+.demo-panel-content { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 4px; }
+.demo-panel-content strong { font-size: 13px; }
+.demo-panel-content input { padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.demo-suggest { width: min(460px, 90vw); padding-top: 240px; }
+.demo-suggest-anchor { position: relative; }
+.demo-suggest-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.demo-icon-gallery { width: 100%; align-self: stretch; }
+.demo-icon-toolbar { position: sticky; z-index: 1; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.demo-icon-toolbar label { display: flex; align-items: center; gap: 10px; }
+.demo-icon-toolbar input { width: 190px; padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font-size: 12px; }
+.demo-icon-toolbar input::placeholder { color: var(--muted); }
+.demo-icon-empty { padding: 10px 16px; color: var(--muted); font-size: 13px; }
+.demo-icon-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); align-content: start; background: var(--paper); }
+.demo-icon-cell { min-width: 0; min-height: 114px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); text-align: center; }
+.demo-icon-cell span { max-width: 100%; color: var(--ink-soft); font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.demo-icon-cell small, .demo-icon-tone span { color: var(--muted); font-size: 11px; }
+.demo-icon-tone { display: grid; justify-items: center; gap: 8px; }
+.demo-logo-grid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 24px; padding: 24px; }
+.demo-logo-grid > div { width: 150px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: var(--ink); }
+.demo-logo-grid svg { max-width: 120px; max-height: 80px; }
+.demo-logo-grid span { color: var(--muted); font-size: 12px; }
+.demo-logo-grid .demo-inverse { background: var(--primary); border-radius: 12px; }
+.demo-logo-grid .demo-inverse span { color: var(--on-primary); }
+.demo-sprout-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; padding: 24px; }
+.demo-sprout-grid > div { width: 100px; display: grid; justify-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+.demo-sprout-grid svg { width: 100px; height: 120px; }
+.demo-sprout-one { width: 140px; height: 168px; }
+.demo-sprout-interactive { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 24px; }
+.demo-companion { width: 140px; height: 168px; padding: 0; }
+
+@media (max-width: 700px) {
+  .catalog-app { grid-template-columns: 1fr; }
+  .catalog-sidebar { position: static; height: auto; padding: 18px; }
+  .catalog-brand { padding-bottom: 14px; }
+  .catalog-nav { max-height: 180px; }
+  .catalog-sidebar-footer { display: none; }
+  .catalog-topbar { height: 52px; padding: 0 20px; }
+  .catalog-content { padding: 28px 20px 60px; }
+  .catalog-heading { align-items: flex-start; }
+  .catalog-details { grid-template-columns: 1fr; gap: 24px; }
+  .catalog-state-bar { align-items: flex-start; flex-direction: column; gap: 8px; }
+}

@@ -1,15 +1,11 @@
-import { Icon, IconText } from '../icons'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { learningApi } from '../bridge/mockAdapter'
 import { demoDashboard, demoTasks } from '../bridge/mockData'
 import type { ProjectTask, TaskStatus } from '../bridge/types'
 import { DashboardSection } from '../components/dashboard/DashboardSection'
-import { FluidHighlight } from '../components/FluidHighlight'
-import { ProgressBar } from '../components/ProgressBar'
-import { StatusChip, type TaskDisplayStatus } from '../components/StatusChip'
-import { useFluidHover } from '../lib/fluidHover'
+import type { TaskDisplayStatus } from '@xunjie/ui/foundation'
 import {
   filterTasks,
   formatDeadline,
@@ -25,10 +21,11 @@ import { useSession } from '../components/SessionEntry'
 import { loadHomeCourses, type HomeCourse } from '../workspace/home'
 import { displayAccountName, displayCourseName, displayProjectName } from '../lib/displayNames'
 import { useHomeCourseNavigation } from '../lib/homeCourseNavigation'
+import { ContinueTaskCard, TaskToolbar } from '../components/home/HomePrimitives'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const ASSIGNMENT_FILTERS = ['全部', '已分配', '任务已暂停'] as const
-import { CourseTiles as SharedCourseTiles, LearningTaskCard } from '../components/home/LearningCards'
+import { CourseTiles as SharedCourseTiles, LearningCardGrid, HomeIntro, HomeCourseRegion, HomeSectionHeading, CourseBreadcrumb, HomeStatus, PreparationEntryCard, HomeTaskCard } from '@xunjie/ui/home'
 
 function realCourseTone(course: HomeCourse): number {
   const kinds = new Set(course.assignments.map(task => task.executionKind))
@@ -45,7 +42,7 @@ export default function HomePage() {
   return PREP_BUILD ? <PreparationHomePage /> : <RealHomePage />
 }
 
-function RealHomePage() {
+export function RealHomePage() {
   const session = useSession()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -68,63 +65,42 @@ function RealHomePage() {
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好'
-  const cardsRef = useRef<HTMLDivElement>(null)
-  const hover = useFluidHover(cardsRef)
   return <div className="content home-page">
-    <div className="intro">
-      <h1>{greeting}，{displayAccountName(session.session!.userId, session.session!.displayName)}</h1>
-      <span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span>
-    </div>
+    <HomeIntro title={<>{greeting}，{displayAccountName(session.session!.userId, session.session!.displayName)}</>} date={<>{now.getMonth() + 1} 月 {now.getDate()} 日</>} />
     <DashboardSection key={session.session?.userId} storageKey={`dashboard.layout.v3:real:${session.session?.userId}`}
       data={demoDashboard} tasks={demoTasks} demoStatistics
       taskCount={snapshot.isSuccess ? allTasks.length : undefined} now={now}
-      continueSlot={entryTask && <div className="db-continue">
-        <span className="course-tag"><i className="dot" />项目任务 · {displayCourseName(entryTask.courseId, entryTask.courseName)}</span>
-        <h3>{displayProjectName(entryTask.title, entryTask.displayTitle)}</h3>
-        {entryTask.goal && <p>{entryTask.goal}</p>}
-        <div className="db-continue-foot">
-          <span className="db-side">当前获准任务</span>
-          <button className="primary" onClick={() => navigate('/task/' + encodeURIComponent(entryTask.assignmentId))}>
-            <IconText name="arrow-right" position="end">进入任务</IconText>
-          </button>
-        </div>
-      </div>} />
-    <div className="course-region" data-course-selected={!!selected} ref={navigation.regionRef}>
-    <div className="sectionhead">
-      <h2 ref={navigation.headingRef} tabIndex={-1}>{selected ? '课程与任务' : '我的课程'}<small>{selected ? `${selected.assignments.length} 个任务` : `${courses.length} 门`}</small></h2>
-      <button className="outline" type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>刷新任务</button>
-    </div>
-    {snapshot.isPending ? <p role="status">正在读取课程与任务…</p>
-      : snapshot.isError ? <div className="empty" role="alert">
-        <p>暂时无法读取课程与任务，请重试。已有任务链接仍可使用。</p>
-        <button type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>重试</button>
-      </div>
+      continueSlot={entryTask && <ContinueTaskCard
+        tag={<>项目任务 · {displayCourseName(entryTask.courseId, entryTask.courseName)}</>}
+        title={displayProjectName(entryTask.title, entryTask.displayTitle)}
+        description={entryTask.goal || undefined}
+        meta="当前获准任务" metaClassName="db-side" action="进入任务"
+        onOpen={() => navigate('/task/' + encodeURIComponent(entryTask.assignmentId))}
+      />} />
+    <HomeCourseRegion selected={!!selected} regionRef={navigation.regionRef}>
+    <HomeSectionHeading headingRef={navigation.headingRef} title={<>{selected ? '课程与任务' : '我的课程'}</>} count={<>{selected ? `${selected.assignments.length} 个任务` : `${courses.length} 门`}</>} refresh={{ disabled: snapshot.isFetching, onRefresh: () => { void snapshot.refetch() } }} />
+    {snapshot.isPending ? <HomeStatus kind="loading" message="正在读取课程与任务…" />
+      : snapshot.isError ? <HomeStatus kind="error" message="暂时无法读取课程与任务，请重试。已有任务链接仍可使用。" retry={{ disabled: snapshot.isFetching, onRetry: () => { void snapshot.refetch() } }} />
       : selected ? <>
-        <div className="course-breadcrumb">
-          <button onClick={event => navigation.setCourse(null, event.detail === 0)}><IconText name="alt-arrow-left">全部课程</IconText></button>
-          <span>/</span><strong>{displayCourseName(selected.courseId, selected.name)}</strong>
-        </div>
+        <CourseBreadcrumb title={displayCourseName(selected.courseId, selected.name)} onBack={keyboard => navigation.setCourse(null, keyboard)} />
         <TaskToolbar filters={ASSIGNMENT_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
-        {selected.assignments.length === 0 ? <div className="empty">此课程暂无分配任务</div>
-          : visibleTasks.length === 0 ? <div className="empty"><Icon name="folder-search" size={22} />此课程没有匹配的任务</div>
-          : <div className="task-card-grid" ref={cardsRef} {...hover.handlers}>
-            <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
-            {visibleTasks.map((task, index) => <TaskCard key={task.assignmentId}
+        {selected.assignments.length === 0 ? <HomeStatus kind="empty" message="此课程暂无分配任务" />
+          : visibleTasks.length === 0 ? <HomeStatus kind="empty" message="此课程没有匹配的任务" searchIcon />
+          : <LearningCardGrid>{registerItem => <>{visibleTasks.map((task, index) => <TaskCard key={task.assignmentId}
               task={{ name: displayProjectName(task.title, task.displayTitle), goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
               action={task.active ? '进入任务' : '查看任务'} index={index}
-              registerItem={hover.registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}
-          </div>}
-      </> : courses.length === 0 ? <div className="empty">暂无获准的学生课程与任务</div>
+              registerItem={registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}</>}</LearningCardGrid>}
+      </> : courses.length === 0 ? <HomeStatus kind="empty" message="暂无获准的学生课程与任务" />
         : <CourseTiles courses={courses.map(course => course.courseId)} tasks={[]}
           titleOf={id => displayCourseName(id, courses.find(course => course.courseId === id)?.name)}
           summaryOf={id => `${courses.find(course => course.courseId === id)!.assignments.length} 个分配任务`}
           toneOf={id => realCourseTone(courses.find(course => course.courseId === id)!)}
           onOpen={navigation.setCourse} />}
-    </div>
+    </HomeCourseRegion>
   </div>
 }
 
-function PreparationHomePage() {
+export function PreparationHomePage() {
   const snapshot = useQuery({
     queryKey: ['home'],
     queryFn: () => learningApi.getHomeSnapshot(),
@@ -158,28 +134,12 @@ function PreparationHomePage() {
 
   return (
     <div className="content home-page">
-      <div className="intro">
-        <h1>{greeting}，Robert</h1>
-        <span className="date">
+      <HomeIntro title={<>{greeting}，Robert</>} date={<>
           {now.getMonth() + 1} 月 {now.getDate()} 日
-        </span>
-      </div>
+        </>} />
 
       {PREP_BUILD && (
-        <section className="prep-entry">
-          <div className="prep-entry-body">
-            <p className="prep-entry-flag">
-              <Icon name="shield-check" size={15} tone="neutral" />
-              {PREP_ENTRY_LABEL}
-            </p>
-            <h2>{PREP_ENTRY_COURSE}</h2>
-            <p>{PREP_ENTRY_GOAL}</p>
-            <p className="prep-entry-note">{PREP_ENTRY_NOTE}</p>
-          </div>
-          <button className="primary" onClick={() => navigate(PREP_TASK_ROUTE)}>
-            <IconText name="arrow-right" position="end">进入准备工作区</IconText>
-          </button>
-        </section>
+        <PreparationEntryCard flag={PREP_ENTRY_LABEL} title={PREP_ENTRY_COURSE} description={PREP_ENTRY_GOAL} note={PREP_ENTRY_NOTE} action="进入准备工作区" onOpen={() => navigate(PREP_TASK_ROUTE)} />
       )}
 
       <DashboardSection
@@ -188,41 +148,24 @@ function PreparationHomePage() {
         now={now}
         continueSlot={
           continueTask && (
-            <div className="db-continue">
-              <span className="course-tag">
-                <i className="dot" />
-                {continueTask.mode === 'resume' ? '继续学习' : '建议开始'} ·{' '}
-                {continueTask.task.course}
-              </span>
-              <h3>{continueTask.task.name}</h3>
-              <p>
-                {continueTask.mode === 'resume' ? continueTask.task.last : continueTask.task.goal}
-              </p>
-              <div className="db-continue-foot">
-                <span className="pct">{progressPercent(continueTask.task)}%</span>
-                <button
-                  className="primary"
-                  onClick={() => navigate('/task/' + continueTask.task.id)}
-                >
-                  <IconText name="arrow-right" position="end">{continueTask.mode === 'resume' ? '继续任务' : '开始任务'}</IconText>
-                </button>
-              </div>
-            </div>
+            <ContinueTaskCard
+              tag={<>{continueTask.mode === 'resume' ? '继续学习' : '建议开始'} ·{' '}{continueTask.task.course}</>}
+              title={continueTask.task.name}
+              description={continueTask.mode === 'resume' ? continueTask.task.last : continueTask.task.goal}
+              meta={<>{progressPercent(continueTask.task)}%</>} metaClassName="pct"
+              action={continueTask.mode === 'resume' ? '继续任务' : '开始任务'}
+              onOpen={() => navigate('/task/' + continueTask.task.id)}
+            />
           )
         }
       />
 
-      <div className="course-region" data-course-selected={!!course} ref={navigation.regionRef}>
-        <div className="sectionhead">
-          <h2 ref={navigation.headingRef} tabIndex={-1}>
-            {course ? '课程与任务' : '我的课程'}
-            <small>
+      <HomeCourseRegion selected={!!course} regionRef={navigation.regionRef}>
+        <HomeSectionHeading headingRef={navigation.headingRef} title={<>{course ? '课程与任务' : '我的课程'}</>} count={<>
               {course
                 ? tasks.filter((t) => t.course === course).length + ' 个任务'
                 : courses.length + ' 门'}
-            </small>
-          </h2>
-        </div>
+            </>} />
 
         {course === null ? (
           <CourseTiles
@@ -233,11 +176,7 @@ function PreparationHomePage() {
           />
         ) : (
           <>
-            <div className="course-breadcrumb">
-              <button onClick={event => navigation.setCourse(null, event.detail === 0)}><IconText name="alt-arrow-left">全部课程</IconText></button>
-              <span>/</span>
-              <strong>{course}</strong>
-            </div>
+            <CourseBreadcrumb title={course} onBack={keyboard => navigation.setCourse(null, keyboard)} />
             <TaskToolbar filters={STATUS_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
             {visibleTasks.length > 0 ? (
               <TaskCards
@@ -246,41 +185,20 @@ function PreparationHomePage() {
                 onOpen={(t) => navigate('/task/' + t.id)}
               />
             ) : (
-              <div className="empty">
-                {/* b2（2026-10-10 定稿）：I024 落地——任务无结果配 folder-search 小图标 */}
-                <Icon name="folder-search" size={22} />
-                此课程没有匹配的任务
-              </div>
+              <HomeStatus kind="empty" message="此课程没有匹配的任务" searchIcon />
             )}
           </>
         )}
-      </div>
+      </HomeCourseRegion>
     </div>
   )
-}
-
-/** 两种数据来源共用 Design 原筛选与搜索控件。 */
-function TaskToolbar<T extends string>({ filters, value, onFilter, query, onQuery }: {
-  filters: readonly T[]; value: T; onFilter: (value: T) => void; query: string; onQuery: (value: string) => void
-}) {
-  const searchRef = useRef<HTMLInputElement>(null)
-  return <div className="task-toolbar">
-    <div className="filters">{filters.map(filter => <button key={filter}
-      className={value === filter ? 'filter active' : 'filter'} onClick={() => onFilter(filter)}>{filter}</button>)}</div>
-    <label className="search">
-      <Icon name="minimalistic-magnifier" size={14} />
-      <input ref={searchRef} aria-label="搜索任务" placeholder="搜索任务或课程…" value={query} onChange={event => onQuery(event.target.value)} />
-      {query !== '' && <button type="button" className="search-clear" aria-label="清除搜索"
-        onClick={() => { onQuery(''); searchRef.current?.focus() }}><Icon name="close" size={12} /></button>}
-    </label>
-  </div>
 }
 
 /**
  * 课程卡片组（参考 fluidfunctionalism Card 的 2-D fluid hover）：整组共享一块
  * 高亮，弹性滑向指针最近的卡片；卡片 = 封面图 + 名称 + 待完成数 +「查看任务」。
  */
-function CourseTiles({
+export function CourseTiles({
   courses,
   toneOf,
   tasks,
@@ -303,7 +221,7 @@ function CourseTiles({
  * 课程内任务卡片组：与课程卡片组共用同一套 2-D fluid hover——整组共享一块高亮，
  * 弹性滑向指针最近的卡片；卡片自身不做位移 / 描边 hover，反馈交给高亮。
  */
-function TaskCards({
+export function TaskCards({
   tasks,
   now,
   onOpen,
@@ -312,30 +230,21 @@ function TaskCards({
   now: Date
   onOpen: (task: ProjectTask) => void
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const hover = useFluidHover(ref)
   return (
-    <div className="task-card-grid" ref={ref} {...hover.handlers}>
-      <FluidHighlight
-        activeIndex={hover.activeIndex}
-        rects={hover.itemRects}
-        className="card-grid-highlight"
-      />
-      {tasks.map((t, i) => (
+    <LearningCardGrid>{registerItem => <>{tasks.map((t, i) => (
         <TaskCard
           key={t.id}
           task={{ ...t, progress: { percent: progressPercent(t), done: t.status === '已完成' } }}
           index={i}
           overdue={isOverdue(t, now)}
           onOpen={() => onOpen(t)}
-          registerItem={hover.registerItem}
+          registerItem={registerItem}
         />
-      ))}
-    </div>
+      ))}</>}</LearningCardGrid>
   )
 }
 
-function TaskCard({
+export function TaskCard({
   task,
   index,
   overdue = false,
@@ -352,10 +261,7 @@ function TaskCard({
   registerItem: (index: number, el: HTMLElement | null) => void
 }) {
   const action = explicitAction ?? (task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务')
-  return <LearningTaskCard title={task.name} goal={task.goal} index={index} register={registerItem} onOpen={onOpen} action={action}
-    badge={<><StatusChip status={task.status} />{overdue && <span className="status overdue">已逾期</span>}</>}
-    footer={task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : undefined}>
-    {task.progress && <><div className="progresslabel"><span>任务进度</span><span>{task.progress.percent}%</span></div>
-      <ProgressBar percent={task.progress.percent} done={task.progress.done} /></>}
-  </LearningTaskCard>
+  return <HomeTaskCard title={task.name} goal={task.goal} index={index} register={registerItem} onOpen={onOpen} action={action}
+    status={task.status} overdue={overdue} progress={task.progress}
+    footer={task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : undefined} />
 }

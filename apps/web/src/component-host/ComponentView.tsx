@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { componentBundleSchema, componentHostMessageSchema, componentStateName, componentInitializeSchema, componentPreparationMessageSchema,
   componentPreparationReplySchema, componentReply, type ComponentBinding } from '@xunjie/contracts/components'
 import { z } from 'zod'
-import titleFontUrl from '../../public/fonts/lxgw-wenkai-regular.woff2?url'
+import titleFontUrl from '@xunjie/ui/assets/fonts/lxgw-wenkai-regular.woff2?url'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { useActivitySession } from '../product/ActivitySession'
 import { learningRequest } from '../product/learningTransport'

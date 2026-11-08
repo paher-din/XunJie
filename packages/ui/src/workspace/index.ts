@@ -1,0 +1,53 @@
+/** Standalone workspace UI. Data, permissions and business commands are supplied by callers.
+ * The host must load @xunjie/ui/styles.css, the canonical shared styles/theme.
+ * Original standalone component CSS is imported by its owning component.
+ * Popovers use document.body; SideDock requires browser layout and Web Animations.
+ */
+export * from './TaskPresentation'
+export * from './FileTabs'
+export * from './ConfirmationCluster'
+export * from './WorkspacePopover'
+export * from './RunPanel'
+export * from './RunHistoryPanel'
+export * from './SideDock'
+export type { RunHelpTarget } from './runPresentation'
+
+// Core tools, editor runtime, files and read-only comparisons.
+export * from './CenterToolArea'
+export * from './CodeWorkspace'
+export * from './FileStrip'
+export * from './CodeEditorHost'
+export * from './CompareText'
+export * from './ConflictCompare'
+export * from './VersionCompare'
+export * from './HdlToolArea'
+export * from './wsLayout'
+export * from './filePresentation'
+export * from './comparisonPresentation'
+export * from './hdlPresentation'
+export * from './diagnosticPresentation'
+export * from './codeSelection'
+export * from './originalText'
+export * from './projectFiles'
+export * from './compositionNavigation'
+export * from './monacoSetup'
+
+// Reading, feedback, execution choices and teaching demonstrations.
+export * from './TextScopePanes'
+export * from './initializationPresentation'
+export * from './TutoringExample'
+export * from './SubmissionFeedbackPanel'
+export * from './submissionPresentation'
+export * from './ExecutionNodeSelect'
+export * from './TutoringControlsView'
+export * from './cards'
+export * from './GenCardItems'
+export * from './guidance/GuidancePresentation'
+export * from './guidance/layout'
+export type { GenHostFactory } from '../chat'
+export * from './TutorMessageView'
+export * from './TutoringPaneView'
+export * from './tutoringPresentation'
+export * from './GuideLayer'
+export * from './PrepWorkspacePageViews'
+export * from './WorkspacePageViews'

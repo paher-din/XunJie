@@ -11,7 +11,7 @@ import { ensureBuild, expandTargets, normalizePassthroughArgs, parseBuildArgs, r
 import { scanServerOutput } from './build-server.mjs';
 
 const paths = { contracts: 'packages/contracts', storage: 'packages/storage', 'learning-space': 'packages/learning-space',
-  server: 'apps/server', 'product-runtime': 'packages/product-runtime', web: 'apps/web', 'local-runtime': 'apps/local-runtime' };
+  server: 'apps/server', 'product-runtime': 'packages/product-runtime', ui: 'packages/ui', web: 'apps/web', 'local-runtime': 'apps/local-runtime' };
 const compiler = `import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, resolve, join } from 'node:path';
 const args=process.argv.slice(2), cwd=process.cwd();
@@ -153,6 +153,7 @@ test('DAG prepares both web outputs; src check is shared and correct compiler ve
   await ensureBuild('test',{root,...quiet});
   const first=await calls(root);
   assert.equal(first.filter(c=>c.tool==='tsc'&&c.workspace==='web'&&c.args.includes('tsconfig.json')).length,1);
+  assert.equal(first.filter(c=>c.tool==='tsc'&&c.workspace==='ui'&&c.args.includes('tsconfig.json')).length,1);
   assert.equal(first.filter(c=>c.workspace==='server'&&c.args.includes('--noEmit')).length,1);
   assert.equal(first.filter(c=>c.tool==='tsc'&&c.workspace==='web'&&c.args.includes('tsconfig.node.json')).length,1);
   assert.equal(first.filter(c=>c.tool==='vite').length,2);
@@ -162,6 +163,18 @@ test('DAG prepares both web outputs; src check is shared and correct compiler ve
   assert.deepEqual(await calls(root),first);
   assert.ok((await readFile(join(root,'apps/web/dist/index.html'),'utf8')).includes('built'));
   assert.ok((await readFile(join(root,'apps/web/dist-runtime/index.html'),'utf8')).includes('built'));
+});
+
+test('changing the UI package invalidates the web build and checks the UI again',async t=>{
+  const root=await fixture(t);
+  await ensureBuild('web',{root,...quiet});
+  const before=await calls(root);
+  await put(root,'packages/ui/src/styles.css',':root { --ui-example: 1 }');
+  await ensureBuild('web',{root,...quiet});
+  const delta=(await calls(root)).slice(before.length);
+  assert.equal(delta.filter(c=>c.tool==='tsc'&&c.workspace==='ui').length,1);
+  assert.equal(delta.filter(c=>c.tool==='tsc'&&c.workspace==='web').length,1);
+  assert.equal(delta.filter(c=>c.tool==='vite').length,1);
 });
 
 test('exact outputs: missing, changed and added files invalidate; deleted sources remove old emissions',async t=>{

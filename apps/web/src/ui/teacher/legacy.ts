@@ -1,0 +1,10 @@
+/** 教师端完整页面依赖 TeacherContext、路由和相应业务契约。 */
+export { default as TeacherApp } from '../../teacher/TeacherApp'
+export { default as TeacherPreview } from '../../teacher/TeacherPreview'
+export { default as TeacherDesignPage } from '../../teacher/DesignPage'
+export { default as TeacherLiveDesignPage } from '../../teacher/LiveDesignPage'
+export { default as TeacherDesignAgentPanel } from '../../teacher/DesignAgentPanel'
+export { default as TeacherReviewPage } from '../../teacher/ReviewPage'
+export { default as TeacherLiveReviewPage } from '../../teacher/LiveReviewPage'
+export { default as TeacherMaterialsPage } from '../../teacher/MaterialsPage'
+export { default as TeacherSettingsPage } from '../../teacher/TeacherSettingsPage'

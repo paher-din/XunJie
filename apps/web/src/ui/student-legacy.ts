@@ -1,0 +1,13 @@
+/** 旧版学生端整页与依赖旧状态的外壳，用于保持完整原有交互。 */
+export { default as LegacyApp } from '../LegacyApp'
+export { default as AppShell } from '../components/AppShell'
+export { default as SessionEntry, useSession } from '../components/SessionEntry'
+export { AccountAvatar } from '../components/AccountAvatar'
+export { ProfileCard } from '../components/ProfileCard'
+export { ThemeMenu } from '../components/ThemeMenu'
+export * from '../components/PromptInput'
+export { default as HomePage } from '../pages/HomePage'
+export { default as AgentPage } from '../pages/AgentPage'
+export { default as WorkspacePage } from '../pages/WorkspacePage'
+export { default as PrepWorkspacePage } from '../pages/PrepWorkspacePage'
+export { default as SettingsPage } from '../pages/SettingsPage'

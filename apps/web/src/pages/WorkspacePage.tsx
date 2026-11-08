@@ -1,4 +1,3 @@
-import { Icon, IconText } from '../icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -7,9 +6,10 @@ import type { ChatMessage, ProjectTask, StoredGenCard } from '../bridge/types'
 import { glitch } from '../bridge/genCardDemos'
 import { TurnPlayer } from '../bridge/turnPlayer'
 import { buildTurnScript } from '../bridge/turnScript'
-import { AgentMessage } from '../components/chat/AgentMessage'
 import { GenCard } from '../components/chat/GenCard'
-import { QUEUE_TIP } from '../components/chat/copy'
+import { FAILURE_COPY, QUEUE_TIP } from '../components/chat/copy'
+import { GenSandboxHost } from '../bridge/genSandbox'
+import type { GenHostFactory } from '@xunjie/ui/chat'
 import { CODE_TOOLS, CenterToolArea, type CenterToolAreaHandle, type ToolKey } from '../components/workspace/CenterToolArea'
 import { CodeRunCluster, CodeWorkspace } from '../components/workspace/CodeWorkspace'
 import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
@@ -18,13 +18,19 @@ import { scopeKey, type DraftScope } from '../lib/draftStore'
 import { idbDraftRepository } from '../workspace/draftDb'
 import { GuideLayer, type GuideStep } from '../components/workspace/GuideLayer'
 import { SideDock } from '../components/workspace/SideDock'
+import { TaskProgress as TaskProgressPresentation, TaskInfo as TaskInfoPresentation, type TaskProgressProps } from '../components/workspace/TaskPresentation'
+import {
+  WorkspaceChatPaneView, WorkspaceDockedChat, WorkspaceFloatingChat, WorkspaceHeader, WorkspaceMissingTask,
+  WorkspacePinnedCardsColumn, WorkspacePinnedGeneratedCard, WorkspacePinnedLearningCard, WorkspaceTaskIntro,
+  WorkspaceToast, WorkspaceToolkitPending,
+} from '@xunjie/ui/workspace'
 import { CARDS } from '../components/workspace/cards'
-import { ProgressBar } from '../components/ProgressBar'
 import { StatusChip } from '../components/StatusChip'
 import { formatDeadline, progressPercent } from '../lib/tasks'
 
 /** 对话页收纳占位行「打开」→ 工作区取出生成卡的交接意图（sessionStorage 传递，进入即消费）。 */
 const GEN_HANDOFF_KEY = 'ws-gen-handoff'
+const createWorkspaceGenHost: GenHostFactory = options => new GenSandboxHost(options)
 
 /** 数字逻辑样本任务的引导脚本（课程包预置 mock）。 */
 const COUNTER_GUIDE: GuideStep[] = [
@@ -450,14 +456,7 @@ export default function WorkspacePage() {
   }
 
   if (snapshot.data && !task) {
-    return (
-      <div className="ws-missing">
-        <p>没有找到这个任务。</p>
-        <button className="outline" onClick={() => navigate('/')}>
-          返回首页
-        </button>
-      </div>
-    )
+    return <WorkspaceMissingTask onBack={() => navigate('/')} />
   }
   if (!task) return null
 
@@ -484,24 +483,11 @@ export default function WorkspacePage() {
 
   return (
     <div className="ws">
-      <header className="ws-head">
-        <div className="ws-navbtns">
-          <button
-            className="ws-navbtn"
-            aria-label="返回"
-            onClick={() => {
-              // 走历史回退以恢复上一个界面（课程任务视图、滚动位置）；直接打开工作区（无历史）时回首页
-              if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
-              else navigate('/')
-            }}
-          >
-            <Icon name="arrow-left" size={18} />
-          </button>
-        </div>
-        <div className="ws-head-tabs" ref={setTabsSlot} />
-        <TaskProgress task={task} />
-        <div className="ws-head-run" ref={setRunSlot} />
-      </header>
+      <WorkspaceHeader progress={taskProgressProps(task)} tabsRef={setTabsSlot} runRef={setRunSlot} onBack={() => {
+        // 走历史回退以恢复上一个界面；直接打开工作区时回首页。
+        if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
+        else navigate('/')
+      }} />
 
       <div className="ws-body">
         {task.id === 'counter' ? (
@@ -541,24 +527,12 @@ export default function WorkspacePage() {
             }
           />
         ) : (
-          <div className="ws-center">
-            <div className="ws-toolkit-pending">
-              <p>这门课的工具包还在接入中。</p>
-              <p>先对照左侧「任务信息」里的目标动手；有问题点右下角的学习助手。</p>
-            </div>
-          </div>
+          <WorkspaceToolkitPending title="这门课的工具包还在接入中。"
+            description="先对照左侧「任务信息」里的目标动手；有问题点右下角的学习助手。" />
         )}
 
         {docked && (
-          <aside className="ws-rail">
-            <div className="ws-rail-head">
-              <span>已固定的引导对话</span>
-              <button className="textbtn" onClick={() => setDocked(false)}>
-                <IconText name="unpin" position="end">取消固定</IconText>
-              </button>
-            </div>
-            {chatPane}
-          </aside>
+          <WorkspaceDockedChat onUndock={() => setDocked(false)}>{chatPane}</WorkspaceDockedChat>
         )}
 
         <SideDock
@@ -581,35 +555,25 @@ export default function WorkspacePage() {
         />
 
         {(cardStore.pinned.length > 0 || genPinned.length > 0) && (
-          <div className="ws-pinned-col" style={{ right: docked ? 336 : 14 }}>
+          <WorkspacePinnedCardsColumn docked={docked}>
             {cardStore.pinned.map((k) => {
               const def = CARDS[k]
               if (!def) return null
               return (
-                <div key={k} className="ws-pinned-card">
-                  <div className="ws-cardhead">
-                    <span>{def.title}</span>
-                    <button onClick={() => unpinCard(k)}><IconText name="undo-left-round" position="end">放回收纳</IconText></button>
-                  </div>
+                <WorkspacePinnedLearningCard key={k} title={def.title} onUnpin={() => unpinCard(k)}>
                   <def.Body />
-                </div>
+                </WorkspacePinnedLearningCard>
               )
             })}
             {genPinned.map((id) => {
               const card = genCards.find((c) => c.cardId === id)
               if (!card) return null
               return (
-                <div key={id} className="ws-pinned-card">
-                  <GenCard
-                    card={card}
-                    collectLabel="放回收纳"
-                    onCollect={(snapshot) => unpinGen(id, snapshot)}
-                    onStateSync={(snapshot) => syncGenState(id, snapshot)}
-                  />
-                </div>
+                <WorkspacePinnedGeneratedCard key={id} card={card} createHost={createWorkspaceGenHost}
+                  onUnpin={(snapshot) => unpinGen(id, snapshot)} onStateSync={(snapshot) => syncGenState(id, snapshot)} />
               )
             })}
-          </div>
+          </WorkspacePinnedCardsColumn>
         )}
 
         {!intro && (
@@ -631,143 +595,55 @@ export default function WorkspacePage() {
         )}
 
         {chatOpen && !docked && (
-          <div className="ws-chatpop">
-            <div className="ws-chatpop-head">
-              <IconText name="assistant-mark">学习助手 · 绑定当前任务</IconText>
-              <span>
-                <button onClick={() => { setDocked(true); setChatOpen(false) }}><IconText name="pin" position="end">固定到右侧</IconText></button>
-                <button onClick={() => setChatOpen(false)}><IconText name="close" position="end">收起</IconText></button>
-              </span>
-            </div>
-            {chatPane}
-          </div>
+          <WorkspaceFloatingChat onDock={() => { setDocked(true); setChatOpen(false) }}
+            onClose={() => setChatOpen(false)}>{chatPane}</WorkspaceFloatingChat>
         )}
 
         {intro && (
-          <div className="ws-intro-veil">
-            <div className={flying ? 'ws-intro-card fly' : 'ws-intro-card'}>
-              <StatusChip status={task.status} />
-              <h1>{task.name}</h1>
-              <p className="ws-intro-meta">
-                {task.course} · {task.deadlineAt ? `截止 ${formatDeadline(task.deadlineAt)}` : '无截止时间'}
-              </p>
-              <p className="ws-intro-goal">{task.goal}</p>
-              <div className="ws-intro-progress">
-                <span>当前进度 {pct}%</span>
-                <ProgressBar percent={pct} done={task.status === '已完成'} />
-              </div>
-              <p className="ws-intro-last">{task.last}</p>
-              <div className="ws-intro-actions">
-                <button className="primary" onClick={startTask}>
-                  <IconText name="arrow-right" position="end">{task.status === '未开始' ? '开始任务' : '进入任务'}</IconText>
-                </button>
-              </div>
-            </div>
-          </div>
+          <WorkspaceTaskIntro status={task.status} name={task.name} course={task.course}
+            deadline={task.deadlineAt ? `截止 ${formatDeadline(task.deadlineAt)}` : '无截止时间'} goal={task.goal}
+            percent={pct} done={task.status === '已完成'} currentProgress={task.last}
+            actionLabel={task.status === '未开始' ? '开始任务' : '进入任务'} flying={flying} onStart={startTask} />
         )}
 
-        {toast && (
-          <div className="toast" role="status">
-            {toast}
-          </div>
-        )}
+        {toast && <WorkspaceToast>{toast}</WorkspaceToast>}
       </div>
     </div>
   )
 }
 
-/** 顶栏任务进度环：环形 + 百分比 + 状态；蓝 = 进行中，绿 = 已完成。 */
-function TaskProgress({ task }: { task: ProjectTask }) {
-  const pct = progressPercent(task)
-  const done = task.status === '已完成'
-  const r = 8
-  const c = 2 * Math.PI * r
-  return (
-    <span
-      className={done ? 'ws-taskprogress done' : 'ws-taskprogress'}
-      title={`任务进度：阶段 ${task.stepsDone}/${task.stepsTotal}（${pct}%）· ${task.last}`}
-    >
-      <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-label={`任务进度 ${pct}%`}>
-        <defs>
-          <linearGradient id="ws-pg-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" style={{ stopColor: 'var(--steel-1)' }} />
-            <stop offset="1" style={{ stopColor: 'var(--steel-2)' }} />
-          </linearGradient>
-          <linearGradient id="ws-pg-grad-done" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" style={{ stopColor: 'var(--steel-ok)' }} />
-            <stop offset="1" style={{ stopColor: 'var(--progress-fill-done)' }} />
-          </linearGradient>
-        </defs>
-        <circle
-          cx="12"
-          cy="12"
-          r={r}
-          fill="none"
-          style={{ stroke: done ? 'var(--tint-green-line)' : 'var(--tint-blue-line)' }}
-          strokeWidth="3"
-        />
-        <circle
-          className="ws-taskprogress-arc"
-          cx="12"
-          cy="12"
-          r={r}
-          fill="none"
-          stroke={done ? 'url(#ws-pg-grad-done)' : 'url(#ws-pg-grad)'}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - pct / 100)}
-          transform="rotate(-90 12 12)"
-        />
-      </svg>
-      <span className="ws-taskprogress-text">
-        <b>{pct}%</b>
-        <span>{task.status}</span>
-      </span>
-    </span>
-  )
+/** 旧版任务数据适配：进度、业务状态和说明文案留在页面。 */
+function taskProgressProps(task: ProjectTask): TaskProgressProps {
+  const percent = progressPercent(task)
+  return { percent, done: task.status === '已完成', status: task.status,
+    title: `任务进度：阶段 ${task.stepsDone}/${task.stepsTotal}（${percent}%）· ${task.last}`,
+    ariaLabel: `任务进度 ${percent}%` }
 }
 
-/** 任务信息卡内容（左侧胶囊「任务信息」弹出）。 */
-function TaskInfo({ task }: { task: ProjectTask }) {
-  const pct = progressPercent(task)
+export function TaskProgress({ task }: { task: ProjectTask }) {
+  return <TaskProgressPresentation {...taskProgressProps(task)} />
+}
+
+/** 演示工作区显式提供演示说明，不将其作为通用任务信息的默认值。 */
+export function TaskInfo({ task }: { task: ProjectTask }) {
   return (
-    <div className="ws-taskinfo">
-      <h2>{task.name}</h2>
-      <StatusChip status={task.status} />
-      <p className="ws-demo-flag">演示数据 · 任务、构建与板卡结果均为界面模拟，不写入学习记录</p>
-      <p className="ws-taskinfo-goal">{task.goal}</p>
-      <div className="progresslabel">
-        <span>任务进度</span>
-        <span>{pct}%</span>
-      </div>
-      <ProgressBar percent={pct} done={task.status === '已完成'} />
-      <div className="ws-kv-list">
-        <div className="ws-kv">
-          <span>当前进展</span>
-          <b>{task.last}</b>
-        </div>
-        <div className="ws-kv">
-          <span>阶段</span>
-          <b>
-            {task.stepsDone} / {task.stepsTotal}
-          </b>
-        </div>
-        <div className="ws-kv">
-          <span>截止时间</span>
-          <b>{task.deadlineAt ? formatDeadline(task.deadlineAt) : '无'}</b>
-        </div>
-        <div className="ws-kv">
-          <span>课程</span>
-          <b>{task.course}</b>
-        </div>
-      </div>
-    </div>
+    <TaskInfoPresentation
+      name={task.name}
+      status={<StatusChip status={task.status} />}
+      demoNotice="演示数据 · 任务、构建与板卡结果均为界面模拟，不写入学习记录"
+      goal={task.goal}
+      percent={progressPercent(task)}
+      done={task.status === '已完成'}
+      currentProgress={task.last}
+      stage={<>{task.stepsDone} / {task.stepsTotal}</>}
+      deadline={task.deadlineAt ? formatDeadline(task.deadlineAt) : '无'}
+      course={task.course}
+    />
   )
 }
 
 /** 工作区引导对话面板主体：悬浮与固定右栏共用。消息渲染与全局 Agent 对话共用 AgentMessage。 */
-function WorkspaceChatPane({
+export function WorkspaceChatPane({
   messages,
   live,
   busy,
@@ -804,75 +680,9 @@ function WorkspaceChatPane({
   /** 概念卡「收纳」尾巴（第 12 条分流）：工作区 = 收进左侧胶囊卡片体系。 */
   onConceptCollect: () => void
 }) {
-  const bodyRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = bodyRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [messages.length, live?.text])
-
-  const lastAgentIdx = messages.map((m) => m.role).lastIndexOf('agent')
-  // 预置开场消息之前没有学生提问，重新生成无意义，不挂
-  const canRetry = messages.slice(0, lastAgentIdx).some((m) => m.role === 'user')
-
-  return (
-    <div className="ws-chatpane">
-      <div className="ws-chatbind">绑定任务：{taskName} · 与「Agent 对话」分开的会话</div>
-      <div className="ws-chatbody" ref={bodyRef}>
-        {messages.map((m, i) =>
-          m.role === 'user' ? (
-            <div key={i} className="chat-message user">
-              <div className="bubble">{m.text}</div>
-            </div>
-          ) : (
-            <AgentMessage
-              key={i}
-              message={m}
-              onResume={i === lastAgentIdx ? onResume : undefined}
-              onRetry={i === lastAgentIdx && canRetry ? onRetry : undefined}
-              onConceptCollect={m.concept ? onConceptCollect : undefined}
-              genCardSlots={
-                m.genCard
-                  ? {
-                      taskName,
-                      onCollect: (snapshot) => onCollectGen(i, snapshot),
-                      onOpen: m.genCard.collected
-                        ? () => onOpenGenTab(m.genCard!.cardId, m.genCard)
-                        : undefined,
-                      onOpenInWorkspace: () => onOpenGenTab(m.genCard!.cardId, m.genCard),
-                      onStateSync: (snapshot) => onSyncGen(m.genCard!.cardId, snapshot),
-                    }
-                  : undefined
-              }
-            />
-          ),
-        )}
-        {live && <AgentMessage message={live} />}
-      </div>
-      {queued && <div className="queue-tip">{QUEUE_TIP}</div>}
-      <form
-        className="ws-chatinput"
-        onSubmit={(e) => {
-          e.preventDefault()
-          onSend(draft)
-        }}
-      >
-        <input
-          aria-label="就这个任务提问"
-          placeholder="就这个任务提问…"
-          autoComplete="off"
-          value={draft}
-          onChange={(e) => onDraft(e.target.value)}
-        />
-        {busy ? (
-          <button type="button" className="send stop" aria-label="停止生成" onClick={onStop}>
-            <Icon name="stop" size={18} />
-          </button>
-        ) : (
-          <button type="submit" className="send" aria-label="发送消息">
-            <Icon name="arrow-up" size={20} />
-          </button>
-        )}
-      </form>
-    </div>
-  )
+  return <WorkspaceChatPaneView messages={messages} live={live} busy={busy} queued={queued} queueText={QUEUE_TIP}
+    draft={draft} onDraft={onDraft} onSend={onSend} onStop={onStop} onResume={onResume} onRetry={onRetry}
+    taskName={taskName} onOpenGenTab={onOpenGenTab} onCollectGen={onCollectGen} onSyncGen={onSyncGen}
+    onConceptCollect={onConceptCollect} renderGeneratedCard={(card, slots) => <GenCard card={card} {...slots} />}
+    quizRecordLabel={quiz => `已记入学习画像 · ${quiz.topic}：掌握`} failureCopy={FAILURE_COPY} />
 }

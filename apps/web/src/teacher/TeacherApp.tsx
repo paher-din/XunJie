@@ -1,14 +1,19 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { Icon } from '../icons'
-import { XunjieLogo } from '../brand/XunjieLogo'
 import { setThemePreference, useTheme } from '../lib/theme'
 import { useSession } from '../components/SessionEntry'
 import { logoutSession } from '../workspace/session'
 import { TeacherContext, useTeacher } from './context'
 import { loadTeacherWorkbenchData, onTeacherCommandsChanged, pendingTeacherCommands, resourceFromWire, retryTeacherCommands, teacherCommand } from './backend'
 import type { DesignResult } from './wire'
-import { CourseMark, TeacherBadge, TeacherButton, TeacherDialog, TeacherEmpty } from './ui'
+import { TeacherDialog, TeacherEmpty, ProjectCard } from '@xunjie/ui/teacher'
+import {
+  TeacherActivityDetail, TeacherAttentionPanel, TeacherCommandNotice, TeacherCourseFilter,
+  TeacherCoursesSection, TeacherDesignCard, TeacherOverviewColumns, TeacherOverviewStats, TeacherPageHeading,
+  TeacherPageLoading, TeacherPageRegion, TeacherPreviewNotice, TeacherProjectGrid, TeacherProjectsToolbar, TeacherScopeNotice, TeacherShellFrame,
+  TeacherSidebar, TeacherToast, TeacherTopbar,
+} from '@xunjie/ui/teacher-shell'
+import type { TeacherFixedActivityView } from '@xunjie/ui/teacher-shell'
 import type { DesignDraft, TeacherActivity, TeacherData, TeacherLearner, TeacherResource, TeacherWorkspace } from './types'
 import './teacher.css'
 import { ExecutionNodeSelect } from '../components/workspace/ExecutionNodeSelect'
@@ -155,64 +160,47 @@ export default function TeacherApp({ preview = false, initialData }: { preview?:
   const section = location.pathname.slice(base.length).split('/')[1] || 'overview'
   const sectionNames: Record<string, string> = { overview: '教学概览', projects: '项目与活动', design: '项目设计', review: '学生与审阅', materials: '课程材料', settings: '工作台设置' }
   const teacher = preview || session.session?.courses.some(course => course.role === 'teacher')
+  const links = { overview: base, projects: `${base}/projects`, review: `${base}/review`, materials: `${base}/materials`,
+    settings: `${base}/settings`, studentSpace: '/', liveWorkspace: '/teacher' }
   return <TeacherContext.Provider value={context}>
-    <div className={`teacher-shell${collapsed ? ' t-collapsed' : ''}`}>
-      <a className="t-skip" href="#teacher-main" onClick={event => { event.preventDefault(); scrollRegion.current?.focus() }}>跳到主要内容</a>
-      <aside className="t-sidebar" aria-label="教师导航">
-        <Link className="t-brand" to={base}><XunjieLogo label="循阶" /><span>循阶<span>教师工作台</span></span></Link>
-        <div className="t-space"><span className="t-space-icon"><Icon name="learning-space" size={20} /></span><div>教学空间<small>{preview ? '2026 秋季学期' : '我的任教课程'}</small></div><TeacherBadge>教师</TeacherBadge></div>
-        <div className="t-nav-label">工作空间</div>
-        <nav>
-          <NavLink aria-label="教学概览" end to={base}><Icon name="home-2" size={19} /><span>教学概览</span></NavLink>
-          <NavLink aria-label="项目与活动" to={`${base}/projects`}><Icon name="folder-with-files" size={19} /><span>项目与活动</span></NavLink>
-          <NavLink aria-label="学生与审阅" to={`${base}/review`}><Icon name="clipboard-check" size={19} /><span>学生与审阅</span>{preview && data.learners.some(item => item.status === 'submitted') && <small>{data.learners.filter(item => item.status === 'submitted').length}</small>}</NavLink>
-          <NavLink aria-label="课程材料" to={`${base}/materials`}><Icon name="book-2" size={19} /><span>课程材料</span></NavLink>
-        </nav>
-        <div className="t-nav-label t-course-label">我的课程</div>
-        <div className="t-sidebar-courses">{data.courses.map(course => <button key={course.id} className={courseId === course.id ? 'selected' : ''} onClick={() => setCourseId(courseId === course.id ? 'all' : course.id)} aria-pressed={courseId === course.id} title={course.title}>
-          <span className={`t-course-dot ${course.kind === 'hdl' ? 'hdl' : ''}`} /><span>{course.title}</span>
-        </button>)}</div>
-        <div className="t-sidebar-bottom">
-          <NavLink aria-label="工作台设置" to={`${base}/settings`}><Icon name="settings" size={19} /><span>工作台设置</span></NavLink>
-          {(preview || session.session?.courses.some(course => course.role === 'student')) && <Link aria-label="学生空间入口" to="/"><Icon name="arrow-left" size={18} /><span>学生空间入口</span></Link>}
-          <div className="t-account"><span className="t-avatar">教</span><div>{preview ? '教师预览' : session.session?.displayName || '教师账号'}<small>{preview ? '隔离合成数据' : '教师账号'}</small></div>
-            {preview ? <Link to="/teacher" title="登录真实工作台" aria-label="登录真实工作台"><Icon name="logout-2" /></Link> : <button className="t-icon-button" title="退出登录" aria-label="退出登录" onClick={() => { void logoutSession() }}><Icon name="logout-2" /></button>}
-          </div>
-        </div>
-      </aside>
-      <main className="t-main" id="teacher-main" ref={scrollRegion} tabIndex={-1}>
-        <header className="t-topbar"><div className="t-breadcrumb"><button className="t-icon-button" aria-label={collapsed ? '展开导航' : '收起导航'} aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}><Icon name="panel-left-close" size={18} /></button><span>教师工作台</span><span className="t-slash">/</span><strong>{sectionNames[section] ?? '页面'}</strong></div>
-          {!preview && teacher && section === 'design' && session.session && <ExecutionNodeSelect userId={session.session.userId} kind="any" busy={retrying || pendingCount > 0} />}
-          <div className="t-topbar-actions"><label className="t-course-select"><span className="t-sr-only">当前课程</span><select aria-label="当前课程" value={courseId} onChange={event => setCourseId(event.target.value)}><option value="all">全部课程</option>{data.courses.map(course => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label><button className="t-icon-button" aria-label={resolved === 'dark' ? '切换浅色模式' : '切换深色模式'} onClick={() => setThemePreference(resolved === 'dark' ? 'light' : 'dark')}><Icon name={resolved === 'dark' ? 'sun' : 'moon'} size={18} /></button></div>
-        </header>
-        {preview && <div className="t-preview-note"><span><Icon name="info-circle" size={15} />交互预览 · 数据为合成示例，操作仅保存在本机</span><Link to="/teacher">进入真实工作台<Icon name="arrow-right" size={14} /></Link></div>}
-        {!preview && teacher && <div className="t-command-note"><span>{pendingCount ? `${pendingCount} 个原教师操作待核对，编辑暂时保留。` : '教师操作使用当前课程版本；网络结果未知时保留原请求。'}</span><TeacherButton disabled={retrying} onClick={() => { void context.retryPending?.() }}>核对原教师操作</TeacherButton></div>}
-        <div className="t-page" key={section}>
-          {!teacher ? <TeacherEmpty title="当前账号没有教师课程">请使用课程提供的教师账号登录。课程角色由教学服务确认。</TeacherEmpty> : <Suspense fallback={<div className="t-loading" role="status">正在打开工作台…</div>}>
-            <Routes>
-              <Route index element={<OverviewPage />} />
-              <Route path="projects" element={<ProjectsPage />} />
-              <Route path="design/:draftId" element={preview ? <DesignPage /> : <LiveDesignPage />} />
-              <Route path="review" element={preview ? <ReviewPage /> : <LiveReviewPage />} />
-              <Route path="materials" element={<MaterialsPage />} />
-              <Route path="settings/*" element={<TeacherSettingsPage />} />
-              <Route path="*" element={<TeacherEmpty title="没有找到这个页面"><Link to={base}>返回教学概览</Link></TeacherEmpty>} />
-            </Routes>
-          </Suspense>}
-        </div>
-      </main>
-      {toast && <div className="t-toast" role="status"><Icon name="check-circle" size={17} />{toast}<button aria-label="关闭提示" onClick={() => setToast('')}><Icon name="close" size={15} /></button></div>}
-    </div>
+    <TeacherShellFrame collapsed={collapsed} mainRef={scrollRegion} onSkipToMain={() => scrollRegion.current?.focus()}
+      sidebar={<TeacherSidebar Link={Link} NavLink={NavLink} links={links} spaceCaption={preview ? '2026 秋季学期' : '我的任教课程'}
+        courses={data.courses} selectedCourseId={courseId} onSelectCourse={id => setCourseId(courseId === id ? 'all' : id)}
+        pendingReviewCount={preview ? data.learners.filter(item => item.status === 'submitted').length : 0}
+        showStudentSpace={Boolean(preview || session.session?.courses.some(course => course.role === 'student'))}
+        account={{ name: preview ? '教师预览' : session.session?.displayName || '教师账号', detail: preview ? '隔离合成数据' : '教师账号',
+          action: preview ? { kind: 'link', to: links.liveWorkspace, label: '登录真实工作台' } : { kind: 'button', label: '退出登录', onClick: () => { void logoutSession() } } }} />}
+      toast={toast ? <TeacherToast message={toast} onClose={() => setToast('')} /> : null}>
+      <TeacherTopbar title={sectionNames[section] ?? '页面'} collapsed={collapsed} onToggleNavigation={() => setCollapsed(value => !value)}
+        courses={data.courses} selectedCourseId={courseId} onCourseChange={setCourseId} dark={resolved === 'dark'}
+        onToggleTheme={() => setThemePreference(resolved === 'dark' ? 'light' : 'dark')}
+        tool={!preview && teacher && section === 'design' && session.session ? <ExecutionNodeSelect userId={session.session.userId} kind="any" busy={retrying || pendingCount > 0} /> : null} />
+      {preview && <TeacherPreviewNotice Link={Link} liveWorkspaceTo={links.liveWorkspace} />}
+      {!preview && teacher && <TeacherCommandNotice pendingCount={pendingCount} retrying={retrying} onRetry={() => { void context.retryPending?.() }} />}
+      <TeacherPageRegion key={section}>
+        {!teacher ? <TeacherEmpty title="当前账号没有教师课程">请使用课程提供的教师账号登录。课程角色由教学服务确认。</TeacherEmpty> : <Suspense fallback={<TeacherPageLoading />}>
+          <Routes>
+            <Route index element={<OverviewPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="design/:draftId" element={preview ? <DesignPage /> : <LiveDesignPage />} />
+            <Route path="review" element={preview ? <ReviewPage /> : <LiveReviewPage />} />
+            <Route path="materials" element={<MaterialsPage />} />
+            <Route path="settings/*" element={<TeacherSettingsPage />} />
+            <Route path="*" element={<TeacherEmpty title="没有找到这个页面"><Link to={base}>返回教学概览</Link></TeacherEmpty>} />
+          </Routes>
+        </Suspense>}
+      </TeacherPageRegion>
+    </TeacherShellFrame>
   </TeacherContext.Provider>
 }
 
-function ScopeNotice() {
+export function ScopeNotice() {
   const { preview, error, loading, refresh } = useTeacher()
   if (preview) return null
-  return <div className={`t-scope-note${error ? ' error' : ''}`} role={error ? 'alert' : 'status'}><Icon name={error ? 'danger-triangle' : 'info-circle'} size={18} /><div>{error ? '课程数据未能读取' : loading ? '正在读取任教课程…' : '已连接当前教学服务'}<p>{error || '设计、分配与反馈由服务端保存。学生进展来自实际尝试，能力判断保留证据与未知。'}</p></div><TeacherButton onClick={refresh} disabled={loading} icon="refresh">重新读取</TeacherButton></div>
+  return <TeacherScopeNotice error={error} loading={loading} onRefresh={refresh} />
 }
 
-function OverviewPage() {
+export function OverviewPage() {
   const { data, base, preview, courseId, loading, error } = useTeacher()
   const navigate = useNavigate()
   const courses = data.courses.filter(course => courseId === 'all' || course.id === courseId)
@@ -221,37 +209,41 @@ function OverviewPage() {
   const drafts = data.drafts.filter(draft => courseId === 'all' || draft.courseId === courseId)
   const pending = learners.filter(learner => learner.status === 'submitted')
   const today = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
+  const createProject = () => navigate(`${base}/design/new`)
+  const createDisabled = !data.courses.length || loading
+  const courseCards = courses.map(course => {
+    const list = activities.filter(activity => activity.courseId === course.id)
+    return { ...course, activityCount: list.length, summary: preview
+      ? `${data.learners.filter(learner => learner.courseId === course.id).length} 位合成学生`
+      : `${list.reduce((sum, item) => sum + item.assigned, 0)} 条实际分配` }
+  })
   return <>
-    <div className="t-heading"><div><div className="t-eyebrow">{today} <span>·</span> {preview ? '秋季学期 · 交互预览' : '教学空间'}</div><h1>让每一次实践，都有下一步。</h1><p>从项目设计到作品反馈，把注意力放在学生的具体表现上。</p></div><TeacherButton primary icon="add" disabled={!data.courses.length || loading} onClick={() => navigate(`${base}/design/new`)}>设计新项目</TeacherButton></div>
+    <TeacherPageHeading eyebrow={<>{today} <span>·</span> {preview ? '秋季学期 · 交互预览' : '教学空间'}</>}
+      title="让每一次实践，都有下一步。" description="从项目设计到作品反馈，把注意力放在学生的具体表现上。"
+      actionDisabled={createDisabled} onCreateProject={createProject} />
     <ScopeNotice />
-    <section className="t-stats" aria-label="教学摘要">
-      {[
-        { label: '任教课程', value: !preview && (loading || error) ? '—' : courses.length, unit: '门', icon: 'book-2' as const, note: preview ? '按课程组织项目与教学反馈' : '来自当前教师会话' },
-        { label: '开放活动', value: !preview && (loading || error) ? '—' : activities.filter(item => item.status === 'active').length, unit: '个', icon: 'folder-with-files' as const, note: '固定版本，要求清晰可追溯' },
-        { label: '等待审阅', value: loading || error ? '—' : pending.length, unit: '份', icon: 'clipboard-check' as const, note: '实际固定提交；分配不代表开始学习' },
-        { label: '设计草稿', value: loading || error ? '—' : drafts.length, unit: '个', icon: 'pen-new-square' as const, note: '继续完善你的下一个项目' },
-      ].map(stat => <div className="t-stat" key={stat.label}><div><span>{stat.label}</span><Icon name={stat.icon} size={18} /></div><strong>{stat.value}<small>{stat.unit}</small></strong><p>{stat.note}</p></div>)}
-    </section>
-    <div className="t-overview-columns">
-      <section className="t-panel"><div className="t-section-heading"><h2>需要你关注</h2><Link to={`${base}/review`}>查看全部<Icon name="alt-arrow-right" size={15} /></Link></div>
-        {pending.length ? <div className="t-attention-list">{pending.map(learner => <Link key={learner.id} className="t-attention-row" to={`${base}/review?learner=${encodeURIComponent(learner.id)}`}><span className={`t-avatar t-avatar-${data.courses.findIndex(course => course.id === learner.courseId) % 2}`}>{learner.name[0]}</span><div><strong>{learner.name}<TeacherBadge tone="pending">待审阅</TeacherBadge></strong><p>{learner.activityTitle}</p></div><Icon name="alt-arrow-right" size={17} /></Link>)}</div> : <div className="t-inline-empty"><Icon name="clipboard-check" size={24} /><p>当前没有等待审阅的提交</p></div>}
-        <div className="t-panel-foot"><Icon name="info-circle" size={15} /><span>作品结果、实际帮助与能力判断分别查看。</span></div>
-      </section>
-      <section className="t-panel t-design-card"><div className="t-section-heading"><h2>下一次好项目，从这里开始</h2><span className="t-quiet-icon"><Icon name="lightbulb" size={23} /></span></div><p>把课程目标、探索空间和评价依据，放进同一份可编辑的项目蓝图。</p>
-        <div className="t-design-steps"><span><i>01</i>提供材料</span><Icon name="arrow-right" size={14} /><span><i>02</i>完善蓝图</span><Icon name="arrow-right" size={14} /><span><i>03</i>预览分配</span></div>
-        {drafts[0] ? <Link className="t-resume-draft" to={`${base}/design/${drafts[0].id}`}><span><Icon name="file-text" size={19} /><span><strong>{drafts[0].title}</strong><small>{preview ? '本机预览草稿' : '课程草稿'} · revision {drafts[0].revision}</small></span></span><Icon name="arrow-right" size={18} /></Link> : <TeacherButton icon="add" disabled={!data.courses.length || loading} onClick={() => navigate(`${base}/design/new`)}>从新项目开始</TeacherButton>}
-      </section>
-    </div>
-    <section><div className="t-section-heading t-course-heading"><div><h2>我的课程</h2><p>围绕课程组织活动、材料与教学反馈。</p></div><Link to={`${base}/projects`}>管理项目<Icon name="alt-arrow-right" size={15} /></Link></div>
-      <div className="t-courses-grid">{courses.map(course => {
-        const list = activities.filter(activity => activity.courseId === course.id)
-        return <article className="t-course-card" key={course.id}><div className={`t-course-cover ${course.kind === 'hdl' ? 'hdl' : ''}`}><CourseMark kind={course.kind} />{course.code && <span>{course.code}</span>}<div className="t-course-geometry" aria-hidden="true" /></div><div className="t-course-card-body"><div><h3>{course.title}</h3><TeacherBadge>{list.length} 个活动</TeacherBadge></div>{course.term && <p>{course.term}</p>}<div className="t-course-card-bottom"><span>{preview ? `${data.learners.filter(learner => learner.courseId === course.id).length} 位合成学生` : `${list.reduce((sum, item) => sum + item.assigned, 0)} 条实际分配`}</span><TeacherButton onClick={() => navigate(`${base}/projects?course=${encodeURIComponent(course.id)}`)}>查看活动<Icon name="arrow-right" size={14} /></TeacherButton></div></div></article>
-      })}</div>{!courses.length && <TeacherEmpty title="暂无可显示的任教课程">课程信息以当前教学服务的会话和授权为准。</TeacherEmpty>}
-    </section>
+    <TeacherOverviewStats stats={[
+      { label: '任教课程', value: !preview && (loading || error) ? '—' : courses.length, unit: '门', icon: 'book-2', note: preview ? '按课程组织项目与教学反馈' : '来自当前教师会话' },
+      { label: '开放活动', value: !preview && (loading || error) ? '—' : activities.filter(item => item.status === 'active').length, unit: '个', icon: 'folder-with-files', note: '固定版本，要求清晰可追溯' },
+      { label: '等待审阅', value: loading || error ? '—' : pending.length, unit: '份', icon: 'clipboard-check', note: '实际固定提交；分配不代表开始学习' },
+      { label: '设计草稿', value: loading || error ? '—' : drafts.length, unit: '个', icon: 'pen-new-square', note: '继续完善你的下一个项目' },
+    ]} />
+    <TeacherOverviewColumns>
+      <TeacherAttentionPanel Link={Link} reviewTo={`${base}/review`} items={pending.map(learner => ({
+        id: learner.id, name: learner.name, activityTitle: learner.activityTitle,
+        avatarIndex: data.courses.findIndex(course => course.id === learner.courseId) % 2,
+        to: `${base}/review?learner=${encodeURIComponent(learner.id)}`,
+      }))} />
+      <TeacherDesignCard Link={Link} draft={drafts[0] ? { title: drafts[0].title, revision: drafts[0].revision,
+        sourceLabel: preview ? '本机预览草稿' : '课程草稿', to: `${base}/design/${drafts[0].id}` } : undefined}
+        disabled={createDisabled} onCreateProject={createProject} />
+    </TeacherOverviewColumns>
+    <TeacherCoursesSection Link={Link} projectsTo={`${base}/projects`} courses={courseCards}
+      onViewCourse={id => navigate(`${base}/projects?course=${encodeURIComponent(id)}`)} />
   </>
 }
 
-function ProjectsPage() {
+export function ProjectsPage() {
   const { data, base, courseId, setCourseId, preview } = useTeacher()
   const location = useLocation()
   const navigate = useNavigate()
@@ -271,50 +263,58 @@ function ProjectsPage() {
     ...data.drafts.map(draft => ({ id: draft.id, courseId: draft.courseId, title: draft.title, description: draft.problem, status: 'draft' as const, version: draft.revision, assigned: 0, submitted: 0, reviewed: 0, due: '', draft: true })),
   ], [data.activities, data.drafts])
   const filtered = all.filter(item => (effectiveCourse === 'all' || item.courseId === effectiveCourse) && (tab === 'all' || item.status === tab) && `${item.title} ${item.description}`.toLowerCase().includes(query.toLowerCase()))
+  const tabs = [['all', '全部'], ['active', '已开放'], ['draft', '草稿'], ['paused', '已暂停']].map(([id, label]) => ({
+    id, label, count: all.filter(item => (effectiveCourse === 'all' || item.courseId === effectiveCourse) && (id === 'all' || item.status === id)).length,
+  }))
   return <>
-    <div className="t-heading"><div><div className="t-eyebrow">PROJECTS & ACTIVITIES</div><h1>项目与活动</h1><p>从一个真实问题开始，让目标、任务和评价彼此连接。</p></div><TeacherButton primary icon="add" disabled={!data.courses.length} onClick={() => navigate(`${base}/design/new`)}>设计新项目</TeacherButton></div>
+    <TeacherPageHeading eyebrow="PROJECTS & ACTIVITIES" title="项目与活动" description="从一个真实问题开始，让目标、任务和评价彼此连接。"
+      actionDisabled={!data.courses.length} onCreateProject={() => navigate(`${base}/design/new`)} />
     <ScopeNotice />
-    {effectiveCourse !== 'all' && <div className="t-course-filter">当前课程：{data.courses.find(course => course.id === effectiveCourse)?.title ?? effectiveCourse}<button onClick={() => { setCourseId('all'); navigate(`${base}/projects`) }}>清除页面筛选<Icon name="close" size={13} /></button></div>}
-    <div className="t-toolbar"><div className="t-tabs" aria-label="活动状态">{[['all', '全部'], ['active', '已开放'], ['draft', '草稿'], ['paused', '已暂停']].map(([key, label]) => <button key={key} aria-pressed={key === tab} className={key === tab ? 'active' : ''} onClick={() => setTab(key)}>{label}<small>{all.filter(item => (effectiveCourse === 'all' || item.courseId === effectiveCourse) && (key === 'all' || item.status === key)).length}</small></button>)}</div><label className="t-search"><Icon name="minimalistic-magnifier" size={17} /><input aria-label="搜索项目" placeholder="搜索项目名称或内容" value={query} onChange={event => setQuery(event.target.value)} />{query && <button aria-label="清除搜索" onClick={() => setQuery('')}><Icon name="close" size={14} /></button>}</label></div>
-    <div className="t-project-grid">{filtered.map(activity => <article className="t-project-card" key={activity.id}>
-      <div className="t-project-card-top"><CourseMark kind={data.courses.find(course => course.id === activity.courseId)?.kind ?? 'unknown'} /><TeacherBadge tone={activity.status === 'active' ? 'progress' : activity.status === 'draft' ? 'neutral' : 'pending'}>{activity.status === 'active' ? '已开放' : activity.status === 'draft' ? '草稿' : '已暂停'}</TeacherBadge></div><div className="t-eyebrow">{data.courses.find(course => course.id === activity.courseId)?.title}</div><h2>{activity.title}</h2><p>{activity.description}</p><div className="t-project-metadata"><span><Icon name="copy" size={14} />{activity.version ? `${activity.draft ? '草稿 revision' : '来源 revision'} ${activity.version}` : '固定活动版本'}</span>{activity.due && <span><Icon name="calendar" size={14} />{activity.due}</span>}</div>
-      {!activity.draft && <div className="t-project-numbers"><span><b>{activity.assigned}</b>已分配</span><span><b>{activity.submitted < 0 ? '—' : activity.submitted}</b>已提交</span><span><b>{activity.reviewed < 0 ? '—' : activity.reviewed}</b>已审阅</span></div>}
-      <div className="t-project-card-footer"><span>{activity.draft ? '继续编辑，确认后创建固定版本' : '已开始的尝试保持原活动版本'}</span><TeacherButton onClick={() => activity.draft ? navigate(`${base}/design/${activity.id}`) : setSelected(activity)}>{activity.draft ? '继续设计' : '活动详情'}<Icon name="arrow-right" size={14} /></TeacherButton></div>
-    </article>)}</div>
+    {effectiveCourse !== 'all' && <TeacherCourseFilter courseTitle={data.courses.find(course => course.id === effectiveCourse)?.title ?? effectiveCourse} onClear={() => { setCourseId('all'); navigate(`${base}/projects`) }} />}
+    <TeacherProjectsToolbar tabs={tabs} selectedTab={tab} onSelectTab={setTab} query={query} onQueryChange={setQuery} />
+    <TeacherProjectGrid>{filtered.map(activity => <ProjectCard key={activity.id}
+      courseKind={data.courses.find(course => course.id === activity.courseId)?.kind ?? 'unknown'}
+      courseTitle={data.courses.find(course => course.id === activity.courseId)?.title}
+      statusTone={activity.status === 'active' ? 'progress' : activity.status === 'draft' ? 'neutral' : 'pending'}
+      statusLabel={activity.status === 'active' ? '已开放' : activity.status === 'draft' ? '草稿' : '已暂停'}
+      title={activity.title} description={activity.description}
+      versionLabel={activity.version ? `${activity.draft ? '草稿 revision' : '来源 revision'} ${activity.version}` : '固定活动版本'}
+      due={activity.due}
+      numbers={activity.draft ? undefined : { assigned: activity.assigned,
+        submitted: activity.submitted < 0 ? '—' : activity.submitted, reviewed: activity.reviewed < 0 ? '—' : activity.reviewed }}
+      footer={activity.draft ? '继续编辑，确认后创建固定版本' : '已开始的尝试保持原活动版本'}
+      actionLabel={activity.draft ? '继续设计' : '活动详情'}
+      onAction={() => activity.draft ? navigate(`${base}/design/${activity.id}`) : setSelected(activity)}
+    />)}</TeacherProjectGrid>
     {!filtered.length && <TeacherEmpty title={query ? '没有找到匹配的项目' : '这里还没有项目'}>{query ? '试试其他关键词，或切换活动状态。' : preview ? '设计一个新项目，先明确问题、目标与可观察表现。' : '设计一个新项目，保存后预览并分配给课程学生。'}</TeacherEmpty>}
     <TeacherDialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null) }} title={selected?.title ?? '活动详情'} description="活动正文已固定。修改教学设计应创建新版本。">{selected && <ActivityDetail activity={selected} onClose={() => setSelected(null)} />}</TeacherDialog>
   </>
 }
 
-function ActivityDetail({ activity, onClose }: { activity: TeacherActivity; onClose: () => void }) {
+export function ActivityDetail({ activity, onClose }: { activity: TeacherActivity; onClose: () => void }) {
   const { data, preview } = useTeacher()
   const snapshot = activity.snapshot
   const workbench = data.workbenches?.find(w => w.courseId === activity.courseId)
   const fixed = workbench?.activities.find(a => a.activityVersionId === activity.id)
-  return <div className="t-activity-detail">
-    <TeacherBadge tone={activity.status === 'active' ? 'progress' : 'pending'}>{activity.status === 'active' ? '已开放' : '已暂停'}</TeacherBadge>
-    <p>{activity.description}</p>
-    <dl><dt>活动标识</dt><dd>{activity.id}</dd><dt>课程</dt><dd>{data.courses.find(course => course.id === activity.courseId)?.title}</dd><dt>已分配</dt><dd>{activity.assigned} 位学生</dd><dt>版本</dt><dd>{activity.version ? `来源蓝图 revision ${activity.version}` : '不可变活动版本'}</dd></dl>
-    {fixed && <div className="t-fixed-design">
-      <h3>固定活动要求</h3><dl><dt>项目受众</dt><dd>{fixed.content.content.audience || '未填写'}</dd><dt>最终产物</dt><dd>{fixed.content.content.artifact || '未填写'}</dd><dt>选择空间</dt><dd>{fixed.content.content.routes.join('；')}</dd></dl>
-      <h3>目标与版本</h3>{fixed.content.content.goals.map(g => <div className="t-fixed-item" key={g.competencyId}><strong>{g.title}</strong><small>{g.domain} · v{g.competencyVersion}</small></div>)}
-      <h3>任务与里程碑</h3>{fixed.content.content.tasks.map(t => <p key={t.taskId}>{t.title}</p>)}{fixed.content.content.milestones.map(m => <p key={m.milestoneId}>{m.title}</p>)}
-      <h3>评价依据</h3>{fixed.content.content.rubricCriteria.map(r => <p key={r.criterionId}>{r.description}</p>)}
-      <h3>帮助政策</h3><p>{fixed.helpPolicy.description}</p>
-      <h3>固定材料 · 教师视角</h3>{fixed.content.materials.map((m, index) => m.status === 'available' ? <details key={m.resourceVersionId}><summary>{m.title}</summary><pre className="t-rm-document-content">{m.text}</pre><small>{m.resourceVersionId}</small></details> : <p key={index}>{m.status === 'redacted' ? '按角色隐藏' : '该版本材料不可用'}</p>)}
-      <h3>已分配学生</h3>{workbench?.assignments.filter(a => a.activityVersionId === fixed.activityVersionId).map(a => <p key={a.assignmentId}>{workbench.members.find(m => m.userId === a.studentId)?.displayName || a.studentId} · {a.active ? '分配有效' : '分配暂停'}</p>)}
-    </div>}
-    {snapshot && <div className="t-fixed-design">
-      <h3>固定活动要求</h3><p>本机预览固定于蓝图 revision {snapshot.revision}。后续草稿编辑不会改写此处的要求和材料版本。</p>
-      <dl><dt>项目受众</dt><dd>{snapshot.audience}</dd><dt>最终产物</dt><dd>{snapshot.deliverable}</dd><dt>选择空间</dt><dd>{snapshot.choices}</dd><dt>前置基础</dt><dd>{snapshot.foundation}</dd><dt>预计时长</dt><dd>{snapshot.duration}</dd></dl>
-      <h3>目标与可观察表现</h3>{snapshot.goals.map(goal => <div className="t-fixed-item" key={goal.id}><strong>{goal.title}</strong><p>{goal.evidence}</p></div>)}
-      <h3>里程碑</h3>{snapshot.milestones.map(item => <div className="t-fixed-item" key={item.id}><strong>{item.title}</strong><p>{item.evidence}</p></div>)}
-      <h3>评价量规</h3>{snapshot.rubric.map(item => <div className="t-fixed-item" key={item.id}><strong>{item.criterion}</strong><p>{item.description}</p></div>)}
-      <h3>帮助政策</h3><p>{snapshot.helpPolicy}</p>
-      <h3>固定材料版本 · 教师视角</h3>{activity.resourceVersions?.length ? activity.resourceVersions.map(resource => <details key={resource.id}><summary>{resource.title} · v{resource.version}</summary><p>{resource.content}</p><small>学生{resource.student ? '可见' : '不可见'} · 辅导{resource.tutor ? '可用' : '不可用'} · 设计 AI {resource.teacherDesign ? '可用' : '不可用'}</small></details>) : <p>本版本没有关联材料。</p>}
-    </div>}
-    {activity.studentIds && <section className="t-fixed-assignments"><h3>已分配学生</h3><p>分配关系已在本机预览固定。分配不会代学生创建或开始尝试。</p><ul>{activity.studentIds.map(id => <li key={id}><span>{data.learners.find(learner => learner.id === id)?.name ?? id}</span><small>{id}</small><TeacherBadge>等待学生开始</TeacherBadge></li>)}</ul></section>}
-    {!snapshot && preview && <p className="t-detail-note">这是预置活动摘要。完整版本回看可通过设计草稿的“预览与分配”创建。</p>}
-    <div className="t-dialog-footer"><TeacherButton primary onClick={onClose}>完成</TeacherButton></div>
-  </div>
+  const fixedView: TeacherFixedActivityView | undefined = fixed && {
+    audience: fixed.content.content.audience, artifact: fixed.content.content.artifact, routes: fixed.content.content.routes,
+    goals: fixed.content.content.goals.map(goal => ({ id: goal.competencyId, title: goal.title, domain: goal.domain, version: goal.competencyVersion })),
+    tasks: fixed.content.content.tasks.map(task => ({ id: task.taskId, title: task.title })),
+    milestones: fixed.content.content.milestones.map(milestone => ({ id: milestone.milestoneId, title: milestone.title })),
+    rubric: fixed.content.content.rubricCriteria.map(item => ({ id: item.criterionId, description: item.description })),
+    helpPolicy: fixed.helpPolicy.description,
+    materials: fixed.content.materials.map((material, index) => material.status === 'available'
+      ? { status: material.status, id: material.resourceVersionId, title: material.title, text: material.text }
+      : { status: material.status, id: String(index) }),
+    assignments: (workbench?.assignments ?? []).filter(assignment => assignment.activityVersionId === fixed.activityVersionId)
+      .map(assignment => ({ id: assignment.assignmentId, name: workbench?.members.find(member => member.userId === assignment.studentId)?.displayName || assignment.studentId, active: assignment.active })),
+  }
+  return <TeacherActivityDetail statusLabel={activity.status === 'active' ? '已开放' : '已暂停'} statusTone={activity.status === 'active' ? 'progress' : 'pending'}
+    description={activity.description} activityId={activity.id} courseTitle={data.courses.find(course => course.id === activity.courseId)?.title}
+    assigned={activity.assigned} versionLabel={activity.version ? `来源蓝图 revision ${activity.version}` : '不可变活动版本'} fixed={fixedView}
+    snapshot={snapshot ? { revision: snapshot.revision, audience: snapshot.audience, deliverable: snapshot.deliverable, choices: snapshot.choices,
+      foundation: snapshot.foundation, duration: snapshot.duration, goals: snapshot.goals, milestones: snapshot.milestones, rubric: snapshot.rubric,
+      helpPolicy: snapshot.helpPolicy, materials: activity.resourceVersions ?? [] } : undefined}
+    previewAssignments={activity.studentIds?.map(id => ({ id, name: data.learners.find(learner => learner.id === id)?.name ?? id }))}
+    showPreviewSummaryNote={!snapshot && preview} onClose={onClose} />
 }

@@ -1,0 +1,13 @@
+/** 需要旧工作区控制器、领域契约或演示状态的复合组件。 */
+export * from '../../components/workspace/CenterToolArea'
+export * from '../../components/workspace/CodeWorkspace'
+export * from '../../components/workspace/ExecutionNodeSelect'
+export * from '../../components/workspace/GenCardItems'
+export * from '../../components/workspace/GuideLayer'
+export * from '../../components/workspace/SubmissionFeedbackPanel'
+export * from '../../components/workspace/TextScopePanes'
+export * from '../../components/workspace/TutoringControls'
+export * from '../../components/workspace/TutoringExample'
+export * from '../../components/workspace/TutoringPane'
+export * from '../../components/workspace/cards'
+export * from '../../components/workspace/guidance/GuidancePresentation'

@@ -1,0 +1,21 @@
+.xunjie-logo {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  flex: none;
+}
+
+.brand.xunjie-brand {
+  height: 44px;
+  padding: 4px 40px 4px 12px;
+}
+
+.xunjie-brand .xunjie-logo {
+  width: 84px;
+}
+
+.st-brand .st-brand-logo {
+  width: 184px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}

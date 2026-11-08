@@ -1,0 +1,13 @@
+/** 对话内容、卡片与消息状态。各组件仍沿用原有领域数据类型。 */
+export * from '../components/chat/AgentMessage'
+export * from '../components/chat/ConceptCard'
+export * from '../components/chat/GenCard'
+export * from '../components/chat/Markdown'
+export * from '../components/chat/MessageRail'
+export * from '../components/chat/MessageTaskCard'
+export * from '../components/chat/QuizCard'
+export * from '../components/chat/StepsBlock'
+export * from '../components/chat/TaskPicker'
+export * from '../components/chat/TurnAriaStatus'
+export * from '../components/chat/UserMessage'
+export * from './chat/AttachmentTile'

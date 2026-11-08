@@ -4,6 +4,8 @@ name: 循阶
 description: 学生端引导式项目制教学测验界面的设计系统——纯白中性基底 + Apple 系统蓝强调 + 亮底深字的语义色，配收敛后的字号、圆角、间距、分层与动效规范；深色模式是同一角色集的炭灰对应值。frontmatter 的 colors 记浅色定稿值，深色值见正文「深色模式」一节。
 colors:
   canvas: "#ffffff"
+  raised: "#ffffff"
+  sunken: "#f7f8fa"
   sidebar: "#f9f9f8"
   line: "#e8e8e6"
   line-strong: "#e0e0de"
@@ -13,11 +15,16 @@ colors:
   faint: "#9ca0a6"
   hover: "#f4f4f2"
   chip: "#f1f1ef"
+  chip-active: "#e5e5e9"
   primary: "#1f2328"
+  primary-hover: "#3a3e47"
   danger: "#d5443e"
+  danger-deep: "#c1352d"
   inverse: "#1a1d23"
   on-solid: "#ffffff"
   accent: "#007aff"
+  accent-deep: "#0059d0"
+  focus-ring: "#7ab3ff"
   status-progress-bg: "#cffafe"
   status-progress-fg: "#155e75"
   status-done-bg: "#ecfccb"
@@ -67,75 +74,75 @@ typography:
   mono:
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace"
   font-size-11:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "11px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-12:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "12px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-13:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "13px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-15:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "15px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-17:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "17px"
     fontWeight: 600
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-20:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "20px"
     fontWeight: 600
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-22:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "22px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-28:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "28px"
     fontWeight: 600
-    lineHeight: "1.5"
+    lineHeight: 1.5
   font-size-34:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "34px"
     fontWeight: 600
-    lineHeight: "1"
+    lineHeight: 1
   body:
-    fontFamily: "{typography.sans}"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif"
     fontSize: "15px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   h1:
-    fontFamily: "{typography.serif}"
+    fontFamily: "'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif"
     fontSize: "28px"
     fontWeight: 600
-    lineHeight: "1.5"
+    lineHeight: 1.5
   h2:
-    fontFamily: "{typography.serif}"
+    fontFamily: "'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif"
     fontSize: "17px"
     fontWeight: 600
-    lineHeight: "1.5"
+    lineHeight: 1.5
   h3:
-    fontFamily: "{typography.serif}"
+    fontFamily: "'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif"
     fontSize: "17px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
   numeric:
-    fontFamily: "{typography.mono}"
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace"
     fontSize: "13px"
     fontWeight: 400
-    lineHeight: "1.5"
+    lineHeight: 1.5
 rounded:
   radius-0: "0px"
   radius-4: "4px"
@@ -173,12 +180,12 @@ components:
     rounded: "{rounded.radius-16}"
     padding: "16px"
   task-card:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "transparent"
     textColor: "{colors.ink}"
     rounded: "{rounded.radius-8}"
     padding: "20px"
   course-tile:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "transparent"
     textColor: "{colors.ink}"
     rounded: "{rounded.radius-12}"
     padding: "0 0 16px"
@@ -211,12 +218,30 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-solid}"
     rounded: "{rounded.radius-8}"
-    padding: "8px 16px"
+    padding: "0 16px"
+    height: "32px"
   button-outline:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "{colors.raised}"
     textColor: "{colors.ink-soft}"
     rounded: "{rounded.radius-8}"
-    padding: "8px 16px"
+    padding: "0 16px"
+    height: "32px"
+  input-field:
+    backgroundColor: "{colors.raised}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.radius-8}"
+    padding: "0 12px"
+    height: "36px"
+  nav-item:
+    backgroundColor: "transparent"
+    textColor: "{colors.muted}"
+    rounded: "{rounded.radius-8}"
+    padding: "8px 12px"
+  nav-item-active:
+    backgroundColor: "{colors.chip-active}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.radius-8}"
+    padding: "8px 12px"
   ask-bubble:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
@@ -228,7 +253,7 @@ components:
     rounded: "27px"
     padding: "0 10px 0 16px"
   prompt-input:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "{colors.raised}"
     textColor: "{colors.ink}"
     rounded: "{rounded.radius-12}"
     padding: "14px 14px 10px"
@@ -263,11 +288,11 @@ components:
 
 接收日期：2026-10-15。来源为 XunJie_Design 的 [docs/DESIGN.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/DESIGN.md)。接收时来源仓库 HEAD 为 `16558426ce70524218eacbf7ce8fde35681c0503`；源文件最后修改提交为 `5a9486b4d33e43e4116c36aa537c6c9940771f73`，内容与首次导入的已发布提交 `a9bb1dd016489d3e60e0b45933e440296c1194d8` 完全相同（Git blob `67d96c1c0e52e7601a3c74137e89e66742d7b476`）。未导入的设计页、原型与研究证据链接固定到该已发布来源；本仓库代码路径已改为 `apps/web/`。原文件保留，设计取值与规则照录。
 
-本文件用于学生端的视觉与交互设计。2026-10-18 移至仓库根目录，继续作为新一轮开发的 UI 设计规范；产品范围、权限、数据与验收以负责人本轮明确要求为准。设计示例中的看板、进度、课程状态等不代表已有真实业务字段；不得用演示数据填补。正文的“合并结果”及 2026-10-11 测试、对比度与实屏验收均是来源仓库的历史记录，不是本次主仓库的新验证；导入来源的历史记录见 [IMPORT_SOURCE](apps/web/IMPORT_SOURCE.md)。
+本文件用于学生端的视觉与交互设计。已确认的旧版前端是视觉与交互基准，新版须在此基础上迁移对齐；实际业务范围与实现状态分别核对。2026-10-18 移至仓库根目录，继续作为新一轮开发的 UI 设计规范；产品范围、权限、数据与验收以负责人本轮明确要求为准。设计示例中的看板、进度、课程状态等不代表已有真实业务字段；不得用演示数据填补。正文的“合并结果”及 2026-10-11 测试、对比度与实屏验收均是来源仓库的历史记录，不是本次主仓库的新验证；导入来源的历史记录见 [IMPORT_SOURCE](apps/web/IMPORT_SOURCE.md)。
 
 ## Overview
 
-学习空间是「循阶」学生端界面的设计系统，覆盖首页、课程任务、Agent 对话页、任务工作区四个已确认页面。系统从零逐因素定稿（①配色 → ⑩ IP 与插画，2026-10-01 至 2026-10-10 全部结项），每个因素都做过变体 library 原型评审，结论汇于本文档。本文档是 token 的权威来源；**合并已于 2026-10-11 执行完毕**——[apps/web/src/styles/tokens.css](apps/web/src/styles/tokens.css)、[apps/web/src/styles/app.css](apps/web/src/styles/app.css)、[apps/web/src/icons/icons.css](apps/web/src/icons/icons.css) 与 [apps/web/src/components/dashboard/widgets.tsx](apps/web/src/components/dashboard/widgets.tsx) 已是本文档的可执行形态，落地清单与逐值复核见 [docs/prototypes/design-system/README.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/prototypes/design-system/README.md) 的「2026-10-11 落地记录」与本文 Source Analysis。
+学习空间是「循阶」学生端界面的设计系统，覆盖首页、课程任务、Agent 对话页、任务工作区四个已确认页面。系统从零逐因素定稿（①配色 → ⑩ IP 与插画，2026-10-01 至 2026-10-10 全部结项），每个因素都做过变体 library 原型评审，结论汇于本文档。本文档是 token 的权威来源；可执行实现现由正式组件库的 [tokens.css](packages/ui/src/styles/tokens.css)、[app.css](packages/ui/src/styles/app.css)、[图标样式](packages/ui/src/icons/icons.css) 与 [看板组件](packages/ui/src/dashboard/widgets.tsx) 持有，原 Web 路径为兼容入口。2026-10-11 落地清单与逐值复核见 [来源设计记录](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/prototypes/design-system/README.md) 与本文 Source Analysis。
 
 系统性格由三处咬合决定：
 
@@ -276,6 +301,8 @@ components:
 - **背景安静、前景克制**：动效四档时长 + 两条曲线，反馈幅度减半；仪器材质（虚拟开发板底座）与 IP 领地（动画形象）刻意排除在通用规则之外。
 
 ## Colors
+
+frontmatter 记录浅色主题的规范值；深色主题按文末「深色模式」及 `tokens.css` 的对应角色取值。`.impeccable/design.json` 的色阶仅供工具预览，不是新增的产品配色规范。
 
 **中性基底**：画布 `canvas #ffffff`、侧栏 `sidebar #f9f9f8`、hairline `line #e8e8e6`。文字四级 `ink #1f2328` / `ink-soft #42474d` / `muted #656d76` / `faint #9ca0a6`；面两级 `hover #f4f4f2`（悬停）与 `chip #f1f1ef`（次级填充）。控件描边比 hairline 深半档：`line-strong #e0e0de`，属①角色表刻意保留，**不要**当残值清成 hairline。主按钮用近黑 `primary #1f2328`，不用强调蓝做大面积底。
 
@@ -292,7 +319,7 @@ components:
 | 等待中 | yellow-100 `#fef9c3` | yellow-800 `#854d0e` |
 | 逾期 | rose-100 `#ffe4e6` | rose-800 `#9f1239` |
 
-**备用标签库**：语义色库共 10 hue——4 个绑定状态（完成 lime / 进行中 cyan / 等待 yellow / 逾期 rose）+ 未绑定的同族蓝 + 5 个备用 hue（紫 / 粉 / 青碧 / 橙 / 中性灰）。每 hue 有三档：soft（100 底 + 800 字，即上表配方）、base 与 bold（实底第二表达，深底白字，见 frontmatter 的 `*-solid`）。备用 hue 用于分类、里程碑、知识点标签等，**不作强调色**——紫相强调有「一眼 AI」风险。实底白字只配 base/bold 档，**不要**在 soft 底（100 档）上压白字。
+**备用标签库**：语义色库共 10 hue——4 个绑定状态（完成 lime / 进行中 cyan / 等待 yellow / 逾期 rose）+ 未绑定的同族蓝 + 5 个备用 hue（紫 / 粉 / 青碧 / 橙 / 中性灰）。备用 hue 是已记录的设计预留，当前学生端源码未检出对应的标签色 token；不应据此声称页面正在使用。来源方案讨论了 soft、base 与 bold 三档；frontmatter 中现存的 `label-*-solid` 是浅色值，**不是可配白字的深色底**。这些浅底须使用经对比度核对的深色文字；若需要深底白字，应另行确定真实色值并核对文字对比度，不能把现有 `*-solid` 当作深色档。备用 hue 用于分类、里程碑、知识点标签等，**不作强调色**——紫相强调有「一眼 AI」风险。
 
 **图表用色**：数据蓝收敛为 Apple 蓝五档 `chart-blue-0 #d9ebff` → `-1 #a6ccff` → `-2 #409cff` → `-3 #007aff` → `-4 #0059d0`；原先 14 个蓝值、四代并存（钢蓝 `#587cb8` / 亮钴 `#4f6ef7` 系 / 热力淡蓝 / 皮肤钴）全部并入这一族——热力四档、bars7、环形、雷达、趋势、周节奏气泡、目标条、时间线、技能 / XP / 等级同源。中性两档：槽底（热力空格 / 进度轨道 / 技能条 / XP 轨道 / 周节奏空点）统一 `chart-neut-0 #f0f1f4`，描线（雷达网 / 趋势网格 / 时间线竖线 / goal tick / 周线指引 / 环形轨道）统一 `chart-neut-1 #e8e8e6`（即 hairline）；8 个近灰值收敛到 2 档。
 
@@ -300,7 +327,7 @@ components:
 
 ## Typography
 
-三套字体族各司其职：**正文 / 控件 = 系统栈**（`sans`，不引入正文 webfont）；**标题衬线 = 霞鹜文楷**（`serif`），仅用于 h1–h3，自托管于 [apps/web/public/fonts/lxgw-wenkai-regular.woff2](apps/web/public/fonts/lxgw-wenkai-regular.woff2)；**等宽 = 系统等宽栈**（`mono`），用于数值、版本号、token 计数。已知约束：文楷目前只自托管 Regular 一档，标题的 600 由浏览器合成加粗。
+三套字体族各司其职：**正文 / 控件 = 系统栈**（`sans`，不引入正文 webfont）；**标题衬线 = 霞鹜文楷**（`serif`），仅用于 h1–h3，自托管于 [packages/ui/src/assets/fonts/lxgw-wenkai-regular.woff2](packages/ui/src/assets/fonts/lxgw-wenkai-regular.woff2)；**等宽 = 系统等宽栈**（`mono`），用于数值、版本号、token 计数。已知约束：文楷目前只自托管 Regular 一档，标题的 600 由浏览器合成加粗。
 
 字号阶梯 = Apple 系统阶 9 级 **11 / 12 / 13 / 15 / 17 / 20 / 22 / 28 / 34**，吸附规则等距最近、平局向上。已确认落点：正文 `14 → 15`（body 的 `font:` 简写整体升半档）、h1 `29 → 28`、h2/h3 `16 → 17`、品牌行 `16 → 17`。
 
@@ -315,6 +342,8 @@ components:
 独立 Agent 正文保留 15px，行高为 1.7；回答内任务卡标题为系统字体 15px／500，课程标签与环境说明为 12px，环境说明用 `muted`。这些局部规则仅作用于首页和独立 Agent 页；工作区辅导的正文行高与样式保持现状。
 
 ## Layout
+
+旧版首页内容区最大宽度为 1420px，居中排列；桌面基准内边距为上 28px、左右 44px、下 32px。课程卡和任务卡的列数随各自容器宽度变化，具体断点见下方 C1–C4。
 
 **外壳与栅格**：inset 布局——全局侧栏展开宽度固定 **248px**（不压缩侧栏本身；无手动选择时，窗口 <1024px 默认收起为 60px 轨道，详见下方 C5），承载首页 / Agent 对话两个一级入口与对话历史展开区；主区是屏幕上唯一一张白卡片（1px 描边、单层轻投影、上 / 右 / 下各留 10px），**滚动发生在主卡内部**，四个圆角始终完整可见。展开 ↔ 收起共走一条 0.35s 曲线，收起后左侧留 60px 浅灰轨道放图标列（首页 / Agent 对话 / 新对话 / 已归档 / 搜索，归档仅 /agent 页且有归档时露面）。工作区（`/task/*`）进入沉浸模式：侧栏 248px → 0 滑出，主区去掉 margin 与圆角、占满全屏，**保留 1px hairline 描边与 l2 轻投影**（2026-10-11 终验按 computed 实测勘误：`.shell.immersive .main` 实为 `height:100vh; margin:0; border-radius:0`，`border-top` = `1px #e8e8e6`、`box-shadow` = `0 1px 2px rgba(24,34,57,.05)`，与原型注入态逐值一致），返回靠工作区内的单枚「‹ 返回」（走历史回退）。
 
@@ -333,7 +362,7 @@ components:
 
 ### 页面入场（2026-10-11）
 
-**一次进入 = 两拍**：容器 `.page-enter` 240ms 渐现给出「换了一屏」，页面的主区块各自 350ms 自下 8px 浮入，按阅读顺序错峰——同一时刻出现的元素越多越读不出结构，级联把「先看什么」写进时间轴。全部落在 ⑦ 既有时长档内（容器用页面级渐现、区块用布局移动、浮层用展开），不新增档位；时间轴变量集中在 `app.css` 头部：`--enter-page / --enter-rise / --enter-stagger / --enter-i`。
+**一次进入 = 两拍**：容器 `.page-enter` 当前实现为 240ms 渐现给出「换了一屏」，页面的主区块各自 350ms 自下 8px 浮入，按阅读顺序错峰——同一时刻出现的元素越多越读不出结构，级联把「先看什么」写进时间轴。全部落在 ⑦ 既有时长档内（容器用页面级渐现、区块用布局移动、浮层用展开），不新增档位；时间轴变量集中在 `app.css` 头部：`--enter-page / --enter-rise / --enter-stagger / --enter-i`。
 
 | 页面 | 级联顺序 | 拍长 |
 | --- | --- | --- |
@@ -344,6 +373,8 @@ components:
 | 首页看板 · 热力图 | 格子步长沿用 JS 内联（`i*20 + j*9ms`），比卡片落位早一拍起步、收在折线描画（1s 白名单长动画）之后 | 20/9ms |
 
 **只在首次进入时播**：`.page-enter` 按 `location.key` 重挂载，`AppShell` 维护已访问路径集合，回访时落 `.revisit` 一档摘掉动画——入场是「新页面出现」的反馈，不是路由动作的装饰；搜索串变化（`/?course=`）不重挂载、不播，后退与已访问页之间来回也不重播。判定不依赖 `navType`（`POP` 同时覆盖「后退」与「再次点导航进入」，后者期望播）。
+
+当前源码另外声明了页面级时长 token `--enter-page: 500ms`；旧版 `.page-enter` 实际使用 240ms，并未引用该 token。这里同时记录两者，不将源码现状误写成另一项设计决议。
 
 容器只声明 `overflow: hidden`，可见性基准必须是 1——`backwards` 填充只借属性值播动画、播完即还权，容器不能靠填充保持可见（首版曾把 `opacity: 0` 写成属性，数据晚到一帧整页就永久空白，实屏抓到后已改）。
 
@@ -386,7 +417,7 @@ components:
 
 | 组件 | 规格要点 |
 | --- | --- |
-| 面板 / 卡片 | 白底 + 1px hairline + `0 1px 2px rgba(24,34,57,.05)`，16px 圆角；任务卡 8px 圆角、20px 内边距 |
+| 面板 / 卡片 | 面板使用画布底色 + 1px hairline + `0 1px 2px rgba(24,34,57,.05)`；首页课程卡与任务卡为透明底，让共享 hover 高亮透出。任务卡为 8px 圆角、20px 内边距；面板圆角按具体容器取值 |
 | 课程卡 | 顶部课程封面（色底 + 课程图标）+ 名称 + 待完成数 + 深色「查看任务」主按钮；12px 圆角 |
 | 卡片组 fluid hover（课程卡 / 课程内任务卡共用） | 整组只有一块 `.card-grid-highlight`（`#f1f1ef`、12px 圆角、0.15s 淡入淡出），由 `lib/fluidHover.ts` 的 rAF 临界阻尼弹簧驱动滑向指针最近的卡片；卡片自身不做 hover 位移 / 描边变色，且透明底让高亮透出（卡片 `position: relative; z-index: 1`）。表内两种卡片组不得各自造一套 hover |
 | 课程封面回退（e2 几何构成） | 保留 `course-0/1/2` 色底与课程图标，叠加右上角小圆（`currentColor` 10% 透明，直径 = 卡宽的 34%，上 / 右各出血 18% 卡高 / 8% 卡宽）+ 左下胶囊色带（`currentColor` 22% 透明，52% 宽 / 7px 高 / 99px 圆角）。全部取 `currentColor`、不依赖外部美术；插画产出后可换 `img` 封面，`onError` 回退不动 |
@@ -441,12 +472,12 @@ components:
 
 ## Usage Rights
 
-- **霞鹜文楷（LXGW WenKai）**：SIL Open Font License 1.1（Copyright 2021-2023 LXGW，含 The Klee Project Authors 部分）；完整条款见 [apps/web/public/fonts/OFL.txt](apps/web/public/fonts/OFL.txt)。自托管分发，正文层不使用。
+- **霞鹜文楷（LXGW WenKai）**：SIL Open Font License 1.1（Copyright 2021-2023 LXGW，含 The Klee Project Authors 部分）；完整条款见 [OFL.txt](packages/ui/src/assets/fonts/OFL.txt)。自托管分发，正文层不使用。
 - **Solar 图标**：作者 480 Design（`https://github.com/480-Design/Solar-Icon-Set`），SVG 取自已确认评审稿的 Iconify Solar 集合本地快照；许可 **CC BY 4.0**。`file-presentation-linear.svg` 是衍生图形（保留 Solar 文件轮廓 + 自绘演示框），继续按 CC BY 4.0 标注；其余图形路径未修改。
 - **OpenMoji**（成就徽章、火焰资产）：作者 HfG Schwäbisch Gmünd 与 OpenMoji contributors，来源 Iconify OpenMoji 集合本地快照；许可 **CC BY-SA 4.0**。原 SVG 路径保留；修改图形时记录改动并沿用 CC BY-SA 4.0。未解锁态由 CSS 降饱和显示，徽章外框、等级数字与文字是独立界面元素。
 - **项目专属图形**：`learning-space` / `assistant-mark` / `virtual-board` / `digital-waveform` / `load-board` / `insert-prompt` / `unpin` / `analogy` 为本项目自绘，归属学习空间项目，未另行指定公共开源许可。
 - **既有品牌资源**：`brand-deepseek-native.svg` / `brand-mimo-native.svg` 沿用仓库原有资产记录，本轮未重新核验；不以通用图标库许可覆盖品牌图形或商标。
-- 所有资产随应用本地分发、不在运行时访问外部 CDN；逐项来源与许可见 [apps/web/src/icons/ATTRIBUTION.md](apps/web/src/icons/ATTRIBUTION.md)，摘要见 [apps/web/src/icons/provenance.json](apps/web/src/icons/provenance.json)，正式分发时随第三方资源说明保留。
+- 所有资产随应用本地分发、不在运行时访问外部 CDN；逐项来源与许可见 [ATTRIBUTION.md](packages/ui/src/icons/ATTRIBUTION.md)，摘要见 [provenance.json](packages/ui/src/icons/provenance.json)，正式分发时随第三方资源说明保留。
 
 ## Source Analysis
 
@@ -459,10 +490,10 @@ components:
 | [docs/home-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/home-design.md) | 首页 / 课程任务 / Agent 入口 / 任务工作区的已确认设计：inset 外壳、248px 侧栏、沉浸模式、看板与个人资料卡、图标落点 |
 | [docs/agent-page-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/agent-page-design.md) | Agent 对话页的回合、思考、流式与消息内块（页面骨架与输入框仍以 home-design 为准） |
 | [CONTEXT.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/CONTEXT.md) | 领域词汇：循阶、项目任务、学生画像、学科工具包、虚拟开发板、虚拟烧录等，文案与类型命名的对齐依据 |
-| [apps/web/src/styles/tokens.css](apps/web/src/styles/tokens.css) | 现役语义 token（`--accent`、状态语义四组、`--panel-shadow`、`--panel-radius`、`--line`、`--shell-bg`、`course-0/1/2`、文字阶）——2026-10-11 已按本文档换值（12 处）；原 `prototype-styles.css` 的中性覆盖层已于 2026-10-10 并入 `app.css`，文件随之删除 |
-| [apps/web/src/styles/app.css](apps/web/src/styles/app.css) | 组件现状值（吸附对象）：35 种阴影、24 种圆角、27 个字号、38 种间距、26 档时长——本文件的阶梯即对它们的收敛结果 |
-| [apps/web/src/icons/README.md](apps/web/src/icons/README.md) + [apps/web/src/icons/ATTRIBUTION.md](apps/web/src/icons/ATTRIBUTION.md) | ⑧ 图标体系：取用接口、Solar Linear / Bold / OpenMoji 分工、图文对齐规则与全部许可声明 |
-| [apps/web/public/fonts/](apps/web/public/fonts/) | 霞鹜文楷自托管资产与 `OFL.txt`（[apps/web/src/styles/fonts.css](apps/web/src/styles/fonts.css) 已备好 `@font-face`） |
+| [packages/ui/src/styles/tokens.css](packages/ui/src/styles/tokens.css) | 现役语义 token（`--accent`、状态语义四组、`--panel-shadow`、`--panel-radius`、`--line`、`--shell-bg`、`course-0/1/2`、文字阶）——2026-10-11 已按本文档换值（12 处）；原 `prototype-styles.css` 的中性覆盖层已于 2026-10-10 并入 `app.css`，文件随之删除 |
+| [packages/ui/src/styles/app.css](packages/ui/src/styles/app.css) | 组件现状值（吸附对象）：35 种阴影、24 种圆角、27 个字号、38 种间距、26 档时长——本文件的阶梯即对它们的收敛结果 |
+| [图标入口](packages/ui/src/icons/README.md) + [图标许可](packages/ui/src/icons/ATTRIBUTION.md) | ⑧ 图标体系：取用接口、Solar Linear / Bold / OpenMoji 分工、图文对齐规则与全部许可声明 |
+| [packages/ui/src/assets/fonts/](packages/ui/src/assets/fonts/) | 霞鹜文楷自托管资产与 `OFL.txt`（[fonts.css](packages/ui/src/styles/fonts.css) 提供 `@font-face`） |
 | [apps/web/src/lib/theme.ts](apps/web/src/lib/theme.ts) + [apps/web/index.html](apps/web/index.html) 内联脚本 | 深色模式机制：偏好三态（`theme.v1`）、系统深浅订阅、首屏防闪与 `data-theme` 落点；深色取值见本文「深色模式」一节 |
 
 **合并结果（2026-10-11）**：`tokens.css` 12 处、`app.css` 599 处、`icons.css` 6 处、`widgets.tsx` 15 处，全部按本文档取值改写完成——h1–h3 的 `font-family` 三行、去胶囊的 badge 族、l2 面板族与 o2 浮层三档、⑨⑩ 的落地注意（时间线 now 描边、热力两代值、`.db-flame` 去光晕、`course-cover-ph` 装饰伪元素）均已落在源码；`prototype-styles.css` 的中性覆盖层已并入 `app.css` 并删除。逐值复核方式与残留定性见 [docs/prototypes/design-system/README.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/prototypes/design-system/README.md) 的「2026-10-11 落地记录」，证据快照与复跑工具见 [docs/research/design-system-landing-2026-10-11/](https://github.com/wubq511/XunJie_Design/tree/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/research/design-system-landing-2026-10-11/)；⑧ 图标按目录 README 继续维护。
@@ -481,9 +512,9 @@ components:
 
 **主题机制**：偏好三态 `light / dark / system`（localStorage 键 `theme.v1`，缺失或非法值一律按跟随系统）；实际主题写到 `<html data-theme>` 并同步 `color-scheme`；`index.html` 的内联脚本在首屏绘制前先落一次，避免刷新闪白，React 启动后接管。显式选择后系统深浅变化不再覆盖；跟随系统时实时跟随，并在页面重新可见 / 从 bfcache 返回时补一次核对。
 
-入口是侧栏底部「外观」按钮，点开为浅色 / 深色 / 跟随系统三选一菜单。**按钮图标取实际生效的深浅**——浅色用太阳 `sun`、深色用月亮 `moon`，跟随系统时同样显示当前生效的那一枚，不固定停在某一种；提示写出偏好与当前值（「外观 · 跟随系统（当前浅色）」）。菜单三项用太阳 / 月亮 / 本机 `laptop` 表达三个偏好，选中项打 ✓。`sun` 是本地图标快照没有太阳图形时按 Solar Linear 同风格补绘的项目自绘图形，登记见 [apps/web/src/icons/ATTRIBUTION.md](apps/web/src/icons/ATTRIBUTION.md)。
+入口是侧栏底部「外观」按钮，点开为浅色 / 深色 / 跟随系统三选一菜单。**按钮图标取实际生效的深浅**——浅色用太阳 `sun`、深色用月亮 `moon`，跟随系统时同样显示当前生效的那一枚，不固定停在某一种；提示写出偏好与当前值（「外观 · 跟随系统（当前浅色）」）。菜单三项用太阳 / 月亮 / 本机 `laptop` 表达三个偏好，选中项打 ✓。`sun` 是本地图标快照没有太阳图形时按 Solar Linear 同风格补绘的项目自绘图形，登记见 [图标许可](packages/ui/src/icons/ATTRIBUTION.md)。
 
-**深色取值**（[apps/web/src/styles/tokens.css](apps/web/src/styles/tokens.css) 的 `:root[data-theme='dark']` 为唯一来源）：
+**深色取值**（[packages/ui/src/styles/tokens.css](packages/ui/src/styles/tokens.css) 的 `:root[data-theme='dark']` 为唯一来源）：
 
 | 角色 | 深色 | 说明 |
 | --- | --- | --- |

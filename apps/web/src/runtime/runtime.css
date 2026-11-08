@@ -1,8 +1,4 @@
-@font-face {
-  font-family: 'LXGW WenKai';
-  src: url('../../public/fonts/lxgw-wenkai-regular.woff2') format('woff2');
-  font-display: swap;
-}
+@import '@xunjie/ui/styles/fonts.css';
 
 * { box-sizing: border-box; }
 body { margin: 0; padding: 24px; background: var(--shell-bg); color: var(--ink); font: 15px/1.5 var(--font-sans); }

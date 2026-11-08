@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { IconText, type IconName } from '../icons'
+import type { IconName } from '../icons'
+import { SettingsLayout } from '../components/settings/SettingsLayout'
 import { AccountTab } from '../components/settings/AccountTab'
 import { PortraitTab } from '../components/settings/PortraitTab'
 import { AgentTab } from '../components/settings/AgentTab'
@@ -41,39 +42,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="settings student-settings">
-      <aside className="st-nav">
-        <h1 className="st-title">设置</h1>
-        <nav aria-label="设置导航">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={'st-nav-item' + (t.id === active ? ' active' : '')}
-              aria-current={t.id === active ? 'page' : undefined}
-              onClick={() => navigate(`/settings/${t.id}`)}
-            >
-              <IconText name={t.icon} size={17}>{t.label}</IconText>
-            </button>
-          ))}
-        </nav>
-        <div className="st-nav-foot">循阶 v{APP_VERSION}</div>
-      </aside>
-      <div className="st-body">
-        <div className="st-body-in" key={active}>
-          {active === 'account' && <AccountTab toast={showToast} />}
-          {active === 'portrait' && <PortraitTab toast={showToast} />}
-          {active === 'agent' && <AgentTab />}
-          {active === 'model' && <ModelTab toast={showToast} inlineFeedback />}
-          {active === 'privacy' && <PrivacyTab toast={showToast} />}
-          {active === 'about' && <AboutTab toast={showToast} />}
-        </div>
-      </div>
-      {toast && (
-        <div className="toast" role="status">
-          {toast}
-        </div>
-      )}
-    </div>
+    <SettingsLayout
+      tabs={TABS}
+      active={active}
+      onSelect={(id) => navigate(`/settings/${id}`)}
+      version={APP_VERSION}
+      toast={toast}
+    >
+      {active === 'account' && <AccountTab toast={showToast} />}
+      {active === 'portrait' && <PortraitTab toast={showToast} />}
+      {active === 'agent' && <AgentTab />}
+      {active === 'model' && <ModelTab toast={showToast} inlineFeedback />}
+      {active === 'privacy' && <PrivacyTab toast={showToast} />}
+      {active === 'about' && <AboutTab toast={showToast} />}
+    </SettingsLayout>
   )
 }
 
