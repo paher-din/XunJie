@@ -1,0 +1,9 @@
+{"desktop":"macos","unlocked":true,"frontBefore":"ChatGPT","sessionId":"01a1b761-4bc5-7933-aba8-cf7f2a11661d"}
+
+Running 1 test using 1 worker
+
+(node:52219) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › apps/web/e2e/teachingCompaction.spec.ts:11:1 › formal long conversation preserves history, draft and controls across compaction and restart (22.6s)
+
+  1 passed (27.3s)

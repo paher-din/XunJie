@@ -1,0 +1,53 @@
+{
+  "measuredAt": "2026-11-07T19:47:38.610Z",
+  "model": "deepseek-flash",
+  "capability": "bounded-compaction-read_work",
+  "limits": {
+    "maxGenerations": 3,
+    "maxPerProtocol": 3,
+    "maxOutputTokens": 2048,
+    "timeoutMs": 30000,
+    "retries": 0
+  },
+  "transport": "loopback relay with system DNS",
+  "results": [
+    {
+      "protocol": "chat-completions",
+      "sdk": "openai@7.42.0",
+      "passed": false,
+      "state": "paused",
+      "reason": "length",
+      "modelRequests": 2,
+      "tools": [
+        {
+          "name": "read_work",
+          "outcome": "completed"
+        }
+      ],
+      "usage": {
+        "state": "final",
+        "inputTokens": 130098,
+        "outputTokens": 2264,
+        "totalTokens": 132362,
+        "cachedTokens": 1152,
+        "reasoningTokens": 2163
+      },
+      "answerSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "generations": 2,
+  "requests": [
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 1957,
+      "payloadSha256": "43d901ce39c684a64c5ca0eded0da990829b5841f977feece36c9b132804643f"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "status": 200,
+      "elapsedMs": 15161,
+      "payloadSha256": "f439e842ba1818f795dadcad93e2e9e070137d54e359585eaf1ff8d83784272c"
+    }
+  ]
+}

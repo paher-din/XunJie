@@ -1,0 +1,89 @@
+{
+  "issue": 220,
+  "startedAt": "2026-11-07T20:21:32.000Z",
+  "status": "failed",
+  "phase": "real-read-work-summary-and-continuation",
+  "route": "real deepseek-flash Chat -> Responses, plain mode, TLS verified",
+  "execution": "real headed Chrome table Worker/WASM; delayed result delivery, not long-running computation",
+  "credentialBoundary": "real provider key exists only in relay memory; production holder stores a synthetic loopback key",
+  "limits": {
+    "chatRequests": 6,
+    "responsesRequests": 2,
+    "maxOutputTokens": 2048,
+    "providerTimeoutMs": 120000,
+    "retries": 0
+  },
+  "steps": [
+    {
+      "name": "production-course-and-Chrome",
+      "startedAt": "2026-11-07T20:21:32.005Z",
+      "passed": true,
+      "elapsedMs": 5044
+    },
+    {
+      "name": "real-Chat-accepted-Worker-and-held-result",
+      "startedAt": "2026-11-07T20:21:37.050Z",
+      "passed": true,
+      "elapsedMs": 2937
+    },
+    {
+      "name": "real-read-work-summary-and-continuation",
+      "startedAt": "2026-11-07T20:21:39.988Z",
+      "passed": false
+    }
+  ],
+  "requests": [
+    {
+      "protocol": "chat",
+      "path": "/v1/chat/completions",
+      "phase": "real-Chat-accepted-Worker-and-held-result",
+      "payloadSha256": "b4b9007109895c25d654dd4ce06798be18518175d0ebd69c442991ac456f3f46",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:21:37.570Z"
+    },
+    {
+      "protocol": "chat",
+      "path": "/v1/chat/completions",
+      "phase": "real-read-work-summary-and-continuation",
+      "payloadSha256": "837b12ec66a49cb1ea3a552128af89df427255e0127af7f15d60be3eaa1557e1",
+      "status": 200,
+      "tlsVerified": true,
+      "startedAt": "2026-11-07T20:21:40.430Z",
+      "elapsedMs": 877
+    }
+  ],
+  "workerEvents": [
+    {
+      "at": "2026-11-07T20:21:39.739Z",
+      "url": "http://127.0.0.1:60955/assets/worker-B_5653QL.js"
+    }
+  ],
+  "assertions": {
+    "realBrowserAcceptance": true,
+    "actualWorkerWithHeldResult": true
+  },
+  "cleanup": [
+    "isolated product and owned Chrome closed"
+  ],
+  "browserVersion": "156.0.8078.80",
+  "activityId": "fcece428-f192-4af6-bb11-bc0fd0b5bede",
+  "runId": "d191ec63-fb4d-44ae-8f50-103fb9743d83",
+  "commandId": "99cf15e9-ae15-4dbe-836d-4097d35a0479",
+  "waitId": "9afd1903-ce49-47ce-985f-6cf655fe0a35",
+  "executionRef": "f4af4c49-3a9e-4dab-84cc-7c53e6780d63",
+  "failure": "A real summary is generated/adopted and the real continuation returns to the same pending Wait.",
+  "failureLocation": "    at until (file:///Users/robertwu/.codex/worktrees/1378/XunJie/apps/server/tests/support/teaching-input-control.mjs:22:9)\n    at async file:///Users/robertwu/.codex/worktrees/1378/XunJie/scripts/probe-compaction-effects.mjs:183:25\n    at async step (file:///Users/robertwu/.codex/worktrees/1378/XunJie/scripts/probe-compaction-effects.mjs:44:3)\n    at async file:///Users/robertwu/.codex/worktrees/1378/XunJie/scripts/probe-compaction-effects.mjs:177:5",
+  "blockedResultDeliveries": [
+    {
+      "path": "/api/learning/executions/fcece428-f192-4af6-bb11-bc0fd0b5bede/99cf15e9-ae15-4dbe-836d-4097d35a0479/result",
+      "bodySha256": "52e2946a1e1af4478d8501f36477c486aea1558a7c5f49a58a4f90579802e065"
+    }
+  ],
+  "completedAt": "2026-11-07T20:25:41.485Z",
+  "blockedResultDeliveryCount": 380,
+  "evidenceNormalization": {
+    "originalReportSha256": "14dd0b8195321e3a03a85765f16fcc88520e86bd98b3c0958b702ceb569a0987",
+    "change": "Identical blocked delivery retries deduplicated; total count retained."
+  }
+}

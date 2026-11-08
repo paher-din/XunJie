@@ -3,7 +3,8 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { teachingExplanationRules } from './help-policy.js';
 import type { AgentDefinition, ResolvedAgent } from '@xunjie/contracts/teaching-agent';
 
-export interface ContextMessage { role: 'student' | 'assistant'; text: string; source?: ContextSource }
+export interface ContextMessage { role: 'student' | 'assistant'; text: string; source?: ContextSource;
+  eventId?: string; eventSeq?: number }
 export interface ContextSource { kind: 'platform' | 'run' | 'course' | 'input' | 'history' | 'material' | 'student-response'; id?: string; label: string }
 export interface BuiltContext {
   system: string;

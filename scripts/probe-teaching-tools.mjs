@@ -13,15 +13,17 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 
 const { values } = parseArgs({ options: { 'credentials-file': { type: 'string' }, out: { type: 'string' },
   'provider-address': { type: 'string' }, protocol: { type: 'string' }, 'student-ask': { type: 'boolean', default: false },
+  'parameter-mode': { type: 'string', default: 'thinking' },
   discovery: { type: 'boolean', default: false }, 'input-control': { type: 'boolean', default: false },
-  skills: { type: 'boolean', default: false } } });
-if ([values['student-ask'], values['input-control'], values.discovery, values.skills].filter(Boolean).length > 1)
-  throw new Error('Choose at most one of --student-ask, --input-control, --discovery and --skills.');
+  skills: { type: 'boolean', default: false }, compaction: { type: 'boolean', default: false } } });
+if (['student-ask', 'input-control', 'discovery', 'skills', 'compaction'].filter(name => values[name]).length > 1)
+  throw new Error('Choose at most one of --student-ask, --input-control, --discovery, --skills and --compaction.');
 if (!values['credentials-file'] || !values.out || !process.env.XUNJIE_PRODUCT_POSTGRES_BIN)
   throw new Error('Requires an authorized private provider file, --out and native PostgreSQL.');
 if (values['provider-address'] && !net.isIP(values['provider-address'])) throw new Error('--provider-address must be an IP address.');
 const supportedProtocols = ['chat-completions', 'responses', 'messages'];
 if (values.protocol && !supportedProtocols.includes(values.protocol)) throw new Error('Unsupported --protocol.');
+if (!['plain', 'thinking'].includes(values['parameter-mode'])) throw new Error('Unsupported --parameter-mode.');
 const protocols = values.protocol ? [values.protocol] : supportedProtocols;
 const privateText = (await readFile(resolve(values['credentials-file']), 'utf8')).replace(/^\uFEFF/, '');
 let provider;
@@ -35,8 +37,10 @@ try {
 }
 if (!provider) throw new Error('Authorized provider not found.');
 const report = { measuredAt: new Date().toISOString(), model: 'deepseek-flash',
-  capability: values.skills ? 'fixed-skill-body-and-attachment' : values.discovery ? 'discover-load-read_material' : values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
-  limits: { maxGenerations: protocols.length * (values['input-control'] || values.discovery ? 4 : 2), maxPerProtocol: values['input-control'] || values.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
+  parameterMode: values['parameter-mode'],
+  capability: values.compaction ? 'bounded-compaction-read_work' : values.skills ? 'fixed-skill-body-and-attachment' : values.discovery ? 'discover-load-read_material' : values['input-control'] ? 'steering-queue-read_work' : values['student-ask'] ? 'student.ask' : 'read_work',
+  limits: { maxGenerations: protocols.length * (values.compaction ? 3 : values['input-control'] || values.discovery ? 4 : 2),
+    maxPerProtocol: values.compaction ? 3 : values['input-control'] || values.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 },
   transport: values['provider-address'] ? 'loopback relay with TLS hostname verification and explicitly resolved provider address' : 'loopback relay with system DNS',
   results: [] };
 let generations = 0, releaseInputControl = () => {}, responseGate = Promise.resolve();
@@ -141,7 +145,7 @@ try {
       const path = protocol === 'messages' ? '/v1/messages' : protocol === 'responses' ? '/responses' : '/chat/completions';
       await api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: 'WP07 real tool acceptance',
         protocol, baseUrl: `http://127.0.0.1:${relay.address().port}${prefix}`, path, modelId: report.model, dialect: 'deepseek',
-        parameterMode: 'thinking', enabled: true, contextWindow: 262144, maxOutputTokens: report.limits.maxOutputTokens,
+        parameterMode: values['parameter-mode'], enabled: true, contextWindow: 262144, maxOutputTokens: report.limits.maxOutputTokens,
         credential: { action: 'replace', value: provider.key } });
       await api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' });
       const selection = await api('models/selection', { requestId: randomUUID(), expectedVersion: selectionVersion,
@@ -149,7 +153,8 @@ try {
       const activity = values.discovery ? await api('course-activities', { requestId: randomUUID(), releaseId }) : await api('activities', { requestId: randomUUID(), goal: values['student-ask'] ? '依据明确预测解释四态累加' : '核对固定资料与实际工具来源', question: '', references: [] });
       const receiver = (await api(`agent/${activity.activityId}/capabilities`)).receiver;
       const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'observation.txt', kind: 'text', encoding: 'utf8',
-        mediaType: 'text/plain', value: '本次实际记录：水位从 12 cm 增加到 37 cm。此文件是固定观测材料，不是学生掌握程度的证明。' };
+        mediaType: 'text/plain', value: '本次实际记录：水位从 12 cm 增加到 37 cm。此文件是固定观测材料，不是学生掌握程度的证明。'
+          + (values.compaction ? '\n' + 'Measurement 12 -> 37 cm; cause unconfirmed. '.repeat(1700) : '') };
       const input = { requestId: randomUUID(), scope: { environmentId: activity.identity.environmentId, spaceId: activity.identity.spaceId,
         principalId: activity.identity.principalId, activityId: activity.activityId }, receiver,
         draft: { token: randomUUID(), question: values.discovery
@@ -226,7 +231,7 @@ try {
       assert.equal(run?.state, 'completed');
       const protocolRequests = observed.slice(before);
       assert.ok(protocolRequests.length > 0 && protocolRequests.length <= report.limits.maxPerProtocol);
-      if (!values['input-control']) assert.equal(protocolRequests.length, values.discovery ? 4 : 2);
+      if (!values['input-control']) assert.equal(protocolRequests.length, values.compaction ? 3 : values.discovery ? 4 : 2);
       assert.ok(protocolRequests.every(request => request.status === 200 && request.finished && !request.connectionError));
       assert.equal(rejected.length, beforeRejected, 'No extra request may be hidden by the relay budget.');
       const assemblyEvents = await api(`agent/${activity.activityId}/events`);
@@ -241,7 +246,10 @@ try {
         assert.equal(payloadDigest(snapshot.payload), snapshot.payloadSha256);
         assert.ok(protocolRequests.some(request => request.payloadSha256 === snapshot.payloadSha256));
         assert.ok(snapshot.contextManifest.items.every(entry => payloadDigest(entry.content) === entry.contentDigest));
-        assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === (values.skills ? 'skill_read' : 'read_work')
+        if (snapshot.resolvedAgent.definition.definitionId.endsWith('.context-summary')) {
+          assert.ok(values.compaction, 'Only compaction mode may create a summary generation.');
+          assert.equal(snapshot.resolvedAgent.tools.length, 0);
+        } else assert.ok(snapshot.resolvedAgent.tools.some(tool => tool.modelName === (values.skills ? 'skill_read' : 'read_work')
           && tool.executor.toolName === (values.skills ? 'skill_read' : 'read_work')));
       }
       for (const request of protocolRequests)
@@ -251,6 +259,32 @@ try {
         snapshotId: snapshot.snapshotId, payloadSha256: snapshot.payloadSha256,
         contextManifestId: snapshot.contextManifest.manifestId, counting: snapshot.contextManifest.capacity.counting,
         transportMatched: true }));
+      if (values.compaction) {
+        const summaries = actualSnapshots.filter(snapshot => snapshot.resolvedAgent.definition.definitionId.endsWith('.context-summary'));
+        const adoptions = assemblyEvents.filter(event => event.kind === 'context-compacted');
+        assert.equal(summaries.length, 1); assert.equal(adoptions.length, 1);
+        assert.equal(conversation.tools.length, 1, 'The original read is not reissued after compaction.');
+        assert.equal(actualSnapshots.length, 3);
+        assert.equal(assemblyEvents.filter(event => event.kind === 'budget-reserved').length, 3);
+        assert.equal(assemblyEvents.filter(event => event.kind === 'budget-settled').length, 3);
+        assert.equal(assemblyEvents.filter(event => event.kind.startsWith('model-switch-')).length, 0);
+        const final = JSON.stringify(actualSnapshots.at(-1).payload);
+        assert.ok(final.includes(adoptions[0].body.compactionId));
+        assert.ok(final.includes(work.contentId));
+        assert.ok(final.includes(conversation.tools[0].commandId));
+        assert.ok(!answer.includes('retainedDigest'));
+        assert.ok(conversation.messages.some(message => message.role === 'student' && message.text.includes(input.draft.question)));
+        const beforeRead = generations;
+        await host.stop(); host = await createProductRuntimeHost({ root, createApplication: createProductLearningApplication });
+        assert.deepEqual(await api(`agent/${activity.activityId}/conversation`), conversation);
+        for (const snapshot of actualSnapshots)
+          assert.deepEqual(await api(`agent/${activity.activityId}/snapshots/${snapshot.snapshotId}`), snapshot);
+        assert.equal(generations, beforeRead);
+        item.compaction = { compactionId: adoptions[0].body.compactionId, sourceStart: adoptions[0].body.source.sourceStart,
+          sourceEnd: adoptions[0].body.source.sourceEnd, sourceDigest: adoptions[0].body.source.sourceDigest,
+          resultRef: adoptions[0].body.resultRef, transitionId: adoptions[0].body.transitionId,
+          toolFree: true, originalEffectPreserved: true, restartPureRead: true, budgetSteps: 3 };
+      }
       if (values.skills) {
         assert.deepEqual(conversation.tools.map(tool => [tool.name, tool.outcome]), [['skill_read', 'completed']]);
         const tool = conversation.tools[0], loaded = tool.result?.loaded;

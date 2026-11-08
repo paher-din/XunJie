@@ -14,6 +14,7 @@
 | `teaching_agent_definitions` / `teaching_resolved_agents` | 固定 AgentDefinition 正文与版本、按主体/活动/课程解析的实际 Prompt、工具与 executor 来源；Run 保存初始身份，步骤绑定当时身份 |
 | `teaching_segment_transitions` | 首段、装配变化及模型切换的共同接收/完成记录，固定原段/新段、装配、close/create 请求正文与原操作回执 |
 | `teaching_steps` | 稳定模型 attempt、完整输入计划、请求快照、原生结果关联、工具配对与输出预留/结算 |
+| `teaching_compactions` | 闭合源区间、顺序与内容摘要、结构化必保留清单、摘要结果、原尝试及实际采用换段身份 |
 | `teaching_commands` | 独立 command ID、原生 call ID、固定命令依据、派发许可、原回执与完整结果资源 |
 | `teaching_waits` | 原命令、身份与摘要、期限、确定性查询时点和唯一消费事实 |
 | `teaching_budgets` | 本 Run 固定的模型步骤、工具命令、并行和 Wait 配置 |
@@ -92,6 +93,11 @@ WP03 的 `executions.agent` 是受信任的代码接口，持有 Run／步骤／
 完整流程及实际平台范围见 [#204 交付](../../../../docs/student-agent-implementation/wp07-204-conversation-recovery.md)；Mac 与真实跨机交接见 [#212](https://github.com/paher-din/XunJie/issues/212)。隔离副本只读，维护者通过正式 CLI 接管；恢复不重置原预算、Wait 或命令，不重放未知效果。
 
 ## 验证
+
+长历史压缩使用同一 RunDriver 的付费步骤、原获准模型和预算。`compaction.ts` 选择已闭合区间并保留当前输入、规则、引用、已接受效果和未结 Wait；`compaction-validation.ts` 在恢复时关联核对源事件、生成尝试及采用换段。摘要段不提供工具，不进入学生完整对话；续接明确携带原操作状态，不把原问题当作再次执行的请求。来源变化撤销尚未生效的换段；未知尝试只查询原身份。具体阈值、真实协议结果和失败边界见 [#220 交付](../../../../docs/student-agent-implementation/wp08-220-context-compaction.md)。
+
+- `apps/server/tests/teaching-agent.compaction*.runtime.test.mjs`：真实 PostgreSQL 的来源、预算、容量拒绝、并发、accepted Command/Wait、跨协议与备份接管。
+- `apps/web/e2e/teachingCompaction.spec.ts`：正式 Chrome 的完整对话、草稿/焦点、组合事件、刷新/重启、模型选择与停止。
 
 - `apps/server/tests/teaching-agent.runtime.test.mjs`：真实 PostgreSQL、三协议 SDK transport、长上下文、课程策略、增量发布、重启/停止/继续、快照重建、备份/还原/接管。
 - `apps/server/tests/teaching-agent.driver.runtime.test.mjs`：两个独立 `driverId` 竞争同一 Run，验证 lease/generation 单一派发。

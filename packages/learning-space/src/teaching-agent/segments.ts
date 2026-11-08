@@ -32,8 +32,8 @@ export type TeachingSegmentTarget = { model: NonNullable<TeachingRun['model']>;
 export interface TeachingSegmentTransition {
   transitionId: string;
   activityId: string;
-  reason: 'initial' | 'assembly-change' | 'model-switch';
-  state: 'accepted' | 'completed';
+  reason: 'initial' | 'assembly-change' | 'model-switch' | 'compaction-generation' | 'compaction';
+  state: 'accepted' | 'completed' | 'abandoned';
   identity: SpaceIdentity;
   fromSegmentId: string | null;
   toSegmentId: string;
@@ -48,6 +48,7 @@ export interface TeachingSegmentTransition {
   closeSequence: number | null;
   closeResult: NativeSegment | null;
   createResult: NativeSegment | null;
+  compactionId?: string | null;
 }
 type ReceiveTransition = Omit<TeachingSegmentTransition, 'state' | 'closeSequence' | 'closeResult' | 'createResult'>;
 type Authority = { key: string; assert(tx: OwnedTransaction): Promise<unknown> };
@@ -65,7 +66,8 @@ function project(row: Record<string, unknown>): TeachingSegmentTransition {
     createRequestId: String(row.create_request_id), createBody: modelSegmentInputSchema.parse(row.create_body),
     closeSequence: row.close_sequence == null ? null : Number(row.close_sequence),
     closeResult: row.close_result ? parseLearningModelResult('segments.read', row.close_result) as NativeSegment : null,
-    createResult: row.create_result ? parseLearningModelResult('segments.read', row.create_result) as NativeSegment : null };
+    createResult: row.create_result ? parseLearningModelResult('segments.read', row.create_result) as NativeSegment : null,
+    ...(row.compaction_id ? { compactionId: String(row.compaction_id) } : {}) };
   checkReceived(transition);
   return transition;
 }
@@ -79,7 +81,8 @@ function checkReceived(row: ReceiveTransition) {
   const body = row.createBody;
   if (body.segmentId !== row.toSegmentId || body.requestId !== row.createRequestId
     || row.fromSegmentId === row.toSegmentId || (body.previousSegmentId ?? null) !== row.fromSegmentId || body.purpose !== 'learning'
-    || !['initial', 'assembly-change', 'model-switch'].includes(row.reason)
+    || !['initial', 'assembly-change', 'model-switch', 'compaction-generation', 'compaction'].includes(row.reason)
+    || row.reason.startsWith('compaction') && !row.compactionId
     || row.reason === 'initial' && row.fromSegmentId !== null || row.reason === 'assembly-change' && !row.fromSegmentId
     || 'selected' in body.source && body.source.selectionVersion !== row.selectionVersion) throw new StorageError('corrupt');
   if (row.resolvedAgent && (row.assemblyId !== row.resolvedAgent.resolvedId
@@ -130,11 +133,12 @@ export function createTeachingSegments(storage: OwnedStorage, owner: {
     if (competing.length) throw new StorageError('resource-busy');
     const { rows: [inserted] } = await tx.query(`INSERT INTO teaching_segment_transitions(
       transition_id,activity_id,reason,state,identity,from_segment_id,to_segment_id,assembly_id,fingerprint,
-      selection_version,target,close_request_id,create_request_id,create_body,resolved_agent)
-      VALUES($1,$2,$3,'accepted',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      selection_version,target,close_request_id,create_request_id,create_body,resolved_agent,compaction_id)
+      VALUES($1,$2,$3,'accepted',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
     [input.transitionId, input.activityId, input.reason, JSON.stringify(input.identity), input.fromSegmentId,
       input.toSegmentId, input.assemblyId, input.fingerprint, input.selectionVersion, JSON.stringify(input.target),
-      input.closeRequestId, input.createRequestId, JSON.stringify(body), input.resolvedAgent ? JSON.stringify(input.resolvedAgent) : null]);
+      input.closeRequestId, input.createRequestId, JSON.stringify(body), input.resolvedAgent ? JSON.stringify(input.resolvedAgent) : null,
+      input.compactionId ?? null]);
     return project(inserted!);
   }
   async function advance(identity: SpaceIdentity, transitionId: string, authority: Authority,
@@ -142,6 +146,7 @@ export function createTeachingSegments(storage: OwnedStorage, owner: {
     const before = await read(transitionId);
     if (canonicalDigest(identity) !== canonicalDigest(before.identity)) throw new StorageError('forbidden');
     if (before.state === 'completed') return before;
+    if (before.state === 'abandoned') throw new StorageError('conflict');
     owner.assertWritable();
     // A fresh token distinguishes concurrent invocations even within the same process.
     const token = randomUUID();
@@ -257,10 +262,12 @@ export async function validateTeachingSegmentTransitions(storage: OwnedStorage) 
   for (const stored of rows) {
     const row = project(stored);
     const session = sessions.find(session => session.activity_id === row.activityId);
-    if (!session || !['accepted', 'completed'].includes(row.state)
+    if (!session || !['accepted', 'completed', 'abandoned'].includes(row.state)
       || row.closeSequence !== null && (!Number.isSafeInteger(row.closeSequence) || row.closeSequence < 0)
       || row.state === 'accepted' && (session.segment_id !== row.fromSegmentId || stored.completed_at || row.createResult)
       || !row.fromSegmentId && (row.closeSequence !== null || row.closeResult)) throw new StorageError('corrupt');
+    if (row.state === 'abandoned' && (!row.compactionId || !row.reason.startsWith('compaction')
+      || stored.completed_at || row.createResult)) throw new StorageError('corrupt');
     if (row.closeResult && (row.closeResult.segmentId !== row.fromSegmentId || !row.closeResult.closed
       || row.closeResult.pending || row.closeResult.pendingTools.length || row.closeResult.sequence !== row.closeSequence)) throw new StorageError('corrupt');
     if (row.state === 'completed' && (!stored.completed_at || !row.createResult

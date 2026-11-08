@@ -22,6 +22,9 @@ import { compileOutputSchema } from '../model-connections/chat-native.js';
 import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/contracts/teaching-agent';
 import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
 import { teachingSkillContext } from './skill-runtime.js';
+import { compactionPolicy, createTeachingCompaction, needsCompaction, parseCompactionResult, summaryInstructions, summaryMessage,
+  type CompactionSource } from './compaction.js';
+import type { FixedTeachingInput } from './inputs.js';
 
 type Row = Record<string, unknown>;
 type Event = { kind: TeachingEventKind; body: Record<string, unknown> };
@@ -38,6 +41,7 @@ interface Plan {
   selectionVersion?: number;
   selectionPinId?: string;
   contextFacts?: ContextFacts;
+  compaction?: CompactionSource;
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
@@ -58,6 +62,14 @@ const registryCommand = (command: TeachingPreparedTool) =>
   (command.basis.executorBinding as AgentToolBinding | undefined)?.source?.sourceId === 'platform.tools';
 const unsent = (reason: string): TeachingToolOutcome => ({ state: 'not-dispatched',
   feedback: { outcome: 'not-executed', text: reason, images: [] }, result: { reason }, source: { label: '平台执行检查' } });
+
+function requiredInputScope(inputs: ActionInput[]) {
+  return { questions: inputs.map(input => input.requestId),
+    references: inputs.flatMap(input => input.draft.references.map(ref => ref.referenceId)),
+    works: inputs.flatMap(input => input.works.map(work => work.contentId)),
+    workNames: [...new Set(inputs.flatMap(input => input.works.map(work => work.name)))],
+    referenceNames: [...new Set(inputs.flatMap(input => input.draft.references.map(ref => ref.sourceName)))] };
+}
 
 function combinedUsage(facts: ModelUsage[]): ModelUsage {
   const total: ModelUsage = { state: facts.length && facts.every(fact => fact.state === 'final') ? 'final'
@@ -91,7 +103,8 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   historyForAssembly(activityId: string): Promise<ContextMessage[]>;
   ensureSegment(identity: SpaceIdentity, activity: LearningActivity, run: TeachingRun,
     choice: Awaited<ReturnType<LearningModelPort['selection']['snapshot']>>,
-    selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string):
+    selectionVersion: number, system: string, history: ContextMessage[], generation: number, tools: ModelTool[], assemblyId?: string, selectionPinId?: string,
+    change?: { reason: 'compaction-generation' | 'compaction'; compactionId: string }):
     Promise<{ segmentId: string; sequence: number; model: Model; assemblyId?: string | null }>;
   awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttempt): Promise<ModelAttempt>;
@@ -99,6 +112,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     model: TeachingRun['model'], event: Event | null, extras?: Event[]): Promise<boolean>;
 }) {
   const limits = { ...defaultLimits, ...owner.limits };
+  const compactions = createTeachingCompaction(storage);
   for (const value of Object.values(limits)) if (!Number.isSafeInteger(value) || value < 1) throw new StorageError('invalid');
   const event = owner.appendEvent;
   async function freezeBudget(tx: OwnedTransaction, runId: string) {
@@ -234,6 +248,80 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     await owner.finish(run, generation, 'paused', error.reason, current.usage, current.model,
       { kind: 'system-notice', body: { runId: run.runId, reason: error.reason, unavailable: error.unavailable } });
   }
+  async function prepareCompaction(run: TeachingRun, generation: number, scope: TeachingToolScope,
+    assembly: Awaited<ReturnType<typeof assembleTeachingAgent>>, history: ContextMessage[], fixed: FixedTeachingInput[], previous?: Row) {
+    const existing = await compactions.pending(run.runId);
+    if (existing) {
+      let changed = false;
+      await transaction(run, generation, async tx => {
+        changed = !await compactions.matches(tx, run.activityId, existing.source);
+        if (changed && await compactions.reject(tx, existing.source.compactionId, 'compaction-source-changed'))
+          await event(tx, run.activityId, 'context-compaction-rejected', { runId: run.runId,
+            compactionId: existing.source.compactionId, reason: 'compaction-source-changed' });
+      });
+      if (changed) { await pause(run, generation, 'compaction-source-changed'); return null; }
+    }
+    if (!existing && !previous?.capacity_rejected
+      && !needsCompaction(history, assembly.resolvedAgent, fixed.map(item => fixedInputText(item.input)).join('\n')))
+      return { assembly, history, source: undefined };
+    let source = existing?.source;
+    if (!source) await transaction(run, generation, async tx => {
+      if (!await owner.inputs.matches(tx, run, fixed)) throw new StorageError('conflict');
+      const id = operationId(`step:${run.runId}:${previous ? Number(previous.step_no) + 1 : 0}`);
+      source = await compactions.select(tx, run, id, assembly.resolvedAgent, history, fixed) ?? undefined;
+      if (source) await event(tx, run.activityId, 'context-compaction-selected', { runId: run.runId,
+        compactionId: source.compactionId, stepId: id, sourceStart: source.sourceStart, sourceEnd: source.sourceEnd,
+        sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest, policy: source.policy });
+    });
+    if (!source) {
+      const current = owner.toRun(await owner.runRow(run.runId));
+      await owner.finish(run, generation, 'paused', 'compaction-source-capacity-exceeded', current.usage,
+        assembly.resolvedAgent.model as Model, { kind: 'capacity-paused', body: { runId: run.runId,
+          reason: 'compaction-source-capacity-exceeded', counting: 'estimated', policy: compactionPolicy,
+          requiredScope: requiredInputScope(fixed.length ? fixed.map(item => item.input) : [scope.input]) } });
+      return null;
+    }
+    const original = source.resolvedAgent.definition;
+    const definition: AgentDefinition = { ...original, definitionId: original.definitionId + '.context-summary',
+      capabilities: [], prompt: { ...original.prompt, runtime: original.prompt.runtime + '\n\n' + summaryInstructions },
+      outputContract: { kind: 'text', instructions: summaryInstructions } };
+    const summary = await assembleTeachingAgent(scope, undefined, source.resolvedAgent.model as Model, [], definition);
+    summary.context.userText = JSON.stringify({ kind: 'xunjie.context-compaction', version: 1,
+      sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest, messages: source.messages, retained: source.retained });
+    return { assembly: summary, history: [] as ContextMessage[], source };
+  }
+  async function adoptCompaction(run: TeachingRun, generation: number, previous: Row, scope: TeachingToolScope) {
+    const plan = previous.plan as Plan;
+    if (!plan.compaction) return true;
+    const record = await compactions.read(plan.compaction.compactionId);
+    if (record.state === 'adopted') return true;
+    if (record.state !== 'generated' || !record.result || !plan.selectionPinId || plan.selectionVersion === undefined) {
+      await pause(run, generation, record.reason || 'compaction-not-available'); return false;
+    }
+    const history = await owner.historyForAssembly(run.activityId);
+    const current = await assembleTeachingAgent(scope, owner.tools, record.source.resolvedAgent.model as Model, history,
+      typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition,
+      { loaded: await loadedTools(storage, scope), skills: await owner.skillState?.(scope) });
+    let rejection = current.resolvedAgent.resolvedId !== record.source.resolvedAgent.resolvedId ? 'compaction-basis-changed' : '';
+    await transaction(run, generation, async tx => {
+      if (!await compactions.matches(tx, run.activityId, record.source)) rejection = 'compaction-source-changed';
+    });
+    if (rejection) {
+      await transaction(run, generation, async tx => {
+        if (await compactions.reject(tx, record.source.compactionId, rejection))
+          await event(tx, run.activityId, 'context-compaction-rejected', { runId: run.runId, compactionId: record.source.compactionId,
+            reason: rejection });
+      });
+      await pause(run, generation, rejection); return false;
+    }
+    const portable = [summaryMessage(record, true), ...history.filter(item => !item.eventSeq || item.eventSeq > record.source.sourceEnd)];
+    const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
+    await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, current.resolvedAgent); });
+    await owner.ensureSegment(scope.identity, scope.activity, run, choice, plan.selectionVersion,
+      current.context.system, portable, generation, current.tools, current.resolvedAgent.resolvedId, plan.selectionPinId,
+      { reason: 'compaction', compactionId: record.source.compactionId });
+    return true;
+  }
   async function planNext(run: TeachingRun, generation: number, previous?: Row): Promise<Row | null> {
     const scope = await scopeFor(run, previous ?? { step_id: operationId('step:' + run.runId + ':0'), snapshot_id: run.runId });
     const fixedInputs = await owner.inputs.pending(run);
@@ -248,6 +336,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if (firstInput) scope.input = firstInput.input;
     if (scope.activity.status !== 'open' || scope.activity.course && scope.activity.course.helpPolicy?.questions !== 'allowed')
       throw new StorageError('forbidden');
+    if (previous && !await adoptCompaction(run, generation, previous, scope)) return null;
     let plan: Plan;
     if (previous) {
       const priorPlan = previous.plan as unknown as Plan;
@@ -288,6 +377,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           plan.skillState = plan.resolvedAgent.skills ?? { catalog: [], loaded: [] };
         }
         plan.selectionVersion = Number(transition.selection_version);
+        if ((priorPlan.compaction || segmentId !== previous.segment_id) && transition.create_body)
+          plan.contextHistory = (transition.create_body as { portable: { role?: string; text: string }[] }).portable
+            .map(item => ({ role: item.role === 'assistant' ? 'assistant' : 'student', text: item.text }));
         const source = (transition.create_body as { source: { pinId?: string } }).source;
         if (source.pinId) plan.selectionPinId = source.pinId;
       }
@@ -300,6 +392,13 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         if (!body.source.pinId) throw new StorageError('corrupt');
         const history: ContextMessage[] = body.portable.map(message => ({
           role: message.role === 'assistant' ? 'assistant' : 'student', text: message.text }));
+        const prepared = received.reason === 'compaction-generation'
+          ? await prepareCompaction(run, generation, scope, { resolvedAgent: fixed,
+            context: buildContext(scope.activity, scope.input, history, { definition: fixed.definition }),
+            tools: fixed.tools.map(item => item.definition) }, history, fixedInputs, previous) : undefined;
+        if (prepared === null) return null;
+        if (prepared && (!prepared.source || prepared.assembly.resolvedAgent.resolvedId !== fixed.resolvedId))
+          throw new StorageError('corrupt');
         const selectionVersion = Number(received.selection_version);
         const choice = await owner.models.selection.pinned(scope.identity, body.source.pinId, selectionVersion);
         const restored = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selectionVersion,
@@ -309,8 +408,13 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         plan.model = restored.model; plan.resolvedAgent = fixed; plan.contextHistory = history;
         if (fixed.skills) plan.skillState = fixed.skills;
         plan.selectionVersion = selectionVersion; plan.selectionPinId = body.source.pinId;
+        if (prepared?.source) {
+          plan.compaction = prepared.source; delete plan.skillState; plan.contextHistory = [];
+          plan.input.input = { text: prepared.assembly.context.userText, images: [], toolResults: [], observations: [] };
+          plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, prepared.source.policy.maxSummaryTokens);
+        }
       } else if (segmentId === previous.segment_id && plan.resolvedAgent && plan.selectionVersion !== undefined && plan.selectionPinId) {
-        const history = await owner.historyForAssembly(run.activityId);
+        let history = await owner.historyForAssembly(run.activityId);
         let next;
         try { next = await assembleTeachingAgent(scope, owner.tools, plan.model, history,
           typeof owner.definition === 'function' ? await owner.definition(scope) : owner.definition,
@@ -319,18 +423,40 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           if (!(error instanceof TeachingAssemblyError)) throw error;
           await pauseAssembly(run, generation, error); return null;
         }
+        const prepared = await prepareCompaction(run, generation, scope, next, history, fixedInputs, previous);
+        if (!prepared) return null;
+        next = prepared.assembly; history = prepared.history;
         if (next.skillState) plan.skillState = next.skillState;
-        if (next.resolvedAgent.resolvedId !== plan.resolvedAgent.resolvedId) {
+        if (prepared.source || next.resolvedAgent.resolvedId !== plan.resolvedAgent.resolvedId) {
           await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, next.resolvedAgent); });
           const choice = await owner.models.selection.pinned(scope.identity, plan.selectionPinId, plan.selectionVersion);
           const segment = await owner.ensureSegment(scope.identity, scope.activity, run, choice, plan.selectionVersion,
-            next.context.system, history, generation, next.tools, next.resolvedAgent.resolvedId, plan.selectionPinId);
+            next.context.system, history, generation, next.tools, next.resolvedAgent.resolvedId, plan.selectionPinId,
+            prepared.source ? { reason: 'compaction-generation', compactionId: prepared.source.compactionId } : undefined);
           if (segment.assemblyId !== next.resolvedAgent.resolvedId) throw new StorageError('conflict');
           plan.input.segmentId = segment.segmentId; plan.input.expectedSequence = segment.sequence;
           plan.resolvedAgent = next.resolvedAgent; plan.contextHistory = history;
+          if (prepared.source) {
+            plan.compaction = prepared.source; delete plan.skillState;
+            plan.input.input = { text: next.context.userText, images: [], toolResults: [], observations: [] };
+            plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, prepared.source.policy.maxSummaryTokens);
+          }
         }
       }
-      if (owner.skillState && (segmentId !== previous.segment_id || received)) {
+      if (!plan.compaction && transition?.reason === 'compaction-generation') {
+        const pending = await compactions.pending(run.runId);
+        if (pending?.state === 'selected' && pending.source.compactionId === transition.compaction_id) {
+          const fixed = transition.assembly as ResolvedAgent;
+          const prepared = await prepareCompaction(run, generation, scope, { resolvedAgent: fixed,
+            context: buildContext(scope.activity, scope.input, [], { definition: fixed.definition }),
+            tools: fixed.tools.map(item => item.definition) }, [], fixedInputs, previous);
+          if (!prepared?.source) throw new StorageError('corrupt');
+          plan.compaction = prepared.source; delete plan.skillState; plan.resolvedAgent = fixed; plan.contextHistory = [];
+          plan.input.input = { text: prepared.assembly.context.userText, images: [], toolResults: [], observations: [] };
+          plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, prepared.source.policy.maxSummaryTokens);
+        }
+      }
+      if (!plan.compaction && owner.skillState && (segmentId !== previous.segment_id || received)) {
         try { plan.skillState = await owner.skillState(scope); }
         catch (error) {
           if (!(error instanceof TeachingAssemblyError)) throw error;
@@ -352,7 +478,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         : await owner.models.selection.pin(scope.identity, run.runId, selection.version);
       const connection = choice.choice.connection;
       if (!connection.maxOutputTokens) { await pause(run, generation, 'max-output-missing'); return null; }
-      const history: ContextMessage[] = receivedTransition
+      let history: ContextMessage[] = receivedTransition
         ? (receivedTransition.create_body as { portable: { role?: 'user' | 'assistant'; text: string }[] }).portable
           .map(message => ({ role: message.role === 'assistant' ? 'assistant' : 'student', text: message.text }))
         : await owner.historyBefore(run.activityId, run.runId);
@@ -376,6 +502,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         if (!(error instanceof TeachingAssemblyError)) throw error;
         await pauseAssembly(run, generation, error); return null;
       }
+      const prepared = await prepareCompaction(run, generation, scope, assembly, history, fixedInputs);
+      if (!prepared) return null;
+      assembly = prepared.assembly; history = prepared.history;
       const { context, resolvedAgent, tools } = assembly;
       // Reusing a native segment does not resend portable history. A new student
       // turn must still learn later physical cleanup facts from earlier Runs.
@@ -394,14 +523,17 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       }
       await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, resolvedAgent); });
       const native = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selection.version,
-        context.system, history, generation, tools, resolvedAgent.resolvedId, selectionPinId);
+        context.system, history, generation, tools, resolvedAgent.resolvedId, selectionPinId,
+        prepared.source ? { reason: 'compaction-generation', compactionId: prepared.source.compactionId } : undefined);
       plan = { input: { attemptId: run.runId, purpose: 'learning', segmentId: native.segmentId, expectedSequence: native.sequence,
-        input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: { maxOutputTokens: connection.maxOutputTokens } },
+        input: { text: context.userText, images: [], toolResults: [], observations: [] }, limits: {
+          maxOutputTokens: prepared.source ? Math.min(connection.maxOutputTokens, prepared.source.policy.maxSummaryTokens) : connection.maxOutputTokens } },
         model: native.model, modelSource: choice.source.kind, sources: context.sources, createdAt: new Date().toISOString(),
         resolvedAgent, ...(assembly.skillState ? { skillState: assembly.skillState } : {}),
-        contextHistory: history, selectionVersion: selection.version, selectionPinId };
+        contextHistory: history, selectionVersion: selection.version, selectionPinId,
+        ...(prepared.source ? { compaction: prepared.source } : {}) };
     }
-    if (previous && plan.input.segmentId !== previous.segment_id) {
+    if (previous && plan.input.segmentId !== previous.segment_id && !plan.compaction) {
       // A new native segment carries the accepted intent and real operation states,
       // without reopening reasoning or dispatching the original tools again.
       if (!plan.input.input.text && !fixedInputs.length) {
@@ -410,8 +542,12 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
           WHERE i.adopted_run_id=$1 ORDER BY i.seq`, [run.runId]);
         const intent = adopted.map(row => fixedInputText(actionInputSchema.parse(row.body))).filter(Boolean).join('\n\n---\n\n')
           || fixedInputText(scope.input);
-        const operations = (await commands(String(previous.step_id))).map(row => ({ commandId: row.command_id,
-          name: (row.command as TeachingPreparedTool).name, state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state }));
+        const { rows: effects } = await storage.read('SELECT command_id,command,state,outcome FROM teaching_commands WHERE run_id=$1 ORDER BY created_at,ordinal', [run.runId]);
+        const operations = effects.map(row => ({ commandId: row.command_id,
+          name: (row.command as TeachingPreparedTool).name, arguments: (row.command as TeachingPreparedTool).arguments,
+          state: (row.outcome as TeachingToolOutcome | null)?.state ?? row.state,
+          source: (row.outcome as TeachingToolOutcome | null)?.source ?? null,
+          execution: (row.outcome as TeachingToolOutcome | null)?.execution ?? null }));
         plan.input.input.text = '同一已接受问题的后续步骤。原操作状态如下；已完成的不重跑，已接受或未知不当作完成，按原身份核对：\n'
           + JSON.stringify(operations) + '\n\n当前固定学生意图与依据：\n' + intent;
       }
@@ -421,10 +557,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const images = effects.flatMap(row => (row.outcome as TeachingToolOutcome).feedback.images);
       plan.input.input.images = [...new Map(images.map(image => [image.imageId + ':' + image.version, image])).values()];
     }
-    const additions = fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
+    const additions = plan.compaction ? [] : fixedInputs.filter(item => previous || item.inputId !== firstInput?.inputId);
     const texts = additions.map(item => fixedInputText(item.input));
     if (texts.length) plan.input.input.text = [plan.input.input.text, ...texts].filter(Boolean).join('\n\n---\n\n');
-    const skillText = teachingSkillContext(plan.skillState ?? plan.resolvedAgent?.skills);
+    const skillText = plan.compaction ? '' : teachingSkillContext(plan.skillState ?? plan.resolvedAgent?.skills);
     if (skillText) plan.input.input.text = [skillText, plan.input.input.text].filter(Boolean).join('\n\n---\n\n');
     const policy = plan.resolvedAgent?.definition.contextPolicy;
     const capacityInputs = fixedInputs.length ? fixedInputs.map(item => item.input) : [scope.input];
@@ -444,7 +580,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     plan.inputBasis = fixedInputs.at(-1)?.input ?? scope.input;
     plan.inputSequence = Math.max((previous?.plan as Plan | undefined)?.inputSequence ?? 0, ...fixedInputs.map(item => item.sequence));
     plan.inputVersions = fixedInputs.map(({ inputId, version, inputDigest }) => ({ inputId, version, inputDigest }));
-    plan.waitVersions = ready.map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
+    plan.waitVersions = plan.compaction ? [] : ready.map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
     plan.sources.push(...ready.map(row => ({ kind: 'history' as const, id: String(row.wait_id), label: '原操作已核实的结果或回应' })));
     plan.sources.push(...fixedInputs.map(item => ({ kind: 'input' as const, id: item.inputId + ':' + item.version,
       label: item.inputId === run.inputId ? '本次固定输入版本' : '已纳入的学生补充' })));
@@ -457,7 +593,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     await transaction(run, generation, async tx => {
       if (!await owner.inputs.matches(tx, run, fixedInputs)) { changed = true; return; }
       const currentWaits = (await readyWaits(run, tx)).map(row => ({ waitId: String(row.wait_id), outcomeDigest: canonicalDigest(row.outcome) }));
-      if (JSON.stringify(currentWaits) !== JSON.stringify(plan.waitVersions)) { changed = true; return; }
+      if (!plan.compaction && JSON.stringify(currentWaits) !== JSON.stringify(plan.waitVersions)) { changed = true; return; }
       const { rows: [current] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
       if (current?.stop_requested) throw new StorageError('conflict');
       const { rows: [session] } = await tx.query('SELECT activity_id,segment_id FROM teaching_sessions WHERE activity_id=$1 FOR UPDATE', [run.activityId]);
@@ -514,7 +650,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       }
       await tx.query(`UPDATE teaching_runs SET attempt_id=$2,segment_id=$3,model=$4,state='running',updated_at=clock_timestamp()
         WHERE run_id=$1`, [run.runId, attemptId, plan.input.segmentId, JSON.stringify(plan.model)]);
-      await owner.inputs.adopt(tx, run, stepId, fixedInputs);
+      if (!plan.compaction) await owner.inputs.adopt(tx, run, stepId, fixedInputs);
       for (const wait of plan.waitVersions!) {
         await tx.query('UPDATE teaching_waits SET observed_step_id=$2 WHERE wait_id=$1 AND observed_step_id IS NULL', [wait.waitId, stepId]);
         await event(tx, run.activityId, 'wait-observed', { runId: run.runId, stepId, waitId: wait.waitId,
@@ -625,6 +761,61 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     }
     if (fact.state === 'completed' && !fact.resultRef) {
       await pause(run, generation, 'native-result-unavailable'); return false;
+    }
+    const compaction = (saved.plan as Plan).compaction;
+    if (!compaction && fact.state === 'failed' && fact.reason === 'context-capacity-exceeded') {
+      // Failed native results are retained by their attempt/segment owner; they
+      // cannot be promoted to the completed portable-result contract.
+      let refusals = 0;
+      await transaction(run, generation, async tx => {
+        const { rows: changed } = await tx.query('UPDATE teaching_steps SET capacity_rejected=true WHERE step_id=$1 AND NOT capacity_rejected RETURNING step_id', [saved.step_id]);
+        const { rows: [count] } = await tx.query('SELECT count(*)::integer AS count FROM teaching_steps WHERE run_id=$1 AND capacity_rejected', [run.runId]);
+        refusals = Number(count!.count);
+        if (changed.length) await event(tx, run.activityId, 'model-capacity-rejected', { runId: run.runId,
+          stepId: saved.step_id, attemptId: saved.attempt_id, resultRef: fact.resultRef, reason: fact.reason, usage: fact.usage });
+      });
+      await settleUsage(run, generation, saved, fact, refusals > compactionPolicy.capacityRetries ? 'final' : 'completed');
+      if (refusals > compactionPolicy.capacityRetries) { await pause(run, generation, 'capacity-exceeded'); return false; }
+      return true;
+    }
+    if (compaction) {
+      if (fact.state === 'unknown') {
+        // No result decision exists yet. Keep the original model phase and all
+        // reservations so explicit recovery can only query this same attempt.
+        await transaction(run, generation, async tx => {
+          const { rows } = await tx.query('SELECT usage FROM teaching_steps WHERE run_id=$1 ORDER BY step_no', [run.runId]);
+          await tx.query('UPDATE teaching_runs SET usage=$2 WHERE run_id=$1', [run.runId,
+            JSON.stringify(combinedUsage(rows.map(row => row.usage as ModelUsage ?? { state: 'unknown' })))]);
+        });
+        await pause(run, generation, 'result-unknown'); return false;
+      }
+      if (fact.state === 'completed' && fact.resultRef) await owner.models.results?.retain(scope.identity, {
+        requestId: operationId('retain-model:' + run.runId + ':' + fact.resultRef), resultRef: fact.resultRef,
+        consumer: 'run', consumerId: run.runId });
+      let result = null, reason = fact.state === 'completed' ? '' : fact.reason || 'compaction-generation-failed';
+      if (!reason) {
+        try { result = parseCompactionResult(fact.text, compaction); }
+        catch { reason = 'compaction-invalid-summary'; }
+      }
+      const stopped = owner.toRun(await owner.runRow(run.runId)).stopRequested || fact.state === 'cancelled';
+      if (stopped) reason = 'stop-requested';
+      await transaction(run, generation, async tx => {
+        const { rows: current } = await tx.query(`UPDATE teaching_compactions SET state=$2,result=$3,result_ref=$4,reason=$5
+          WHERE compaction_id=$1 AND state='selected' RETURNING compaction_id`, [compaction.compactionId,
+          reason ? 'rejected' : 'generated', result ? JSON.stringify(result) : null, fact.resultRef, reason]);
+        if (current.length) await event(tx, run.activityId, reason ? 'context-compaction-rejected' : 'context-compaction-generated', {
+          runId: run.runId, stepId: saved.step_id, attemptId: saved.attempt_id, compactionId: compaction.compactionId,
+          resultRef: fact.resultRef, result, reason, usage: fact.usage });
+      });
+      await settleUsage(run, generation, saved, fact, reason ? 'final' : 'completed');
+      if (reason) {
+        if (stopped) await owner.finish(run, generation, 'stopped', reason,
+          owner.toRun(await owner.runRow(run.runId)).usage, (saved.plan as Plan).model,
+          { kind: 'run-stopped', body: { runId: run.runId, reason } });
+        else await pause(run, generation, reason);
+        return false;
+      }
+      return true;
     }
     const originalSummary = fact.state === 'completed' ? await owner.models.checks.summary?.(scope.identity, fact.attemptId) : null;
     const summary = originalSummary ? { ...originalSummary, text: teachingExplanationText(scope.activity, originalSummary.text) } : null;

@@ -1,0 +1,23 @@
+START production-course-and-Chrome
+PASS production-course-and-Chrome
+START real-Chat-accepted-Worker-and-held-result
+PROVIDER chat request 1
+OWNER [{"state":"waiting","reason":""}] requests=1
+PASS real-Chat-accepted-Worker-and-held-result
+START real-long-history-summary-and-continuation
+SEND steering with fixed long work
+ACCEPTED steering dc698506-ada4-4819-86d8-5ecd20077b86
+PROVIDER chat request 2
+OWNER [{"state":"waiting","reason":""}] requests=2
+PROVIDER chat request 3
+OWNER [{"state":"dispatching","reason":""}] requests=3
+PROVIDER chat request 4
+OWNER [{"state":"dispatching","reason":""}] requests=4
+PASS real-long-history-summary-and-continuation
+START explicit-real-Responses-route-with-original-pending-Wait
+PASS explicit-real-Responses-route-with-original-pending-Wait
+START original-browser-late-result-and-real-Responses-continuation
+PROVIDER responses request 5
+OWNER [{"state":"dispatching","reason":""}] requests=5
+PASS original-browser-late-result-and-real-Responses-continuation
+{"status":"passed","phase":"original-browser-late-result-and-real-Responses-continuation","report":"/Users/robertwu/.codex/worktrees/1378/XunJie/.verification/wp08-220-live-effects-v2-report.json","requests":5}
