@@ -22,6 +22,7 @@ import { compileOutputSchema } from '../model-connections/chat-native.js';
 import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/contracts/teaching-agent';
 import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
 import { teachingSkillContext } from './skill-runtime.js';
+import { TeachingSkillError } from './skills.js';
 import { compactionPolicy, createTeachingCompaction, needsCompaction, parseCompactionResult, summaryInstructions, summaryMessage,
   type CompactionSource } from './compaction.js';
 import type { FixedTeachingInput } from './inputs.js';
@@ -220,18 +221,44 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     if (command.name === 'read_tool_result') {
       let originalId = String(command.arguments.commandId);
       const visited = new Set<string>();
+      const originals: Row[] = [];
+      const assertOriginalAccess = async (original: Row) => {
+        const plan = original.plan as Plan;
+        const binding = plan.resolvedAgent?.tools.find(item => item.bindingId === original.binding_id);
+        if (!binding) throw new StorageError('forbidden');
+        await assertCurrentBinding(scope, binding);
+        if (['teaching-skills:skill_load', 'teaching-skills:skill_read'].includes(binding.executor.executorId)) {
+          const args = (original.command as TeachingPreparedTool).arguments;
+          const matches = (item: TeachingSkillState['catalog'][number]) => item.skillId === args.skillId && item.version === args.version;
+          const fixed = (plan.skillState ?? plan.resolvedAgent?.skills)?.catalog.find(matches);
+          let current: TeachingSkillState | undefined;
+          try { current = await owner.skillState?.(scope); }
+          catch (error) {
+            if (error instanceof TeachingSkillError) throw new StorageError('forbidden');
+            if (error instanceof TeachingAssemblyError) throw new StorageError('unavailable');
+            throw error;
+          }
+          // A shared Skill tool can remain available for another package. Only
+          // this original package's current eligibility permits its bytes.
+          if (!fixed || !current?.catalog.some(item => matches(item) && item.selected && !item.unavailable && item.digest === fixed.digest))
+            throw new StorageError('forbidden');
+        }
+        return binding;
+      };
       for (;;) {
         if (visited.has(originalId) || visited.size >= 64) throw new StorageError('forbidden');
         visited.add(originalId);
         const { rows: [original] } = await storage.read(`SELECT c.binding_id,c.command,s.plan FROM teaching_commands c
           JOIN teaching_steps s USING(step_id) WHERE c.command_id=$1 AND c.run_id=$2`, [originalId, scope.runId]);
-        const binding = (original?.plan as Plan | undefined)?.resolvedAgent?.tools.find(item => item.bindingId === original?.binding_id);
-        if (!binding) throw new StorageError('forbidden');
-        await assertCurrentBinding(scope, binding);
+        if (!original) throw new StorageError('forbidden');
+        const binding = await assertOriginalAccess(original);
+        originals.push(original);
         if (binding.executor.executorId !== 'teaching-discovery:read_tool_result') break;
         originalId = String((original!.command as TeachingPreparedTool).arguments.commandId);
       }
-      return readToolResult(storage, scope, command.arguments);
+      const outcome = await readToolResult(storage, scope, command.arguments);
+      for (const original of originals) await assertOriginalAccess(original);
+      return outcome;
     }
     const outcome = await discoveryOutcome(storage, scope, command.name, command.arguments,
       permittedContributions(await toolContributions(owner.tools, scope), definition));

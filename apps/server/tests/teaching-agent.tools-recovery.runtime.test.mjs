@@ -1066,7 +1066,7 @@ test('pending cleanup of completed native inputs survives Agent restart without 
       const participant = f.storage.participant();
       await participant.closeDispatch(); await participant.closeWrites(); await participant.drain();
       const boundary = await collectTeachingBoundary(f.storage);
-      assert.equal(boundary.evidence.formatVersion, 2);
+      assert.equal(boundary.evidence.formatVersion, 3);
       for (const version of cleanupVersions(events)) assert.ok(boundary.evidence.resources.some(resource => resource.resourceId === version.body.resourceId),
         'The owner maintenance inventory includes overwritten intermediate cleanup resources.');
     } finally {

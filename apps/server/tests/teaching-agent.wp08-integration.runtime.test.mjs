@@ -370,7 +370,8 @@ test('one production Run retains explicit Skill, original work and PDF across di
     } finally { await f.close(); }
   });
 
-test('Skill result original tail is byte-exact and retains source permission after escaped attachment reading',
+for (const keepOtherSkill of [false, true]) test('Skill result original tail is byte-exact and retains source permission after escaped attachment reading'
+  + (keepOtherSkill ? ' while another selected Skill remains available' : ''),
   { timeout: 180000 }, async () => {
     const content = '\u0001"\\\n'.repeat(900) + 'END_SKILL_ORIGINAL_WP08';
     const path = 'references/escaped.txt';
@@ -378,6 +379,15 @@ test('Skill result original tail is byte-exact and retains source permission aft
     const f = await pdfRuntime(async (payload, index, protocol) => {
       if (index === 1) return modelReply(protocol, { id: 'wp08-escaped-skill', name: 'skill_read',
         arguments: { ...skill, path, offset: 0, length: 6000 } });
+      if (index === 4) {
+        assert.ok(payload.tools.some(tool => tool.function.name === 'read_tool_result'));
+        assert.equal(payload.tools.some(tool => tool.function.name === 'skill_read'), keepOtherSkill,
+          'Another selected Skill retains the shared tool, but never authorizes this disabled original.');
+        // Disabling the Skill changes the fixed assembly. The successor segment
+        // carries durable Command facts rather than the prior native tool pair.
+        return modelReply(protocol, null, '仅依据获准时实际读取的原件字节；停用后不再续读。');
+      }
+      assert.ok(index === 2 || index === 3, 'The original Skill read is never replayed.');
       const pair = payload.messages.filter(message => message.role === 'tool').at(-1);
       assert.ok(pair);
       assert.ok(Buffer.byteLength(pair.content) <= 8192, 'Escaping does not overflow the real native feedback envelope.');
@@ -402,16 +412,20 @@ test('Skill result original tail is byte-exact and retains source permission aft
         return modelReply(protocol, { id: 'wp08-skill-tail-after-disable', name: 'read_tool_result',
           arguments: { commandId: original.commandId, sha256: original.sha256, offset, limit: 2048 } });
       }
-      assert.equal(index, 4, 'The original Skill read is never replayed.');
-      return modelReply(protocol, null, '仅依据获准时实际读取的原件字节；停用后不再续读。');
     });
     try {
       const imported = await f.api('skills/import', { requestId: randomUUID(), source: 'student:wp08-escaped-original', packageVersion: '1.0.0',
         files: [{ path: 'SKILL.md', encoding: 'utf8', content: '---\nname: wp08-escaped-original\ndescription: 核对固定附件原件字节\n---\n只解释实际读取的固定内容。' },
           { path, encoding: 'utf8', content }] });
       skill = { skillId: imported.skillId, version: imported.version };
+      const selected = [skill];
+      if (keepOtherSkill) {
+        const other = await f.api('skills/import', { requestId: randomUUID(), source: 'student:wp08-other-active', packageVersion: '1.0.0',
+          files: [{ path: 'SKILL.md', encoding: 'utf8', content: '---\nname: wp08-other-active\ndescription: 另一份仍然可用的指导\n---\n只读取本包已获准内容。' }] });
+        selected.push({ skillId: other.skillId, version: other.version });
+      }
       const input = { ...f.input, draft: { ...f.input.draft, question: '读取已固定的转义附件，再读取实际原件尾部，保持原权限。',
-        references: [], skills: [skill] } };
+        references: [], skills: selected } };
       const runId = await f.send(input), conversation = await f.completed(runId);
       const source = conversation.tools.find(tool => tool.callId === 'wp08-escaped-skill');
       const tail = conversation.tools.find(tool => tool.callId === 'wp08-skill-original-tail');
@@ -433,7 +447,9 @@ test('Skill result original tail is byte-exact and retains source permission aft
       const bytes = Buffer.from(JSON.stringify(sorted(source.result)));
       assert.equal(original.byteLength, bytes.length);
       assert.equal(original.sha256, hash(bytes));
-      assert.deepEqual(tail.result, observedRange);
+      assert.equal(observedRange.base64, tail.result.base64, 'The bounded native projection carries the actual retained range bytes.');
+      assert.equal(observedRange.sha256, tail.result.sha256);
+      assert.deepEqual(observedRange.byteRange, tail.result.byteRange);
       assert.equal(tail.result.source.commandId, source.commandId);
       assert.equal(tail.result.sha256, original.sha256);
       assert.equal(tail.result.version, original.sha256);

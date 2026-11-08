@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { channel } from 'node:diagnostics_channel';
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -140,14 +142,43 @@ async function target(artifacts, report) {
   const storageApi = await load(repo, '@xunjie/storage');
   const expected = JSON.parse(await readFile(join(artifacts, 'expected.json'), 'utf8'));
   assert.equal(expected.legacyCommit, legacyCommit); assert.equal(expected.skills11Checksum, skills11Checksum);
+  const sourceSummary = JSON.parse(await readFile(join(artifacts, 'source-summary.json'), 'utf8'));
+  assert.equal(sourceSummary.backupId, expected.backupId);
+  assert.equal(sourceSummary.materialSha256, sha(JSON.stringify(expected.material)), 'The same old domain material must be reused unchanged.');
   report.backupId = expected.backupId;
   report.originalMaterialSha256 = sha(JSON.stringify(expected.material));
+  report.originalBackupManifestSha256 = sha(await readFile(join(artifacts, 'backups', expected.backupId, 'manifest.json')));
+  report.sameProducerArtifactVerified = true;
   report.counts = Object.fromEntries(Object.entries(expected.histories).map(([table, rows]) => [table, rows.length]));
   report.originalModelCalls = expected.modelCalls;
   report.targetMaintenanceSha256 = sha(await readFile(join(repo, 'packages/learning-space/dist/teaching-agent/maintenance.js')));
   const targetRoot = join(artifacts, 'target-' + randomUUID());
   const runtime = runtimeApi.openProductRuntime({ root: targetRoot, resources: resources() });
-  let restored, owner;
+  // Observe both HTTP implementations without replacing any product model/owner behavior.
+  // Only the probe's GETs to this isolated product endpoint are expected network requests.
+  const origins = new Set();
+  const observedRequests = [];
+  let probeOutboundRequests = 0, publicReads = 0, controlRequests = 0, modelRequests = 0;
+  const classify = (origin, path, method) => {
+    if (origins.has(origin) && method === 'GET' && path.startsWith('/api/learning/')) publicReads++;
+    else if (origins.has(origin) && (method === 'GET' && path === '/runtime/control/status'
+      || method === 'POST' && path === '/runtime/control/stop')) controlRequests++;
+    else probeOutboundRequests++;
+  };
+  const observe = (origin, path, method) => observedRequests.push({ origin, path, method });
+  const countRequests = () => {
+    probeOutboundRequests = 0; publicReads = 0; controlRequests = 0;
+    for (const request of observedRequests) classify(request.origin, request.path, request.method);
+  };
+  const rememberRuntimeEndpoint = async () => {
+    const instance = JSON.parse(await readFile(join(targetRoot, 'instance.json'), 'utf8'));
+    origins.add(new URL(instance.endpoint).origin);
+  };
+  const undici = channel('undici:request:create'), http = channel('http.client.request.start');
+  const onUndici = ({ request }) => observe(String(request.origin), request.path, request.method);
+  const onHttp = ({ request }) => observe(`${request.protocol}//${request.getHeader('host')}`, request.path, request.method);
+  undici.subscribe(onUndici); http.subscribe(onHttp);
+  let restored, owner, modelStorage, modelTrap;
   try {
     phase = 'new-target-restore-with-original-domain-boundary';
     restored = await runtimeApi.restoreProductRecovery({ root: targetRoot, resources: resources(),
@@ -158,12 +189,29 @@ async function target(artifacts, report) {
       signal: new AbortController().signal });
     assert.equal(material.evidence.formatVersion, 3);
     report.targetFormatVersion = material.evidence.formatVersion;
+    const modelService = restored.manifest.source.services.find(item => item.unit === 'model-connection');
+    assert.ok(modelService);
+    const modelBinding = JSON.parse(await runtimeApi.resolveCredential(targetRoot, 'storage-' + modelService.serviceId));
+    const modelOptions = { binding: modelBinding, migrations: learning.modelMigrations,
+      backend: storageApi.createFileBackend({ id: 'model-connection', root: join(targetRoot, 'learning-resources', 'model-connection') }) };
+    modelStorage = await storageApi.openStorage(modelOptions);
+    const configurations = (await modelStorage.read('SELECT body FROM model_connections')).rows;
+    assert.equal(configurations.length, 1);
+    const modelUrl = new URL(configurations[0].body.configuration.baseUrl);
+    assert.equal(modelUrl.protocol, 'http:'); assert.equal(modelUrl.hostname, '127.0.0.1');
+    const originalAttempts = json((await modelStorage.read('SELECT * FROM model_attempts ORDER BY id')).rows);
+    assert.equal(originalAttempts.length, expected.modelCalls);
+    await modelStorage.close(); modelStorage = undefined;
+    // The original source process is stopped. Bind its exact saved model endpoint, without changing a stored connection.
+    modelTrap = createServer((_request, response) => { modelRequests++; response.writeHead(503); response.end(); });
+    await new Promise((done, reject) => { modelTrap.once('error', reject); modelTrap.listen(Number(modelUrl.port), '127.0.0.1', done); });
     for (const item of restored.owners) await item.close?.(); restored = undefined;
     const binding = JSON.parse(await runtimeApi.resolveCredential(targetRoot, 'storage-' + expected.serviceId));
     owner = await storageApi.openStorage({ binding, migrations: learning.teachingAgentMigrations,
       backend: storageApi.createFileBackend({ id: 'teaching-agent', root: join(targetRoot, 'learning-resources', 'teaching-agent') }) });
     phase = 'domain-boundary-and-history-equality';
     await learning.validateTeachingBoundary(owner, expected.material);
+    report.domainBoundaryValidated = true;
     for (const [table, original] of Object.entries(expected.histories)) {
       const actual = json((await owner.read(`SELECT * FROM ${table}`)).rows);
       if (table === 'teaching_steps') for (const row of actual) { assert.equal(row.capacity_rejected, false); delete row.capacity_rejected; }
@@ -175,27 +223,75 @@ async function target(artifacts, report) {
       const bytes = await owner.readResource(reference.resourceId);
       assert.equal(sha(bytes), reference.sha256); assert.equal(bytes.length, reference.byteLength);
     }
+    report.historyPreserved = true; report.resourcesVerified = expected.material.evidence.resources.length;
     await owner.close(); owner = undefined;
     phase = 'restored-public-api-and-restart';
-    let state = await runtime.start(); assert.equal(state.state, 'maintenance');
+    const targetEnvironment = JSON.parse(await readFile(join(targetRoot, 'environment.json'), 'utf8'));
+    origins.add(new URL(targetEnvironment.services[0].endpoint).origin);
+    let state = await runtime.start(); assert.equal(state.state, 'maintenance'); origins.add(new URL(state.endpoint).origin);
+    await rememberRuntimeEndpoint();
     const read = async route => {
       const response = await fetch(state.endpoint + '/api/learning/' + route, { headers: { 'x-xj-space': 'personal' } });
       assert.equal(response.status, 200); return response.json();
     };
     const compare = async () => {
       const route = `agent/${expected.activityId}`;
-      assert.deepEqual(await read(route + '/conversation'), expected.conversation);
-      assert.deepEqual(await read(route + '/events'), expected.events);
-      assert.deepEqual(await read('skills'), expected.settings);
-      for (const snapshot of expected.snapshots) assert.deepEqual(await read(route + '/snapshots/' + snapshot.snapshotId), snapshot);
+      const same = (actual, original, label) => {
+        try { assert.deepEqual(actual, original); }
+        catch (error) {
+          const paths = [];
+          const differences = (left, right, path) => {
+            if (JSON.stringify(left) === JSON.stringify(right)) return;
+            if (left && right && typeof left === 'object' && typeof right === 'object') {
+              for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) differences(left[key], right[key], path + '.' + key);
+            } else paths.push(path);
+          };
+          differences(actual, original, label); report.comparison = { label, changedPaths: paths.slice(0, 30) };
+          throw error;
+        }
+      };
+      const conversation = await read(route + '/conversation');
+      for (const tool of conversation.tools) {
+        const original = expected.conversation.tools.find(item => item.commandId === tool.commandId);
+        if (original && !Object.hasOwn(original.basis, 'capability')) {
+          const snapshot = expected.snapshots.find(item => item.snapshotId === tool.snapshotId);
+          const binding = snapshot?.resolvedAgent.tools.find(item => item.modelName === tool.name);
+          assert.ok(binding, 'A new capability projection must come from the original immutable tool binding.');
+          same(tool.basis.capability, { bindingId: binding.bindingId, source: binding.source, executor: binding.executor }, 'capability-projection');
+          delete tool.basis.capability;
+        }
+      }
+      same(conversation, expected.conversation, 'conversation');
+      same(await read(route + '/events'), expected.events, 'events');
+      same(await read('skills'), expected.settings, 'skills');
+      for (const snapshot of expected.snapshots) same(await read(route + '/snapshots/' + snapshot.snapshotId), snapshot, 'snapshot');
     };
-    await compare(); await runtime.stop(); state = await runtime.start(); assert.equal(state.state, 'maintenance'); await compare();
+    await compare(); await runtime.stop(); state = await runtime.start(); assert.equal(state.state, 'maintenance');
+    origins.add(new URL(state.endpoint).origin); await rememberRuntimeEndpoint(); await compare();
+    modelStorage = await storageApi.openStorage(modelOptions);
+    assert.deepEqual(json((await modelStorage.read('SELECT * FROM model_attempts ORDER BY id')).rows), originalAttempts,
+      'Restore and read-only restart cannot create or change any original model attempt.');
+    await modelStorage.close(); modelStorage = undefined;
+    countRequests();
+    assert.ok(publicReads >= 10, 'HTTP diagnostics must observe the real public reads.');
+    assert.equal(probeOutboundRequests, 0, 'The probe process must issue no external HTTP requests during restore, history reads and restart.');
+    assert.equal(modelRequests, 0, 'The actual product daemon must not contact the original model endpoint.');
     report.status = 'passed'; report.domainBoundaryValidated = true; report.historyPreserved = true;
     report.resourcesVerified = expected.material.evidence.resources.length; report.restartVerified = true;
+    report.modelAttemptsPreserved = originalAttempts.length;
+    report.apiProjectionAdditions = ['tools[].basis.capability: exactly the original immutable binding'];
   } finally {
+    await modelStorage?.close();
     await owner?.close();
     if (restored) for (const item of restored.owners) await item.close?.();
     await runtime.stop();
+    countRequests();
+    report.publicReads = publicReads; report.probeOutboundRequests = probeOutboundRequests;
+    report.controlRequests = controlRequests; report.modelOutboundRequests = modelRequests;
+    undici.unsubscribe(onUndici); http.unsubscribe(onHttp);
+    if (modelTrap?.listening) {
+      modelTrap.closeAllConnections(); await new Promise(done => modelTrap.close(done));
+    }
     await rm(targetRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }
@@ -223,7 +319,12 @@ async function main() {
     if (options.report) { const path = resolve(options.report); await mkdir(dirname(path), { recursive: true }); await save(path, report); }
     emit(report);
     // Keep the exact failed producer artifact for a same-backup green retry; successful runs clean their private data.
-    if (report.status === 'passed') await rm(artifacts, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    if (report.status === 'passed') {
+      await rm(artifacts, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      report.privateArtifactsRemoved = true;
+      if (options.report) await save(resolve(options.report), report);
+      emit({ status: 'private-artifacts-removed', backupId: report.backupId });
+    }
   }
 }
 
