@@ -131,6 +131,9 @@ test('an interrupted conversation query retires only its original transport and 
   assert.equal(recovered.state, 'consumed');
   assert.equal((await f.wire({ chunkChannel: 1, transferId: original.transferId,
     operation: 'metadata', origin: original.origin })).state, 'acknowledged');
+  await writeFile(join(f.root, 'private', 'agent-transfers', recovered.key + '.json'),
+    JSON.stringify({ ...recovered, state: 'received', result: null }));
+  assert.deepEqual(await f.client()(input), { accepted: [0] }, 'a crash after retiring a query cannot expose its local placeholder');
   f.guard = async () => { throw new StorageError('forbidden'); };
   await assert.rejects(f.client()(input), { code: 'forbidden' });
 });

@@ -326,6 +326,9 @@ export function createChunkChannel(storage: OwnedStorage) {
     const { rows } = await storage.read(`SELECT p.*,t.state FROM agent_chunk_parts p JOIN agent_chunk_transfers t USING(source_key,transfer_id)
       WHERE t.state<>'acknowledged'`);
     for (const part of rows) {
+      // A receiving input has never claimed execution. Retain its reservation so the
+      // original sender can finish it after maintenance/restore; no effect is replayed.
+      if (!part.resource_id && part.state === 'receiving') continue;
       if (!part.resource_id) throw new StorageError('resource-busy');
       const bytes = await storage.readResource(String(part.resource_id));
       if (bytes.length !== part.byte_length || sha(bytes) !== part.sha256) throw new StorageError('corrupt');

@@ -70,7 +70,8 @@ export function createAgentConnection(root: string, connectionId: string, capabi
           // Activity and pinned model/switch receipts require current authorization.
           // Their domain IDs make rechecking an already completed operation idempotent;
           // consume the original transport before asking the domain to check again.
-          return entry.result;
+          return entry.result === null && capability === 'teaching.agent' && operation === 'conversation'
+            ? retryQuery : entry.result;
         }
         if (entry.origin.grantId !== grantId || entry.origin.sourceInstallationId !== environment.installationId) {
           try { await send({ chunkChannel: 1, operation: 'metadata', transferId: entry.transferId, origin: entry.origin }); }
