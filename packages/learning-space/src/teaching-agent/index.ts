@@ -10,17 +10,20 @@ import {
   teachingAgentReceiverId, teachingContinueInputSchema, teachingConversationSchema, teachingEventSchema,
   teachingModelSwitchInputSchema, teachingModelSwitchSchema,
   teachingRunSchema, teachingSnapshotSchema, teachingStopInputSchema, teachingDispatchAuthoritySchema,
-  isRecoverableTeachingPause,
+  isRecoverableTeachingPause, teachingAgentCallSchema,
 } from '@xunjie/contracts/teaching-agent';
 import type {
   TeachingConversation, TeachingEvent, TeachingEventKind, TeachingMessage, TeachingRun, TeachingSnapshot, AgentDefinition,
+  TeachingArtifactPreview, ResolvedAgent,
 } from '@xunjie/contracts/teaching-agent';
 import { fixedInputText, portableContext, type ContextMessage } from './context.js';
 import { modelSegmentInputSchema } from '@xunjie/contracts/model-connections';
-import { requiresExplanationReview } from './help-policy.js';
+import { requiresExplanationReview, teachingExplanationText } from './help-policy.js';
 import { operationId, canonicalDigest } from './identity.js';
 import { teachingToolMigration } from './tool-migrations.js';
-import { teachingDeploymentMigration, validateTeachingDependencyBindings, type TeachingDispatchAuthority } from './remote-state.js';
+import { teachingDeploymentMigration, validateTeachingDependencyBindings, teachingArtifactAdoptionAuthoritySchema,
+  type TeachingDispatchAuthority, type TeachingArtifactAdoptionAuthority } from './remote-state.js';
+import { teachingArtifactReceiptSchema } from '@xunjie/contracts/teaching-artifacts';
 import { chunkChannelMigrationSql, createChunkChannel } from './chunk-channel.js';
 import { studentQuestionMigration, createStudentQuestions, validateStudentQuestions } from './student-questions.js';
 import { teachingInputMigration, createTeachingInputs } from './inputs.js';
@@ -756,25 +759,39 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   async function awaitAttempt(identity: SpaceIdentity, run: TeachingRun, generation: number, attemptId: string,
     segmentId: string, initial?: ModelAttemptFact): Promise<ModelAttemptFact> {
     let fact = initial ?? await options.models.checks.read(identity, attemptId);
-    const { rows: [step] } = await storage.read('SELECT plan FROM teaching_steps WHERE attempt_id=$1', [attemptId]);
+    const { rows: [step] } = await storage.read('SELECT step_id,plan FROM teaching_steps WHERE attempt_id=$1', [attemptId]);
+    const activity = await options.activity(identity, run.activityId);
     const bufferProgress = !!(step?.plan as { compaction?: unknown } | undefined)?.compaction
-      || requiresExplanationReview(await options.activity(identity, run.activityId));
+      || requiresExplanationReview(activity);
+    const assembly = (step?.plan as { resolvedAgent?: ResolvedAgent } | undefined)?.resolvedAgent;
+    const { rows: [priorArtifact] } = await storage.read(`SELECT body FROM teaching_events WHERE activity_id=$1
+      AND kind='artifact-progress' AND body->>'attemptId'=$2 ORDER BY seq DESC LIMIT 1`, [run.activityId, attemptId]);
     const known = await lastProgressEvent(run.activityId, attemptId);
-    let lastHeartbeat = Date.now(), unknownReads = 0, lastRevision = known.revision, lastLength = known.length;
+    let lastHeartbeat = Date.now(), unknownReads = 0,
+      lastRevision = Math.max(known.revision, Number((priorArtifact?.body as { revision?: number } | undefined)?.revision ?? 0)), lastLength = known.length;
     async function publishProgress() {
-      if (bufferProgress || fact.physicalRequestEnded) return;
+      if (fact.physicalRequestEnded || (step?.plan as { compaction?: unknown } | undefined)?.compaction) return;
       const live = await options.models.checks.progress(identity, attemptId).catch(() => null);
-      if (!live || live.revision <= lastRevision || live.text.length <= lastLength) return;
-      const delta = live.text.slice(lastLength);
+      if (!live || live.revision <= lastRevision) return;
+      const previews = (live.tools ?? []).filter(tool => tool.property === 'html' && tool.text
+        && assembly?.tools.some(binding => binding.modelName === tool.name && binding.executor.toolName === 'generate_teaching_artifact')
+        && teachingExplanationText(activity, tool.text) === tool.text);
+      const delta = bufferProgress ? '' : live.text.slice(lastLength);
       try {
         await storage.request({ requestId: `teaching-progress:${attemptId}:${live.revision}`,
           fingerprint: `teaching-progress:${attemptId}` }, async tx => {
           await assertAuthority(tx, run.runId, generation);
-          await appendEvent(tx, run.activityId, 'assistant-progress', { runId: run.runId, attemptId, segmentId,
+          const { rows: [current] } = await tx.query('SELECT stop_requested FROM teaching_runs WHERE run_id=$1', [run.runId]);
+          if (current?.stop_requested) return null;
+          if (delta) await appendEvent(tx, run.activityId, 'assistant-progress', { runId: run.runId, attemptId, segmentId,
             revision: live.revision, length: live.text.length, delta });
+          for (const preview of previews) await appendEvent(tx, run.activityId, 'artifact-progress', {
+            runId: run.runId, stepId: step!.step_id, attemptId, segmentId, callId: preview.callId, name: preview.name,
+            commandId: operationId('teaching-command:' + step!.step_id + ':' + preview.callId),
+            html: preview.text, revision: live.revision });
           return null;
         });
-        lastRevision = live.revision; lastLength = live.text.length;
+        lastRevision = live.revision; if (delta) lastLength = live.text.length;
       } catch (error) {
         if (!(error instanceof StorageError) || !['conflict', 'maintenance'].includes(error.code)) throw error;
       }
@@ -881,6 +898,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     }
     const { rows: runRows } = await storage.read('SELECT * FROM teaching_runs WHERE activity_id=$1 ORDER BY created_at', [activityId]);
     const messages: TeachingMessage[] = [];
+    const artifactPreviews = new Map<string, TeachingArtifactPreview>();
     // Progress and the final answer for one attempt share a stable message identity; polling
     // clients merge them by eventId instead of showing the answer twice.
     const assistantSlots = new Map<string, number>();
@@ -897,6 +915,12 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
         messages.push({ ...base, role: 'system', kind: 'native-summary', text: body.text,
           ...(body.truncated === true ? { summaryTruncated: true } : {}),
           runId: (body.runId as string) ?? null });
+      else if (kind === 'artifact-progress') {
+        const commandId = String(body.commandId);
+        artifactPreviews.set(commandId, { runId: String(body.runId), stepId: String(body.stepId), attemptId,
+          commandId, callId: String(body.callId), name: String(body.name), html: String(body.html),
+          revision: Number(body.revision), seq: base.seq, createdAt: artifactPreviews.get(commandId)?.createdAt ?? base.createdAt });
+      }
       else if (kind === 'assistant-progress') {
         if (attemptId && settledAttempts.has(attemptId)) continue;
         const delta = typeof body.delta === 'string' ? body.delta : '';
@@ -997,7 +1021,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
     const { tools, waits } = await driver.records(activityId);
     return teachingConversationSchema.parse({ activityId, cursor: rows.length ? Number(rows.at(-1)!.seq) : cursor, messages,
       runs: runRows.map(toRun), tools, waits, questions: await studentQuestions.list(activityId),
-      inputs: await inputs.list(activityId) });
+      inputs: await inputs.list(activityId), artifactPreviews: [...artifactPreviews.values()] });
   }
   async function events(identity: SpaceIdentity, activityId: string, after = 0): Promise<TeachingEvent[]> {
     await options.activity(identity, activityId);
@@ -1069,24 +1093,41 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   }
   /** New Driver dispatch requires a live lease; an owner-held accepted command may be claimed while its Run sleeps. */
   async function assertCommandDispatch(identity: SpaceIdentity, activityId: string,
-    association: { runId: string; stepId: string; snapshotId: string; commandId: string; authority?: TeachingDispatchAuthority }) {
+    association: { runId: string; stepId: string; snapshotId: string; commandId: string; authority?: TeachingDispatchAuthority;
+      adoption?: TeachingArtifactAdoptionAuthority }) {
     if (dispatchClosed || writesClosed) throw new StorageError('maintenance');
     await options.authorize(identity);
     if ((await options.activity(identity, activityId)).status !== 'open') throw new StorageError('forbidden');
-    const { rows: [budget] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [association.runId]);
-    if (!budget || budget.expired) throw new StorageError('forbidden');
+    const adoption = association.adoption ? teachingArtifactAdoptionAuthoritySchema.parse(association.adoption) : undefined;
+    if (adoption && association.authority) throw new StorageError('forbidden');
+    if (!adoption) {
+      const { rows: [budget] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [association.runId]);
+      if (!budget || budget.expired) throw new StorageError('forbidden');
+    }
     await storage.pendingIntents();
     const authority = association.authority ? teachingDispatchAuthoritySchema.parse(association.authority) : undefined;
     if (authority && (authority.runId !== association.runId || authority.activityId !== activityId)) throw new StorageError('forbidden');
     await storage.request({ requestId: 'teaching-verify-command:'+randomUUID(), fingerprint: association.commandId }, async tx => {
       const { rows: [row] } = await tx.query(`SELECT r.*,c.state AS command_state,c.generation AS command_generation,s.snapshot_id,
+          c.command,c.outcome,s.attempt_id AS command_attempt_id,
           r.lease_expires_at>=clock_timestamp() AS live
         FROM teaching_commands c JOIN teaching_runs r ON r.run_id=c.run_id JOIN teaching_steps s ON s.step_id=c.step_id
         WHERE c.command_id=$1 AND c.run_id=$2 AND c.step_id=$3 AND r.activity_id=$4 FOR UPDATE OF r,c`,
         [association.commandId, association.runId, association.stepId, activityId]);
-      if (dispatchClosed || writesClosed || !row || JSON.stringify(runIdentity(row)) !== JSON.stringify(identity)
-        || row.snapshot_id !== association.snapshotId || row.stop_requested || row.reason === 'student-response-expired' || terminal(row.state as TeachingRun['state'])
-        || !['dispatching', 'waiting'].includes(String(row.command_state))
+      if (dispatchClosed || writesClosed || !row || canonicalDigest(runIdentity(row)) !== canonicalDigest(identity)
+        || row.snapshot_id !== association.snapshotId) throw new StorageError('forbidden');
+      const noLongerEligible = row.stop_requested || row.reason === 'student-response-expired'
+        || terminal(row.state as TeachingRun['state']) && !(adoption && row.state === 'completed');
+      if (adoption) {
+        const command = row.command as TeachingPreparedTool, outcome = row.outcome as TeachingToolOutcome | null;
+        const published = teachingArtifactReceiptSchema.safeParse(outcome?.result.artifact);
+        if (command.name !== 'generate_teaching_artifact' || adoption.attemptId && row.command_attempt_id !== adoption.attemptId)
+          throw new StorageError('forbidden');
+        if (noLongerEligible || row.command_state !== 'settled' || outcome?.state !== 'completed') throw new StorageError('conflict');
+        if (!published.success || published.data.kind !== 'publish' || published.data.requestId !== association.commandId
+          || published.data.artifactId !== adoption.artifactId || published.data.revisionId !== adoption.revisionId
+          || published.data.candidateId !== adoption.candidateId) throw new StorageError('forbidden');
+      } else if (noLongerEligible || !['dispatching', 'waiting'].includes(String(row.command_state))
         || authority && (row.generation !== authority.generation || row.command_generation !== authority.generation
           || row.lease_owner !== authority.driverId || !row.live)) throw new StorageError('forbidden');
       return null;
@@ -1172,7 +1213,10 @@ export async function validateTeachingAgent(storage: OwnedStorage) {
   await validateTeachingSkills(storage);
   await validateTeachingSkillLoads(storage);
   await validateTeachingStudentFacts(storage);
-  await createChunkChannel(storage).validate();
+  await createChunkChannel(storage).validate(value => {
+    const call = teachingAgentCallSchema.safeParse(value);
+    return call.success && call.data.operation === 'conversation';
+  });
   await validateTeachingSegmentTransitions(storage);
   await validateTeachingDependencyBindings(storage);
   const { rows: requests } = await storage.read('SELECT * FROM teaching_requests');

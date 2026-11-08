@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 /**
  * #188 cross-machine recovery acceptance on a real client device.
  *
@@ -18,7 +19,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -27,12 +28,13 @@ import { connect as connectTcp, createServer } from 'node:net';
 import { chromium, expect } from '@playwright/test';
 
 const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+  'out': { type: 'string' }, 'output': { type: 'string' }, 'evidence-dir': { type: 'string' },
   'school-state': { type: 'string' }, spki: { type: 'string' }, 'ssh-config': { type: 'string' },
   'ssh-host': { type: 'string' }, 'ssh-root': { type: 'string' }, 'ssh-cli': { type: 'string' },
   'ssh-node': { type: 'string' }, label: { type: 'string' }, 'component-definitions': { type: 'string' },
 } });
 const product = resolve(positionals[0] ?? '');
-const output = resolve(positionals[1] ?? '.verification/wp03-188/school-recovery');
+const output = probeEvidenceDirectory(positionals[1]);
 for (const key of ['school-state', 'spki', 'ssh-config', 'ssh-host', 'ssh-root', 'ssh-cli', 'ssh-node'])
   if (!values[key]) throw new Error(`--${key} is required`);
 await mkdir(output, { recursive: true });
@@ -247,7 +249,7 @@ try {
   await expect(page.getByLabel('恢复检查点')).toBeVisible({ timeout: 30000 });
   assert.equal(lostCheckpointReply, true);
   report.lostCheckpointReply = true;
-  await page.screenshot({ path: join(output, 'source-before.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'source-before.png'), fullPage: true });
   pass('real product creates annotation, reference, question, Worker result and a native checkpoint with a lost control reply');
 
   // A school-shared member approves this installed client over strict HTTPS. Recovery
@@ -399,7 +401,7 @@ try {
   await targetPage.getByRole('button', { name: '打开对话', exact: true }).click();
   await expect(targetPage.getByLabel('你的问题', { exact: true })).toHaveValue('请核对这条原始标注。');
   await expect(targetPage.getByRole('region', { name: '上下文引用' }).getByText('备份中保留的标注', { exact: false })).toBeVisible();
-  await targetPage.screenshot({ path: join(output, 'isolated-annotation.png'), fullPage: true });
+  await captureEvidence(targetPage, { path: join(output, 'isolated-annotation.png'), fullPage: true });
   await targetPage.getByRole('button', { name: '问题与引用', exact: true }).click();
   await targetPage.getByRole('tab', { name: '表格聚合', exact: true }).click();
   await expect(targetPage.getByRole('region', { name: '计算记录' }).getByText('已完成', { exact: false })).toBeVisible();
@@ -412,12 +414,12 @@ try {
   await targetPage.getByRole('tab', { name: '四态累加模拟', exact: true }).click();
   await expect(targetPage.locator('.native-session-observation strong')).toHaveText('3');
   await expect(targetPage.getByRole('button', { name: '从检查点建立恢复会话', exact: true })).toBeDisabled();
-  await targetPage.screenshot({ path: join(output, 'isolated-native-light.png'), fullPage: true });
+  await captureEvidence(targetPage, { path: join(output, 'isolated-native-light.png'), fullPage: true });
   await targetPage.emulateMedia({ colorScheme: 'dark' });
   await expect(targetPage.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await targetPage.screenshot({ path: join(output, 'isolated-native-dark.png'), fullPage: true });
+  await captureEvidence(targetPage, { path: join(output, 'isolated-native-dark.png'), fullPage: true });
   await targetPage.setViewportSize({ width: 1000, height: 900 });
-  await targetPage.screenshot({ path: join(output, 'isolated-native-narrow.png'), fullPage: true });
+  await captureEvidence(targetPage, { path: join(output, 'isolated-native-narrow.png'), fullPage: true });
   assert.deepEqual(writes, [], 'isolated views must not dispatch, sync, report, or run self-tests');
   assert.ok((await browserDrafts(context.pages()[0])).some(draft =>
     draft.question === '浏览器独有未同步草稿' && draft.key.includes(sourceContext.clientNamespace)));
@@ -490,7 +492,7 @@ try {
   });
   assert.equal(oldQueue.status(), 403);
   report.oldNamespaceStatus = oldQueue.status();
-  await targetPage.screenshot({ path: join(output, 'takeover-recovered.png'), fullPage: true });
+  await captureEvidence(targetPage, { path: join(output, 'takeover-recovered.png'), fullPage: true });
   pass('after takeover the formal workspace edits in a new namespace and creates a distinct checkpoint instance whose real next result is 1');
   assert.deepEqual(browserErrors, []);
   report.status = 'passed';
@@ -502,7 +504,7 @@ try {
   console.log('CONSOLE_ERRORS ' + JSON.stringify(consoleErrors));
   console.log('REQUEST_FAILURES ' + JSON.stringify(requestFailures));
   console.log('HTTP_ERRORS ' + JSON.stringify(httpErrors));
-  await page?.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+  await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
   throw error;
 } finally {
   await browser?.close().catch(() => {});
@@ -516,5 +518,5 @@ try {
     try { await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 }); report.temporaryRootRemoved = true; }
     catch (error) { report.temporaryRootRemoved = false; report.retainedRoot = root; report.cleanupError = error.code; }
   } else { report.temporaryRootRemoved = false; report.retainedRoot = root; }
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 }

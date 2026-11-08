@@ -1,0 +1,48 @@
+{
+  "formatVersion": 1,
+  "issue": 224,
+  "status": "passed",
+  "verifiedAt": "2026-11-08T16:54:50.015962+00:00",
+  "sourceEnvironments": {
+    "local": {
+      "status": "passed",
+      "remainingSourceRoots": 0
+    },
+    "windows": {
+      "status": "passed",
+      "remainingSourceRoots": 0
+    }
+  },
+  "restoredAndStandaloneEnvironments": {
+    "windows": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    },
+    "controlProcessExited": true,
+    "macRootsRemoved": true,
+    "scopedFirewallRemoved": true
+  },
+  "windowsStaticFixturesAndPermissions": {
+    "status": "passed",
+    "remainingProcesses": 0,
+    "remainingTasks": 0,
+    "remainingRules": 0,
+    "remainingFixtureDirectories": 0
+  },
+  "localPrivateFixtures": {
+    "status": "passed",
+    "privateAndTemporaryEntriesRemoved": 16,
+    "retainedPackages": [
+      "dist/wp09-macos-r7",
+      "dist/wp09-win32-r7"
+    ],
+    "retainedEvidence": "docs/student-agent-implementation/evidence/wp09",
+    "retainedRawEngineeringLogs": ".verification"
+  },
+  "retainedPackages": [
+    "dist/wp09-macos-r7",
+    "dist/wp09-win32-r7"
+  ],
+  "scope": "Only task-owned temporary environments, fixtures, scheduled tasks, firewall rules and obsolete candidate packages; user credentials and unrelated work preserved."
+}

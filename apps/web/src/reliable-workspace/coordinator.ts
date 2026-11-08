@@ -39,9 +39,9 @@ export abstract class ReliableStateCoordinator {
   }
   async protect(): Promise<void> {
     if (this.readOnly) return
-    if (this.protecting) {
+    while (this.protecting) {
       await this.protecting
-      if (this.dirty && !this.conflicted()) return this.protect()
+      if (this.dirty && !this.conflicted()) continue
       return
     }
     await this.withProtection(() => this.persist())

@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test, type Page } from '@playwright/test'
 import { REAL_URL } from './env'
 import type { BlueprintContent } from '../src/teacher/wire'
@@ -76,7 +77,7 @@ test('预算关闭如实失败，未授权材料不进入设计上下文', async
   await expect(panel.getByRole('alert')).toContainText('BUDGET_EXHAUSTED')
   expect(api.writes).toHaveLength(1); expect(api.reads.some(path => path.startsWith('/api/jobs/'))).toBe(false)
 })
-test('根候选显式选择并采用为新草稿；刷新恢复只读取不重新生成', async ({ page }, info) => {
+test('根候选显式选择并采用为新草稿；刷新恢复只读取不重新生成', async ({ page }) => {
   const api = await setup(page), panel = await enter(page)
   await panel.getByRole('button', { name: '提交设计请求' }).click()
   await expect(panel.getByRole('region', { name: '模型设计候选' })).toBeVisible()
@@ -86,13 +87,13 @@ test('根候选显式选择并采用为新草稿；刷新恢复只读取不重�
   await expect(panel.getByRole('button', { name: '采用为新草稿' })).toBeDisabled()
   await page.setViewportSize({ width: 1440, height: 1000 })
   await panel.locator('summary').first().scrollIntoViewIfNeeded()
-  await page.screenshot({ path: info.outputPath('design-ai-controls.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-design-ai/design-ai-controls.png') })
   await panel.getByRole('region', { name: '模型设计候选' }).scrollIntoViewIfNeeded()
-  await page.screenshot({ path: info.outputPath('design-ai-desktop.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-design-ai/design-ai-desktop.png') })
   await page.setViewportSize({ width: 390, height: 900 })
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
   await panel.getByRole('region', { name: '模型设计候选' }).scrollIntoViewIfNeeded()
-  await page.screenshot({ path: info.outputPath('design-ai-mobile.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-design-ai/design-ai-mobile.png') })
   await page.setViewportSize({ width: 1440, height: 1000 })
   await panel.getByRole('radio', { name: '选择候选 1' }).check()
   await panel.getByRole('button', { name: '采用为新草稿' }).click()

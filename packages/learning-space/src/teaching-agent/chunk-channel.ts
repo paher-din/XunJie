@@ -31,6 +31,8 @@ export type ChunkHandler = (payload: unknown, source: Readonly<ChunkConnectionSo
 export type ChunkCall = (payload: unknown) => Promise<unknown>;
 export interface ChunkChannelOptions {
   authorize?: (payload: unknown, source: Readonly<ChunkConnectionSource>) => Promise<void>;
+  /** Owner classification of pure queries; callers cannot declare an effect replayable. */
+  readOnly?: (payload: unknown) => boolean;
   /** The host verifies retirement/succession; the current connection must still be authorized. */
   successor?: (original: ChunkConnectionSource, current: Readonly<ChunkConnectionSource>) => Promise<boolean>;
 }
@@ -47,7 +49,7 @@ const wireSchema = z.discriminatedUnion('operation', [
   z.object({ ...base, operation: z.literal('begin'), byteLength: sizeSchema, sha256: digestSchema }).strict(),
   z.object({ ...base, operation: z.literal('put'), index: indexSchema, data: z.string().max(349528) }).strict(),
   z.object({ ...base, operation: z.literal('get'), index: indexSchema }).strict(),
-  ...(['execute', 'metadata', 'ack'] as const).map(operation => z.object({ ...base, operation: z.literal(operation) }).strict()),
+  ...(['execute', 'metadata', 'ack', 'discard-query'] as const).map(operation => z.object({ ...base, operation: z.literal(operation) }).strict()),
 ]);
 const replySchema = z.object({ byteLength: sizeSchema, sha256: digestSchema });
 const metadataSchema = z.object({ chunkChannel: z.literal(1), transferId: z.uuid(),
@@ -270,9 +272,17 @@ export function createChunkChannel(storage: OwnedStorage) {
         if (!part?.resource_id) throw new StorageError('missing');
         return { chunkChannel: 1, transferId: id, index: call.index, data: Buffer.from(await storage.readResource(part.resource_id as string)).toString('base64') };
       }
-      if (call.operation === 'ack') return mutate(key, async tx => {
+      if (call.operation === 'discard-query' && row.state !== 'acknowledged') {
+        const input = currentInput(await assemble(key, id, 'input', row.input_bytes, row.input_sha));
+        if (!options.readOnly?.(input)) throw new StorageError('conflict');
+        await options.authorize?.(input, source);
+      }
+      if (call.operation === 'ack' || call.operation === 'discard-query') return mutate(key, async tx => {
         const current = await read(key, id, tx);
-        if (current.state === 'unknown') throw new StorageError('conflict');
+        if (call.operation === 'ack' && current.state === 'unknown') throw new StorageError('conflict');
+        // A concurrently completed query still has its original reply. Download it normally.
+        if (call.operation === 'discard-query' && current.state !== 'unknown' && current.state !== 'acknowledged')
+          return metadata(id, current);
         const { rows } = await tx.query('SELECT direction,part_index FROM agent_chunk_parts WHERE source_key=$1 AND transfer_id=$2', [key, id]);
         for (const part of rows) await tx.unreference(refId(key, id, String(part.direction), Number(part.part_index)));
         await tx.query('UPDATE agent_chunk_parts SET resource_id=NULL WHERE source_key=$1 AND transfer_id=$2', [key, id]);
@@ -312,10 +322,19 @@ export function createChunkChannel(storage: OwnedStorage) {
   /** Owner maintenance must run this before resource collection/snapshot validation.
    * Incomplete publication fails closed; it never retries an external handler or discards unknown work.
    */
-  async function validate() {
-    const { rows } = await storage.read(`SELECT p.*,t.state FROM agent_chunk_parts p JOIN agent_chunk_transfers t USING(source_key,transfer_id)
+  async function validate(readOnly?: ChunkChannelOptions['readOnly']) {
+    const { rows } = await storage.read(`SELECT p.*,t.state,t.input_bytes,t.input_sha FROM agent_chunk_parts p JOIN agent_chunk_transfers t USING(source_key,transfer_id)
       WHERE t.state<>'acknowledged'`);
     for (const part of rows) {
+      // A receiving input has never claimed execution. Retain its reservation so the
+      // original sender can finish it after maintenance/restore; no effect is replayed.
+      if (!part.resource_id && part.state === 'receiving') continue;
+      // Keep an interrupted pure query unknown, including its incomplete reply. Its
+      // owner can authorize a fresh read after reopening; validation never invokes it.
+      if (!part.resource_id && part.state === 'unknown' && part.direction === 'reply' && readOnly) {
+        const input = await assemble(String(part.source_key), String(part.transfer_id), 'input', Number(part.input_bytes), String(part.input_sha));
+        if (readOnly(input)) continue;
+      }
       if (!part.resource_id) throw new StorageError('resource-busy');
       const bytes = await storage.readResource(String(part.resource_id));
       if (bytes.length !== part.byte_length || sha(bytes) !== part.sha256) throw new StorageError('corrupt');

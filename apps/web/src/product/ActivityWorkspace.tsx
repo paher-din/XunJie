@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { ALU_REFLECTION_MEDIA_TYPE } from '@xunjie/contracts/alu-learning'
+import { componentStateMediaType } from '@xunjie/contracts/components'
 import { CodeReferenceSource } from '../components/workspace/references'
 import { FileTabs } from '../components/workspace/FileTabs'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
@@ -43,7 +44,8 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
     const [name, setName] = useState('')
     const [rename, setRename] = useState('')
     const [merged, setMerged] = useState('')
-    const visibleFiles = state.files.filter(f => f.mediaType !== ALU_REFLECTION_MEDIA_TYPE)
+    const visibleFiles = state.files.filter(f => f.mediaType !== ALU_REFLECTION_MEDIA_TYPE
+      && !(f.mediaType === componentStateMediaType && /^components\/artifact-[0-9a-f-]{36}\.json$/.test(f.name)))
     const file = visibleFiles.find(f => f.objectId === selected) ?? visibleFiles[0]
     const latestRun=runs.records.find(r=>r.action.protocolVersion===3)
     const failed=latestRun?.query.state==='failed'?latestRun:undefined

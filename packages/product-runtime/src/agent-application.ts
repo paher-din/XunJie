@@ -51,7 +51,8 @@ export function createStandaloneAgentApplication(options: {
       return await activityContext.run(input.activityId, () => service(input));
     }
     catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
-  }, { successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
+  }, { readOnly: value => teachingAgentCallSchema.parse(value).operation === 'conversation',
+  successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
     && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
   authorize: async (value, source) => {
     try { await source.assertAuthorized?.(); }

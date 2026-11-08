@@ -80,7 +80,7 @@ export function createTeachingDependencyService(options: {
       // material owner may use it. No local guard function is ever accepted from the caller.
       const scopeSchema = z.object({ identity: spaceIdentitySchema, activity: input.operation === 'tool.stop'
         ? activitySchema.pick({ identity: true, activityId: true, course: true }) : activitySchema, input: actionInputSchema,
-        runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(), segmentId: z.uuid().optional(),
+        runId: z.uuid(), stepId: z.uuid(), snapshotId: z.uuid(), segmentId: z.uuid().optional(), attemptId: z.uuid().optional(),
         skillState: teachingSkillStateSchema.optional() }).strict()
         .refine(value => JSON.stringify(value.skillState ?? null).length <= 2_000_000,
           'fixed skill state exceeds the public wire budget');
@@ -89,9 +89,10 @@ export function createTeachingDependencyService(options: {
       if (input.authority && (input.authority.runId !== raw.runId || input.authority.activityId !== raw.activity.activityId))
         throw new StorageError('forbidden');
       if (input.operation === 'tool.dispatch' && !input.authority) throw new StorageError('forbidden');
-      const { segmentId, skillState, ...fixed } = raw;
+      const { segmentId, skillState, attemptId, ...fixed } = raw;
       // The state is fixed by the original step, not frozen here; the wire schema is its authority.
-      const fixedSkillState = skillState ? { skillState: skillState as TeachingSkillState } : {};
+      const fixedSkillState = { ...(skillState ? { skillState: skillState as TeachingSkillState } : {}),
+        ...(attemptId ? { attemptId } : {}) };
       if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...fixedSkillState,
         ...(segmentId ? { segmentId } : {}) }, teachingPreparedToolSchema.parse(input.args[1]));
       const scope: TeachingToolScope = { ...fixed, ...fixedSkillState, ...(segmentId ? { segmentId } : {}),

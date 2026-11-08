@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { StorageError, type Migration, type OwnedStorage } from '@xunjie/storage';
 import { runtimeConnectionSchema, fixedRuntimeConnectionDescriptor } from '@xunjie/contracts/product-runtime';
 import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
-import type { z } from 'zod';
+import { z } from 'zod';
 export { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
 
 export const teachingDeploymentMigration: Migration = { version: 4, name: 'agent-dependency-identity-and-permits', sql: `
@@ -10,6 +10,10 @@ export const teachingDeploymentMigration: Migration = { version: 4, name: 'agent
   ALTER TABLE teaching_steps ADD COLUMN dispatch_generation integer;
 ` };
 export type TeachingDispatchAuthority = z.infer<typeof teachingDispatchAuthoritySchema>;
+/** Adoption consumes an already completed publication; it grants no new tool dispatch. */
+export const teachingArtifactAdoptionAuthoritySchema = z.object({ artifactId: z.uuid(), revisionId: z.uuid(),
+  candidateId: z.uuid(), attemptId: z.uuid().optional() }).strict();
+export type TeachingArtifactAdoptionAuthority = z.infer<typeof teachingArtifactAdoptionAuthoritySchema>;
 
 export function createTeachingDependencyBinding(storage: OwnedStorage) {
   return async (value: unknown) => {

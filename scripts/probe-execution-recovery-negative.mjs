@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { probeEvidenceDirectory, writeEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 /**
  * #188 negative recovery cases on a real client product package.
  *
@@ -14,15 +15,16 @@
  */
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { label: { type: 'string' } } });
+const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+  'out': { type: 'string' }, 'output': { type: 'string' }, 'evidence-dir': { type: 'string' },  label: { type: 'string' } } });
 const product = resolve(positionals[0] ?? '');
-const output = resolve(positionals[1] ?? '.verification/wp03-188/recovery-negative');
+const output = probeEvidenceDirectory(positionals[1]);
 await mkdir(output, { recursive: true });
 const runtime = await import(pathToFileURL(join(product, 'app/product-runtime.js')).href);
 const resourcePaths = JSON.parse(await readFile(join(product, 'resources.json'), 'utf8'));
@@ -220,7 +222,7 @@ try {
   await rm(root, { recursive: true, force: true });
   report.temporaryRootRemoved = true;
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'negative.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(output, 'negative.json'), JSON.stringify(report, null, 2) + '\n');
   console.log('NEGATIVE_STATUS ' + report.status + ' cases=' + report.cases.length);
   if (report.status !== 'passed') process.exitCode = 1;
 }

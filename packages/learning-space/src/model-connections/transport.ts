@@ -1,5 +1,5 @@
 import { StorageError } from '@xunjie/storage';
-import type { ModelConfiguration } from '@xunjie/contracts/model-connections';
+import type { ModelConfiguration, ModelTool, ModelToolProgress } from '@xunjie/contracts/model-connections';
 import { checkPayload, runChat, type ChatPayload } from './chat.js';
 import { responsesCheckPayload, runResponses, type ResponsesPayload } from './responses.js';
 import { messagesCheckPayload, runMessages, unsupportedMessagesRoute, type MessagesPayload } from './messages.js';
@@ -22,14 +22,19 @@ export function limitPayload(configuration: ModelConfiguration, payload: NativeP
 }
 export async function runModel(configuration: ModelConfiguration, apiKey: string, payload: NativePayload,
   signal: AbortSignal, timeoutMs: number, segment: boolean, applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, applicationTools?: ModelTool[], onTools?: (tools: ModelToolProgress[]) => void) {
+  // Native payloads intentionally contain no application preview metadata.
+  const definitions = (tools: ModelTool[] | undefined) => tools?.map(tool => {
+    const progress = applicationTools?.find(item => item.name === tool.name)?.progress;
+    return { ...tool, ...(progress ? { progress } : {}) };
+  });
   if (configuration.protocol === 'responses') {
     const request = payload as ResponsesPayload;
     const tools = segment ? request.tools?.map(tool => {
       if (tool.type !== 'function') throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
     }) ?? [] : undefined;
-    return runResponses(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema, requestFetch, onText);
+    return runResponses(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools);
   }
   if (configuration.protocol === 'messages') {
     const request = payload as MessagesPayload;
@@ -37,7 +42,7 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
       if (!('input_schema' in tool)) throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema };
     }) ?? [] : [];
-    return runMessages(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema, requestFetch, onText);
+    return runMessages(configuration, apiKey, request, signal, timeoutMs, definitions(tools) ?? [], applicationSchema, requestFetch, onText, onTools);
   }
   if (configuration.protocol !== 'chat-completions') throw new StorageError('unavailable');
   const request = payload as ChatPayload;
@@ -45,5 +50,5 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
     if (tool.type !== 'function') throw new StorageError('corrupt');
     return { name: tool.function.name, description: tool.function.description ?? '', inputSchema: tool.function.parameters ?? {} };
   }) ?? [] : undefined;
-  return runChat(configuration, apiKey, request, signal, timeoutMs, tools, applicationSchema, requestFetch, onText);
+  return runChat(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools);
 }

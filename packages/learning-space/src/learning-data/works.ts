@@ -37,7 +37,7 @@ export async function validateWorks(storage: OwnedStorage) {
   for (const row of rows) {
     const view = await materialize(storage, Number(row.revision), row.files as ManifestFile[]);
     const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [row.activity_id]);
-    validateComponentFiles(activitySchema.parse(activity?.body), view.files);
+    await validateComponentFiles(activitySchema.parse(activity?.body), view.files, storage, true);
     try { await validateAluReflectionFiles(storage, activitySchema.parse(activity?.body), view.files); }
     catch { throw new StorageError('corrupt'); }
     for (const f of view.files) {
@@ -48,6 +48,9 @@ export async function validateWorks(storage: OwnedStorage) {
   }
   const { rows: heads } = await storage.read('SELECT h.activity_id,h.revision,h.files,v.files AS version_files FROM work_heads h LEFT JOIN work_versions v USING(activity_id,revision)');
   for (const h of heads) {
+    const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [h.activity_id]);
+    const current = await materialize(storage, Number(h.revision), h.files as ManifestFile[]);
+    await validateComponentFiles(activitySchema.parse(activity?.body), current.files, storage);
     if (JSON.stringify(h.files) !== JSON.stringify(h.version_files)) throw new StorageError('corrupt');
     for (const f of h.files as ManifestFile[]) {
       const { rows: [object] } = await storage.read('SELECT activity_id,kind,deleted FROM work_objects WHERE object_id=$1', [f.objectId]);
@@ -83,7 +86,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
   async function sync(identity: SpaceIdentity, activityId: string, value: WorkSync): Promise<WorkView> {
     const activity = await authorize(identity, activityId);
     const input = workSyncSchema.parse(value);
-    validateComponentFiles(activitySchema.parse(activity), input.files);
+    await validateComponentFiles(activitySchema.parse(activity), input.files, storage);
     await validateAluReflectionFiles(storage, activitySchema.parse(activity), input.files);
     const fingerprint = digest({ identity, activityId, input });
     const previous = await storage.receipt(input.requestId, fingerprint);
@@ -100,6 +103,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
       await tx.query('INSERT INTO work_heads VALUES ($1,0,$2) ON CONFLICT DO NOTHING', [activityId, '[]']);
       const { rows: [head] } = await tx.query('SELECT revision,files FROM work_heads WHERE activity_id=$1 FOR UPDATE', [activityId]);
       if (head!.revision !== input.baseRevision) throw new StorageError('conflict');
+      await validateComponentFiles(activitySchema.parse(activity), input.files, { read: tx.query.bind(tx) });
       for (const f of files) {
         await tx.query('INSERT INTO work_objects(object_id,activity_id,kind) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [f.objectId, activityId, f.kind]);
         const { rows: [object] } = await tx.query('SELECT activity_id,kind,deleted FROM work_objects WHERE object_id=$1', [f.objectId]);

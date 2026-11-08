@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -15,7 +16,7 @@ import { aggregationPackage } from '../components/table-aggregation/package.mjs'
  * Everything runs against the installed product, native PostgreSQL and real Chrome. No API is
  * stubbed and no execution is simulated in JavaScript.
  */
-const output = resolve(process.env.XUNJIE_EXECUTION_OUTPUT ?? '.verification/wp03-170');
+const output = probeEvidenceDirectory(process.env.XUNJIE_EXECUTION_OUTPUT);
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -146,7 +147,7 @@ try {
   await expect(frame.locator('#result')).toBeHidden();
   passed('a new or cancelled run cannot present the preceding run result as its own');
   await panel.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: join(output, 'execution-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'execution-light.png'), fullPage: true });
 
   await page.reload();
   await page.getByRole('tab', { name: '表格聚合', exact: true }).click();
@@ -162,10 +163,10 @@ try {
   await page.evaluate(() => { localStorage.setItem('theme.v1', 'dark'); document.documentElement.dataset.theme = 'dark'; });
   await expect.poll(() => page.frameLocator('iframe[title="表格聚合"]').locator('body')
     .evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim().toLowerCase())).toBe('#1f1f1f');
-  await page.screenshot({ path: join(output, 'execution-dark.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'execution-dark.png'), fullPage: true });
   await page.setViewportSize({ width: 900, height: 900 });
-  await page.screenshot({ path: join(output, 'execution-narrow.png'), fullPage: true });
-  passed('light, dark and narrow desktop rendering captured from the real run');
+  await captureEvidence(page, { path: join(output, 'execution-narrow.png'), fullPage: true });
+  passed('light, dark and narrow desktop rendering checked in the real run');
   await page.getByRole('tab', { name: '作品', exact: true }).click();
   await page.getByRole('tab', { name: '表格聚合', exact: true }).click();
   await expect(page.getByRole('region', { name: '计算记录' })).toContainText('已完成');
@@ -249,11 +250,11 @@ try {
     report.failureComponent = await page.frameLocator('iframe[title="表格聚合"]').locator('body').innerText().catch(() => 'unreadable');
     console.log('FAILURE VIEW ' + report.failureView.slice(-2500));
     console.log('FAILURE COMPONENT ' + report.failureComponent.slice(-1200));
-    await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
   }
   throw error;
 } finally {
-  await writeFile(join(output, 'browser-report.json'), JSON.stringify(report, null, 2)).catch(() => {});
+  await writeEvidence(join(output, 'browser-report.json'), JSON.stringify(report, null, 2)).catch(() => {});
   await browser?.close().catch(() => {});
   await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true }).catch(() => {});

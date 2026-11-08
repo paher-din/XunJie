@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { probeEvidenceFile, writeEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
+import { readFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parseArgs, digest, createLearningApi, expectOk as ok, loginMember, remoteDevice } from './remote-probe-helpers.mjs';
 import { execFile } from 'node:child_process';
@@ -13,7 +14,7 @@ import { promisify } from 'node:util';
  */
 const args = parseArgs();
 const endpoint = args.endpoint, controlFile = args.control, payloadFile = args.payload, stateFile = args.state;
-const out = resolve(args.out ?? 'remote-withdrawal-state.json');
+const out = probeEvidenceFile(args.out, 'remote-withdrawal-state.json');
 if (!endpoint || !controlFile || !payloadFile || !stateFile)
   throw new Error('usage: --endpoint=URL --control=FILE --payload=FILE --state=FILE [--out=FILE] [--device-state=FILE | --platform=macos-arm64|windows-x64]');
 const token = (await readFile(controlFile, 'utf8')).trim();
@@ -152,6 +153,6 @@ note({ step: 'settled', state: final.state, statusKnowledge: final.statusKnowled
 const result = { endpoint, device, activityId: activity.activityId, requestId, executionRef: accepted.executionRef,
   principalId: previous.principalId, unit, nodeId: accepted.session.nodeId, evidence };
 await mkdir(dirname(out), { recursive: true });
-await writeFile(out, JSON.stringify(result, null, 2) + '\n');
-console.log(JSON.stringify({ out, requestId, unit, steps: evidence.map(item => item.step),
+await writeEvidence(out, JSON.stringify(result, null, 2) + '\n');
+console.log(JSON.stringify({ out: hasProbeEvidence(out) ? out : null, requestId, unit, steps: evidence.map(item => item.step),
   settled: { state: final.state, statusKnowledge: final.statusKnowledge } }));

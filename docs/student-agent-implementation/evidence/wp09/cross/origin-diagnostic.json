@@ -1,0 +1,53 @@
+{
+  "activityId": "be878eb5-2bc1-4ef5-ae9b-849005f10040",
+  "context": {
+    "status": 200,
+    "readOnly": false
+  },
+  "workspace": {
+    "status": 200,
+    "revision": 0
+  },
+  "conversation": {
+    "status": 0,
+    "error": "TimeoutError"
+  },
+  "comparisons": [
+    {
+      "artifact": {
+        "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+        "activityId": "be878eb5-2bc1-4ef5-ae9b-849005f10040",
+        "title": "位宽解释卡",
+        "display": "card",
+        "activeRevisionId": null,
+        "latestRevisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+        "latestCandidateId": "7a315328-0ea6-4b57-b96f-3debbaf02095",
+        "shelved": false,
+        "relatedArtifactId": null,
+        "createdAt": "2026-11-08T13:25:03.152Z"
+      },
+      "revisionStatus": 200,
+      "origin": {
+        "runId": "f0774f5d-7456-4672-9496-6ea9a2c26ecb",
+        "stepId": "df540ac0-2eea-42fa-a722-5d6a2d06c8b2",
+        "snapshotId": "0efe94e5-5dbd-4845-be9f-72cc1b4db356",
+        "commandId": "32be2af6-2110-4a58-9b48-c33cffaf9a2a",
+        "attemptId": "19d1423a-265c-4c84-83ea-4442c7cf12f3"
+      },
+      "receipt": {
+        "safeParse": false,
+        "issues": [
+          {
+            "expected": "object",
+            "code": "invalid_type",
+            "path": [],
+            "message": "Invalid input: expected object, received undefined"
+          }
+        ],
+        "candidateEqual": false,
+        "artifactEqual": false,
+        "revisionEqual": false
+      }
+    }
+  ]
+}

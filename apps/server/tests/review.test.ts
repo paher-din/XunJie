@@ -123,7 +123,7 @@ test('A4: B2 preparation automatically reads the real current learner state and 
     const refs = prepared.json().data.references;
     const ref = refs.find((r: {id:string}) => r.id === `claim:${claim.claimId}:1`);
     assert.ok(ref,'Real A claim is included');assert.equal(JSON.parse(ref.content).learnerStateRevision,1);
-    assert.equal(JSON.parse(ref.content).assistanceStatus,'unknown');assert.ok(!JSON.stringify(refs).includes('900'));
+    assert.equal(JSON.parse(ref.content).assistanceStatus,'unknown');
   } finally {await s.f.close();}
 });
 

@@ -1,5 +1,22 @@
 import { defineConfig, devices } from '@playwright/test'
+import { rmSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { PREP_URL, REAL_URL, PREP_PORT, REAL_PORT } from './e2e/env'
+import { evidenceDirectory } from './e2e/evidence'
+
+const evidence = evidenceDirectory()
+const explicitOutput = process.argv.some(value => value === '--output' || value.startsWith('--output='))
+const explicitTrace = process.argv.some((value, index) => value.startsWith('--trace=')
+  ? value !== '--trace=off' : value === '--trace' && process.argv[index + 1] !== 'off')
+const retainOutput = Boolean(evidence || explicitOutput || explicitTrace)
+const outputDir = evidence ? join(evidence, 'playwright') : retainOutput
+  ? resolve('test-results') : join(tmpdir(), 'xunjie-playwright-' + randomUUID())
+if (!retainOutput) process.once('exit', () => {
+  try { rmSync(outputDir, { recursive: true, force: true }) }
+  catch (error) { console.error('Playwright temporary output cleanup failed:', error); process.exitCode ||= 1 }
+})
 
 /**
  * I0-A 准备检查的最小浏览器 harness。
@@ -25,8 +42,10 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   reporter: [['list']],
+  outputDir,
+  preserveOutput: retainOutput ? 'always' : 'never',
   use: {
-    trace: 'retain-on-failure',
+    trace: retainOutput ? 'retain-on-failure' : 'off',
   },
   projects: [{
     name: 'chromium',

@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { release } from 'node:os';
@@ -12,7 +13,7 @@ import { annotationPackage } from '../components/material-annotation/package.mjs
 import { aggregationPackage } from '../components/table-aggregation/package.mjs';
 import { semanticAdapters } from '@xunjie/contracts/question-drafts';
 const profile=process.env.XUNJIE_SEMANTIC_PROFILE==='school'?'school':'local';
-const output=resolve(profile==='school'?'.verification/wp03-172-school':'.verification/wp03-172');await mkdir(output,{recursive:true});
+const output=probeEvidenceDirectory();await mkdir(output,{recursive:true});
 const root=await mkdtemp(join(tmpdir(),'xj172-'));
 if(!process.env.XUNJIE_PRODUCT_POSTGRES_BIN)throw Error('Native PostgreSQL required');
 const postgresVersion=/(\d+\.\d+)/.exec(execFileSync(join(process.env.XUNJIE_PRODUCT_POSTGRES_BIN,'postgres'),['--version'],{encoding:'utf8'}))[1];
@@ -52,7 +53,7 @@ try{
  await frame.getByRole('textbox',{name:'标注内容',exact:true}).fill('后来的标注修改不能覆盖旧引用');
  await refs.getByRole('button',{name:/定位引用 1/}).click();await expect(page.getByText('来源已变化，选中时的副本仍保留。',{exact:true})).toBeVisible();
  assert.equal((await draft()).references[0].copy,original.copy);passed('source content changes preserve the original copy and refuse guessed relocation');
- await page.screenshot({path:join(output,'annotation-reference-light.png'),fullPage:true});
+ await captureEvidence(page, {path:join(output,'annotation-reference-light.png'),fullPage:true});
  await page.reload();await page.getByRole('button',{name:'打开对话',exact:true}).click();await expect(refs.locator('li')).toHaveCount(1);await expect(refs).toContainText('选中时的疑问');
  passed('fixed copies restore without mounting the executable component view');
  await page.getByRole('tab',{name:'表格聚合',exact:true}).click();
@@ -90,11 +91,11 @@ try{
  const accepted=receiver.acceptedInput(receiver.acceptedIds()[0]);assert.equal(accepted.draft.references.length,2);
  assert.equal(JSON.stringify(accepted.draft.references),fixed);
  passed('an explicit question action fixes both semantic references while later draft changes remain independent');
- await page.screenshot({path:join(output,'aggregation-reference-light.png'),fullPage:true});
- await page.locator('html').evaluate(element=>element.dataset.theme='dark');await page.screenshot({path:join(output,'semantic-dark.png'),fullPage:true});await page.setViewportSize({width:1000,height:800});await page.screenshot({path:join(output,'semantic-narrow.png'),fullPage:true});
+ await captureEvidence(page, {path:join(output,'aggregation-reference-light.png'),fullPage:true});
+ await page.locator('html').evaluate(element=>element.dataset.theme='dark');await captureEvidence(page, {path:join(output,'semantic-dark.png'),fullPage:true});await page.setViewportSize({width:1000,height:800});await captureEvidence(page, {path:join(output,'semantic-narrow.png'),fullPage:true});
  await page.reload();await page.getByRole('button',{name:'打开对话',exact:true}).click();await expect(page.getByRole('textbox',{name:'你的问题',exact:true})).toHaveValue('发送之后的新问题');await expect(refs.locator('li')).toHaveCount(1);
- passed('removal/order/later Chinese input restore after refresh; dark and narrow desktop views captured');
+ passed('removal/order/later Chinese input restore after refresh; dark and narrow desktop views checked');
  await host.stop();host=undefined;const restarted=await runtime.start();assert.ok(['ready','degraded'].includes(restarted.state));await runtime.stop();passed('normal owner restart validates retained semantic references and fixed actions');
  report.status='passed';
-}catch(error){report.status='failed';report.error=error.message;if(page){report.failureView=await page.locator('body').innerText().catch(()=>null);await page.screenshot({path:join(output,'failure.png'),fullPage:true}).catch(()=>{});}throw error;}
-finally{semanticAdapters['annotation-objects'].version=1;await browser?.close();await host?.stop().catch(()=>{});await runtime.stop().catch(()=>{});report.cleanup='owned runtime stopped';await writeFile(join(output,'browser-report.json'),JSON.stringify(report,null,2));}
+}catch(error){report.status='failed';report.error=error.message;if(page){report.failureView=await page.locator('body').innerText().catch(()=>null);await captureEvidence(page, {path:join(output,'failure.png'),fullPage:true}).catch(()=>{});}throw error;}
+finally{semanticAdapters['annotation-objects'].version=1;await browser?.close();await host?.stop().catch(()=>{});await runtime.stop().catch(()=>{});report.cleanup='owned runtime stopped';await writeEvidence(join(output,'browser-report.json'),JSON.stringify(report,null,2));}

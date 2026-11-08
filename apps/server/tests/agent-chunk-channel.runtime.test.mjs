@@ -108,6 +108,51 @@ test('a handler success followed by rolled back completion stays unknown; read-o
   assert.equal(effects, 1);
 });
 
+test('maintenance retains an interrupted unexecuted input, while incomplete effect replies still block validation', { timeout: 60000 }, async t => {
+  const f = await fixture(t), storage = await f.open(), actor = source(), id = randomUUID();
+  let failUpload = true, effects = 0;
+  const boundary = new Proxy(storage, { get(target, property) {
+    if (property === 'stageResource') return input => {
+      if (failUpload) throw new StorageError('unavailable');
+      return target.stageResource(input);
+    };
+    const member = Reflect.get(target, property);
+    return typeof member === 'function' ? member.bind(target) : member;
+  } });
+  const channel = createChunkChannel(boundary), handler = channel.wrap(value => { effects++; return value; });
+  const bytes = Buffer.from('{"original":"input"}'), put = wire('put', id, { index: 0, data: bytes.toString('base64') });
+  await handler(wire('begin', id, { byteLength: bytes.length, sha256: digest(bytes) }), actor);
+  await assert.rejects(handler(put, actor), { code: 'unavailable' });
+  await createChunkChannel(await f.open()).validate();
+  assert.equal(effects, 0);
+  failUpload = false; await handler(put, actor);
+  failUpload = true;
+  assert.equal((await handler(wire('execute', id), actor)).state, 'unknown');
+  await assert.rejects(channel.validate(), { code: 'resource-busy' });
+  assert.equal((await handler(wire('execute', id), actor)).state, 'unknown');
+  assert.equal(effects, 1);
+});
+
+test('maintenance retains an owner-classified incomplete read reply without replaying its handler', { timeout: 60000 }, async t => {
+  const f = await fixture(t), storage = await f.open(), actor = source();
+  let uploads = 0, reads = 0;
+  const boundary = new Proxy(storage, { get(target, property) {
+    if (property === 'stageResource') return input => {
+      if (++uploads === 2) throw new StorageError('unavailable');
+      return target.stageResource(input);
+    };
+    const member = Reflect.get(target, property);
+    return typeof member === 'function' ? member.bind(target) : member;
+  } });
+  const channel = createChunkChannel(boundary), handler = channel.wrap(input => { reads++; return input; });
+  const client = createChunkClient(input => handler(input, actor)), id = randomUUID();
+  await assert.rejects(client({ operation: 'activity' }, { transferId: id }), { code: 'commit-unknown' });
+  await assert.rejects(channel.validate(), { code: 'resource-busy' });
+  await createChunkChannel(await f.open()).validate(input => input.operation === 'activity');
+  assert.equal((await handler(wire('metadata', id), actor)).state, 'unknown');
+  assert.equal(reads, 1);
+});
+
 test('source admission enforces count and retained bytes; acknowledgement frees capacity, and full input hash is mandatory', { timeout: 60000 }, async t => {
   const f = await fixture(t), storage = await f.open(), actor = source();
   let effects = 0;

@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
@@ -21,7 +22,7 @@ const cases: { name: string; status: string | undefined; durationMs: number }[] 
 let browserVersion = ''
 test.beforeAll(async ({ browser }) => {
   browserVersion = browser.version()
-  await mkdir(fileURLToPath(new URL('../../../.verification/153', import.meta.url)), { recursive: true })
+  if (evidenceDirectory()) await mkdir(evidencePath('153'), { recursive: true })
   const root = await mkdtemp(join(tmpdir(), 'xj-intents-chrome-'))
   runtimeRoot = root
   runtime = openProductRuntime({ root, resources: {
@@ -81,7 +82,7 @@ test('quota refusal sends nothing and an unsent cancellation survives a new work
 test.afterEach(async ({}, info) => { cases.push({ name: info.title, status: info.status, durationMs: info.duration }) })
 test.afterAll(async () => {
   await host?.stop()
-  await writeFile(fileURLToPath(new URL('../../../.verification/153/chrome-results.json', import.meta.url)), JSON.stringify({
+  if (evidenceDirectory()) await writeFile(evidencePath('153/chrome-results.json'), JSON.stringify({
     measuredAt: new Date().toISOString(), node: process.version, postgres: '18.6', platform: process.platform, arch: process.arch,
     osRelease: release(), browser: 'installed Chrome', browserVersion, headless: false, cases,
     receiverScope: 'Public workspace API and actual IndexedDB/HTTP/PG; no real Agent, execution or teacher receiver.' }, null, 2))
@@ -197,11 +198,11 @@ test('production composer shows pending facts and late acceptance keeps the newe
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(page.getByRole('region', { name: '待发与接收记录', exact: true })).toContainText('接收方已接受')
     await expect(question).toHaveValue('发送后继续写的问题 B')
-    await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/153/chrome-pending-and-new-draft.png', import.meta.url)), fullPage: true })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('153/chrome-pending-and-new-draft.png'), fullPage: true })
     await page.emulateMedia({ colorScheme: 'dark' })
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     await page.setViewportSize({ width: 420, height: 900 })
-    await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/153/chrome-action-dark-narrow.png', import.meta.url)), fullPage: true })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('153/chrome-action-dark-narrow.png'), fullPage: true })
   } finally { unblock() }
 })
 

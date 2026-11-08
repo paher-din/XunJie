@@ -1,8 +1,9 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 // Real Chrome, native PostgreSQL, formal product, real Icarus Worker and the #193 board/check UI.
 // This is engineering/browser evidence, not a teaching or school-network acceptance.
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,11 +12,14 @@ import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { aluPackage, aluCoursePackage } from '../components/alu-experiment/package.mjs';
 
-const output = resolve(process.env.XUNJIE_ALU_OUTPUT ?? '.verification/wp04-193-product');
+if (!process.env.XUNJIE_ALU_PRODUCT_ROOT && !process.env.XUNJIE_PRODUCT_POSTGRES_BIN) {
+  throw new Error('Set XUNJIE_ALU_PRODUCT_ROOT to a product package or XUNJIE_PRODUCT_POSTGRES_BIN to its PostgreSQL bin directory');
+}
+const output = probeEvidenceDirectory(process.env.XUNJIE_ALU_OUTPUT);
 await mkdir(output, { recursive: true });
 const root = await mkdtemp(join(tmpdir(), 'xj-alu-board-'));
 let resources = { nodePath: process.execPath, nodeVersion: '24.21.0',
-  postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN ?? resolve('.verification/wp04-192-windows-final/resources/postgres/bin'),
+  postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN,
   postgresVersion: '18.6', webRoot: resolve(process.env.XUNJIE_ALU_WEB_ROOT ?? 'apps/web/dist-runtime'),
   windowsPrerequisitePath: resolve('scripts/windows-prereq-prepare.ps1') };
 let runtimeFactory = openProductRuntime, credential = resolveCredential;
@@ -71,7 +75,7 @@ try {
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
   await expect(page.getByRole('button', { name: '运行', exact: true })).toBeEnabled({ timeout: 120000 });
   check(await page.getByRole('button', { name: '检查全部输入', exact: true }).isDisabled(), 'check is disabled before any work is enabled');
-  await page.screenshot({ path: join(output, 'after-initial.png') });
+  await captureEvidence(page, { path: join(output, 'after-initial.png') });
   check(true, 'board and numeric input render in the existing ALU experiment tab');
 
   // The starter is intentionally incomplete; an X observation is still a real, enablable observation.
@@ -82,7 +86,7 @@ try {
   report.timings.starterRunMs = Date.now() - startedAt;
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
   await expect(page.locator('.alu-board')).toContainText(/已取得观察|输出含 X\/Z/, { timeout: 60000 });
-  await page.screenshot({ path: join(output, 'after-starter-unknown.png') });
+  await captureEvidence(page, { path: join(output, 'after-starter-unknown.png') });
   check(true, 'starter produces and enables a four-state X observation instead of a fake zero');
 
   const correct = `// correct ALU typed through the real editor\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin; default:begin F=0;Cout=0;end endcase end endmodule`;
@@ -125,7 +129,7 @@ try {
   await waitReadout('F=0000');
   report.timings.lastInputToObservationMs = Date.now() - startedAt;
   await expect(page.locator('.alu-readout-value')).toContainText('Cout=1');
-  await page.screenshot({ path: join(output, 'after-observation.png') });
+  await captureEvidence(page, { path: join(output, 'after-observation.png') });
   check(true, 'virtual switches A=15/B=0/M=1/S=00/Cin=1 produce real F=0000/Cout=1 through the enabled work');
   check(await page.locator('.alu-numeric-field input').count() === 5, 'the host five-control numeric editor is the same input state as the switches');
 
@@ -148,7 +152,7 @@ try {
   report.timings.checkPassMs = Date.now() - startedAt;
   await expect(page.locator('.alu-check-counts')).toContainText('16384');
   await expect(page.locator('.alu-check-counts')).toContainText('1536');
-  await page.screenshot({ path: join(output, 'after-check-pass.png') });
+  await captureEvidence(page, { path: join(output, 'after-check-pass.png') });
   check(true, 'full 4096-input check passes with 16384 compared rows and 1536 reserved inputs covered');
   await expect(page.getByText('反例', { exact: true }).first()).toBeVisible();
   // Read the retained check artifact through the product owner, not the UI state.
@@ -224,9 +228,9 @@ try {
   await expect(page.getByText('检查未通过', { exact: false }).first()).toBeVisible({ timeout: 120000 });
   report.timings.checkFailMs = Date.now() - startedAt;
   await expect(page.locator('.alu-check-counts')).toContainText('256');
-  await page.screenshot({ path: join(output, 'after-check-fail.png') });
+  await captureEvidence(page, { path: join(output, 'after-check-fail.png') });
   await page.locator('.alu-counterexamples').scrollIntoViewIfNeeded();
-  await page.screenshot({ path: join(output, 'after-counterexamples.png') });
+  await captureEvidence(page, { path: join(output, 'after-counterexamples.png') });
   check(true, 'fixed drop-carry work is reported as failing with 256 unique counterexample inputs, not as a pass');
 
   startedAt = Date.now();
@@ -235,7 +239,7 @@ try {
   await expect(page.getByText('检查未通过', { exact: false }).first()).toBeVisible({ timeout: 60000 });
   await waitReadout('F=0000');
   report.timings.refreshMs = Date.now() - startedAt;
-  await page.screenshot({ path: join(output, 'after-refresh.png') });
+  await captureEvidence(page, { path: join(output, 'after-refresh.png') });
   check(true, 'refresh restores the enabled input, observation and selected latest failed report without recomputation');
 
   // A real hanging Worker is stopped through the existing controller, then a normal work runs again.
@@ -262,23 +266,23 @@ try {
   check(true, 'normal work and check remain usable after a real Worker stop');
 
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.screenshot({ path: join(output, 'after-narrow.png') });
+  await captureEvidence(page, { path: join(output, 'after-narrow.png') });
   await page.evaluate(() => localStorage.setItem('theme.v1', 'dark'));
   await page.reload();
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
-  await page.screenshot({ path: join(output, 'after-dark.png') });
+  await captureEvidence(page, { path: join(output, 'after-dark.png') });
   check(true, 'narrow desktop and dark theme render the same board, inputs and check report');
 
   await page.setViewportSize({ width: 900, height: 900 });
   await expect(page.locator('.alu-board')).toBeVisible();
   await page.getByRole('button', { name: '再次检查', exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: join(output, 'after-900.png') });
+  await captureEvidence(page, { path: join(output, 'after-900.png') });
   check(true, '900px desktop keeps the board, values and check action reachable');
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
   await page.getByRole('button', { name: '再次检查', exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: '再次检查', exact: true })).toBeInViewport();
-  await page.screenshot({ path: join(output, 'after-200-content-zoom.png') });
+  await captureEvidence(page, { path: join(output, 'after-200-content-zoom.png') });
   check(true, '200% content zoom keeps check controls in the reflowed desktop (CSS zoom, not a claim about OS display scaling)');
   await page.evaluate(() => { document.documentElement.style.zoom = '1'; });
 
@@ -299,7 +303,7 @@ try {
   await expect(page.locator('.runtime-tool-full .alu-board-status')).toContainText('已取得观察');
   await page.waitForTimeout(650);
   assert.equal(await countObservations(), beforeSplit + 1);
-  await page.screenshot({ path: join(output, 'after-split.png') });
+  await captureEvidence(page, { path: join(output, 'after-split.png') });
   check(true, 'real split panes mount compact/full views but accept exactly one observation for one input change');
 
   const other = await context.newPage();
@@ -327,7 +331,7 @@ try {
   report.twoTabs = { requests:tabRuns.map(entry=>entry.action.requestId), bases, activationRevision:headState?.activationRevision,
     conflictVisible, resolution:serialized?'serialized-from-fresh-bases':'explicit-conflict' };
   check(serialized || conflictVisible, 'two real tabs preserve both run identities and either serialize from fresh activation bases or expose a conflict');
-  await page.screenshot({ path: join(output, 'after-two-tabs.png') });
+  await captureEvidence(page, { path: join(output, 'after-two-tabs.png') });
   await other.close();
 
   report.status = 'passed';
@@ -335,12 +339,12 @@ try {
   report.status = 'failed'; report.error = String(error.stack ?? error);
   if (page) {
     report.visibleText = await page.locator('body').innerText().catch(() => '');
-    await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
   }
   throw error;
 } finally {
   await browser?.close();
   await runtime.stop().catch(() => {});
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));
 }

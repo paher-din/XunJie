@@ -4,6 +4,8 @@
 
 本模块拥有无课程活动及其请求身份和回执；通过 `SpaceAuthority.resolveBinding` 取得当前成员与实际目标，不访问空间 owner 的数据库。wire 从 `@xunjie/contracts/learning-data` 消费，生产入口见 [learning-entry](../learning-entry/README.md)。
 
+[#224 可交互教学内容](../../../../docs/student-agent-implementation/wp09-implementation.md) 由 `artifacts` 持有活动产物、不可变内容版本、候选、检查/采用/收纳及原回执（迁移 25）。交互状态仍在同一 `works`，采用在所属事务内一起更新绑定与状态；字段含义和完整旧输入范围均可保留时原位采用，收窄结构等不兼容修订另开关联实例。普通 HTTP 不能自报 Agent 来源；资源、版本、检查和回执进入同一恢复校验与来源闭包。
+
 活动可由目标、起始问题或 HTTPS 资料引用建立，完全不生成课程、Assignment 或教师。`create/list/open/setStatus/receipt` 均经真实所属 PostgreSQL。每次读取和写入先核验空间环境、空间、主体和学习数据服务绑定；不存在及无权读取均不能触发新建。
 
 建立与状态变化使用稳定请求 ID 和输入摘要。相同身份、相同输入返回原回执；不同输入拒绝。提交未知时使用 `receipt` 查询原身份，未确认前不换请求。活动和请求范围在本 owner 的短事务中提交，不拼接空间 owner 的事务。

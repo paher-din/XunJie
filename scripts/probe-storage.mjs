@@ -1,15 +1,16 @@
 #!/usr/bin/env node
+import { probeEvidenceFile, writeEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, globSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 if (process.argv.includes('--help')) {
-  console.log('Usage: npm run test:storage:native [-- --out /absolute/evidence.json]\nRequires XUNJIE_PRODUCT_POSTGRES_BIN and XUNJIE_STORAGE_S3_CONFIG from the pinned real fixtures.\nWrites raw logs and a public summary under .verification/. No credential contents are recorded.');
+  console.log('Usage: npm run test:storage:native [-- --out /absolute/evidence.json]\nRequires XUNJIE_PRODUCT_POSTGRES_BIN and XUNJIE_STORAGE_S3_CONFIG from the pinned real fixtures.\nWrites raw logs and a public summary only with --out. No credential contents are recorded.');
   process.exit(0);
 }
 const args = process.argv.slice(2);
@@ -28,10 +29,9 @@ const fileHash = async path => {
   for await (const chunk of createReadStream(path)) hash.update(chunk);
   return hash.digest('hex');
 };
-const runId = new Date().toISOString().replace(/[:.]/g, '-');
-const directory = join(root, '.verification', `storage-${runId}`);
+const output = probeEvidenceFile(args[1], 'summary.json');
+const directory = dirname(output);
 await mkdir(directory, { recursive: true });
-const output = args.length ? resolve(args[1]) : join(directory, 'summary.json');
 const files = [
   ...globSync('packages/storage/test/**/*.runtime.test.mjs', { cwd: root }),
   ...globSync('apps/server/tests/storage-sample/**/*.runtime.test.mjs', { cwd: root }),
@@ -56,20 +56,20 @@ const summary = {
     assetUrl: s3Evidence.assetUrl, archiveSha256: s3Evidence.assetSha256 ?? s3Evidence.archiveSha256, binarySha256: s3Evidence.binarySha256 },
   tests: files, status: 'running',
 };
-await writeFile(output, JSON.stringify(summary, null, 2) + '\n');
-console.log(`Storage acceptance raw log: ${join(directory, 'native.log')}`);
+await writeEvidence(output, JSON.stringify(summary, null, 2) + '\n');
+if (hasProbeEvidence(output)) console.log(`Storage acceptance raw log: ${join(directory, 'native.log')}`);
 const started = Date.now();
 const result = spawnSync(process.execPath, ['--test', '--test-reporter=spec', '--test-concurrency=4', ...files], {
   cwd: root, encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' }, timeout: 180_000, maxBuffer: 8 * 1024 * 1024,
 });
 const log = (result.stdout ?? '') + (result.stderr ?? '');
-await writeFile(join(directory, 'native.log'), log);
+await writeEvidence(join(directory, 'native.log'), log);
 console.log(log.trimEnd());
 const count = label => Number(new RegExp(`(?:ℹ |# )${label} (\\d+)`).exec(log)?.[1] ?? 0);
 Object.assign(summary, { status: result.status === 0 && count('pass') > 0 && count('skipped') === 0 ? 'passed' : 'failed',
   exitCode: result.status, durationMs: Date.now() - started, finishedAt: new Date().toISOString(),
   counts: { tests: count('tests'), passed: count('pass'), failed: count('fail'), skipped: count('skipped') },
 });
-await writeFile(output, JSON.stringify(summary, null, 2) + '\n');
-console.log(`Storage acceptance ${summary.status}: ${output}`);
+await writeEvidence(output, JSON.stringify(summary, null, 2) + '\n');
+console.log(JSON.stringify(summary));
 process.exitCode = summary.status === 'passed' ? 0 : 1;

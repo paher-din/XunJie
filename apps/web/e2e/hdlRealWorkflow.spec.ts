@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { clickWorkspaceAction, openWorkspaceMenu } from './workspaceControls'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { create, edit } from './helpers'
@@ -159,7 +160,7 @@ test('板卡禁用有原因且可就地恢复：未装载、无效周期、停�
   await expect(board).toContainText('操作序号 1 ·')
   await expect(board.getByLabel('已确认板卡输入')).toContainText('SW=0000000000000001')
   await expect(page.getByRole('img', { name: 'LED0: 1', exact: true })).toBeVisible()
-  await page.screenshot({ path: test.info().outputPath('board-rearmed.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/board-rearmed.png') })
 })
 
 test('隔离正常 HDL 页面：.sv保存与快照、真实形状失败诊断、显式成功装载及四态输出', async ({ page }) => {
@@ -196,7 +197,7 @@ test('隔离正常 HDL 页面：.sv保存与快照、真实形状失败诊断、
   await expect(page.locator('[aria-label="真实 HDL 有限波形"]')).toContainText('返回 1 帧')
   await expect(page.getByRole('table', { name: '原始四态采样' })).toContainText('x0z1010')
   expect(protocol.paths.every(path => !path.includes('__i0prep'))).toBe(true)
-  await page.screenshot({ path: test.info().outputPath('isolated-real-mode-hdl-wave.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-real-mode-hdl-wave.png') })
 })
 
 test('隔离 HDL pending/失ACK/刷新：零额外装载与交互，原键原wire核对，停止请求和退出分开', async ({ page }) => {
@@ -250,7 +251,7 @@ test('隔离 HDL pending/失ACK/刷新：零额外装载与交互，原键原wir
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('操作序号 2')
   const layout = await page.evaluate(() => ({ width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth, scrollX: window.scrollX }))
-  await page.screenshot({ path: test.info().outputPath('isolated-real-mode-hdl-toolbar.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-real-mode-hdl-toolbar.png') })
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.width)
   expect(layout.scrollX).toBe(0)
   await reopenBoard(page)
@@ -258,7 +259,7 @@ test('隔离 HDL pending/失ACK/刷新：零额外装载与交互，原键原wir
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('模拟时间 20000 ps')
   expect(protocol.effects).toEqual({ builds: 1, programs: 1, interactions: 2, stops: 1 })
   expect(protocol.paths.every(path => !path.includes('__i0prep'))).toBe(true)
-  await page.screenshot({ path: test.info().outputPath('isolated-real-mode-hdl-stopped.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-real-mode-hdl-stopped.png') })
 })
 
 test('隔离同源正常 C 分配仍显示原 Core 入口，不能因 HDL 文件扩展名替换课程', async ({ page }) => {
@@ -326,7 +327,7 @@ test('隔离 HDL 同快照构建与代码求助：准确selection、预算关闭
   expect(protocol.effects).toEqual({ builds: 1, programs: 0, interactions: 0, stops: 0 })
   expect(protocol.posts.filter(post => post.kind === 'help')).toHaveLength(1)
   expect(protocol.paths.every(path => !path.includes('__i0prep'))).toBe(true)
-  await page.screenshot({ path: test.info().outputPath('isolated-real-mode-hdl-model-unavailable.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-real-mode-hdl-model-unavailable.png') })
 })
 
 test('隔离 HDL 长 pending：虚拟时钟最多60轮读取、耗尽不循环发布、明确读取恢复', async ({ page }) => {
@@ -370,7 +371,7 @@ test('隔离 HDL 长 pending：虚拟时钟最多60轮读取、耗尽不循环�
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('操作序号 1')
   await expect(notice).toHaveCount(0)
   expect(protocol.effects.interactions).toBe(1)
-  await page.screenshot({ path: test.info().outputPath('isolated-hdl-poll-budget-recovered.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-hdl-poll-budget-recovered.png') })
 })
 
 test('隔离 HDL 切换分配：旧Session迟到响应不能覆盖正常C页面或作品', async ({ page }) => {
@@ -399,7 +400,7 @@ test('隔离 HDL 切换分配：旧Session迟到响应不能覆盖正常C页面�
     expect(protocol.head!.files[0]!.path).toBe('main.c')
     expect(protocol.head!.files[0]!.text).toBe('int main(void) { return 0; }\n')
     expect(protocol.effects).toEqual({ builds: 1, programs: 1, interactions: 0, stops: 0 })
-    await page.screenshot({ path: test.info().outputPath('isolated-hdl-late-read-c-assignment.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-hdl-late-read-c-assignment.png') })
   } finally { held.release() }
 })
 
@@ -457,7 +458,7 @@ test('隔离 HDL 键盘基本路径：SW、按钮按下松开、低有效复位�
   await expect(page.getByTestId('tutor-question-status')).toHaveText('服务未接纳')
   await expect(page.getByTestId('tutor-message')).toHaveCount(0)
   expect(protocol.effects).toEqual({ builds: 1, programs: 1, interactions: 6, stops: 1 })
-  await page.screenshot({ path: test.info().outputPath('isolated-hdl-keyboard-basics.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/isolated-hdl-keyboard-basics.png') })
 })
 
 test('工作区操作整合：常用入口不溢出、配置与求助按需展开、键盘返回且不产生业务写入', async ({ page }) => {
@@ -483,7 +484,7 @@ test('工作区操作整合：常用入口不溢出、配置与求助按需展�
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('button', { name: '构建设置', exact: true })).toBeFocused()
-    await page.screenshot({ path: test.info().outputPath(`workspace-light-${width}.png`) })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/' + `workspace-light-${width}.png`) })
   }
   await page.setViewportSize({ width: 1280, height: 900 })
   await openWorkspaceMenu(page, '执行电脑设置')
@@ -499,7 +500,7 @@ test('工作区操作整合：常用入口不溢出、配置与求助按需展�
   await expect(page.getByRole('button', { name: '提交与反馈', exact: true })).toBeFocused()
   await page.emulateMedia({ colorScheme: 'dark' })
   await openWorkspaceMenu(page, '求助')
-  await page.screenshot({ path: test.info().outputPath('workspace-dark-help.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/hdlRealWorkflow/workspace-dark-help.png') })
   await page.keyboard.press('Escape')
   expect(protocol.posts).toHaveLength(writes)
   expect(protocol.effects).toEqual({ builds: 0, programs: 0, interactions: 0, stops: 0 })

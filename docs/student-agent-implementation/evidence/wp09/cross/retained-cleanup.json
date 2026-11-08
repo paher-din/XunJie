@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "scope": "owned retained controlled cross diagnostics cleanup",
+  "windows": {
+    "stopped": true,
+    "environmentDeleted": true,
+    "rootRemoved": true
+  },
+  "mac": {
+    "stopped": true,
+    "environmentDeleted": true,
+    "rootRemoved": true
+  },
+  "remote": {
+    "fixtureRemoved": true
+  },
+  "privateResumeAndTestKeysRemoved": true
+}

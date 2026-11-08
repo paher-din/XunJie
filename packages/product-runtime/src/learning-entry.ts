@@ -279,8 +279,15 @@ export async function createProductLearningApplication(context: {
         createAgentConnection(root, binding.connectionId, 'teaching.agent', binding.target));
     }
     const receivers = [...(actions.receivers ?? [])];
+    const assertArtifactAdoption: NonNullable<Parameters<typeof createLearningData>[6]> = async (identity, activityId, origin, candidate) => {
+      await (await teachingFor(identity, activityId)).assertCommandDispatch(identity, activityId, {
+        runId: origin.runId, stepId: origin.stepId, snapshotId: origin.snapshotId, commandId: origin.commandId,
+        adoption: { artifactId: candidate.artifactId, revisionId: candidate.revisionId, candidateId: candidate.candidateId,
+          ...(origin.attemptId ? { attemptId: origin.attemptId } : {}) },
+      });
+    };
     learning = data ? createLearningData(data.storage, spaces, courses,
-      { ...actions, receivers, ...(teaching ? { receiversFor: async (identity, activityId) => [(await teachingFor(identity, activityId)).receiver] } : {}) }, native, nativeChannel) : undefined;
+      { ...actions, receivers, ...(teaching ? { receiversFor: async (identity, activityId) => [(await teachingFor(identity, activityId)).receiver] } : {}) }, native, nativeChannel, assertArtifactAdoption) : undefined;
     const dataDescriptor = data ? environment.services.find(item => item.serviceId === data.storage.owner.serviceId)! : undefined;
     const sourceAuthority = dataDescriptor ? createConnectionAuthority({ root, service: { ...dataDescriptor,
       capabilities: ['teaching.dependencies'] }, handlers: {} }) : undefined;
@@ -422,7 +429,7 @@ export async function createProductLearningApplication(context: {
     if (!targetOwner) throw new RecoveryError('missing-business-owner');
     const localTarget = { ...targetOwner.storage.owner, version: 1 as const };
     const schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
-      target: localTarget, ...(model ? { modelTarget: { ...model.storage.owner, version: 1 as const } } : {}), ...(data ? { create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions) } : {}),
+      target: localTarget, ...(model ? { modelTarget: { ...model.storage.owner, version: 1 as const } } : {}), ...(data ? { create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions, undefined, undefined, assertArtifactAdoption) } : {}),
       models, personal: spaces.personal });
     // The isolation answer is host-wide, so the owner measures it once. Status reports the state
     // machine rather than a prose message: `starting` until the unit answers, then `ready` with a
@@ -516,7 +523,8 @@ export async function createProductLearningApplication(context: {
               () => agentDependencyAuthorization.run(scopedAdmission,
                 () => agentDependencyFreshAuthorization.run(admitted.guard, () => dependencyService(payload))));
           } catch (error) { return { error: error instanceof StorageError ? error.code : 'invalid' }; }
-        }, { successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
+        }, { readOnly: value => teachingDependencyCallSchema.parse(value).operation === 'activity',
+        successor: async (from, to) => !!from.sourceInstallationId && !!to.sourceInstallationId
           && isRecoverySuccessor(root, { ...from, sourceInstallationId: from.sourceInstallationId }, to.sourceInstallationId),
         authorize: async payload => {
           // Initial admission and reply/chunk reads always perform a fresh authorization.

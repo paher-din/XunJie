@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
@@ -11,7 +12,7 @@ import { annotationPackage } from '../components/material-annotation/package.mjs
 const legacy = process.env.XUNJIE_COMPONENT_LEGACY_PACKAGE;
 const current = process.env.XUNJIE_COMPONENT_CURRENT_PACKAGE;
 if (!legacy || !current) throw new Error('Set XUNJIE_COMPONENT_LEGACY_PACKAGE and XUNJIE_COMPONENT_CURRENT_PACKAGE to complete product packages.');
-const fixed = resolve(current), output = resolve(process.env.XUNJIE_COMPONENT_REPORT_DIR ?? '.verification/wp03-169');
+const fixed = resolve(current), output = probeEvidenceDirectory(process.env.XUNJIE_COMPONENT_REPORT_DIR);
 const { openProductRuntime, resolveCredential } = await import(pathToFileURL(join(fixed, 'app', 'product-runtime.js')).href);
 const oldApi = await import(pathToFileURL(join(resolve(legacy), 'app', 'product-runtime.js')).href);
 const scratch = await mkdtemp(join(tmpdir(), 'xj-component-legacy-'));
@@ -174,6 +175,6 @@ finally {
   if (!cleanup.some(item => item.includes('failed'))) { await rm(scratch, { recursive: true, force: true }); report.privateScratch = 'removed'; }
   else report.privateScratch = 'retained for stop failure';
   await mkdir(output, { recursive: true });
-  await writeFile(join(output, 'legacy-remediation.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'legacy-remediation.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ status: report.status, cases: report.cases, cleanup: report.cleanup }));
 }

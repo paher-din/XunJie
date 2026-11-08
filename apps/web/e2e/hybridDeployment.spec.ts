@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { createWorkFile, clickActivityAction, openWorkspacePopover, closeWorkspacePopover, openCourseTasks } from './support/product-ui'
 import { test, expect } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
@@ -16,12 +17,12 @@ let courseReleaseId: string
 let browserVersion: string
 const password = randomUUID(), loginName = 'hybrid-browser-' + randomUUID()
 const results: { name: string; status?: string; durationMs: number }[] = []
-const evidence = fileURLToPath(new URL('../../../.verification/154', import.meta.url))
+const evidence = evidenceDirectory('154')
 
 test.beforeAll(async ({ browser }) => {
   // Two independent native installations and authenticated owner binding precede UI assertions.
   test.setTimeout(180000)
-  await mkdir(evidence, { recursive: true })
+  if (evidence) await mkdir(evidence, { recursive: true })
   browserVersion = browser.version()
   const root = await mkdtemp(join(tmpdir(), 'xj-hybrid-chrome-'))
   schoolRoot = join(root, 'school')
@@ -72,7 +73,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async ({}, info) => { results.push({ name: info.title, status: info.status, durationMs: info.duration }) })
 test.afterAll(async () => {
   await device?.stop().catch(() => {}); await school?.stop().catch(() => {})
-  await writeFile(join(evidence, 'chrome-hybrid.json'), JSON.stringify({ measuredAt: new Date().toISOString(),
+  if (evidence) await writeFile(join(evidence, 'chrome-hybrid.json'), JSON.stringify({ measuredAt: new Date().toISOString(),
     platform: process.platform, osRelease: osRelease(), arch: process.arch, node: process.version,
     postgres: '18.6', browserVersion, browser: 'installed Chrome', headless: false,
     topology: 'two independent native product daemons on the same host; NOT cross-machine evidence', results }, null, 2))
@@ -120,7 +121,7 @@ for (const mode of ['personal', 'school-shared', 'hybrid-local-owner'] as const)
     await expect(activityMenu.getByRole('button', { name: '重新开始活动', exact: true })).toBeVisible()
     await closeWorkspacePopover(page, '活动')
     await expect(page.locator('.monaco-editor .view-lines')).toContainText('自动保存，重开不变。')
-    await page.screenshot({ path: join(evidence, `chrome-${mode}.png`), fullPage: true })
+    if (evidence) await page.screenshot({ path: join(evidence, `chrome-${mode}.png`), fullPage: true })
     expect((await read()).files).toHaveLength(1)
   })
 }

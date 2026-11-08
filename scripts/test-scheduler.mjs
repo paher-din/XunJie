@@ -1,6 +1,6 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, renameSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const iso = () => new Date().toISOString();
@@ -83,16 +83,17 @@ export async function runVerification({ root, options, phases }) {
   const jobs = options.jobs ?? 4;
   if (!Number.isInteger(jobs) || jobs < 1 || jobs > 4) throw new Error('jobs must be an integer from 1 to 4');
   const started = Date.now();
-  const logRoot = join(root, '.verification');
-  mkdirSync(logRoot, { recursive: true });
-  const directory = mkdtempSync(join(logRoot, iso().replace(/[:.]/g, '-') + '-'));
-  const logFile = join(directory, 'verify.log'), summaryFile = join(directory, 'summary.json');
-  writeFileSync(logFile, '');
+  const logRoot = options.reportDir ? resolve(root, options.reportDir) : null;
+  if (logRoot) mkdirSync(logRoot, { recursive: true });
+  const directory = logRoot ? mkdtempSync(join(logRoot, iso().replace(/[:.]/g, '-') + '-')) : null;
+  const logFile = directory ? join(directory, 'verify.log') : null;
+  const summaryFile = directory ? join(directory, 'summary.json') : null;
+  if (logFile) writeFileSync(logFile, '');
   const stages = [...new Set(phases.flat().map(task => task.group))].map((name, index) => ({
-    name, status: 'pending', logFile: join(directory, `${String(index + 1).padStart(2, '0')}-${name.replaceAll(':', '-')}.log`),
+    name, status: 'pending', logFile: directory ? join(directory, `${String(index + 1).padStart(2, '0')}-${name.replaceAll(':', '-')}.log`) : null,
     tasks: [],
   }));
-  for (const stage of stages) writeFileSync(stage.logFile, '');
+  for (const stage of stages) if (stage.logFile) writeFileSync(stage.logFile, '');
   const summary = { status: 'running', startedAt: iso(), finishedAt: null, cwd: root,
     nodeVersion: process.version, logFile, summaryFile, exitCode: null,
     group: options.group ?? options.target ?? 'full', shard: options.shard ?? null, jobs,
@@ -106,20 +107,21 @@ export async function runVerification({ root, options, phases }) {
     stage.tasks.push(record); records.set(task, record);
   }
   const save = () => {
+    if (!logRoot) return;
     const value = JSON.stringify(summary, null, 2) + '\n';
     writeFileSync(summaryFile, value);
     const temporary = join(logRoot, `latest-${process.pid}.tmp`);
     writeFileSync(temporary, value);
     renameSync(temporary, join(logRoot, 'latest.json'));
   };
-  const report = message => { appendFileSync(logFile, message + '\n'); console.log(message); };
+  const report = message => { if (logFile) appendFileSync(logFile, message + '\n'); console.log(message); };
   save();
-  report(`[verify] Raw log: ${logFile}; tests are never cached; jobs=${jobs}`);
+  report(`[verify] Tests are never cached; jobs=${jobs}${logFile ? `; raw log: ${logFile}` : ''}`);
   const processes = supervisor();
   let exitCode = 0;
   const heartbeat = setInterval(() => {
     for (const stage of stages.filter(stage => stage.status === 'running')) {
-      console.log(`[verify] ${stage.name}: ${stage.tasks.filter(task => task.status === 'passed').length}/${stage.tasks.length} passed; ${stage.logFile}`);
+      console.log(`[verify] ${stage.name}: ${stage.tasks.filter(task => task.status === 'passed').length}/${stage.tasks.length} passed${stage.logFile ? `; ${stage.logFile}` : ''}`);
     }
   }, 20_000);
   heartbeat.unref();
@@ -131,11 +133,11 @@ export async function runVerification({ root, options, phases }) {
     }
     Object.assign(record, { status: 'running', startedAt: iso() });
     save();
-    let tail = Buffer.alloc(0);
+    const captured = [];
     const capture = data => {
-      appendFileSync(stage.logFile, data);
-      appendFileSync(logFile, data);
-      tail = Buffer.concat([tail, data]).subarray(-16_384);
+      if (stage.logFile) appendFileSync(stage.logFile, data);
+      if (logFile) appendFileSync(logFile, data);
+      captured.push(data);
     };
     capture(Buffer.from(`\n[task] START ${task.name}\n`));
     let spawnError;
@@ -162,7 +164,7 @@ export async function runVerification({ root, options, phases }) {
       finishedAt: iso(), durationMs: Date.now() - start, exitCode: code, signal: result.signal });
     capture(Buffer.from(`[task] ${record.status.toUpperCase()} ${task.name} (${record.durationMs}ms, exit ${code})\n`));
     if (code && !exitCode) exitCode = code;
-    if (code) console.error(tail.toString('utf8').trimEnd());
+    if (code) console.error(Buffer.concat(captured).toString('utf8').trimEnd());
     if (stage.tasks.every(record => !['running', 'pending'].includes(record.status))) {
       stage.exitCode = stage.tasks.find(record => record.exitCode)?.exitCode ?? 0;
       stage.status = processes.signal ? 'interrupted' : stage.exitCode === 0 ? 'passed' : 'failed';
@@ -212,7 +214,7 @@ export async function runVerification({ root, options, phases }) {
     summary.status = processes.signal ? 'interrupted' : summary.exitCode === 0 ? 'passed' : 'failed';
     summary.finishedAt = iso(); summary.durationMs = Date.now() - started;
     save();
-    report(`[verify] ${summary.status.toUpperCase()}; summary: ${summaryFile}`);
+    report(`[verify] ${summary.status.toUpperCase()}${summaryFile ? `; summary: ${summaryFile}` : ''}`);
   }
   return summary.exitCode;
 }

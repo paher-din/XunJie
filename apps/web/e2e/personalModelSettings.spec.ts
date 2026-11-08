@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { createServer } from 'node:http'
 import { mkdtemp, mkdir } from 'node:fs/promises'
@@ -11,7 +12,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
-const reviewScreenshots = fileURLToPath(new URL('../../../.verification/pr177', import.meta.url))
+const reviewScreenshots = evidenceDirectory('pr177')
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
 let runtime: Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>, endpoint: string, baseUrl: string
@@ -33,8 +34,8 @@ const upstream = createServer(async (request, response) => {
   response.end('data: ' + JSON.stringify({ id: 'check-ui', choices: [{ index: 0, delta: { content: '检查正常' }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n')
 })
 test.beforeAll(async () => {
-  await mkdir(fileURLToPath(new URL('../../../.verification/164', import.meta.url)), { recursive: true })
-  await mkdir(reviewScreenshots, { recursive: true })
+  if (evidenceDirectory()) await mkdir(evidencePath('164'), { recursive: true })
+  if (reviewScreenshots) await mkdir(reviewScreenshots, { recursive: true })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
   baseUrl = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/v1`
   const root = await mkdtemp(join(tmpdir(), 'xj-models-chrome-'))
@@ -56,7 +57,7 @@ test.afterAll(async () => { await runtime?.stop(); upstream.closeAllConnections(
 test('formal model settings save and reopen a personal connection without a legacy session', async ({ page }) => {
   await page.goto(endpoint)
   if (await page.getByRole('button', { name: '模型设置', exact: true }).count() === 0)
-    await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/before-model-settings.png', import.meta.url)), fullPage: true })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/before-model-settings.png'), fullPage: true })
   await page.getByRole('button', { name: '模型设置', exact: true }).click()
   await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '添加供应商', exact: true }).click()
@@ -80,9 +81,9 @@ test('formal model settings save and reopen a personal connection without a lega
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await expect(page.getByLabel('API Key', { exact: true })).toHaveValue('')
   await page.getByRole('button', { name: '取消', exact: true }).click()
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/after-model-settings-light.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/after-model-settings-light.png'), fullPage: true })
   await page.emulateMedia({ colorScheme: 'dark' }); await page.setViewportSize({ width: 720, height: 900 })
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/after-model-settings-dark-narrow.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/after-model-settings-dark-narrow.png'), fullPage: true })
 })
 
 test('a delayed save confirmation preserves later form input and its next versioned save', async ({ page }) => {
@@ -130,7 +131,7 @@ test('dialog keyboard focus, Chinese composition, blank-key reuse and ordinary n
     await page.keyboard.press('Tab')
     expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
   }
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/model-dialog-keyboard.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/model-dialog-keyboard.png'), fullPage: true })
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
   await expect(add).toBeFocused()
@@ -176,7 +177,7 @@ test('Responses settings check drafts, save, reopen and cancel through the forma
   await expect(page.getByText('正在检查', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '停止检查', exact: true }).click()
   await expect(page.getByText('已停止本机检查', { exact: true })).toBeVisible()
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/responses-settings.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/responses-settings.png'), fullPage: true })
 })
 
 async function createRecoveryConnection(page: Page, name: string) {
@@ -203,7 +204,7 @@ test('rejected connection actions remain visible across successful polls until t
     await route.continue()
   })
   try {
-    await page.screenshot({ path: join(reviewScreenshots, 'action-before.png'), fullPage: true })
+    if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'action-before.png'), fullPage: true })
     await card.getByRole('button', { name: '连接检查', exact: true }).click()
     const failure = page.getByRole('alert').filter({ hasText: '检查频次或并发已达上限' })
     await expect(failure).toBeVisible()
@@ -211,12 +212,12 @@ test('rejected connection actions remain visible across successful polls until t
     await expect.poll(() => polls).toBeGreaterThanOrEqual(afterFailure + 2)
     await page.getByRole('button', { name: '重新读取配置', exact: true }).click()
     await expect(failure).toBeVisible()
-    await page.screenshot({ path: join(reviewScreenshots, 'action-error-after-two-polls.png'), fullPage: true })
+    if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'action-error-after-two-polls.png'), fullPage: true })
     denied = false
     await card.getByRole('button', { name: '连接检查', exact: true }).click()
     await expect(failure).toBeHidden()
     await expect(page.getByText('轮询错误回归 · synthetic-recovery-model', { exact: true })).toBeVisible()
-    await page.screenshot({ path: join(reviewScreenshots, 'action-retry-confirmed.png'), fullPage: true })
+    if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'action-retry-confirmed.png'), fullPage: true })
   } finally { await page.unroute('**/api/learning/models/checks') }
 })
 
@@ -236,7 +237,7 @@ for (const credential of ['keep', 'replace', 'clear'] as const) {
       await route.continue()
     })
     try {
-      await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-before.png`), fullPage: true })
+      if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-before.png`), fullPage: true })
       await other.goto(endpoint + '/?settings=models')
       await other.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: title })
         .getByRole('button', { name: '编辑', exact: true }).click()
@@ -249,7 +250,7 @@ for (const credential of ['keep', 'replace', 'clear'] as const) {
       await expect(page.locator('[aria-label="个人连接配置"]').getByText(title + '-其他标签', { exact: true })).toHaveCount(1)
       await dialog.getByRole('button', { name: '保存', exact: true }).click()
       await expect(dialog.getByRole('alert')).toContainText('版本冲突')
-      await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-conflict.png`), fullPage: true })
+      if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-conflict.png`), fullPage: true })
       await dialog.getByRole('button', { name: '读取最新版本', exact: true }).click()
       const comparison = dialog.getByRole('region', { name: '配置冲突核对', exact: true })
       await expect(comparison).toContainText('已保存版本 2')
@@ -257,7 +258,7 @@ for (const credential of ['keep', 'replace', 'clear'] as const) {
       await expect(dialog.getByRole('textbox', { name: '连接名称', exact: true })).toHaveValue(title + '-本人草稿')
       await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue(credential === 'replace' ? 'synthetic-replacement-key' : '')
       if (credential === 'clear') await expect(dialog.getByLabel('清除已保存密钥', { exact: true })).toBeChecked()
-      await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-compare.png`), fullPage: true })
+      if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-compare.png`), fullPage: true })
       expect(submissions).toHaveLength(1)
       await dialog.getByRole('button', { name: '确认按当前草稿重试', exact: true }).click()
       await expect(dialog).toBeHidden()
@@ -267,7 +268,7 @@ for (const credential of ['keep', 'replace', 'clear'] as const) {
       const saved = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: title + '-本人草稿' })
       await expect(saved.getByText('chat-completions · 版本 3', { exact: true })).toBeVisible()
       await expect(saved.getByText(credential === 'clear' ? '尚未保存密钥' : '密钥已保存', { exact: true })).toBeVisible()
-      await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-recovered.png`), fullPage: true })
+      if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-recovered.png`), fullPage: true })
     } finally { await other.close(); await page.unroute('**/api/learning/models/connections') }
   })
 }
@@ -292,18 +293,18 @@ test('a lost save ACK is reconciled by the identical POST before submitting late
     await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('未知保存-后续草稿')
     await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-next-key')
     await expect(dialog.getByRole('button', { name: '保存', exact: true })).toBeDisabled()
-    await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-draft-preserved.png'), fullPage: true })
+    if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-draft-preserved.png'), fullPage: true })
     await dialog.getByRole('button', { name: '核对原提交', exact: true }).click()
     await expect(dialog.getByRole('status')).toContainText('原提交已确认')
     expect(submissions[1]).toBe(submissions[0])
     await expect(dialog.getByRole('textbox', { name: '连接名称', exact: true })).toHaveValue('未知保存-后续草稿')
     await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-next-key')
-    await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-confirmed.png'), fullPage: true })
+    if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-confirmed.png'), fullPage: true })
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
     await expect(dialog).toBeHidden()
     expect(submissions.map(input => JSON.parse(input).expectedVersion)).toEqual([1, 1, 2])
     const saved = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '未知保存-后续草稿' })
     await expect(saved.getByText('chat-completions · 版本 3', { exact: true })).toBeVisible()
-    await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-recovered.png'), fullPage: true })
+    if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-recovered.png'), fullPage: true })
   } finally { await page.unroute('**/api/learning/models/connections') }
 })

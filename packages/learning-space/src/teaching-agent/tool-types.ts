@@ -19,6 +19,8 @@ export interface TeachingToolScope {
   runId: string;
   stepId: string;
   snapshotId: string;
+  /** Original model attempt which produced this step's immutable tool intent. */
+  attemptId?: string;
   /** Original immutable model segment; image tools cannot select or upgrade a route. */
   segmentId?: string;
   /** Original Driver permit. RPC transports this value, never the local guard function. */

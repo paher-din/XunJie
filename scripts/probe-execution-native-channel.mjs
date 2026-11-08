@@ -1,8 +1,10 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -19,9 +21,9 @@ if (!args.endpoint || !args.spki || !args.payload || !args.control || !args.app 
 const actualPlatform = `${process.platform}-${process.arch}`;
 assert.ok(['darwin-arm64', 'win32-x64'].includes(actualPlatform), '必须在真实桌面设备执行');
 const platform = actualPlatform === 'darwin-arm64' ? 'macos-arm64' : 'windows-x64';
-const output = resolve(args.output ?? `.verification/wp03-175/channel-${platform}`);
+const output = probeEvidenceDirectory(args.output);
 await mkdir(output, { recursive: true });
-const root = join(output, 'runtime-' + randomUUID());
+const root = await mkdtemp(join(tmpdir(), 'xj-native-channel-'));
 const endpoint = new URL(args.endpoint);
 assert.equal(endpoint.protocol, 'https:');
 assert.ok(!['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname));
@@ -169,7 +171,7 @@ try {
   await page.goto(`${endpoint.origin}/?space=school&activity=${activityId}`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('tab', { name: payload.component.manifest.title, exact: true }).click();
   await expect(page.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible({ timeout: 60_000 });
-  await page.screenshot({ path: join(output, 'channel-before.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'channel-before.png'), fullPage: true });
   const observation = page.locator('.native-session-observation');
   await page.getByRole('button', { name: /启动(?:本机|原生)会话/ }).click();
   await until(async () => acceptBody, value => !!value, '浏览器发出启动请求');
@@ -201,7 +203,7 @@ try {
   report.observations = observations;
   assert.deepEqual(observations.map(value => value.observation.value), [1, 3, 1]);
   assert.deepEqual(observations.map(value => value.appliedSeq), [1, 2, 3]);
-  await page.screenshot({ path: join(output, 'channel-running.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'channel-running.png'), fullPage: true });
   pass('学校网页经持久领取通道启动真实本机进程，连续输入 1、2、2 得到 1、3、1');
   if (args['remote-native-state']) {
     const remote = JSON.parse(await readFile(args['remote-native-state'], 'utf8'));
@@ -253,7 +255,7 @@ try {
     await mixedPage.goto(`${mixed.entry}/?space=${encodeURIComponent(mixed.spaceKey)}&activity=${remoteActivity.activityId}`, { waitUntil: 'domcontentloaded' });
     await mixedPage.getByRole('tab', { name: remoteManifest.title, exact: true }).click();
     await expect(mixedPage.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible({ timeout: 60_000 });
-    await mixedPage.screenshot({ path: join(output, 'mixed-fallback-before.png'), fullPage: true });
+    await captureEvidence(mixedPage, { path: join(output, 'mixed-fallback-before.png'), fullPage: true });
     await mixedPage.getByRole('button', { name: /启动(?:本机|原生)会话/ }).click();
     await until(async () => remoteAccept, value => !!value, '浏览器发出Linux回退请求');
     if (mixed.lostResponses) {
@@ -295,7 +297,7 @@ try {
       await expect(remoteObservation.locator('strong')).toHaveText(expected);
     }
     await expect(remoteObservation).toContainText(`进程 PID ${mixed.accepted.observation.pid}；线程数`);
-    await mixedPage.screenshot({ path: join(output, 'mixed-fallback-running.png'), fullPage: true });
+    await captureEvidence(mixedPage, { path: join(output, 'mixed-fallback-running.png'), fullPage: true });
     await mixedPage.getByRole('button', { name: '停止会话' }).click();
     mixed.stop = await until(async () => fact(ok('remote-stop-query', await api(mixedPath, undefined, mixedPage))),
       query => query.state === 'cancelled' && query.statusKnowledge === 'confirmed', '学校Linux确认停止');
@@ -309,7 +311,7 @@ try {
     if (localEntry) assert.ok(mixed.traffic.every(request => request.origin === new URL(localEndpoint).origin),
       '原生操作必须经过本机产品 HTTP 入口及真实 school-client 转发');
     await mixedPage.getByRole('button', { name: /核对(?:状态|原操作)/ }).click();
-    await mixedPage.screenshot({ path: join(output, 'mixed-fallback-stopped.png'), fullPage: true });
+    await captureEvidence(mixedPage, { path: join(output, 'mixed-fallback-stopped.png'), fullPage: true });
     mixed.localAfter = fact(ok('local-after-fallback', await api(currentPath)));
     fixed(original, mixed.localAfter);
     assert.equal(mixed.localAfter.state, 'running');
@@ -326,7 +328,7 @@ try {
     }
     await mixedPage.close(); mixedPage = undefined; mixedPath = undefined; mixedHeaders = {};
     await page.bringToFront();
-    await page.screenshot({ path: join(output, 'mixed-local-returned.png'), fullPage: true });
+    await captureEvidence(page, { path: join(output, 'mixed-local-returned.png'), fullPage: true });
     mixed.status = 'passed';
     pass(localEntry ? '无数据库本机产品入口经认证HTTPS调用学校Linux，真实启动/输入/停止丢回包后保留原身份与1/3/1观察'
       : '同一获准本机节点存活时Linux-only课程回退学校真实PID，1/2/2得1/3/1并停止，原本机会话保持固定身份与状态');
@@ -344,7 +346,7 @@ try {
   await until(processes, rows => !rows.some(row => row.pid === report.process.pid), '停止后原 PID 已从 OS 退出');
   report.stop.processPidGone = true;
   await until(nativeProcesses, rows => rows.length === 0, '停止后真实子进程退出');
-  await page.screenshot({ path: join(output, 'channel-stopped.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'channel-stopped.png'), fullPage: true });
   pass('学校面板停止同一桌面执行器且 OS 确认原生进程退出');
   if (Object.hasOwn(args, 'checkpoint-combination')) {
     report.checkpointCombination = await probeCheckpointCombination({ page, activityId,
@@ -375,7 +377,7 @@ try {
   assert.ok(forbiddenControl.status >= 400);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('tab', { name: payload.component.manifest.title, exact: true }).click();
-  await page.screenshot({ path: join(output, 'channel-revoked.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'channel-revoked.png'), fullPage: true });
   pass('学校撤销当前连接后拒绝继续控制，本机 worker 在 15 秒内清理真实子进程');
   const entries = await readdir(root);
   report.noLocalDatabase = { databaseJson: entries.includes('database.json'), pgdata: entries.includes('pgdata'),
@@ -419,16 +421,17 @@ try {
     report.mixedFallback.error = report.error;
   }
   process.exitCode = 1;
-  if (page) await page.screenshot({ path: join(output, 'channel-failed.png'), fullPage: true }).catch(() => {});
-  if (mixedPage) await mixedPage.screenshot({ path: join(output, 'mixed-fallback-failed.png'), fullPage: true }).catch(() => {});
+  if (page) await captureEvidence(page, { path: join(output, 'channel-failed.png'), fullPage: true }).catch(() => {});
+  if (mixedPage) await captureEvidence(mixedPage, { path: join(output, 'mixed-fallback-failed.png'), fullPage: true }).catch(() => {});
 } finally {
   if (mixedPage && mixedPath) await api(mixedPath + '/stop', { stopId: randomUUID(), reason: '混合回退验收结束清理' }, mixedPage).catch(() => {});
   if (page && currentPath) await api(currentPath + '/stop', { stopId: randomUUID(), reason: '原生领取验收结束清理' }).catch(() => {});
   if (page && connectionId) await api('connections/revoke', { connectionId }).catch(() => {});
   await browser?.close().catch(() => {});
   await runtime.stop().catch(error => { report.cleanupError = error.message; });
+  await rm(root, { recursive: true, force: true });
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'channel-report.json'), JSON.stringify(report, null, 2) + '\n');
-  if (report.mixedFallback) await writeFile(join(output, 'mixed-fallback.json'), JSON.stringify(report.mixedFallback, null, 2) + '\n');
-  console.log(JSON.stringify({ status: report.status, report: join(output, 'channel-report.json'), error: report.error }));
+  await writeEvidence(join(output, 'channel-report.json'), JSON.stringify(report, null, 2) + '\n');
+  if (report.mixedFallback) await writeEvidence(join(output, 'mixed-fallback.json'), JSON.stringify(report.mixedFallback, null, 2) + '\n');
+  console.log(JSON.stringify({ status: report.status, report: !hasProbeEvidence(output) ? null : join(output, 'channel-report.json'), error: report.error }));
 }

@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test } from '@playwright/test'
 import { startSessionHost, loginThroughForm } from './sessionHost'
 import { create, edit, confirmSave } from './helpers'
@@ -25,7 +26,7 @@ test('actual HTTPS/SQLite and private VM: analyze an unsaved C draft without a R
     await expect(page.getByLabel('编辑检查', { exact: true }).locator('summary')).toContainText('1 个错误')
     await expect(page.locator('.squiggly-error')).toHaveCount(1)
     await page.getByLabel('编辑检查', { exact: true }).locator('summary').click()
-    await page.locator('.cw').screenshot({ path: test.info().outputPath('actual-editor-diagnostics.png') })
+    if (evidenceDirectory()) await page.locator('.cw').screenshot({ path: evidencePath('screenshots/editorDiagnosticsService/actual-editor-diagnostics.png') })
     const after = await host.control({ kind: 'inspect', attemptId })
     expect(after.attempt?.files).toEqual(before.attempt?.files)
     expect(after.database).toEqual(before.database)

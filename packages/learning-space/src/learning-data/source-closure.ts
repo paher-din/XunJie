@@ -207,6 +207,11 @@ const pdfDocumentResources: NonNullable<SourceSpec['resources']> = async (row: S
 
 const learningSpecs: readonly SourceSpec[] = [
   { table: 'activities', kind: 'activities', id: ['id'] },
+  { table: 'teaching_artifacts', kind: 'teaching_artifacts', id: ['artifact_id'] },
+  { table: 'teaching_artifact_revisions', kind: 'teaching_artifact_revisions', id: ['revision_id'], version: ['version'], resources: async (row, read) => [await read(String(row.resource_id))] },
+  { table: 'teaching_artifact_candidates', kind: 'teaching_artifact_candidates', id: ['candidate_id'] },
+  { table: 'teaching_artifact_checks', kind: 'teaching_artifact_checks', id: ['request_id'] },
+  { table: 'teaching_artifact_receipts', kind: 'teaching_artifact_receipts', id: ['request_id'] },
   { table: 'activity_requests', kind: 'activity_requests', id: ['request_id'] },
   { table: 'course_activity_requests', kind: 'course_activity_requests', id: ['request_id'], version: ['release_id', 'input_digest'] },
   { table: 'work_heads', kind: 'work_heads', id: ['activity_id'], version: ['revision'] },

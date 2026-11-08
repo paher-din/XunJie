@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 // Run under with-native-desktop-lock; Chrome composition checks do not claim OS IME coverage.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,7 +12,7 @@ const product=process.env.XUNJIE_PRODUCT_PACKAGE;
 const mod=await import(product?pathToFileURL(join(product,'app/product-runtime.js')).href:'@xunjie/product-runtime');
 const resources=product?Object.fromEntries(Object.entries(JSON.parse(await readFile(join(product,'resources.json'),'utf8'))).map(([k,v])=>[k,typeof v==='string'&&/(Path|Bin|Root|Helper)$/.test(k)?resolve(product,v):v])):
  {nodePath:process.execPath,nodeVersion:'24.21.0',postgresVersion:'18.6',postgresBin:process.env.XUNJIE_PRODUCT_POSTGRES_BIN,webRoot:resolve('apps/web/dist-runtime'),windowsPrerequisitePath:resolve('scripts/windows-prereq-prepare.ps1')};
-const out=resolve(process.env.XJ_PDF_UI_OUT??'docs/student-agent-implementation/evidence/wp08-218'),root=await mkdtemp(join(tmpdir(),'xj-pdf-ui-218-'));
+const out=probeEvidenceDirectory(process.env.XJ_PDF_UI_OUT),root=await mkdtemp(join(tmpdir(),'xj-pdf-ui-218-'));
 await mkdir(out,{recursive:true});
 const report={platform:process.platform,product:product??'source-build',checks:[],ime:null};
 const runtime=mod.openProductRuntime({root,resources});let host,browser;
@@ -81,12 +82,12 @@ try{
  await page.getByRole('button',{name:/same.pdf.*第 2 页选区/}).click();
  await expect(page.locator('[data-pdf-reading-id]')).toHaveAttribute('data-pdf-reading-id',reading.readingId);
  report.checks.push('browser-back-preserves-question-and-fixed-references');
- await page.screenshot({path:join(out,process.platform+'-durable.png'),fullPage:true});
- await page.emulateMedia({colorScheme:'dark'});await page.setViewportSize({width:1100,height:900});await page.screenshot({path:join(out,process.platform+'-narrow-dark.png'),fullPage:true});
+ await captureEvidence(page, {path:join(out,process.platform+'-durable.png'),fullPage:true});
+ await page.emulateMedia({colorScheme:'dark'});await page.setViewportSize({width:1100,height:900});await captureEvidence(page, {path:join(out,process.platform+'-narrow-dark.png'),fullPage:true});
  assert.deepEqual(report.pageErrors??[],[]);report.passed=true;
-}catch(e){report.error=e.message;report.passed=false;if(browser)await browser.contexts()[0]?.pages()[0]?.screenshot({path:join(out,process.platform+'-durable-failure.png'),fullPage:true});}
+}catch(e){report.error=e.message;report.passed=false;if(browser)await captureEvidence(browser.contexts()[0]?.pages()[0], {path:join(out,process.platform+'-durable-failure.png'),fullPage:true});}
 finally{
  await browser?.close();await host?.stop();await runtime.stop();await rm(root,{recursive:true,force:true,maxRetries:5,retryDelay:100});
- await writeFile(join(out,process.platform+'-durable.json'),JSON.stringify(report,null,2)+'\n');
+ await writeEvidence(join(out,process.platform+'-durable.json'),JSON.stringify(report,null,2)+'\n');
 }
 console.log(JSON.stringify(report));if(!report.passed)process.exitCode=1;

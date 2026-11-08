@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
@@ -10,7 +11,7 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const output = fileURLToPath(new URL('../../../.verification/197', import.meta.url))
+const output = evidenceDirectory('197')
 let runtime: ReturnType<typeof openProductRuntime>
 let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 let upstream: ReturnType<typeof createServer>
@@ -19,7 +20,7 @@ const replies: string[] = []
 
 test.beforeEach(async () => {
   replies.length = 0
-  await mkdir(output, { recursive: true })
+  if (output) await mkdir(output, { recursive: true })
   upstream = createServer(async (request, response) => {
     for await (const _chunk of request) { /* consume the native payload */ }
     const index = replies.length;
@@ -84,14 +85,14 @@ test('a missing model keeps the activity and first question and offers the real 
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
   await expect(page.getByRole('button', { name: '打开模型设置', exact: true })).toBeVisible()
   await expect(page.locator('.teaching-message.student').filter({ hasText: '还没有模型时，这个问题应当保留。' })).toBeVisible()
-  await page.screenshot({ path: join(output, `teaching-missing-model-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-missing-model-${process.platform}.png`), fullPage: false })
   await page.getByRole('button', { name: '打开模型设置', exact: true }).click()
   await expect(page.getByRole('region', { name: '当前空间模型' })).toBeVisible({ timeout: 20000 })
   await page.getByRole('button', { name: '添加供应商', exact: true }).click()
   await expect(page.getByLabel('上下文窗口', { exact: true })).toBeVisible()
   await expect(page.getByLabel('最大输出 token', { exact: true })).toBeVisible()
   await page.getByLabel('上下文窗口', { exact: true }).scrollIntoViewIfNeeded()
-  await page.screenshot({ path: join(output, `teaching-model-settings-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-model-settings-${process.platform}.png`), fullPage: false })
 })
 
 test('the formal home and activity conversation persist a first question, a follow-up, reload and stop', async ({ page, request }) => {
@@ -101,7 +102,7 @@ test('the formal home and activity conversation persist a first question, a foll
   await page.getByLabel('学习目标', { exact: true }).fill('界面持久学习对话')
   await page.getByLabel('起始问题', { exact: true }).fill('请解释界面中的第一个学习问题。')
   await page.getByRole('button', { name: '建立并开始对话', exact: true }).scrollIntoViewIfNeeded()
-  await page.screenshot({ path: join(output, `teaching-home-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-home-${process.platform}.png`), fullPage: false })
   await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
   await expect(page.locator('#activity-title')).toHaveText('界面持久学习对话')
   await expect(page.getByRole('region', { name: '与 Agent 的对话' })).toBeVisible()
@@ -118,7 +119,7 @@ test('the formal home and activity conversation persist a first question, a foll
   await expect(composer).toHaveValue(/中文输入草稿/)
   await composer.evaluate(element => element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })))
   await composer.fill('')
-  await page.screenshot({ path: join(output, `teaching-conversation-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-conversation-${process.platform}.png`), fullPage: false })
 
   await page.reload()
   const reopen = page.getByRole('button', { name: '打开对话', exact: true })
@@ -165,7 +166,7 @@ test('the formal home and activity conversation persist a first question, a foll
   await expect(page.locator('.teaching-message.student').filter({ hasText: '请生成一个可以被停止的回答。' })).toBeVisible()
   await expect(page.getByLabel('你的问题', { exact: true })).toHaveValue('生成期间继续输入的新草稿。')
   await expect(page.getByRole('button', { name: '发送问题', exact: true })).toBeEnabled()
-  await page.screenshot({ path: join(output, `teaching-stopped-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-stopped-${process.platform}.png`), fullPage: false })
   expect(replies.length).toBe(3)
 })
 
@@ -201,7 +202,7 @@ test('a course activity asks through the fixed help policy in the formal convers
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
   await expect(page.locator('.teaching-message.student').filter({ hasText: '课程允许问答时' })).toBeVisible()
-  await page.screenshot({ path: join(output, `teaching-course-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-course-${process.platform}.png`), fullPage: false })
 })
 
 test('a product process restart reopens the persisted conversation in the same Chrome session', async ({ page, request }) => {
@@ -222,5 +223,5 @@ test('a product process restart reopens the persisted conversation in the same C
   const open = page.getByRole('button', { name: '打开对话', exact: true })
   if (await open.isVisible()) await open.click()
   await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
-  await page.screenshot({ path: join(output, `teaching-restart-${process.platform}.png`), fullPage: false })
+  if (output) await page.screenshot({ path: join(output, `teaching-restart-${process.platform}.png`), fullPage: false })
 })

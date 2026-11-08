@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
@@ -12,12 +13,12 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime'
 
 test.skip(!process.env.XUNJIE_PRODUCT_POSTGRES_BIN, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const output = fileURLToPath(new URL('../../../.verification/165', import.meta.url))
+const output = evidenceDirectory('165')
 let school: Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>, device: typeof school
 let schoolEndpoint = '', deviceEndpoint = '', schoolCookie = '', connectionKey = '', browserVersion = ''
 const cases: { title: string; status?: string; duration: number }[] = []
 test.beforeAll(async ({ browser }) => {
-  browserVersion = browser.version(); await mkdir(output, { recursive: true })
+  browserVersion = browser.version(); if (output) await mkdir(output, { recursive: true })
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresVersion: '18.6', postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN,
     webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) }
@@ -56,7 +57,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async ({}, info) => { cases.push({ title: info.title, ...(info.status ? { status: info.status } : {}), duration: info.duration }) })
 test.afterAll(async ({}, info) => {
   await device?.stop(); await school?.stop()
-  await writeFile(join(output, 'selection-chrome-' + process.platform + '.json'), JSON.stringify({ platform: process.platform, os: release(),
+  if (output) await writeFile(join(output, 'selection-chrome-' + process.platform + '.json'), JSON.stringify({ platform: process.platform, os: release(),
     browser: 'installed Chrome', browserVersion, headless: info.project.use.headless !== false, measuredAt: new Date().toISOString(), cases }, null, 2))
 })
 test('school website explicitly selects and revokes a personal model and preserves learning without a model', async ({ page }) => {
@@ -64,7 +65,7 @@ test('school website explicitly selects and revokes a personal model and preserv
   await page.context().addCookies([{ name, value, url: schoolEndpoint }])
   await page.goto(schoolEndpoint + '/?settings=models')
   await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeVisible()
-  if (process.env.XUNJIE_CAPTURE_BEFORE === '1') await page.screenshot({ path: join(output, 'before-school-model-selection.png'), fullPage: true })
+  if (process.env.XUNJIE_CAPTURE_BEFORE === '1' && output) await page.screenshot({ path: join(output, 'before-school-model-selection.png'), fullPage: true })
   const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
   await expect(choices).toBeVisible()
   await expect(choices.getByText('学校默认服务', { exact: true })).toBeVisible()
@@ -75,7 +76,7 @@ test('school website explicitly selects and revokes a personal model and preserv
   await expect(choices.getByText('使用个人费用', { exact: true })).toBeVisible()
   await page.reload()
   await expect(choices.getByText('使用个人费用', { exact: true })).toBeVisible()
-  await page.screenshot({ path: join(output, 'after-school-model-selection-light.png'), fullPage: true })
+  if (output) await page.screenshot({ path: join(output, 'after-school-model-selection-light.png'), fullPage: true })
   await choices.getByRole('button', { name: '撤销此空间授权', exact: true }).click()
   await expect(choices.getByText('原授权已撤销，请重新选用模型。', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
@@ -96,7 +97,7 @@ test('installed client exposes the device connection to the actual school subjec
   await page.emulateMedia({ colorScheme: 'dark' }); await page.setViewportSize({ width: 720, height: 900 })
   await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running'
     && animation.effect?.getComputedTiming().iterations !== Infinity).length)).toBe(0)
-  await page.screenshot({ path: join(output, 'after-device-model-selection-dark-narrow.png'), fullPage: true })
+  if (output) await page.screenshot({ path: join(output, 'after-device-model-selection-dark-narrow.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: '个人空间', exact: true }).click()
   await expect(choices.getByText('未选用模型', { exact: true })).toBeVisible()

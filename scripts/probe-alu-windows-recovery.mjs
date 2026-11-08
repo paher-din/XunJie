@@ -1,3 +1,4 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 // Windows acceptance for the #192 clauses the product probe does not reach:
 //   * Chinese text through Chrome's composition event pipeline (not synthetic insertText),
 //   * a question draft that survives a run unchanged,
@@ -10,14 +11,14 @@
 // settings to obtain it. The report says so rather than implying the candidate window was observed.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { aluPackage, aluCoursePackage } from '../components/alu-experiment/package.mjs';
 
-const output = resolve(process.env.XUNJIE_ALU_OUTPUT ?? '.verification/wp04-192-recovery');
+const output = probeEvidenceDirectory(process.env.XUNJIE_ALU_OUTPUT);
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Native PostgreSQL required (set XUNJIE_PRODUCT_POSTGRES_BIN).');
@@ -189,7 +190,7 @@ try {
   console.log('REFUSED ' + JSON.stringify(refused));
   passed('a reopened activity reads its fixed text materials and runtime entry from the local cache');
   report.status = 'passed';
-  await page.screenshot({ path: join(output, 'recovery.png') });
+  await captureEvidence(page, { path: join(output, 'recovery.png') });
 } catch (error) {
   report.status = 'failed';
   report.error = String(error?.stack ?? error);
@@ -197,6 +198,6 @@ try {
 } finally {
   await browser?.close().catch(() => undefined);
   await runtime.stop().catch(() => undefined);
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ status: report.status, cases: report.cases.length, error: report.error ?? null }));
 }

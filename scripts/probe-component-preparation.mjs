@@ -1,14 +1,15 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { legacyAnnotationPackage, preparedAnnotationPackage, selfTestMaterial } from '../components/material-annotation/package.mjs';
 
-const output = resolve(process.env.XUNJIE_PREPARATION_REPORT_DIR ?? '.verification/wp03-171');
+const output = probeEvidenceDirectory(process.env.XUNJIE_PREPARATION_REPORT_DIR);
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 async function artifactDigest(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -139,7 +140,7 @@ try {
     if (request.url().includes('/components/annotation/dependencies/')) dependencyFetches.push(request.url());
   });
   await expect(page.getByRole('tab', { name: '材料标注', exact: true })).toBeVisible();
-  await page.screenshot({ path: join(output, 'prepared-before-open-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'prepared-before-open-light.png'), fullPage: true });
   await page.getByRole('tab', { name: '材料标注', exact: true }).click();
   const frame = page.frameLocator('iframe[title="材料标注"]');
   await expect(frame.getByRole('button', { name: '标注选中文字' })).toBeEnabled({ timeout: 30000 });
@@ -201,7 +202,7 @@ try {
   assert.deepEqual(await frame.locator('mark.xj-mark').allTextContents(), [repeated, repeated]);
   await expect(frame.locator('#highlight-note')).toContainText('材料中 2 处匹配');
   await expect(frame.locator('#highlight-note')).toContainText('不代表原选区位置');
-  await page.screenshot({ path: join(output, 'prepared-highlighted-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'prepared-highlighted-light.png'), fullPage: true });
   await frame.getByRole('button', { name: '取消高亮' }).click();
   await expect(frame.locator('mark.xj-mark')).toHaveCount(0);
   assert.equal(await frame.locator('#materials p').textContent(), text, 'releasing the highlight preserves the material body');
@@ -321,7 +322,7 @@ try {
   await loadFailed.page.getByRole('tab', { name: '材料标注', exact: true }).click();
   await expect(loadFailed.page.locator('.component-view-note')).toContainText('原文高亮暂不可用', { timeout: 30000 });
   await expect(loadFailed.page.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled();
-  await loadFailed.page.screenshot({ path: join(output, 'production-load-failure-light.png'), fullPage: true });
+  await captureEvidence(loadFailed.page, { path: join(output, 'production-load-failure-light.png'), fullPage: true });
   await loadFailureContext.close();
   passed('production dependency delivery error disabled the affected capability visibly while leaving base annotation available');
 
@@ -403,7 +404,7 @@ try {
     .content?.annotations?.[0]?.note).toBe('依赖取不到时仍可记录');
   await expect(degradedFrame.getByRole('button', { name: '移除此标注' })).toBeVisible();
   await expect(degradedFrame.getByRole('button', { name: '在材料中高亮' })).toHaveCount(0, 'no highlight affordance without the library');
-  await degraded.page.screenshot({ path: join(output, 'prepared-degraded-light.png'), fullPage: true });
+  await captureEvidence(degraded.page, { path: join(output, 'prepared-degraded-light.png'), fullPage: true });
   passed('an unfetchable dependency closed only highlighting; annotation and persistence kept working with a nearby reason');
 
   // ---- preparation storage failure: no mount, no claimed readiness, existing work preserved ----
@@ -425,7 +426,7 @@ try {
   assert.equal(await storeFailure.locator('iframe[title="材料标注"]').count(), 0, 'no environment is activated without a persisted record');
   assert.equal(JSON.parse((await works(activity.activityId)).files[0].value).content.annotations[0].note, '先确认观察，再讨论解释。',
     'a preparation storage failure cannot touch confirmed student work');
-  await storeFailure.screenshot({ path: join(output, 'prepared-storage-failure-light.png'), fullPage: true });
+  await captureEvidence(storeFailure, { path: join(output, 'prepared-storage-failure-light.png'), fullPage: true });
   await storeFailureContext.close();
   passed('preparation storage failure refused to mount or claim readiness, named the blocker and left confirmed work intact');
 
@@ -436,7 +437,7 @@ try {
   await expect(legacyFrame.getByRole('button', { name: '标注选中文字' })).toBeEnabled({ timeout: 30000 });
   assert.equal(await legacy.page.locator('.component-view-note').count(), 0);
   assert.equal(await legacyFrame.locator('#highlight-note').count(), 0, 'the format 1 view declares no preparation protocol');
-  await legacy.page.screenshot({ path: join(output, 'legacy-component-light.png'), fullPage: true });
+  await captureEvidence(legacy.page, { path: join(output, 'legacy-component-light.png'), fullPage: true });
   const legacyFacts = await preparationFacts(legacy.page);
   assert.equal(legacyFacts.environments.length, 1, 'a format 1 binding creates no preparation environment');
   passed('the format 1 release still opens through its original path with no preparation step and no new environment');
@@ -447,12 +448,12 @@ try {
   await expect.poll(() => frame.locator('body').evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim())).not.toBe('');
   await frame.getByRole('button', { name: '在材料中高亮' }).click();
   await expect(frame.locator('mark.xj-mark')).toHaveCount(2);
-  await page.screenshot({ path: join(output, 'prepared-highlighted-dark.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'prepared-highlighted-dark.png'), fullPage: true });
   await page.setViewportSize({ width: 900, height: 900 });
-  await page.screenshot({ path: join(output, 'prepared-highlighted-narrow.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'prepared-highlighted-narrow.png'), fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(() => { localStorage.setItem('theme.v1', 'light'); document.documentElement.dataset.theme = 'light'; });
-  passed('highlight rendering captured in dark theme and at a narrow desktop width');
+  passed('highlight rendering checked in dark theme and at a narrow desktop width');
 
   // ---- revocation stops the dependency route too ----
   await api('manage/course-access', { requestId: randomUUID(), courseId, principalId: identity.principalId, active: false }, admin);
@@ -466,5 +467,5 @@ try {
   if (process.platform === 'darwin' && process.arch === 'arm64') report.mac = report.status;
   await browser?.close();
   try { await runtime.stop(); report.cleanup = 'owned product stopped'; } catch (error) { report.cleanup = String(error); }
-  await writeFile(join(output, 'preparation-report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'preparation-report.json'), JSON.stringify(report, null, 2));
 }

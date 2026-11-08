@@ -1,0 +1,248 @@
+{
+  "issue": 224,
+  "measuredAt": "2026-11-08T12:36:55.864Z",
+  "status": "failed",
+  "limits": {
+    "maxGenerations": 8,
+    "maxOutputTokens": 8192,
+    "timeoutMs": 60000,
+    "retries": 0
+  },
+  "topology": {
+    "mac": {
+      "ip": "192.168.3.39",
+      "host": "Robert-Wu-MacBook-Air.local",
+      "platform": "darwin",
+      "port": 39409
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "port": 39410,
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "transport": "direct LAN HTTPS; SSH control only; provider credentials remain on Mac"
+  },
+  "stages": [
+    {
+      "name": "mac-school-direct-https",
+      "status": "passed",
+      "fact": {
+        "environmentId": "19ecb53b-9b40-4b69-9e62-23511ae1818e",
+        "installationId": "8c5835c0-ce23-4a90-b14d-a56f9654c3a1",
+        "endpoint": "https://192.168.3.39:39409",
+        "units": [
+          "client",
+          "learning-data",
+          "model-connection",
+          "space-course",
+          "teaching-agent"
+        ]
+      }
+    },
+    {
+      "name": "windows-independent-agent-direct-https",
+      "status": "passed",
+      "fact": {
+        "state": "degraded",
+        "endpoint": "https://192.168.3.8:39410",
+        "environmentId": "090e9c7a-c127-4245-98d6-79103b85b947",
+        "installationId": "411dcadb-4986-416d-9496-66f99edbc291",
+        "target": {
+          "environmentId": "090e9c7a-c127-4245-98d6-79103b85b947",
+          "serviceId": "2a5b9392-200f-491b-9258-437697b98e89",
+          "unit": "teaching-agent",
+          "endpoint": "https://192.168.3.8:39410",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status",
+            "teaching.agent"
+          ]
+        },
+        "units": [
+          "client",
+          "teaching-agent"
+        ],
+        "platform": "win32",
+        "host": "LAPTOP-S7A4IQFU",
+        "osRelease": "10.0.26200",
+        "package": {
+          "platform": "win32-x64",
+          "profile": "full",
+          "distributionSha256": "da2315c22341a5580b42a05ee182b2129322c7de7e1e886eda929058154bf2f4",
+          "applicationSha256": "e0a4593ef4aeeeed7a22361e1550c69aeeeb8cf2b1378d7e49b24c2c8f3618ed",
+          "nodeVersion": "v24.21.0"
+        },
+        "probeSha256": "1dbb0cb41bd711f96936bf2720aa68c97b473808d761f223847361b6e0fc57e0"
+      }
+    },
+    {
+      "name": "bidirectional-runtime-authority-and-binding",
+      "status": "passed",
+      "fact": {
+        "schoolDataOwner": {
+          "environmentId": "19ecb53b-9b40-4b69-9e62-23511ae1818e",
+          "serviceId": "07c4f49a-92a0-4bf2-9784-f65bb90d75aa"
+        },
+        "agentOwner": {
+          "environmentId": "090e9c7a-c127-4245-98d6-79103b85b947",
+          "serviceId": "2a5b9392-200f-491b-9258-437697b98e89"
+        },
+        "agentConnectionId": "a659d19d-16dd-4258-977a-2f0042c76c7d",
+        "dependencyConnectionId": "32ff2949-3d39-4370-af1f-cca1c017e84d",
+        "acceptGrantId": "10e76b39-7134-4260-9073-169dbb57c018",
+        "dependencyGrantId": "d5199e1d-df69-4b4b-97a4-a46fb61a743c"
+      }
+    },
+    {
+      "name": "mac-only-real-provider-configuration",
+      "status": "passed",
+      "fact": {
+        "model": "deepseek-flash",
+        "protocol": "chat-completions",
+        "connectionId": "3b0a5627-a7c2-4754-896a-ed95560fe710",
+        "credentialOwner": "Mac",
+        "credentialExported": false
+      }
+    },
+    {
+      "name": "Win-Agent-generates-fixed-candidate-at-Mac-owner",
+      "status": "passed",
+      "fact": {
+        "requestId": "32f65a9e-8d6f-4567-8543-827fd8af5adc",
+        "runId": "ebc07c84-3357-46f0-9b39-55ea43e507a5",
+        "artifactId": "efa25dce-33b9-4750-a604-99d4d85b773e",
+        "revisionId": "006089f2-6115-44fb-973a-c83130797fe3",
+        "candidateId": "1517e81f-a3db-41de-8c07-f2e8cf8a0953",
+        "commandId": "8b0b3f47-95ca-45eb-b1ef-a0b146699027",
+        "snapshotId": "81630223-ac14-4cb3-9142-bcbba7840a66",
+        "attemptId": "dabb1951-c62a-46dd-ac1a-eb03001af1ac",
+        "resourceSha256": "4967329de840016c6e7d3c2aeeebcc18fc55cf13d611f47d9cf176b60ed097fe",
+        "payloadSha256": "33391096a853f7ddd757bb9df5390e3e5b27ce0f3dabc1c19833f74bc182b5d8"
+      }
+    },
+    {
+      "name": "Windows-Interactive-Limited-Chrome-check-adopt-save",
+      "status": "failed",
+      "error": "browser-control-timeout"
+    }
+  ],
+  "engineering": "owned-by-main",
+  "browser": "not-run",
+  "teachingEffect": "not-assessed",
+  "packages": {
+    "mac": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "2b045f1a371e2b7ba0750bae81e2e244143f6d62f5940c9435c7e586e06f1b99",
+      "applicationSha256": "e0a4593ef4aeeeed7a22361e1550c69aeeeb8cf2b1378d7e49b24c2c8f3618ed",
+      "nodeVersion": "v24.21.0"
+    },
+    "windows": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "da2315c22341a5580b42a05ee182b2129322c7de7e1e886eda929058154bf2f4",
+      "applicationSha256": "e0a4593ef4aeeeed7a22361e1550c69aeeeb8cf2b1378d7e49b24c2c8f3618ed",
+      "nodeVersion": "v24.21.0"
+    }
+  },
+  "probeSha256": "1dbb0cb41bd711f96936bf2720aa68c97b473808d761f223847361b6e0fc57e0",
+  "artifacts": {
+    "modelSource": "real DeepSeek chat-completions",
+    "originals": [
+      {
+        "requestId": "32f65a9e-8d6f-4567-8543-827fd8af5adc",
+        "runId": "ebc07c84-3357-46f0-9b39-55ea43e507a5",
+        "artifactId": "efa25dce-33b9-4750-a604-99d4d85b773e",
+        "revisionId": "006089f2-6115-44fb-973a-c83130797fe3",
+        "candidateId": "1517e81f-a3db-41de-8c07-f2e8cf8a0953",
+        "commandId": "8b0b3f47-95ca-45eb-b1ef-a0b146699027",
+        "snapshotId": "81630223-ac14-4cb3-9142-bcbba7840a66",
+        "attemptId": "dabb1951-c62a-46dd-ac1a-eb03001af1ac",
+        "resourceSha256": "4967329de840016c6e7d3c2aeeebcc18fc55cf13d611f47d9cf176b60ed097fe",
+        "payloadSha256": "33391096a853f7ddd757bb9df5390e3e5b27ce0f3dabc1c19833f74bc182b5d8"
+      }
+    ],
+    "screenshots": [],
+    "cleanup": {
+      "windowsTaskRemoved": true,
+      "desktopLocksReleased": true
+    },
+    "activityId": "3cdd98e8-b3fb-41f7-9026-d7a42b6d9e39",
+    "windows": {
+      "status": "failed",
+      "platform": "win32",
+      "host": "LAPTOP-S7A4IQFU",
+      "workerProcessId": 47264,
+      "checks": [],
+      "screenshots": [],
+      "model": "no browser-to-provider connection",
+      "desktopSessionId": 1,
+      "product": {
+        "platform": "win32-x64",
+        "applicationSha256": "e0a4593ef4aeeeed7a22361e1550c69aeeeb8cf2b1378d7e49b24c2c8f3618ed"
+      },
+      "chromeVersion": "156.0.8078.81",
+      "workRequests": [],
+      "receiptQueries": [],
+      "error": "browser-control-timeout",
+      "phase": "student-login",
+      "finishedAt": "2026-11-08T12:38:59.740Z"
+    }
+  },
+  "error": "browser-control-timeout",
+  "modelSource": "real DeepSeek chat-completions",
+  "providerRequests": [
+    {
+      "index": 1,
+      "payloadSha256": "33391096a853f7ddd757bb9df5390e3e5b27ce0f3dabc1c19833f74bc182b5d8",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 10312
+    },
+    {
+      "index": 2,
+      "payloadSha256": "7154c04718a0b90bb4e7cf81445402dae3cb920bf53ba06969320fc403aeb047",
+      "status": 200,
+      "finished": true,
+      "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+      "elapsedMs": 1541
+    }
+  ],
+  "providerRefusals": [],
+  "dependencyOperations": {
+    "authorize": 221,
+    "activity": 70,
+    "model.selection.read": 2,
+    "identityFor": 1,
+    "model.selection.pin": 1,
+    "tool.contributions": 4,
+    "model.segments.read": 3,
+    "model.segments.create": 1,
+    "model.checks.receive": 2,
+    "model.checks.requestPayload": 2,
+    "model.checks.read": 12,
+    "model.checks.dispatch": 2,
+    "model.checks.progress": 10,
+    "model.checks.summary": 2,
+    "tool.prepare": 1,
+    "tool.dispatch": 1,
+    "model.segments.settle": 1,
+    "model.results.retain": 2
+  },
+  "cleanup": {
+    "providerRelayClosed": true,
+    "windows": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    },
+    "controlProcessExited": true,
+    "mac": {
+      "stopped": true,
+      "environmentDeleted": true,
+      "rootRemoved": true
+    }
+  },
+  "finishedAt": "2026-11-08T12:39:10.771Z"
+}

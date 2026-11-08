@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer, connect } from 'node:net';
 import { createHash, randomUUID } from 'node:crypto';
@@ -18,7 +19,7 @@ const state = JSON.parse(await readFile(args.state, 'utf8'));
 const target = new URL(args.endpoint ?? state.endpoint);
 if (target.protocol !== 'https:' || /^(localhost$|127\.|\[?::1\]?$)/.test(target.hostname))
   throw new Error('a cross-machine probe requires a non-loopback HTTPS school endpoint');
-const output = resolve(args.output ?? `.verification/wp03-175/native-${platform}`);
+const output = probeEvidenceDirectory(args.output);
 await mkdir(output, { recursive: true });
 const report = { kind: 'remote-native-browser-acceptance', ticket: '#175', platform,
   actualPlatform, startedAt: new Date().toISOString(), endpoint: target.origin,
@@ -133,7 +134,7 @@ try {
   await page.goto(`${target.origin}/?space=school&activity=${encodeURIComponent(activity.activityId)}`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('tab', { name: manifest.title, exact: true }).click();
   await page.frameLocator(`iframe[title="${manifest.title}"]`).locator('body').waitFor({ state: 'visible' });
-  await page.screenshot({ path: join(output, 'native-before.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'native-before.png'), fullPage: true });
   const requestId = randomUUID();
   const action = { protocolVersion: 2, kind: 'execution', requestId,
     scope: { environmentId: activity.identity.environmentId, spaceId: activity.identity.spaceId,
@@ -186,7 +187,7 @@ try {
   await expect(observationPanel).toContainText(`进程 PID ${report.procfs.pid}；线程数`, { timeout: 15000 });
   await expect(observationPanel).toContainText('已确认 3 次');
   report.uiObservation = await observationPanel.innerText();
-  await page.screenshot({ path: join(output, 'native-running.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'native-running.png'), fullPage: true });
   passed('真实原生会话面板展示已确认输入次数、Linux 进程 PID 与线程数');
   report.offline = { mechanism: 'tcp-sockets-destroyed', severedTunnels: await severRelay() };
   if (!report.offline.severedTunnels) throw new Error('no actual TLS TCP tunnels existed to sever');
@@ -195,7 +196,7 @@ try {
     catch { return false; }
   });
   if (report.offline.reachable) throw new Error('school node remained reachable after TCP disconnect');
-  await page.screenshot({ path: join(output, 'native-disconnected.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'native-disconnected.png'), fullPage: true });
   await openRelay();
   const reconnected = executionFact(ok('reconnect-query', await api(executionPath)));
   fixed(accepted, reconnected); report.reconnected = reconnected;
@@ -216,7 +217,7 @@ try {
   await page.frameLocator(`iframe[title="${manifest.title}"]`).locator('body').waitFor({ state: 'visible' });
   await expect(observationPanel).toContainText(`进程 PID ${report.procfs.pid}；线程数`, { timeout: 15000 });
   await expect(observationPanel).toContainText('已确认 3 次');
-  await page.screenshot({ path: join(output, 'native-after.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'native-after.png'), fullPage: true });
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed';
@@ -231,8 +232,8 @@ try {
     } catch { report.cleanup = { status: 'unreachable' }; }
   }
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'remote-native.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(output, 'remote-native.json'), JSON.stringify(report, null, 2) + '\n');
   await browser?.close().catch(() => {});
   if (relay) await severRelay();
-  console.log(JSON.stringify({ status: report.status, report: join(output, 'remote-native.json'), error: report.error }));
+  console.log(JSON.stringify({ status: report.status, report: !hasProbeEvidence(output) ? null : join(output, 'remote-native.json'), error: report.error }));
 }

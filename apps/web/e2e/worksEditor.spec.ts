@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { createWorkFile, clickActivityAction, openWorkspacePopover, closeWorkspacePopover, selectProductSpace } from './support/product-ui'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
@@ -30,7 +31,7 @@ function storageFaultBoundary(blocked: boolean) {
   }
 }
 test.beforeAll(async ({ browser }, info) => {
-  await mkdir(fileURLToPath(new URL('../../../.verification/151', import.meta.url)), { recursive: true })
+  if (evidenceDirectory()) await mkdir(evidencePath('151'), { recursive: true })
   browserVersion = browser.version()
   headless = info.project.use.headless !== false
   const root = await mkdtemp(join(tmpdir(), 'xj-editor-browser-'))
@@ -52,7 +53,7 @@ test.beforeEach(async () => {
 test.afterEach(async ({}, info) => { cases.push({ name: info.title, status: info.status, durationMs: info.duration }) })
 test.afterAll(async () => {
   await runtime?.stop()
-  await writeFile(fileURLToPath(new URL('../../../.verification/151/chrome-results.json', import.meta.url)), JSON.stringify({
+  if (evidenceDirectory()) await writeFile(evidencePath('151/chrome-results.json'), JSON.stringify({
     measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, osRelease: osRelease(),
     node: process.version, postgres: '18.6', browser: 'installed Chrome', browserVersion, headless,
     backend: 'production product host, native PostgreSQL and real filesystem resources', cases,
@@ -115,9 +116,9 @@ test('actual editor automatically protects and synchronizes Chinese original tex
   await expect.poll(async () => (await read())[0]?.objectId).toBe(before.objectId)
   await expect(page.getByRole('button', { name: /保存|冻结|确认作品/ })).toHaveCount(0)
   await expect(page.getByText(/^(保存中|已保存|待同步|本机已保存)$/)).toHaveCount(0)
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/151/works-editor-light.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('151/works-editor-light.png'), fullPage: true })
   await page.emulateMedia({ colorScheme: 'dark' })
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/151/works-editor-dark.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('151/works-editor-dark.png'), fullPage: true })
 })
 
 test('an opened activity survives API disconnection and reload, then continues its original pending sync', async ({ page }) => {

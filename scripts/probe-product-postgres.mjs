@@ -1,10 +1,11 @@
 #!/usr/bin/env node
+import { writeEvidence } from './lib/probe-evidence.mjs';
 // Standalone consumer evidence for issue #143. Never import from product code.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, chmod, lstat, mkdir, mkdtemp, readFile, readlink, realpath, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, chmod, lstat, mkdir, readFile, readlink, realpath, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,7 +31,7 @@ Usage: node scripts/probe-product-postgres.mjs [options]
   --old-bin DIR    PostgreSQL 17.10 tools (release 17.10.1)
   --minor-bin DIR  PostgreSQL 17.11 tools (release 17.11.1)
   --new-bin DIR    PostgreSQL 18.6 tools (release 18.6.1)
-  --out FILE       Evidence JSON (default: docs/student-agent-implementation/evidence/wp01-postgres-upgrade.json)
+  --out FILE       Persist evidence JSON (default: stdout only)
   --help          Print help only; no download, filesystem writes or tool execution
 
 Default bin directories: ~/.cache/xunjie-product-runtime/postgresql-<release>-aarch64-apple-darwin/bin
@@ -47,7 +48,7 @@ function argumentsFor(argv) {
     'old-bin': path.join(cache, `postgresql-17.10.1-${target}/bin`),
     'minor-bin': path.join(cache, `postgresql-17.11.1-${target}/bin`),
     'new-bin': path.join(cache, `postgresql-18.6.1-${target}/bin`),
-    out: path.join(repository, 'docs/student-agent-implementation/evidence/wp01-postgres-upgrade.json'),
+    out: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
     const key = argv[i].replace(/^--/, '');
@@ -399,11 +400,13 @@ async function main(options) {
     for (const [signal, handler] of signalHandlers) process.off(signal, handler);
     report.finishedAt = new Date().toISOString();
     report.durationMs = Math.round(performance.now() - begin);
-    await mkdir(path.dirname(options.out), { recursive: true });
-    // Deliberately persist only selected facts, never raw commands, credentials, dumps or server logs.
-    await writeFile(options.out, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o644 });
+    if (options.out) {
+      await mkdir(path.dirname(options.out), { recursive: true });
+      // Persist only selected facts, never raw commands, credentials, dumps or server logs.
+      await writeEvidence(options.out, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o644 });
+    }
   }
-  console.log(`PostgreSQL upgrade probe: ${report.status}; evidence: ${options.out}`);
+  console.log(JSON.stringify(report));
   if (report.status !== 'passed') process.exitCode = 1;
 }
 

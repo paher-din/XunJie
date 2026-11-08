@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile, copyFile } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -19,7 +20,7 @@ import { aggregationPackage } from '../components/table-aggregation/package.mjs'
  * Requires: /Users/robertwu/xj-154/ime/{xjkeys,select_ime} (ad-hoc signed, Accessibility trusted),
  * installed Doubao Pinyin, desktop Google Chrome, XUNJIE_PRODUCT_POSTGRES_BIN.
  */
-const output = resolve(process.env.XUNJIE_EXECUTION_OUTPUT ?? '.verification/wp03-170');
+const output = probeEvidenceDirectory(process.env.XUNJIE_EXECUTION_OUTPUT);
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 const IME_TOOLS = process.env.XUNJIE_IME_TOOLS ?? '/Users/robertwu/xj-154/ime';
 const KEYS = join(IME_TOOLS, 'xjkeys');
@@ -172,6 +173,7 @@ try {
 
   // Capture the candidate overlay: full screen first (system windows), then the front window.
   async function captureWindow(name) {
+    if (!hasProbeEvidence(output)) return { ok: false };
     const base = name.replace(/\.png$/, '');
     const full = join(shots, base + '-fullscreen.png');
     const win = join(shots, base + '-window.png');
@@ -318,15 +320,15 @@ try {
   await page.emulateMedia({ colorScheme: 'light' });
   await sleep(300);
   const light = join(output, 'execution-system-ime-light.png');
-  await page.screenshot({ path: light, fullPage: true });
+  await captureEvidence(page, { path: light, fullPage: true });
   report.screenshots.light = light;
   await page.emulateMedia({ colorScheme: 'dark' });
   await sleep(400);
   const dark = join(output, 'execution-system-ime-dark.png');
-  await page.screenshot({ path: dark, fullPage: true });
+  await captureEvidence(page, { path: dark, fullPage: true });
   report.screenshots.dark = dark;
   await page.emulateMedia({ colorScheme: 'light' });
-  passed('light and dark screenshots captured from the real run with IME-authored cells');
+  passed('light and dark views exercised with IME-authored cells');
 
   report.status = 'passed';
 } catch (error) {
@@ -338,8 +340,7 @@ try {
   report.inputMethod.restoredTo = ime(ABC).includes('ABC') || ime('current') === ABC ? ABC : ime('current');
   try { ime(ABC); report.inputMethod.restoredTo = ime('current'); } catch {}
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'execution-system-ime.json'), JSON.stringify(report, null, 2) + '\n').catch(() => {});
-  await writeFile('/tmp/xj-wp03-ime.json', JSON.stringify(report, null, 2) + '\n').catch(() => {});
+  await writeEvidence(join(output, 'execution-system-ime.json'), JSON.stringify(report, null, 2) + '\n').catch(() => {});
   await browser?.close().catch(() => {});
   await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true }).catch(() => {});

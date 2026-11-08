@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test } from '@playwright/test'
 import { edit } from './helpers'
 import { startSessionHost } from './sessionHost'
@@ -54,7 +55,7 @@ test('实际 Core 固定快照 stats/find/top：原命令先落盘、原消费�
     expect(new Set(posts.map(p => p.key)).size).toBe(3)
     const metrics = await host.control({ kind: 'runner', action: 'inspect' })
     expect(metrics.totals.submitEffects).toBe(3)
-    await page.screenshot({ path: test.info().outputPath('actual-core-newer-draft.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/runService/actual-core-newer-draft.png') })
   } finally { await page.context().close(); await host.stop() }
 })
 

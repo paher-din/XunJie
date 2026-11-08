@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { renameWorkFile, deleteWorkFile, selectProductSpace } from './support/product-ui'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
@@ -18,7 +19,7 @@ let browserVersion: string
 const sha256 = (value: string | Buffer) => createHash('sha256').update(value).digest('hex')
 
 test.beforeAll(async ({ browser }) => {
-  await mkdir(fileURLToPath(new URL('../../../.verification/152', import.meta.url)), { recursive: true })
+  if (evidenceDirectory()) await mkdir(evidencePath('152'), { recursive: true })
   browserVersion = browser.version()
   runtimeRoot = await mkdtemp(join(tmpdir(), 'xj-drafts-browser-'))
   runtime = openProductRuntime({ root: runtimeRoot, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
@@ -30,7 +31,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async ({}, info) => { results.push({ name: info.title, status: info.status, durationMs: info.duration }) })
 test.afterAll(async () => {
   await runtime?.stop()
-  await writeFile(fileURLToPath(new URL('../../../.verification/152/chrome-results.json', import.meta.url)), JSON.stringify({
+  if (evidenceDirectory()) await writeFile(evidencePath('152/chrome-results.json'), JSON.stringify({
     measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, osRelease: osRelease(),
     node: process.version, postgres: '18.6', browser: 'installed Chrome', browserVersion, headless: false,
     backend: 'production product host, native PostgreSQL and real filesystem resources', cases: results,
@@ -200,7 +201,7 @@ test('course text and requirements stay as fixed references through collapse, re
   await openComposer(page)
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/152/chrome-course-draft.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('152/chrome-course-draft.png'), fullPage: true })
 })
 
 test('code reference keeps original copy after rename and edit, and survives file deletion and reload', async ({ page }) => {
@@ -251,7 +252,7 @@ test('code reference keeps original copy after rename and edit, and survives fil
   const finalDraft = await draftOf(page, activityId)
   expect(finalDraft.references).toHaveLength(2)
   expect(finalDraft.references[0].copy).toBe(original.slice(1))
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/152/chrome-code-draft.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('152/chrome-code-draft.png'), fullPage: true })
 })
 
 test('an existing reliable workspace database upgrades without losing its work', async ({ page }) => {
@@ -438,7 +439,7 @@ test('another client conflict keeps both drafts and a late acknowledgement never
   await expect(page.getByRole('heading', { name: '问题草稿存在分歧' })).toBeVisible({ timeout: 15000 })
   await expect(page.getByRole('alert').getByText('本页草稿 A', { exact: true })).toBeVisible()
   await expect(page.getByRole('alert').getByText('另一客户端 B', { exact: true })).toBeVisible()
-  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/152/chrome-draft-conflict.png', import.meta.url)), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('152/chrome-draft-conflict.png'), fullPage: true })
   await page.getByRole('button', { name: '采用本页草稿', exact: true }).click()
   await expect.poll(async () => (await draftOf(page, activityId)).question).toBe('本页草稿 A')
   const resolved = await draftOf(page, activityId)

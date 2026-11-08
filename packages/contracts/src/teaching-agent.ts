@@ -57,7 +57,7 @@ export const teachingModelSwitchSchema = z.object({
 export type TeachingModelSwitch = z.infer<typeof teachingModelSwitchSchema>;
 
 export const teachingEventKindSchema = z.enum([
-  'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'assistant',
+  'input', 'run-received', 'run-started', 'context-assembled', 'attempt-dispatched', 'assistant-progress', 'artifact-progress', 'assistant',
   'run-completed', 'run-failed', 'run-stopped', 'stop-requested', 'run-continued', 'run-resumed',
   'model-unavailable', 'capacity-paused', 'system-notice',
   'step-completed', 'tool-intent', 'tool-permitted', 'tool-result', 'tools-paired',
@@ -128,12 +128,20 @@ export const teachingWaitSchema = z.object({
 }).strict();
 export type TeachingWait = z.infer<typeof teachingWaitSchema>;
 
+export const teachingArtifactPreviewSchema = z.object({
+  runId: z.uuid(), stepId: z.uuid(), attemptId: z.uuid(), commandId: z.uuid(), callId: z.string().min(1).max(200),
+  name: z.string().min(1).max(64), html: z.string().max(500000), revision: z.number().int().positive(),
+  seq: z.number().int().nonnegative(), createdAt: z.iso.datetime(),
+}).strict();
+export type TeachingArtifactPreview = z.infer<typeof teachingArtifactPreviewSchema>;
+
 export const teachingConversationSchema = z.object({
   activityId: z.uuid(), cursor: z.number().int().nonnegative(),
   messages: z.array(teachingMessageSchema), runs: z.array(teachingRunSchema),
   tools: z.array(teachingToolRecordSchema).default([]), waits: z.array(teachingWaitSchema).default([]),
   questions: z.array(teachingStudentQuestionSchema).default([]),
   inputs: z.array(teachingInputSchema).default([]),
+  artifactPreviews: z.array(teachingArtifactPreviewSchema).default([]),
 }).strict();
 export type TeachingConversation = z.infer<typeof teachingConversationSchema>;
 

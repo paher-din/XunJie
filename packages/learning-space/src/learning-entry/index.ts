@@ -1,3 +1,6 @@
+import { routeArtifacts } from './artifacts-http.js';
+import { artifactViewDocument } from './artifacts-view.js';
+export { routeArtifacts };
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -139,6 +142,7 @@ export function createLearningEntry(options: {
         && !['login', 'logout', 'client/start', 'client/complete'].includes(route)
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
+      const artifactView = request.method === 'GET' && /^artifacts\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/revisions\/[0-9a-f-]{36}\/view$/.test(route);
       // Fixed dependency and diagnostic routes only: no arbitrary path reaches a resource backend through these.
       const componentDependency = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/dependencies\/[a-z][a-z0-9-]{0,47}$/.test(route);
       // A runtime file is addressed by the relative path its manifest declared; the segments are bounded and
@@ -147,15 +151,20 @@ export function createLearningEntry(options: {
         && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/resources\/(?:[a-zA-Z0-9_-][a-zA-Z0-9_.-]{0,199}\/){0,8}[a-zA-Z0-9_-][a-zA-Z0-9_.-]{0,199}$/.test(route);
       const componentReports = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/preparation-reports$/.test(route);
       const componentReport = request.method === 'POST' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/preparation-report$/.test(route);
-      if (componentView) {
+      if (componentView || artifactView) {
         const query = new URL(request.url!, endpoint).searchParams;
         request.headers['x-xj-space'] = z.string().regex(/^(?:personal|school|school:[0-9a-f-]{36})$/).parse(query.get('space'));
         const expected = query.get('subject');
         if (!expected || !/^[0-9a-f.-]{110}$/.test(expected)) throw new StorageError('invalid');
         request.headers['x-xj-expected-subject'] = expected;
-        route = route.slice(0, -5);
+        if (artifactView) {
+          const namespace = query.get('namespace');
+          if (namespace !== environment.clientNamespace) throw new StorageError('forbidden');
+          request.headers['x-xj-namespace'] = namespace;
+          route = route.slice(0, -4) + 'resource';
+        } else route = route.slice(0, -5);
       }
-      if ((route.startsWith('workspaces/') || route.startsWith('pdf/') || route.startsWith('materials/') || route.startsWith('drafts/') || route.startsWith('intents/')
+      if ((route.startsWith('artifacts/') || route.startsWith('workspaces/') || route.startsWith('pdf/') || route.startsWith('materials/') || route.startsWith('drafts/') || route.startsWith('intents/')
         || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')
         || route === 'skills' || route.startsWith('skills/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
@@ -168,7 +177,7 @@ export function createLearningEntry(options: {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
+          route.startsWith('artifacts/') ? 2000000 : route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
             : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
               || /^agent\/[0-9a-f-]{36}\/skills\//.test(route) ? 8000000 : 65536) : undefined, expected);
@@ -344,7 +353,12 @@ export function createLearningEntry(options: {
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
-      else if (route === 'skills' || route.startsWith('skills/')) {
+      else if (route.startsWith('artifacts/')) {
+        const identity = await current(request);
+        const expected = request.headers['x-xj-expected-subject'];
+        if (expected !== undefined && expected !== [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        result = await routeArtifacts(learning.artifacts, identity, route, method, method === 'POST' ? await readLearningBody(request, 2000000) : undefined);
+      } else if (route === 'skills' || route.startsWith('skills/')) {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
@@ -534,14 +548,16 @@ export function createLearningEntry(options: {
       else throw new StorageError('missing');
       if (route === 'models/selection' && method === 'GET' && await options.restoredInstallation?.())
         result = { ...modelSelectionSchema.parse(result), restoredInstallation: true };
-      if (componentView) {
-        const bundle = componentBundleSchema.parse(result);
-        if (new URL(request.url!, endpoint).searchParams.get('digest') !== bundle.definition.digest) throw new StorageError('conflict');
+      if (componentView || artifactView) {
+        const digest = new URL(request.url!, endpoint).searchParams.get('digest');
+        const bundle = componentView ? componentBundleSchema.parse(result) : undefined;
+        if (bundle && digest !== bundle.definition.digest) throw new StorageError('conflict');
+        const document = bundle ? Buffer.from(bundle.contentBase64, 'base64') : artifactViewDocument(result, digest);
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
           'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
           'permissions-policy': 'camera=(), microphone=(), geolocation=(), clipboard-read=(), clipboard-write=()',
           'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; sandbox allow-scripts; frame-ancestors 'self'" });
-        response.end(Buffer.from(bundle.contentBase64, 'base64'));
+        response.end(document);
       } else sendLearning(response, 200, result);
     } catch (error) { learningFailure(response, error); }
     return true;

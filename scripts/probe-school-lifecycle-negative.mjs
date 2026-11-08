@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { probeEvidenceDirectory, writeEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 /**
  * #188 school-node lifecycle and post-fence negatives, on a real client product package.
  *
@@ -20,7 +21,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { request as httpsRequest } from 'node:https';
 import { tmpdir, release } from 'node:os';
 import { join, posix, resolve } from 'node:path';
@@ -28,11 +29,12 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+  'out': { type: 'string' }, 'output': { type: 'string' }, 'evidence-dir': { type: 'string' },
   label: { type: 'string' }, 'school-state': { type: 'string' }, ca: { type: 'string' }, spki: { type: 'string' },
   'ssh-config': { type: 'string' }, 'ssh-host': { type: 'string' }, 'ssh-root': { type: 'string' },
   'ssh-cli': { type: 'string' }, 'ssh-node': { type: 'string' }, 'node-lifecycle': { type: 'string' } } });
 const product = resolve(positionals[0] ?? '');
-const output = resolve(positionals[1] ?? '.verification/wp03-188/school-lifecycle');
+const output = probeEvidenceDirectory(positionals[1]);
 await mkdir(output, { recursive: true });
 const runtime = await import(pathToFileURL(join(product, 'app/product-runtime.js')).href);
 const resourcePaths = JSON.parse(await readFile(join(product, 'resources.json'), 'utf8'));
@@ -58,7 +60,7 @@ const report = {
 };
 const reportPath = join(output, 'school-lifecycle-negative.json');
 const pass = (name, detail) => { report.cases.push({ name, ...detail }); console.log('PASS ' + name + ' ' + JSON.stringify(detail)); };
-const save = async () => writeFile(reportPath, JSON.stringify(report, null, 2) + '\n');
+const save = async () => writeEvidence(reportPath, JSON.stringify(report, null, 2) + '\n');
 
 function sshCommand(command, input, timeout = 120_000) {
   return new Promise((ok, bad) => {
@@ -340,6 +342,6 @@ try {
   report.temporaryRootRemoved = !(await stat(outerRoot).then(() => true).catch(() => false));
   report.finishedAt = new Date().toISOString();
   await save();
-  console.log('STATUS ' + report.status + ' cases=' + report.cases.length + ' schoolUp=' + report.schoolUpAtFinish + ' output=' + reportPath);
+  console.log('STATUS ' + report.status + ' cases=' + report.cases.length + ' schoolUp=' + report.schoolUpAtFinish + (hasProbeEvidence(output) ? ' output=' + reportPath : ''));
 }
 if (report.status !== 'passed') process.exitCode = 1;

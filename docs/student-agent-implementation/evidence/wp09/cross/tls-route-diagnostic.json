@@ -1,0 +1,26 @@
+{
+  "status": "confirmed-and-fixed-in-probe",
+  "scope": "Windows Playwright request transport for acknowledgement-loss interception; no product source change",
+  "before": {
+    "chromeSpkiTrust": true,
+    "nodeTestCaTrust": false,
+    "requestError": "self-signed-certificate",
+    "productAdoptNotReached": true
+  },
+  "after": {
+    "chromeSpkiTrust": true,
+    "nodeTestCaTrust": true,
+    "certificatePinMatched": true,
+    "requestHttpStatus": 200
+  },
+  "sameCandidateMacChrome": {
+    "artifactAdoptHttpStatus": 200,
+    "originalRevisionRetained": true,
+    "newModelCalls": 0
+  },
+  "ownerLifetime": {
+    "shortSshStart": "owner stopped when SSH ended; diagnostic only",
+    "heldSshWorker": "original owner stayed ready; conversation HTTP 200 in 1426 ms"
+  },
+  "teachingEffect": "not-assessed"
+}

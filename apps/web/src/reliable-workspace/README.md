@@ -18,6 +18,7 @@
 活动级聚合 leave 由持续挂载的 ActivityPage 提供，等待作品、问题草稿和动作，不依赖当前中心工具是否显示编辑器。所有导航与身份切换共用该入口；活动存在却无保护句柄时拒绝离开，不能按空 ref 判断安全。
 - `trackInput/applyOperation`：组件输入在异步回执查询期间也参与离开保护；以空间/主体/活动/实例和 operationId 定位本机操作回执。同一操作以 Chrome Web Locks 跨页互斥，回执和内容在同一 IndexedDB 事务提交；同身份换输入拒绝，重载或超过 256 次操作不淘汰原回执。没有 Web Locks 时明确拒绝并保留输入候选。
 - `retainInput/protectInput`：Agent 回应和输入修订按原记录 key 登记完整草稿；事务失败后仍保留保护义务，复用工作区本机重试周期、`leave/flush` 和浏览器离开确认。`inputProtection` 提供保护结果，`retainedInput` 让临时卸载的视图恢复未落盘正文；只有最新编辑对应的事务完成才解除义务，提交前以 `protectInput` 确认原记录。不以 `trackInput` 的 Promise 结束代替持久化成功。
+- `adoptRemote`：WP09 内容采用复用原作品记录的持久基线与 `remoteOperation` 标记，先保护输入、查询原采用回执，再共同接回新绑定和状态；等待中的新输入以同一三方合并规则保留。采用/收纳操作身份在既有 `agentControls` 分区保护，未确认时不换 ID；活动产物状态参与相同保存与导出，默认作品文件列表不展示其内部信封。见 [WP09](../../../../docs/student-agent-implementation/wp09-implementation.md)。
 
 ## 确认与竞争
 

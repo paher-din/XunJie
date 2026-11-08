@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises'
@@ -17,8 +18,7 @@ const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 const sessionHelper = process.env.XUNJIE_NATIVE_SESSION_HELPER
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const evidence = process.env.XUNJIE_TEACHING_TOOLS_EVIDENCE
-  ?? fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-198', import.meta.url))
+const evidence = evidenceDirectory('wp07-198', process.env.XUNJIE_TEACHING_TOOLS_EVIDENCE)
 let runtime: ReturnType<typeof openProductRuntime>
 let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 let root = '', endpoint = ''
@@ -72,7 +72,7 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
 }
 
 test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true })
+  if (evidence) await mkdir(evidence, { recursive: true })
   upstream = createServer(async (request, response) => {
     try {
       const chunks = []
@@ -165,14 +165,14 @@ test('the formal conversation shows the real fixed work read and retains it afte
   await expect(record.getByRole('button', { name: '定位来源', exact: true })).toBeVisible()
   await expect(page.locator('.teaching-message.assistant')).toContainText('总数 37')
   await record.scrollIntoViewIfNeeded()
-  await page.screenshot({ path: join(evidence, `tools-read-after-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `tools-read-after-${process.platform}.png`) })
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.setViewportSize({ width: 900, height: 900 })
   await record.scrollIntoViewIfNeeded()
   await expect(record).toBeInViewport()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: join(evidence, `tools-read-dark-narrow-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `tools-read-dark-narrow-${process.platform}.png`) })
   await page.reload()
   await expect(page.locator('#activity-title')).toHaveText('核对固定作品来源')
   const reopen = page.getByRole('button', { name: '打开对话', exact: true })
@@ -190,7 +190,7 @@ test('capture the existing formal conversation baseline before UI changes', asyn
   await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
   await expect(page.locator('#activity-title')).toHaveText('读取作品并解释课程工具结果')
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
-  await page.screenshot({ path: join(evidence, `tools-before-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `tools-before-${process.platform}.png`) })
 })
 
 test('real native and browser operations retain results; a disconnected browser waits and can be stopped', async ({ page, context, browser }) => {
@@ -251,7 +251,7 @@ test('real native and browser operations retain results; a disconnected browser 
   await last.getByRole('button', { name: '定位原结果', exact: true }).click()
   await expect(page.locator('.native-session-observation strong')).toHaveText('1', { timeout: 20000 })
   await expect(page.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible()
-  await page.screenshot({ path: join(evidence, `tools-native-after-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `tools-native-after-${process.platform}.png`) })
   const previous = page.locator('.teaching-tool-record').nth(2)
   await previous.locator(':scope > summary').click()
   await previous.getByRole('button', { name: '定位原结果', exact: true }).click()
@@ -298,7 +298,7 @@ test('real native and browser operations retain results; a disconnected browser 
   await expect(calculation.locator('.teaching-tool-data')).toContainText('83.33333333333333')
   await calculation.getByRole('button', { name: '定位原结果', exact: true }).click()
   await expect(page.locator('.execution-panel')).toContainText('总计 83.333333，共 3 组。')
-  await page.screenshot({ path: join(evidence, `tools-browser-result-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `tools-browser-result-${process.platform}.png`) })
   expect(finiteCalls).toBe(2)
 
   // Drop the actual acceptance response after the production owner commits it. No tool
@@ -336,7 +336,7 @@ test('real native and browser operations retain results; a disconnected browser 
   await page.getByRole('tab', { name: '表格聚合', exact: true }).click()
   await expect(page.locator('.execution-records > li')).toHaveCount(2)
   await expect(page.locator('.execution-records > li').first()).toContainText('已取消')
-  await page.screenshot({ path: join(evidence, `tools-lost-acceptance-stopped-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `tools-lost-acceptance-stopped-${process.platform}.png`) })
 
   // Lose the real claim response after it commits, then disconnect before local acceptance.
   // A new browser profile must query the original record, never claim another node's task.
@@ -375,7 +375,7 @@ test('real native and browser operations retain results; a disconnected browser 
     await expect.poll(async () => (await api(waitingPage.request, 'drafts/' + activity.activityId, undefined, {})).question)
       .toBe('等待期间继续保留的新问题。')
     await waiting.scrollIntoViewIfNeeded()
-    await waitingPage.screenshot({ path: join(evidence, `tools-waiting-after-${process.platform}.png`) })
+    if (evidence) await waitingPage.screenshot({ path: join(evidence, `tools-waiting-after-${process.platform}.png`) })
     await waitingPage.reload()
     await expect(waitingPage.locator('#activity-title')).toHaveText('观察固定输入与真实结果')
     await waitingPage.getByRole('button', { name: '打开对话', exact: true }).click()
@@ -385,7 +385,7 @@ test('real native and browser operations retain results; a disconnected browser 
     await expect(waitingPage.getByText('回答已停止，已发生的内容仍保留。')).toBeVisible({ timeout: 20000 })
     await expect(waitingPage.getByLabel('你的问题', { exact: true })).toHaveValue('等待期间继续保留的新问题。')
     await expect(waitingPage.getByRole('button', { name: '发送问题', exact: true })).toBeEnabled()
-    await waitingPage.screenshot({ path: join(evidence, `tools-wait-stopped-${process.platform}.png`) })
+    if (evidence) await waitingPage.screenshot({ path: join(evidence, `tools-wait-stopped-${process.platform}.png`) })
   } finally { await otherProfile.close() }
   expect(browserCalls).toBeLessThanOrEqual(2)
   expect(modelErrors).toEqual([])

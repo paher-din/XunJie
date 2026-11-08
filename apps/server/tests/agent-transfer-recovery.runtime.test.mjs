@@ -19,7 +19,8 @@ import { createRuntimeRecoveryOwner, createRuntimeRecoveryTarget } from '../../.
 
 const exec = promisify(execFile);
 const checksum = bytes => createHash('sha256').update(bytes).digest('hex');
-async function fixture(t, effect = input => ({ accepted: input.args })) {
+async function fixture(t, effect = input => ({ accepted: input.args }), readOnly,
+  capability = readOnly ? 'teaching.agent' : 'teaching.dependencies') {
   const pg = await nativeFixture(), root = await mkdtemp(join(tmpdir(), 'xj-transfer-client-'));
   const serverRoot = join(pg.root, 'receiver'); await mkdir(serverRoot);
   const migrations = [{ version: 1, name: 'chunks', sql: chunkChannelMigrationSql }];
@@ -29,6 +30,7 @@ async function fixture(t, effect = input => ({ accepted: input.args })) {
   let faults = () => false, before = () => false, effects = 0, authorizedDriver, guard = async () => {};
   const channel = createChunkChannel(storage);
   const wrapped = channel.wrap(input => { effects++; return effect(input); }, {
+    ...(readOnly ? { readOnly } : {}),
     authorize: async input => {
       if (authorizedDriver && input.authority?.driverId !== authorizedDriver) throw new StorageError('forbidden');
       await guard(input);
@@ -42,9 +44,9 @@ async function fixture(t, effect = input => ({ accepted: input.args })) {
   });
   await new Promise(done => server.listen(0, '127.0.0.1', done));
   const target = { ...binding.owner, unit: 'learning-data', protocolVersion: 1,
-    endpoint: `http://127.0.0.1:${server.address().port}`, capabilities: ['teaching.dependencies'] };
+    endpoint: `http://127.0.0.1:${server.address().port}`, capabilities: [capability] };
   authority = createConnectionAuthority({ root: serverRoot, service: target, handlers: {
-    'teaching.dependencies': async (value, source) => {
+    [capability]: async (value, source) => {
       try {
         if (before(value)) throw new Error('lost before receiver acceptance');
         const result = await wrapped(value, source);
@@ -55,7 +57,7 @@ async function fixture(t, effect = input => ({ accepted: input.args })) {
   } });
   const identity = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID(), sourceInstallationId: randomUUID() };
   const connection = { connectionId: randomUUID(), sourceEnvironmentId: identity.sourceEnvironmentId, sourceServiceId: identity.sourceServiceId,
-    target, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [], credentialRef: 'original-grant' };
+    target, requiredCapabilities: [capability], optionalCapabilities: [], credentialRef: 'original-grant' };
   await mkdir(join(root, 'credentials'));
   const save = async () => {
     await writeFile(join(root, 'installation.json'), JSON.stringify({ connections: [connection], database: { mode: 'none' } }));
@@ -64,10 +66,10 @@ async function fixture(t, effect = input => ({ accepted: input.args })) {
         environmentId: identity.sourceEnvironmentId, serviceId: identity.sourceServiceId, unit: 'client', protocolVersion: 1,
         endpoint: 'http://127.0.0.1:19232', capabilities: [] }] }));
   };
-  let grant = await authority.authorize({ ...identity, capabilities: ['teaching.dependencies'] });
+  let grant = await authority.authorize({ ...identity, capabilities: [capability] });
   await writeFile(join(root, 'credentials', connection.credentialRef), grant.token, { mode: 0o600 }); await save();
   const wire = payload => createOutboundConnection({ connection, credential: async () => grant.token,
-    allowInsecureLoopback: true, timeoutMs: 3000 }).request('teaching.dependencies', payload);
+    allowInsecureLoopback: true, timeoutMs: 3000 }).request(capability, payload);
   t.after(async () => {
     server.closeAllConnections(); await new Promise(done => server.close(done));
     await storage.close(); await pg.close(); await rm(root, { recursive: true, force: true });
@@ -76,7 +78,7 @@ async function fixture(t, effect = input => ({ accepted: input.args })) {
     get grant() { return grant; }, set faults(value) { faults = value; }, set driver(value) { authorizedDriver = value; },
     set before(value) { before = value; },
     set guard(value) { guard = value; },
-    client: () => createAgentConnection(root, connection.connectionId, 'teaching.dependencies'),
+    client: () => createAgentConnection(root, connection.connectionId, capability),
     async rotate(successor = false) {
       const from = { ...identity };
       if (successor) {
@@ -84,7 +86,7 @@ async function fixture(t, effect = input => ({ accepted: input.args })) {
         await recordRecoverySuccession(serverRoot, { formatVersion: 1, backupId: randomUUID(), ...from,
           targetInstallationId: identity.sourceInstallationId });
       }
-      grant = await authority.authorize({ ...identity, capabilities: ['teaching.dependencies'] });
+      grant = await authority.authorize({ ...identity, capabilities: [capability] });
       connection.credentialRef = 'renewed-' + randomUUID();
       await writeFile(join(root, 'credentials', connection.credentialRef), grant.token, { mode: 0o600 }); await save();
     },
@@ -111,6 +113,42 @@ test('formal Agent connection reuses one large transfer through 20 lost begin re
   assert.equal(after.state, 'consumed'); assert.equal(f.effects, 1);
   assert.equal((await f.storage.read('SELECT reserved_bytes FROM agent_chunk_transfers')).rows[0].reserved_bytes, 0);
   await assert.rejects(f.client()({ ...renewed, args: [{ ...input.args[0], args: [{ ...input.args[0].args[0], text: 'different fixed input' }] }] }), { code: 'identity-conflict' });
+});
+
+for (const [capability, operation] of [['teaching.agent', 'conversation'], ['teaching.dependencies', 'activity']])
+test(`an interrupted ${operation} query retires only its original transport and reopens without replaying effects`, { timeout: 60000 }, async t => {
+  let interrupted = true;
+  const f = await fixture(t, input => {
+    if (input.operation === operation && interrupted) throw new Error('query interrupted by owner restart');
+    return { accepted: input.args };
+  }, input => input.operation === operation, capability);
+  const input = { version: 1, operation, identity: randomUUID(), activityId: randomUUID(), args: [0] };
+  await assert.rejects(f.client()(input), { code: 'commit-unknown' });
+  const [original] = await agentTransferEntries(f.root);
+  interrupted = false;
+  assert.deepEqual(await f.client()(input), { accepted: [0] });
+  const [recovered] = await agentTransferEntries(f.root);
+  assert.notEqual(recovered.transferId, original.transferId);
+  assert.equal(recovered.state, 'consumed');
+  assert.equal((await f.wire({ chunkChannel: 1, transferId: original.transferId,
+    operation: 'metadata', origin: original.origin })).state, 'acknowledged');
+  await writeFile(join(f.root, 'private', 'agent-transfers', recovered.key + '.json'),
+    JSON.stringify({ ...recovered, state: 'received', result: null }));
+  assert.deepEqual(await f.client()(input), { accepted: [0] }, 'a crash after retiring a query cannot expose its local placeholder');
+  f.guard = async () => { throw new StorageError('forbidden'); };
+  await assert.rejects(f.client()(input), { code: 'forbidden' });
+});
+
+test('a caller cannot discard an unknown effect as a query', { timeout: 60000 }, async t => {
+  const f = await fixture(t, () => { throw new Error('external effect committed'); },
+    input => input.operation === 'conversation');
+  const input = { version: 1, operation: 'accept', identity: randomUUID(), activityId: randomUUID(), args: [] };
+  await assert.rejects(f.client()(input), { code: 'commit-unknown' });
+  const [original] = await agentTransferEntries(f.root);
+  assert.deepEqual(await f.wire({ chunkChannel: 1, transferId: original.transferId,
+    operation: 'discard-query', origin: original.origin }), { error: 'conflict' });
+  await assert.rejects(f.client()(input), { code: 'commit-unknown' });
+  assert.equal(f.effects, 1);
 });
 
 test('small request with large reply survives lost ack, real process restart and runtime journal restore', { timeout: 60000 }, async t => {

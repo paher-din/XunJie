@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, writeFile, readdir, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { accumulatorPackage } from '../../../components/state-accumulator/package.mjs';
@@ -82,7 +82,9 @@ test('historical checkpoints remain discoverable beyond recent sessions and boun
         initiator: { kind: 'student', principalId: activity.identity.principalId } } });
 
     const path = `executions/${activity.activityId}`;
-    const evidenceRoot=fileURLToPath(new URL('../../../.verification/wp03-174-review',import.meta.url));await mkdir(evidenceRoot,{recursive:true});
+    const evidenceDirectory = process.env.XUNJIE_CHECKPOINT_HISTORY_EVIDENCE_DIR?.trim() || process.env.XUNJIE_EVIDENCE_DIR?.trim();
+    const evidenceRoot = evidenceDirectory ? resolve(evidenceDirectory) : undefined;
+    if (evidenceRoot) await mkdir(evidenceRoot, { recursive: true });
     const firstId=randomUUID(),first=(await api(path,{action:actionOf(firstId)},headers)).value;
     const pause=await api(`${path}/${firstId}/control`,{controlId:randomUUID(),operationId:'pause',effect:'pause',expectedSeq:0,parameters:{}},headers);
     assert.equal(pause.status,200);
@@ -108,7 +110,7 @@ test('historical checkpoints remain discoverable beyond recent sessions and boun
       await expect(panel.getByText(/尚无可靠检查点/)).toHaveCount(0);
       const frame=page.frameLocator('iframe[title="四态累加模拟"]');await expect(frame.locator('.state').first()).toHaveCSS('font-size','17px');
       await expect(frame.locator('.example')).toHaveCSS('line-height','19.5px');
-      await page.screenshot({path:join(evidenceRoot,'history-limit-fixed.png'),fullPage:true});
+      if (evidenceRoot) await page.screenshot({path:join(evidenceRoot,'history-limit-fixed.png'),fullPage:true});
       await panel.getByRole('button',{name:'从检查点建立恢复会话',exact:true}).click();
       await expect(panel).toContainText('这是从检查点建立的新恢复实例');
       restored=(await api(`${path}/sessions`,undefined,headers)).value[0];assert.equal(restored.state,'paused');
@@ -136,6 +138,7 @@ test('historical checkpoints remain discoverable beyond recent sessions and boun
     await stop(restored.requestId);
     const report={date:'2026-11-04',status:'passed',recentSessions:16,oldestListed:false,oldCheckpointVisibleInFreshChrome:true,restoredThroughUI:true,
       publishedCheckpoints:66,pages:requests,perSessionProjection:64,oldestBeyondProjectionRetained:true,fontSize:'17px',codeLineHeight:'19.5px',platform:process.platform,mac:process.platform==='darwin'?'accepted on Apple Silicon arm64':'deferred by user'};
-    await writeFile(join(evidenceRoot,'history-regression.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+    if (evidenceRoot) await writeFile(join(evidenceRoot,'history-regression.json'),JSON.stringify(report,null,2));
+    console.log(JSON.stringify(report));
   }finally{await runtime.stop().catch(()=>{});await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}).catch(()=>{});}
 });

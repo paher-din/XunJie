@@ -9,6 +9,7 @@ import { platformToolContribution } from './tool-contributions.js';
 import { readToolResultDefinition } from './tool-results.js';
 import { discoveryContributions, contributionId, initiallyVisible, type LoadedToolSelection } from './tool-discovery.js';
 import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
+import { teachingArtifactSdkApi } from '@xunjie/contracts/teaching-artifacts';
 
 export const teachingAssemblyMigration: Migration = { version: 10, name: 'immutable-agent-assembly', sql: `
   CREATE TABLE teaching_agent_definitions(definition_id text NOT NULL,version integer NOT NULL,
@@ -21,12 +22,16 @@ export const teachingAssemblyMigration: Migration = { version: 10, name: 'immuta
 ` };
 
 export const learningAgentDefinition: AgentDefinition = agentDefinitionSchema.parse({
-  definitionId: 'xunjie.learning', version: 2, purpose: '围绕学生当前问题进行课程辅导或自主学习',
-  prompt: { platform: platformRules, runtime: runRules },
+  definitionId: 'xunjie.learning', version: 4, purpose: '围绕学生当前问题进行课程辅导或自主学习',
+  prompt: { platform: platformRules, runtime: runRules + `\n生成教学页面的宿主契约：\n${teachingArtifactSdkApi}
+上述方法都在 window.xunjie 对象上。html 只包含正文，不含 script、内联 on* 事件或外部资源；样式写入 css，交互写入 javascript 的异步 IIFE。
+先 await window.xunjie.read() 恢复声明状态，再注册输入事件；每次输入通过 window.xunjie.change(完整状态) 保护，不使用 localStorage 或脚本内存替代恢复。状态结构使用有界的 string(maxLength)、number、boolean、array(maxItems,items)、object(properties)，根是 object；每个根字段在 semanticFields 声明稳定的含义。
+例如文字输入可使用 const host=window.xunjie; const {content}=await host.read(); input.value=content.explanation; input.addEventListener('input',()=>{content.explanation=input.value;void host.change(content);});。不要把示例变量名当作固定 DOM 或状态字段。
+局部控件变化不自动提问。只有学生明确点击才能 respond 或发起实验；真实实验结果由宿主呈现并附原来源，生成页面中自行计算的是教学示意。修订前通过 read_teaching_artifact 读取固定版本，保留字段含义和输入；映射不能改变已有答案的意思。` },
   capabilities: [{ sourceId: 'platform.student', required: true }, { sourceId: 'platform.learning', required: false },
     { sourceId: 'course:*', required: false }, { sourceId: 'platform.tools', required: true }],
   contextPolicy: { version: 1, maxSystemChars: 400_000, maxInputChars: 1_000_000 },
-  outputContract: { kind: 'text', instructions: '回答先面对当前问题，按真实依据区分事实、推断与未知。' },
+  outputContract: { kind: 'text', instructions: '回答先面对当前问题，按真实依据区分事实、推断与未知。需要交互解释时通过 generate_teaching_artifact 生成活动内页面或卡片，不在回复中粘贴 HTML 当成已启用内容。修订先读取原产物版本与显式状态含义，保留学生输入；模型生成值是教学示意，真实观察必须由获准工具返回。' },
   budgetPolicy: { version: 1, retryLimit: 0 },
 });
 

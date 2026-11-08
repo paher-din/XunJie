@@ -1,3 +1,4 @@
+import { teachingArtifactSchema, teachingArtifactRevisionSchema, teachingArtifactCandidateSchema, teachingArtifactReceiptSchema, teachingArtifactResourceSchema } from '@xunjie/contracts/teaching-artifacts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdir, readdir, rm, unlink } from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -20,7 +21,7 @@ import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
-import { modelDeviceTaskSchema, routeModels, ModelCapabilityError, createLearningModelService,
+import { modelDeviceTaskSchema, routeArtifacts, routeModels, ModelCapabilityError, createLearningModelService,
   modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -132,6 +133,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     // this ceiling cannot be borrowed by an operation that was never sized for a toolchain file.
     if (runtimeResourceRoute.test(route)) return boundedJsonResponse(response, runtimeResourceResponseBytes);
     if(executionArtifactRoute.test(route))return boundedJsonResponse(response,executionArtifactResponseBytes);
+    if (route.startsWith('artifacts/')) return boundedJsonResponse(response, 2000000);
     if (route.startsWith('pdf/') || /^releases\/[0-9a-f-]{36}\/materials\//.test(route)) return boundedJsonResponse(response, 29*1024*1024);
     return response.json() as Promise<unknown>;
   }
@@ -634,6 +636,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'course-activities') return learning.createCourse(identity, body);
     if (route.startsWith('course-activity-results/')) return learning.courseResult(identity, route.slice('course-activity-results/'.length));
     const parts = route.split('/');
+    if (parts[0] === 'artifacts') return routeArtifacts(learning.artifacts, identity, route, body === undefined ? 'GET' : 'POST', body);
     if (parts[0] === 'pdf') {
       if (parts.length === 2) return body === undefined ? learning.pdf.list(identity, parts[1]!) : learning.pdf.upload(identity, parts[1]!, body);
       if (parts.length === 3 && body !== undefined && parts[2] === 'read') return learning.pdf.read(identity, parts[1]!, body);
@@ -687,6 +690,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+      `|artifacts/${id}(?:/(?:check|adopt|shelf|checks/${id}|candidates/${id}|receipts/${id}|${id}(?:/revisions/${id}(?:/resource)?)?))?` +
       `|agent-settings(?:/receipts/${id})?` +
       `|skills(?:/(?:import|select|disable))?` +
       `|pdf/${id}(?:/read|/find|/course|/(?:documents|reads|originals)/${id})?` +
@@ -703,7 +707,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.localBinding && /^(pdf|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(artifacts|pdf|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -728,6 +732,17 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (!result.success) throw new StorageError('unavailable');
       return result.data;
     };
+    if (route.startsWith('artifacts/')) {
+      const parts = route.split('/');
+      if (parts[2] === 'checks') return value === null ? null : parsed(teachingArtifactCandidateSchema, value);
+      if (parts[2] === 'check' || parts[2] === 'candidates') return parsed(teachingArtifactCandidateSchema, value);
+      if (body !== undefined) return parsed(teachingArtifactReceiptSchema, value);
+      if (parts[2] === 'receipts') return value === null ? null : parsed(teachingArtifactReceiptSchema, value);
+      if (parts.length === 2) return parsed(z.array(teachingArtifactSchema), value);
+      if (parts.length === 3) return parsed(teachingArtifactSchema, value);
+      if (parts[5] === 'resource') return parsed(teachingArtifactResourceSchema, value);
+      return parsed(teachingArtifactRevisionSchema, value);
+    }
     if (route.startsWith('pdf/')) {
       if (route.endsWith('/find')) return parsed(pdfSearchResultSchema, value);
       if (route.split('/').length === 2 && body === undefined) return parsed(z.array(pdfDocumentSchema), value);

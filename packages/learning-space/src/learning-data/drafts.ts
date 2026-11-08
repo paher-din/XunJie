@@ -156,11 +156,11 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
         const basis = bases.get(source.contentId);
         if (basis) {
           if (source.origin !== 'state' || basis.objectId !== source.objectId) return fail('invalid');
-          validateComponentFiles(activity, [basis]);
+          await validateComponentFiles(activity, [basis], storage, true);
           await works.registerBasis(identity, activity.activityId, basis);
         }
         const historical = await savedReference(identity, activity.activityId, reference);
-        if (!historical) {
+        if (!historical && !source.bindingKey.startsWith('artifact-')) {
           if (!activity.course || !courses?.verifyComponentReference) throw new StorageError('unavailable');
           await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId, key: source.bindingKey, definitionDigest: source.definitionDigest });
         }

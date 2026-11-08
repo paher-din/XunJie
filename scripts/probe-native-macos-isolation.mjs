@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { chmod, copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, release, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -19,7 +20,7 @@ const value = (name, fallback) => {
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
 const packageRoot = value('--package', null) ? resolve(value('--package', null)) : null;
-const output = resolve(value('--out', '.verification/wp03-184-isolation'));
+const output = probeEvidenceDirectory();
 const role = value('--role', 'all');
 const statePath = value('--state', null);
 const nodePath = value('--node', packageRoot ? join(packageRoot, 'resources/node/bin/node') : process.execPath);
@@ -367,11 +368,8 @@ async function runAll() {
     Object.values(check).some(item => item === false));
   report.status = failed.length ? 'failed' : 'passed';
   await mkdir(output, { recursive: true });
-  await writeFile(join(output, 'isolation-report.json'), JSON.stringify(report, null, 2));
-  // The acceptance record cites this file, so a rerun refreshes the archived copy too.
-  await cp(join(output, 'isolation-report.json'),
-    resolve('docs/student-agent-implementation/evidence/wp03-184-isolation.json')).catch(() => {});
-  console.log(JSON.stringify({ status: report.status, failed: failed.map(([name]) => name), output }));
+  await writeEvidence(join(output, 'isolation-report.json'), JSON.stringify(report, null, 2));
+  console.log(JSON.stringify({ status: report.status, failed: failed.map(([name]) => name), output: hasProbeEvidence(output) ? output : null }));
   if (report.status !== 'passed') process.exitCode = 1;
 }
 

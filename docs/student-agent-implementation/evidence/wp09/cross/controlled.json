@@ -1,0 +1,469 @@
+{
+  "issue": 224,
+  "status": "failed",
+  "measuredAt": "2026-11-08T13:23:40.125Z",
+  "mode": "product-acceptance",
+  "model": "controlled",
+  "cleanup": {
+    "scopedWindowsFirewallRemoved": true,
+    "remoteFixtureRetained": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-acf37b38-0316-4907-a2cd-fe53dfa3f5dd",
+    "localFixtureRetained": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp09-cross-control-yyg7Si"
+  },
+  "stages": [],
+  "previousAttempts": [
+    {
+      "status": "failed",
+      "model": "controlled",
+      "realProviderCalls": 0,
+      "finishedAt": "2026-11-08T13:19:52.498Z"
+    }
+  ],
+  "totalRealProviderCalls": 0,
+  "topology": {
+    "mac": {
+      "host": "Robert-Wu-MacBook-Air.local",
+      "ip": "192.168.3.39"
+    },
+    "windows": {
+      "ip": "192.168.3.8",
+      "host": "LAPTOP-S7A4IQFU"
+    },
+    "productTransport": "direct bidirectional LAN HTTPS",
+    "ssh": "control-only-no-tunnel",
+    "providerCredentials": "Mac only"
+  },
+  "windowsPreflight": {
+    "host": "LAPTOP-S7A4IQFU",
+    "os": "Microsoft Windows 11 家庭版 中文版",
+    "chrome": "156.0.8078.81",
+    "playwright": true,
+    "oldNode": "C:/Users/h/XunJie-acceptance/channel-product/resources/node/node.exe",
+    "temp": "C:\\Users\\h\\AppData\\Local\\Temp"
+  },
+  "tls": {
+    "certificateSha256": "1059b6dfcdab0405f1d71ea0f7113b0b76df1ad9fe7d87f3bbe2dd56b2a6ea8e",
+    "spki": "0e91b4be0053f0a7d00eeb9b13a17240654d44a0d4b194d6ed147c4f4120c26d",
+    "subjectAltName": "IP Address:192.168.3.39, IP Address:192.168.3.8",
+    "trust": "explicit test CA for Node; certificate SPKI pin for Chrome; no global trust-store modification"
+  },
+  "preparationStep": "bidirectional-TLS",
+  "macFirewall": {
+    "disabled": true
+  },
+  "caseReport": {
+    "issue": 224,
+    "measuredAt": "2026-11-08T13:24:12.928Z",
+    "status": "failed",
+    "limits": {
+      "maxGenerations": 8,
+      "maxOutputTokens": 8192,
+      "timeoutMs": 60000,
+      "retries": 0
+    },
+    "topology": {
+      "mac": {
+        "ip": "192.168.3.39",
+        "host": "Robert-Wu-MacBook-Air.local",
+        "platform": "darwin",
+        "port": 39409
+      },
+      "windows": {
+        "ip": "192.168.3.8",
+        "port": 39410,
+        "host": "LAPTOP-S7A4IQFU"
+      },
+      "transport": "direct LAN HTTPS; SSH control only; provider credentials remain on Mac"
+    },
+    "stages": [
+      {
+        "name": "mac-school-direct-https",
+        "status": "passed",
+        "fact": {
+          "environmentId": "d8daa9ae-be5b-4774-a77e-53ebae1f1514",
+          "installationId": "e425ef56-458f-4153-8820-5a5749da5ceb",
+          "endpoint": "https://192.168.3.39:39409",
+          "units": [
+            "client",
+            "learning-data",
+            "model-connection",
+            "space-course",
+            "teaching-agent"
+          ]
+        }
+      },
+      {
+        "name": "windows-independent-agent-direct-https",
+        "status": "passed",
+        "fact": {
+          "state": "degraded",
+          "endpoint": "https://192.168.3.8:39410",
+          "environmentId": "63279200-242a-452b-ba67-0a9a96005cde",
+          "installationId": "68e0c3ae-6b91-4f11-972b-e1417b1d85ef",
+          "target": {
+            "environmentId": "63279200-242a-452b-ba67-0a9a96005cde",
+            "serviceId": "95f94515-1453-4946-91bd-dbab52f73451",
+            "unit": "teaching-agent",
+            "endpoint": "https://192.168.3.8:39410",
+            "protocolVersion": 1,
+            "capabilities": [
+              "runtime.status",
+              "teaching.agent"
+            ]
+          },
+          "units": [
+            "client",
+            "teaching-agent"
+          ],
+          "platform": "win32",
+          "host": "LAPTOP-S7A4IQFU",
+          "osRelease": "10.0.26200",
+          "package": {
+            "platform": "win32-x64",
+            "profile": "full",
+            "distributionSha256": "e27a6a36fe2a9a1a88c3a06cc6f4981f55271e6d3f65bbc7ef5bae90e7000172",
+            "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+            "webRuntime": [
+              {
+                "path": "web/assets/runtime-BJR4SIL5.js",
+                "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+              }
+            ],
+            "nodeVersion": "v24.21.0"
+          },
+          "probeSha256": "7adac95a8a2f0647a8830735130c82513b45b8fb6a865a12ff433a082ca6801f"
+        }
+      },
+      {
+        "name": "bidirectional-runtime-authority-and-binding",
+        "status": "passed",
+        "fact": {
+          "schoolDataOwner": {
+            "environmentId": "d8daa9ae-be5b-4774-a77e-53ebae1f1514",
+            "serviceId": "124454c5-663a-4a8e-b97d-7aee05c24e58"
+          },
+          "agentOwner": {
+            "environmentId": "63279200-242a-452b-ba67-0a9a96005cde",
+            "serviceId": "95f94515-1453-4946-91bd-dbab52f73451"
+          },
+          "agentConnectionId": "d2adb001-e6f6-4f0f-a5e2-cd09614b6b78",
+          "dependencyConnectionId": "94f5c6c6-ff62-4ced-8ded-165ac85ba2f4",
+          "acceptGrantId": "3e1f5d35-c36c-4312-8732-e44673c47350",
+          "dependencyGrantId": "49d39d41-6ca5-4bb2-887a-e8b4f64d4b88"
+        }
+      },
+      {
+        "name": "mac-only-real-provider-configuration",
+        "status": "passed",
+        "fact": {
+          "model": "deepseek-flash",
+          "protocol": "chat-completions",
+          "connectionId": "db0dfd7e-d527-4eeb-98ae-73d5149b2d16",
+          "credentialOwner": "Mac",
+          "credentialExported": false
+        }
+      },
+      {
+        "name": "Win-Agent-generates-fixed-candidate-at-Mac-owner",
+        "status": "passed",
+        "fact": {
+          "requestId": "83f763aa-6a58-422e-8d16-8379ba867148",
+          "runId": "f0774f5d-7456-4672-9496-6ea9a2c26ecb",
+          "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+          "revisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+          "candidateId": "7a315328-0ea6-4b57-b96f-3debbaf02095",
+          "commandId": "32be2af6-2110-4a58-9b48-c33cffaf9a2a",
+          "snapshotId": "0efe94e5-5dbd-4845-be9f-72cc1b4db356",
+          "stepId": "df540ac0-2eea-42fa-a722-5d6a2d06c8b2",
+          "attemptId": "19d1423a-265c-4c84-83ea-4442c7cf12f3",
+          "resourceSha256": "22722edf551c34c1e38cc0881f2348f4d93d03c79628813983ea013cf1162240",
+          "payloadSha256": "d5349c52dbcba9d3c93d38df2f1a8d292142be1270bbe3fed91bc61abc77ab02"
+        }
+      },
+      {
+        "name": "Windows-Interactive-Limited-Chrome-check-adopt-save",
+        "status": "failed",
+        "error": "windows-artifact-phase-timeout"
+      }
+    ],
+    "engineering": "owned-by-main",
+    "browser": "not-run",
+    "teachingEffect": "not-assessed",
+    "packages": {
+      "mac": {
+        "platform": "darwin-arm64",
+        "profile": "full",
+        "distributionSha256": "c1b07073ce81eaa66b34eb3e0288c53677a9b473252f3824e0a3f73494a082bf",
+        "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+        "webRuntime": [
+          {
+            "path": "web/assets/runtime-BJR4SIL5.js",
+            "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+          }
+        ],
+        "nodeVersion": "v24.21.0"
+      },
+      "windows": {
+        "platform": "win32-x64",
+        "profile": "full",
+        "distributionSha256": "e27a6a36fe2a9a1a88c3a06cc6f4981f55271e6d3f65bbc7ef5bae90e7000172",
+        "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43",
+        "webRuntime": [
+          {
+            "path": "web/assets/runtime-BJR4SIL5.js",
+            "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+          }
+        ],
+        "nodeVersion": "v24.21.0"
+      }
+    },
+    "probeSha256": "7adac95a8a2f0647a8830735130c82513b45b8fb6a865a12ff433a082ca6801f",
+    "ownerCode": {
+      "identicalApplication": true,
+      "commonWebRuntime": [
+        {
+          "path": "web/assets/runtime-BJR4SIL5.js",
+          "sha256": "15292d4e28272273c70df405a27fb7400cb998710b23e700cce76592db67e872"
+        }
+      ],
+      "policy": "Each final package matches its own manifest; Mac owner may include the explicitly authorized backend-only adoption fix."
+    },
+    "privateResume": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp09-private-resume-3C53d3/resume.json",
+    "artifacts": {
+      "modelSource": "controlled external Chat transport",
+      "originals": [
+        {
+          "requestId": "83f763aa-6a58-422e-8d16-8379ba867148",
+          "runId": "f0774f5d-7456-4672-9496-6ea9a2c26ecb",
+          "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+          "revisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+          "candidateId": "7a315328-0ea6-4b57-b96f-3debbaf02095",
+          "commandId": "32be2af6-2110-4a58-9b48-c33cffaf9a2a",
+          "snapshotId": "0efe94e5-5dbd-4845-be9f-72cc1b4db356",
+          "stepId": "df540ac0-2eea-42fa-a722-5d6a2d06c8b2",
+          "attemptId": "19d1423a-265c-4c84-83ea-4442c7cf12f3",
+          "resourceSha256": "22722edf551c34c1e38cc0881f2348f4d93d03c79628813983ea013cf1162240",
+          "payloadSha256": "d5349c52dbcba9d3c93d38df2f1a8d292142be1270bbe3fed91bc61abc77ab02"
+        }
+      ],
+      "screenshots": [
+        {
+          "platform": "win32",
+          "path": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/windows/cross-diagnostic-current-page.png",
+          "sha256": "485ebec5929a2b11a0bb23e0d67980e895042a07f96d09e81d49f72bee7106a9"
+        }
+      ],
+      "cleanup": {
+        "windowsTaskRemoved": true,
+        "desktopLocksReleased": true
+      },
+      "activityId": "be878eb5-2bc1-4ef5-ae9b-849005f10040",
+      "windows": {
+        "status": "running",
+        "platform": "win32",
+        "host": "LAPTOP-S7A4IQFU",
+        "workerProcessId": 16020,
+        "checks": [],
+        "screenshots": [
+          {
+            "name": "diagnostic-current-page",
+            "path": "C:/Users/h/AppData/Local/Temp/xj-wp09-cross-acf37b38-0316-4907-a2cd-fe53dfa3f5dd/artifact-chrome/result-diagnostic.png",
+            "sha256": "485ebec5929a2b11a0bb23e0d67980e895042a07f96d09e81d49f72bee7106a9"
+          }
+        ],
+        "model": "no browser-to-provider connection",
+        "phase": "actual-checked-candidate",
+        "observedAt": "2026-11-08T13:25:45.956Z",
+        "desktopSessionId": 1,
+        "product": {
+          "platform": "win32-x64",
+          "applicationSha256": "3d1a03f55dabcea708d0f23195a6fcc33c673f4c73baa574a0bbc1cfeb948b43"
+        },
+        "chromeVersion": "156.0.8078.81",
+        "loginHTTP": [
+          {
+            "route": "context",
+            "status": 200
+          },
+          {
+            "route": "login",
+            "status": 200
+          },
+          {
+            "route": "context",
+            "status": 200
+          },
+          {
+            "route": "context",
+            "status": 200
+          },
+          {
+            "route": "context",
+            "status": 200
+          }
+        ],
+        "workRequests": [],
+        "receiptQueries": [],
+        "loginPhase": "complete",
+        "diagnostic": {
+          "url": "/?space=school&activity=be878eb5-2bc1-4ef5-ae9b-849005f10040",
+          "visibleText": "首页\n学校空间\n学校连接\n个人设置\nWP09 cross-owner artifact acceptance\n学校学习空间\n自主学习\n跨机器理解二进制位宽\n目标与材料\n询问 Agent\n活动\n作品\nPDF 资料\n个人笔记\n当前作品\n文件\n没有打开的文件\n\n从一个文本或代码文件开始。\n\n在「文件」中创建你的第一份作品。\n\n学习对话\n切换模型\n你\n请实际调用一次 generate_teaching_artifact 制作小型中文二进制位宽教学示意卡。不要在对话粘贴代码。页面只有一段说明和 aria-label=\"我的解释\" 的textarea。 唯一状态 explanation:string(maxLength=1000)，initialState={explanation:''}，stateVersion=1；semanticFields=[{key:'explanation',meaning:'学生对二进制位宽的解释'}]，semanticObjects=[]；requiredCapabilities=['workspace.read','workspace.change']。 脚本写javascript async IIFE，先 await window.xunjie.read() 恢复textarea.value，再input事件调用 window.xunjie.change({explanation:textarea.value}) 并处理Promise失败。html仅正文无script/on*，css独立。只生成一次，不ask/discover/load/实验，成功后一句话结束。\n\n已纳入下一步 · 引导当前任务\n\n发送时的依据与版本\n位宽解释卡\n收纳\n在工具区打开\n\n页面完成后会在这里打开。\n\nAgent\n\n学习卡片已准备，保留你的解释。\n\n来源：学校模型 · deepseek-flash · chat-completions\n本次发送方式\n引导当前任务\n本轮结束后处理\n\n当前可以开始新的学习请求。\n\n询问 Agent\n收起对话\n\n选择材料或代码，可将片段加入问题。\n\n本次问题的 Skills · 按范围设置\n你的问题\nEnter 发送 · Shift + Enter 换行\n发送问题\n\n待发与接收记录\n\n接收方已接受\n\n请实际调用一次 generate_teaching_artifact 制作小型中文二进制位宽教学示意卡。不要在对话粘贴代码。页面只有一段说明和 aria-label=\"我的解释\" 的textarea。\n唯一状态 explanation:string(maxLength=1000)，initialState={explanation:''}，stateVersion=1；semanticFields=[{key:'explanation',meaning:'学生对二进制位宽的解释'}]，semanticObjects=[]；requiredCapabilities=['workspace.read','workspace.change']。\n脚本写javascript async IIFE，先 await window.xunjie.read() 恢复textarea.value，再input事件调用 window.xunjie.change({explanation:textarea.value}) 并处理Promise失败。html仅正文无script/on*，css独立。只生成一次，不ask/discover/load/实验，成功后一句话结束。\n查看这次固定内容\n\nAgent 已接收这次学习请求，进展和回应保留在学习对话中。\n\n已被接受的动作不承诺撤回；后续修改仍保留在当前草稿。\n\n学",
+          "cards": 1,
+          "iframes": [],
+          "errors": [],
+          "artifacts": {
+            "status": 200,
+            "body": [
+              {
+                "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+                "activityId": "be878eb5-2bc1-4ef5-ae9b-849005f10040",
+                "title": "位宽解释卡",
+                "display": "card",
+                "activeRevisionId": null,
+                "latestRevisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+                "latestCandidateId": "7a315328-0ea6-4b57-b96f-3debbaf02095",
+                "shelved": false,
+                "relatedArtifactId": null,
+                "createdAt": "2026-11-08T13:25:03.152Z"
+              }
+            ]
+          },
+          "candidates": [
+            {
+              "status": 200,
+              "body": {
+                "candidateId": "7a315328-0ea6-4b57-b96f-3debbaf02095",
+                "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+                "revisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+                "status": "candidate",
+                "checks": [
+                  {
+                    "code": "script-syntax",
+                    "passed": true,
+                    "reason": ""
+                  },
+                  {
+                    "code": "fixed-resources",
+                    "passed": true,
+                    "reason": ""
+                  },
+                  {
+                    "code": "capability-scope",
+                    "passed": true,
+                    "reason": ""
+                  },
+                  {
+                    "code": "browser-roundtrip",
+                    "passed": false,
+                    "reason": "Awaiting isolated browser load and state roundtrip"
+                  }
+                ],
+                "createdAt": "2026-11-08T13:25:03.152Z"
+              }
+            }
+          ],
+          "conversation": {
+            "status": 200,
+            "tools": [
+              {
+                "name": "generate_teaching_artifact",
+                "commandId": "32be2af6-2110-4a58-9b48-c33cffaf9a2a",
+                "outcome": "completed",
+                "resultKeys": [
+                  "artifact"
+                ],
+                "artifact": {
+                  "kind": "publish",
+                  "reason": null,
+                  "outcome": "candidate",
+                  "contentId": null,
+                  "requestId": "32be2af6-2110-4a58-9b48-c33cffaf9a2a",
+                  "artifactId": "7d8148db-b039-4793-8922-21cf76c03d6b",
+                  "revisionId": "93337338-05d1-42f0-a6a3-d768817057b4",
+                  "candidateId": "7a315328-0ea6-4b57-b96f-3debbaf02095",
+                  "workRevision": null,
+                  "relatedArtifactId": null
+                },
+                "feedback": "{\"state\":\"completed\",\"artifact\":{\"requestId\":\"32be2af6-2110-4a58-9b48-c33cffaf9a2a\",\"artifactId\":\"7d8148db-b039-4793-8922-21cf76c03d6b\",\"revisionId\":\"93337338-05d1-42f0-a6a3-d768817057b4\",\"candidateId\":\"7a315328-0ea6-4b57-b96f-3debbaf02095\",\"kind\":\"publish\",\"outcome\":\"candidate\",\"workRevision\":null,\"contentId\":null,\"relatedArtifactId\":null,\"reason\":null},\"original\":{\"commandId\":\"32be2af6-2110-4a58-9b48-c33cffaf9a2a\",\"sha256\":\"fda92719518de4c4ae868d3f0941c115b5ffcc5d14e6e1e23c47d65d004d07cf\",\"byteLength\":337,\"encoding\":\"utf8\",\"readTool\":\"read_tool_result\"},\"byteRange\":{\"offset\":0,\"end\":337},\"truncated\":false}"
+              }
+            ],
+            "runs": [
+              {
+                "runId": "f0774f5d-7456-4672-9496-6ea9a2c26ecb",
+                "state": "completed",
+                "reason": "stop"
+              }
+            ]
+          }
+        },
+        "diagnosticScreenshot": true
+      }
+    },
+    "error": "windows-artifact-phase-timeout",
+    "modelSource": "controlled external Chat transport; no real supplier calls",
+    "providerRequests": [
+      {
+        "index": 1,
+        "payloadSha256": "d5349c52dbcba9d3c93d38df2f1a8d292142be1270bbe3fed91bc61abc77ab02",
+        "status": 200,
+        "finished": true,
+        "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+        "model": "controlled-chat-transport"
+      },
+      {
+        "index": 2,
+        "payloadSha256": "ec6c36bc5e74766762957ddeb3036df9b3268d64184e23eb603ddd2fc363784e",
+        "status": 200,
+        "finished": true,
+        "toolSchemaSha256": "e0ccba6f730847b525aaa873579bfb30dbdbc213b2c09990e62917127763a9fc",
+        "model": "controlled-chat-transport"
+      }
+    ],
+    "providerRefusals": [],
+    "dependencyOperations": {
+      "authorize": 220,
+      "activity": 72,
+      "model.selection.read": 2,
+      "identityFor": 1,
+      "model.selection.pin": 1,
+      "tool.contributions": 4,
+      "model.segments.read": 3,
+      "model.segments.create": 1,
+      "model.checks.receive": 2,
+      "model.checks.requestPayload": 2,
+      "model.checks.read": 4,
+      "model.checks.dispatch": 2,
+      "model.checks.progress": 2,
+      "model.checks.summary": 2,
+      "tool.prepare": 1,
+      "tool.dispatch": 1,
+      "model.segments.settle": 1,
+      "model.results.retain": 2
+    },
+    "cleanup": {
+      "providerRelayClosed": true,
+      "windows": {
+        "stopped": true,
+        "retained": true,
+        "rootRemoved": false,
+        "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp08-224-agent-xHukGg"
+      },
+      "controlProcessExited": true,
+      "mac": {
+        "stopped": true,
+        "retained": true,
+        "rootRemoved": false,
+        "root": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp08-224-school-iA4Faw"
+      }
+    },
+    "retainedWindows": {
+      "retained": true,
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xj-wp08-224-agent-xHukGg"
+    },
+    "retained": true,
+    "finishedAt": "2026-11-08T13:30:48.529Z"
+  },
+  "retained": true,
+  "privateResume": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xj-wp09-private-resume-3C53d3/resume.json",
+  "runRealProviderCalls": 0,
+  "finishedAt": "2026-11-08T13:30:55.725Z"
+}

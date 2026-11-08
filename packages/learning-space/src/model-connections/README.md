@@ -43,6 +43,8 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 
 学习 attempt 的增量正文写入独立 `model_attempt_progress` 表（迁移 11）。三种协议都在解析各自增量后调用同一个凭据尾部扣留发布器：完整凭据出现前不公开可能拼出凭据的尾部，出现后停止公开；探针、检查与取消不产生进度行。进度读取只返回已持久化的安全前缀与修订号，`teaching-agent` 再用稳定 attempt 身份追加事件。
 
+WP09 在相同进度记录中追加有界工具参数预览。只有固定工具定义声明的 JSON 字符串属性可投影，保留原 call/attempt 与单调修订；三协议共用凭据处理和持久确认，不把该内部描述传给供应商。半截 JSON 不修复成工具意图，完整结果与派发仍由下述终态边界决定；渲染和启用归 [WP09](../../../../docs/student-agent-implementation/wp09-implementation.md)。
+
 工具参数按 choice/tool index 聚合；只有名字、身份、完整 JSON/schema、整体终态和可读持久结果同时成立，公开结果才出现 `toolIntents`。拒绝、半截参数、截断、未知关键块、缺终态或本地发布失败不交付意图。DeepSeek 保留 `reasoning_content`；已实测 Command Code 方言保留 `reasoning` 及按块索引聚合的 `reasoning_details`，未知关键格式保留原始 chunks 但不可续接。公开投影不返回原生推理。
 
 调用方用 `toolResults:{callId,outcome,text,images}` 明确提供 success/error/not-executed；同段下一步必须完整、唯一配对。也可用 `POST models/segments/<id>/tool-results` 先结清而不请求模型。Gateway 不替调用方执行或取消工具。工具产图用配对文本结果和紧邻用户图像，原关联保留在工具结果及输入元数据；不声明原生 tool-image 支持。

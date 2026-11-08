@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 /**
  * #194 real-product acceptance; run separately on each Mac/Windows client and connection path.
  *
@@ -17,7 +18,7 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID, X509Certificate } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { networkInterfaces, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -27,7 +28,7 @@ import { chromium, expect } from '@playwright/test';
 const suite = process.env.XUNJIE_ALU_SUITE ?? 'all';
 const mode = process.env.XUNJIE_ALU_REMOTE_CONFIG ? 'school-https' : 'product';
 const label = process.env.XUNJIE_ALU_LABEL ?? `${process.platform}-${process.arch}-${mode}`;
-const output = resolve(process.env.XUNJIE_ALU_OUTPUT ?? `.verification/wp04-194/${label}`);
+const output = probeEvidenceDirectory(process.env.XUNJIE_ALU_OUTPUT);
 const T = { ui: 90000, preparation: 300000, execution: 240000, sync: 180000 };
 const MEDIA = 'application/vnd.xunjie.alu-reflection+json';
 // Probe fixture only. This implementation must never be added to student starter materials.
@@ -141,13 +142,15 @@ function scrub(value) {
 function check(condition, message) { assert.ok(condition, message); if (activeCase) activeCase.assertions++; }
 function equal(actual, expected, message) { assert.deepEqual(actual, expected, message); if (activeCase) activeCase.assertions++; }
 async function evidence(name, value) {
+  if (!hasProbeEvidence(output)) return;
   const file = `evidence/${name}.json`;
-  await writeFile(join(output, file), JSON.stringify(scrub(value), null, 2) + '\n');
+  await writeEvidence(join(output, file), JSON.stringify(scrub(value), null, 2) + '\n');
   report.evidence.push(file); return file;
 }
 async function screenshot(name) {
+  if (!hasProbeEvidence(output)) return;
   const file = `screenshots/${name}.png`;
-  await page.screenshot({ path: join(output, file), fullPage: true });
+  await captureEvidence(page, { path: join(output, file), fullPage: true });
   report.evidence.push(file); return file;
 }
 async function step(id, fn) {
@@ -649,7 +652,7 @@ try {
     await click(wave.getByRole('button', { name: '引用波形', exact: true }));
     const copies = await draftCopies('waveform', draft => semantic(draft, 'alu-waveform').some(ref => ref.source.requestId === firstCase.requestId));
     verifyWaveCopy(trace[0].text, semantic(copies.local, 'alu-waveform').at(-1), originalWave.range);
-    await writeFile(join(output, 'evidence', 'original-trace.vcd'), trace[0].text); report.evidence.push('evidence/original-trace.vcd');
+    if (hasProbeEvidence(output)) { await writeEvidence(join(output, 'evidence', 'original-trace.vcd'), trace[0].text); report.evidence.push('evidence/original-trace.vcd'); }
     await screenshot('selected-real-waveform'); return { ...originalWave, sha256: trace[0].sha256, byteLength: trace[0].byteLength };
   });
   await step('prior-sources', async () => {
@@ -798,8 +801,8 @@ finally {
   report.acceptanceComplete = report.cases.every(item => item.status === 'passed') && report.cleanupError.length === 0;
   report.status = report.error || report.summary.failed || report.cleanupError.length ? 'failed' : report.acceptanceComplete ? 'passed' : 'partial';
   report.finishedAt = new Date().toISOString(); report.origins = [...origins]; report.workers = [...workerUrls];
-  await writeFile(join(output, 'report.json'), JSON.stringify(scrub(report), null, 2) + '\n');
-  console.log(JSON.stringify({ status: report.status, corePassed: report.corePassed, cases: report.summary, report: join(output, 'report.json') }));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(scrub(report), null, 2) + '\n');
+  console.log(JSON.stringify({ status: report.status, corePassed: report.corePassed, cases: report.summary, report: !hasProbeEvidence(output) ? null : join(output, 'report.json') }));
   process.exitCode = report.status === 'failed' ? 1 : report.acceptanceComplete ? 0 : 2;
 }
 

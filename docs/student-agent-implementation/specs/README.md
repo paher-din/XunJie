@@ -11,6 +11,7 @@
 | WP06 | [三协议模型连接](wp06-model-connections.md) | [WP06：三协议模型连接](https://github.com/paher-din/XunJie/issues/163) | 学校/个人模型配置与正式设置接入、三协议直接 SDK、能力证据、图像、持久调用结果、原生续接及错误/用量未知 |
 | WP07 | 持久 Agent 与学习对话（完整规范见母票） | [WP07：持久 Agent 与学习对话](https://github.com/paher-din/XunJie/issues/196) | 持久 RunDriver、跨 Run 的 session log 与请求重建、真实学习对话、steering/queue、工具/Wait、预算、取消恢复及既有 UI 接线；验收三协议真实模型/工具、两平台 Chrome 和跨机组合 |
 | WP08 | Agent 能力、上下文与扩展（完整规范见母票） | [WP08：Agent 能力、上下文与扩展](https://github.com/paher-din/XunJie/issues/214) | AgentDefinition 与版本装配、平台/课程工具发现、独立 Skills、Prompt 与有来源压缩、记忆读取、资料检索和 PDF 页引用；验收 ALU、个人 Skill 与资料、自主学习及失效恢复；MCP/Plugin 暂缓 |
+| WP09 | 可交互教学内容（完整规范见母票） | [WP09：可交互教学内容](https://github.com/paher-din/XunJie/issues/224) | 活动内生成页面/卡片、渐进预览与校验启用、受控能力调用、显式状态与收纳重开、修订保留输入及固定引用；验收自主学习、ALU 和修订恢复，MCP Apps/Plugin/Flights 暂缓 |
 
 WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#further-notes)；实施前沿以[规范母票](https://github.com/paher-din/XunJie/issues/163)的原生子议题及阻塞关系为准。
 

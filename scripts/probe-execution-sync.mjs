@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -14,7 +15,7 @@ import { aggregationPackage } from '../components/table-aggregation/package.mjs'
  * at the network layer, the algorithm really computes in its worker, and the durable queue is
  * read back from the page's own IndexedDB before and after the reconnect.
  */
-const output = resolve(process.env.XUNJIE_EXECUTION_OUTPUT ?? '.verification/wp03-170');
+const output = probeEvidenceDirectory(process.env.XUNJIE_EXECUTION_OUTPUT);
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -122,7 +123,7 @@ try {
   const artifactA = offlineLedger.results.find(record => record.requestId === requestIdA);
   assert.ok(artifactA && artifactA.text.startsWith('小组,计数'), 'the result bytes stay readable locally');
   passed('the local ledger keeps the command, the terminal fact and the result bytes with no sync entry');
-  await page.screenshot({ path: join(output, 'execution-sync-offline.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'execution-sync-offline.png'), fullPage: true });
 
   // Connectivity returns; a reload is the page's own resume entry point.
   phase = 'resumed-1';
@@ -177,7 +178,7 @@ try {
   assert.equal(count('ok', undefined, 'failed-resumed-2'), 0);
   passed('the reconnect delivers the failure fact once and then stays quiet');
 
-  await page.screenshot({ path: join(output, 'execution-sync-resumed.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'execution-sync-resumed.png'), fullPage: true });
   report.status = 'passed';
   report.summary = { requestIdA, requestIdB: runB.requestId,
     deliveries: Object.fromEntries(['offline-run', 'resumed-1', 'resumed-2', 'offline-failed', 'failed-resumed-1', 'failed-resumed-2']
@@ -188,7 +189,7 @@ try {
   report.error = error?.message ?? String(error);
   throw error;
 } finally {
-  await writeFile(join(output, 'execution-sync-report.json'), JSON.stringify(report, null, 2)).catch(() => {});
+  await writeEvidence(join(output, 'execution-sync-report.json'), JSON.stringify(report, null, 2)).catch(() => {});
   await browser?.close().catch(() => {});
   await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true }).catch(() => {});

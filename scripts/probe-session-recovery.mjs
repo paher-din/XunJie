@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -8,7 +9,7 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 import { SupervisedSession } from '@xunjie/learning-space';
 import { accumulatorPackage } from '../components/state-accumulator/package.mjs';
 
-const output = resolve('.verification/wp03-174'), root = await mkdtemp(join(tmpdir(), 'xj174-browser-'));
+const output = probeEvidenceDirectory(), root = await mkdtemp(join(tmpdir(), 'xj174-browser-'));
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Native PostgreSQL required');
@@ -71,9 +72,9 @@ try {
  await panel.getByRole('button', { name: '启动本机会话', exact: true }).click();
  await expect(panel.getByRole('button', { name: '输入', exact: true })).toBeDisabled();
  assert.equal(await panel.getByRole('button', { name: '暂停', exact: true }).count(), 0);
- await page.screenshot({ path: join(output, 'session-before.png'), fullPage: true });
+ await captureEvidence(page, { path: join(output, 'session-before.png'), fullPage: true });
  await panel.getByRole('button', { name: '停止会话', exact: true }).click();
- await expect(panel).toContainText('已取消'); passed('legacy component remains usable without unsupported controls; before view captured');
+ await expect(panel).toContainText('已取消'); passed('legacy component remains usable without unsupported controls; before view checked');
  await page.getByRole('tab', { name: '恢复累加器', exact: true }).click();
  await panel.getByRole('button', { name: '启动本机会话', exact: true }).click();
  await expect(panel.getByRole('button', { name: '暂停', exact: true })).toBeEnabled();
@@ -146,14 +147,14 @@ try {
  await panel.getByRole('button', { name: '暂停', exact: true }).click();
  await expect(panel.getByRole('button', { name: '恢复推进', exact: true })).toBeEnabled();
  passed('reset and resume operate on the current process rather than replacing it');
- await page.screenshot({ path: join(output, 'session-after-light.png'), fullPage: true });
+ await captureEvidence(page, { path: join(output, 'session-after-light.png'), fullPage: true });
  await page.locator('html').evaluate(element => element.dataset.theme = 'dark');
  await expect(page.frameLocator('iframe[title="恢复累加器"]').locator('body')).toHaveCSS('color', await panel.evaluate(element => getComputedStyle(element).color));
- await page.screenshot({ path: join(output, 'session-after-dark.png'), fullPage: true });
+ await captureEvidence(page, { path: join(output, 'session-after-dark.png'), fullPage: true });
  await page.setViewportSize({ width: 1000, height: 800 });
  await panel.getByRole('button', { name: '保存检查点', exact: true }).focus();
  await expect(panel.getByRole('button', { name: '保存检查点', exact: true })).toBeFocused();
- await page.screenshot({ path: join(output, 'session-after-narrow.png'), fullPage: true });
+ await captureEvidence(page, { path: join(output, 'session-after-narrow.png'), fullPage: true });
  assert.deepEqual(pageErrors, []); passed('existing workspace controls retain keyboard focus and light/dark/narrow desktop presentation');
  const boundary = await host.maintenance.enter('backup'); assert.equal(boundary.safeToStop, true);
  assert.equal(processes.get(restored.session.executorInstanceId).exitFact?.confirmed, true);
@@ -172,7 +173,7 @@ try {
  report.status = 'passed';
 } catch (error) {
  report.status = 'failed'; report.error = error.message;
- if (page) { report.failureView = await page.locator('body').innerText().catch(() => null); await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {}); }
+ if (page) { report.failureView = await page.locator('body').innerText().catch(() => null); await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {}); }
  throw error;
 } finally {
  SupervisedSession.create = create;
@@ -180,5 +181,5 @@ try {
  report.totalElapsedMs = Math.round(performance.now() - measurementStart);
  report.nodeHostRssBytes = process.memoryUsage().rss; report.spawnedExecutors = processes.size;
  report.measurementNote = 'Case timings include setup/validation; host RSS excludes PostgreSQL, Chrome and executor peaks.';
- await writeFile(join(output, 'browser-report.json'), JSON.stringify(report, null, 2));
+ await writeEvidence(join(output, 'browser-report.json'), JSON.stringify(report, null, 2));
 }

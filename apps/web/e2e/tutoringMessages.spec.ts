@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { chromium, test, expect, type Page } from '@playwright/test'
 import { revealTutorBody } from './tutoringHelpers'
 import { createServer } from 'node:net'
@@ -297,7 +298,7 @@ test('未展示内容丢教学ledger后，新通道从零取得新Delivery，不
   expect(receipts[0]!.body).toMatchObject({clientId:after.clientId,deliveryId:current.payload.deliveryId,receiptKind:'received'})
   expect(current.facts.displayed).toBeUndefined();expect((await tutorRecords(page)).actions).toEqual([])
 })
-test('完整正文→可见展示→明确回应，重读/刷新只保留一份和原通道',async({page},testInfo)=> {
+test('完整正文→可见展示→明确回应，重读/刷新只保留一份和原通道',async({page})=> {
   await start(page,'tutor-receipts')
   const writes:string[]=[];page.on('request',r=>{ if(r.method()==='POST'&&r.url().endsWith('/help'))writes.push(r.postData()!) })
   await expect(page.getByRole('button',{name:'就项目求助'})).toBeVisible()
@@ -323,7 +324,7 @@ test('完整正文→可见展示→明确回应，重读/刷新只保留一份�
   expect(writes).toHaveLength(1)
   await page.getByTestId('tutoring-pane').evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished))})
   await revealTutorBody(page.getByTestId('tutor-message'))
-  await page.screenshot({path:testInfo.outputPath('tutoring-preparation.png'),fullPage:true})
+  if (evidenceDirectory()) await page.screenshot({path:evidencePath('screenshots/tutoringMessages/tutoring-preparation.png'),fullPage:true})
 })
 test('收起面板只收到，未展示；已succeeded仍能停止未展示内容',async({page})=> {
   await start(page,'tutor-not-shown')

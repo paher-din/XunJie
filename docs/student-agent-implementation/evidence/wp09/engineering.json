@@ -1,0 +1,1377 @@
+{
+  "formatVersion": 1,
+  "status": "passed-for-listed-engineering-checks",
+  "sourceBaseline": "a7977e0a",
+  "scope": "WP09 implementation and review fixes; deployment and teaching evidence are separate",
+  "node": "v24.21.0",
+  "fullVerify": {
+    "command": "rtk bypass npm run verify -- --jobs 2",
+    "status": "passed",
+    "startedAt": "2026-11-08T13:30:19.399Z",
+    "finishedAt": "2026-11-08T13:40:49.743Z",
+    "durationMs": 630346,
+    "exitCode": 0,
+    "testsCached": false,
+    "rawSummarySha256": "84c8a0588f1e109621a34162a52f2fcc87dad731ef2cc9ace92c00294a33192b",
+    "groups": [
+      {
+        "name": "prepare",
+        "status": "passed",
+        "taskCount": 4,
+        "tasks": [
+          {
+            "name": "typecheck",
+            "status": "passed",
+            "durationMs": 15507,
+            "exitCode": 0
+          },
+          {
+            "name": "build",
+            "status": "passed",
+            "durationMs": 15825,
+            "exitCode": 0
+          },
+          {
+            "name": "check:contracts:browser",
+            "status": "passed",
+            "durationMs": 359,
+            "exitCode": 0
+          },
+          {
+            "name": "check:docs",
+            "status": "passed",
+            "durationMs": 324,
+            "exitCode": 0
+          }
+        ]
+      },
+      {
+        "name": "build:test",
+        "status": "passed",
+        "taskCount": 1,
+        "tasks": [
+          {
+            "name": "build:test",
+            "status": "passed",
+            "durationMs": 879,
+            "exitCode": 0
+          }
+        ]
+      },
+      {
+        "name": "unit",
+        "status": "passed",
+        "taskCount": 36,
+        "tasks": [
+          {
+            "name": "scripts/build.test.mjs",
+            "status": "passed",
+            "durationMs": 8011,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/check-contracts-browser.test.mjs",
+            "status": "passed",
+            "durationMs": 1601,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/check-doc-links.test.mjs",
+            "status": "passed",
+            "durationMs": 550,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/ci-build-artifact.test.mjs",
+            "status": "passed",
+            "durationMs": 650,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/package-product.test.mjs",
+            "status": "passed",
+            "durationMs": 105,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/test-discovery.test.mjs",
+            "status": "passed",
+            "durationMs": 145,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/test-scheduler.test.mjs",
+            "status": "passed",
+            "durationMs": 4802,
+            "exitCode": 0
+          },
+          {
+            "name": "scripts/verify.test.mjs",
+            "status": "passed",
+            "durationMs": 7556,
+            "exitCode": 0
+          },
+          {
+            "name": "web",
+            "status": "passed",
+            "durationMs": 70427,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/contracts/test/alu-counterexample.test.ts",
+            "status": "passed",
+            "durationMs": 174,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/contracts/test/alu-references.test.ts",
+            "status": "passed",
+            "durationMs": 181,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/contracts/test/alu-waveform.test.ts",
+            "status": "passed",
+            "durationMs": 135,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/contracts/test/component-formats.test.ts",
+            "status": "passed",
+            "durationMs": 202,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/contracts/test/execution-plan.test.ts",
+            "status": "passed",
+            "durationMs": 173,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/contracts/test/teaching-event.test.ts",
+            "status": "passed",
+            "durationMs": 457,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/connections-installation.test.mjs",
+            "status": "passed",
+            "durationMs": 1962,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/host-facts.test.mjs",
+            "status": "passed",
+            "durationMs": 2788,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/io.test.mjs",
+            "status": "passed",
+            "durationMs": 6527,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/learning-drain.test.mjs",
+            "status": "passed",
+            "durationMs": 1843,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/lifecycle.test.mjs",
+            "status": "passed",
+            "durationMs": 22640,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/maintenance.test.ts",
+            "status": "passed",
+            "durationMs": 296,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/model-origin-recovery.test.mjs",
+            "status": "passed",
+            "durationMs": 549,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites-cli.test.mjs",
+            "status": "passed",
+            "durationMs": 10457,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+            "status": "passed",
+            "durationMs": 1212,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/prerequisites.test.mjs",
+            "status": "passed",
+            "durationMs": 123,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-connections.test.mjs",
+            "status": "passed",
+            "durationMs": 10619,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-files.test.mjs",
+            "status": "passed",
+            "durationMs": 836,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/recovery-set.test.mjs",
+            "status": "passed",
+            "durationMs": 693,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/recovery.test.mjs",
+            "status": "passed",
+            "durationMs": 13665,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/resource-response.test.mjs",
+            "status": "passed",
+            "durationMs": 515,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/school-client.test.mjs",
+            "status": "passed",
+            "durationMs": 943,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/service-routing.test.mjs",
+            "status": "passed",
+            "durationMs": 2074,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/shutdown-sockets.test.mjs",
+            "status": "passed",
+            "durationMs": 864,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/ssh-recovery.test.mjs",
+            "status": "passed",
+            "durationMs": 629,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/storage/test/blobs.test.mjs",
+            "status": "passed",
+            "durationMs": 1328,
+            "exitCode": 0
+          },
+          {
+            "name": "packages/product-runtime/test/connections.test.ts",
+            "status": "passed",
+            "durationMs": 3053,
+            "exitCode": 0
+          }
+        ]
+      },
+      {
+        "name": "server",
+        "status": "passed",
+        "taskCount": 96,
+        "tasks": [
+          {
+            "name": "apps/server/runner/alu-check.test.ts",
+            "status": "passed",
+            "durationMs": 170,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/control.test.ts",
+            "status": "passed",
+            "durationMs": 133,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/course.test.ts",
+            "status": "passed",
+            "durationMs": 118,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/editor-diagnostics.test.ts",
+            "status": "passed",
+            "durationMs": 120,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/hdl-clock.test.ts",
+            "status": "passed",
+            "durationMs": 128,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/hdl-profile.test.ts",
+            "status": "passed",
+            "durationMs": 118,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/node-files.test.ts",
+            "status": "passed",
+            "durationMs": 115,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/report.test.ts",
+            "status": "passed",
+            "durationMs": 124,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/result-files.test.ts",
+            "status": "passed",
+            "durationMs": 200,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/run-snapshot.test.ts",
+            "status": "passed",
+            "durationMs": 118,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/snapshot.test.ts",
+            "status": "passed",
+            "durationMs": 115,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/runner/verify.test.ts",
+            "status": "passed",
+            "durationMs": 112,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/deployment-identity.test.ts",
+            "status": "passed",
+            "durationMs": 190,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/digital-logic.test.ts",
+            "status": "passed",
+            "durationMs": 128,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/execution-nodes.test.ts",
+            "status": "passed",
+            "durationMs": 10774,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/i0-readiness.test.ts",
+            "status": "passed",
+            "durationMs": 14124,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/i0-tutoring.test.ts",
+            "status": "passed",
+            "durationMs": 28234,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/i0.test.ts",
+            "status": "passed",
+            "durationMs": 18453,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/main-readiness-compatibility.test.ts",
+            "status": "passed",
+            "durationMs": 386,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/model-budget.test.ts",
+            "status": "passed",
+            "durationMs": 25095,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/personal-models.test.ts",
+            "status": "passed",
+            "durationMs": 7288,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/pr53-56-readiness.test.ts",
+            "status": "passed",
+            "durationMs": 2956,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/app/response-metrics.test.ts",
+            "status": "passed",
+            "durationMs": 938,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/personal-agent/integration.test.ts",
+            "status": "passed",
+            "durationMs": 2352,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/personal-agent/model-budget.test.ts",
+            "status": "passed",
+            "durationMs": 180,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/personal-agent/student-tasks.test.ts",
+            "status": "passed",
+            "durationMs": 993,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/records/records.test.ts",
+            "status": "passed",
+            "durationMs": 141,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/records/teaching-projection.test.ts",
+            "status": "passed",
+            "durationMs": 18943,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/records/teaching-review.test.ts",
+            "status": "passed",
+            "durationMs": 16344,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/records/teaching.test.ts",
+            "status": "passed",
+            "durationMs": 8191,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/deepseek-sdk.test.ts",
+            "status": "passed",
+            "durationMs": 245,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/hdl-help.test.ts",
+            "status": "passed",
+            "durationMs": 190,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/index.test.ts",
+            "status": "passed",
+            "durationMs": 369,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/learner-analysis.test.ts",
+            "status": "passed",
+            "durationMs": 8961,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/openai-compatible.test.ts",
+            "status": "passed",
+            "durationMs": 219,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/real-model-support.test.ts",
+            "status": "passed",
+            "durationMs": 1262,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/tutoring/test/student-help.test.ts",
+            "status": "passed",
+            "durationMs": 22765,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/a5-consumption.test.ts",
+            "status": "passed",
+            "durationMs": 1860,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/editor-diagnostics.test.ts",
+            "status": "passed",
+            "durationMs": 1860,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/hdl.test.ts",
+            "status": "passed",
+            "durationMs": 29670,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/integration.test.ts",
+            "status": "passed",
+            "durationMs": 44386,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/job-composition.test.ts",
+            "status": "passed",
+            "durationMs": 2177,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/limited-check.test.ts",
+            "status": "passed",
+            "durationMs": 7557,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/review.test.ts",
+            "status": "passed",
+            "durationMs": 6128,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/runs.test.ts",
+            "status": "passed",
+            "durationMs": 443,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/submissions.test.ts",
+            "status": "passed",
+            "durationMs": 9978,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/server/workspace/workspace.test.ts",
+            "status": "passed",
+            "durationMs": 205,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/a5-feedback.test.ts",
+            "status": "passed",
+            "durationMs": 14279,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/a5-followup.test.ts",
+            "status": "passed",
+            "durationMs": 2228,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/access.test.ts",
+            "status": "passed",
+            "durationMs": 34755,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/account-control.test.ts",
+            "status": "passed",
+            "durationMs": 2659,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/alu-reflection-retry.test.mjs",
+            "status": "passed",
+            "durationMs": 354,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/app.test.ts",
+            "status": "passed",
+            "durationMs": 240,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/application-database.test.ts",
+            "status": "passed",
+            "durationMs": 2382,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-activities.test.ts",
+            "status": "passed",
+            "durationMs": 26245,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-agent.test.ts",
+            "status": "passed",
+            "durationMs": 25536,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-checks.test.ts",
+            "status": "passed",
+            "durationMs": 202,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-draft.test.ts",
+            "status": "passed",
+            "durationMs": 202,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-material.test.ts",
+            "status": "passed",
+            "durationMs": 200,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-projection.test.ts",
+            "status": "passed",
+            "durationMs": 190,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/design-storage.test.ts",
+            "status": "passed",
+            "durationMs": 18332,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/display-metadata.test.ts",
+            "status": "passed",
+            "durationMs": 2357,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/dl-a-app.test.ts",
+            "status": "passed",
+            "durationMs": 17793,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/dl-a-hdl-help.test.ts",
+            "status": "passed",
+            "durationMs": 8842,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/durability.test.ts",
+            "status": "passed",
+            "durationMs": 1425,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/errors.test.ts",
+            "status": "passed",
+            "durationMs": 196,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/execution-nodes.test.ts",
+            "status": "passed",
+            "durationMs": 149,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/learning-admission-policy.test.mjs",
+            "status": "passed",
+            "durationMs": 177,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/local-socket.test.ts",
+            "status": "passed",
+            "durationMs": 316,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/material-search-coverage.test.mjs",
+            "status": "passed",
+            "durationMs": 211,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-capability-images.test.mjs",
+            "status": "passed",
+            "durationMs": 605,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-consumer.test.ts",
+            "status": "passed",
+            "durationMs": 8598,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-messages-review.test.mjs",
+            "status": "passed",
+            "durationMs": 521,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-network-policy.test.mjs",
+            "status": "passed",
+            "durationMs": 241,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-progress.test.mjs",
+            "status": "passed",
+            "durationMs": 111,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-protocol-review.test.mjs",
+            "status": "passed",
+            "durationMs": 1743,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-sensitive-boundary.test.mjs",
+            "status": "passed",
+            "durationMs": 345,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/model-tool-progress.test.mjs",
+            "status": "passed",
+            "durationMs": 1306,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/native-isolation.test.mjs",
+            "status": "passed",
+            "durationMs": 5610,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/native-session.test.mjs",
+            "status": "passed",
+            "durationMs": 5631,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/records-adapter-performance.test.ts",
+            "status": "passed",
+            "durationMs": 527,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/records-adapter.test.ts",
+            "status": "passed",
+            "durationMs": 2668,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/review.test.ts",
+            "status": "passed",
+            "durationMs": 37429,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/semantic-references.test.mjs",
+            "status": "passed",
+            "durationMs": 175,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/session-checkpoints.test.mjs",
+            "status": "passed",
+            "durationMs": 165,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/session-store.test.ts",
+            "status": "passed",
+            "durationMs": 164,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/startup.test.ts",
+            "status": "passed",
+            "durationMs": 492,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/teacher-design-budget.test.ts",
+            "status": "passed",
+            "durationMs": 266,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/teacher-workflow.test.ts",
+            "status": "passed",
+            "durationMs": 7728,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/teaching-agent.dependency-authorization.test.mjs",
+            "status": "passed",
+            "durationMs": 392,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/transaction.test.ts",
+            "status": "passed",
+            "durationMs": 138,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/validation.test.ts",
+            "status": "passed",
+            "durationMs": 202,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/workspace-hydration-performance.test.ts",
+            "status": "passed",
+            "durationMs": 1283,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/workspace-scope-performance.test.ts",
+            "status": "passed",
+            "durationMs": 3455,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/wp08-221-cross-service.test.mjs",
+            "status": "passed",
+            "durationMs": 312,
+            "exitCode": 0
+          },
+          {
+            "name": "apps/server/tests/wp08-221-source-closure.test.mjs",
+            "status": "passed",
+            "durationMs": 315,
+            "exitCode": 0
+          }
+        ]
+      },
+      {
+        "name": "tools",
+        "status": "passed",
+        "taskCount": 45,
+        "tasks": [
+          {
+            "name": "tools/i0-cloud/backup-retained.test.mjs",
+            "status": "passed",
+            "durationMs": 507,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/build-runtime-artifact.test.mjs",
+            "status": "passed",
+            "durationMs": 507,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/capacity-analysis.test.mjs",
+            "status": "passed",
+            "durationMs": 98,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/capacity-collect.test.mjs",
+            "status": "passed",
+            "durationMs": 109,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/capacity-metrics.test.mjs",
+            "status": "passed",
+            "durationMs": 98,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/capacity-run-failure.test.mjs",
+            "status": "passed",
+            "durationMs": 5848,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/capacity-workflow.test.mjs",
+            "status": "passed",
+            "durationMs": 3528,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/deploy-artifact.test.py",
+            "status": "passed",
+            "durationMs": 2728,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-cloud/prepare-demo-data.test.mjs",
+            "status": "passed",
+            "durationMs": 2468,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-hdl/editor-source.test.mjs",
+            "status": "passed",
+            "durationMs": 294,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/i0-hdl/receive-frozen-images.test.mjs",
+            "status": "passed",
+            "durationMs": 101,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/access.test.mjs",
+            "status": "passed",
+            "durationMs": 237,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/adapters.test.mjs",
+            "status": "passed",
+            "durationMs": 389,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/deployment.test.mjs",
+            "status": "passed",
+            "durationMs": 1820,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/entrypoints.test.mjs",
+            "status": "passed",
+            "durationMs": 273,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/github-login.e2e.test.mjs",
+            "status": "passed",
+            "durationMs": 10048,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/github-login.test.mjs",
+            "status": "passed",
+            "durationMs": 1386,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/lifecycle.test.mjs",
+            "status": "passed",
+            "durationMs": 3124,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/oss-storage.test.mjs",
+            "status": "passed",
+            "durationMs": 303,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/package-cleanup.test.mjs",
+            "status": "passed",
+            "durationMs": 400,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/package-service.test.mjs",
+            "status": "passed",
+            "durationMs": 2100,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/packages.test.mjs",
+            "status": "passed",
+            "durationMs": 319,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/server.test.mjs",
+            "status": "passed",
+            "durationMs": 1036,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev-access/tls.test.mjs",
+            "status": "passed",
+            "durationMs": 468,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-recovery.test.mjs",
+            "status": "passed",
+            "durationMs": 15580,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-team.test.mjs",
+            "status": "passed",
+            "durationMs": 12942,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/baseline-unstarted.test.mjs",
+            "status": "passed",
+            "durationMs": 2094,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/certificates.test.mjs",
+            "status": "passed",
+            "durationMs": 13822,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-client.test.mjs",
+            "status": "passed",
+            "durationMs": 8074,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-protocol.test.mjs",
+            "status": "passed",
+            "durationMs": 129,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/enrollment-ssh.test.mjs",
+            "status": "passed",
+            "durationMs": 155,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/env-removal.test.mjs",
+            "status": "passed",
+            "durationMs": 16949,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+            "status": "passed",
+            "durationMs": 14731,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/integration.test.mjs",
+            "status": "passed",
+            "durationMs": 12158,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/local-status.test.mjs",
+            "status": "passed",
+            "durationMs": 20152,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/managed-modes.test.mjs",
+            "status": "passed",
+            "durationMs": 635,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/operation-lock.test.mjs",
+            "status": "passed",
+            "durationMs": 1464,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/package-transfer.test.mjs",
+            "status": "passed",
+            "durationMs": 53619,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-code-batch.test.mjs",
+            "status": "passed",
+            "durationMs": 5168,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-e2e.test.mjs",
+            "status": "passed",
+            "durationMs": 146508,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-restore.test.mjs",
+            "status": "passed",
+            "durationMs": 75931,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/repro-secrets.test.mjs",
+            "status": "passed",
+            "durationMs": 11291,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/repro.test.mjs",
+            "status": "passed",
+            "durationMs": 5595,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/unit.test.mjs",
+            "status": "passed",
+            "durationMs": 1386,
+            "exitCode": 0
+          },
+          {
+            "name": "tools/xj-dev/tests/workspace-dependencies.test.mjs",
+            "status": "passed",
+            "durationMs": 471,
+            "exitCode": 0
+          }
+        ]
+      }
+    ],
+    "taskCount": 182
+  },
+  "packages": [
+    {
+      "path": "dist/wp09-macos-r7",
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "77d401fc09d715d237f5b6280b135c3422967bff5e4207f57cdfffd1043f484d",
+      "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+      "webEntry": "runtime-DFinlc6e.js",
+      "webEntrySha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e",
+      "checks": "packaged-native-resources-and-own-manifest"
+    },
+    {
+      "path": "dist/wp09-win32-r7",
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "d294cf2d822011c046a02ea48f1dfe9f389feffeece4c3f823a1d6f7a4430524",
+      "applicationSha256": "ce088814bae41b542eb5da4b649ecbf4d37dc4483b1b1956b457076ab745ff93",
+      "webEntry": "runtime-DFinlc6e.js",
+      "webEntrySha256": "127e6c064ec3c2e1560f8485b5b20b889247f23a4403359f88e5d298ca7bf20e",
+      "checks": "packaged-native-resources-and-own-manifest"
+    }
+  ],
+  "chrome": {
+    "channel": "chrome",
+    "platform": "darwin-arm64",
+    "webRoot": "dist/wp09-macos-r7/web",
+    "command": "node node_modules/@playwright/test/cli.js test --config apps/web/playwright.config.ts teachingArtifacts.spec.ts --workers=1",
+    "stats": {
+      "startTime": "2026-11-08T15:50:49.448Z",
+      "duration": 102498.64600000001,
+      "expected": 12,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "reportSha256": "5288e2330eb82bc16a2112ba951614cfe881fa0c219298884776347f848dd94d",
+    "cases": [
+      {
+        "title": "a checked card activates in its activity and retains unshelved input after refresh and center close",
+        "status": "expected",
+        "durationMs": 5262
+      },
+      {
+        "title": "a narrowed revision forks while later input remains usable and synchronizes on the original page",
+        "status": "expected",
+        "durationMs": 5570
+      },
+      {
+        "title": "a compatible revision preserves new input and Chinese composition that arrives while adoption is awaiting its original receipt",
+        "status": "expected",
+        "durationMs": 4340
+      },
+      {
+        "title": "an incompatible revision opens a separate instance while the original answer stays usable",
+        "status": "expected",
+        "durationMs": 7629
+      },
+      {
+        "title": "unknown adoption and shelf acknowledgements recover after reload by querying the durable original requests",
+        "status": "expected",
+        "durationMs": 8073
+      },
+      {
+        "title": "failed browser protection retains later input, survives conversation collapse and resumes the original changes without a stuck queue",
+        "status": "expected",
+        "durationMs": 4430
+      },
+      {
+        "title": "a personal page reads only explicit authorized note versions and preserves text and object references across revision",
+        "status": "expected",
+        "durationMs": 6170
+      },
+      {
+        "title": "native streamed tool arguments produce one static themed preview and then one usable card in the original conversation",
+        "status": "expected",
+        "durationMs": 5572
+      },
+      {
+        "title": "automatic and ordinary input responses do not consume a Wait, while omitted questionId queues a question and an explicit binding answers once",
+        "status": "expected",
+        "durationMs": 3037
+      },
+      {
+        "title": "a page with real course execution permission cannot start an experiment or Agent from load or ordinary text input",
+        "status": "expected",
+        "durationMs": 6252
+      },
+      {
+        "title": "an actual isolated restore reopens the original card read-only with zero client recovery writes",
+        "status": "expected",
+        "durationMs": 24360
+      },
+      {
+        "title": "a revision missing workspace.read fails its browser check and preserves the active page",
+        "status": "expected",
+        "durationMs": 8695
+      }
+    ],
+    "isolatedAgentUnavailable": "The actual restored owner serves its original artifact and Chinese input while the conversation endpoint returns 503; controls stay disabled and client protection writes/POSTs remain zero."
+  },
+  "productionHttpPostgres": {
+    "scope": "12 previously passing production artifact/generation/component cases plus 5 final original-Run adoption cases; all 17 latest results passed across these runs",
+    "initialBatch": {
+      "pass": 16,
+      "fail": 1,
+      "testCount": 17,
+      "logSha256": "1dc63807504522dc9245e2f4416b15ebbe920eb8d1879c189aaaa79275b01d45",
+      "failure": "The independent completed Run entered its second attempt at 58.4s and exceeded the test aggregate 60s wait before adoption. No adoption guard failed."
+    },
+    "stopAdoptFinal": {
+      "pass": 5,
+      "fail": 0,
+      "testCount": 5,
+      "logSha256": "8b19e84776684b8f7b3ab765eefc8ad507d14060a386be6c950dd923760b0cb7",
+      "waitBoundary": "Original Run only; up to two attempts, each at most 60s, total at most 120s; fail on abnormal terminal state; retained state timeline."
+    }
+  },
+  "review": {
+    "fixedCommit": "a7977e0a",
+    "standards": {
+      "documentedViolationCount": 1,
+      "possibleSmellCount": 1,
+      "resolved": [
+        "h3 17px/400",
+        "shared three-way workspace merge"
+      ]
+    },
+    "spec": {
+      "logicFindings": 3,
+      "missingRequirements": 0,
+      "scopeExpansions": 0,
+      "resolved": [
+        "narrowed input domain forks before remote adoption",
+        "original Run eligibility checked before and at adoption commit",
+        "browser self-check uses declared capability intersection"
+      ]
+    }
+  },
+  "earlierFailures": [
+    {
+      "scope": "full verify environment",
+      "reason": "Compact product Node has no npm; later full Node run interrupted after a shared dependency reinstall raced other groups. Dependencies prepared serially; final full verify above passed."
+    },
+    {
+      "scope": "Chrome suite",
+      "reason": "Read-only backup test held the source gate closed before newly appended capability case; test cleanup now resumes the source. An explicit-response assertion failed once under concurrent load; isolated rerun and final full 12-case run passed with no product change."
+    }
+  ],
+  "teachingEffect": "not-assessed",
+  "implementationCommit": "a7977e0a",
+  "reviewFixCommit": "c0c52674904afe8e4aa1aa3d65065c76bef026e2",
+  "finalKernelFollowup": {
+    "commit": "8af0cb1fd5999bc553efb132590e0ae5a37e37d2",
+    "fullRun": {
+      "status": "failed",
+      "startedAt": "2026-11-08T15:09:27.057Z",
+      "finishedAt": "2026-11-08T15:13:21.239Z",
+      "taskCount": 182,
+      "passed": 181,
+      "failed": 1,
+      "summarySha256": "749d09d814c2b425d7e36a0fc00f5a84e2f4630a29b96b827876ddc9772d1e2c",
+      "resolvedFailure": "review.test.ts searched all serialized reference IDs for 900; opaque random UUIDs can contain that sequence. The redundant substring assertion was removed; the structured learnerStateRevision == 1 and assistanceStatus assertions remain."
+    },
+    "resolvedFileRerun": {
+      "path": "apps/server/tests/review.test.ts",
+      "pass": 51,
+      "fail": 0,
+      "logSha256": "5b2ef99609b382bc4a85b3e928a139b5f97e46009172e6539c016dd6dd4a0124"
+    },
+    "transportRegression": {
+      "command": "node --test --test-concurrency=1 apps/server/tests/agent-transfer-recovery.runtime.test.mjs apps/server/tests/agent-chunk-channel.runtime.test.mjs",
+      "postgres": "18.6",
+      "pass": 27,
+      "fail": 0,
+      "logSha256": "1515dad9776a7a2cd4e384402a4855dcdaffe0e9211bfa7ca3af6ef8a1602d98",
+      "checks": [
+        "interrupted conversation and activity reads recover only through the original owner",
+        "unknown effects cannot be discarded or replayed",
+        "revoked authority still refuses a resumed query",
+        "local retired-query placeholders cannot surface after process death",
+        "unexecuted input reservations survive maintenance",
+        "owner-classified incomplete pure-query replies remain unknown across maintenance",
+        "incomplete unknown effect replies still block validation"
+      ]
+    },
+    "typecheckAndBuild": "passed with both final native package builds",
+    "independentReview": {
+      "commits": "0118a86 and 6f14a5c",
+      "result": "no-actionable-findings",
+      "scope": "Owner-classified discard, unknown effect protection, receiving reservations, bounded fresh read and placeholder crash recovery"
+    },
+    "additionalFixes": [
+      "Only owner-classified conversation/activity reads retain incomplete unknown replies during maintenance; validation does not invoke them.",
+      "Read-only artifacts render from their data owner when the separate Agent conversation is unavailable."
+    ],
+    "deployedPackages": "Final r7 on both physical hosts; every declared entry, including the regenerated Windows native helper, matched its own distribution manifest."
+  },
+  "previousPackages": [
+    {
+      "path": "dist/wp09-macos-r3",
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "1d527d22a6d25e2fdb1c6c5e7194b2fb0f2a7b8349c79c24afbc7780de2dcc56",
+      "applicationSha256": "02931f4088866f948ec6f876c16f25fb47227ef39139f51c9c959bc5e27ebf81",
+      "webEntry": "runtime-CyAbAhBT.js",
+      "webEntrySha256": "feb24e4e9c986f9a2443a835696e3f75e8d566e121094e16b9377d3778b1ae50",
+      "signing": {
+        "status": "unsigned",
+        "signingAndNotarization": "deferred-by-user",
+        "buildBlocking": false
+      },
+      "checks": "packaged-native-resources-and-own-manifest"
+    },
+    {
+      "path": "dist/wp09-win32-r3",
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "aa30c60f3077535ac123d5815a382a1c14ca382a6ada4e12d93e4ff7e70797e2",
+      "applicationSha256": "02931f4088866f948ec6f876c16f25fb47227ef39139f51c9c959bc5e27ebf81",
+      "webEntry": "runtime-CyAbAhBT.js",
+      "webEntrySha256": "feb24e4e9c986f9a2443a835696e3f75e8d566e121094e16b9377d3778b1ae50",
+      "signing": {
+        "status": "unsigned",
+        "signingAndNotarization": "deferred-by-user",
+        "buildBlocking": false
+      },
+      "checks": "packaged-native-resources-and-own-manifest"
+    }
+  ],
+  "deploymentEvidence": "cross/report.json"
+}

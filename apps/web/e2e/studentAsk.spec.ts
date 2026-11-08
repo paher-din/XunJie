@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
@@ -10,8 +11,7 @@ import { openProductRuntime, createProductRuntimeHost, createProductLearningAppl
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const evidence = process.env.XUNJIE_STUDENT_ASK_EVIDENCE_DIR
-  ?? fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-199', import.meta.url))
+const evidence = evidenceDirectory('wp07-199', process.env.XUNJIE_STUDENT_ASK_EVIDENCE_DIR)
 let runtime: ReturnType<typeof openProductRuntime>
 let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 let root = '', endpoint = ''
@@ -51,7 +51,7 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
     source: { kind: 'personal', connectionId, grantId } })
 }
 test.beforeAll(async () => {
-  await mkdir(evidence, { recursive: true })
+  if (evidence) await mkdir(evidence, { recursive: true })
   upstream = createServer(async (request, response) => {
     try {
       const chunks = []
@@ -91,7 +91,7 @@ test('capture the formal conversation baseline before student response UI', asyn
   await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
   await expect(page.locator('#activity-title')).toHaveText('理解四态累加的先验预测')
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
-  await page.screenshot({ path: join(evidence, `student-ask-before-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `student-ask-before-${process.platform}.png`) })
 })
 
 test('the existing conversation presents a durable Agent question and explicitly submits a choice', async ({ page, request }) => {
@@ -111,7 +111,7 @@ test('the existing conversation presents a durable Agent question and explicitly
   await expect(card).toContainText('你预计状态 3 再输入 2 会变成几？')
   await expect(page.getByRole('region', { name: '待发与接收记录', exact: true })).not.toContainText(/"runId"|"inputId"/)
   await card.getByRole('radio', { name: '1', exact: true }).check()
-  await page.screenshot({ path: join(evidence, `student-ask-choice-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `student-ask-choice-${process.platform}.png`) })
   await card.getByRole('button', { name: '提交回应', exact: true }).click()
   await expect(page.getByText('依据你选择的 1 继续：3 加 2 再对 4 取余，结果为 1。', { exact: true })).toBeVisible({ timeout: 20000 })
   await expect(card).toContainText('回应已接收')
@@ -152,7 +152,7 @@ test('IP opens the same unanswered question without stealing focus or treating d
     expect(original.presentedAt).toBeNull()
     await expect(page.getByRole('button', { name: '回答当前问题', exact: true })).toBeVisible({ timeout: 15000 })
     await expect(reopen).toBeFocused()
-    await page.screenshot({ path: join(evidence, `student-ask-ip-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `student-ask-ip-${process.platform}.png`) })
     await page.getByRole('button', { name: '回答当前问题', exact: true }).click()
     const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
     await expect(card).toBeVisible()
@@ -162,7 +162,7 @@ test('IP opens the same unanswered question without stealing focus or treating d
     expect((await api(request, `agent/${activityId}/conversation`)).questions[0].state).toBe('pending')
     expect(payloads.length - before).toBe(1)
     await card.getByLabel('你的回应', { exact: true }).fill('先列出输入，再算出对 4 取余的结果。\n与实际观察比较。')
-    await page.screenshot({ path: join(evidence, `student-ask-text-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `student-ask-text-${process.platform}.png`) })
     await page.getByRole('button', { name: '停止', exact: true }).click()
     await expect(card).toContainText('这次提问已取消')
     expect(payloads.length - before).toBe(1)
@@ -220,7 +220,7 @@ test('Chinese text survives an unaccepted send and a lost acceptance reply is qu
   expect(sent).toHaveLength(2)
   expect(sent[1]).toEqual(sent[0])
   expect(payloads.length - before).toBe(2)
-  await page.screenshot({ path: join(evidence, `student-ask-receipt-recovered-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `student-ask-receipt-recovered-${process.platform}.png`) })
 })
 
 test('explicit skip remains distinct and the response entry works with keyboard, dark mode and a narrow desktop', async ({ page, request }) => {
@@ -243,10 +243,10 @@ test('explicit skip remains distinct and the response entry works with keyboard,
   await option.focus(); await page.keyboard.press('Space'); await expect(option).toBeChecked()
   const skip = card.getByRole('button', { name: '跳过这次提问', exact: true })
   await skip.focus(); await expect(skip).toBeFocused()
-  await page.screenshot({ path: join(evidence, `student-ask-dark-narrow-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `student-ask-dark-narrow-${process.platform}.png`) })
   await page.keyboard.press('Enter')
   await expect(card).toContainText('你已明确跳过')
   await expect(page.getByText('你明确跳过了预测；我会说明核对方法，不把跳过当作你的理解证据。', { exact: true })).toBeVisible({ timeout: 20000 })
   expect(payloads.length - before).toBe(2)
-  await page.screenshot({ path: join(evidence, `student-ask-skipped-${process.platform}.png`) })
+  if (evidence) await page.screenshot({ path: join(evidence, `student-ask-skipped-${process.platform}.png`) })
 })

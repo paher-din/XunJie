@@ -16,8 +16,8 @@ import './execution-panel.css'
  * What a record means — its parameters, its result summary, its artifact name — comes from the
  * presenter of its own run family. This panel only owns the list, the controls and the plumbing.
  */
-export function ExecutionPanel({ activity, binding, authorized }: {
-  activity: LearningActivity; binding: ComponentBinding; authorized: boolean
+export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
+  activity: LearningActivity; binding: ComponentBinding; authorized: boolean; requestIds?: ReadonlySet<string>
 }) {
   const { workspace, execution } = useActivitySession()
   const state = useSyncExternalStore(execution.subscribe, execution.snapshot)
@@ -29,7 +29,7 @@ export function ExecutionPanel({ activity, binding, authorized }: {
   const access = useRef(canRead)
   access.current = canRead
   const records = (canRead ? state.records : []).filter(record => record.action.scope.activityId === activity.activityId
-    && record.action.execution.instance.key === binding.key)
+    && record.action.execution.instance.key === binding.key && (!requestIds || requestIds.has(record.requestId)))
   const running = records.some(record => !isTerminalExecutionState(record.query.state))
   const canRun = authorized && !workspace.isReadOnly() && !workspace.accessDenied() && !work.conflict && work.ready && !running
   const rerun = async () => {

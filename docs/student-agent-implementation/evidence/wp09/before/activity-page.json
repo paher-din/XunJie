@@ -1,0 +1,20 @@
+{
+  "status": "captured",
+  "sourceCommit": "58c7cc5fee18bc3baf6ab874467fba6d57de4e17",
+  "entry": "supplied production webRoot/index.html",
+  "webRoot": "/tmp/xj-wp09-before-58c7-src/apps/web/dist-runtime",
+  "screenshot": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/docs/student-agent-implementation/evidence/wp09/before/activity-page.png",
+  "activityId": "12bb407b-35c5-456a-9ad3-4cb259a5f734",
+  "courseLinked": false,
+  "chrome": "156.0.8078.80",
+  "node": "v24.21.0",
+  "packagedNode": "24.21.0",
+  "postgres": "18.6",
+  "product": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64-wp07-203-final-r4",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "webIndexSha256": "4dbd60902becd7162470e2153a785171f06f4f85919752c749f113bf82e4f630",
+  "buildEntrypoint": "scripts/build.mjs web:runtime"
+}

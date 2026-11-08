@@ -82,7 +82,7 @@ Windows 也可双击 `dist/product-win32-x64/xunjie.cmd`，macOS 可双击 `dist
 
 在仓库根执行 `npm run typecheck`、`npm run build`、`npm test`，分别完成 workspace 的类型检查、构建和测试。单工程开发命令使用 `-w` 指定 workspace，例如 `npm run dev -w @xunjie/web`；后端配置与启动边界见[开发工具](docs/development-tooling.md#新-agent-的工具入口)。
 
-完整门禁与 CI 共用 `npm run verify`，包含公共契约浏览器检查和 Markdown 相对链接检查。原始日志及阶段结果见 `.verification/latest.json`，用法见[工程入口与后续接入](docs/student-agent-implementation/engineering-entrypoints.md#安装构建与测试)。
+完整门禁与 CI 共用 `npm run verify`，包含公共契约浏览器检查和 Markdown 相对链接检查。默认直接输出检查结论和失败详情；需要保存供排障使用的日志时显式指定 `-- --report-dir <目录>`。用法见[工程入口与后续接入](docs/student-agent-implementation/engineering-entrypoints.md#安装构建与测试)。
 
 ### 成员开发上手
 

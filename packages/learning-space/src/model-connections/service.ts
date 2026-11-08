@@ -4,7 +4,7 @@ import { storageErrorCodes } from '@xunjie/contracts/storage';
 import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSegmentInputSchema, settleModelToolsSchema, modelSegmentCloseSchema,
   modelLearningInputSchema, modelImageInputSchema, modelImageRefSchema, modelSelectionSchema, modelChoiceSchema,
-  modelAttemptSchema, modelConnectionSchema, modelToolIntentSchema, modelSegmentBoundarySchema, modelSelectionSourceSchema } from '@xunjie/contracts/model-connections';
+  modelAttemptSchema, modelConnectionSchema, modelProgressSchema, modelToolIntentSchema, modelSegmentBoundarySchema, modelSelectionSourceSchema } from '@xunjie/contracts/model-connections';
 import type { createModelGateway } from './index.js';
 
 type Gateway = Awaited<ReturnType<typeof createModelGateway>>;
@@ -115,7 +115,7 @@ const resultSchemas = {
   'segments.close': segment.extend({ boundary: modelSegmentBoundarySchema }),
   'checks.receive': learningAttempt, 'checks.read': learningAttempt, 'checks.dispatch': learningAttempt, 'checks.cancel': learningAttempt,
   'checks.requestPayload': nativeRequest,
-  'checks.progress': z.object({ text: z.string().max(1_000_000), revision: z.number().int().positive() }).strict().nullable(),
+  'checks.progress': modelProgressSchema.nullable(),
   'checks.summary': z.object({ source: z.literal('model-native'), text: z.string().max(16000), truncated: z.boolean() }).strict().nullable(),
   'results.retain': z.null(), 'images.upload': image, 'images.read': image,
 };

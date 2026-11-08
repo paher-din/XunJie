@@ -11,7 +11,7 @@ import { test } from 'node:test';
 const source = dirname(fileURLToPath(import.meta.url));
 const executable = join(source, 'verify.mjs');
 
-function fixture(t, extra = {}, args = []) {
+function fixture(t, extra = {}, args = [], { report = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'xunjie-verify-'));
   const write = (name, value) => { mkdirSync(dirname(join(root, name)), { recursive: true }); writeFileSync(join(root, name), value); };
   write('package.json', JSON.stringify({ workspaces: ['apps/*', 'packages/*'] }));
@@ -38,7 +38,11 @@ if(stage.startsWith('server-') && process.env.HOLD_TESTS) {
   writeFileSync(process.env.EVENTS+'.'+stage+'.pid', String(process.pid));
   while(true) await setTimeout(20);
 }
-if(stage === process.env.FAIL_STAGE) { console.error('known failure detail'); process.exit(7); }
+if(stage === process.env.FAIL_STAGE) {
+  console.error('known failure detail');
+  if(process.env.LONG_FAILURE) process.stdout.write('later test output '.repeat(2000));
+  process.exit(7);
+}
 `;
   if (extra.EXTRA_WORKSPACE) {
     write('packages/new-package/package.json', JSON.stringify({ name: '@fixture/new-package', scripts: {
@@ -60,7 +64,7 @@ if(stage === process.env.FAIL_STAGE) { console.error('known failure detail'); pr
     ['tools/other.test.mjs', 'tools-other'],
   ]) write(path, `process.env.FIXTURE_STAGE=${JSON.stringify(stage)};\n${stageScript}`);
   write('apps/server/a.runtime.test.mjs', "throw new Error('external tests must not run locally')");
-  const child = spawn(process.execPath, [executable, ...args], {
+  const child = spawn(process.execPath, [executable, ...(report ? ['--report-dir', '.verification'] : []), ...args], {
     cwd: root, env: { ...process.env, HOLD_STAGE: '', HOLD_TESTS: '', FAIL_STAGE: '', GRANDCHILD: '', EVENTS: join(root, 'events.jsonl'), ...extra },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -92,6 +96,15 @@ async function until(condition, diagnostics = () => '') {
 function gone(pid) {
   try { process.kill(pid, 0); return false; } catch (error) { return error.code === 'ESRCH'; }
 }
+
+test('default verification reports outcomes without creating files, including on failure', { timeout: 10_000 }, async t => {
+  for (const fail of [false, true]) {
+    const f = fixture(t, fail ? { FAIL_STAGE: 'check:docs', LONG_FAILURE: '1' } : {}, [], { report: false });
+    assert.deepEqual(await f.exit, [fail ? 7 : 0, null], f.output());
+    assert.equal(existsSync(join(f.root, '.verification')), false);
+    assert.match(f.output(), fail ? /known failure detail/ : /PASSED tools/);
+  }
+});
 
 test('raw stdout/stderr reach logs before exit; no arguments prepare and run every local group', { timeout: process.platform === 'win32' ? 60_000 : 10_000 }, async t => {
   const f = fixture(t, { HOLD_STAGE: '1' });
@@ -175,10 +188,10 @@ for (const query of ['--help', '-h', '--list']) {
 for (const args of [ ['--unknown'], ['--group', 'unknown'], ['--jobs', '5'], ['--jobs', '0'],
   ['--jobs', '1.5'], ['--jobs'], ['--group', 'tools', '--shard', '1/3'], ['--group', 'server', '--shard', '0/4'],
   ['--group', 'server', '--shard', '5/4'], ['--group', 'tests', '--shard', '1/4'], ['--group', 'unit', '--group', 'unit'],
-  ['--help', '--unknown'], ['--external'],
+  ['--help', '--unknown'], ['--external'], ['--report-dir'], ['--report-dir', '--list'],
 ]) {
   test(`rejects unsupported args ${args.join(' ')} before mutation`, { timeout: 10_000 }, async t => {
-    const f = fixture(t, {}, args);
+    const f = fixture(t, {}, args, { report: false });
     assert.deepEqual(await f.exit, [1, null]);
     assert.match(f.output(), /Usage: npm run verify/);
     assert.equal(existsSync(join(f.root, '.verification')), false);
@@ -249,7 +262,7 @@ for (const target of ['checks', 'contracts', 'storage', 'product-runtime', 'serv
     cpSync(join(source, 'test-discovery.mjs'), join(f.root, 'scripts/test-discovery.mjs'));
     cpSync(join(source, 'server-test-weights.json'), join(f.root, 'scripts/server-test-weights.json'));
     cpSync(join(source, 'test-scheduler.mjs'), join(f.root, 'scripts/test-scheduler.mjs'));
-    const child = spawn(process.execPath, [join(f.root, 'scripts/test.mjs'), target], { cwd: tmpdir(),
+    const child = spawn(process.execPath, [join(f.root, 'scripts/test.mjs'), target, '--report-dir', '.verification'], { cwd: tmpdir(),
       env: { ...process.env, EVENTS: join(f.root, 'events.jsonl') }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', data => output += data); child.stderr.on('data', data => output += data);
     assert.deepEqual(await once(child, 'close'), [0, null], output);

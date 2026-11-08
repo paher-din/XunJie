@@ -1,7 +1,7 @@
 // Explicit WP08 acceptance. Only control travels over SSH; product calls use verified LAN HTTPS.
 import assert from 'node:assert/strict';
 import { parseArgs, promisify } from 'node:util';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID, createHash, X509Certificate } from 'node:crypto';
 import { readFile, writeFile, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir, hostname, release } from 'node:os';
@@ -19,14 +19,25 @@ const { values: args } = parseArgs({ options: {
   'remote-certificate': { type: 'string' }, 'remote-key': { type: 'string' },
   'mac-host': { type: 'string' }, 'win-host': { type: 'string' },
   'mac-port': { type: 'string' }, 'win-port': { type: 'string' },
-  'credentials-file': { type: 'string' }, out: { type: 'string' },
+  'credentials-file': { type: 'string' }, out: { type: 'string' }, 'no-evidence': { type: 'boolean' },
+  artifacts: { type: 'boolean' }, 'artifacts-windows-local-only': { type: 'boolean' }, 'artifacts-skip-windows-local': { type: 'boolean' }, 'artifacts-keep-failure': { type: 'boolean' }, 'artifacts-model': { type: 'string', default: 'real' }, 'artifacts-session': { type: 'string', default: 'wp09-cross-224' }, 'artifacts-call-budget': { type: 'string', default: '8' },
+  'artifacts-resume': { type: 'string' }, 'artifacts-takeover-resume': { type: 'string' }, 'artifacts-worker-root': { type: 'string' },
   worker: { type: 'boolean' }, help: { type: 'boolean' }, discovery: { type: 'boolean' }, skills: { type: 'boolean' },
 } });
-if (args.discovery && args.skills) throw new Error('Choose at most one of --discovery and --skills.');
-const issue = args.skills ? 217 : args.discovery ? 216 : 215;
-args['mac-port'] ??= args.skills ? '39217' : args.discovery ? '38265' : '38215';
-args['win-port'] ??= args.skills ? '39218' : args.discovery ? '38266' : '38216';
-const limits = Object.freeze({ maxGenerations: args.discovery ? 4 : 2, maxOutputTokens: 2048, timeoutMs: 30000, retries: 0 });
+const resumeFile = args['artifacts-resume'] ?? args['artifacts-takeover-resume'];
+const takeoverContinuation = !!args['artifacts-takeover-resume'];
+const resumeConfiguration = resumeFile ? JSON.parse(await readFile(resumeFile, 'utf8')) : null;
+if (resumeConfiguration) {
+  const file = resumeFile, output = args.out ?? resumeConfiguration.args.out.replace(/\.json$/, '-recovery.json');
+  const noEvidence = args['no-evidence'] ?? (args.out ? false : resumeConfiguration.args['no-evidence']);
+  Object.assign(args, resumeConfiguration.args, { out: output, 'no-evidence': noEvidence, 'artifacts-resume': file,
+    'artifacts-worker-root': resumeConfiguration.windowsRoot, 'artifacts-keep-failure': true });
+}
+if ([args.discovery, args.skills, args.artifacts].filter(Boolean).length > 1) throw new Error('Choose at most one of --discovery, --skills and --artifacts.');
+const issue = args.artifacts ? 224 : args.skills ? 217 : args.discovery ? 216 : 215;
+args['mac-port'] ??= args.artifacts ? '39409' : args.skills ? '39217' : args.discovery ? '38265' : '38215';
+args['win-port'] ??= args.artifacts ? '39410' : args.skills ? '39218' : args.discovery ? '38266' : '38216';
+const limits = Object.freeze({ maxGenerations: args.artifacts ? Number(args['artifacts-call-budget']) : args.discovery ? 4 : 2, maxOutputTokens: args.artifacts ? 8192 : 2048, timeoutMs: args.artifacts ? 60000 : 30000, retries: 0 });
 const lifetime = new AbortController();
 const exec = promisify(execFile), sha = value => createHash('sha256').update(value).digest('hex');
 const delay = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms));
@@ -45,7 +56,8 @@ if (args.help) {
   --product MAC_DIR --remote-product WIN_DIR --ssh win --remote-script WIN_FILE
   --certificate PEM --key PEM --remote-certificate WIN_PEM --remote-key WIN_KEY
   --mac-host IP --win-host IP --credentials-file PRIVATE --out JSON
-  [--discovery | --skills] [--mac-port PORT --win-port PORT]
+  [--discovery | --skills | --artifacts] [--mac-port PORT --win-port PORT]
+  [--no-evidence] Keep protocol JSON for a controller without capturing PNG evidence.
 Default mode uses issue #215, ports 38215/38216 and read_work -> answer.
 --skills uses issue #217, ports 39217/39218 and skill_read -> answer for fixed course Skills.
 Creates an isolated Mac school and Windows Agent. The same test CA/certificate must cover both IPs.
@@ -70,6 +82,8 @@ async function product(directory) {
   const resources = Object.fromEntries(Object.entries(manifest).map(([key, value]) => [key,
     typeof value === 'string' && /(?:Path|Bin|Root|Helper)$/.test(key) ? resolve(root, value) : value]));
   const entry = join(root, 'app/product-runtime.js'), bytes = await readFile(entry), source = bytes.toString('utf8');
+  if(args.artifacts)for(const [path,fact]of Object.entries(distribution.entryHashes??{}))check(sha(await readFile(join(root,path)))===fact.sha256,'candidate-manifest-entry-mismatch');
+  if (args.artifacts) { check(source.includes('activity-teaching-artifacts') && source.includes('generate_teaching_artifact'), 'candidate-missing-WP09-artifacts'); check(distribution.entryHashes?.['app/product-runtime.js']?.sha256 === sha(bytes), 'candidate-manifest-code-mismatch'); }
   if (args.skills) check(source.includes('independent-fixed-skill-packages') && source.includes('skill_read'), 'candidate-missing-fixed-skills');
   check(source.includes('immutable-agent-assembly') && source.includes('tool.contributions'), 'candidate-missing-versioned-assembly');
   const module = await import(pathToFileURL(entry).href);
@@ -77,7 +91,7 @@ async function product(directory) {
     && typeof module.createProductLearningApplication === 'function', 'candidate-missing-public-host-api');
   if (args.skills) check(typeof module.createOutboundConnection === 'function', 'candidate-missing-public-connection-api');
   return { root, resources, module, fact: { platform: distribution.platform, profile: distribution.profile,
-    distributionSha256: sha(distributionBytes), applicationSha256: sha(bytes), nodeVersion: process.version } };
+    distributionSha256: sha(distributionBytes), applicationSha256: sha(bytes), webRuntime: Object.entries(distribution.entryHashes ?? {}).filter(([name]) => /^web\/assets\/runtime-.*\.js$/.test(name)).map(([path, fact]) => ({ path, sha256: fact.sha256 })), nodeVersion: process.version } };
 }
 async function removeEnvironment(runtime, root, state) {
   const result = { stopped: false, environmentDeleted: false, rootRemoved: false };
@@ -113,16 +127,31 @@ async function worker() {
   check(process.platform === 'win32' && args.product && args.certificate && args.key, 'worker-requires-windows-product-tls');
   lanIp(args['mac-host']); lanIp(args['win-host']);
   await trust(args.certificate);
-  const pkg = await product(args.product), root = await mkdtemp(join(tmpdir(), `xj-wp08-${issue}-agent-`));
+  const pkg = await product(args.product), root = args['artifacts-worker-root']
+    ? resolve(args['artifacts-worker-root']) : await mkdtemp(join(tmpdir(), `xj-wp08-${issue}-agent-`));
+  if (args['artifacts-worker-root']) check(root.replaceAll('\\', '/').startsWith('C:/Users/h/AppData/Local/Temp/xj-wp08-224-agent-'), 'unexpected-resume-Agent-root');
   const runtime = pkg.module.openProductRuntime({ root, resources: pkg.resources });
-  let state, dependencyConnectionId, macSource, cleanupResult;
+  let state, dependencyConnectionId, macSource, cleanupResult, retainRoots = !!args['artifacts-worker-root'];
+  const artifactWorker = args.artifacts ? await import('./lib/wp09-cross-case.mjs') : null;
+  const artifactContext = { pkg, runtime, root, args, removeEnvironment };
   async function cleanup() {
+    if (retainRoots) { const retained = artifactWorker ? await artifactWorker.cleanupArtifactWorker(artifactContext, { keep: true }) : {};
+      await runtime.stop(); return { stopped: true, retained: true, rootRemoved: false, root, ...retained }; }
+    if (artifactWorker) await artifactWorker.cleanupArtifactWorker(artifactContext);
     cleanupResult ??= await removeEnvironment(runtime, root, state); return cleanupResult;
   }
   async function handle(input) {
     check(input && typeof input === 'object' && uuid(input.id), 'invalid-worker-control');
-    if (input.operation === 'cleanup') return cleanup();
+    if (input.operation === 'retain') { retainRoots = true; return { retained: true, root }; }
+    if (input.operation === 'cleanup') { if (input.remove === true) retainRoots = false; return cleanup(); }
     check(!cleanupResult, 'worker-already-cleaned');
+    if (input.operation === 'resume') {
+      check(args['artifacts-worker-root'] && !state && uuid(input.dependencyConnectionId), 'invalid-Agent-resume');
+      dependencyConnectionId = input.dependencyConnectionId; state = await runtime.start();
+      if (state.state === 'maintenance') { await runtime.recovery.resume(); state = await runtime.status(); }
+      return { ...publicState(state), platform: process.platform, host: hostname(), osRelease: release(), package: pkg.fact,
+        probeSha256: sha(await readFile(fileURLToPath(import.meta.url))) };
+    }
     if (input.operation === 'start') {
       check(!dependencyConnectionId && uuid(input.dependencyConnectionId), 'invalid-agent-start');
       dependencyConnectionId = input.dependencyConnectionId;
@@ -132,6 +161,11 @@ async function worker() {
       state = await runtime.start();
       return { ...publicState(state), platform: process.platform, host: hostname(), osRelease: release(), package: pkg.fact,
         probeSha256: sha(await readFile(fileURLToPath(import.meta.url))) };
+    }
+    if (input.operation === 'resume-takeover') {
+      dependencyConnectionId = input.dependencyConnectionId; state = await runtime.status();
+      const target = await artifactWorker.artifactWorkerOperation({ ...input, operation: 'artifact.resume-active-target' }, { ...artifactContext, state });
+      return { ...publicState(state), package: pkg.fact, target };
     }
     check(state, 'worker-not-started');
     if (input.operation === 'authorize') {
@@ -151,6 +185,7 @@ async function worker() {
       await (input.replace ? runtime.reconnect(connection, input.token) : runtime.connect(connection, input.token));
       return { connected: true, connectionId: dependencyConnectionId, replacement: input.replace === true };
     }
+    if (args.artifacts && input.operation.startsWith('artifact.')) return artifactWorker.artifactWorkerOperation(input, { ...artifactContext, state });
     if (input.operation === 'offline') { await runtime.stop(); return { offline: true }; }
     if (input.operation === 'online') { state = await runtime.start(); return publicState(state); }
     if (input.operation === 'restart') { await runtime.stop(); state = await runtime.start(); return publicState(state); }
@@ -175,7 +210,8 @@ function remoteDevice() {
   const launch = `& ${quote(remoteProduct + '/resources/node/node.exe')} ${quote(args['remote-script'])} --worker${args.discovery ? ' --discovery' : ''}`
     + ` --product ${quote(remoteProduct)} --certificate ${quote(args['remote-certificate'])} --key ${quote(args['remote-key'])}`
     + ` --mac-host ${quote(args['mac-host'])} --win-host ${quote(args['win-host'])}`
-    + ` --mac-port ${port(args['mac-port'])} --win-port ${port(args['win-port'])}${args.skills ? ' --skills' : ''}; exit $LASTEXITCODE`;
+    + ` --mac-port ${port(args['mac-port'])} --win-port ${port(args['win-port'])}${args.skills ? ' --skills' : ''}${args.artifacts ? ' --artifacts' : ''}`
+    + `${args['artifacts-worker-root'] ? ' --artifacts-worker-root ' + quote(args['artifacts-worker-root']) : ''}; exit $LASTEXITCODE`;
   const child = spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', args.ssh,
     'powershell -NoProfile -EncodedCommand ' + Buffer.from(launch, 'utf16le').toString('base64')], { stdio: ['pipe', 'pipe', 'pipe'] });
   const pending = new Map(); let ended = false;
@@ -235,6 +271,11 @@ async function providerRelay(key) {
       check(payload.model === 'deepseek-flash' && payload.stream === true && Number.isInteger(payload.max_tokens)
         && payload.max_tokens > 0 && payload.max_tokens <= limits.maxOutputTokens, 'provider-limits-not-fixed');
       row.payloadSha256 = digest(payload); row.toolSchemaSha256 = digest(payload.tools ?? []);
+      if (args.artifacts && args['artifacts-model'] === 'controlled') {
+        const { controlledArtifactStream } = await import('./lib/wp09-cross-case.mjs');
+        row.status = 200; row.finished = true; row.model = 'controlled-chat-transport';
+        response.writeHead(200, { 'content-type': 'text/event-stream' }); response.end(controlledArtifactStream(payload)); return;
+      }
       const started = Date.now();
       upstream = https.request({ hostname: 'api.deepseek.com', servername: 'api.deepseek.com', path: '/v1/chat/completions', method: 'POST',
         headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json', accept: 'text/event-stream',
@@ -351,6 +392,7 @@ async function main() {
       check(new URL(value.endpoint).origin === `https://${args['win-host']}:${port(args['win-port'])}`, 'windows-public-endpoint-mismatch');
       return value;
     });
+    if (args.artifacts) { check(windows.package.applicationSha256 === pkg.fact.applicationSha256, 'paired-final-applications-must-match'); assert.deepEqual(windows.package.webRuntime, pkg.fact.webRuntime); report.ownerCode = { identicalApplication: windows.package.applicationSha256 === pkg.fact.applicationSha256, commonWebRuntime: pkg.fact.webRuntime, policy: 'Each final package matches its own manifest; Mac owner may include the explicitly authorized backend-only adoption fix.' }; }
     report.packages.windows = windows.package; report.topology.windows.host = windows.host;
     const agentTarget = windows.target;
     let dependencyGrant, dependencyConnection, agentRpc;
@@ -374,19 +416,30 @@ async function main() {
         agentOwner: { environmentId: agentTarget.environmentId, serviceId: agentTarget.serviceId },
         agentConnectionId: connectionId, dependencyConnectionId, acceptGrantId: accept.grantId, dependencyGrantId: dependencyGrant.grantId };
     });
-    const providerKey = await providerCredential(args['credentials-file']);
+    const providerKey = args.artifacts && args['artifacts-model'] === 'controlled' ? 'isolated-controlled-transport-' + randomUUID() : await providerCredential(args['credentials-file']);
     relay = await providerRelay(providerKey);
     await stage('mac-only-real-provider-configuration', async () => {
       const connectionId = randomUUID();
-      await schoolApi('manage/model-default', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: 'WP08 cross-owner acceptance',
+      await schoolApi('manage/model-default', { requestId: randomUUID(), connectionId, expectedVersion: 0, name: args.artifacts ? 'WP09 cross-owner artifact acceptance' : 'WP08 cross-owner acceptance',
         protocol: 'chat-completions', baseUrl: relay.endpoint + '/v1', path: '/chat/completions', modelId: 'deepseek-flash',
         dialect: 'deepseek', parameterMode: 'thinking', enabled: true, contextWindow: 262144, maxOutputTokens: limits.maxOutputTokens,
-        credential: { action: 'replace', value: providerKey }, policy: { checksAllowed: true, maxChecksPerHour: 2,
-          maxOutputTokens: limits.maxOutputTokens, timeoutMs: limits.timeoutMs } }, admin);
+        credential: { action: 'replace', value: providerKey }, policy: { checksAllowed: true, maxChecksPerHour: args.artifacts ? 8 : 2,
+          maxOutputTokens: Math.min(limits.maxOutputTokens, 2048), timeoutMs: Math.min(limits.timeoutMs, 30000) } }, admin);
       const previous = await schoolApi('models/selection');
       await schoolApi('models/selection', { requestId: randomUUID(), expectedVersion: previous.version, source: { kind: 'school', connectionId } });
       return { model: 'deepseek-flash', protocol: 'chat-completions', connectionId, credentialOwner: 'Mac', credentialExported: false };
     });
+    if (args.artifacts) {
+      const privateDirectory=await mkdtemp(join(tmpdir(),'xj-wp09-private-resume-'));
+      report.privateResume=join(privateDirectory,'resume.json');
+      await writeFile(report.privateResume,JSON.stringify({args,root,state,windows,windowsRoot:(await remote.call('artifact.metadata')).root,identity,student:{loginName,password},headers,admin,dependencyConnection},null,2),{mode:0o600});
+      const { runArtifactsCase } = await import('./lib/wp09-cross-case.mjs');
+      const result = await runArtifactsCase({ args, pkg, runtime, host, root, state, windows, remote, relay, schoolApi, api, requestApi,
+        identity, loginName, password, headers, admin, data, agentTarget, dependencyGrant, dependencyConnection, dependencyConnectionId,
+        report, stage, persist, check, safe, sha, digest, until, wire, counters });
+      check(!Object.keys(result.cleanup).some(key => key.endsWith('Error')), 'artifact-case-cleanup-incomplete');
+      report.artifacts = result; report.status = 'passed'; report.browser = 'passed'; return;
+    }
     const fixedSkill = args.skills ? { skillId: randomUUID(), version: 1, source: 'course:217-cross-diagnosis', packageVersion: '1.0.0', required: true, files: [
       { path: 'SKILL.md', encoding: 'utf8', content: '---\nname: cross-owner-diagnosis\ndescription: 依据固定附件核对跨机器观察\n---\n仅按学生当前问题解释；读取 references/observation.txt 后核对水位差。' },
       { path: 'references/observation.txt', encoding: 'utf8', content: '217固定附件：初始水位12 cm，最终37 cm；差值25 cm。' },
@@ -581,30 +634,255 @@ async function main() {
         attachmentBytesDisclosed: false, newModelRequests: 0, originalRequestId: input.requestId };
     });
     report.status = 'passed';
-  } catch (error) { report.status = 'failed'; report.error = safe(error); }
+  } catch (error) { report.status = 'failed'; report.error = safe(error);  }
   finally {
+    if (args.artifacts) report.modelSource = args['artifacts-model'] === 'controlled' ? 'controlled external Chat transport; no real supplier calls' : 'real DeepSeek chat-completions';
     report.providerRequests = relay?.requests ?? []; report.providerRefusals = relay?.rejected ?? [];
     report.dependencyOperations = Object.fromEntries(counters);
     report.cleanup = {};
     try { await relay?.close(); report.cleanup.providerRelayClosed = true; }
     catch (error) { report.cleanup.providerError = safe(error); }
     if (remote) {
+      if(args.artifacts && args['artifacts-keep-failure'] && report.status!=='passed')try{report.retainedWindows=await remote.call('retain');}catch(error){report.retentionError=safe(error);}
       try { report.cleanup.windows = await remote.call('cleanup'); }
       catch (error) { report.cleanup.windows = { error: safe(error) }; }
       try { Object.assign(report.cleanup, await remote.close()); }
       catch (error) { report.cleanup.controlError = safe(error); }
     }
-    try { await host?.stop(); }
+    try { if (!report.artifacts?.cleanup?.originalMacHostStopped) await host?.stop(); }
     catch (error) { report.cleanup.macHostError = safe(error); }
-    if (runtime && root) report.cleanup.mac = await removeEnvironment(runtime, root, state);
+    if (runtime && root) { if(args.artifacts && args['artifacts-keep-failure'] && report.status!=='passed'){await runtime.stop();report.cleanup.mac={stopped:true,retained:true,rootRemoved:false,root};report.retained=true;}else report.cleanup.mac = await removeEnvironment(runtime, root, state); }
     if (report.status === 'passed' && (!report.cleanup.windows?.rootRemoved || !report.cleanup.mac?.rootRemoved
       || report.cleanup.controlError || report.cleanup.providerError || report.cleanup.macHostError)) report.status = 'failed';
     report.finishedAt = new Date().toISOString(); await persist();
     process.removeListener('SIGINT', interrupt); process.removeListener('SIGTERM', interrupt);
+    if (args.artifacts) { console.log(JSON.stringify({status:report.status,report:output,modelRequests:report.providerRequests.length,browser:report.browser,error:report.error})); if(report.status!=='passed') process.exitCode=1; }
   }
   console.log(JSON.stringify({ status: report.status, report: output, modelRequests: report.providerRequests.length,
     browser: report.browser, ...(report.error ? { error: report.error } : {}) }));
   if (report.status !== 'passed') process.exitCode = 1;
 }
-try { if (args.worker) await worker(); else await main(); }
-catch (error) { console.log(JSON.stringify({ status: 'failed', error: safe(error) })); process.exitCode = 1; }
+async function resumeArtifacts() {
+  check(process.platform === 'darwin' && resumeConfiguration, 'retained-Mac-controller-required');
+  const cfg = resumeConfiguration, originalBytes = await readFile(cfg.args.out);
+  const previous = JSON.parse(originalBytes), output = resolve(args.out);
+  const report = { issue: 224, status: 'running', measuredAt: new Date().toISOString(),
+    scope: 'Same original two-host generation, candidates and student input; recovery continuation without model requests',
+    sourceReport: cfg.args.out, sourceReportSha256: sha(originalBytes),
+    priorStages: previous.stages, priorProviderRequests: previous.providerRequests,
+    privateResume: args['artifacts-resume'], stages: [], browser: 'not-run', teachingEffect: 'not-assessed' };
+  await mkdir(dirname(output), { recursive: true });
+  const persist = () => writeFile(output, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
+  const stage = async (name, action) => {
+    const row = { name, status: 'running' }; report.stages.push(row); await persist();
+    console.log(JSON.stringify({ stage: name, status: 'running' }));
+    try { const fact = await action(); row.status = 'passed'; row.fact = fact; await persist();
+      console.log(JSON.stringify({ stage: name, status: 'passed' })); return fact; }
+    catch (error) { row.status = 'failed'; row.error = safe(error); await persist(); throw error; }
+  };
+  let runtime, host, remote, firewall;
+  const wire = [], counters = new Map(), unexpected = [];
+  const { windowsControl, runArtifactsCase } = await import('./lib/wp09-cross-case.mjs');
+  const q = value => "'" + value.replaceAll("'", "''") + "'";
+  const ps = source => windowsControl(args.ssh, source);
+  try {
+    await trust(args.certificate);
+    const pkg = await product(args.product);
+    for (const name of ['probe-teaching-assembly-cross.mjs', 'probe-wp09-cross.mjs', 'lib/wp09-cross-case.mjs'])
+      await exec('scp', ['-q', fileURLToPath(new URL(name, import.meta.url)), args.ssh + ':' + args['remote-script'].replace(/\/[^/]+$/, '') + '/' + name]);
+    firewall = 'XunJie-WP09-Recovery-' + randomUUID();
+    await ps(`New-NetFirewallRule -Name ${q(firewall)} -DisplayName ${q(firewall)} -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${port(args['win-port'])},${port(args['win-port']) + 2} -RemoteAddress ${q(args['mac-host'])} -Profile Any|Out-Null`);
+    runtime = pkg.module.openProductRuntime({ root: cfg.root, resources: pkg.resources });
+    host = await pkg.module.createProductRuntimeHost({ root: cfg.root, createApplication: async context => {
+      context.configuration.resources.webRoot = pkg.resources.webRoot;
+      const application = await pkg.module.createProductLearningApplication(context);
+      const services = Object.fromEntries(Object.entries(application.serviceCapabilities ?? {}).map(([id, handlers]) => [id,
+        Object.fromEntries(Object.entries(handlers).map(([capability, handler]) => [capability, capability !== 'teaching.dependencies' ? handler : async (value, source) => {
+          const payload = value?.chunkChannel === 1 && value.operation === 'invoke' ? value.value : value;
+          const operation = payload?.operation === 'model' ? 'model.' + payload.args?.[0]?.operation : payload?.operation;
+          if (typeof operation === 'string') counters.set(operation, (counters.get(operation) ?? 0) + 1);
+          if (['model.checks.receive', 'model.checks.dispatch', 'tool.prepare', 'tool.dispatch'].includes(operation)) {
+            unexpected.push(operation); throw Object.assign(new Error(), { code: 'recovery-attempted-new-generation' });
+          }
+          return handler(value, source);
+        }]))]));
+      return { ...application, serviceCapabilities: services };
+    } });
+    let state = await runtime.status();
+    if (state.state === 'maintenance') { await host.recovery.resume(); state = await runtime.status(); }
+    check(state.environment.environmentId === cfg.state.environment.environmentId
+      && state.environment.installationId === cfg.state.environment.installationId, 'retained-Mac-identity-changed');
+    remote = remoteDevice();
+    const windows = await stage('same-native-owners-restarted', async () => {
+      const value = await remote.call('resume', { dependencyConnectionId: cfg.dependencyConnection.connectionId });
+      check(value.environmentId === cfg.windows.environmentId && value.installationId === cfg.windows.installationId,
+        'retained-Windows-identity-changed');
+      check(value.package.applicationSha256 === pkg.fact.applicationSha256, 'retained-package-code-mismatch');
+      assert.deepEqual(value.package.webRuntime, pkg.fact.webRuntime);
+      return value;
+    });
+    const web = pkg.fact.webRuntime[0], webResponse = await fetch(state.endpoint + web.path.replace(/^web/, ''));
+    check(webResponse.status === 200 && sha(Buffer.from(await webResponse.arrayBuffer())) === web.sha256, 'served-Web-does-not-match-package');
+    report.packages = { mac: { ...pkg.fact, servedWebVerified: true }, windows: windows.package };
+    const endpoint = state.endpoint, headers = cfg.headers, admin = cfg.admin;
+    const schoolApi = async (route, body, actor = headers) => (await api(endpoint, route, body, actor)).value;
+    await stage('original-public-candidates-and-Run-facts', async () => {
+      const activityId = previous.artifacts.activityId;
+      const artifacts = await schoolApi('artifacts/' + activityId);
+      const attempts=[];report.originalConversationReadAttempts=attempts;
+      const conversation = await until(async()=>{
+        const reply=await requestApi(endpoint,'agent/'+activityId+'/conversation',undefined,headers);
+        attempts.push({status:reply.status,...(typeof reply.value?.error==='string'&&/^[a-z-]{1,100}$/.test(reply.value.error)?{error:reply.value.error}:{})});
+        await persist();if(reply.status===200)return reply.value;
+        check([409,503].includes(reply.status),'retained-conversation-http-'+reply.status);return null;
+      },'retained-conversation-not-recovered',30000);
+      return { artifacts, runs: conversation.runs.map(run => ({ runId: run.runId, state: run.state, stopRequested: run.stopRequested })),
+        tools: conversation.tools.map(tool => ({ commandId: tool.commandId, name: tool.name, outcome: tool.outcome,
+          ...(tool.result?.artifact ? { artifact: tool.result.artifact } : {}) })),
+        candidates: await Promise.all(artifacts.map(artifact => schoolApi(`artifacts/${activityId}/candidates/${artifact.latestCandidateId}`))) };
+    });
+    const relay = { requests: [...previous.providerRequests], rejected: [], async close() {} };
+    const data = state.environment.services.find(service => service.unit === 'learning-data');
+    const result = await runArtifactsCase({ args, pkg, runtime, host, root: cfg.root, state, windows, remote, relay,
+      schoolApi, api, requestApi, identity: cfg.identity, loginName: cfg.student.loginName, password: cfg.student.password,
+      headers, admin, data, agentTarget: windows.target, dependencyConnection: cfg.dependencyConnection,
+      dependencyConnectionId: cfg.dependencyConnection.connectionId, report, stage, persist, check, safe, sha, digest, until, wire, counters,
+      resume: previous });
+    check(unexpected.length === 0, 'recovery-attempted-new-generation');
+    check(!Object.keys(result.cleanup).some(key => key.endsWith('Error')), 'recovery-cleanup-incomplete');
+    report.artifacts = result; report.newModelRequests = 0; report.newGenerationOperations = 0;
+    report.status = 'passed'; report.browser = 'passed';
+  } catch (error) { report.status = 'failed'; report.error = safe(error);  }
+  finally {
+    report.unexpectedGenerationOperations = unexpected; report.dependencyOperations = Object.fromEntries(counters); report.cleanup = {};
+    if (remote) {
+      try { report.cleanup.windows = await remote.call('cleanup', { remove: report.status === 'passed' }); }
+      catch (error) { report.cleanup.windowsError = safe(error); }
+      try { Object.assign(report.cleanup, await remote.close()); }
+      catch (error) { report.cleanup.controlError = safe(error); }
+    }
+    try { if (!report.artifacts?.cleanup?.originalMacHostStopped) await host?.stop(); }
+    catch (error) { report.cleanup.macHostError = safe(error); }
+    if (runtime) {
+      if (report.status === 'passed') report.cleanup.mac = await removeEnvironment(runtime, cfg.root, cfg.state);
+      else { try { await runtime.stop(); report.cleanup.mac = { stopped: true, retained: true }; }
+        catch (error) { report.cleanup.macStopError = safe(error); } }
+    }
+    if (firewall) {
+      try { await ps(`Remove-NetFirewallRule -Name ${q(firewall)}`); report.cleanup.scopedFirewallRemoved = true; }
+      catch (error) { report.cleanup.firewallError = safe(error); }
+    }
+    if (Object.keys(report.cleanup).some(key => key.endsWith('Error'))
+      || report.status === 'passed' && (!report.cleanup.mac?.rootRemoved || !report.cleanup.windows?.rootRemoved)) report.status = 'failed';
+    report.finishedAt = new Date().toISOString(); await persist();
+  }
+  console.log(JSON.stringify({ status: report.status, report: output, newModelRequests: report.newModelRequests, error: report.error }));
+  if (report.status !== 'passed') process.exitCode = 1;
+}
+async function finishActiveTakeover() {
+  const cfg=resumeConfiguration, prior=JSON.parse(await readFile(cfg.takeover.report,'utf8')), artifacts=prior.artifacts;
+  const output=resolve(args.out),report={issue:224,status:'running',measuredAt:new Date().toISOString(),
+    scope:'Continue the two already active original recovery targets; original sources stay retired',sourceReport:cfg.takeover.report,
+    stages:[],newModelRequests:0,newGenerationOperations:0,teachingEffect:'not-assessed'};
+  const persist=()=>writeFile(output,JSON.stringify(report,null,2)+'\n');
+  const stage=async(name,action)=>{const row={name,status:'running'};report.stages.push(row);await persist();console.log(JSON.stringify({stage:name,status:'running'}));try{row.fact=await action();row.status='passed';await persist();console.log(JSON.stringify({stage:name,status:'passed'}));return row.fact;}catch(e){row.status='failed';row.error=safe(e);await persist();throw e;}};
+  const {windowsControl,stableTlsIngress,artifactChromeJob,runWindowsLocalCase}=await import('./lib/wp09-cross-case.mjs');
+  const {acquireNativeDesktop}=await import('./lib/native-desktop-lock.mjs');
+  const q=s=>"'"+s.replaceAll("'","''")+"'",ps=(s,input)=>windowsControl(args.ssh,s,input);
+  let host,runtime,remote,ingress,firewall,pkg,state,windows;
+  const rejected=[];report.unexpectedGenerationOperations=rejected;
+  try {
+    await trust(args.certificate);pkg=await product(args.product);
+    const remoteBase=args['remote-script'].replace(/\/[^/]+$/,'');
+    for(const name of ['probe-teaching-assembly-cross.mjs','probe-wp09-cross.mjs','lib/wp09-cross-case.mjs','lib/probe-evidence.mjs'])await exec('scp',['-q',fileURLToPath(new URL(name,import.meta.url)),args.ssh+':'+remoteBase+'/'+name]);
+    firewall='XunJie-WP09-Finish-'+randomUUID();await ps(`New-NetFirewallRule -Name ${q(firewall)} -DisplayName ${q(firewall)} -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${port(args['win-port'])},${port(args['win-port'])+2} -RemoteAddress ${q(args['mac-host'])} -Profile Any|Out-Null`);
+    runtime=pkg.module.openProductRuntime({root:cfg.takeover.macRoot,resources:pkg.resources});
+    host=await pkg.module.createProductRuntimeHost({root:cfg.takeover.macRoot,createApplication:async context=>{
+      context.configuration.resources.webRoot=pkg.resources.webRoot;
+      const app=await pkg.module.createProductLearningApplication(context);
+      return {...app,serviceCapabilities:Object.fromEntries(Object.entries(app.serviceCapabilities??{}).map(([id,handlers])=>[id,Object.fromEntries(Object.entries(handlers).map(([cap,handler])=>[cap,cap!=='teaching.dependencies'?handler:async(value,source)=>{
+        const input=value?.chunkChannel===1&&value.operation==='invoke'?value.value:value,operation=input?.operation==='model'?'model.'+input.args?.[0]?.operation:input?.operation;
+        if(['model.checks.receive','model.checks.dispatch','tool.prepare','tool.dispatch'].includes(operation)){rejected.push(operation);throw Object.assign(new Error(),{code:'takeover-generated-new-work'});}return handler(value,source);
+      }]))]))};
+    }});state=await runtime.status();
+    ingress=await stableTlsIngress({certificate:args.certificate,key:args.key,port:port(args['mac-port']),target:state.endpoint});
+    remote=remoteDevice();
+    windows=await stage('same-two-active-targets-and-retirement-proofs',async()=>{
+      const value=await remote.call('resume-takeover',{root:cfg.takeover.windowsRoot,dependencyConnectionId:cfg.dependencyConnection.connectionId});
+      const proof=JSON.parse(await readFile(join(cfg.root,'retired.json'),'utf8'));
+      check(proof.targetInstallationId===state.environment.installationId&&state.environment.installationId===artifacts.recovery.isolated.mac.installationId,'Mac-takeover-target-changed');
+      check(value.target.environment.installationId===artifacts.recovery.isolated.windows.installationId,'Windows-takeover-target-changed');
+      check(value.package.applicationSha256===pkg.fact.applicationSha256,'active-package-code-mismatch');
+      await remote.call('artifact.switch-ingress');return value;
+    });
+    report.packages={mac:pkg.fact,windows:windows.package};
+    const data=cfg.state.environment.services.find(s=>s.unit==='learning-data'),agent=cfg.windows.target;
+    await stage('restored-receiver-revalidates-the-same-Mac-installation-succession',async()=>{
+      const ids=cfg.state.environment.services.map(s=>s.serviceId).sort(),member=artifacts.recovery.members.find(m=>m.environmentId===cfg.state.environment.environmentId);
+      const proof=await remote.call('artifact.fence-active',{fence:{sourceEnvironmentId:cfg.state.environment.environmentId,sourceServiceId:ids[0],sourceServiceIds:ids,
+        sourceInstallationId:cfg.state.environment.installationId,backupId:member.backupId,targetInstallationId:state.environment.installationId}});
+      check(proof.execution?.unresolved===0&&proof.execution?.blocking===0,'active-receiver-fence-not-confirmed');return {backupId:member.backupId,sourceInstallationId:cfg.state.environment.installationId,targetInstallationId:state.environment.installationId,execution:proof.execution};
+    });
+    await stage('fresh-grants-preserve-the-original-fixed-owner-descriptors',async()=>{
+      const installed=JSON.parse(await readFile(join(cfg.root,'installation.json'),'utf8')),connection=installed.connections.find(c=>c.requiredCapabilities.includes('teaching.agent'));
+      const grant=await remote.call('artifact.authorize',{source:{sourceEnvironmentId:data.environmentId,sourceServiceId:data.serviceId,sourceInstallationId:state.environment.installationId},targetServiceId:agent.serviceId});
+      const targetConfig=JSON.parse(await readFile(join(cfg.takeover.macRoot,'installation.json'),'utf8'));
+      await runtime[targetConfig.connections.some(c=>c.connectionId===connection.connectionId)?'reconnect':'connect']({...connection,credentialRef:'wp09-finish-agent-'+randomUUID()},grant.token);
+      const dependency=await runtime.authorize({sourceEnvironmentId:agent.environmentId,sourceServiceId:agent.serviceId,sourceInstallationId:windows.target.environment.installationId,capabilities:['teaching.dependencies']},data.serviceId);
+      await remote.call('artifact.connect',{connection:{...cfg.dependencyConnection,credentialRef:'wp09-finish-dependencies-'+randomUUID()},token:dependency.token});
+      return {fixedOwnerDescriptorsRetained:true,macInstallationId:state.environment.installationId,windowsInstallationId:windows.target.environment.installationId};
+    });
+    const login=await api(state.endpoint,'login',{loginName:cfg.student.loginName,password:cfg.student.password}),ns=(await api(state.endpoint,'context',undefined,{cookie:login.cookie})).value.clientNamespace;
+    const actor={cookie:login.cookie,'x-xj-space':'school','x-xj-namespace':ns},read=async route=>(await api(state.endpoint,route,undefined,actor)).value,id=artifacts.activityId;
+    let expected;
+    await stage('original-artifact-resources-input-and-Runs-after-formal-takeover',async()=>{
+      const head=await read('workspaces/'+id);check(head.revision===artifacts.state.workRevision,'takeover-work-revision-changed');
+      for(const file of artifacts.state.files){const current=head.files.find(f=>f.objectId===file.objectId);check(current?.contentId===file.contentId&&sha(current.value)===file.sha256,'takeover-fixed-input-changed');}
+      expected=JSON.parse(head.files.find(f=>f.name==='components/artifact-'+artifacts.originals[0].artifactId+'.json').value).content.explanation;
+      for(const original of artifacts.originals){const fixed=await read(`artifacts/${id}/${original.artifactId}/revisions/${original.revisionId}`);check(fixed.sha256===original.resourceSha256&&fixed.origin.runId===original.runId&&fixed.origin.commandId===original.commandId,'takeover-fixed-source-changed');}
+      const attempts=[];const conversation=await until(async()=>{const r=await requestApi(state.endpoint,'agent/'+id+'/conversation',undefined,actor);attempts.push({status:r.status,error:typeof r.value?.error==='string'?r.value.error:undefined});if(r.status===200)return r.value;check([409,503].includes(r.status),'takeover-conversation-denied');return null;},'takeover-conversation-not-recovered',30000);
+      check(conversation.runs.length===artifacts.originals.length&&artifacts.originals.every(o=>conversation.runs.some(r=>r.runId===o.runId)),'takeover-changed-original-Runs');
+      return {workRevision:head.revision,inputSha256:sha(expected),runIds:conversation.runs.map(r=>r.runId),conversationAttempts:attempts,newModelRequests:0};
+    });
+    await stage('both-retired-sources-and-old-browser-namespace-refuse-new-work',async()=>{
+      const old=await requestApi(cfg.state.endpoint,'artifacts/'+id+'/shelf',{requestId:randomUUID(),artifactId:artifacts.originals[0].artifactId,shelved:false},cfg.headers);
+      check([401,403].includes(old.status),'old-browser-namespace-accepted');
+      let mac=false;try{await pkg.module.openProductRuntime({root:cfg.root}).connect({...cfg.dependencyConnection,connectionId:randomUUID()},'unused-retired-probe');}catch(e){mac=e.code==='source-retired';}check(mac,'old-Mac-can-configure-new-work');
+      const win=await remote.call('artifact.assert-retired',{connection:cfg.dependencyConnection,token:'unused-retired-probe'});check(win.rejected&&win.code==='source-retired','old-Windows-can-configure-new-work');
+      return {macRetired:true,windowsRetired:true,oldBrowserHttpStatus:old.status};
+    });
+    const spki=createHash('sha256').update(new X509Certificate(await readFile(args.certificate)).publicKey.export({type:'spki',format:'der'})).digest('base64');
+    async function browser(platform){
+      const release=await acquireNativeDesktop(platform==='win32'?'windows':'macos',args['artifacts-session'],'WP09 final active takeover Chrome');
+      const local=await mkdtemp(join(tmpdir(),'xj-wp09-final-Chrome-'));let task;
+      try{
+        const remoteDir=remoteBase+'/takeover-Chrome-'+randomUUID(),base=platform==='win32'?remoteDir:local;
+        const head=await read('workspaces/'+id),value=JSON.parse(head.files.find(f=>f.name==='components/artifact-'+artifacts.originals[0].artifactId+'.json').value).content.explanation;
+        const job={captureEvidence:!args['no-evidence'],endpoint:state.endpoint,student:cfg.student,activityId:id,expected:value,readOnlyView:true,takeoverView:true,spki,
+          certificate:platform==='win32'?args['remote-certificate']:args.certificate,product:platform==='win32'?args['remote-product']:pkg.root,
+          applicationSha256:pkg.fact.applicationSha256,playwright:platform==='win32'?'C:/Users/h/XunJie-acceptance/package.json':resolve('apps/web/package.json'),result:base+'/result.json',screenshot:args['no-evidence']?undefined:base+'/screen.png'};
+        let result;
+        if(platform==='win32'){
+          task='XunJie-WP09-Takeover-'+randomUUID();const launch='"'+remoteBase+'/probe-wp09-cross.mjs" --chrome-job "'+base+'/job.json"';
+          await ps(`New-Item -ItemType Directory -Path ${q(base)}|Out-Null;[IO.File]::WriteAllText(${q(base+'/job.json')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false));$a=New-ScheduledTaskAction -Execute ${q(args['remote-product']+'/resources/node/node.exe')} -Argument ${q(launch)};$p=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited;$s=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3);Register-ScheduledTask -TaskName ${q(task)} -Action $a -Principal $p -Settings $s|Out-Null;Start-ScheduledTask -TaskName ${q(task)}`,JSON.stringify(job));
+          result=await until(async()=>{const text=await ps(`if(Test-Path -LiteralPath ${q(job.result)}){[IO.File]::ReadAllText(${q(job.result)})}`);const value=text?JSON.parse(text):null;if(value?.status==='failed')throw Object.assign(new Error(),{code:value.error});return value?.status==='passed'?value:null;},'takeover-Windows-Chrome-timeout',120000);
+        }else{await writeFile(base+'/job.json',JSON.stringify(job),{mode:0o600});await artifactChromeJob(base+'/job.json');result=JSON.parse(await readFile(job.result,'utf8'));check(result.status==='passed','takeover-Mac-Chrome-failed');}
+        const shots=[];if(!args['no-evidence'])for(const shot of result.screenshots){const bytes=platform==='win32'?Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`),'base64'):await readFile(shot.path);check(sha(bytes)===shot.sha256,'takeover-screenshot-mismatch');const path=join(dirname(output),platform+'-takeover.png');await writeFile(path,bytes);shots.push({path,sha256:shot.sha256});}
+        return {status:'passed',checks:result.checks,chromeVersion:result.chromeVersion,screenshots:shots};
+      }finally{if(task)await ps(`Stop-ScheduledTask -TaskName ${q(task)} -ErrorAction SilentlyContinue;Unregister-ScheduledTask -TaskName ${q(task)} -Confirm:$false`);await release();await rm(local,{recursive:true,force:true});}
+    }
+    report.windows=await stage('Windows-Interactive-Limited-Chrome-reopens-the-active-takeover',()=>browser('win32'));
+    report.mac=await stage('Mac-Chrome-reopens-the-active-takeover',()=>browser('darwin'));
+    report.windowsLocal=await stage('Windows-standalone-final-product-and-Chrome',()=>runWindowsLocalCase({args,remote,pkg,windows,report,persist,until}));
+    check(rejected.length===0,'takeover-generated-new-work');report.status='passed';report.browser='passed';
+  }catch(e){report.status='failed';report.error=safe(e);}
+  finally{
+    report.cleanup={};if(remote){try{report.cleanup.windows=await remote.call('cleanup',{remove:report.status==='passed'});}catch(e){report.cleanup.windowsError=safe(e);}try{await remote.close();report.cleanup.controlProcessExited=true;}catch(e){report.cleanup.controlError=safe(e);}}
+    try{await ingress?.close();await host?.stop();if(runtime){await runtime.stop();if(report.status==='passed'){await runtime.deleteEnvironment({environmentId:state.environment.environmentId});await rm(join(cfg.root,'pg-diagnostic.log'),{force:true});const source=pkg.module.openProductRuntime({root:cfg.root});await source.deleteEnvironment({environmentId:cfg.state.environment.environmentId});await rm(dirname(cfg.takeover.macRoot),{recursive:true,force:true});report.cleanup.macRootsRemoved=true;}else report.cleanup.macTargetsRetained=true;}}catch(e){report.cleanup.macError=safe(e);}
+    if(firewall){try{await ps(`Remove-NetFirewallRule -Name ${q(firewall)}`);report.cleanup.scopedFirewallRemoved=true;}catch(e){report.cleanup.firewallError=safe(e);}}
+    if(Object.keys(report.cleanup).some(k=>k.endsWith('Error')))report.status='failed';report.finishedAt=new Date().toISOString();await persist();
+  }
+  console.log(JSON.stringify({status:report.status,report:output,error:report.error}));if(report.status!=='passed')process.exitCode=1;
+}
+try { if (args.worker) await worker(); else if (takeoverContinuation) await finishActiveTakeover(); else if (resumeConfiguration) await resumeArtifacts(); else await main(); }
+catch (error) { console.log(JSON.stringify({ status: 'failed', error: safe(error) }));  process.exitCode = 1; }

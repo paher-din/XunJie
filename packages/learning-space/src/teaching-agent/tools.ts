@@ -18,6 +18,8 @@ import { imageRoute, retainWorkImage, type TeachingImageModels } from './tools-i
 import { pdfReadingOutcome, pdfSearchOutcome, pdfTextInputSchema, pdfTextOutcome } from './tools-pdf.js';
 import { pdfReadInputSchema, pdfFindInputSchema } from '@xunjie/contracts/pdf-materials';
 import { materialSearchInputSchema, personalMaterialReadSchema } from '@xunjie/contracts/personal-materials';
+import { artifactPublishInput } from './tools-artifacts.js';
+import { teachingPublicArguments } from './help-policy.js';
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
 function fail(code: 'forbidden' | 'missing' | 'invalid' | 'identity-conflict' | 'corrupt' | 'unavailable'): never { throw new StorageError(code); }
@@ -95,10 +97,30 @@ export function createTeachingTools(options: {
     if (!definition || !compileOutputSchema(definition.inputSchema)(intent.arguments)) fail('invalid');
     for (const key of ['objectId', 'contentId', 'referenceId', 'materialId', 'requestId'])
       if (Object.hasOwn(intent.arguments, key) && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');
+    for (const key of ['artifactId', 'revisionId', 'parentRevisionId'])
+      if (intent.arguments[key] != null && !z.uuid().safeParse(intent.arguments[key]).success) fail('invalid');
     const args = structuredClone(intent.arguments), name = intent.name;
     let effect: TeachingPreparedTool['effect'] = 'read', location: TeachingPreparedTool['location'] = 'owner';
     let conflictKey = scope.activity.activityId, detail: Record<string, unknown> = {};
-    if (name === 'read_work') {
+    if (name === 'generate_teaching_artifact') {
+      if (!scope.attemptId || teachingPublicArguments(scope.activity, args).rejectedByHelpPolicy) fail('forbidden');
+      const input = artifactPublishInput(args, commandId);
+      if (input.artifactId && input.parentRevisionId)
+        await learning().artifacts.revision(scope.identity, scope.activity.activityId, input.artifactId, input.parentRevisionId);
+      effect = 'input';
+      detail = { input, origin: { runId: scope.runId, stepId: scope.stepId, attemptId: scope.attemptId,
+        snapshotId: scope.snapshotId, commandId } };
+    } else if (name === 'read_teaching_artifact') {
+      if (args.artifactId == null) {
+        if (args.revisionId !== null) fail('invalid');
+        detail = { artifacts: await learning().artifacts.list(scope.identity, scope.activity.activityId) };
+      } else {
+        const artifactId = z.uuid().parse(args.artifactId);
+        const artifact = await learning().artifacts.read(scope.identity, scope.activity.activityId, artifactId);
+        const revisionId = args.revisionId == null ? artifact.activeRevisionId ?? artifact.latestRevisionId : z.uuid().parse(args.revisionId);
+        detail = { artifact, revision: await learning().artifacts.revision(scope.identity, scope.activity.activityId, artifactId, revisionId) };
+      }
+    } else if (name === 'read_work') {
       const { file, ref } = approvedFile(scope, String(args.objectId), String(args.contentId));
       const version = await learning().works.inspectVersion(scope.identity, scope.activity.activityId,
         { objectId: String(args.objectId), contentId: String(args.contentId) });
@@ -244,7 +266,10 @@ export function createTeachingTools(options: {
     // Publication metadata was observed at preparation, not a condition that can replace or
     // invalidate the approved bytes when a later edit moves the head.
     const comparable = command.name === 'read_work'
-      ? { ...fresh, basis: { ...fresh.basis, provenance: command.basis.provenance } } : fresh;
+      ? { ...fresh, basis: { ...fresh.basis, provenance: command.basis.provenance } }
+      : command.name === 'read_teaching_artifact' ? { ...fresh, basis: { ...fresh.basis,
+        ...(command.basis.artifacts ? { artifacts: command.basis.artifacts } : {}),
+        ...(command.basis.artifact ? { artifact: command.basis.artifact, revision: command.basis.revision } : {}) } } : fresh;
     if (digest(comparable) !== digest(command)) fail('identity-conflict');
   }
   function outcome(command: TeachingPreparedTool, state: TeachingToolOutcome['state'], result: Record<string, unknown>, label: string,
@@ -280,6 +305,23 @@ export function createTeachingTools(options: {
   async function dispatch(scope: TeachingToolScope, command: TeachingPreparedTool): Promise<TeachingToolOutcome> {
     await check(scope, command);
     const a = command.arguments, id = scope.activity.activityId;
+    if (command.name === 'generate_teaching_artifact') {
+      const input = artifactPublishInput(a, command.commandId);
+      const artifact = await learning().artifacts.publish(scope.identity, id, input, {
+        origin: command.basis.origin as import('@xunjie/contracts/teaching-artifacts').TeachingArtifactOrigin,
+        assertDispatch: context(scope, command, true).assertDispatch,
+      });
+      return outcome(command, 'completed', { artifact }, '活动教学内容');
+    }
+    if (command.name === 'read_teaching_artifact') {
+      if (command.basis.revision) {
+        const fixed = command.basis.revision as import('@xunjie/contracts/teaching-artifacts').TeachingArtifactRevision;
+        const revision = await learning().artifacts.revision(scope.identity, id, fixed.artifactId, fixed.revisionId);
+        if (digest(revision) !== digest(fixed)) fail('corrupt');
+        return outcome(command, 'completed', { artifact: command.basis.artifact, revision }, '固定教学内容');
+      }
+      return outcome(command, 'completed', { artifacts: command.basis.artifacts }, '本活动教学内容');
+    }
     if (command.name === 'read_pdf_text') {
       const input = pdfTextInputSchema.parse(command.basis.input);
       const reference = scope.input.draft.references.find(item => item.referenceId === input.referenceId && item.source.kind === 'pdf');
@@ -387,6 +429,11 @@ export function createTeachingTools(options: {
     return await queryOutcome(scope, command, query) ?? outcome(command, 'not-dispatched', { requestId: a.requestId }, '原执行尚未确认');
   }
   async function reconcile(scope: TeachingToolScope, command: TeachingPreparedTool) {
+    if (command.name === 'generate_teaching_artifact') {
+      await authorize(scope);
+      const artifact = await learning().artifacts.receipt(scope.identity, scope.activity.activityId, command.commandId);
+      return artifact ? outcome(command, 'completed', { artifact }, '活动教学内容') : null;
+    }
     await check(scope, command);
     if (command.effect === 'read') return dispatch(scope, command);
     const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
@@ -404,6 +451,13 @@ export function createTeachingTools(options: {
   async function stop(scope: TeachingToolCleanupScope, command: TeachingPreparedTool) {
     // Cleanup checks the durable original capability, not current eligibility for new effects.
     if (command.version !== 1 || digest(command.basis.scope) !== digest(scopeBasis(scope))) fail('identity-conflict');
+    if (command.name === 'generate_teaching_artifact') {
+      // Content publication has no external execution to cancel. Preserve a committed original;
+      // an unconfirmed publication is never repeated while stopping the Run.
+      const artifact = await learning().artifacts.receipt(scope.identity, scope.activity.activityId, command.commandId);
+      return artifact ? outcome(command, 'completed', { artifact, cleanupCompleted: true }, '已保留的教学内容')
+        : outcome(command, 'not-dispatched', { requestId: command.commandId, cleanupCompleted: true }, '生成已停止');
+    }
     if (command.effect === 'read') return null;
     const requestId = String(command.basis.requestId ?? command.arguments.requestId ?? command.commandId);
     const query = await learning().executions.agent.cleanup(scope.identity, scope.activity.activityId, context(scope, command), requestId,
