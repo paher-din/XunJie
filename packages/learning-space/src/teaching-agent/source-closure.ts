@@ -2,9 +2,6 @@ import type { OwnedStorage } from '@xunjie/storage';
 import { collectSources, validateSources } from '../learning-data/source-closure.js';
 import type { SourceSpec, OwnerSourceClosure } from '../learning-data/source-closure.js';
 
-export { ownerSourceEntrySchema, ownerSourceClosureSchema, sourceClosureCounts } from '../learning-data/source-closure.js';
-export type { OwnerSourceEntry, OwnerSourceClosure, SourceSpec } from '../learning-data/source-closure.js';
-
 export const teachingSourceOwner = 'xunjie.teaching-agent';
 
 const teachingSpecs: readonly SourceSpec[] = [
@@ -40,11 +37,9 @@ const teachingSpecs: readonly SourceSpec[] = [
   { table: 'agent_chunk_parts', kind: 'agent_chunk_parts', id: ['source_key', 'transfer_id', 'direction', 'part_index'] },
 ];
 
-export function collectTeachingSourceClosure(storage: OwnedStorage): Promise<OwnerSourceClosure> {
+export function collectTeachingSources(storage: OwnedStorage): Promise<OwnerSourceClosure> {
   return collectSources(storage, teachingSourceOwner, teachingSpecs);
 }
-export function validateTeachingSourceClosure(storage: OwnedStorage, material: unknown): Promise<void> {
+export function validateTeachingSources(storage: OwnedStorage, material: unknown): Promise<void> {
   return validateSources(storage, material, teachingSourceOwner, teachingSpecs);
 }
-export const collectTeachingSources = collectTeachingSourceClosure;
-export const validateTeachingSources = validateTeachingSourceClosure;

@@ -60,20 +60,13 @@ export function sourceClosureCounts(closure: OwnerSourceClosure): Record<string,
   return counts;
 }
 
-function isMissingResource(error: unknown): boolean {
-  const code = error instanceof StorageError ? error.code : (error as { code?: unknown } | null)?.code;
-  return code === 'missing' || code === 'resource-gone';
-}
-
-/** A missing original is recorded, never thrown, so validation can detect the loss. */
+/** A referenced original must be present: a dangling reference must not confirm a backup. */
 export async function readSourceResource(storage: OwnedStorage, resourceId: string): Promise<SourceResourceFact> {
-  try {
-    const bytes = await storage.readResource(resourceId);
-    return { resourceId, sha256: sha256(bytes), byteLength: bytes.byteLength };
-  } catch (error) {
-    if (isMissingResource(error)) return { resourceId, sha256: 'missing', byteLength: 0 };
-    throw error;
-  }
+  const bytes = await storage.readResource(resourceId).catch(error => {
+    const code = error instanceof StorageError ? error.code : (error as { code?: unknown } | null)?.code;
+    throw code === 'missing' || code === 'resource-gone' ? new StorageError('corrupt') : error;
+  });
+  return { resourceId, sha256: sha256(bytes), byteLength: bytes.byteLength };
 }
 
 const resourceKeys = new Set(['resourceId', 'resource_id']);
@@ -111,7 +104,8 @@ function scopeOf(row: SourceRow, ownerEnvironmentId: string): Scope {
   };
 }
 
-const pick = (row: SourceRow, columns: readonly string[]): string =>
+/** Join the source row's key columns into a stable composite ID, falling back to its digest. */
+const pickKeyColumns = (row: SourceRow, columns: readonly string[]): string =>
   columns.map(column => row[column]).filter(value => value !== null && value !== undefined).map(String).join(':');
 
 async function defaultResources(row: SourceRow, read: ReadSourceResource): Promise<SourceResourceFact[]> {
@@ -137,8 +131,8 @@ export async function collectSources(storage: OwnedStorage, owner: string, specs
         kind: spec.kind,
         ...scopeOf(row, storage.owner.environmentId),
         owner,
-        fixedId: pick(row, spec.id) || canonicalDigest(row),
-        version: (spec.version && pick(row, spec.version)) || canonicalDigest(row),
+        fixedId: pickKeyColumns(row, spec.id) || canonicalDigest(row),
+        version: (spec.version && pickKeyColumns(row, spec.version)) || canonicalDigest(row),
         digest: canonicalDigest(row),
         resources,
       });
@@ -230,11 +224,9 @@ const learningSpecs: readonly SourceSpec[] = [
 
 export const learningSourceOwner = 'xunjie.learning-data';
 
-export function collectLearningSourceClosure(storage: OwnedStorage): Promise<OwnerSourceClosure> {
+export function collectLearningSources(storage: OwnedStorage): Promise<OwnerSourceClosure> {
   return collectSources(storage, learningSourceOwner, learningSpecs);
 }
-export function validateLearningSourceClosure(storage: OwnedStorage, material: unknown): Promise<void> {
+export function validateLearningSources(storage: OwnedStorage, material: unknown): Promise<void> {
   return validateSources(storage, material, learningSourceOwner, learningSpecs);
 }
-export const collectLearningSources = collectLearningSourceClosure;
-export const validateLearningSources = validateLearningSourceClosure;

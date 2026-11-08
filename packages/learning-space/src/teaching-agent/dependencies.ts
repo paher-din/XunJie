@@ -90,10 +90,11 @@ export function createTeachingDependencyService(options: {
         throw new StorageError('forbidden');
       if (input.operation === 'tool.dispatch' && !input.authority) throw new StorageError('forbidden');
       const { segmentId, skillState, ...fixed } = raw;
-      const frozenSkills = skillState ? { skillState: skillState as TeachingSkillState } : {};
-      if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...frozenSkills,
+      // The state is fixed by the original step, not frozen here; the wire schema is its authority.
+      const fixedSkillState = skillState ? { skillState: skillState as TeachingSkillState } : {};
+      if (input.operation === 'tool.stop') return options.tools.stop({ ...fixed, ...fixedSkillState,
         ...(segmentId ? { segmentId } : {}) }, teachingPreparedToolSchema.parse(input.args[1]));
-      const scope: TeachingToolScope = { ...fixed, ...frozenSkills, ...(segmentId ? { segmentId } : {}),
+      const scope: TeachingToolScope = { ...fixed, ...fixedSkillState, ...(segmentId ? { segmentId } : {}),
         ...(input.authority ? { authority: input.authority } : {}), activity: await options.activity(identity, raw.activity.activityId) };
       switch (input.operation) {
         case 'tool.contributions': return toolContributions(options.tools, scope);

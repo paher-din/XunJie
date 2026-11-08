@@ -199,6 +199,8 @@ test('validateLearningSources rejects a tampered digest, a removed resource and 
   const stolenStorage = makeStorage(f.tables, mutable);
   delete mutable[f.documentId];
   await assert.rejects(validateLearningSources(stolenStorage, closure), { code: 'corrupt' });
+  await assert.rejects(collectLearningSources(stolenStorage), { code: 'corrupt' },
+    'a backup whose original is already gone cannot be confirmed');
 });
 
 test('validateTeachingSources rejects a tampered digest and a removed resource', async () => {

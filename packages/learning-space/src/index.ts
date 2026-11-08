@@ -20,11 +20,9 @@ export * from './teaching-agent/index.js';
 export { collectTeachingBoundary, collectTeachingReceiverBoundary, validateTeachingBoundary, teachingMaintenanceKind } from './teaching-agent/maintenance.js';
 export { validateTeachingSkillLoads } from './teaching-agent/maintenance.js';
 export { ownerSourceEntrySchema, ownerSourceClosureSchema, sourceClosureCounts,
-  collectLearningSourceClosure, validateLearningSourceClosure, collectLearningSources, validateLearningSources,
-  learningSourceOwner } from './learning-data/source-closure.js';
-export type { OwnerSourceEntry, OwnerSourceClosure, SourceSpec, SourceResourceFact, SourceRow } from './learning-data/source-closure.js';
-export { collectTeachingSourceClosure, validateTeachingSourceClosure, collectTeachingSources, validateTeachingSources,
-  teachingSourceOwner } from './teaching-agent/source-closure.js';
+  collectLearningSources, validateLearningSources, learningSourceOwner } from './learning-data/source-closure.js';
+export type { OwnerSourceEntry, OwnerSourceClosure } from './learning-data/source-closure.js';
+export { collectTeachingSources, validateTeachingSources, teachingSourceOwner } from './teaching-agent/source-closure.js';
 export { createTeachingTools } from './teaching-agent/tools.js';
 export { buildContext } from './teaching-agent/context.js';
 export { createLearningAuthority } from './learning-entry/authority.js';

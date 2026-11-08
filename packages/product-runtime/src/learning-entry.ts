@@ -223,6 +223,17 @@ export async function createProductLearningApplication(context: {
         return (await teachingFor(identity, activityId)).assertCommandDispatch(identity, activityId, association);
       },
     }) : undefined;
+    // Activity facts and Skill attachments belong to the activity's fixed Agent owner. The local
+    // teaching client and the dependency service must reach that owner through this single seam;
+    // changing one without the other would make local and independent Agents diverge again.
+    const activityAgentReads: Pick<Parameters<typeof createTeachingTools>[0], 'studentFacts' | 'skillRead'> = {
+      studentFacts: { read: async (identity, activityId, input) =>
+        (await teachingFor(identity, activityId)).studentFacts.read(identity, activityId, input) },
+      skillRead: async (scope, skillId, version, path) =>
+        (await teachingFor(scope.identity, scope.activity.activityId)).skills.read(
+          scope.identity, scope.activity.activityId, skillId, version, path,
+          { references: scope.input.draft.skills }),
+    };
     const agent = data && models ? await owner('teaching-agent', teachingAgentMigrations) : undefined;
     teaching = agent && models ? createTeachingAgent(agent.storage, {
       authorize: identity => spaces.authorize(identity),
@@ -233,14 +244,8 @@ export async function createProductLearningApplication(context: {
       },
       activity: (identity, activityId) => learning!.open(identity, activityId),
       models, tools: createTeachingTools({ learning: () => learning!, courses, models, executionOrigin: currentExecutionOrigin,
-        // Activity facts and Skill attachments belong to the activity's fixed Agent owner. Local
-        // and independently installed Agents are reached through the same narrow read interface.
-        studentFacts: { read: async (identity, activityId, input) =>
-          (await teachingFor(identity, activityId)).studentFacts.read(identity, activityId, input) },
-        skillRead: async (scope, skillId, version, path) =>
-          (await teachingFor(scope.identity, scope.activity.activityId)).skills.read(
-            scope.identity, scope.activity.activityId, skillId, version, path,
-            { references: scope.input.draft.skills }),
+        // Activity facts and Skill attachments come from the shared fixed-owner read seam.
+        ...activityAgentReads,
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return teachingFor(scope.identity, scope.activity.activityId).then(agent => agent.assertCommandDispatch(scope.identity,
@@ -333,12 +338,7 @@ export async function createProductLearningApplication(context: {
       },
       activity: learning.open, models, modelRequest,
       tools: createTeachingTools({ learning: () => learning!, courses, ...(toolModels ? { models: toolModels } : {}), executionOrigin: currentExecutionOrigin,
-        studentFacts: { read: async (identity, activityId, input) =>
-          (await teachingFor(identity, activityId)).studentFacts.read(identity, activityId, input) },
-        skillRead: async (scope, skillId, version, path) =>
-          (await teachingFor(scope.identity, scope.activity.activityId)).skills.read(
-            scope.identity, scope.activity.activityId, skillId, version, path,
-            { references: scope.input.draft.skills }),
+        ...activityAgentReads,
         authorizeDispatch: async (scope, command) => {
           await agentDependencyFreshAuthorization.getStore()?.();
           return (await teachingFor(scope.identity, scope.activity.activityId)).assertCommandDispatch(
