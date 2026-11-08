@@ -11,7 +11,7 @@
 | 跨安装恢复集合 | `packages/product-runtime/test/recovery-set.test.mjs` | 3/3 通过 |
 | 凭据门禁（源秘密不进入继任安装） | `packages/product-runtime/test/isolated-learning.runtime.test.mjs` | 1/1 通过 |
 | WP08 组合运行时（三条链 / 压缩 / 重启） | `apps/server/tests/teaching-agent.wp08-integration.runtime.test.mjs` | 4/4 通过 |
-| 恢复、接管、旧版迁移与晚结果回归 | [运行日志](runtime-regression.log)、[工程记录](engineering.json) | 49 项中 48 通过；1 项基线遗留断言失败已修复并单独复验 2/2 通过 |
+| 恢复、接管、旧版迁移与晚结果回归 | [运行日志](runtime-regression.log)、[工程记录](engineering.json) | 49/49 通过（含独立 Agent 工具 Wait 续接、未认领 WP03 命令跨安装还原、旧 v1 清单兼容） |
 | 完整工程 | [完整验证摘要](verify-summary.json)、[日志](full-verify.log) | 通过：prepare 4/4、build:test 1/1、unit 36/36、server 95/95、tools 45/45，共 181/181 调度项；20 项平台/环境条件用例跳过，未计作通过；0 失败 |
 | 真实协议（最终 Mac 产品包） | [三协议报告](real-protocols-package.json) | 通过：DeepSeek Chat Completions / Responses / Messages 各 2 次，6 次 HTTP 200，固定 PNG 实际入模，重启后固定读取 |
 | 真实跨路线续接 | [续接报告](real-continuation.json) | 通过：8 次真实 HTTPS，四场景全通过，含 `Chat → Responses` 携带图像/资料与 accepted 长作业，保留原 Command、Wait、预算及固定图片 |
@@ -31,7 +31,7 @@
 
 正式入口：`rtk bypass npm run verify -- --jobs 2`（固定 Node 24.21.0、`XUNJIE_PRODUCT_POSTGRES_BIN` 指向候选包内 PostgreSQL 18.6）。完整批次 `2026-11-08T10:08:30Z` 开始，`10:14:04Z` 结束，退出码 0。
 
-单文件与定向回归单独执行：三个新单元测试文件共 15/15 通过；九份真实 PostgreSQL 运行时文件共 49 项（先 48 通过 / 1 失败，见[原始日志](runtime-regression.log)）。失败项 `teaching-agent.skills-recovery.runtime.test.mjs` 是基线 `84bfefd0`（#219）把维护清单升到 v4 后未同步删除新增 `teaching_student_facts` 表的遗留断言，本票修正后[整文件 2/2 通过](skills-recovery-rerun.log)；工程完整批次因默认发现清单不含 `.runtime.test.*` 未覆盖它，故单独登记。
+单文件与定向回归单独执行：三个新单元测试文件共 16/16 通过；九份真实 PostgreSQL 运行时文件共 49 项全部通过（见[原始日志](runtime-regression.log)）。早期批次曾暴露两处问题并均已修复：#219 把维护清单升到 v4 后遗留的 v1 断言（[复验](skills-recovery-rerun.log)），以及来源闭包把内嵌的跨 owner 课程组件引用误当本 owner 原件读取——现按"本 owner 曾暂存却读不到 → 拒绝；从未属于本 owner → 仅留在行摘要"处理，并有专门测试。
 
 类型检查、构建、文档链接检查（282 份 Markdown / 2797 个本地目标 / 0 失败）、浏览器安全契约出口均通过。已发布迁移 SQL 保持原字节；旧 v1/v2/v3 维护清单与两份 v11 迁移的备份还原/接管回归均通过。
 

@@ -29,6 +29,10 @@ function makeStorage(tables, resources = {}) {
           row.owner_key === ownerKey && String(row.skill_id) === String(skillId) && Number(row.version) === Number(version));
         return { rows: rows.map(row => ({ body: row.body })) };
       }
+      if (/FROM _storage_resources/.test(sql)) {
+        const resourceId = params[0];
+        return { rows: (tables._storage_resources ?? []).filter(row => row.resource_id === resourceId) };
+      }
       const match = /FROM\s+([a-z_]+)/.exec(sql);
       if (match) return { rows: (tables[match[1]] ?? []).map(row => ({ ...row })) };
       return { rows: [] };
@@ -43,6 +47,8 @@ function makeStorage(tables, resources = {}) {
     },
   };
 }
+
+const staged = (...resourceIds) => resourceIds.map(resourceId => ({ resource_id: resourceId, state: 'ready' }));
 
 function sortEntries(entries) {
   return [...entries].sort((a, b) => {
@@ -89,6 +95,7 @@ function learningFixture() {
     [documentId]: documentBytes,
     [readingId]: readingBytes,
   };
+  tables._storage_resources = staged(materialResource, documentId, readingId);
   return { tables, resources, requestId, inputDigest, executionRef, materialResource, documentId };
 }
 
@@ -115,6 +122,7 @@ function teachingFixture() {
     [eventResource]: eventBytes,
     [commandResource]: commandBytes,
   };
+  tables._storage_resources = staged(snapshotResource, eventResource, commandResource);
   return { tables, resources, snapshotResource, snapshotBytes, eventResource, eventBytes, commandResource, commandBytes };
 }
 
@@ -201,6 +209,23 @@ test('validateLearningSources rejects a tampered digest, a removed resource and 
   await assert.rejects(validateLearningSources(stolenStorage, closure), { code: 'corrupt' });
   await assert.rejects(collectLearningSources(stolenStorage), { code: 'corrupt' },
     'a backup whose original is already gone cannot be confirmed');
+});
+
+test('a body-embedded reference to another owner stays row data and cannot fail collection', async () => {
+  const f = learningFixture();
+  const foreignId = uuid();
+  f.tables.execution_commands = [...f.tables.execution_commands, { request_id: uuid(), activity_id: f.tables.activities[0].id,
+    input_digest: 'c'.repeat(64), execution_ref: uuid(), state: 'queued', status_knowledge: 'confirmed', confirmed_seq: 1,
+    body: { execution: { basis: { resources: [{ kind: 'entry', resourceId: foreignId, sha256: 'd'.repeat(64),
+      byteLength: 12, mediaType: 'application/wasm' }] } } } }];
+  const storage = makeStorage(f.tables, f.resources);
+  const closure = await collectLearningSources(storage);
+  assertClosureShape(closure);
+  const command = closure.entries.find(entry => entry.kind === 'execution_commands'
+    && entry.fixedId !== f.tables.execution_commands[0].request_id);
+  assert.ok(command, 'the embedded foreign reference row is collected');
+  assert.deepEqual(command.resources, [], 'bytes of another owner are not attested by this owner');
+  await validateLearningSources(storage, closure);
 });
 
 test('validateTeachingSources rejects a tampered digest and a removed resource', async () => {

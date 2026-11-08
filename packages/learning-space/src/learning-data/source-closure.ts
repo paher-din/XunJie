@@ -108,9 +108,32 @@ function scopeOf(row: SourceRow, ownerEnvironmentId: string): Scope {
 const pickKeyColumns = (row: SourceRow, columns: readonly string[]): string =>
   columns.map(column => row[column]).filter(value => value !== null && value !== undefined).map(String).join(':');
 
-async function defaultResources(row: SourceRow, read: ReadSourceResource): Promise<SourceResourceFact[]> {
+function isMissingResource(error: unknown): boolean {
+  const code = error instanceof StorageError ? error.code : (error as { code?: unknown } | null)?.code;
+  return code === 'missing' || code === 'resource-gone';
+}
+
+/**
+ * Bodies may embed references to bytes another owner holds (course component entry/algorithm
+ * manifests inside an execution action). This owner attests only bytes its own storage has staged;
+ * a foreign reference stays in the row digest, and its owning owner covers the bytes. A reference
+ * this owner once staged but can no longer read is a genuine dangling original and must fail.
+ */
+async function isForeignReference(storage: OwnedStorage, resourceId: string): Promise<boolean> {
+  const { rows } = await storage.read('SELECT resource_id FROM _storage_resources WHERE resource_id=$1', [resourceId]);
+  return rows.length === 0;
+}
+
+async function defaultResources(storage: OwnedStorage, row: SourceRow): Promise<SourceResourceFact[]> {
   const facts: SourceResourceFact[] = [];
-  for (const resourceId of resourceIdsFromRow(row)) facts.push(await read(resourceId));
+  for (const resourceId of resourceIdsFromRow(row)) {
+    try {
+      const bytes = await storage.readResource(resourceId);
+      facts.push({ resourceId, sha256: sha256(bytes), byteLength: bytes.byteLength });
+    } catch (error) {
+      if (!isMissingResource(error) || !(await isForeignReference(storage, resourceId))) throw error;
+    }
+  }
   return facts;
 }
 
@@ -125,7 +148,7 @@ export async function collectSources(storage: OwnedStorage, owner: string, specs
     // pg timestamptz/bytea must become stable JSON values before the canonical digest.
     const facts = JSON.parse(JSON.stringify(rows)) as SourceRow[];
     for (const row of facts) {
-      const resources = spec.resources ? await spec.resources(row, read) : await defaultResources(row, read);
+      const resources = spec.resources ? await spec.resources(row, read) : await defaultResources(storage, row);
       resources.sort((a, b) => a.resourceId < b.resourceId ? -1 : a.resourceId > b.resourceId ? 1 : 0);
       entries.push({
         kind: spec.kind,

@@ -1,13 +1,13 @@
 {
   "issue": 221,
-  "at": "2026-11-08T10:25:17.893Z",
+  "at": "2026-11-08T11:04:30.428Z",
   "node": "v24.21.0",
   "postgres": "18.6 (packaged)",
   "fullVerify": {
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-08T10:08:30.787Z",
-    "finishedAt": "2026-11-08T10:14:04.112Z",
+    "startedAt": "2026-11-08T10:49:44.910Z",
+    "finishedAt": "2026-11-08T10:55:45.406Z",
     "stages": [
       {
         "name": "prepare",
@@ -54,21 +54,20 @@
       "apps/server/tests/wp08-221-source-closure.test.mjs",
       "packages/product-runtime/test/recovery-set.test.mjs"
     ],
-    "passed": 15,
+    "passed": 16,
     "failed": 0
   },
   "runtimeRegression": {
-    "passed": 48,
-    "failed": 1,
-    "total": 49,
-    "preExistingFailure": "skills-recovery v1 inventory assertion stale after #219 v4",
-    "fixedAndRerun": "2/2"
+    "passed": 49,
+    "failed": 0,
+    "total": 49
   },
+  "reviewFollowUp": "foreign cross-owner resource references stay row data; owned-but-missing originals fail collection",
   "typecheck": "passed",
   "build": "passed",
   "docLinks": {
     "markdown": 282,
-    "targets": 2778,
+    "targets": 2797,
     "failures": 0
   },
   "realProtocols": {
@@ -80,5 +79,6 @@
     "pdf": "6/6",
     "skills": "8/8",
     "version": "156.0.8078.80"
-  }
+  },
+  "windowsPdfSmoke": "7/7 cases passed on Windows 11 x64 with packaged Node/PDF.js/canvas"
 }
