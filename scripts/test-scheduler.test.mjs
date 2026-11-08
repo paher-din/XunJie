@@ -56,7 +56,7 @@ for (const jobs of [1, 2, 4]) {
     const tasks = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((name, index) => f.task(name, index % 2 ? 'server' : 'unit'));
     tasks.splice(4, 0, f.task('sensitive-1', 'tools', true), f.task('sensitive-2', 'tools', true));
     f.barrier(tasks, jobs);
-    assert.equal(await runVerification({ root: f.root, options: { jobs }, phases: [tasks] }), 0);
+    assert.equal(await runVerification({ root: f.root, options: { jobs, reportDir: '.verification' }, phases: [tasks] }), 0);
     let active = new Set(), peak = 0;
     for (const event of readFileSync(f.events, 'utf8').trim().split('\n').map(JSON.parse)) {
       if (event.action === 'start') {
@@ -82,7 +82,7 @@ for (const jobs of [1, 2, 4]) {
 test('launch errors are logged, return failure, and preserve the rest of the tests', async t => {
   const f = fixture(t);
   const missing = { ...f.task('missing', 'unit'), command: join(f.root, 'not-installed') };
-  assert.equal(await runVerification({ root: f.root, options: { jobs: 2 }, phases: [[missing, f.task('remaining', 'unit')]] }), 1);
+  assert.equal(await runVerification({ root: f.root, options: { jobs: 2, reportDir: '.verification' }, phases: [[missing, f.task('remaining', 'unit')]] }), 1);
   const stage = f.summary().stages[0];
   assert.equal(stage.status, 'failed');
   assert.equal(stage.tasks[0].exitCode, 1);
@@ -92,7 +92,7 @@ test('launch errors are logged, return failure, and preserve the rest of the tes
 
 test('tests rerun on a second invocation and keep separate raw logs', async t => {
   const f = fixture(t);
-  const options = { jobs: 1 }, phases = [[f.task('again', 'unit')]];
+  const options = { jobs: 1, reportDir: '.verification' }, phases = [[f.task('again', 'unit')]];
   assert.equal(await runVerification({ root: f.root, options, phases }), 0);
   const first = f.summary();
   assert.equal(await runVerification({ root: f.root, options, phases }), 0);
@@ -141,7 +141,7 @@ appendFileSync(events,JSON.stringify({name,action:'end'})+'\\n');
   }
   const phases = scheduleTestPhases(tasks);
   f.barrier(phases[0], 4);
-  assert.equal(await runVerification({ root: f.root, options: { jobs: 4 }, phases }), 0);
+  assert.equal(await runVerification({ root: f.root, options: { jobs: 4, reportDir: '.verification' }, phases }), 0);
   let active = 0, peak = 0;
   for (const event of readFileSync(f.events, 'utf8').trim().split('\n').map(JSON.parse)) {
     active += event.action === 'start' ? 1 : -1; peak = Math.max(peak, active);

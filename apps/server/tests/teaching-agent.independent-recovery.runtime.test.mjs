@@ -29,6 +29,9 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
   const source = openProductRuntime({ root: sourceRoot, resources: f.resources });
   const target = openProductRuntime({ root: targetRoot, resources: f.resources });
   let backend = await freePort(), restored, failure, browser, page, receiverHost;
+  const evidenceDirectory = process.env.XUNJIE_RECOVERY_EVIDENCE_DIR?.trim() || process.env.XUNJIE_EVIDENCE_DIR?.trim();
+  const evidence = evidenceDirectory ? resolve(evidenceDirectory) : undefined;
+  let reportWritten = false;
   // A stable product address forwards real HTTP only. Both sides remain full production hosts.
   const proxy = createServer((incoming, outgoing) => {
     const forwarded = httpRequest({ hostname: '127.0.0.1', port: backend, path: incoming.url, method: incoming.method, headers: incoming.headers }, response => {
@@ -161,14 +164,14 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
     assert.deepEqual(dormantAfter.questions, dormantBefore.questions); assert.equal(dormantAfter.runs[0].state, 'waiting');
     assert.deepEqual(final.runs[0].usage, { state: 'final', inputTokens: 40, outputTokens: 20, totalTokens: 60 });
     await assert.rejects(source.start(), error => error.code === 'source-retired');
-    if (page) {
-      const evidence = resolve(process.env.XUNJIE_RECOVERY_EVIDENCE_DIR ?? '.verification/wp07-204/chrome-independent');
+    if (page && evidence) {
       await mkdir(evidence, { recursive: true });
       await page.screenshot({ path: join(evidence, 'active-' + process.platform + '.png'), fullPage: true });
       await writeFile(join(evidence, 'report.json'), JSON.stringify({ source: 'independent-agent-same-host-stable-endpoint', platform: process.platform,
         chromeVersion: browser.version(), originalRunId: first.runId, finalRunId: final.runs[0].runId,
         modelCalls: f.payloads.length, repeatedTakeoverAfterReconnection: true, credentialRotationInSameProcess: true,
         dormantReceiverQuestionRetained: true, sourceRetired: true, cleanup: 'pending' }, null, 2));
+      reportWritten = true;
     }
   } catch (error) { failure = error; throw error; }
   finally {
@@ -184,8 +187,8 @@ for (const mode of ['student', 'tool']) test(`a restored independent Agent conti
     if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith('xj-independent-recovery-')) throw new Error('Unexpected cleanup target');
     if (!errors.length) {
       await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-      if (page) {
-        const reportFile = join(resolve(process.env.XUNJIE_RECOVERY_EVIDENCE_DIR ?? '.verification/wp07-204/chrome-independent'), 'report.json');
+      if (reportWritten && evidence) {
+        const reportFile = join(evidence, 'report.json');
         if (await access(reportFile).then(() => true, () => false)) {
           const report = JSON.parse(await readFile(reportFile, 'utf8'));
           await writeFile(reportFile, JSON.stringify({ ...report, cleanup: 'completed' }, null, 2));

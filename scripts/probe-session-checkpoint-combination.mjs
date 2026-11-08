@@ -1,7 +1,7 @@
+import { captureEvidence, writeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { writeFile } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 
 /** Runs inside the actual product page; execution and checkpoint bytes stay at the school owner. */
@@ -73,7 +73,7 @@ export async function probeCheckpointCombination({ page, activityId, title, api,
     const replay = await api(path + '/control', control);
     assert.equal(replay.status, 200);
     assert.equal(replay.body.session.appliedSeq, 5);
-    await page.screenshot({ path: join(output, `${label}-checkpoint-before-restore.png`), fullPage: true });
+    await captureEvidence(page, { path: join(output, `${label}-checkpoint-before-restore.png`), fullPage: true });
     await panel.getByRole('button', { name: '停止会话', exact: true }).click();
     const stopped = await poll(path, query => query.state === 'cancelled' && query.statusKnowledge === 'confirmed', '原会话确认结束');
     const originalAction = action;
@@ -96,7 +96,7 @@ export async function probeCheckpointCombination({ page, activityId, title, api,
     for (const key of ['value', 'total', 'applied'])
       assert.equal(next.session.observation[key], baseline.session.observation[key], `真实恢复的下一步 ${key}`);
     assert.equal((await read(path)).state, stopped.state);
-    await page.screenshot({ path: join(output, `${label}-checkpoint-restored.png`), fullPage: true });
+    await captureEvidence(page, { path: join(output, `${label}-checkpoint-restored.png`), fullPage: true });
     const reset = await effect(restoredPath, '复位', 2);
     assert.equal(reset.session.observation.value, 0);
     assert.equal(reset.session.observation.total, 0);
@@ -115,10 +115,10 @@ export async function probeCheckpointCombination({ page, activityId, title, api,
     report.failureQuery = path ? await read(restoredPath ?? path).catch(() => null) : null;
     const checkpointControl = report.controls.find(control => control.effect === 'checkpoint');
     if (path && checkpointControl) report.failureReceipt = await api(path + '/controls/' + checkpointControl.controlId).catch(() => null);
-    await page.screenshot({ path: join(output, `${label}-checkpoint-failed.png`), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, `${label}-checkpoint-failed.png`), fullPage: true }).catch(() => {});
     throw error;
   } finally {
-    await writeFile(join(output, `${label}-checkpoint-combination.json`), JSON.stringify(report, null, 2) + '\n');
+    await writeEvidence(join(output, `${label}-checkpoint-combination.json`), JSON.stringify(report, null, 2) + '\n');
     page.off('request', onRequest);
     for (const target of [path, restoredPath].filter(Boolean))
       await api(target + '/stop', { stopId: randomUUID(), reason: '检查点组合验收清理' }).catch(() => {});

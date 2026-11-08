@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm } from 'node:fs/promises';
 import { release, tmpdir } from 'node:os';
 import { connect } from 'node:net';
 import { join, resolve, basename } from 'node:path';
@@ -20,15 +21,17 @@ import { accumulatorPackage } from '../components/state-accumulator/package.mjs'
 const exec = promisify(execFile);
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
+  const inline = args.find(value => value.startsWith(name + '='));
+  if (inline) return inline.slice(name.length + 1);
   const index = args.indexOf(name);
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
 const product = option('--package', null);
 if (!product) throw new Error('--package is required (for example dist/product-darwin-arm64-wp03-r2)');
-const output = resolve(option('--out', '.verification/wp03-184-product'));
-const evidence = resolve(option('--evidence-dir', 'docs/student-agent-implementation/evidence'));
+const output = probeEvidenceDirectory();
+const evidence = option('--evidence-dir', null);
 await mkdir(output, { recursive: true });
-await mkdir(evidence, { recursive: true });
+if (evidence) await mkdir(resolve(evidence), { recursive: true });
 
 const nodeInProduct = join(product, 'resources/node/bin/node');
 const scrubbed = { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: process.env.HOME, LANG: 'en_US.UTF-8',
@@ -192,7 +195,7 @@ try {
   await enter(2, '3');
   await enter(2, '1');
   const history = await page.locator('.native-session-history li').count();
-  await page.screenshot({ path: join(output, 'native-product-light.png') });
+  await captureEvidence(page, { path: join(output, 'native-product-light.png') });
   await page.getByRole('tab', { name: '作品' }).click();
   await page.getByRole('tab', { name: '四态累加模拟' }).click();
   await page.reload();
@@ -202,10 +205,10 @@ try {
   const reopenedHistory = await page.locator('.native-session-history li').count();
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.screenshot({ path: join(output, 'native-product-dark.png') });
+  await captureEvidence(page, { path: join(output, 'native-product-dark.png') });
   await page.setViewportSize({ width: 900, height: 900 });
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.screenshot({ path: join(output, 'native-product-narrow.png') });
+  await captureEvidence(page, { path: join(output, 'native-product-narrow.png') });
   await page.setViewportSize({ width: 1440, height: 1000 });
   record('chrome-student-path', { browser: 'installed desktop Chrome', browserVersion, startValue, sequence, history,
     reopened, reopenedHistory, pageErrors: errors, acceptCaptured: Boolean(acceptBody) });
@@ -333,16 +336,18 @@ try {
   const failed = Object.entries(report.checks).filter(([, value]) => value === false).map(([name]) => name);
   report.status = failed.length ? 'failed' : 'passed';
   report.failed = failed;
-  await writeFile(join(output, 'product-report.json'), JSON.stringify(report, null, 2));
-  for (const name of ['native-product-light.png', 'native-product-dark.png', 'native-product-narrow.png']) {
-    await cp(join(output, name), join(evidence, 'wp03-184-' + name.replace('native-product-', 'product-'))).catch(() => {});
+  await writeEvidence(join(output, 'product-report.json'), JSON.stringify(report, null, 2));
+  if (evidence) {
+    for (const name of ['native-product-light.png', 'native-product-dark.png', 'native-product-narrow.png']) {
+      await cp(join(output, name), join(evidence, 'wp03-184-' + name.replace('native-product-', 'product-'))).catch(() => {});
+    }
+    await cp(join(output, 'product-report.json'), join(evidence, 'wp03-184-product.json')).catch(() => {});
   }
-  await cp(join(output, 'product-report.json'), join(evidence, 'wp03-184-product.json')).catch(() => {});
-  console.log(JSON.stringify({ status: report.status, failed, output }));
+  console.log(JSON.stringify({ status: report.status, failed, output: hasProbeEvidence(output) ? output : null }));
   if (report.status !== 'passed') process.exitCode = 1;
 } finally {
   await browser?.close().catch(() => {});
   await cli('stop').catch(() => null);
   await rm(root, { recursive: true, force: true }).catch(() => {});
-  await writeFile(join(output, 'last-run.json'), JSON.stringify({ root, finishedAt: new Date().toISOString(), checks: report.checks }, null, 2)).catch(() => {});
+  await writeEvidence(join(output, 'last-run.json'), JSON.stringify({ root, finishedAt: new Date().toISOString(), checks: report.checks }, null, 2)).catch(() => {});
 }

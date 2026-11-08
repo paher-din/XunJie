@@ -1,9 +1,10 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 // #211 extra real-product checks: legacy stateVersion1 coexistence, tutor draft preservation,
 // offline check retention + single sync, and Worker/WASM resource accounting.
 // Real desktop Chrome + native PostgreSQL + packaged product; no teaching claim.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { tmpdir, cpus, freemem, loadavg, totalmem } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,7 +12,7 @@ import { execFileSync } from 'node:child_process';
 import { chromium, expect } from '@playwright/test';
 import { aluPackage, aluCoursePackage } from '../components/alu-experiment/package.mjs';
 
-const output = resolve(process.env.XUNJIE_ALU_OUTPUT ?? '.verification/wp04-211/product-extras');
+const output = probeEvidenceDirectory(process.env.XUNJIE_ALU_OUTPUT);
 await mkdir(output, { recursive: true });
 const packageRoot = resolve(process.env.XUNJIE_ALU_PRODUCT_ROOT ?? 'dist/product-darwin-arm64-wp04-211b');
 const declared = JSON.parse(await readFile(join(packageRoot, 'resources.json'), 'utf8'));
@@ -74,7 +75,7 @@ try {
   await expect(page.getByRole('button', { name: 'alu.sv', exact: true }).first()).toBeVisible({ timeout: 60000 });
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
   await expect(page.getByRole('button', { name: '运行', exact: true })).toBeEnabled({ timeout: 120000 });
-  await page.screenshot({ path: join(output, 'before-tutor.png') });
+  await captureEvidence(page, { path: join(output, 'before-tutor.png') });
 
   // Open the real tutor pane and keep a Chinese question draft across run and check.
   await page.getByRole('button', { name: '打开对话', exact: true }).click();
@@ -82,7 +83,7 @@ try {
   const draft = page.getByLabel('你的问题');
   await draft.fill(draftText);
   await expect(draft).toHaveValue(draftText);
-  await page.screenshot({ path: join(output, 'after-tutor-draft.png') });
+  await captureEvidence(page, { path: join(output, 'after-tutor-draft.png') });
   const draftSends = [];
   page.on('request', request => { const body = request.postData(); if (body?.includes(draftText)) draftSends.push({ url: request.url(), method: request.method() }); });
   const correct = `// correct ALU typed through the real editor\nmodule alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); always_comb begin F=0; Cout=0; case({M,S}) 3'b000:F=~A; 3'b001:F=A&B; 3'b010:F=A|B; 3'b011:F=A^B; 3'b100:{Cout,F}={1'b0,A}+{1'b0,B}+Cin; default:begin F=0;Cout=0;end endcase end endmodule`;
@@ -104,7 +105,7 @@ try {
   report.draftRequests = draftSends;
   assert.ok(draftSends.every(request => /\/api\/learning\/drafts\//.test(request.url)),
     'draft leaked outside its own draft store: ' + JSON.stringify(draftSends));
-  await page.screenshot({ path: join(output, 'after-check-draft-preserved.png') });
+  await captureEvidence(page, { path: join(output, 'after-check-draft-preserved.png') });
   check(true, 'a full 4096-input check does not clear or send the tutor question draft (only its own draft store saves it)');
 
   // Retained resource accounting from the real service artifact.
@@ -122,7 +123,7 @@ try {
   await expect(page.getByText('已提交全量检查；完成前不会显示通过。')).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(6000);
   await expect(page.getByText('4096 组检查通过', { exact: true })).toBeVisible({ timeout: 10000 });
-  await page.screenshot({ path: join(output, 'after-offline-check.png') });
+  await captureEvidence(page, { path: join(output, 'after-offline-check.png') });
   check(true, 'a check still completes from local execution while the application API is unavailable');
   await context.unroute('**/api/learning/**');
   await expect.poll(async () => {
@@ -201,18 +202,18 @@ try {
     await legacyPage.getByRole('button', { name: '运行', exact: true }).click();
     await expect(legacyPage.getByText(/F：0000/)).toBeVisible({ timeout: 60000 });
     await expect(legacyPage.getByText(/Cout：1/)).toBeVisible();
-    await legacyPage.screenshot({ path: join(output, 'legacy-stateversion1-run.png') });
+    await captureEvidence(legacyPage, { path: join(output, 'legacy-stateversion1-run.png') });
     check(true, 'archived stateVersion1 course renders its five-select single-run form and produces real F=0000/Cout=1');
   } finally { await legacyBrowser?.close().catch(() => {}); await legacyRuntime.stop().catch(() => {}); }
 
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.error = String(error.stack ?? error);
-  if (page) { report.visibleText = await page.locator('body').innerText().catch(() => ''); await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {}); }
+  if (page) { report.visibleText = await page.locator('body').innerText().catch(() => ''); await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {}); }
   throw error;
 } finally {
   await browser?.close();
   await runtime.stop().catch(() => {});
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));
 }

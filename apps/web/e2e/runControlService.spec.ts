@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test } from '@playwright/test'
 import { startSessionHost } from './sessionHost'
 import { realProject, selectActualRun, acceptedRun, runLocal, trackRuns } from './runServiceHelpers'
@@ -36,7 +37,7 @@ test('实际停止受理保持原身份和未确认槽位，确认后仍服从�
     expect(next.result.runId).not.toBe(original.result.runId)
     await expect(page.locator('.core-run-result')).toContainText('运行完成')
     expect((await host.control({ kind: 'runner', action: 'inspect' })).totals.submitEffects).toBe(2)
-    await page.screenshot({ path: test.info().outputPath('actual-stop-confirmation.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/runControlService/actual-stop-confirmation.png') })
   } finally { await page.context().close(); await host.stop() }
 })
 

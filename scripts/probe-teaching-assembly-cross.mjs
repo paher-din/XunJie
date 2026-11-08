@@ -19,7 +19,7 @@ const { values: args } = parseArgs({ options: {
   'remote-certificate': { type: 'string' }, 'remote-key': { type: 'string' },
   'mac-host': { type: 'string' }, 'win-host': { type: 'string' },
   'mac-port': { type: 'string' }, 'win-port': { type: 'string' },
-  'credentials-file': { type: 'string' }, out: { type: 'string' },
+  'credentials-file': { type: 'string' }, out: { type: 'string' }, 'no-evidence': { type: 'boolean' },
   artifacts: { type: 'boolean' }, 'artifacts-windows-local-only': { type: 'boolean' }, 'artifacts-skip-windows-local': { type: 'boolean' }, 'artifacts-keep-failure': { type: 'boolean' }, 'artifacts-model': { type: 'string', default: 'real' }, 'artifacts-session': { type: 'string', default: 'wp09-cross-224' }, 'artifacts-call-budget': { type: 'string', default: '8' },
   'artifacts-resume': { type: 'string' }, 'artifacts-takeover-resume': { type: 'string' }, 'artifacts-worker-root': { type: 'string' },
   worker: { type: 'boolean' }, help: { type: 'boolean' }, discovery: { type: 'boolean' }, skills: { type: 'boolean' },
@@ -29,7 +29,8 @@ const takeoverContinuation = !!args['artifacts-takeover-resume'];
 const resumeConfiguration = resumeFile ? JSON.parse(await readFile(resumeFile, 'utf8')) : null;
 if (resumeConfiguration) {
   const file = resumeFile, output = args.out ?? resumeConfiguration.args.out.replace(/\.json$/, '-recovery.json');
-  Object.assign(args, resumeConfiguration.args, { out: output, 'artifacts-resume': file,
+  const noEvidence = args['no-evidence'] ?? (args.out ? false : resumeConfiguration.args['no-evidence']);
+  Object.assign(args, resumeConfiguration.args, { out: output, 'no-evidence': noEvidence, 'artifacts-resume': file,
     'artifacts-worker-root': resumeConfiguration.windowsRoot, 'artifacts-keep-failure': true });
 }
 if ([args.discovery, args.skills, args.artifacts].filter(Boolean).length > 1) throw new Error('Choose at most one of --discovery, --skills and --artifacts.');
@@ -56,6 +57,7 @@ if (args.help) {
   --certificate PEM --key PEM --remote-certificate WIN_PEM --remote-key WIN_KEY
   --mac-host IP --win-host IP --credentials-file PRIVATE --out JSON
   [--discovery | --skills | --artifacts] [--mac-port PORT --win-port PORT]
+  [--no-evidence] Keep protocol JSON for a controller without capturing PNG evidence.
 Default mode uses issue #215, ports 38215/38216 and read_work -> answer.
 --skills uses issue #217, ports 39217/39218 and skill_read -> answer for fixed course Skills.
 Creates an isolated Mac school and Windows Agent. The same test CA/certificate must cover both IPs.
@@ -792,7 +794,7 @@ async function finishActiveTakeover() {
   try {
     await trust(args.certificate);pkg=await product(args.product);
     const remoteBase=args['remote-script'].replace(/\/[^/]+$/,'');
-    for(const name of ['probe-teaching-assembly-cross.mjs','probe-wp09-cross.mjs','lib/wp09-cross-case.mjs'])await exec('scp',['-q',fileURLToPath(new URL(name,import.meta.url)),args.ssh+':'+remoteBase+'/'+name]);
+    for(const name of ['probe-teaching-assembly-cross.mjs','probe-wp09-cross.mjs','lib/wp09-cross-case.mjs','lib/probe-evidence.mjs'])await exec('scp',['-q',fileURLToPath(new URL(name,import.meta.url)),args.ssh+':'+remoteBase+'/'+name]);
     firewall='XunJie-WP09-Finish-'+randomUUID();await ps(`New-NetFirewallRule -Name ${q(firewall)} -DisplayName ${q(firewall)} -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${port(args['win-port'])},${port(args['win-port'])+2} -RemoteAddress ${q(args['mac-host'])} -Profile Any|Out-Null`);
     runtime=pkg.module.openProductRuntime({root:cfg.takeover.macRoot,resources:pkg.resources});
     host=await pkg.module.createProductRuntimeHost({root:cfg.takeover.macRoot,createApplication:async context=>{
@@ -856,16 +858,16 @@ async function finishActiveTakeover() {
       try{
         const remoteDir=remoteBase+'/takeover-Chrome-'+randomUUID(),base=platform==='win32'?remoteDir:local;
         const head=await read('workspaces/'+id),value=JSON.parse(head.files.find(f=>f.name==='components/artifact-'+artifacts.originals[0].artifactId+'.json').value).content.explanation;
-        const job={endpoint:state.endpoint,student:cfg.student,activityId:id,expected:value,readOnlyView:true,takeoverView:true,spki,
+        const job={captureEvidence:!args['no-evidence'],endpoint:state.endpoint,student:cfg.student,activityId:id,expected:value,readOnlyView:true,takeoverView:true,spki,
           certificate:platform==='win32'?args['remote-certificate']:args.certificate,product:platform==='win32'?args['remote-product']:pkg.root,
-          applicationSha256:pkg.fact.applicationSha256,playwright:platform==='win32'?'C:/Users/h/XunJie-acceptance/package.json':resolve('apps/web/package.json'),result:base+'/result.json',screenshot:base+'/screen.png'};
+          applicationSha256:pkg.fact.applicationSha256,playwright:platform==='win32'?'C:/Users/h/XunJie-acceptance/package.json':resolve('apps/web/package.json'),result:base+'/result.json',screenshot:args['no-evidence']?undefined:base+'/screen.png'};
         let result;
         if(platform==='win32'){
           task='XunJie-WP09-Takeover-'+randomUUID();const launch='"'+remoteBase+'/probe-wp09-cross.mjs" --chrome-job "'+base+'/job.json"';
           await ps(`New-Item -ItemType Directory -Path ${q(base)}|Out-Null;[IO.File]::WriteAllText(${q(base+'/job.json')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false));$a=New-ScheduledTaskAction -Execute ${q(args['remote-product']+'/resources/node/node.exe')} -Argument ${q(launch)};$p=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited;$s=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3);Register-ScheduledTask -TaskName ${q(task)} -Action $a -Principal $p -Settings $s|Out-Null;Start-ScheduledTask -TaskName ${q(task)}`,JSON.stringify(job));
           result=await until(async()=>{const text=await ps(`if(Test-Path -LiteralPath ${q(job.result)}){[IO.File]::ReadAllText(${q(job.result)})}`);const value=text?JSON.parse(text):null;if(value?.status==='failed')throw Object.assign(new Error(),{code:value.error});return value?.status==='passed'?value:null;},'takeover-Windows-Chrome-timeout',120000);
         }else{await writeFile(base+'/job.json',JSON.stringify(job),{mode:0o600});await artifactChromeJob(base+'/job.json');result=JSON.parse(await readFile(job.result,'utf8'));check(result.status==='passed','takeover-Mac-Chrome-failed');}
-        const shots=[];for(const shot of result.screenshots){const bytes=platform==='win32'?Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`),'base64'):await readFile(shot.path);check(sha(bytes)===shot.sha256,'takeover-screenshot-mismatch');const path=join(dirname(output),platform+'-takeover.png');await writeFile(path,bytes);shots.push({path,sha256:shot.sha256});}
+        const shots=[];if(!args['no-evidence'])for(const shot of result.screenshots){const bytes=platform==='win32'?Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`),'base64'):await readFile(shot.path);check(sha(bytes)===shot.sha256,'takeover-screenshot-mismatch');const path=join(dirname(output),platform+'-takeover.png');await writeFile(path,bytes);shots.push({path,sha256:shot.sha256});}
         return {status:'passed',checks:result.checks,chromeVersion:result.chromeVersion,screenshots:shots};
       }finally{if(task)await ps(`Stop-ScheduledTask -TaskName ${q(task)} -ErrorAction SilentlyContinue;Unregister-ScheduledTask -TaskName ${q(task)} -Confirm:$false`);await release();await rm(local,{recursive:true,force:true});}
     }

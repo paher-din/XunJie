@@ -1,13 +1,12 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { teachingRunControlReceiptSchema } from '@xunjie/contracts/teaching-agent'
 import { defaultLearningAdmissionPolicy } from '@xunjie/learning-space'
 import { fixture, reply, until } from '../../server/tests/support/teaching-input-control.mjs'
 
-const evidence = process.env.XUNJIE_INPUT_CONTROL_EVIDENCE_DIR
-  ?? fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence/wp07-200', import.meta.url))
+const evidence = evidenceDirectory('wp07-200', process.env.XUNJIE_INPUT_CONTROL_EVIDENCE_DIR)
 test.use({ trace: 'off' })
 
 test('baseline: capture the existing busy composer and personal settings before input control UI', async ({ page }) => {
@@ -19,7 +18,7 @@ test('baseline: capture the existing busy composer and personal settings before 
     await gate; reply(response, { text: '原有对话继续保留。' })
   })
   try {
-    await mkdir(evidence, { recursive: true })
+    if (evidence) await mkdir(evidence, { recursive: true })
     await f.configure()
     const activity = await f.activity('核对运行中补充和排队')
     const first = await f.send(activity, '先解释当前问题。')
@@ -30,14 +29,14 @@ test('baseline: capture the existing busy composer and personal settings before 
     await expect(page.getByRole('region', { name: '与 Agent 的对话', exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: '与 Agent 的对话', exact: true })).toContainText('先解释当前问题。')
     await expect(page.getByRole('region', { name: '与 Agent 的对话', exact: true })).toContainText('Agent 正在生成回答')
-    await page.screenshot({ path: join(evidence, `input-control-before-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-control-before-${process.platform}.png`) })
     release()
     await until(async () => (await f.api(`agent/${activity.activityId}/runs/${first.runId}`)).state === 'completed', 'Finish the captured request.')
     await page.goto(f.endpoint + '/?settings=models')
     await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeVisible()
     await expect(page.getByText('正在读取配置…', { exact: true })).not.toBeVisible()
     await expect(page.getByText('正在读取当前模型…', { exact: true })).not.toBeVisible()
-    await page.screenshot({ path: join(evidence, `input-settings-before-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-settings-before-${process.platform}.png`) })
   } finally { release(); await f.close() }
 })
 
@@ -50,7 +49,7 @@ test('personal interaction settings persist and the busy composer freezes the ch
     reply(response, { text: index === 1 ? '先完成原问题。' : '本轮结束后处理排队内容。' })
   })
   try {
-    await mkdir(evidence, { recursive: true })
+    if (evidence) await mkdir(evidence, { recursive: true })
     await f.configure()
     const saved = await f.api('agent-settings')
     if (saved.busyInputMode !== 'steering') await f.api('agent-settings', { requestId: crypto.randomUUID(), expectedVersion: saved.version, busyInputMode: 'steering' })
@@ -62,7 +61,7 @@ test('personal interaction settings persist and the busy composer freezes the ch
     await page.reload()
     await expect(preferences.getByRole('radio', { name: /本轮结束后处理/ })).toHaveAttribute('aria-checked', 'true')
     await preferences.scrollIntoViewIfNeeded()
-    await page.screenshot({ path: join(evidence, `input-settings-after-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-settings-after-${process.platform}.png`) })
     const activity = await f.activity('在忙碌时可靠补充与排队')
     await f.send(activity, '先解释原问题。')
     await until(() => f.payloads.length === 1, 'The actual model request is in flight.')
@@ -79,7 +78,7 @@ test('personal interaction settings persist and the busy composer freezes the ch
     expect(received?.input.delivery).toEqual({ version: 1, mode: 'queue', basis: { source: 'preference', preferenceVersion: (await f.api('agent-settings')).version } })
     expect(f.payloads.length).toBe(1)
     await page.getByLabel('你的问题', { exact: true }).fill('尚未发送的中文草稿\n保留下一步想法。')
-    await page.screenshot({ path: join(evidence, `input-control-queue-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-control-queue-${process.platform}.png`) })
     release()
     await expect(page.getByText('本轮结束后处理排队内容。', { exact: true })).toBeVisible({ timeout: 20000 })
     await expect(page.getByLabel('你的问题', { exact: true })).toHaveValue('尚未发送的中文草稿\n保留下一步想法。')
@@ -135,7 +134,7 @@ test('queued input editing survives reload and lost control receipts without cha
     await expect(page.getByLabel('你的问题', { exact: true })).toHaveValue('另一个未发送的草稿。')
     await expect(page.getByLabel('你的问题', { exact: true })).toBeFocused()
     await expect(queued).toContainText('已纳入下一步')
-    await page.screenshot({ path: join(evidence, `input-control-revised-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-control-revised-${process.platform}.png`) })
   } finally { release(); await f.close() }
 })
 
@@ -164,7 +163,7 @@ test('steering defers the old question while its Chinese response can be kept as
     await page.setViewportSize({ width: 640, height: 900 })
     await page.emulateMedia({ colorScheme: 'dark' })
     await card.scrollIntoViewIfNeeded()
-    await page.screenshot({ path: join(evidence, `input-control-deferred-dark-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-control-deferred-dark-${process.platform}.png`) })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   } finally { await f.close() }
 })
@@ -214,7 +213,7 @@ test('stop and selected continuation keep original control identities and remove
     }).toBe(true)
     expect((await f.api(`agent/${activity.activityId}/conversation`)).runs.length).toBe(3)
     expect(f.payloads.length).toBe(3)
-    await page.screenshot({ path: join(evidence, `input-control-continue-${process.platform}.png`) })
+    if (evidence) await page.screenshot({ path: join(evidence, `input-control-continue-${process.platform}.png`) })
   } finally { await f.close() }
 })
 

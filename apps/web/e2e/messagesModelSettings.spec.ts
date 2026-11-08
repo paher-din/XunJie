@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { createServer } from 'node:http'
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -13,7 +14,7 @@ test.skip(!process.env.XUNJIE_PRODUCT_POSTGRES_BIN, 'Requires native PostgreSQL 
 test.use({ trace: 'off' })
 test.setTimeout(120000)
 type Runtime = Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>
-const output = fileURLToPath(new URL('../../../.verification/167', import.meta.url))
+const output = evidenceDirectory('167')
 let school: Runtime, device: Runtime, schoolEndpoint = '', deviceEndpoint = '', schoolCookie = '', connectionKey = '', baseUrl = '', browserVersion = ''
 const cases: { title: string; status?: string; duration: number }[] = []
 const upstream = createServer(async (request, response) => {
@@ -30,7 +31,7 @@ const upstream = createServer(async (request, response) => {
   send({ type: 'message_stop' }); response.end()
 })
 test.beforeAll(async ({ browser }) => {
-  browserVersion = browser.version(); await mkdir(output, { recursive: true })
+  browserVersion = browser.version(); if (output) await mkdir(output, { recursive: true })
   await new Promise<void>(done => upstream.listen(0, '127.0.0.1', done))
   baseUrl = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/anthropic`
   const open = async (root: string): Promise<Runtime> => {
@@ -64,7 +65,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async ({}, info) => { cases.push({ title: info.title, ...(info.status ? { status: info.status } : {}), duration: info.duration }) })
 test.afterAll(async ({}, info) => {
   await device?.stop(); await school?.stop(); upstream.closeAllConnections(); await new Promise<void>(done => upstream.close(() => done()))
-  await writeFile(join(output, 'messages-chrome-' + process.platform + '.json'), JSON.stringify({ platform: process.platform, os: release(), browser: 'installed Chrome', browserVersion,
+  if (output) await writeFile(join(output, 'messages-chrome-' + process.platform + '.json'), JSON.stringify({ platform: process.platform, os: release(), browser: 'installed Chrome', browserVersion,
     headless: info.project.use.headless !== false, measuredAt: new Date().toISOString(), cases }, null, 2))
 })
 test('Messages formal draft check save reopen and cancel use the production owner', async ({ page }) => {
@@ -77,10 +78,10 @@ test('Messages formal draft check save reopen and cancel use the production owne
   await dialog.getByLabel('协议', { exact: true }).selectOption('messages')
   await dialog.getByLabel('方言', { exact: true }).selectOption('deepseek')
   const check = dialog.getByRole('button', { name: '保存前检查', exact: true })
-  if (process.env.XUNJIE_CAPTURE_BEFORE === '1') await page.screenshot({ path: join(output, 'messages-settings-before-win.png'), fullPage: true })
+  if (process.env.XUNJIE_CAPTURE_BEFORE === '1' && output) await page.screenshot({ path: join(output, 'messages-settings-before-win.png'), fullPage: true })
   await expect(check).toBeEnabled(); await check.click(); await expect(dialog.getByRole('status')).toContainText('检查已完成')
   await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running' && animation.effect?.getComputedTiming().iterations !== Infinity).length)).toBe(0)
-  await page.screenshot({ path: join(output, 'messages-settings-after-win.png'), fullPage: true })
+  if (output) await page.screenshot({ path: join(output, 'messages-settings-after-win.png'), fullPage: true })
   await dialog.getByRole('button', { name: '保存', exact: true }).click(); await expect(dialog).toBeHidden(); await page.reload()
   const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: 'Messages 正式连接' })
   await card.getByRole('button', { name: '连接检查', exact: true }).click(); await expect(page.getByText('Messages 检查正常', { exact: true })).toHaveCount(2)
@@ -105,7 +106,7 @@ test('Messages school identity and device selection stay isolated when returning
   await page.emulateMedia({ colorScheme: 'dark' }); await page.setViewportSize({ width: 720, height: 900 })
   await page.getByRole('heading', { name: '个人模型设置', exact: true }).scrollIntoViewIfNeeded()
   await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running' && animation.effect?.getComputedTiming().iterations !== Infinity).length)).toBe(0)
-  await page.screenshot({ path: join(output, 'messages-device-dark-narrow-win.png'), fullPage: true })
+  if (output) await page.screenshot({ path: join(output, 'messages-device-dark-narrow-win.png'), fullPage: true })
   await page.getByRole('button', { name: '个人空间', exact: true }).click()
   await expect(choices.getByText('学校 Messages 默认', { exact: true })).toHaveCount(0); await expect(choices.getByText('未选用模型', { exact: true })).toBeVisible()
 })

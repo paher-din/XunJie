@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { edit, localState, serverHead, setFault } from './helpers'
@@ -38,7 +39,7 @@ test('明确运行固定 Core 快照，先落盘原命令再 POST，GET 公开�
     const badge = await page.locator('.ts-badge').boundingBox()
     expect(tabs).not.toBeNull(); expect(badge).not.toBeNull()
     expect(tabs!.x + tabs!.width).toBeLessThanOrEqual(badge!.x)
-    await page.screenshot({ path: test.info().outputPath(`core-${theme}.png`) })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/runResults/' + `core-${theme}.png`) })
   }
 })
 

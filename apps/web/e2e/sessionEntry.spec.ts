@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { REAL_URL } from './env'
@@ -35,7 +36,7 @@ for (const scenario of [
     await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
     await page.getByRole('group', { name: '登录身份' }).getByRole('button', { name: scenario.selected, exact: true }).click()
     await expect(page.getByRole('button', { name: scenario.selected, exact: true })).toHaveAttribute('aria-pressed', 'true')
-    if (scenario.actual === 'teacher' && scenario.selected === '教师') await page.locator('.session-card').screenshot({ path: test.info().outputPath('unified-role-login.png') })
+    if (scenario.actual === 'teacher' && scenario.selected === '教师' && evidenceDirectory()) await page.locator('.session-card').screenshot({ path: evidencePath('screenshots/sessionEntry/unified-role-login.png') })
     await loginThroughForm(page, 'synthetic-role-login', 'synthetic-only')
     await expect(page).toHaveURL(`${REAL_URL}/#${scenario.landing}`)
     await expect(page.getByRole('heading', { name: '登录学习空间' })).toHaveCount(0)
@@ -57,7 +58,7 @@ for (const scenario of [
   })
 }
 
-test('登录入口键盘与浅深主题；限流、错误信封和断网保留真实失败', async ({ page }, info) => {
+test('登录入口键盘与浅深主题；限流、错误信封和断网保留真实失败', async ({ page }) => {
   let failure: 'limit' | 'malformed' | 'offline' = 'limit'
   let submissions = 0
   await page.route('**/api/session', route => route.fulfill({ status: 401, json: expired }))
@@ -69,11 +70,11 @@ test('登录入口键盘与浅深主题；限流、错误信封和断网保留�
   })
   await page.goto(`${REAL_URL}/#/task/authorized-link`)
   await expect(page.getByRole('textbox', { name: '账号', exact: true })).toBeFocused()
-  await page.screenshot({ path: info.outputPath('login-light.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/sessionEntry/login-light.png') })
   // 登录页沿用系统主题响应，仅读取既有主题设置。
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.screenshot({ path: info.outputPath('login-dark.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/sessionEntry/login-dark.png') })
   await page.getByRole('textbox', { name: '账号', exact: true }).fill('synthetic-login')
   await page.keyboard.press('Tab')
   await expect(page.getByLabel('密码', { exact: true })).toBeFocused()

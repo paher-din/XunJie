@@ -1,8 +1,9 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, writeFile, rm, access } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm, access } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -13,7 +14,7 @@ import { fixture, reply, until } from '../apps/server/tests/support/teaching-inp
 const run = promisify(execFile);
 const packageIndex = process.argv.indexOf('--package');
 const candidate = packageIndex < 0 ? null : resolve(process.argv[packageIndex + 1]);
-const evidence = resolve(process.env.XUNJIE_RECOVERY_EVIDENCE_DIR ?? '.verification/wp07-204/chrome');
+const evidence = probeEvidenceDirectory(process.env.XUNJIE_RECOVERY_EVIDENCE_DIR);
 await mkdir(evidence, { recursive: true });
 const directory = await mkdtemp(join(tmpdir(), 'xj-conversation-probe-'));
 const sourceRoot = join(directory, 'source'), targetRoot = join(directory, 'target');
@@ -88,7 +89,7 @@ try {
   const conversation = page.getByRole('region', { name: '与 Agent 的对话', exact: true });
   await expect(conversation).toContainText('请先提问，并保留这次依据。');
   await expect(conversation.getByText('恢复后仍回答这个原问题。', { exact: true })).toBeVisible();
-  await page.screenshot({ path: join(evidence, `restore-${process.env.XUNJIE_RECOVERY_CAPTURE_BEFORE === '1' ? 'before' : 'readonly'}-${process.platform}.png`), fullPage: true });
+  await captureEvidence(page, { path: join(evidence, `restore-${process.env.XUNJIE_RECOVERY_CAPTURE_BEFORE === '1' ? 'before' : 'readonly'}-${process.platform}.png`), fullPage: true });
   await expect(conversation).toContainText('维护者完成接管');
   await expect(page.getByRole('button', { name: '跳过这次提问', exact: true })).toBeDisabled();
   assert.equal(f.payloads.length, 1);
@@ -113,7 +114,7 @@ try {
   const queuedRecord = page.locator('[data-input-id="' + queued.inputId + '"]');
   await expect(queuedRecord).toHaveAttribute('data-state', 'adopted');
   await expect(queuedRecord).toContainText('恢复时保留的排队修订。');
-  await page.screenshot({ path: join(evidence, `restore-active-${process.platform}.png`), fullPage: true });
+  await captureEvidence(page, { path: join(evidence, `restore-active-${process.platform}.png`), fullPage: true });
   record('chrome-active-original-response-and-fifo', { calls: f.payloads.length, revisedQueueVisibleAsAdopted: true,
     runs: final.runs.map(run => ({ runId: run.runId, state: run.state })) });
 } catch (error) { failed = error; report.failure = error.message; }
@@ -129,7 +130,7 @@ finally {
     await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     report.cleanup = 'completed';
   } else { report.cleanup = 'stop-failed'; failed ??= new Error('Product stop requires follow-up'); }
-  await writeFile(join(evidence, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(evidence, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 }
 console.log(JSON.stringify({ passed: !failed, stages: report.stages.length, modelCalls: report.modelCalls, cleanup: report.cleanup }));
 if (failed) { console.error(failed.message); process.exitCode = 1; }

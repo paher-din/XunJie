@@ -20,6 +20,7 @@
     "test:tools": "node scripts/test.mjs tools",
     "test:e2e": "npm run test:e2e -w @xunjie/web",
     "verify": "node apps/server/tools/check-runtime.mjs && node scripts/verify.mjs",
+    "clean:verification": "node scripts/clean-verification.mjs",
     "test:storage:native": "node scripts/build.mjs server && node scripts/probe-storage.mjs",
     "probe:execution": "node scripts/probe-execution.mjs",
     "probe:execution-sync": "node scripts/probe-execution-sync.mjs",

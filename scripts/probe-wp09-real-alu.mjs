@@ -1,19 +1,21 @@
+import { probeEvidenceFile, writeEvidence, captureEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
 // One actual generated ALU page -> normal editor -> original button -> real Icarus/owner.
 import { parseArgs } from 'node:util';
-import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
+import { readFile, mkdir, readdir } from 'node:fs/promises';
 import { resolve, join, dirname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { chromium, expect } from '@playwright/test';
 
 const { values: args } = parseArgs({ options: {
+  'output': { type: 'string' }, 'evidence-dir': { type: 'string' },
   product: { type: 'string', default: 'dist/wp09-macos-r2' }, root: { type: 'string', default: '/private/tmp/xj-wp09-real-models-20261108' },
   'source-report': { type: 'string', default: 'docs/student-agent-implementation/evidence/wp09/real-models-product-r2.json' },
-  out: { type: 'string', default: 'docs/student-agent-implementation/evidence/wp09/real-alu.json' },
+  out: { type: 'string' },
   resume: { type: 'string' }, 'read-only': { type: 'boolean' }, 'ui-checks': { type: 'boolean' }, help: { type: 'boolean' },
 } });
 if (args.help) { console.log('NODE24 scripts/probe-wp09-real-alu.mjs [--product DIR] [--root ORIGINAL_PRIVATE_ROOT] [--resume JSON] [--read-only] [--ui-checks] [--out JSON]. Reopens the real model page, never publishes a controlled payload; normal Monaco engineering fixture only. --read-only requires the existing adopted page/fixture/execution, without editing code or running again. --ui-checks types ordinary explanation text and verifies narrow desktop keyboard/navigation recovery. Always stops host/PG and retains the root. Provider generations are denied.'); process.exit(0); }
-const root = resolve(args.root), product = resolve(args.product), output = resolve(args.out);
+const root = resolve(args.root), product = resolve(args.product), output = probeEvidenceFile(args.out, 'real-alu.json');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
   ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, canonical(item)])) : value;
@@ -52,7 +54,7 @@ const narrowExplanation = baseExplanation + '窄桌面键盘与导航验收。';
 const expectedExplanation = () => report.explanationSha256 === hash(narrowExplanation) ? narrowExplanation : baseExplanation;
 let host, browser, page, context, runtime, cookie, phase = 'setup', installationSha256;
 const facts = new Set();
-const persist = async () => { await mkdir(dirname(output), { recursive: true }); await writeFile(output, JSON.stringify(report, null, 2) + '\n'); };
+const persist = async () => { await mkdir(dirname(output), { recursive: true }); await writeEvidence(output, JSON.stringify(report, null, 2) + '\n'); };
 async function stage(name, operation) {
   phase = name; const entry = { name, status: 'running' }; report.stages.push(entry); await persist();
   try { const value = await operation(); entry.status = 'passed'; await persist(); return value; }
@@ -110,9 +112,10 @@ async function originalSource() {
   return revision;
 }
 async function screenshot(name) {
+  if (!hasProbeEvidence(output)) return;
   const file = name.replace(/^real-alu/, basename(output, '.json'));
   const target = join(dirname(output), file);
-  await page.screenshot({ path: target, fullPage: false, animations: 'disabled' });
+  await captureEvidence(page, { path: target, fullPage: false, animations: 'disabled' });
   (report.screenshots ??= []).push({ file, sha256: hash(await readFile(target)), viewport: { width: 1440, height: 1000 } });
 }
 async function login() {
@@ -314,6 +317,6 @@ try {
   if (report.cleanupFailure || !report.installationUnchanged) report.status = 'failed';
   await persist();
 }
-console.log(JSON.stringify({ status: report.status, report: output, newGenerations: report.generationBudget.new, totalGenerations: report.generationBudget.total,
+console.log(JSON.stringify({ status: report.status, report: hasProbeEvidence(output) ? output : null, newGenerations: report.generationBudget.new, totalGenerations: report.generationBudget.total,
   ...(report.reason ? { reason: report.reason, stage: report.failedStage } : {}) }));
 if (report.status !== 'passed') process.exitCode = 1;

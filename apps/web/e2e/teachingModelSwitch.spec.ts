@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
@@ -12,9 +13,7 @@ import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime'
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-const output = process.env.XUNJIE_MODEL_SWITCH_EVIDENCE_DIR
-  ? resolve(process.env.XUNJIE_MODEL_SWITCH_EVIDENCE_DIR)
-  : fileURLToPath(new URL('../../../.verification/wp07-201-mac', import.meta.url))
+const output = evidenceDirectory('wp07-201-mac', process.env.XUNJIE_MODEL_SWITCH_EVIDENCE_DIR)
 
 type Runtime = Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>
 let school: Runtime
@@ -171,7 +170,7 @@ async function resetToSchool() {
 
 test.beforeAll(async () => {
   test.setTimeout(300000)
-  await mkdir(output, { recursive: true })
+  if (output) await mkdir(output, { recursive: true })
   upstream = createServer(async (request, response) => {
     const chunks: Buffer[] = []
     for await (const chunk of request) chunks.push(chunk as Buffer)
@@ -246,7 +245,7 @@ test.afterAll(async ({}, info) => {
   tunnel?.kill('SIGTERM')
   await school?.stop().catch(() => {})
   upstream?.closeAllConnections(); if (upstream) await new Promise(done => upstream.close(done))
-  await writeFile(join(output, 'model-switch-browser-' + process.platform + '.json'), JSON.stringify({
+  if (output) await writeFile(join(output, 'model-switch-browser-' + process.platform + '.json'), JSON.stringify({
     platform: process.platform, os: release(), browser: 'installed Chrome', channel: info.project.use.channel,
     measuredAt: new Date().toISOString(), topology: 'single school profile; local synthetic school default plus public-tunnel synthetic personal connections',
     provider: { model: 'synthetic public tunnel', protocols: ['chat-completions', 'responses', 'messages'] }, endpoint, tunnelBase,
@@ -271,10 +270,10 @@ test('school and personal models switch both ways while prior questions, answers
   const schoolAnswer = await waitAnswer(page, '学校模型回答1')
   await expect(schoolAnswer.getByText('来源：学校模型 · school-chat · chat-completions', { exact: true })).toBeVisible()
   await expect(toolRecords).toContainText('切换固定观察.txt')
-  await page.screenshot({ path: join(output, 'model-switch-school-before-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-school-before-darwin.png') })
 
   await switchTo(page, '个人 Responses 模型', 'personal-responses')
-  await page.screenshot({ path: join(output, 'model-switch-school-to-personal-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-school-to-personal-darwin.png') })
   await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await expect(page.locator('#activity-title')).toHaveText('模型切换与学习延续')
   await page.reload()
@@ -286,10 +285,10 @@ test('school and personal models switch both ways while prior questions, answers
   const personalAnswer = await waitAssistantCount(page, 2)
   await expect(personalAnswer.getByText('来源：个人模型 · personal-responses · responses', { exact: true })).toBeVisible()
   await expect(schoolAnswer).toBeVisible()
-  await page.screenshot({ path: join(output, 'model-switch-personal-answer-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-personal-answer-darwin.png') })
 
   await switchTo(page, '学校统一模型', 'school-chat')
-  await page.screenshot({ path: join(output, 'model-switch-personal-to-school-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-personal-to-school-darwin.png') })
   await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await page.reload()
   await openActivity(page, activityId, '模型切换与学习延续')
@@ -308,7 +307,7 @@ test('school and personal models switch both ways while prior questions, answers
   await expect(personalAnswer).toBeVisible()
   await expect(schoolAgain).toBeVisible()
   await expect(toolRecords).toContainText('切换固定观察.txt')
-  await page.screenshot({ path: join(output, 'model-switch-all-protocols-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-all-protocols-darwin.png') })
 
   const eventsValue = await events(activityId)
   const switchEvents = eventsValue.filter((event: { kind: string }) => event.kind.startsWith('model-switch-'))
@@ -336,7 +335,7 @@ test('a switch requested during a slow answer waits for the original call, keeps
   const card = choices.locator('.st-provider').filter({ hasText: '个人 Responses 模型' })
   await card.getByRole('button', { name: /^(授权并选用|选用)$/, exact: true }).click()
   await expect(page.getByText('当前回答或工具仍在收尾；切换请求已保留，完成后将继续核对。', { exact: true })).toBeVisible({ timeout: 60000 })
-  await page.screenshot({ path: join(output, 'model-switch-inflight-paused-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-inflight-paused-darwin.png') })
 
   const switchEventsBefore = await events(activityId)
   const paused = switchEventsBefore.filter((event: { kind: string }) => event.kind === 'model-switch-paused')
@@ -360,7 +359,7 @@ test('a switch requested during a slow answer waits for the original call, keeps
   const personalAnswer = await waitAssistantCount(page, 2)
   await expect(personalAnswer.getByText('来源：个人模型 · personal-responses · responses', { exact: true })).toBeVisible()
   expect(requests.filter(item => item.text.includes('在途切换问题')).length).toBe(1)
-  await page.screenshot({ path: join(output, 'model-switch-inflight-continued-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-inflight-continued-darwin.png') })
 })
 
 test('a lost switch reply is explicit, keeps the activity readable after reload and a product process restart, and can be reapplied', async ({ page }) => {
@@ -380,7 +379,7 @@ test('a lost switch reply is explicit, keeps the activity readable after reload 
   await card.getByRole('button', { name: /^(授权并选用|选用)$/, exact: true }).click()
   await expect(page.getByText(/切换结果尚未确认/)).toBeVisible({ timeout: 20000 })
   await page.unroute('**/agent/*/model-switches')
-  await page.screenshot({ path: join(output, 'model-switch-network-lost-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-network-lost-darwin.png') })
   expect(aborted).toBeGreaterThan(0)
 
   await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
@@ -389,7 +388,7 @@ test('a lost switch reply is explicit, keeps the activity readable after reload 
   const open = page.getByRole('button', { name: '打开对话', exact: true })
   if (await open.isVisible().catch(() => false)) await open.click()
   await expect(page.getByText('学校模型回答4', { exact: true })).toBeVisible()
-  await page.screenshot({ path: join(output, 'model-switch-reload-after-lost-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-reload-after-lost-darwin.png') })
 
   const oldEndpoint = endpoint
   await school.stop()
@@ -400,7 +399,7 @@ test('a lost switch reply is explicit, keeps the activity readable after reload 
   if (await page.getByRole('button', { name: '打开对话', exact: true }).isVisible().catch(() => false))
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
   await expect(page.getByText('学校模型回答4', { exact: true })).toBeVisible()
-  await page.screenshot({ path: join(output, 'model-switch-after-restart-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-after-restart-darwin.png') })
 
   await page.getByRole('button', { name: '切换模型', exact: true }).click()
   await page.getByRole('button', { name: '将当前选用应用到学习活动', exact: true }).click()
@@ -430,7 +429,7 @@ test('stopping an answer keeps the stopped state and the unsent draft', async ({
   await page.getByRole('button', { name: '停止', exact: true }).click()
   await expect(page.getByText('回答已停止，已发生的内容仍保留。', { exact: true })).toBeVisible({ timeout: 30000 })
   await expect(input).toHaveValue('生成期间继续输入的新草稿。')
-  await page.screenshot({ path: join(output, 'model-switch-stopped-draft-darwin.png') })
+  if (output) await page.screenshot({ path: join(output, 'model-switch-stopped-draft-darwin.png') })
   await page.reload()
   await openActivity(page, activityId, '停止与草稿保留')
   await expect(page.getByLabel('你的问题', { exact: true })).toHaveValue('生成期间继续输入的新草稿。', { timeout: 15000 })

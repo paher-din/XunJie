@@ -1,8 +1,9 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { createHash, randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdir, mkdtemp, readFile, rm, writeFile, cp } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir, release } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,8 +22,7 @@ const productCommand = async (command: string) => {
 test.skip(!postgresBin && !product, 'Requires the native PostgreSQL distribution')
 test.use({ trace: 'off' })
 
-const output = fileURLToPath(new URL('../../../.verification/' + (product ? 'wp03-173-windows-product' : helper ? 'wp03-173-windows-isolation' : 'wp03-173'), import.meta.url))
-const evidence = fileURLToPath(new URL('../../../docs/student-agent-implementation/evidence', import.meta.url))
+const output = evidenceDirectory(product ? 'wp03-173-windows-product' : helper ? 'wp03-173-windows-isolation' : 'wp03-173')
 let root = '', endpoint = '', activityId = '', spaceKey = '', cookie = { name: '', value: '' }
 let browserVersion = '', headless = true
 let runtime: ReturnType<typeof openProductRuntime>
@@ -30,7 +30,7 @@ const cases: { name: string; status: string | undefined; durationMs: number }[] 
 
 test.beforeAll(async ({ browser }, info) => {
   browserVersion = browser.version(); headless = info.project.use.headless !== false
-  await mkdir(output, { recursive: true })
+  if (output) await mkdir(output, { recursive: true })
   root = await mkdtemp(join(tmpdir(), 'xj-native-ui-'))
   if (product) {
     test.setTimeout(150_000)
@@ -81,16 +81,12 @@ test.afterEach(async ({}, info) => { cases.push({ name: info.title, status: info
 test.afterAll(async () => {
   if (product && root) await productCommand('stop').catch(() => {})
   else await runtime?.stop().catch(() => {})
-  await writeFile(join(output, 'browser-report.json'), JSON.stringify({ measuredAt: new Date().toISOString(),
+  if (output) await writeFile(join(output, 'browser-report.json'), JSON.stringify({ measuredAt: new Date().toISOString(),
     platform: process.platform, arch: process.arch, osRelease: release(), node: process.version,
     browser: 'installed Chrome', browserVersion, headless, backend: product ? 'Windows product package, native PostgreSQL, AppContainer and Job Object'
       : helper ? 'product runtime, native PostgreSQL, AppContainer and Job Object'
         : 'product runtime, native PostgreSQL, bundled native adapter',
     cases }, null, 2))
-  if (!product && !helper) for (const file of ['native-session-light.png', 'native-session-dark.png', 'native-session-narrow.png']) {
-    await cp(join(output, file), join(evidence, 'wp03-173-' + file)).catch(() => {})
-  }
-  if (!product && !helper) await cp(join(output, 'browser-report.json'), join(evidence, 'wp03-173-browser-report.json')).catch(() => {})
   if (root) await rm(root, { recursive: true, force: true }).catch(() => {})
 })
 
@@ -117,7 +113,7 @@ test('the central tool area starts, advances, reappears and stops a real native 
   await enter(2, '1')
   await expect(page.locator('.native-session-history li')).toHaveCount(3)
   await expect(page.locator('.native-session-history li').first()).toContainText('状态 1')
-  await page.screenshot({ path: join(output, 'native-session-light.png') })
+  if (output) await page.screenshot({ path: join(output, 'native-session-light.png') })
   // Switching tools and reloading keeps the same owner reference instead of starting a new run.
   await page.getByRole('tab', { name: '作品' }).click()
   await page.getByRole('tab', { name: '四态累加模拟' }).click()
@@ -130,10 +126,10 @@ test('the central tool area starts, advances, reappears and stops a real native 
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(page.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible()
-  await page.screenshot({ path: join(output, 'native-session-dark.png') })
+  if (output) await page.screenshot({ path: join(output, 'native-session-dark.png') })
   await page.setViewportSize({ width: 900, height: 900 })
   await page.emulateMedia({ colorScheme: 'light' })
-  await page.screenshot({ path: join(output, 'native-session-narrow.png') })
+  if (output) await page.screenshot({ path: join(output, 'native-session-narrow.png') })
   await page.getByRole('button', { name: '停止会话' }).click()
   await expect(page.locator('.execution-title')).toContainText('已取消')
   await expect(page.getByLabel('输入整数（0–99）')).toBeDisabled()

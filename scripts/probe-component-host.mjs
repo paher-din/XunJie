@@ -1,13 +1,14 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { annotationPackage } from '../components/material-annotation/package.mjs';
 
-const output = resolve(process.env.XUNJIE_COMPONENT_REPORT_DIR ?? '.verification/wp03-169');
+const output = probeEvidenceDirectory(process.env.XUNJIE_COMPONENT_REPORT_DIR);
 const webRoot = resolve(process.env.XUNJIE_COMPONENT_BASELINE_WEB ?? process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 async function artifactDigest(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -90,12 +91,12 @@ try {
     await expect(page.locator('#activity-title')).toHaveText('阅读材料，记录你的理解');
     await expect(page.getByRole('tab', { name: '代码', exact: true })).toBeVisible();
     await expect(page.getByText('从一个文本或代码文件开始。', { exact: true })).toBeVisible();
-    await page.screenshot({ path: join(output, 'implementation-before.png'), fullPage: true });
-    passed('baseline f0979d5 formal product UI captured with the same course requirements and materials');
+    await captureEvidence(page, { path: join(output, 'implementation-before.png'), fullPage: true });
+    passed('baseline f0979d5 formal product UI checked with the same course requirements and materials');
     report.status = 'passed';
   } else {
   await expect(page.getByRole('tab', { name: '材料标注', exact: true })).toBeVisible();
-  await page.screenshot({ path: join(output, 'work-area-before-opening-component.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'work-area-before-opening-component.png'), fullPage: true });
   await page.getByRole('tab', { name: '材料标注', exact: true }).click();
   const frame = page.frameLocator('iframe[title="材料标注"]');
   await expect(frame.getByRole('heading', { name: '我的标注', exact: true })).toBeVisible();
@@ -138,13 +139,13 @@ try {
   });
   assert.deepEqual(isolated, { storage: true, parent: true, fetch: true });
   passed('opaque frame and CSP reject host storage, parent access and direct business fetch');
-  await page.screenshot({ path: join(output, 'annotation-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'annotation-light.png'), fullPage: true });
   await page.evaluate(() => { localStorage.setItem('theme.v1', 'dark'); document.documentElement.dataset.theme = 'dark'; });
   await expect.poll(() => frame.locator('body').evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim())).not.toBe('');
-  await page.screenshot({ path: join(output, 'annotation-dark.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'annotation-dark.png'), fullPage: true });
   await page.setViewportSize({ width: 900, height: 900 });
-  await page.screenshot({ path: join(output, 'annotation-narrow.png'), fullPage: true });
-  passed('light/dark theme and narrow desktop rendering captured');
+  await captureEvidence(page, { path: join(output, 'annotation-narrow.png'), fullPage: true });
+  passed('light/dark theme and narrow desktop rendering checked');
   await page.reload();
   await page.getByRole('tab', { name: '材料标注', exact: true }).click();
   await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue(original);
@@ -574,5 +575,5 @@ try {
   if (process.platform === 'darwin' && process.arch === 'arm64') report.mac = report.status;
   await browser?.close();
   try { await runtime.stop(); report.cleanup = 'owned product stopped'; } catch (error) { report.cleanup = String(error); }
-  await writeFile(join(output, process.env.XUNJIE_COMPONENT_BASELINE_WEB ? 'baseline-browser-report.json' : 'browser-report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, process.env.XUNJIE_COMPONENT_BASELINE_WEB ? 'baseline-browser-report.json' : 'browser-report.json'), JSON.stringify(report, null, 2));
 }

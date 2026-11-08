@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test, type Page } from '@playwright/test'
 import type { ModelProvider } from '../src/lib/settings'
 import { REAL_URL } from './env'
@@ -50,7 +51,7 @@ async function installTeacher(page: Page, role: 'teacher' | 'student' = 'teacher
   return { writes, paths, allowSave: () => { failSave = false }, read: () => current }
 }
 
-test('教师设置复用供应商保存、模型能力、强度、连接测试和脱敏持久读取', async ({ page }, info) => {
+test('教师设置复用供应商保存、模型能力、强度、连接测试和脱敏持久读取', async ({ page }) => {
   const api = await installTeacher(page)
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -89,7 +90,7 @@ test('教师设置复用供应商保存、模型能力、强度、连接测试�
   for (const width of [1440, 720, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     await expect.poll(() => page.locator('.t-main').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
-    await page.screenshot({ path: info.outputPath(`teacher-model-settings-${width}.png`), fullPage: true })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-model-settings/' + `teacher-model-settings-${width}.png`), fullPage: true })
   }
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await expect(page.getByRole('dialog').locator('input[type="password"]')).toHaveValue('')

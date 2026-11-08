@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
@@ -67,7 +68,7 @@ export async function waitFor(check, timeoutMs) {
 test.beforeAll(async ({ browser }, info) => {
   browserVersion = browser.version()
   headless = info.project.use.headless !== false
-  await mkdir(fileURLToPath(new URL('../../../.verification/157', import.meta.url)), { recursive: true })
+  if (evidenceDirectory()) await mkdir(evidencePath('157'), { recursive: true })
   const root = await mkdtemp(join(tmpdir(), 'xj-reliable-draft-'))
   runtimeRoot = root
   runtime = openProductRuntime({ root, resources: {
@@ -85,7 +86,7 @@ test.afterEach(async ({}, info) => { cases.push({ name: info.title, status: info
 test.afterAll(async () => {
   await host?.stop()
   if (runtimeRoot) await rm(runtimeRoot, { recursive: true, force: true })
-  await writeFile(fileURLToPath(new URL('../../../.verification/157/reliable-draft-chrome-results.json', import.meta.url)), JSON.stringify({
+  if (evidenceDirectory()) await writeFile(evidencePath('157/reliable-draft-chrome-results.json'), JSON.stringify({
     measuredAt: new Date().toISOString(), node: process.version, postgres: '18.6', platform: process.platform, arch: process.arch,
     osRelease: release(), browser: process.env.XUNJIE_E2E_BROWSER_CHANNEL ?? 'chromium', browserVersion, headless, cases,
     scope: 'Public reliable workspace and question draft over real IndexedDB, HTTP and PostgreSQL.' }, null, 2))

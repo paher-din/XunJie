@@ -1,8 +1,9 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence } from './lib/probe-evidence.mjs';
 // Formal product/Chrome + actual Icarus. The generated-package fixture is controlled;
 // real supplier generation is covered by probe-wp09-real-models.mjs.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -37,8 +38,9 @@ async function pageScript(componentKey) {
   document.querySelector('#query').onclick = async () => { await x.execution.query({ requestId: state.comparisonRequestId }); status.textContent = '原比较已核对'; };
 }
 
-const { values: args } = parseArgs({ options: { product: { type: 'string' }, out: { type: 'string' } } });
-const out = resolve(args.out ?? 'docs/student-agent-implementation/evidence/wp09/alu');
+const { values: args } = parseArgs({ options: {
+  'output': { type: 'string' }, 'evidence-dir': { type: 'string' },  product: { type: 'string' }, out: { type: 'string' } } });
+const out = probeEvidenceDirectory(args.out);
 await mkdir(out, { recursive: true });
 const root = await mkdtemp(join(tmpdir(), 'xj-wp09-alu-'));
 const report = { status: 'running', platform: process.platform, node: process.version, cases: [],
@@ -192,17 +194,18 @@ try {
   report.cases.push('closing the generated view preserves a real execution awaiting result confirmation; explicit host stop wins over its delayed result acknowledgement');
   report.identities = { activityId: activity.activityId, artifactId: receipt.artifactId, revisionId: receipt.revisionId,
     runRequestId: run.query.requestId, comparisonRequestId: comparison.query.requestId };
-  await page.screenshot({ path: join(out, 'generated-page-comparison.png'), fullPage: true });
+  await captureEvidence(page, { path: join(out, 'generated-page-comparison.png'), fullPage: true });
   report.status = 'passed';
 } catch (error) {
   report.status = 'failed'; report.failure = error instanceof assert.AssertionError ? 'acceptance-assertion' : error?.name ?? 'probe-failed';
   if (page) {
-    await page.screenshot({ path: join(out, 'failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(out, 'failure.png'), fullPage: true }).catch(() => {});
     report.visibleIssues = await page.locator('[role="alert"], .teaching-artifact-note').allTextContents().catch(() => []);
     report.frameStatuses = await Promise.all(page.frames().slice(1).map(frame => frame.locator('[role="status"], [role="alert"]').allTextContents().catch(() => [])));
   }
   throw error;
 } finally {
   await browser?.close(); await runtime.stop(); await rm(root, { recursive: true, force: true });
-  await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+  console.log(JSON.stringify(report));
 }

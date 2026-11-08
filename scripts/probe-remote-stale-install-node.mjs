@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { probeEvidenceFile, writeEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
+import { readFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parseArgs, digest, createLearningApi, expectOk as ok, loginMember, remoteDevice } from './remote-probe-helpers.mjs';
 import { execFile } from 'node:child_process';
@@ -12,7 +13,8 @@ import { promisify } from 'node:util';
 const args = parseArgs();
 const endpoint = args.endpoint, controlFile = args.control, payloadFile = args.payload, stateFile = args.state;
 const phase = args.phase;
-const out = resolve(args.out ?? (phase === 'start' ? 'remote-stale-start.json' : 'remote-stale-state.json'));
+// The start file is an input to the read phase; generation/read only emit optional diagnostics.
+const out = phase === 'start' ? resolve(args.out ?? 'remote-stale-start.json') : probeEvidenceFile(args.out, 'remote-stale-state.json');
 if (!endpoint || !controlFile || !payloadFile || !stateFile || !['start', 'read', 'generation'].includes(phase))
   throw new Error('usage: --phase=start|read|generation --endpoint=URL --control=FILE --payload=FILE --state=FILE [--out=FILE] [--device-state=FILE | --platform=macos-arm64|windows-x64]; generation also requires --control-endpoint=URL --backup-directory=DIR --recovery-key-ref=REF');
 if (phase === 'generation' && (!args['control-endpoint'] || !args['backup-directory'] || !args['recovery-key-ref']))
@@ -72,8 +74,8 @@ if (phase === 'start') {
   const state = await startSession();
   const { requestId } = state;
   await mkdir(dirname(out), { recursive: true });
-  await writeFile(out, JSON.stringify(state, null, 2) + '\n');
-  console.log(JSON.stringify({ phase, out, requestId, nodeId: state.nodeId, unit: state.unit,
+  await writeEvidence(out, JSON.stringify(state, null, 2) + '\n');
+  console.log(JSON.stringify({ phase, out: hasProbeEvidence(out) ? out : null, requestId, nodeId: state.nodeId, unit: state.unit,
     installGeneration: state.installGeneration, supervisorEpoch: state.supervisorEpoch }));
 } else if (phase === 'generation') {
   const recovery = async (action, input) => {
@@ -85,9 +87,10 @@ if (phase === 'start') {
     return ok(`recovery-${action}`, { status: response.status, value: await response.json() });
   };
   const started = await startSession();
-  // 先落盘：维护或后续断言失败时，执行所有者仍可据 executionRef 回收会话。
+  // Print the live execution identity; persist it only for an explicit report consumer.
+  console.log(JSON.stringify({ phase, started }));
   await mkdir(dirname(out), { recursive: true });
-  await writeFile(out, JSON.stringify({ phase, started }, null, 2) + '\n');
+  await writeEvidence(out, JSON.stringify({ phase, started }, null, 2) + '\n');
   const controlled = ok('control-before-maintenance', await api(`${path}/${started.requestId}/control`, {
     controlId: randomUUID(), operationId: session.operation.operationId,
     effect: 'input', expectedSeq: started.observation.applied, parameters: { value: 1 },
@@ -95,14 +98,14 @@ if (phase === 'start') {
   if (controlled.session.observation.applied !== started.observation.applied + 1)
     throw new Error('the current-generation run did not apply its input before maintenance');
   started.observation = controlled.session.observation;
-  await writeFile(out, JSON.stringify({ phase, started }, null, 2) + '\n');
+  await writeEvidence(out, JSON.stringify({ phase, started }, null, 2) + '\n');
   const backup = await recovery('backup', { directory: args['backup-directory'],
     recoveryKeyRef: args['recovery-key-ref'], leaveClosed: true });
   await recovery('resume');
   let successor;
   try {
     successor = await startSession();
-    await writeFile(out, JSON.stringify({ phase, started, successor, backupId: backup.backupId }, null, 2) + '\n');
+    await writeEvidence(out, JSON.stringify({ phase, started, successor, backupId: backup.backupId }, null, 2) + '\n');
     if (successor.nodeId !== started.nodeId) throw new Error('maintenance changed the node identity');
     if (successor.supervisorEpoch !== started.supervisorEpoch)
       throw new Error('the generation probe unexpectedly crossed a supervisor restart');
@@ -129,8 +132,8 @@ if (phase === 'start') {
       oldControlStatus: rejected.status, oldStatusKnowledge: queried.statusKnowledge,
       appliedBefore: started.observation.applied, appliedAfter: queried.session.observation.applied,
       reclaimed: { state: reclaimed.state, statusKnowledge: reclaimed.statusKnowledge } };
-    await writeFile(out, JSON.stringify({ endpoint, phase, started, successor, evidence }, null, 2) + '\n');
-    console.log(JSON.stringify({ phase, out, ...evidence }));
+    await writeEvidence(out, JSON.stringify({ endpoint, phase, started, successor, evidence }, null, 2) + '\n');
+    console.log(JSON.stringify({ phase, out: hasProbeEvidence(out) ? out : null, ...evidence }));
   } finally {
     const cleanup = await Promise.allSettled([started, successor].filter(Boolean).map(async run => {
       const reclaimed = ok('generation-cleanup', await api('manage/native-reclaim', { sessionRef: run.executionRef }));
@@ -176,6 +179,6 @@ if (phase === 'start') {
   if (queried.statusKnowledge !== 'unknown')
     throw new Error('the new generation claimed to know the previous run: ' + queried.statusKnowledge);
   await mkdir(dirname(out), { recursive: true });
-  await writeFile(out, JSON.stringify({ endpoint, requestId: started.requestId, unit: started.unit, evidence }, null, 2) + '\n');
-  console.log(JSON.stringify({ phase, out, ...evidence }));
+  await writeEvidence(out, JSON.stringify({ endpoint, requestId: started.requestId, unit: started.unit, evidence }, null, 2) + '\n');
+  console.log(JSON.stringify({ phase, out: hasProbeEvidence(out) ? out : null, ...evidence }));
 }

@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir, release, homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
@@ -14,9 +15,9 @@ import { chromium, expect } from '@playwright/test';
  * xjkeys posts HID-level key events; System Events posts the keys xjkeys does not map.
  * Playwright only navigates, clicks non-text controls and reads state; it never fills text.
  */
-const product = resolve(process.env.XUNJIE_PRODUCT_PACKAGE ?? '.verification/wp07-210/product-darwin-arm64-full');
-const output = resolve(process.env.XUNJIE_INPUT_CONTROL_IME_OUTPUT
-  ?? 'docs/student-agent-implementation/evidence/wp07-210');
+if (!process.env.XUNJIE_PRODUCT_PACKAGE) throw new Error('Set XUNJIE_PRODUCT_PACKAGE to the product package to check');
+const product = resolve(process.env.XUNJIE_PRODUCT_PACKAGE);
+const output = probeEvidenceDirectory(process.env.XUNJIE_INPUT_CONTROL_IME_OUTPUT);
 const helper = resolve(process.env.XUNJIE_IME_TOOLS ?? join(homedir(), 'xj-154/ime'));
 const run = (file, args) => execFileSync(file, args, { encoding: 'utf8' }).trim();
 const key = (...args) => run(join(helper, 'xjkeys'), args);
@@ -179,6 +180,7 @@ try {
   };
   const typeSlow = async pinyin => { for (const letter of pinyin) { key('type', letter); await pause(190); } };
   const captureWindow = async name => {
+    if (!hasProbeEvidence(output)) return null;
     try {
       const bounds = run('/usr/bin/osascript', ['-e', 'tell application "Google Chrome" to get bounds of front window'])
         .split(',').map(value => Number(value.trim()));
@@ -313,12 +315,12 @@ try {
   assert.equal((await conversation()).runs.length, runsBefore, 'candidate-confirmation Enter must not start another Run');
   assert.ok(afterEnter.trim().length > 0, 'candidate-confirmation Enter must keep text in the composer');
   assert.equal(activeAfterEnter, 'TEXTAREA', 'candidate-confirmation Enter must keep focus in the composer');
-  await page.screenshot({ path: join(output, 'ime-dark-narrow.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'ime-dark-narrow.png'), fullPage: true });
   report.screenshots['ime-dark-narrow'] = join(output, 'ime-dark-narrow.png');
   await page.emulateMedia({ colorScheme: 'light' });
   await page.setViewportSize({ width: 1360, height: 940 });
   await pause(300);
-  await page.screenshot({ path: join(output, 'ime-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'ime-light.png'), fullPage: true });
   report.screenshots['ime-light'] = join(output, 'ime-light.png');
   pass('candidate-confirmation Enter keeps text in the composer and sends nothing on the dark narrow desktop',
     JSON.stringify({ beforeEnter, afterEnter }));
@@ -343,7 +345,7 @@ try {
   report.error = error?.message ?? String(error);
   if (page) {
     report.failureView = await page.locator('body').innerText().catch(() => null);
-    await page.screenshot({ path: join(output, 'ime-failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, 'ime-failure.png'), fullPage: true }).catch(() => {});
   }
   console.error('FAIL', report.error);
   process.exitCode = 1;
@@ -354,7 +356,7 @@ try {
   try { cli('stop'); } catch (error) { report.steps.push({ step: 'cli-stop', error: String(error.message ?? error).slice(0, 200) }); }
   try { cli('uninstall'); } catch (error) { report.steps.push({ step: 'cli-uninstall', error: String(error.message ?? error).slice(0, 200) }); }
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'input-control-ime.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(output, 'input-control-ime.json'), JSON.stringify(report, null, 2) + '\n');
   await rm(root, { recursive: true, force: true }).catch(() => {});
   console.log(JSON.stringify({ status: report.status, cases: report.cases.length, signals: report.signals, error: report.error ?? null }));
 }

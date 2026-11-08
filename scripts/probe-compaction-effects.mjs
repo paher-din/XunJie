@@ -1,10 +1,11 @@
 #!/usr/bin/env node
+import { probeEvidenceFile, writeEvidence, captureEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
 // #220: real Chat -> Responses, production HTTP owners/RunDriver and headed Chrome Worker.
 // Only browser result delivery is interrupted. No receipt, result, summary or model answer is fabricated.
 import assert from 'node:assert/strict';
 import { parseArgs } from 'node:util';
 import { createHash, randomUUID } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname, basename, join } from 'node:path';
 import { homedir } from 'node:os';
 import { createServer } from 'node:http';
@@ -14,13 +15,12 @@ import { chromium, expect } from '@playwright/test';
 import { fixture, until } from '../apps/server/tests/support/teaching-input-control.mjs';
 import { acquireNativeDesktop } from './lib/native-desktop-lock.mjs';
 
-const { values } = parseArgs({ options: { run: { type: 'boolean', default: false }, session: { type: 'string' },
-  out: { type: 'string', default: '.verification/wp08-220-live-effects' },
+const { values } = parseArgs({ options: {
+  'output': { type: 'string' }, 'evidence-dir': { type: 'string' },  run: { type: 'boolean', default: false }, session: { type: 'string' },
+  out: { type: 'string' },
   'credentials-file': { type: 'string', default: join(homedir(), '.config/magpie/providers.json') },
   'provider-address': { type: 'string' } } });
-const prefix = resolve(values.out);
-assert.equal(dirname(prefix), resolve('.verification'));
-assert.ok(basename(prefix).startsWith('wp08-220-live-effects'));
+const prefix = probeEvidenceFile(values.out, 'wp08-220-live-effects');
 if (values['provider-address']) assert.ok(net.isIP(values['provider-address']));
 const report = { issue: 220, startedAt: new Date().toISOString(), status: 'planned', phase: 'plan',
   route: 'real deepseek-flash Chat -> Responses, plain mode, TLS verified',
@@ -34,7 +34,7 @@ const redact = value => {
   for (const secret of secrets) if (secret) text = text.split(secret).join('<REDACTED>');
   return text + '\n';
 };
-async function save() { await mkdir(dirname(prefix), { recursive: true }); await writeFile(prefix + '-report.json', redact(report)); }
+async function save() { await mkdir(dirname(prefix), { recursive: true }); await writeEvidence(prefix + '-report.json', redact(report)); }
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
   ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, canonical(item)])) : value;
 const digest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
@@ -49,7 +49,7 @@ if (!values.run) {
     'Adopt a long fixed work in a real discussion step, then explicitly steer once more to trigger real summary/continuation.',
     'Explicitly switch to real Responses, release browser delivery and consume the original Wait once.',
     'Match public snapshots to observed TLS relay payload digests and retain credential-free evidence.'];
-  await save(); console.log('Prepared ' + prefix + '-report.json; use --run --session ID after dist is stable.');
+  await save(); console.log(JSON.stringify(report));
 } else {
   assert.equal(process.platform, 'darwin', 'This harness requires the authorized macOS desktop.');
   assert.ok(values.session, '--session is required to acquire the shared desktop lock.');
@@ -202,7 +202,7 @@ if (!values.run) {
       assert.ok(workers.length > 0, 'Formal Chrome must launch a real Worker.');
       report.commandId = commandId; report.waitId = originalWait.waitId; report.executionRef = originalExecutionRef;
       report.assertions.realBrowserAcceptance = true; report.assertions.actualWorkerWithHeldResult = true;
-      await page.screenshot({ path: prefix + '-accepted.png', fullPage: true });
+      await captureEvidence(page, { path: prefix + '-accepted.png', fullPage: true });
     });
     await step('real-long-history-summary-and-continuation', async () => {
       const note = { objectId: randomUUID(), contentId: randomUUID(), name: 'measurement-notes.txt', kind: 'text', encoding: 'utf8',
@@ -240,7 +240,7 @@ if (!values.run) {
       report.compaction = { compactionId: adoption.body.compactionId, sourceDigest: adoption.body.source.sourceDigest,
         resultRef: adoption.body.resultRef, transitionId: adoption.body.transitionId };
       report.assertions.realSummaryAndContinuationWithPendingWait = true;
-      await page.screenshot({ path: prefix + '-compacted.png', fullPage: true });
+      await captureEvidence(page, { path: prefix + '-compacted.png', fullPage: true });
     });
     await step('explicit-real-Responses-route-with-original-pending-Wait', async () => {
       const selected = await select('responses'), before = report.requests.length;
@@ -295,13 +295,13 @@ if (!values.run) {
         usage: final.runs.find(run => run.runId === originalRunId).usage };
       report.assertions.originalIdentityAndArtifactPreserved = true; report.assertions.realCrossRoutePayloadMatched = true;
       report.assertions.onlyOneWaitConsumption = true; report.assertions.pureReadDoesNotGenerate = true;
-      await page.screenshot({ path: prefix + '-completed.png', fullPage: true });
+      await captureEvidence(page, { path: prefix + '-completed.png', fullPage: true });
     });
     report.status = 'passed';
   } catch (error) {
     report.status = 'failed'; report.failure = String(error.message ?? error).slice(0, 1600);
     report.failureLocation = String(error.stack ?? '').split('\n').slice(1, 5).join('\n'); process.exitCode = 1;
-    await page?.screenshot({ path: prefix + '-failure.png', fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: prefix + '-failure.png', fullPage: true }).catch(() => {});
   } finally {
     // Let only the real browser finish its already computed result; never synthesize cleanup evidence.
     holdResults = false;
@@ -322,5 +322,5 @@ if (!values.run) {
     globalThis.fetch = originalFetch;
     report.blockedResultDeliveries = blockedDeliveries; report.completedAt = new Date().toISOString(); await save();
   }
-  console.log(JSON.stringify({ status: report.status, phase: report.phase, report: prefix + '-report.json', requests: report.requests.length }));
+  console.log(JSON.stringify({ status: report.status, phase: report.phase, report: hasProbeEvidence(prefix) ? prefix + '-report.json' : null, requests: report.requests.length }));
 }

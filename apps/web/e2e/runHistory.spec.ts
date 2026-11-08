@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
@@ -63,7 +64,7 @@ test('比较两次已回执关联运行，各保留旧快照与本机参数，�
   for (const theme of ['light', 'dark']) {
     await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await page.screenshot({ path: test.info().outputPath(`history-${theme}.png`) })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/runHistory/' + `history-${theme}.png`) })
   }
   await page.getByRole('button', { name: '重新读取历史', exact: true }).click()
   await expect(side(page, 'B')).toContainText('编译失败')

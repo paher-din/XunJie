@@ -1,19 +1,21 @@
+import { probeEvidenceFile, writeEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
 // WP09 deployment/preflight controller. SSH carries control only; product traffic uses two real LAN hosts.
 import { parseArgs, promisify } from 'node:util';
 import { execFile, spawn } from 'node:child_process';
-import { readFile, writeFile, mkdtemp, mkdir, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir, hostname } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { createHash, randomUUID, X509Certificate } from 'node:crypto';
 import https from 'node:https';
 import { fileURLToPath } from 'node:url';
 const { values: a } = parseArgs({ options: {
+  'output': { type: 'string' }, 'evidence-dir': { type: 'string' },
   product:{type:'string'}, 'windows-product':{type:'string'}, 'remote-product':{type:'string'}, ssh:{type:'string',default:'win'},
   'mac-host':{type:'string',default:'192.168.3.39'}, 'win-host':{type:'string',default:'192.168.3.8'},
   'mac-port':{type:'string',default:'39409'}, 'win-port':{type:'string',default:'39410'},
   'credentials-file':{type:'string',default:'/Users/robertwu/.config/magpie/providers.json'},
   'prepare-only':{type:'boolean'}, 'windows-local-only':{type:'boolean'}, 'skip-windows-local':{type:'boolean'}, 'retain-failure':{type:'boolean'}, 'tls-worker':{type:'string'}, 'chrome-job':{type:'string'},
-  'model':{type:'string',default:'real'}, out:{type:'string',default:'docs/student-agent-implementation/evidence/wp09/cross/report.json'},
+  'model':{type:'string',default:'real'}, out:{type:'string'},
   session:{type:'string',default:'wp09-cross-224'}, help:{type:'boolean'},
 } });
 const exec = promisify(execFile), sha = b => createHash('sha256').update(b).digest('hex');
@@ -44,7 +46,7 @@ if(a['tls-worker']){
  process.stdin.once('data',()=>server.close());process.stdin.resume();
 }else{
  const report={issue:224,status:'preparing',measuredAt:new Date().toISOString(),mode:a['prepare-only']?'transport-preflight':'product-acceptance',model:a.model,cleanup:{},stages:[]};
- const out=resolve(a.out), persist=async()=>{await mkdir(dirname(out),{recursive:true});await writeFile(out,JSON.stringify(report,null,2)+'\n');};
+ const out=probeEvidenceFile(a.out, 'report.json'), captureEvidence=hasProbeEvidence(out), persist=async()=>{await mkdir(dirname(out),{recursive:true});await writeEvidence(out,JSON.stringify(report,null,2)+'\n');};
  let local,remote,firewall,child,server,releaseDesktop,taskName,taskRegistered=false;
  let prior;try{prior=JSON.parse(await readFile(out,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}
  const used=prior?.totalRealProviderCalls??0;report.previousAttempts=prior?[...(prior.previousAttempts??[]),{status:prior.status,model:prior.model,realProviderCalls:prior.runRealProviderCalls??0,finishedAt:prior.finishedAt}]:[];report.totalRealProviderCalls=used;
@@ -64,7 +66,7 @@ if(a['tls-worker']){
   report.preparationStep='copy-TLS-and-probe-resources';await persist();
   await ps(`New-Item -ItemType Directory -Path ${quote(remote+'/lib')} -Force|Out-Null;[IO.File]::WriteAllText(${quote(remote+'/lan.crt')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false))`,await readFile(certificate,'utf8'));
   await ps(`[IO.File]::WriteAllText(${quote(remote+'/lan.key')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false))`,await readFile(key,'utf8'));
-  for(const name of ['probe-wp09-cross.mjs','probe-teaching-assembly-cross.mjs','lib/wp09-cross-case.mjs'])await exec('scp',['-q',fileURLToPath(new URL(name,import.meta.url)),a.ssh+':'+remote+'/'+name],{timeout:60000});
+  for(const name of ['probe-wp09-cross.mjs','probe-teaching-assembly-cross.mjs','lib/wp09-cross-case.mjs','lib/probe-evidence.mjs'])await exec('scp',['-q',fileURLToPath(new URL(name,import.meta.url)),a.ssh+':'+remote+'/'+name],{timeout:60000});
   report.preparationStep='scoped-firewall';await persist();
   firewall='XunJie-WP09-'+randomUUID();
   await ps(`New-NetFirewallRule -Name ${quote(firewall)} -DisplayName ${quote(firewall)} -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${Number(a['win-port'])},${Number(a['win-port'])+2} -RemoteAddress ${quote(a['mac-host'])} -Profile Any|Out-Null`);
@@ -84,12 +86,16 @@ if(a['tls-worker']){
    report.transport={windowsToMac:ready.macHttps,macToWindows:await get(`https://${a['win-host']}:${a['win-port']}/transport-only`,await readFile(certificate))};check(report.transport.windowsToMac.status===200&&report.transport.macToWindows.status===200,'direct-tls-preflight-failed');
    report.preparationStep='Windows-Interactive-Limited-Chrome-SPKI';await persist();
    const {acquireNativeDesktop}=await import('./lib/native-desktop-lock.mjs');releaseDesktop=await acquireNativeDesktop('windows',a.session,'WP09 transport-only Chrome SPKI preflight');
-   taskName='XunJie-WP09-Transport-'+randomUUID();const chromeJob={transportOnly:true,endpoint:`https://${a['mac-host']}:${a['mac-port']}/transport-only`,spki:createHash('sha256').update(cert.publicKey.export({type:'spki',format:'der'})).digest('base64'),playwright:'C:/Users/h/XunJie-acceptance/package.json',result:remote+'/chrome-result.json',screenshot:remote+'/chrome.png'};
+   taskName='XunJie-WP09-Transport-'+randomUUID();const chromeJob={captureEvidence,transportOnly:true,endpoint:`https://${a['mac-host']}:${a['mac-port']}/transport-only`,spki:createHash('sha256').update(cert.publicKey.export({type:'spki',format:'der'})).digest('base64'),playwright:'C:/Users/h/XunJie-acceptance/package.json',result:remote+'/chrome-result.json',screenshot:captureEvidence?remote+'/chrome.png':undefined};
    const chromeLaunch='"'+remote+'/probe-wp09-cross.mjs" --chrome-job "'+remote+'/chrome-job.json"';
    await ps(`[IO.File]::WriteAllText(${quote(remote+'/chrome-job.json')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false));$a=New-ScheduledTaskAction -Execute ${quote(resourceNode)} -Argument ${quote(chromeLaunch)};$p=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited;$s=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 2);Register-ScheduledTask -TaskName ${quote(taskName)} -Action $a -Principal $p -Settings $s|Out-Null;Start-ScheduledTask -TaskName ${quote(taskName)}`,JSON.stringify(chromeJob));taskRegistered=true;
    let result;const end=Date.now()+45000;while(Date.now()<end){const raw=await ps(`if(Test-Path -LiteralPath ${quote(chromeJob.result)}){[IO.File]::ReadAllText(${quote(chromeJob.result)})}`);result=raw?JSON.parse(raw):null;if(result&&['passed','failed'].includes(result.status))break;await new Promise(done=>setTimeout(done,500));}
-   check(result?.status==='passed','Windows-Chrome-transport-preflight-failed');const image=Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${quote(chromeJob.screenshot)}))`),'base64');
-   const imagePath=resolve(dirname(out),'../windows/transport-preflight.png');await mkdir(dirname(imagePath),{recursive:true});await writeFile(imagePath,image);report.windowsChrome={status:result.status,chromeVersion:result.chromeVersion,desktopSessionId:result.desktopSessionId,transport:result.transport,screenshot:imagePath,screenshotSha256:sha(image)};
+   check(result?.status==='passed','Windows-Chrome-transport-preflight-failed');
+   report.windowsChrome={status:result.status,chromeVersion:result.chromeVersion,desktopSessionId:result.desktopSessionId,transport:result.transport};
+   if(captureEvidence){
+    const image=Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${quote(chromeJob.screenshot)}))`),'base64');
+    const imagePath=resolve(dirname(out),'../windows/transport-preflight.png');await mkdir(dirname(imagePath),{recursive:true});await writeEvidence(imagePath,image);Object.assign(report.windowsChrome,{screenshot:imagePath,screenshotSha256:sha(image)});
+   }
    report.preparationStep='complete';report.wp09Product='not-run; old package Node is transport infrastructure only';report.status='passed';
   }else{
    check(a.product&&(a['windows-product']||a['remote-product']),'new-product-packages-required');
@@ -97,7 +103,7 @@ if(a['tls-worker']){
    if(!remoteProduct){remoteProduct=remote+'/product';const archive=join(local,'windows.tgz');await exec('tar',['-czf',archive,'-C',resolve(a['windows-product']),'.'],{timeout:120000});await exec('scp',['-q',archive,a.ssh+':'+remote+'/windows.tgz'],{timeout:180000});await ps(`New-Item -ItemType Directory -Path ${quote(remoteProduct)}|Out-Null;tar -xzf ${quote(remote+'/windows.tgz')} -C ${quote(remoteProduct)};if($LASTEXITCODE){throw 'archive-extraction-failed'}`);}
    check(a.model!=='real'||remaining>=5,'remaining-real-call-budget-cannot-complete-create-and-revision');
    const node=join(resolve(a.product),'resources/node/bin/node');
-   const argv=['scripts/probe-teaching-assembly-cross.mjs','--artifacts','--product',resolve(a.product),'--remote-product',remoteProduct,'--ssh',a.ssh,'--remote-script',remote+'/probe-teaching-assembly-cross.mjs','--certificate',certificate,'--key',key,'--remote-certificate',remote+'/lan.crt','--remote-key',remote+'/lan.key','--mac-host',a['mac-host'],'--win-host',a['win-host'],'--mac-port',a['mac-port'],'--win-port',a['win-port'],'--credentials-file',resolve(a['credentials-file']),'--artifacts-model',a.model,'--artifacts-session',a.session,'--artifacts-call-budget',String(a.model==='real'?remaining:8),'--out',out.replace(/\.json$/,'.case.json')];if(a['retain-failure'])argv.push('--artifacts-keep-failure');if(a['windows-local-only'])argv.push('--artifacts-windows-local-only');if(a['skip-windows-local'])argv.push('--artifacts-skip-windows-local');
+   const argv=['scripts/probe-teaching-assembly-cross.mjs','--artifacts','--product',resolve(a.product),'--remote-product',remoteProduct,'--ssh',a.ssh,'--remote-script',remote+'/probe-teaching-assembly-cross.mjs','--certificate',certificate,'--key',key,'--remote-certificate',remote+'/lan.crt','--remote-key',remote+'/lan.key','--mac-host',a['mac-host'],'--win-host',a['win-host'],'--mac-port',a['mac-port'],'--win-port',a['win-port'],'--credentials-file',resolve(a['credentials-file']),'--artifacts-model',a.model,'--artifacts-session',a.session,'--artifacts-call-budget',String(a.model==='real'?remaining:8),'--out',out.replace(/\.json$/,'.case.json')];if(!captureEvidence)argv.push('--no-evidence');if(a['retain-failure'])argv.push('--artifacts-keep-failure');if(a['windows-local-only'])argv.push('--artifacts-windows-local-only');if(a['skip-windows-local'])argv.push('--artifacts-skip-windows-local');
    const result=await exec(node,argv,{timeout:15*60*1000,maxBuffer:1000000}).catch(e=>({code:e.code,stdout:e.stdout}));
    report.caseReport=JSON.parse(await readFile(out.replace(/\.json$/,'.case.json'),'utf8'));report.status=report.caseReport.status;report.retained=report.caseReport.retained;report.privateResume=report.caseReport.privateResume;report.runRealProviderCalls=a.model==='real'?(report.caseReport.providerRequests?.length??0):0;report.totalRealProviderCalls=used+report.runRealProviderCalls;
   }
@@ -113,5 +119,5 @@ if(a['tls-worker']){
   if(local){await rm(local,{recursive:true,force:true});report.cleanup.localFixtureRemoved=true;}
   if(Object.keys(report.cleanup).some(k=>k.endsWith('Error')))report.status='failed';report.finishedAt=new Date().toISOString();await persist();
  }
- console.log(JSON.stringify({status:report.status,report:out,mode:report.mode,error:report.error}));if(report.status!=='passed')process.exitCode=1;
+ console.log(JSON.stringify({status:report.status,report:hasProbeEvidence(out)?out:null,mode:report.mode,error:report.error}));if(report.status!=='passed')process.exitCode=1;
 }

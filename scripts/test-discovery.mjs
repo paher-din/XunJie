@@ -7,11 +7,11 @@ export const targetDirectories = {
   'product-runtime': 'packages/product-runtime', tools: 'tools', checks: 'scripts',
 };
 export const groups = ['prepare', 'unit', 'server', 'tools', 'tests'];
-export const verifyUsage = 'Usage: npm run verify [-- --group prepare|unit|server|tools|tests] [--shard i/n] [--jobs N] [--list | --help]\n'
+export const verifyUsage = 'Usage: npm run verify [-- --group prepare|unit|server|tools|tests] [--shard i/n] [--jobs N] [--report-dir DIR] [--list | --help]\n'
   + 'No arguments: prepare, then all local tests. tests: unit + server + tools. Tests always run; only builds are cached.\n'
   + 'Jobs: 1..4 (default 4). Shards: server --shard uses measured-weight LPT, longest first; unsharded server stays lexical; tools has four fixed shards.\n'
-  + 'Raw logs, durations and exit statuses: .verification/latest.json';
-export const testUsage = 'Usage: node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--shard i/n] [--jobs N] [--list | --help]';
+  + 'Results go to the console. --report-dir explicitly saves raw logs and a latest.json summary for diagnosis.';
+export const testUsage = 'Usage: node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--shard i/n] [--jobs N] [--report-dir DIR] [--list | --help]';
 
 export function parseOptions(args, mode = 'verify') {
   const usage = mode === 'verify' ? verifyUsage : testUsage;
@@ -26,10 +26,13 @@ export function parseOptions(args, mode = 'verify') {
     if (arg === '--help') options.help = true;
     else if (arg === '--list') options.list = true;
     else if (arg === '--external' && mode === 'test') options.external = true;
-    else if (['--group', '--jobs', '--shard'].includes(arg)) {
+    else if (['--group', '--jobs', '--shard', '--report-dir'].includes(arg)) {
       const value = args[++i];
       if (!value) fail();
-      if (arg === '--group') {
+      if (arg === '--report-dir') {
+        if (value.startsWith('--')) fail();
+        options.reportDir = value;
+      } else if (arg === '--group') {
         if (mode !== 'verify' || !groups.includes(value)) fail();
         options.group = value;
       } else if (arg === '--jobs') {

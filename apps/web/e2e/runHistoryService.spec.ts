@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
@@ -137,7 +138,7 @@ test('HTTPS 两次真实 Core：固定快照和本机参数分别关联，第二
     for (const theme of ['light', 'dark']) {
       await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: test.info().outputPath(`actual-history-${theme}.png`) })
+      if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/runHistoryService/' + `actual-history-${theme}.png`) })
     }
     await page.getByRole('button', { name: '重新读取历史', exact: true }).click()
     await expect(side(page, 'A')).toHaveAttribute('aria-busy', 'false')
@@ -201,7 +202,7 @@ test('HTTPS 完整 Report：原 UTF-8 字节/BOM/CRLF/非BMP、hash/bytes/稳定
     expect(bytes).toEqual(Buffer.from(reportText, 'utf8'))
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(file.contentHash)
     expect(bytes.length).toBe(file.bytes)
-    await page.screenshot({ path: test.info().outputPath('actual-report-download.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/runHistoryService/actual-report-download.png') })
     expect(await publicFiles(page, host, initial.attemptId, reference.runId)).toEqual(files)
     expect(writes).toEqual([]); expect(await facts(page)).toEqual(original)
     const after = await host.control({ kind: 'inspect', attemptId: initial.attemptId })

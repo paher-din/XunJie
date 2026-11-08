@@ -1,3 +1,4 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
@@ -16,10 +17,10 @@ let root = '', endpoint = '', browserVersion = '', headless = true
 let runtime: ReturnType<typeof openProductRuntime>
 let host: Awaited<ReturnType<typeof createProductRuntimeHost>>
 const cases: { name: string; status: string | undefined; durationMs: number }[] = []
-const output = fileURLToPath(new URL('../../../.verification/159', import.meta.url))
+const output = evidenceDirectory('159')
 test.beforeAll(async ({ browser }, info) => {
   browserVersion = browser.version(); headless = info.project.use.headless !== false
-  await mkdir(output, { recursive: true })
+  if (output) await mkdir(output, { recursive: true })
   root = await mkdtemp(join(tmpdir(), 'xj-ui159-tests-'))
   runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
     postgresVersion: '18.6', webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
@@ -31,7 +32,7 @@ test.beforeAll(async ({ browser }, info) => {
 test.afterEach(async ({}, info) => { cases.push({ name: info.title, status: info.status, durationMs: info.duration }) })
 test.afterAll(async () => {
   await host?.stop(); await runtime?.stop()
-  await writeFile(join(output, `product-ui-${process.platform}.json`), JSON.stringify({ measuredAt: new Date().toISOString(),
+  if (output) await writeFile(join(output, `product-ui-${process.platform}.json`), JSON.stringify({ measuredAt: new Date().toISOString(),
     platform: process.platform, arch: process.arch, osRelease: release(), node: process.version,
     browser: 'installed Chrome', browserVersion, headless, backend: 'production host, native PostgreSQL, built product UI',
     receiver: 'controlled test receiver; no real Agent or teaching outcome', cases }, null, 2))
@@ -192,7 +193,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   expect(await page.locator('.ws').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.screenshot({ path: join(output, 'course-narrow-dark.png') })
+  if (output) await page.screenshot({ path: join(output, 'course-narrow-dark.png') })
 })
 
 test('a late browser-history activity read cannot reopen the activity after forward returns to the list', async ({ page }) => {

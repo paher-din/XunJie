@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -22,7 +23,7 @@ import { accumulatorPackage } from '../components/state-accumulator/package.mjs'
  * Requires: XUNJIE_IME_TOOLS (xjkeys + select_ime, Accessibility trusted), an installed Chinese
  * pinyin input method, desktop Google Chrome and XUNJIE_PRODUCT_POSTGRES_BIN.
  */
-const output = resolve(process.env.XUNJIE_SESSION_IME_OUTPUT ?? '.verification/wp03-187-ime');
+const output = probeEvidenceDirectory(process.env.XUNJIE_SESSION_IME_OUTPUT);
 await mkdir(output, { recursive: true });
 const shots = join(output, 'shots');
 await mkdir(shots, { recursive: true });
@@ -165,6 +166,7 @@ try {
   };
   const typeSlow = async pinyin => { for (const letter of pinyin) { keys('type', letter); await sleep(140); } };
   const capture = async name => {
+    if (!hasProbeEvidence(output)) return null;
     const file = join(shots, `${name}.png`);
     try {
       execFileSync('/usr/sbin/screencapture', ['-x', file]);
@@ -314,11 +316,11 @@ try {
   await expect(page.getByRole('region', { name: '本机会话', exact: true })).toBeVisible();
   await page.emulateMedia({ colorScheme: 'light' });
   await sleep(300);
-  await page.screenshot({ path: join(output, 'ime-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'ime-light.png'), fullPage: true });
   report.screenshots['ime-light'] = join(output, 'ime-light.png').slice(process.cwd().length + 1);
   await page.emulateMedia({ colorScheme: 'dark' });
   await sleep(400);
-  await page.screenshot({ path: join(output, 'ime-dark.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'ime-dark.png'), fullPage: true });
   report.screenshots['ime-dark'] = join(output, 'ime-dark.png').slice(process.cwd().length + 1);
   await page.emulateMedia({ colorScheme: 'light' });
   report.status = 'passed';
@@ -327,12 +329,12 @@ try {
   report.error = error.message;
   if (page) {
     report.failureView = await page.locator('body').innerText().catch(() => null);
-    await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
   }
   throw error;
 } finally {
   await browser?.close().catch(() => {});
   await host?.stop().catch(() => {});
   await runtime.stop().catch(() => {});
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
 }

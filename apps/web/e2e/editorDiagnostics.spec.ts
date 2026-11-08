@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { createHash } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { start, create, edit, confirmSave, serverHead, setAttemptState } from './helpers'
@@ -103,7 +104,7 @@ for (const [path, good, bad, provider] of [
     await expect(page.locator('.squiggly-error')).toHaveCount(1)
     await check.locator('summary').click()
     await expect(check).toContainText('SYNTHETIC expected expression')
-    await page.locator('.cw').screenshot({ path: test.info().outputPath('editor-diagnostics.png') })
+    if (evidenceDirectory()) await page.locator('.cw').screenshot({ path: evidencePath('screenshots/editorDiagnostics/editor-diagnostics.png') })
     // Monaco's decoration has pointer-events:none; the editor receives a real mouse move at its location.
     const issueBox = await page.locator('.squiggly-error').boundingBox()
     expect(issueBox).not.toBeNull()

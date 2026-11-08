@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { probeEvidenceDirectory, writeEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 /**
  * #188 execution-disposition negatives on a real client product package.
  *
@@ -19,16 +20,17 @@
  */
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+  'out': { type: 'string' }, 'output': { type: 'string' }, 'evidence-dir': { type: 'string' },
   label: { type: 'string' }, migrations: { type: 'string' } } });
 const product = resolve(positionals[0] ?? '');
-const output = resolve(positionals[1] ?? '.verification/wp03-188/execution-disposition');
+const output = probeEvidenceDirectory(positionals[1]);
 const migrationsPath = resolve(values.migrations ?? '');
 await mkdir(output, { recursive: true });
 const runtime = await import(pathToFileURL(join(product, 'app/product-runtime.js')).href);
@@ -51,7 +53,7 @@ const report = {
 };
 const reportPath = join(output, 'disposition-negative.json');
 const pass = (name, detail) => { report.cases.push({ name, ...detail }); console.log('PASS ' + name + ' ' + JSON.stringify(detail)); };
-const save = async () => writeFile(reportPath, JSON.stringify(report, null, 2) + '\n');
+const save = async () => writeEvidence(reportPath, JSON.stringify(report, null, 2) + '\n');
 
 async function walk(directory) {
   const result = [];
@@ -289,6 +291,6 @@ try {
   }
   report.finishedAt = new Date().toISOString();
   await save();
-  console.log('STATUS ' + report.status + ' cases=' + report.cases.length + ' output=' + reportPath);
+  console.log('STATUS ' + report.status + ' cases=' + report.cases.length + (hasProbeEvidence(output) ? ' output=' + reportPath : ''));
 }
 if (report.status !== 'passed') process.exitCode = 1;

@@ -1,3 +1,4 @@
+import { captureJobEvidence } from './probe-evidence.mjs';
 // Public WP09 scenario layered on the established two-host runtime controller.
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes, createHash, X509Certificate } from 'node:crypto';
@@ -130,7 +131,7 @@ export async function artifactChromeJob(path){
    const w=workspace?.snapshot?.();
    return {visibility:document.visibilityState,focus:document.hasFocus(),triggerFlags:{authorized:controller?.authorized??activityProps?.authorized,readOnly:workspace?.isReadOnly?.(),activityStatus:controller?.activity?.status??activityProps?.activity?.status,workspaceReady:w?.ready,workspaceError:w?.error,entries:controller?.entries?.map(e=>({artifactId:e.artifact.artifactId,revisionId:e.revision?.revisionId??null,issue:e.issue}))},url:location.pathname+location.search,visibleText:document.body.innerText.slice(0,3500),cards:document.querySelectorAll('.teaching-artifact-card').length,iframes:[...document.querySelectorAll('iframe')].map(f=>({title:f.title,src:f.getAttribute('src')})),errors:[...document.querySelectorAll('[role=alert],.learning-error')].map(e=>e.textContent.slice(0,300)),artifacts,candidates,conversation:{status:conversation.status,error:conversation.body?.error,tools:conversation.body?.tools?.map(t=>({name:t.name,runId:t.runId,commandId:t.commandId,outcome:t.outcome,resultKeys:Object.keys(t.result??{}),artifact:t.result?.artifact,feedback:t.feedback})),runs:conversation.body?.runs?.map(r=>({runId:r.runId,state:r.state,stopRequested:r.stopRequested,reason:r.reason}))}};
   },job.activityId);
-  if(!result.diagnosticScreenshot&&!await page.getByLabel('学校账号',{exact:true}).isVisible()){const path=job.screenshot.replace(/\.png$/,'-diagnostic.png');await page.screenshot({path,fullPage:true,timeout:5000});result.diagnosticScreenshot=true;result.screenshots.push({name:'diagnostic-current-page',path,sha256:sha(await readFile(path))});}
+  if(job.captureEvidence!==false&&job.screenshot&&!result.diagnosticScreenshot&&!await page.getByLabel('学校账号',{exact:true}).isVisible()){await captureJobEvidence(job,page,result,'diagnostic-current-page',{path:job.screenshot.replace(/\.png$/,'-diagnostic.png'),fullPage:true,timeout:5000});result.diagnosticScreenshot=true;}
  })().catch(error=>{result.diagnosticError=safe(error);}).finally(()=>{diagnosing=false;});}},1000);heartbeat.unref();
  try{
   phase='request-TLS-CA';
@@ -155,7 +156,7 @@ export async function artifactChromeJob(path){
   if(job.transportOnly){
     const response=await page.goto(job.endpoint);check(response.status()===200,'Chrome-HTTPS-preflight-failed');
     result.transport={httpStatus:response.status(),secureContext:await page.evaluate(()=>window.isSecureContext),scope:'TLS/Chrome infrastructure only; WP09 product not run'};
-    check(result.transport.secureContext,'Chrome-not-secure-context');await page.screenshot({path:job.screenshot});result.screenshots.push({name:'transport-preflight',path:job.screenshot,sha256:sha(await readFile(job.screenshot))});result.status='passed';return;
+    check(result.transport.secureContext,'Chrome-not-secure-context');await captureJobEvidence(job,page,result,'transport-preflight');result.status='passed';return;
   }
   const pageErrors=[];page.on('pageerror',()=>pageErrors.push('browser-page-error'));result.loginHTTP=[];page.on('response',response=>{if(/\/api\/learning\/(login|context)$/.test(new URL(response.url()).pathname))result.loginHTTP.push({route:new URL(response.url()).pathname.split('/').at(-1),status:response.status()});});
   result.productHTTP=[];result.failedRequests=[];
@@ -169,7 +170,7 @@ export async function artifactChromeJob(path){
   async function login(endpoint){const previousPhase=phase;phase='student-login';result.loginPhase='navigation';await page.goto(endpoint+'/?space='+(job.space??'school'));if(job.space!=='personal'){result.loginPhase='form-ready';await page.getByLabel('学校账号',{exact:true}).waitFor({state:'visible'});await page.getByLabel('学校账号',{exact:true}).fill(job.student.loginName);await page.getByLabel('密码',{exact:true}).fill(job.student.password);result.loginPhase='submit';await page.getByRole('button',{name:'登录此学校',exact:true}).click();await page.getByLabel('学校账号',{exact:true}).waitFor({state:'hidden'});}const c=await api('context');await page.evaluate(v=>window.__wp09Namespace=v,c.value.clientNamespace);result.loginPhase='complete';phase=previousPhase;}
   async function open(){const b=page.getByRole('button',{name:/^(打开对话|问题与引用)$/});await b.waitFor();if(await b.getAttribute('aria-expanded')==='false')await b.click();}
   async function card(){const c=page.locator('.teaching-artifact-card').filter({has:page.locator('iframe')}).first();await c.waitFor();return {card:c,input:c.frameLocator('iframe').getByRole('textbox',{name:'我的解释',exact:true})};}
-  async function snap(name){const path=job.screenshot.replace(/\.png$/,'-'+name+'.png');await page.screenshot({path,fullPage:true});result.screenshots.push({name,path,sha256:sha(await readFile(path))});}
+  async function snap(name){await captureJobEvidence(job,page,result,name,{path:job.screenshot?.replace(/\.png$/,'-'+name+'.png'),fullPage:true});}
   async function signal(expected){return until(async()=>{try{const v=JSON.parse(await readFile(job.signal,'utf8'));return v.phase===expected?v:null;}catch(e){if(e.code==='ENOENT')return null;throw e;}},'controller-signal-timeout',360000);}
   phase='student-login';await login(job.endpoint);await page.goto(job.endpoint+'/?space='+(job.space??'school')+'&activity='+job.activityId);await open();
   if(job.diagnosticOnly){phase='actual-checked-candidate';await delay(12000);await until(()=>result.diagnostic,'diagnostic-not-collected',15000);await save();result.status='diagnosed';return;}
@@ -206,15 +207,16 @@ export async function artifactChromeJob(path){
    const active=await signal('takeover');phase='takeover';await login(active.endpoint);await page.goto(active.endpoint+'/?space=school&activity='+job.activityId);await open();c=await card();await expect(c.input).toHaveValue(job.expected);await expect(c.input).toBeEditable();await snap('takeover');result.checks.push('formal-takeover-same-artifact-state-editable');result.status='passed';
   }
   result.pageErrors=pageErrors;check(pageErrors.length===0,'browser-page-error');
- }catch(e){result.status='failed';result.error=safe(e);result.phase=phase;await save();if(page&&phase==='student-login'){result.loginUI={labels:await page.locator('label').allTextContents().catch(()=>[]),buttons:await page.getByRole('button').allTextContents().catch(()=>[])};}if(page&&phase!=='student-login'){await page.screenshot({path:job.screenshot,fullPage:true,timeout:7000}).then(async()=>result.screenshots.push({name:'failure-'+phase,path:job.screenshot,sha256:sha(await readFile(job.screenshot))})).catch(()=>{});}}
+ }catch(e){result.status='failed';result.error=safe(e);result.phase=phase;await save();if(page&&phase==='student-login'){result.loginUI={labels:await page.locator('label').allTextContents().catch(()=>[]),buttons:await page.getByRole('button').allTextContents().catch(()=>[])};}if(page&&phase!=='student-login'){await captureJobEvidence(job,page,result,'failure-'+phase,{fullPage:true,timeout:7000}).catch(()=>{});}}
  finally{clearInterval(heartbeat);await save();await Promise.race([browser?.close().catch(()=>{}),delay(7000)]);await writes;result.finishedAt=new Date().toISOString();await save();}
 }
 
 export async function runArtifactsCase(c){
  if(c.args['artifacts-windows-local-only']){c.report.scope='Windows standalone local product only; two-host pairing is infrastructure, not a cross-artifact acceptance claim';return runWindowsLocalCase(c);}
  const {args,pkg,runtime,root,state,windows,remote,relay,schoolApi,identity,data,agentTarget,stage,report}=c;
- const evidence=dirname(resolve(args.out)),windowsEvidence=resolve(evidence,'../windows');await mkdir(windowsEvidence,{recursive:true});
- const output=c.resume?{...structuredClone(c.resume.artifacts),priorBrowser:structuredClone(c.resume.artifacts.windows),screenshots:[...c.resume.artifacts.screenshots],cleanup:{},resumed:true}
+ const captureEvidence=!args['no-evidence'];
+ const evidence=dirname(resolve(args.out)),windowsEvidence=resolve(evidence,'../windows');if(captureEvidence)await mkdir(windowsEvidence,{recursive:true});
+ const output=c.resume?{...structuredClone(c.resume.artifacts),priorBrowser:structuredClone(c.resume.artifacts.windows),screenshots:captureEvidence?[...c.resume.artifacts.screenshots]:[],cleanup:{},resumed:true}
   :{modelSource:args['artifacts-model']==='controlled'?'controlled external Chat transport':'real DeepSeek chat-completions',originals:[],screenshots:[],cleanup:{}};
  const spki=createHash('sha256').update(new X509Certificate(await readFile(args.certificate)).publicKey.export({type:'spki',format:'der'})).digest('base64');
  let directory,taskName,taskRegistered=false,releaseWindows,releaseMac,sourceHost=c.host,targetHost,targetRuntime,targetRoot,recovered,macIngress,sourceHostStopped=false,casePassed=false;
@@ -245,10 +247,10 @@ export async function runArtifactsCase(c){
  const signal=(phase,extra={})=>ps(`[IO.File]::WriteAllText(${q(directory+'/signal.json')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false))`,JSON.stringify({phase,...extra}));
  async function macView(endpoint,activityId,expected,readOnly=false){
   const local=await mkdtemp(join(tmpdir(),'xj-wp09-mac-chrome-'));try{
-   const job={endpoint,student:{loginName:c.loginName,password:c.password},activityId,expected,readOnly,readOnlyView:!readOnly,spki,certificate:args.certificate,
-    product:pkg.root,applicationSha256:pkg.fact.applicationSha256,playwright:resolve('apps/web/package.json'),result:join(local,'result.json'),screenshot:join(local,'screen.png')};
+   const job={captureEvidence,endpoint,student:{loginName:c.loginName,password:c.password},activityId,expected,readOnly,readOnlyView:!readOnly,spki,certificate:args.certificate,
+    product:pkg.root,applicationSha256:pkg.fact.applicationSha256,playwright:resolve('apps/web/package.json'),result:join(local,'result.json'),screenshot:captureEvidence?join(local,'screen.png'):undefined};
    const path=join(local,'job.json');await atomic(path,job);await artifactChromeJob(path);const result=JSON.parse(await readFile(job.result,'utf8'));
-   for(const screenshot of result.screenshots){const path=join(evidence,'mac-'+screenshot.name+'.png');await writeFile(path,await readFile(screenshot.path));output.screenshots.push({platform:'darwin',path,sha256:screenshot.sha256});}
+   if(captureEvidence)for(const screenshot of result.screenshots){const path=join(evidence,'mac-'+screenshot.name+'.png');await writeFile(path,await readFile(screenshot.path));output.screenshots.push({platform:'darwin',path,sha256:screenshot.sha256});}
    check(result.status==='passed','mac-Chrome-artifact-verification-failed');return {chromeVersion:result.chromeVersion,checks:result.checks,applicationSha256:result.product.applicationSha256};
   }finally{await rm(local,{recursive:true,force:true});}
  }
@@ -272,9 +274,9 @@ export async function runArtifactsCase(c){
   taskName='XunJie-WP09-Artifact-'+randomUUID();
   const head=c.resume?await schoolApi('workspaces/'+activity.activityId):null;
   const expected=c.resume?JSON.parse(head.files.find(f=>f.name==='components/artifact-'+generated.receipt.artifactId+'.json').value).content.explanation:'位宽增加一位，组合数加倍；这是我的中文解释。';
-  const job={endpoint:state.endpoint,student:{loginName:c.loginName,password:c.password},activityId:activity.activityId,expected,spki,certificate:args['remote-certificate'],product:args['remote-product'],applicationSha256:windows.package.applicationSha256,
+  const job={captureEvidence,endpoint:state.endpoint,student:{loginName:c.loginName,password:c.password},activityId:activity.activityId,expected,spki,certificate:args['remote-certificate'],product:args['remote-product'],applicationSha256:windows.package.applicationSha256,
    ...(c.resume?{resume:true,artifactId:generated.receipt.artifactId,originalRevisionId:generated.receipt.revisionId,revisionId:revised.receipt.revisionId}:{}),
-   playwright:'C:/Users/h/XunJie-acceptance/package.json',result:directory+'/result.json',screenshot:directory+'/result.png',signal:directory+'/signal.json'};
+   playwright:'C:/Users/h/XunJie-acceptance/package.json',result:directory+'/result.json',screenshot:captureEvidence?directory+'/result.png':undefined,signal:directory+'/signal.json'};
   await stage(c.resume?'Windows-same-original-revision-and-offline-input-resume':'Windows-Interactive-Limited-Chrome-check-adopt-save',async()=>{
    const browserScript=args['remote-script'].replace(/probe-teaching-assembly-cross\.mjs$/,'probe-wp09-cross.mjs');
    const launch='"'+browserScript+'" --chrome-job "'+directory+'/job.json"';
@@ -354,7 +356,7 @@ export async function runArtifactsCase(c){
   output.windowsStatus='passed';casePassed=true;return output;
  }finally{
   if(directory){
-   try{const result=await readRemote(directory+'/result.json');if(result)output.windows=result;for(const shot of [...(result?.screenshots??[]),...(output.windowsLocal?.browser?.screenshots??[])]){const encoded=await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`);const path=join(windowsEvidence,'cross-'+shot.name+'.png');const bytes=Buffer.from(encoded,'base64');check(sha(bytes)===shot.sha256,'remote-screenshot-checksum-mismatch');await writeFile(path,bytes);output.screenshots.push({platform:'win32',path,sha256:shot.sha256});}
+   try{const result=await readRemote(directory+'/result.json');if(result)output.windows=result;if(captureEvidence)for(const shot of [...(result?.screenshots??[]),...(output.windowsLocal?.browser?.screenshots??[])]){const encoded=await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`);const path=join(windowsEvidence,'cross-'+shot.name+'.png');const bytes=Buffer.from(encoded,'base64');check(sha(bytes)===shot.sha256,'remote-screenshot-checksum-mismatch');await writeFile(path,bytes);output.screenshots.push({platform:'win32',path,sha256:shot.sha256});}
     if(result&&!['passed','failed'].includes(result.status)&&Number.isInteger(result.workerProcessId))await ps(`$p=Get-CimInstance Win32_Process -Filter 'ProcessId = ${result.workerProcessId}';if($p -and $p.CommandLine.Contains(${q(directory)})){taskkill.exe /PID ${result.workerProcessId} /T /F|Out-Null}`);
     if(taskRegistered)await ps(`Stop-ScheduledTask -TaskName ${q(taskName)} -ErrorAction SilentlyContinue;Unregister-ScheduledTask -TaskName ${q(taskName)} -Confirm:$false -ErrorAction SilentlyContinue`);output.cleanup.windowsTaskRemoved=true;
    }catch(e){output.cleanup.windowsError=safe(e);}
@@ -368,19 +370,20 @@ export async function runArtifactsCase(c){
 }
 
 export async function runWindowsLocalCase(c,{desktopHeld=false}={}){
+ const captureEvidence=!c.args['no-evidence'];
  const {args,remote,pkg,windows}=c,ps=(source,input)=>windowsControl(args.ssh,source,input);
- const directory=args['remote-script'].replace(/\/[^/]+$/,'')+'/local-Chrome-'+randomUUID(),evidence=resolve(dirname(args.out),'../windows');await mkdir(evidence,{recursive:true});
+ const directory=args['remote-script'].replace(/\/[^/]+$/,'')+'/local-Chrome-'+randomUUID(),evidence=resolve(dirname(args.out),'../windows');if(captureEvidence)await mkdir(evidence,{recursive:true});
  const output={status:'running',scope:'Windows standalone actual final product; controlled external Chat SSE transport',cleanup:{},screenshots:[]};c.report.windowsStandalone=output;let releaseDesktop,registered=false,taskName,result;
  try{
   if(!desktopHeld){const {acquireNativeDesktop}=await import('./native-desktop-lock.mjs');releaseDesktop=await c.until(async()=>{try{return await acquireNativeDesktop('windows',args['artifacts-session'],'WP09 standalone Windows product Chrome');}catch(e){if(e.message.startsWith('Desktop lock is held;'))return null;throw e;}},'Windows-desktop-owned',900000);}
   const setup=await remote.call('artifact.local-setup');output.product={...windows.package};output.setup=setup;
   await ps(`New-Item -ItemType Directory -Path ${q(directory)}|Out-Null`);
   const spki=createHash('sha256').update(new X509Certificate(await readFile(args.certificate)).publicKey.export({type:'spki',format:'der'})).digest('base64');
-  const job={endpoint:setup.endpoint,activityId:setup.activityId,space:'personal',standalone:true,expected:'Windows 本机重开后保留的中文解释。',spki,certificate:args['remote-certificate'],product:args['remote-product'],applicationSha256:windows.package.applicationSha256,playwright:'C:/Users/h/XunJie-acceptance/package.json',result:directory+'/result.json',screenshot:directory+'/screen.png'};
+  const job={captureEvidence,endpoint:setup.endpoint,activityId:setup.activityId,space:'personal',standalone:true,expected:'Windows 本机重开后保留的中文解释。',spki,certificate:args['remote-certificate'],product:args['remote-product'],applicationSha256:windows.package.applicationSha256,playwright:'C:/Users/h/XunJie-acceptance/package.json',result:directory+'/result.json',screenshot:captureEvidence?directory+'/screen.png':undefined};
   taskName='XunJie-WP09-Local-'+randomUUID();const script=args['remote-script'].replace(/probe-teaching-assembly-cross\.mjs$/,'probe-wp09-cross.mjs'),launch='"'+script+'" --chrome-job "'+directory+'/job.json"';
   await ps(`[IO.File]::WriteAllText(${q(directory+'/job.json')},[Console]::In.ReadToEnd(),[Text.UTF8Encoding]::new($false));$a=New-ScheduledTaskAction -Execute ${q(args['remote-product']+'/resources/node/node.exe')} -Argument ${q(launch)};$p=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited;$s=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 4);Register-ScheduledTask -TaskName ${q(taskName)} -Action $a -Principal $p -Settings $s|Out-Null;Start-ScheduledTask -TaskName ${q(taskName)}`,JSON.stringify(job));registered=true;
   result=await c.until(async()=>{const text=await ps(`if(Test-Path -LiteralPath ${q(job.result)}){[IO.File]::ReadAllText(${q(job.result)})}`);const value=text?JSON.parse(text):null;if(value?.status==='failed'){output.browser=value;throw Object.assign(new Error(),{code:value.error});}return value?.status==='passed'?value:null;},'Windows-local-Chrome-timeout',180000);output.browser=result;
-  for(const shot of result.screenshots){const bytes=Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`),'base64');check(sha(bytes)===shot.sha256,'Windows-local-screenshot-digest-mismatch');const path=join(evidence,shot.name+'.png');await writeFile(path,bytes);output.screenshots.push({path,sha256:shot.sha256});}
+  if(captureEvidence)for(const shot of result.screenshots){const bytes=Buffer.from(await ps(`[Convert]::ToBase64String([IO.File]::ReadAllBytes(${q(shot.path)}))`),'base64');check(sha(bytes)===shot.sha256,'Windows-local-screenshot-digest-mismatch');const path=join(evidence,shot.name+'.png');await writeFile(path,bytes);output.screenshots.push({path,sha256:shot.sha256});}
   output.status='passed';return output;
  }finally{
   if(registered)await ps(`Stop-ScheduledTask -TaskName ${q(taskName)} -ErrorAction SilentlyContinue;Unregister-ScheduledTask -TaskName ${q(taskName)} -Confirm:$false -ErrorAction SilentlyContinue`);output.cleanup.taskRemoved=true;await releaseDesktop?.();output.cleanup.desktopReleased=!desktopHeld;await c.persist();

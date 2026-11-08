@@ -31,15 +31,6 @@ jobs:
           name: build-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/build/
           retention-days: 7
-      - name: Save verification logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: verification-prepare-${{ github.run_attempt }}
-          path: .verification/
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 7
   tests:
     needs: prepare
     runs-on: ubuntu-24.04
@@ -83,18 +74,3 @@ jobs:
         run: |
           sudo install -d -m 0700 -o "$(id -un)" -g "$(id -gn)" /run/xunjie-dlc
           node --test apps/server/runner/alu-node.runtime.test.ts
-      - name: Name the log artifact
-        if: always()
-        env:
-          TEST_GROUP: ${{ matrix.group }}
-          TEST_SHARD: ${{ matrix.shard }}
-        run: echo "LOG_ARTIFACT=verification-$TEST_GROUP-${TEST_SHARD//\//-}-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
-      - name: Save verification logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.LOG_ARTIFACT }}
-          path: .verification/
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 7

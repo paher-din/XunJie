@@ -1,3 +1,4 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 // Windows standalone-school HTTPS acceptance for #192.
 //
 // The platform path the Windows delivery did not cover: a school-profile deployment listens on a
@@ -10,7 +11,7 @@
 // cross-machine school deployment and not for teaching effect.
 import assert from 'node:assert/strict';
 import { createHash, randomUUID, X509Certificate } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -18,7 +19,7 @@ import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { aluPackage, aluCoursePackage } from '../components/alu-experiment/package.mjs';
 
-const output = resolve(process.env.XUNJIE_ALU_SCHOOL_OUTPUT ?? '.verification/wp04-192-school-https');
+const output = probeEvidenceDirectory(process.env.XUNJIE_ALU_SCHOOL_OUTPUT);
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Native PostgreSQL required (set XUNJIE_PRODUCT_POSTGRES_BIN).');
@@ -66,7 +67,7 @@ try {
   passed('strict TLS is verified against the probe CA and the entry answers as the school profile');
 } catch (error) {
   report.status = 'failed'; report.error = String(error?.stack ?? error);
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ status: report.status, cases: report.cases, error: report.error }));
   throw error;
 }
@@ -147,7 +148,7 @@ try {
   await page.getByRole('button', { name: '运行', exact: true }).click();
   await page.getByRole('tab', { name: 'ALU 实验', exact: true }).click();
   await expect(page.getByText('F：0000　Cout：1', { exact: false })).toBeVisible({ timeout: 90000 });
-  await page.screenshot({ path: join(output, 'school-https-run.png') });
+  await captureEvidence(page, { path: join(output, 'school-https-run.png') });
   passed('a real Worker run over the school HTTPS entry produces a real carry observation');
 
   // The school owner, not a device-local database, holds the accepted fact and the retained VCD.
@@ -184,6 +185,6 @@ try {
 } finally {
   await browser?.close().catch(() => undefined);
   await runtime.stop().catch(() => undefined);
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ status: report.status, cases: report.cases.length, error: report.error ?? null }));
 }

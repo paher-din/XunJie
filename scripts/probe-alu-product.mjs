@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 // Real Chrome, native PostgreSQL and the formal product, with no fixture receiver.
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {mkdir,mkdtemp,writeFile,readFile} from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -9,7 +10,7 @@ import {spawnSync} from 'node:child_process';
 import {chromium,expect} from '@playwright/test';
 import {openProductRuntime,resolveCredential} from '@xunjie/product-runtime';
 import {aluPackage,aluCoursePackage} from '../components/alu-experiment/package.mjs';
-const output=resolve(process.env.XUNJIE_ALU_OUTPUT??'.verification/wp04-192-product');await mkdir(output,{recursive:true});
+const output=probeEvidenceDirectory(process.env.XUNJIE_ALU_OUTPUT);await mkdir(output,{recursive:true});
 const root=await mkdtemp(join(tmpdir(),'xj-alu-product-'));
 let resources={nodePath:process.execPath,nodeVersion:'24.21.0',postgresBin:process.env.XUNJIE_PRODUCT_POSTGRES_BIN,
   postgresVersion:'18.6',webRoot:resolve(process.env.XUNJIE_ALU_WEB_ROOT??process.env.XUNJIE_ALU_BASELINE_WEB_ROOT??'apps/web/dist-runtime'),windowsPrerequisitePath:resolve('scripts/windows-prereq-prepare.ps1')};
@@ -65,9 +66,9 @@ try {
   await expect(page.locator('#activity-title')).toHaveText(course.task.title);
   if(process.env.XUNJIE_ALU_BASELINE_WEB_ROOT) {
     await page.getByRole('tab',{name:'ALU 实验',exact:true}).click();
-    await page.screenshot({path:join(output,'before.png')});
-    report.cases.push('HEAD formal product UI before ALU runtime integration');report.status='baseline-captured';
-    await writeFile(join(output,'baseline-report.json'),JSON.stringify(report,null,2));
+    await captureEvidence(page, {path:join(output,'before.png')});
+    report.cases.push('HEAD formal product UI before ALU runtime integration');report.status='baseline-checked';
+    await writeEvidence(join(output,'baseline-report.json'),JSON.stringify(report,null,2));
   } else {
   await page.getByText('打开补学资料来源',{exact:true}).click();
   await expect(page.getByRole('link',{name:/位宽、低 4 位与进位/})).toHaveAttribute('href',/7174035/);
@@ -75,7 +76,7 @@ try {
   await expect(page.getByRole('button',{name:'运行',exact:true})).toBeEnabled({timeout:120000});
   await expect(page.getByRole('button',{name:'alu.sv',exact:true}).or(page.getByRole('tab',{name:'alu.sv',exact:true})).first()).toBeVisible();
   report.cases.push('starter imported and actual Worker self-check enabled run');
-  await page.screenshot({path:join(output,'initial.png')});
+  await captureEvidence(page, {path:join(output,'initial.png')});
   await page.getByRole('button',{name:'运行',exact:true}).click();
   await page.getByRole('tab',{name:'ALU 实验',exact:true}).click();
   const panel=page.getByRole('region',{name:'计算记录'});
@@ -93,7 +94,7 @@ try {
   await expect(page.getByText('F：0000　Cout：1',{exact:false})).toBeVisible({timeout:60000});
   report.cases.push('real carry observation in formal editor and Worker');
   report.cases.push('Chinese source text entered through Monaco survives compilation and fixed execution basis');
-  await page.screenshot({path:join(output,'observed.png')});
+  await captureEvidence(page, {path:join(output,'observed.png')});
   await expect.poll(async()=>{
     const history=await context.request.get(`${endpoint}/api/learning/executions/${activity.activityId}/history`);
     if(!history.ok())return false;const value=await history.json();return value.entries.some(r=>r.query.state==='succeeded'&&r.query.output?.output?.cout==='1');
@@ -124,7 +125,7 @@ try {
   await expect(page.getByText('编译未完成',{exact:false}).first()).toBeVisible({timeout:60000});
   await expect(page.getByText('F：0000　Cout：1',{exact:false})).toBeVisible();
   report.cases.push('compile failure names original source and never replaces previous observation');
-  await page.screenshot({path:join(output,'compile-failure.png')});
+  await captureEvidence(page, {path:join(output,'compile-failure.png')});
   await page.getByRole('tab',{name:'作品',exact:true}).click();
   await replace('module alu(input logic [3:0] A,B,input logic M,input logic [1:0] S,input logic Cin,output logic [3:0] F,output logic Cout); initial begin F=0; Cout=0; forever #0 F=~F; end endmodule');
   await page.getByRole('button',{name:'运行',exact:true}).click();await page.getByRole('tab',{name:'ALU 实验',exact:true}).click();
@@ -135,9 +136,9 @@ try {
   await page.getByRole('button',{name:'运行',exact:true}).click();await page.getByRole('tab',{name:'ALU 实验',exact:true}).click();
   await expect(page.locator('.execution-records > li').first()).toContainText('F：0001　Cout：1',{timeout:60000});
   report.cases.push('a new Worker remains usable after stop');
-  await page.setViewportSize({width:1024,height:768});await page.screenshot({path:join(output,'narrow.png')});
+  await page.setViewportSize({width:1024,height:768});await captureEvidence(page, {path:join(output,'narrow.png')});
   await page.evaluate(()=>{localStorage.setItem('theme.v1','dark')});await page.reload();
-  await page.getByRole('tab',{name:'ALU 实验',exact:true}).click();await page.screenshot({path:join(output,'dark.png')});
+  await page.getByRole('tab',{name:'ALU 实验',exact:true}).click();await captureEvidence(page, {path:join(output,'dark.png')});
   report.cases.push('narrow desktop and dark theme render the same activity and retained results');
   await page.getByRole('tab',{name:'作品',exact:true}).click();
   const other=await context.newPage();await other.goto(endpoint+'?space=school&activity='+activity.activityId);
@@ -165,10 +166,10 @@ try {
   report.cases.push('real maintenance validation accepts fixed v3 works, result resources and pins and resumes after a source fence');
   report.status='passed';
   }
-} catch(error){report.status='failed';report.error=String(error.stack??error);if(page){report.visibleText=await page.locator('body').innerText().catch(()=>'');await page.screenshot({path:join(output,'failure.png')}).catch(()=>{});}throw error;}
+} catch(error){report.status='failed';report.error=String(error.stack??error);if(page){report.visibleText=await page.locator('body').innerText().catch(()=>'');await captureEvidence(page, {path:join(output,'failure.png')}).catch(()=>{});}throw error;}
 finally {
   await browser?.close();await runtime.stop().catch(()=>{});
-  // Keep this isolated root for inspection; deleting it requires explicit workspace authorisation.
-  await writeFile(join(output,process.env.XUNJIE_ALU_BASELINE_WEB_ROOT?'baseline-report.json':'report.json'),JSON.stringify(report,null,2));
+  // The shared probe helper removes this owned temporary root before process exit.
+  await writeEvidence(join(output,process.env.XUNJIE_ALU_BASELINE_WEB_ROOT?'baseline-report.json':'report.json'),JSON.stringify(report,null,2));
   console.log(JSON.stringify(report));
 }

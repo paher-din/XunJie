@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { clickWorkspaceAction } from './workspaceControls'
 import { createHash, randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
@@ -126,7 +127,7 @@ test('HTTPS 缺受信代际真实409：入口不可用、零业务写、零活�
     expect(after.requests.activityReads).toBe(before.requests.activityReads)
     expect(after.database).toEqual(before.database)
     expect(paths.some(path => path.startsWith('/__i0prep'))).toBe(false)
-    await page.screenshot({ path: test.info().outputPath('generation-unavailable.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/saveRecoveryService/generation-unavailable.png') })
   } finally { await page.context().close(); await host.stop() }
 })
 
@@ -164,7 +165,7 @@ test('HTTPS 代际轮换拒绝旧保存：显式重读同Attempt保留草稿后�
     await expect(page.locator('.ws-flow')).toContainText('确认作品 v2 · 与草稿一致')
     await expect(page.locator('.ws-run-state')).toHaveCount(0)
     expect((await local(page)).commands.find(command => command.commandKey === posts[0]!.key)!.state).toBe('historical')
-    await page.screenshot({ path: test.info().outputPath('generation-reread-saved.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/saveRecoveryService/generation-reread-saved.png') })
   } finally { await page.context().close(); await host.stop() }
 })
 
@@ -290,7 +291,7 @@ test('HTTPS 多文件原字节、版本/hash/manifest与刷新和同库重开读
     const after = await host.control({ kind: 'inspect', attemptId: id })
     expect(after.database).toEqual(before.database)
     expect(after.requests.businessWrites).toBe(before.requests.businessWrites)
-    await page.screenshot({ path: test.info().outputPath('confirmed-and-newer-draft.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/saveRecoveryService/confirmed-and-newer-draft.png') })
   } finally { await page.context().close(); await host.stop() }
 })
 
@@ -323,7 +324,7 @@ test('HTTPS 服务接收但丢ACK：刷新和明确重试只重放原命令、�
     expect(stored.commands.find(row => row.commandKey === command.commandKey)!.receipt?.replayed).toBe(true)
     expect(stored.drafts[0]!.text).toBe(draft)
     await expect(page.locator('.view-lines')).toContainText('newer-after-lost-ack')
-    await page.screenshot({ path: test.info().outputPath('lost-ack-reconciled.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/saveRecoveryService/lost-ack-reconciled.png') })
   } finally { await page.context().close(); await host.stop() }
 })
 
@@ -399,8 +400,8 @@ test('HTTPS 两标签本机草稿CAS冲突保留败方候选且不覆盖赢家�
     await saved(page, 2)
     expect((await head(page, host, id)).files[0]!.text).toBe(winner)
     expect(writes).toHaveLength(0)
-    await page.screenshot({ path: test.info().outputPath('two-tabs-winner.png') })
-    await sibling.screenshot({ path: test.info().outputPath('two-tabs-preserved-conflict.png') })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/saveRecoveryService/two-tabs-winner.png') })
+    if (evidenceDirectory()) await sibling.screenshot({ path: evidencePath('screenshots/saveRecoveryService/two-tabs-preserved-conflict.png') })
     await sibling.close()
   } finally { await context.close(); await host.stop() }
 })

@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,7 +12,7 @@ import { annotationPackage, preparedAnnotationPackage } from '../components/mate
 // Text reaches Chrome only through WindowServer and the selected system IME.
 // Playwright selects material, clicks controls and observes; it never supplies text.
 const product = resolve(process.env.XUNJIE_PRODUCT_PACKAGE ?? 'dist/product-darwin-arm64');
-const output = resolve(process.env.XUNJIE_COMPONENT_IME_REPORT_DIR ?? '.verification/wp03-179-181/ime');
+const output = probeEvidenceDirectory(process.env.XUNJIE_COMPONENT_IME_REPORT_DIR);
 const helper = resolve(process.env.XUNJIE_IME_TOOLS ?? '/Users/robertwu/xj-154/ime');
 const run = (file, args) => execFileSync(file, args, { encoding: 'utf8' }).trim();
 const key = (...args) => run(join(helper, 'xjkeys'), args);
@@ -166,7 +167,7 @@ end tell`]);
     await type('nihao'); await pause(450);
     const bounds = run('/usr/bin/osascript', ['-e', 'tell application "System Events" to tell (first application process whose frontmost is true)\nset p to position of front window\nset s to size of front window\nreturn (item 1 of p as string) & "," & (item 2 of p as string) & "," & (item 1 of s as string) & "," & (item 2 of s as string)\nend tell']);
     assert.match(bounds, /^\d+,\d+,\d+,\d+$/);
-    run('/usr/sbin/screencapture', ['-x', '-R', bounds, join(output, variant + '-candidate.png')]);
+    if (hasProbeEvidence(output)) run('/usr/sbin/screencapture', ['-x', '-R', bounds, join(output, variant + '-candidate.png')]);
     key('key', 'space'); await expect(note).toHaveValue('你好');
     await compose('shijie', '1'); await expect(note).toHaveValue('你好世界');
     passed(variant + ': system candidate Space and digit selection commit Chinese once');
@@ -266,10 +267,10 @@ end tell`]);
     for (const scheme of ['light', 'dark']) {
       await page.evaluate(scheme => { localStorage.setItem('theme.v1', scheme); document.documentElement.dataset.theme = scheme; }, scheme);
       await pause(250);
-      await page.screenshot({ path: join(output, variant + '-' + scheme + '.png'), fullPage: true });
+      await captureEvidence(page, { path: join(output, variant + '-' + scheme + '.png'), fullPage: true });
     }
     await page.setViewportSize({ width: 980, height: 850 });
-    await page.screenshot({ path: join(output, variant + '-narrow.png'), fullPage: true });
+    await captureEvidence(page, { path: join(output, variant + '-narrow.png'), fullPage: true });
     await page.setViewportSize({ width: 1320, height: 920 });
   }
   const next = await preparedAnnotationPackage();
@@ -311,5 +312,5 @@ end tell`]);
     await rm(root, { recursive: true, force: true }); report.privateRoot = 'removed';
   }
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'component-ime-report.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(output, 'component-ime-report.json'), JSON.stringify(report, null, 2) + '\n');
 }

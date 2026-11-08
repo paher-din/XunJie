@@ -1,7 +1,8 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir, release, homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -18,7 +19,7 @@ import { chromium, expect } from '@playwright/test';
  * xjkeys, the Doubao Pinyin input method, desktop Google Chrome and an unlocked desktop.
  */
 const product = resolve(process.env.XUNJIE_PRODUCT_PACKAGE ?? 'dist/product-darwin-arm64');
-const output = resolve(process.env.XUNJIE_STUDENT_ASK_IME_OUTPUT ?? '.verification/wp07-199-mac/ime');
+const output = probeEvidenceDirectory(process.env.XUNJIE_STUDENT_ASK_IME_OUTPUT);
 const helper = resolve(process.env.XUNJIE_IME_TOOLS ?? join(homedir(), 'xj-154/ime'));
 const run = (file, args) => execFileSync(file, args, { encoding: 'utf8' }).trim();
 const key = (...args) => run(join(helper, 'xjkeys'), args);
@@ -177,6 +178,7 @@ try {
   };
   const typeSlow = async pinyin => { for (const letter of pinyin) { key('type', letter); await pause(130); } };
   const capture = async name => {
+    if (!hasProbeEvidence(output)) return null;
     const file = join(shots, `${name}.png`);
     try {
       execFileSync('/usr/sbin/screencapture', ['-x', file]);
@@ -358,16 +360,16 @@ try {
   // Light/dark and narrow desktop screenshots from the real run.
   await page.emulateMedia({ colorScheme: 'light' });
   await pause(300);
-  await page.screenshot({ path: join(output, 'student-ask-ime-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'student-ask-ime-light.png'), fullPage: true });
   report.screenshots.light = join(output, 'student-ask-ime-light.png');
   await page.emulateMedia({ colorScheme: 'dark' });
   await pause(400);
-  await page.screenshot({ path: join(output, 'student-ask-ime-dark.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'student-ask-ime-dark.png'), fullPage: true });
   report.screenshots.dark = join(output, 'student-ask-ime-dark.png');
   await page.emulateMedia({ colorScheme: 'light' });
   await page.setViewportSize({ width: 1000, height: 760 });
   await pause(300);
-  await page.screenshot({ path: join(output, 'student-ask-ime-narrow.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'student-ask-ime-narrow.png'), fullPage: true });
   report.screenshots.narrow = join(output, 'student-ask-ime-narrow.png');
   report.status = 'passed';
 } catch (error) {
@@ -375,7 +377,7 @@ try {
   report.error = error?.message ?? String(error);
   if (page) {
     report.failureView = await page.locator('body').innerText().catch(() => null);
-    await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
   }
   console.error('FAIL', report.error);
   process.exitCode = 1;
@@ -386,7 +388,7 @@ try {
   if (upstream) { upstream.closeAllConnections?.(); await new Promise(done => upstream.close(done)).catch(() => {}); }
   try { cli('stop'); } catch (error) { report.steps.push({ step: 'cli-stop', error: String(error.message ?? error).slice(0, 200) }); }
   try { cli('uninstall'); } catch (error) { report.steps.push({ step: 'cli-uninstall', error: String(error.message ?? error).slice(0, 200) }); }
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
   await rm(root, { recursive: true, force: true }).catch(() => {});
   console.log(JSON.stringify({ status: report.status, cases: report.cases.length, signals: report.signals, error: report.error ?? null }));
 }

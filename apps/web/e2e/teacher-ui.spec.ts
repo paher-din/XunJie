@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test, type Page } from '@playwright/test'
 import { REAL_URL } from './env'
 
@@ -24,7 +25,7 @@ test('教师概览按课程过滤，项目搜索与状态筛选沿真实页面�
   await expect(page.getByRole('heading', { name: '让每一次实践，都有下一步。' })).toBeVisible()
   await expect(page.locator('.t-course-card')).toHaveCount(2)
   await expect(page.locator('.t-attention-row')).toHaveCount(2)
-  await page.screenshot({ path: test.info().outputPath('teacher-overview.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-ui/teacher-overview.png') })
   await page.getByLabel('当前课程', { exact: true }).selectOption('preview-hdl')
   await expect(page.locator('.t-course-card')).toHaveCount(1)
   await expect(page.locator('.t-attention-row')).toContainText('许同学')
@@ -150,7 +151,7 @@ test('设计草稿保存后刷新恢复，核对固定版本再明确选择合�
   await page.reload()
   await expect(page.getByLabel(/^项目标题/)).toHaveValue(title)
   await expect(page.locator('.td-save-state')).toContainText('已保存 · v4')
-  await page.screenshot({ path: test.info().outputPath('teacher-design.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-ui/teacher-design.png') })
   await page.getByRole('button', { name: '预览与分配', exact: true }).click()
   const roles = openDialog(page, '从不同角色，看看这份设计')
   await expect(roles.getByRole('button', { name: /确认版本，选择学生/ })).toBeDisabled()
@@ -330,7 +331,7 @@ test('真实工作台按教师课程读取活动，未提交和审阅显示实�
   expect(paths).not.toContain('/api/courses/student-course/assignments')
 })
 
-test('课程学生名单读取真实成员与分配，未开始不生成尝试或审阅入口，按课程筛选', async ({ page }, info) => {
+test('课程学生名单读取真实成员与分配，未开始不生成尝试或审阅入口，按课程筛选', async ({ page }) => {
   const reads: string[] = []
   const workbenches = [
     { courseId: 'course-a', courseName: '程序设计基础 · 一班', recoveryGeneration: 'g', resources: [], drafts: [], activities: [], presets: [],
@@ -371,16 +372,16 @@ test('课程学生名单读取真实成员与分配，未开始不生成尝试�
   await page.getByRole('combobox', { name: '当前课程', exact: true }).selectOption('all')
   await expect(roster.getByRole('row')).toHaveCount(4)
   await expect(page.locator('button.t-rm-learner-row .t-rm-learner-identity')).toHaveText('陈同陈同学')
-  await page.locator('.t-live-review').screenshot({ path: info.outputPath('course-student-roster.png') })
+  if (evidenceDirectory()) await page.locator('.t-live-review').screenshot({ path: evidencePath('screenshots/teacher-ui/course-student-roster.png') })
   await page.setViewportSize({ width: 390, height: 1000 })
   await expect.poll(() => page.locator('.t-main').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
-  await page.screenshot({ path: info.outputPath('course-student-roster-mobile.png'), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-ui/course-student-roster-mobile.png'), fullPage: true })
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.locator('button.t-rm-learner-row').click()
   await expect.poll(() => reads.filter(path => path.startsWith('/api/attempts/'))).toEqual(['/api/attempts/original-attempt/review-context'])
 })
 
-test('720与390宽度主要页面无水平溢出，主题切换与刷新保留偏好', async ({ page }, info) => {
+test('720与390宽度主要页面无水平溢出，主题切换与刷新保留偏好', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   const requests = await enterPreview(page)
   const paths = ['', '/projects', '/design/draft-report', '/review?learner=learner-lin', '/materials', '/settings']
@@ -395,12 +396,12 @@ test('720与390宽度主要页面无水平溢出，主题切换与刷新保留�
       })
       expect(overflow.document, `${width}px ${path || '/'} document`).toBeLessThanOrEqual(1)
       expect(overflow.main, `${width}px ${path || '/'} main`).toBeLessThanOrEqual(1)
-      if (!path) await page.screenshot({ path: info.outputPath(`teacher-overview-${width}.png`) })
+      if (!path && evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-ui/' + `teacher-overview-${width}.png`) })
     }
   }
   await page.getByLabel('显示主题', { exact: true }).selectOption('dark')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.screenshot({ path: info.outputPath('teacher-settings-dark-390.png') })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teacher-ui/teacher-settings-dark-390.png') })
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(page.getByLabel('显示主题', { exact: true })).toHaveValue('dark')

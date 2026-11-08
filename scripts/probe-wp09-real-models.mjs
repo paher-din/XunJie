@@ -1,3 +1,4 @@
+import { probeEvidenceFile, writeEvidence, captureEvidence, hasProbeEvidence } from './lib/probe-evidence.mjs';
 // Bounded real DeepSeek acceptance through ActionIntent -> RunDriver -> ModelGateway -> artifact owner.
 // The only transport adaptation is local to this probe. Never log payloads, provider bodies or Errors.
 import assert from 'node:assert/strict';
@@ -14,6 +15,7 @@ import { Readable } from 'node:stream';
 import { syncBuiltinESMExports } from 'node:module';
 
 const { values: args } = parseArgs({ options: {
+  'output': { type: 'string' }, 'evidence-dir': { type: 'string' },
   product: { type: 'string' }, 'product-minimal': { type: 'boolean' }, 'budget-from': { type: 'string' },
   alu: { type: 'boolean' }, screenshots: { type: 'boolean' }, 'browser-only': { type: 'boolean' }, 'keep-root': { type: 'boolean' }, out: { type: 'string' }, root: { type: 'string' }, resume: { type: 'string' },
   'credentials-file': { type: 'string', default: join(homedir(), '.config/magpie/providers.json') },
@@ -61,7 +63,7 @@ check(!args['product-minimal'] || args.product, 'minimal-requires-product-packag
 check(!args.resume || args.root, 'resume-requires-original-private-root');
 check(!args['candidates-only'] || args.root, 'candidate-stage-requires-private-root');
 
-const output = resolve(args.out ?? 'docs/student-agent-implementation/evidence/wp09/real-models.json');
+const output = probeEvidenceFile(args.out, 'real-models.json');
 const product = args.product ? resolve(args.product) : null;
 const sourceBytes = await readFile(new URL(import.meta.url));
 const inheritedBudget = args['budget-from'] ? JSON.parse(await readFile(resolve(args['budget-from']), 'utf8')) : null;
@@ -76,7 +78,7 @@ async function persist() {
   await mkdir(dirname(output), { recursive: true });
   // Reports contain whitelisted facts only. Serialize writes so concurrent transport/HTTP updates cannot truncate each other.
   const bytes = JSON.stringify(report, null, 2) + '\n';
-  const pending = writes.then(() => writeFile(output, bytes));
+  const pending = writes.then(() => writeEvidence(output, bytes));
   writes = pending.catch(() => {}); await pending;
 }
 async function stage(name, operation) {
@@ -348,6 +350,7 @@ async function verifyExistingAlu() {
   } finally { actorHeaders = previous; }
 }
 async function captureScreenshots() {
+  if (!hasProbeEvidence(output)) return;
   const { expect } = await import('@playwright/test');
   const row = routeRows.find(item => item.protocol === 'responses') ?? routeRows[0];
   const artifact = report.crossRoute.activityId === row.activityId && report.crossRoute.artifact ? report.crossRoute.artifact : latestPhase(row).artifact;
@@ -367,7 +370,7 @@ async function captureScreenshots() {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await page.evaluate(() => document.fonts.ready); await delay(150);
     const name = 'real-models-product-' + theme + '.png', target = join(dirname(output), name);
-    await page.screenshot({ path: target, fullPage: false, animations: 'disabled' });
+    await captureEvidence(page, { path: target, fullPage: false, animations: 'disabled' });
     report.screenshots.push({ file: name, theme, viewport: { width: 1440, height: 1000 }, activityId: row.activityId,
       artifactId: artifact.artifactId, revisionId: artifact.revisionId, resourceSha256: artifact.sha256, sha256: hash(await readFile(target)) });
     await center.getByRole('button', { name: '关闭页面', exact: true }).click();
@@ -768,5 +771,5 @@ try {
   if (report.cleanupFailure && report.status === 'passed') report.status = 'failed';
   await persist();
 }
-console.log(JSON.stringify({ status: report.status, report: output, modelRequests: report.generationCount, ...(report.reason ? { reason: report.reason } : {}) }));
+console.log(JSON.stringify({ status: report.status, report: hasProbeEvidence(output) ? output : null, modelRequests: report.generationCount, ...(report.reason ? { reason: report.reason } : {}) }));
 if (report.status === 'failed') process.exitCode = 1;

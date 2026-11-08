@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { probeEvidenceDirectory, writeEvidence, captureEvidence } from './lib/probe-evidence.mjs';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer, connect as connectTcp } from 'node:net';
 import { chromium, expect } from '@playwright/test';
@@ -21,7 +22,7 @@ const state = JSON.parse(await readFile(args.state, 'utf8'));
 const endpoint = args.endpoint ?? state.endpoint;
 const spki = args.spki;
 const label = args.label ?? process.platform;
-const output = resolve(args.output ?? `.verification/wp03-175/${label}`);
+const output = probeEvidenceDirectory(args.output);
 if (!endpoint) throw new Error('state file must carry an endpoint');
 await mkdir(output, { recursive: true });
 
@@ -130,7 +131,7 @@ try {
   await expect(frame.getByRole('heading', { name: '表格聚合', exact: true })).toBeVisible({ timeout: 20000 });
   await expect(frame.getByRole('textbox', { name: '得分 第1行', exact: true })).toHaveValue('88');
   passed('the component view renders in the remote school workspace');
-  await page.screenshot({ path: join(output, 'remote-school-before.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'remote-school-before.png'), fullPage: true });
 
   await frame.getByRole('button', { name: '运行计算', exact: true }).click();
   await expect(frame.locator('#summary')).toContainText('共 12 行、3 组', { timeout: 30000 });
@@ -183,7 +184,7 @@ try {
   if (readBack.body?.executionRef !== report.stored.executionRef || readBack.body?.state !== 'succeeded')
     throw new Error('reconnect returned a different run: ' + JSON.stringify(report.readBack));
   passed('reconnect re-queries the original node and the original execution reference');
-  await page.screenshot({ path: join(output, 'remote-school-after.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'remote-school-after.png'), fullPage: true });
 
   const control = args.control ? (await readFile(args.control, 'utf8')).trim() : state.controlToken;
   if (control) {
@@ -214,7 +215,7 @@ try {
   report.error = error instanceof Error ? error.message : String(error);
   throw error;
 } finally {
-  await writeFile(join(output, 'remote-school.json'), JSON.stringify(report, null, 2) + '\n');
+  await writeEvidence(join(output, 'remote-school.json'), JSON.stringify(report, null, 2) + '\n');
   await browser?.close().catch(() => {});
   if (relay) await severRelay();
 }

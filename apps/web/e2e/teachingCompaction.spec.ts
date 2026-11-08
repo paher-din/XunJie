@@ -1,16 +1,17 @@
+import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { resolve, join } from 'node:path'
+import { join } from 'node:path'
 import type { ModelConnection } from '@xunjie/contracts/model-connections'
 import { fixture, reply, until } from '../../server/tests/support/teaching-input-control.mjs'
 
 test.use({ trace: 'off' })
-const output = process.env.XUNJIE_COMPACTION_EVIDENCE ?? resolve('../../.verification/wp08-220-chrome')
+const output = evidenceDirectory('wp08-220-chrome', process.env.XUNJIE_COMPACTION_EVIDENCE)
 
 test('formal long conversation preserves history, draft and controls across compaction and restart', async ({ page, browser }) => {
   test.setTimeout(180000)
-  await mkdir(output, { recursive: true })
+  if (output) await mkdir(output, { recursive: true })
   let releaseSummary!: () => void, releaseLast!: () => void, startedSummary = false, holdLast = false
   const summaryGate = new Promise<void>(resolve => { releaseSummary = resolve })
   const lastGate = new Promise<void>(resolve => { releaseLast = resolve })
@@ -53,7 +54,7 @@ test('formal long conversation preserves history, draft and controls across comp
     await page.keyboard.press('Enter')
     await expect(question).toHaveValue(/尚未发送的中文草稿/)
     await question.evaluate(element => element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })))
-    await page.screenshot({ path: join(output, `summary-pending-${process.platform}.png`) })
+    if (output) await page.screenshot({ path: join(output, `summary-pending-${process.platform}.png`) })
     releaseSummary()
     await expect(page.locator('.teaching-message.assistant').last()).toContainText('沿原观测 37 继续', { timeout: 30000 })
     await expect(question).toBeFocused()
@@ -65,7 +66,7 @@ test('formal long conversation preserves history, draft and controls across comp
     expect(events.filter((event: { kind: string }) => event.kind === 'context-compacted')).toHaveLength(1)
     const conversation = await f.api(`agent/${activity.activityId}/conversation`)
     expect(f.payloads).toHaveLength(9)
-    await page.screenshot({ path: join(output, `conversation-after-${process.platform}.png`) })
+    if (output) await page.screenshot({ path: join(output, `conversation-after-${process.platform}.png`) })
     await page.reload()
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(question).toHaveValue(/尚未发送的中文草稿/)
@@ -103,9 +104,9 @@ test('formal long conversation preserves history, draft and controls across comp
     await expect(question).toHaveValue('停止期间保留的新草稿')
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.setViewportSize({ width: 900, height: 900 })
-    await page.screenshot({ path: join(output, `controls-after-${process.platform}.png`) })
+    if (output) await page.screenshot({ path: join(output, `controls-after-${process.platform}.png`) })
     expect(f.failures).toEqual([])
-    await writeFile(join(output, `chrome-${process.platform}.json`), JSON.stringify({ measuredAt: new Date().toISOString(),
+    if (output) await writeFile(join(output, `chrome-${process.platform}.json`), JSON.stringify({ measuredAt: new Date().toISOString(),
       platform: process.platform, browser: browser.version(), channel: process.env.XUNJIE_E2E_BROWSER_CHANNEL,
       headed: true, modelRequests: f.payloads.length, compactions: 1, completeHistory: true, draftAndFocus: true,
       compositionEventsOnly: true, restartPureRead: true, originalModelSelection: true, stop: true }, null, 2) + '\n')

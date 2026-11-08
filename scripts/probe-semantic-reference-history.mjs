@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { release } from 'node:os';
@@ -12,7 +13,7 @@ import { annotationPackage } from '../components/material-annotation/package.mjs
 import { aggregationPackage } from '../components/table-aggregation/package.mjs';
 import { semanticAdapters } from '@xunjie/contracts/question-drafts';
 const profile=process.env.XUNJIE_SEMANTIC_PROFILE==='school'?'school':'local';
-const output=resolve('.verification/wp03-172-history-'+profile);await mkdir(output,{recursive:true});
+const output=probeEvidenceDirectory();await mkdir(output,{recursive:true});
 const root=await mkdtemp(join(tmpdir(),'xj172-'));
 if(!process.env.XUNJIE_PRODUCT_POSTGRES_BIN)throw Error('Native PostgreSQL required');
 const postgresVersion=/(\d+\.\d+)/.exec(execFileSync(join(process.env.XUNJIE_PRODUCT_POSTGRES_BIN,'postgres'),['--version'],{encoding:'utf8'}))[1];
@@ -85,4 +86,4 @@ try{
  passed('retained revisions and cancelled action validate on owner restart');
  report.status='passed';
 }catch(error){report.status='failed';report.error=error.message;throw error;}
-finally{semanticAdapters['annotation-objects'].version=1;await browser?.close();await host?.stop().catch(()=>{});await runtime.stop().catch(()=>{});await writeFile(join(output,'history-report.json'),JSON.stringify(report,null,2));}
+finally{semanticAdapters['annotation-objects'].version=1;await browser?.close();await host?.stop().catch(()=>{});await runtime.stop().catch(()=>{});await writeEvidence(join(output,'history-report.json'),JSON.stringify(report,null,2));}

@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { resolve, join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -15,7 +16,7 @@ import { aggregationPackage } from '../components/table-aggregation/package.mjs'
  * Distinguished from the local-package path (probe-execution.mjs) and from cross-machine
  * remote execution (#175): this is the school page access path for browser-local execution.
  */
-const output = resolve(process.env.XUNJIE_EXECUTION_OUTPUT ?? '.verification/wp03-170');
+const output = probeEvidenceDirectory(process.env.XUNJIE_EXECUTION_OUTPUT);
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -197,14 +198,14 @@ try {
   assert.equal(again.output.contentId, remote.output.contentId, 'the school keeps one result');
   passed('a reload re-queries the school owner instead of recomputing');
 
-  await page.screenshot({ path: join(output, 'execution-school-web-light.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'execution-school-web-light.png'), fullPage: true });
   report.screenshots = { light: join(output, 'execution-school-web-light.png') };
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.waitForTimeout(400);
-  await page.screenshot({ path: join(output, 'execution-school-web-dark.png'), fullPage: true });
+  await captureEvidence(page, { path: join(output, 'execution-school-web-dark.png'), fullPage: true });
   report.screenshots.dark = join(output, 'execution-school-web-dark.png');
   await page.emulateMedia({ colorScheme: 'light' });
-  passed('school web execution screenshots captured from the real run');
+  passed('school web execution views exercised from the real run');
 
   report.status = 'passed';
 } catch (error) {
@@ -214,8 +215,7 @@ try {
   process.exitCode = 1;
 } finally {
   report.finishedAt = new Date().toISOString();
-  await writeFile(join(output, 'execution-school-web.json'), JSON.stringify(report, null, 2) + '\n').catch(() => {});
-  await writeFile('/tmp/xj-school-web.json', JSON.stringify(report, null, 2) + '\n').catch(() => {});
+  await writeEvidence(join(output, 'execution-school-web.json'), JSON.stringify(report, null, 2) + '\n').catch(() => {});
   await browser?.close().catch(() => {});
   await runtime.stop().catch(() => {});
   await rm(root, { recursive: true, force: true }).catch(() => {});

@@ -1,3 +1,4 @@
+import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID, randomBytes } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -103,7 +104,7 @@ test('a checked card activates in its activity and retains unshelved input after
     if ((await card.locator('[role="alert"]').count()) > 0) throw new Error(await card.innerText())
     return work.files.some((file: { value: string }) => file.value.includes('尚未收纳的中文解释'))
   }).toBe(true)
-  await page.screenshot({ path: test.info().outputPath('artifact-inline-after.png'), fullPage: true })
+  if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teachingArtifacts/artifact-inline-after.png'), fullPage: true })
   await page.reload()
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
   await expect(input).toHaveValue('尚未收纳的中文解释')
@@ -371,7 +372,7 @@ test('native streamed tool arguments produce one static themed preview and then 
       document.body.append(element); const value = getComputedStyle(element).backgroundColor; element.remove(); return value
     })
     await expect.poll(() => preview.frameLocator('iframe').locator('body').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(color)
-    await page.screenshot({ path: test.info().outputPath('artifact-streaming-dark.png'), fullPage: true })
+    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('screenshots/teachingArtifacts/artifact-streaming-dark.png'), fullPage: true })
     release()
     const card = page.locator('.teaching-artifact-card:not(.teaching-artifact-preview)')
     const input = card.frameLocator('iframe').getByRole('textbox', { name: '我的解释' })

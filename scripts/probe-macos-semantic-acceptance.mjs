@@ -1,6 +1,7 @@
+import { probeEvidenceDirectory, writeEvidence, captureEvidence, mkdtemp, hasProbeEvidence } from './lib/probe-evidence.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
@@ -28,7 +29,7 @@ import { aggregationPackage } from '../components/table-aggregation/package.mjs'
  * probe-semantic-reference-history.mjs, item 8 by probe-macos-semantic-ime.mjs.
  */
 const profile = process.env.XUNJIE_SEMANTIC_PROFILE === 'school' ? 'school' : 'local';
-const output = resolve(`.verification/wp03-185-${profile}`);
+const output = probeEvidenceDirectory();
 await mkdir(output, { recursive: true });
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Native PostgreSQL required (set XUNJIE_PRODUCT_POSTGRES_BIN).');
@@ -50,8 +51,9 @@ const pass = (item, name, detail) => {
   console.log(`PASS [${item}] ${name}`);
 };
 const shot = async (name, options = {}) => {
+  if (!hasProbeEvidence(output)) return;
   const file = join(output, `${name}.png`);
-  await page.screenshot({ path: file, ...options });
+  await captureEvidence(page, { path: file, ...options });
   report.screenshots[name] = file.slice(process.cwd().length + 1);
   return file;
 };
@@ -221,7 +223,7 @@ try {
   await page.setViewportSize({ width: 1000, height: 800 });
   await shot('references-narrow', { fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
-  pass('2', 'light, dark and narrow desktop are captured', 'three screenshots at the same three-reference state');
+  pass('2', 'light, dark and narrow desktop are checked', 'the same three-reference state in all three views');
 
   /* 3. IndexedDB, business API and PostgreSQL agree; reload and owner restart keep them. */
   const indexed = await page.evaluate(async () => {
@@ -364,7 +366,7 @@ try {
   report.error = error.message;
   if (page) {
     report.failureView = await page.locator('body').innerText().catch(() => null);
-    await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
+    await captureEvidence(page, { path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
   }
   throw error;
 } finally {
@@ -372,5 +374,5 @@ try {
   await host?.stop().catch(() => {});
   await runtime.stop().catch(() => {});
   report.cleanup = 'owned runtime stopped';
-  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+  await writeEvidence(join(output, 'report.json'), JSON.stringify(report, null, 2));
 }

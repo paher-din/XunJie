@@ -34,7 +34,13 @@ npm run verify
 
 `npm run verify` 与 CI 共用完整门禁，包含公共契约的浏览器打包检查和 Markdown 相对链接检查。用 `npm run verify -- --list` 查询阶段，`-- --help` 查看用法；查询不会执行检查。单独检查可运行 `npm run check:contracts:browser`（先构建 contracts）或 `npm run check:docs -- path/to/file.md`；省略文档路径时检查受维护的 Markdown，自动排除归档、缓存和测试证据，不请求外部 URL 或校验标题锚点。
 
-验证入口实时保存原始 stdout/stderr，并输出阶段、耗时和失败摘要。`.verification/latest.json` 指向本轮完整日志与阶段结果，每轮日志单独保存；CI 无论成功或失败均上传日志，保留 7 天。日志目录不进入 Git。使用 RTK 时执行 `rtk bypass npm run verify`，保留实时进度。
+验证入口默认直接输出阶段、耗时和失败详情，不保存报告文件；CI 使用同一控制台结果，不再上传重复日志附件。确需完整日志供排障时，运行 `npm run verify -- --report-dir .verification/当前问题`，在指定目录保存原始 stdout/stderr、阶段结果和 `latest.json`；独立 `scripts/test.mjs` 入口也支持此参数。使用 RTK 时执行 `rtk bypass npm run verify`，保留实时进度。
+
+任务结束运行 `npm run clean:verification` 清空本地验证残留；`-- --keep <相对路径>` 可重复指定明确仍会使用的结果，`-- --dry-run` 只预览。脚本不清理目录外的文件；Agent 也可直接清理自己创建且已无用途的临时文件。旧验收记录中的本地路径是当时的运行位置，不表示文件需要永久保留。
+
+浏览器测试默认只执行断言，不保存截图、报告或 trace；框架内部临时结果在进程退出时清理。实际 UI 验收需要图片时，显式设置 `XUNJIE_EVIDENCE_DIR=<目录>`（专项输出变量仍有效）。独立探针也仅在显式传入输出路径时保存报告和截图，供后续步骤读取的输入文件照常生成并在使用后清理。
+
+探针所需产品包和 PostgreSQL 路径通过对应参数或环境变量传入，不依赖旧 `.verification/` 验收包。
 
 构建准备共用内容缓存 `.cache/xunjie-build/`：源码、配置、依赖、工具链或相关环境变化，以及产物缺失、篡改或多出陈旧文件，都会触发重建；未提交的文件变化也计入。测试结果不缓存。`npm run build -- --force` 可强制重建。根测试会准备普通 Web 与 runtime Web 两套产物，不依赖上次构建残留。
 
