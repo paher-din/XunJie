@@ -1,3 +1,5 @@
+import { createJsonToolProgress } from './json-tool-progress.js';
+import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import OpenAI from 'openai';
 import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage, ModelUpstream } from '@xunjie/contracts/model-connections';
@@ -19,9 +21,10 @@ export function responsesCheckPayload(configuration: ModelConfiguration, maxOutp
 class MalformedResponse extends Error {}
 export async function runResponses(configuration: ModelConfiguration, apiKey: string, payload: ResponsesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void) {
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
+  const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
   const events: unknown[] = [], assembler = createResponsesAssembler();
   let state: 'completed' | 'incomplete' | 'failed' | 'unknown' | 'cancelled' = 'incomplete';
   let reason = 'missing-terminal', bytes = 0, text = '', usage: ModelUsage = { state: 'unknown' };
@@ -58,6 +61,7 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
           usage = responsesUsage(object(response).usage, terminal);
         }
         assembler.add(value);
+        toolProgress?.(assembler.toolArguments);
         progress?.(assembler.partialText);
       } catch { throw new MalformedResponse(); }
     }

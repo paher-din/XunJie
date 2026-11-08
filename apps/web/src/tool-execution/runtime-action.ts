@@ -5,7 +5,7 @@ import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 import { digestOf, readComponentState } from './action'
 import { aluControls } from './adapters/alu'
-import { aluCaseDraftSchema, aluCaseFromAction, isAluCodeWork, type AluCaseDraft } from '@xunjie/contracts/alu-learning'
+import { aluCaseDraftSchema, aluCaseFromAction, aluInputsSchema, isAluCodeWork, type AluCaseDraft } from '@xunjie/contracts/alu-learning'
 import { componentStateMediaType } from '@xunjie/contracts/components'
 
 export interface RuntimeActionOptions {
@@ -53,7 +53,9 @@ export async function runtimeAction(workspace:ReliableWorkspace, activity:Learni
       kind:'state',encoding:'json',mediaType:componentStateMediaType,value:JSON.stringify({formatVersion:1,instanceId,
         componentId:manifest.componentId,version:manifest.version,definitionDigest:binding.definition.digest,stateVersion:manifest.stateVersion,
         operationId:crypto.randomUUID(),content:{...stateContent,caseRequestId:fixedCase?requestId:'',
-          ...(fixedCase?{caseDraft:JSON.stringify(fixedCase),feedbackPolicy:'hold'}:{})}})}
+          ...(fixedCase?{...aluInputsSchema.parse(parameters),caseDraft:JSON.stringify(fixedCase),feedbackPolicy:'hold',
+            enabledBasis:JSON.stringify({...options.enabledBy,definitionDigest:binding.definition.digest,
+              activationRevision:stateContent.activationRevision})}:{})}})}
   } else if(options.caseDraft) throw new Error('unsupported-case-version')
   const works=[...citedCode,...(includeState&&stateFile?[stateFile]:[])]
   if(works.some(file=>file.name===manifest.runtime.resources.find(resource=>resource.resourceId===operation.observation.scaffoldResourceId)?.path))

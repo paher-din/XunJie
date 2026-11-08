@@ -11,6 +11,9 @@ import { AgentInputRecord, AgentRunControls } from './AgentControls'
 import { actionInputSchema } from '@xunjie/contracts/action-intents'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 import { firstQuestionKey, firstQuestionToken, readFirstQuestion, rememberFirstQuestion } from './first-question'
+import { teachingArtifactReceiptSchema } from '@xunjie/contracts/teaching-artifacts'
+import { ArtifactCard, ArtifactPreview } from '../teaching-artifacts/ArtifactCard'
+import type { TeachingArtifactsController } from '../teaching-artifacts/useTeachingArtifacts'
 export { firstQuestionKey } from './first-question'
 
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
@@ -48,12 +51,13 @@ function runLabel(run: TeachingRun, waits: TeachingWait[]) {
 }
 
 export function ActivityConversation({ activity, spaceKey, namespace, onModels, onActiveChange, onLocateTool,
-  onQuestionChange, focusQuestionId, onQuestionFocused }: {
+  onQuestionChange, focusQuestionId, onQuestionFocused, artifacts, onOpenArtifact }: {
   activity: LearningActivity; spaceKey: string; namespace: string; onModels?: () => void
   onActiveChange?: (active: boolean) => void
   onLocateTool?: TeachingToolLocator
   onQuestionChange?: (question: TeachingStudentQuestion | null) => void
   focusQuestionId?: string | null; onQuestionFocused?: () => void
+  artifacts?: TeachingArtifactsController; onOpenArtifact?: (artifactId: string) => Promise<void>
 }) {
   const { workspace } = useActivitySession()
   const [conversation, setConversation] = useState<TeachingConversation | null>(null)
@@ -69,7 +73,7 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
     try {
       const value = teachingConversationSchema.parse(await request(`agent/${activityId}/conversation`))
       if (mounted.current && shown.current === scope) {
-        setConversation(value); setError('')
+        setConversation(previous => previous && previous.cursor > value.cursor ? previous : value); setError('')
         onQuestionChange?.(currentStudentQuestion(value))
       }
     } catch (cause) {
@@ -100,10 +104,28 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
     </section>
   }
   const messages: TeachingMessage[] = conversation.messages
+  const finalArtifacts = new Map(conversation.tools.flatMap(tool => {
+    const receipt = teachingArtifactReceiptSchema.safeParse(tool.result?.artifact)
+    return receipt.success ? [[tool.commandId, receipt.data.artifactId] as const] : []
+  }))
+  const firstArtifactCommand = new Map<string, string>()
+  for (const tool of [...conversation.tools].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))) {
+    const artifactId = finalArtifacts.get(tool.commandId)
+    if (artifactId && !firstArtifactCommand.has(artifactId)) firstArtifactCommand.set(artifactId, tool.commandId)
+  }
+  const previews = new Map<string, TeachingConversation['artifactPreviews'][number]>()
+  for (const preview of conversation.artifactPreviews) {
+    if (finalArtifacts.has(preview.commandId)) continue
+    const previous = previews.get(preview.commandId)
+    if (!previous || preview.attemptId !== previous.attemptId && preview.seq > previous.seq
+      || preview.attemptId === previous.attemptId && preview.revision >= previous.revision && preview.seq >= previous.seq)
+      previews.set(preview.commandId, preview)
+  }
   const timeline = [
     ...messages.map(message => ({ kind: 'message' as const, at: message.createdAt, order: message.role === 'student' ? 0 : 2, message })),
     ...conversation.tools.filter(tool => tool.name !== 'student_ask').map(tool => ({ kind: 'tool' as const, at: tool.createdAt, order: 1, tool })),
     ...conversation.questions.map(question => ({ kind: 'question' as const, at: question.createdAt, order: 1, question })),
+    ...[...previews.values()].filter(preview => preview.html.trim()).map(preview => ({ kind: 'preview' as const, at: preview.createdAt, order: 1, preview })),
   ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.order - b.order)
   return <section aria-label="与 Agent 的对话" className="teaching-conversation">
     <div className="teaching-conversation-header">
@@ -112,7 +134,19 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
     </div>
     {messages.length === 0 && <p className="detail">还没有对话。输入问题并发送后，回答会在这里持续保留。</p>}
     {timeline.map(entry => {
-      if (entry.kind === 'tool') return <TeachingToolRecords key={entry.tool.commandId} records={[entry.tool]} onLocate={onLocateTool} />
+      if (entry.kind === 'preview') return <ArtifactPreview key={entry.preview.commandId} preview={entry.preview} />
+      if (entry.kind === 'tool') {
+        const artifactId = finalArtifacts.get(entry.tool.commandId)
+        const artifact = artifacts?.entries.find(item => item.artifact.artifactId === artifactId)
+        if (artifactId && firstArtifactCommand.get(artifactId) !== entry.tool.commandId) return <p key={entry.tool.commandId} className="detail">学习页面已更新，原输入继续保留。</p>
+        if (artifact && artifacts) return <ArtifactCard key={entry.tool.commandId} entry={artifact} controller={artifacts}
+          onOpen={() => onOpenArtifact?.(artifact.artifact.artifactId) ?? Promise.resolve()} />
+        if (entry.tool.name === 'generate_teaching_artifact' || entry.tool.name === 'revise_teaching_artifact') {
+          if (entry.tool.outcome === 'failed') return <p key={entry.tool.commandId} role="alert" className="learning-error">这次页面未能完成，原内容和输入仍保留。{entry.tool.feedback}</p>
+          return previews.has(entry.tool.commandId) ? null : <p key={entry.tool.commandId} className="detail">正在形成学习页面…</p>
+        }
+        return <TeachingToolRecords key={entry.tool.commandId} records={[entry.tool]} onLocate={onLocateTool} />
+      }
       if (entry.kind === 'question') return <StudentQuestionCard key={scope + entry.question.questionId} question={entry.question}
         activityId={activity.activityId} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh}
         focusRequested={focusQuestionId === entry.question.questionId} onFocused={onQuestionFocused} />
@@ -141,6 +175,10 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
         input={conversation.inputs.find(input => input.inputId === message.inputId)!} scope={scope} readOnly={readOnly || activity.status !== 'open'}
         request={agentRequest} onConfirmed={refresh} />}
     </article>})}
+    {artifacts?.entries.filter(entry => ![...finalArtifacts.values()].includes(entry.artifact.artifactId)).map(entry =>
+      <ArtifactCard key={entry.artifact.artifactId} entry={entry} controller={artifacts}
+        onOpen={() => onOpenArtifact?.(entry.artifact.artifactId) ?? Promise.resolve()} />)}
+    {artifacts?.error && <p role="alert" className="learning-error">{artifacts.error}</p>}
     {active && <div className="teaching-run-status" role="status">
       <span>{readOnly ? '这是还原校验副本，原问题与任务状态只读；请由维护者完成接管后继续。' : runLabel(latest, conversation.waits)}</span>
       <AgentRunControls key={scope + latest.runId} run={latest} inputs={conversation.inputs} scope={scope} readOnly={readOnly || activity.status !== 'open'} request={agentRequest} onConfirmed={refresh} />

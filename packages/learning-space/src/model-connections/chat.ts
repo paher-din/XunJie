@@ -1,3 +1,5 @@
+import { createJsonToolProgress } from './json-tool-progress.js';
+import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import OpenAI from 'openai';
 import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@xunjie/contracts/model-connections';
 import { modelUsageSchema } from '@xunjie/contracts/model-connections';
@@ -17,9 +19,10 @@ export function checkPayload(configuration: ModelConfiguration, maxOutputTokens:
 }
 export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void) {
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
+  const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
   const chunks: unknown[] = [];
   const assembler = createChatAssembler(configuration.dialect);
   let text = '', finishReason: string | null = null, bytes = 0, usage: ModelUsage = { state: 'unknown' };
@@ -47,7 +50,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       bytes += Buffer.byteLength(encoded);
       if (bytes > 2_000_000) { responseLimited = true; stream.controller.abort(); reason = 'response-limit'; break; }
       chunks.push(JSON.parse(encoded));
-      try { assembler.add(value); } catch { throw new MalformedResponse(); }
+      try { assembler.add(value); toolProgress?.(assembler.toolArguments); } catch { throw new MalformedResponse(); }
       if (!Array.isArray(value.choices)) throw new MalformedResponse();
       const choice = value.choices.find(item => item.index === 0);
       if (choice && (!choice.delta || choice.delta.content != null && typeof choice.delta.content !== 'string'

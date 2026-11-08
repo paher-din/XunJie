@@ -75,7 +75,15 @@ export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.lite
 export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
   dataBase64: z.string().min(1).max(350000), source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
 export const modelToolSchema = z.object({ name: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), description: z.string().max(1000),
-  inputSchema: z.record(z.string(), z.unknown()), strict: z.boolean().optional() }).strict();
+  inputSchema: z.record(z.string(), z.unknown()), strict: z.boolean().optional(),
+  /** Application-only static preview projection; never sent to the model provider. */
+  progress: z.object({ kind: z.literal('json-string'), property: z.literal('html') }).strict().optional() }).strict();
+export const modelToolProgressSchema = z.object({ callId: z.string().min(1).max(200), name: modelToolSchema.shape.name,
+  property: z.literal('html'), text: z.string().max(200_000) }).strict();
+export const modelProgressSchema = z.object({ text: z.string().max(1_000_000), revision: z.number().int().positive(),
+  tools: z.array(modelToolProgressSchema).max(8).optional() }).strict();
+export type ModelToolProgress = z.infer<typeof modelToolProgressSchema>;
+export type ModelProgress = z.infer<typeof modelProgressSchema>;
 export const modelToolIntentSchema = z.object({ callId: z.string().min(1).max(200), name: z.string().min(1).max(64),
   arguments: z.record(z.string(), z.unknown()) }).strict();
 export const modelToolResultSchema = z.object({ callId: z.string().min(1).max(200), outcome: z.enum(['success', 'error', 'not-executed']),

@@ -8,6 +8,8 @@
     "dist"
   ],
   "exports": {
+    "./teaching-artifacts-reference": { "types": "./dist/teaching-artifacts-reference.d.ts", "import": "./dist/teaching-artifacts-reference.js" },
+    "./teaching-artifacts": { "types": "./dist/teaching-artifacts.d.ts", "import": "./dist/teaching-artifacts.js" },
     "./agent-skills": { "types": "./dist/agent-skills.d.ts", "import": "./dist/agent-skills.js" },
     "./pdf-materials": { "types": "./dist/pdf-materials.d.ts", "import": "./dist/pdf-materials.js" },
     "./personal-materials": { "types": "./dist/personal-materials.d.ts", "import": "./dist/personal-materials.js" },

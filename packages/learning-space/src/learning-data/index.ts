@@ -1,3 +1,4 @@
+import { createTeachingArtifacts, teachingArtifactMigration, validateTeachingArtifacts } from './teaching-artifacts.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { agentExecutionOriginMigration, agentExecutionAuthorityMigration } from './agent-executions.js';
 import { activityAgentRouteMigration, validateActivityAgentRoutes } from './agent-routes.js';
@@ -46,7 +47,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
 nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
-{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration];
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -66,6 +67,7 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 }
 
 export async function validateLearningData(storage: OwnedStorage) {
+  await validateTeachingArtifacts(storage);
   await validatePdfMaterials(storage);
   await validatePersonalMaterials(storage);
   await validateAgentPreferences(storage);
@@ -296,7 +298,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, pdf, materials, search, drafts, intents, executions,
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open), works, pdf, materials, search, drafts, intents, executions,
     agentPreferences: createAgentPreferences(storage, access),
     validate: () => validateLearningData(storage) };
 }

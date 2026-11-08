@@ -2,8 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelLearningInput, ModelTool } from '@xunjie/contracts/model-connections';
+import { modelAttemptSchema, modelAttemptInputSchema, modelProgressSchema } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelLearningInput, ModelTool, ModelProgress, ModelToolProgress } from '@xunjie/contracts/model-connections';
 import { connectionCheckPayload, limitPayload, runModel, type NativePayload } from './transport.js';
 import { validateResponsesNative } from './responses.js';
 import { createLearningAdmission, learningReservationUnits, lockLearningAdmission, type LearningAdmissionPolicy } from './learning-admission.js';
@@ -158,28 +158,35 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (/[\uD800-\uDBFF]$/.test(text)) { text = text.slice(0, -1); truncated = true; }
     return text ? { source: 'model-native', text, truncated } : null;
   }
-  const progressBodySchema = z.object({ text: z.string().max(1_000_000), revision: z.number().int().positive() }).strict();
+  const progressBodySchema = modelProgressSchema;
   async function progress(identity: SpaceIdentity, attemptId: string) {
     await owner.authorize(identity);
     const { rows: [row] } = await storage.read('SELECT body FROM model_attempt_progress WHERE attempt_id=$1 AND scope=$2',
       [attemptId, scopeOf(identity)]);
     return row ? progressBodySchema.parse(row.body) : null;
   }
-  async function saveProgress(identity: SpaceIdentity, attemptId: string, text: string) {
-    if (!text) return;
+  async function saveProgress(identity: SpaceIdentity, attemptId: string, snapshot: Omit<ModelProgress, 'revision'>) {
+    if (!snapshot.text && !snapshot.tools?.length) return;
     await storage.request({ requestId: 'model-progress:' + attemptId + ':' + randomUUID(),
       fingerprint: 'model-progress:' + attemptId }, async tx => {
       const { rows: [row] } = await tx.query('SELECT body FROM model_attempt_progress WHERE attempt_id=$1 AND scope=$2 FOR UPDATE',
         [attemptId, scopeOf(identity)]);
       const previous = row ? progressBodySchema.safeParse(row.body) : null;
-      if (previous?.success && previous.data.text.length >= text.length) return null;
-      const body = { text, revision: (previous?.success ? previous.data.revision : 0) + 1 };
+      const prior = previous?.success ? previous.data : { text: '', revision: 0 };
+      const text = snapshot.text.length > prior.text.length && snapshot.text.startsWith(prior.text) ? snapshot.text : prior.text;
+      const tools = new Map((prior.tools ?? []).map(item => [item.callId, item]));
+      for (const item of snapshot.tools ?? []) {
+        const before = tools.get(item.callId);
+        if (before ? item.name === before.name && item.text.length > before.text.length && item.text.startsWith(before.text) : tools.size < 8)
+          tools.set(item.callId, item);
+      }
+      const nextTools = [...tools.values()];
+      if (text === prior.text && JSON.stringify(nextTools) === JSON.stringify(prior.tools ?? [])) return null;
+      const body = progressBodySchema.parse({ text, revision: prior.revision + 1, ...(nextTools.length ? { tools: nextTools } : {}) });
       await tx.query(`INSERT INTO model_attempt_progress(attempt_id,scope,body) VALUES($1,$2,$3)
         ON CONFLICT(attempt_id) DO UPDATE SET body=$3,updated_at=clock_timestamp()`,
         [attemptId, scopeOf(identity), JSON.stringify(body)]);
       return body;
-    }).catch(error => {
-      if (!(error instanceof StorageError) || !['maintenance', 'conflict', 'commit-unknown'].includes(error.code)) throw error;
     });
   }
   /** Native request reconstruction stays at the model owner; callers never read its resources directly. */
@@ -234,7 +241,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         await snapshot.retain?.(tx);
         await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended,input_metadata) VALUES($1,$2,$3,$4,$5,$6,true,$7)',
           [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted', input.purpose !== 'connection-check'
-            ? { input: input.input, ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
+            ? { input: input.input, ...(snapshot.tools ? { tools: snapshot.tools } : {}), ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
         await learningAdmission.enqueue(tx, identity, body, payload);
         await tx.reference('model-request:' + input.attemptId, request.resourceId);
         return { attemptId: input.attemptId };
@@ -344,7 +351,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     }
     if (!claimed.result) return await read(identity, attemptId);
     const controller = new AbortController();
-    const task = deliver(identity, original, found.credential_ref as string, controller, found.input_metadata as { applicationSchema?: Record<string, unknown> } | null);
+    const task = deliver(identity, original, found.credential_ref as string, controller, found.input_metadata as { applicationSchema?: Record<string, unknown>; tools?: ModelTool[] } | null);
     active.set(attemptId, { controller, task, scope: scopeOf(identity) });
     void task.finally(() => active.delete(attemptId)).catch(() => {});
     return await read(identity, attemptId);
@@ -358,10 +365,11 @@ export function createChecks(storage: OwnedStorage, owner: {
       throw error;
     } finally { starting--; }
   }
-  async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController, metadata: { applicationSchema?: Record<string, unknown> } | null) {
+  async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController, metadata: { applicationSchema?: Record<string, unknown>; tools?: ModelTool[] } | null) {
     // Learning calls use no product-level generation deadline; the transport still needs a finite client bound.
     const timeout = setTimeout(() => controller.abort('timeout'), attempt.limits.timeoutMs ?? 2_147_483_647);
     let openedUpstream = false, upstreamEnded = false;
+    let finishProgress: () => Promise<void> = async () => {};
     let watch: ReturnType<typeof setInterval> | undefined;
     let authorizationCheck: Promise<void> | undefined;
     let watching = false, checking = false;
@@ -400,12 +408,36 @@ export function createChecks(storage: OwnedStorage, owner: {
       const trackedFetch: typeof fetch = (input, init) => { openedUpstream = true; return requestFetch(input, init); };
       // Only learning runs publish an incremental, credential-safe preview. Probe/check
       // attempts keep their single settled result and do not add progress rows.
-      let lastProgress = '', lastProgressAt = 0;
+      let latest: Omit<ModelProgress, 'revision'> = { text: '' }, pending = false, lastSavedAt = 0;
+      let progressTimer: ReturnType<typeof setTimeout> | undefined;
+      let saves = Promise.resolve(), saveFailed = false, saveError: unknown;
+      const enqueueProgress = () => {
+        clearTimeout(progressTimer); progressTimer = undefined;
+        if (!pending || saveFailed) return;
+        pending = false; lastSavedAt = Date.now();
+        const snapshot = structuredClone(latest);
+        // Always attach a rejection handler immediately. The final result awaits this chain.
+        saves = saves.then(async () => {
+          if (!saveFailed) await saveProgress(identity, attempt.attemptId, snapshot);
+        }).catch(error => { saveFailed = true; saveError = error; });
+      };
+      const scheduleProgress = () => {
+        pending = true;
+        const remaining = 500 - (Date.now() - lastSavedAt);
+        if (remaining <= 0) enqueueProgress();
+        else if (!progressTimer) { progressTimer = setTimeout(enqueueProgress, remaining); progressTimer.unref(); }
+      };
+      finishProgress = async () => {
+        enqueueProgress(); await saves;
+        if (saveFailed) throw saveError;
+      };
       const onText = attempt.purpose === 'learning' ? (text: string) => {
-        const now = Date.now();
-        if (text.length - lastProgress.length < 64 && now - lastProgressAt < 500) return;
-        lastProgress = text; lastProgressAt = now;
-        void saveProgress(identity, attempt.attemptId, text);
+        text = text.slice(0, 1_000_000).replace(/[\uD800-\uDBFF]$/, '');
+        if (text.length <= latest.text.length || !text.startsWith(latest.text)) return;
+        latest = { ...latest, text }; scheduleProgress();
+      } : undefined;
+      const onTools = attempt.purpose === 'learning' ? (tools: ModelToolProgress[]) => {
+        latest = { ...latest, tools }; scheduleProgress();
       } : undefined;
       if (owner.assertActive && !controller.signal.aborted) {
         watching = true;
@@ -415,11 +447,12 @@ export function createChecks(storage: OwnedStorage, owner: {
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
         : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647,
-          !!attempt.segment, metadata?.applicationSchema, trackedFetch, onText);
+          !!attempt.segment, metadata?.applicationSchema, trackedFetch, onText, metadata?.tools, onTools);
       // A local abort, EOF without a terminal, or dispatcher death proves no upstream end.
       // A validated terminal or final usage does. HTTP rejection proves the call was refused.
       upstreamEnded = !openedUpstream || result.state === 'completed' || result.usage.state === 'final'
         || ('upstream' in result && !!result.upstream?.httpStatus && result.upstream.httpStatus >= 400);
+      await finishProgress();
       // A check already started while the SDK was active still owns its verdict.
       // Settle it before publishing a completed result, even if the SDK won the race.
       clearInterval(watch);
@@ -456,6 +489,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         return { resultRef: resource.resourceId };
       });
     } catch {
+      await finishProgress().catch(() => {});
       // No success without the resource and result transaction. Never replay a dispatched attempt.
       await update(identity, attempt.attemptId, body => body.resultRef || body.physicalRequestEnded ? body
         : { ...body, state: 'unknown', reason: body.cancelRequested ? body.reason : 'result-unconfirmed', physicalRequestEnded: true,

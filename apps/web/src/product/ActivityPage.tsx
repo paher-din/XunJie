@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
-import { CenterToolArea, type ToolKey, type ToolSpec } from '../components/workspace/CenterToolArea'
+import { CenterToolArea, type ToolKey, type ToolSpec, type CenterToolAreaHandle } from '../components/workspace/CenterToolArea'
 import { questionReferenceInputSchema, questionReferenceSchema, questionReferenceSourceSchema } from '@xunjie/contracts/question-drafts'
 import { executionQuerySchema } from '@xunjie/contracts/execution'
 import { componentStateName } from '@xunjie/contracts/components'
@@ -23,6 +23,8 @@ import { waitForComposerComposition } from '../components/workspace/references/c
 import { PdfMaterials, PdfMaterialEntries, usePdfMaterials } from './PdfMaterials'
 import { PersonalMaterials, PersonalMaterialEntries, usePersonalMaterials } from './PersonalMaterials'
 import { panes, type LayoutNode } from '../lib/wsLayout'
+import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts'
+import { ArtifactCard } from '../teaching-artifacts/ArtifactCard'
 
 // The center already supports injected named tool bodies; PDF shares its existing tab/layout lifecycle.
 const PDF_TOOL = 'component:__pdf-materials__' as const
@@ -73,6 +75,14 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const { workspace, draft, actions, execution, sessions, inputInteraction } = useActivitySession()
   const root = useRef<HTMLDivElement>(null)
   const [tool, setTool] = useState<ToolKey>('design')
+  const center = useRef<CenterToolAreaHandle>(null)
+  const artifactTabs = useRef<string[]>([])
+  const artifacts = useTeachingArtifacts(activity, spaceKey, namespace, authorized)
+  const openArtifact = async (artifactId: string) => {
+    await workspace.leave()
+    artifacts.setOpened(artifactId)
+    center.current?.openGenTab(artifactId)
+  }
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
   const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
@@ -224,6 +234,10 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} /></div>)]))
   toolBodies[PDF_TOOL] = <PdfMaterials pdf={pdf} onBack={() => setTool('design')} />
   toolBodies[PERSONAL_TOOL] = <PersonalMaterials personal={personal} onBack={() => setTool('design')} />
+  for (const entry of artifacts.entries.filter(item => item.revision)) toolBodies[`gen:${entry.artifact.artifactId}`] =
+    <ArtifactCard center entry={entry} controller={artifacts} onClose={async () => {
+      await workspace.leave(); artifacts.setOpened(null); center.current?.closeGenTab(entry.artifact.artifactId); setTool('design')
+    }} />
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
   return <div ref={root} className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
@@ -241,6 +255,10 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           <p>{activity.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
           <button type="button" className="ws-btn ghost" disabled={busy || readOnly} onClick={onStatus}>{activity.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
           <button type="button" className="ws-btn ghost" disabled={busy} onClick={onRefresh}>刷新列表</button>
+          {artifacts.entries.some(entry => entry.artifact.shelved) && <div className="teaching-artifact-shelf" aria-label="收纳的学习页面">
+            {artifacts.entries.filter(entry => entry.artifact.shelved).map(entry => <button key={entry.artifact.artifactId}
+              type="button" className="ws-btn ghost" onClick={() => void openArtifact(entry.artifact.artifactId).catch(() => setToolError('当前输入尚未保护，请保留页面后继续。'))}>{entry.artifact.title}</button>)}
+          </div>}
           {account}
         </WorkspacePopover>
       </div>
@@ -254,22 +272,32 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">
         {details(materialId => void pdf.openCourse(materialId))}<PdfMaterialEntries pdf={pdf} /><PersonalMaterialEntries personal={personal} />
       </aside>}
-      {layoutReady && <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
+      {layoutReady && <CenterToolArea ref={center} taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
+        genCards={artifacts.entries.flatMap(entry => entry.revision ? [{ cardId: entry.artifact.artifactId, title: entry.artifact.title,
+          taskId: activity.activityId, claimSim: false, srcdoc: entry.revision.payload.html, version: entry.revision.version, collectedAt: entry.artifact.createdAt }] : [])}
+        onGenTabsChange={ids => {
+          artifacts.setCenterIds(previous => JSON.stringify(previous) === JSON.stringify(ids) ? previous : ids)
+          if (artifacts.opened && artifactTabs.current.includes(artifacts.opened) && !ids.includes(artifacts.opened)) artifacts.setOpened(null)
+          artifactTabs.current = ids
+        }}
         beforeToolChange={() => workspace.leave()}
-        tool={tool} onToolChange={value => { setTool(value); setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
+        tool={tool} onToolChange={value => { void workspace.leave().then(() => {
+          artifacts.setOpened(value.startsWith('gen:') ? value.slice(4) : null); setTool(value); setToolError('')
+        }).catch(() => setToolError('当前输入尚未保护，请保留页面后继续。')) }} onToast={setToolError} tabsSlot={tabsSlot}
         designBody={<>{(activity.course?.components??[]).filter(b=>b.definition.manifest.formatVersion===3).map(binding=>
           <RuntimeTool compact key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>)}
           <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} location={workLocation} /></>} />}
-      {references.open && <aside className="product-discussion" aria-label="问题与引用">
+      <aside className="product-discussion" aria-label="问题与引用" inert={!references.open}
+        style={references.open ? undefined : { display: 'none' }}>
         <FirstQuestionAutoSend activity={activity} />
         <ActivityConversation activity={activity} spaceKey={spaceKey} namespace={namespace} onModels={onModels}
           onActiveChange={setConversationActive} onLocateTool={locateTool} onQuestionChange={setPendingQuestion}
-          focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} />
+          focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
         <AgentInputMode active={conversationActive} />
         <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={!inputInteraction.ready}
           blockedHint="正在核对本次发送方式，问题与引用仍保留。" blockedLabel="核对发送方式…"
           submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
-      </aside>}
+      </aside>
     </div>
     <SelectionToolbar />
     {pendingQuestion && !references.open && authorized && !readOnly && <GuidancePresentation

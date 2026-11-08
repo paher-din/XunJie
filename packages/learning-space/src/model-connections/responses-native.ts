@@ -317,6 +317,14 @@ export function createResponsesAssembler() {
     }
   }
   return { add, get response() { return terminal; }, get terminalType() { return terminalType; },
+    get toolArguments() {
+      const output = terminal && Array.isArray(terminal.output) ? terminal.output as ObjectValue[] : null;
+      return output ? output.filter(item => item.type === 'function_call').map(item =>
+        ({ callId: string(item.call_id), name: string(item.name), arguments: string(item.arguments) }))
+        : [...items.values()].filter(item => item.added?.type === 'function_call').map(item =>
+          ({ callId: string(item.added!.call_id), name: string(item.added!.name),
+            arguments: item.fields.get('arguments')?.value ?? '' }));
+    },
     get partialText() { return partialText; }, get streamError() { return streamError; },
     // Retain aggregation for safety checks even if EOF/reset arrives before a terminal.
     get sensitiveValues() { return [...items.values()].flatMap(item => [...item.fields].flatMap(([key, field]) =>

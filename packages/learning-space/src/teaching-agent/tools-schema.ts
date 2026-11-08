@@ -6,9 +6,9 @@ import { aluVerificationSchema } from './alu-tools.js';
 import { canonicalDigest } from './identity.js';
 import type { TeachingToolContribution } from './tool-types.js';
 import { platformToolContribution } from './tool-contributions.js';
-export const uuid = { type: 'string', minLength: 36, maxLength: 36 };
-export const objectSchema = (properties: Record<string, unknown>) => ({ type: 'object', properties,
-  required: Object.keys(properties), additionalProperties: false });
+import { objectSchema, uuid } from './tool-json-schema.js';
+import { artifactToolDefinitions } from './tools-artifacts.js';
+export { objectSchema, uuid } from './tool-json-schema.js';
 export function shapeSchema(shape: StateShape): Record<string, unknown> {
   if (shape.type === 'object') return objectSchema(Object.fromEntries(Object.entries(shape.properties).map(([key, value]) => [key, shapeSchema(value)])));
   if (shape.type === 'array') return { type: 'array', maxItems: shape.maxItems, items: shapeSchema(shape.items) };
@@ -76,6 +76,7 @@ export function teachingDefinitions(scope: TeachingToolScope): ModelTool[] {
           height: { type: 'number', exclusiveMinimum: 0, maximum: 1 } })] } })));
   if (operations.length) definitions.push(tool('course_operation', 'Run one declared component operation. start_session initializes a native session; later inputs require its requestId and last observed expectedSeq.',
     { type: 'object', anyOf: operations }));
+  definitions.push(...artifactToolDefinitions);
   return definitions;
 }
 

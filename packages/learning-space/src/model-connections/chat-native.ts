@@ -141,5 +141,6 @@ export function createChatAssembler(dialect: string) {
     } else if (assistant?.tool_calls?.length) valid = false;
     return { valid, choices: all, assistant, decodedArguments, intents: valid ? intents : [] };
   }
-  return { add, result };
+  return { add, result, get toolArguments() { return [...choices.get(0)?.tools.values() ?? []].map(tool =>
+    ({ callId: tool.id, name: tool.function.name, arguments: tool.function.arguments })); } };
 }

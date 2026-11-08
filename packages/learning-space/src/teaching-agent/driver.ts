@@ -200,6 +200,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       input: actionInputSchema.parse(plan?.inputBasis ?? request.body),
       ...(plan?.skillState ? { skillState: plan.skillState } : {}),
       runId: run.runId, stepId: String(saved.step_id), snapshotId: String(saved.snapshot_id),
+      ...(typeof saved.attempt_id === 'string' ? { attemptId: saved.attempt_id } : {}),
       ...(typeof saved.segment_id === 'string' ? { segmentId: saved.segment_id } : {}),
       ...(generation === undefined ? {} : { authority: { runId: run.runId, activityId: run.activityId,
         driverId: owner.driverId, generation }, assertDispatch: () => assertDispatch(run, generation) }) };

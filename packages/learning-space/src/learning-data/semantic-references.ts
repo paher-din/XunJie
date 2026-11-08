@@ -1,3 +1,5 @@
+import { teachingArtifactReferenceCopy, teachingArtifactReferenceAdapters } from '@xunjie/contracts/teaching-artifacts-reference';
+import { teachingArtifactRevisionSchema } from '@xunjie/contracts/teaching-artifacts';
 import { z } from 'zod';
 import { executionActionSchema, executionRetainedResourceSchema, canonicalValue } from '@xunjie/contracts/execution';
 import { createHash } from 'node:crypto';
@@ -130,6 +132,28 @@ export async function verifySemanticReference(storage: OwnedStorage, activity: L
   reference: QuestionReferenceInput, historical = false) {
   const source = reference.source, range = reference.range;
   if (source.kind !== 'component' || range.kind !== 'semantic') return fail();
+  if (Object.hasOwn(teachingArtifactReferenceAdapters, range.typeId)) {
+    if (source.origin !== 'state' || range.version !== 1 || source.activityId !== activity.activityId
+      || source.environmentId !== activity.identity.environmentId || source.spaceId !== activity.identity.spaceId
+      || source.principalId !== activity.identity.principalId) return fail();
+    const { rows: [row] } = await storage.read(`SELECT r.body FROM teaching_artifact_revisions r JOIN teaching_artifacts a USING(artifact_id)
+      WHERE a.activity_id=$1 AND r.artifact_id=$2 AND r.version=$3`, [activity.activityId, source.componentId, source.componentVersion]);
+    if (!row) return fail();
+    const fixed = teachingArtifactRevisionSchema.parse(row.body), binding = fixed.binding;
+    if (source.bindingKey !== binding.key || source.definitionDigest !== binding.definition.digest
+      || source.instanceId !== componentInstanceId(activity.activityId, binding.key)) return fail();
+    const { rows: adopted } = await storage.read(`SELECT request_id FROM teaching_artifact_receipts
+      WHERE activity_id=$1 AND body->>'kind'='adopt' AND body->>'revisionId'=$2`, [activity.activityId, fixed.revisionId]);
+    if (!adopted.length) return fail();
+    try { await originalState(storage, activity, binding, source); }
+    catch (error) {
+      if (historical && error instanceof StorageError && ['missing', 'resource-gone', 'unavailable'].includes(error.code)) return;
+      throw error;
+    }
+    try { if (teachingArtifactReferenceCopy(range.typeId, range.target, fixed.payload) !== reference.copy) return fail(); }
+    catch { return fail(); }
+    return;
+  }
   const binding = activity.course?.components?.find(item => item.key === source.bindingKey);
   if (!binding || source.environmentId !== activity.identity.environmentId || source.spaceId !== activity.identity.spaceId
     || source.principalId !== activity.identity.principalId || source.activityId !== activity.activityId

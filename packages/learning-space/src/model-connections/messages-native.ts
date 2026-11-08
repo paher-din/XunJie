@@ -130,6 +130,9 @@ export function createMessagesAssembler() {
     }
   }
   return { add, get message() { return snapshot(); }, get terminal() { return terminal; }, get finalUsage() { return finalUsage; },
+    get toolArguments() { return [...blocks.values()].filter(block => block.content.type === 'tool_use').map(block =>
+      ({ callId: string(block.content.id), name: string(block.content.name),
+        arguments: block.inputDelta ? block.input : Object.keys(object(block.content.input)).length ? JSON.stringify(block.content.input) : '' })); },
     get inputJson() { return [...blocks.values()].filter(block => block.inputDelta).map(block => block.input); },
     get inputStrings() { return [...blocks.values()].filter(block => block.inputDelta).flatMap(block => protocolJsonStrings(block.input)); },
     get text() { return content().flatMap(part => part.type === 'text' ? [string(part.text)] : []).join(''); } };

@@ -20,6 +20,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   private record: WorkRecord
   private editEpoch = 0
   private sending = false
+  private remoteMutation = false
+  private activityBindings = new Map<string, ComponentBinding>()
   private store = new WorkStore()
   private operations = new Map<string, WorkOperation>()
   private inputs = new Set<Promise<unknown>>()
@@ -30,6 +32,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     private components?: { activityId: string; bindings: ComponentBinding[] }, readOnly = false) { super(readOnly); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
+  registerActivityBinding(binding: ComponentBinding) { this.activityBindings.set(binding.definition.digest, binding) }
   /** Import starters only into a pristine workspace; deleting a file later must never re-seed it. */
   initializeStarters(files:WorkFile[]) {
     if(!this.state.ready || this.state.conflict || this.isReadOnly() || this.accessDenied()
@@ -74,6 +77,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   async protect(): Promise<void> {
     await Promise.all([super.protect(), ...[...this.retainedInputs.keys()].map(key => this.protectInput(key))])
   }
+  /** An input's own writer confirms work bytes without waiting recursively for itself. */
+  private async protectWorkFiles() { do { await super.protect() } while (this.dirty) }
   protected unprotectedInput() { return super.unprotectedInput() || this.inputs.size > 0 || this.retainedInputs.size > 0 }
   async leave(): Promise<void> {
     do {
@@ -92,6 +97,79 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       await new Promise(resolve => setTimeout(resolve, 100))
     }
   }
+  /** A remote version adoption rebases edits made while its original receipt was pending. */
+  pendingRemoteOperation() { return this.record.remoteOperation?.key }
+  async rejectRemoteOperation(key: string) {
+    await this.withProtection(async () => {
+      this.record = await this.store.change(this.key, current => {
+        if (!current || current.remoteOperation?.key !== key) throw new Error('conflict')
+        return { ...current, remoteOperation: undefined }
+      })
+    })
+  }
+  async adoptRemote<T>(key: string, operation: (head: WorkView) => Promise<T>, reconcile: (local: WorkFile, remote: WorkFile) => WorkFile,
+    beforeApply: () => Promise<void> = async () => {}): Promise<T> {
+    if (!navigator.locks) throw new Error('capability-unavailable')
+    return navigator.locks.request(`xunjie-work-adopt:${this.key}`, () => this.adoptRemoteOwned(key, operation, reconcile, beforeApply))
+  }
+  private async adoptRemoteOwned<T>(key: string, operation: (head: WorkView) => Promise<T>, reconcile: (local: WorkFile, remote: WorkFile) => WorkFile,
+    beforeApply: () => Promise<void>): Promise<T> {
+    if (this.readOnly || this.remoteMutation) throw new Error('conflict')
+    if (!this.record.remoteOperation) await this.flush()
+    while (this.sending) await new Promise(resolve => setTimeout(resolve, 20))
+    this.remoteMutation = true
+    try {
+      await this.leave()
+      const saved = await this.store.read(this.key)
+      if (!saved || saved.remoteOperation && saved.remoteOperation.key !== key || !saved.remoteOperation && saved.pending
+        || this.dirty || this.state.conflict || this.denied) throw new Error('conflict')
+      const baseline = saved.remoteOperation?.baseline ?? { revision: saved.remoteRevision, files: structuredClone(saved.files) }
+      this.record = await this.store.change(this.key, current => {
+        if (!current || current.localRevision !== saved.localRevision || current.remoteOperation && current.remoteOperation.key !== key) throw new Error('conflict')
+        return { ...current, remoteOperation: { key, baseline } }
+      })
+      const result = await operation(baseline)
+      const remote = workViewSchema.parse(await this.transport.read())
+      await beforeApply()
+      await this.protect()
+      const memoryAtCommit = structuredClone(this.state.files), memoryEpoch = this.editEpoch
+      await this.withProtection(async () => {
+        const next = await this.store.change(this.key, saved => {
+          if (!saved || saved.conflict) throw new Error('conflict')
+          const merged = new Map(remote.files.map(file => [file.objectId, file]))
+          for (const previous of baseline.files) {
+            const local = saved.files.find(file => file.objectId === previous.objectId)
+            if (!local) merged.delete(previous.objectId)
+          }
+          for (const local of saved.files) {
+            const previous = baseline.files.find(file => file.objectId === local.objectId)
+            if (previous && sameFiles([previous], [local])) continue
+            const changed = merged.get(local.objectId)
+            merged.set(local.objectId, changed && previous && !sameFiles([previous], [changed]) ? reconcile(local, changed) : local)
+          }
+          const files = workFilesSchema.parse([...merged.values()])
+          return { ...saved, remoteOperation: undefined, remoteRevision: remote.revision, confirmedFiles: remote.files, files,
+            localRevision: saved.localRevision + 1, pending: sameFiles(files, remote.files) ? null : pendingFor(files, remote.revision) }
+        })
+        this.record = next
+        if (this.editEpoch === memoryEpoch) this.notify({ files: next.files, editorEpoch: this.state.editorEpoch + 1 })
+        else {
+          const merged = new Map(next.files.map(file => [file.objectId, file]))
+          for (const previous of memoryAtCommit) if (!this.state.files.some(file => file.objectId === previous.objectId)) merged.delete(previous.objectId)
+          for (const local of this.state.files) {
+            const previous = memoryAtCommit.find(file => file.objectId === local.objectId)
+            if (previous && sameFiles([previous], [local])) continue
+            const adopted = merged.get(local.objectId)
+            merged.set(local.objectId, adopted && previous && !sameFiles([adopted], [previous]) ? reconcile(local, adopted) : local)
+          }
+          this.dirty = true
+          this.notify({ files: workFilesSchema.parse([...merged.values()]), editorEpoch: this.state.editorEpoch + 1 })
+        }
+      })
+      await this.protect()
+      return result
+    } finally { this.remoteMutation = false }
+  }
   /** Local confirmations belong to this workspace, atomically committed with the protected files. */
   async applyOperation(operation: WorkOperation, apply: () => void, retainUnknown: () => void): Promise<WorkOperationReceipt> {
     if (!navigator.locks) { retainUnknown(); throw new Error('capability-unavailable') }
@@ -107,19 +185,19 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       const pending = this.operations.get(key)
       if (pending) {
         if (pending.inputDigest !== operation.inputDigest) throw new Error('conflict')
-        await super.leave()
+        await this.protectWorkFiles()
         const receipt = await this.store.operation(this.key, operation.scope, operation.operationId)
         if (!receipt) throw new Error('outcome-unknown')
         return receipt
       }
       try { apply() } catch (error) {
-        if (this.state.conflict) await this.protect()
+        if (this.state.conflict) await this.protectWorkFiles()
         throw error
       }
       this.operations.set(key, operation)
       let protectedInput = false
       try {
-        await super.leave()
+        await this.protectWorkFiles()
         protectedInput = true
         if (this.state.conflict) throw new Error('conflict')
         const receipt = await this.store.operation(this.key, operation.scope, operation.operationId)
@@ -194,8 +272,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   private validateComponentBindings(files: WorkFile[]) {
     if (!this.components) return
     for (const file of files) {
-      const binding = this.components.bindings.find(binding => componentStateName(binding.key) === file.name)
-      if (binding ? !matchesComponentState(binding, this.components.activityId, file) : file.mediaType === componentStateMediaType)
+      const bindings = [...this.components.bindings, ...this.activityBindings.values()].filter(binding => componentStateName(binding.key) === file.name)
+      if (bindings.length ? !bindings.some(binding => matchesComponentState(binding, this.components!.activityId, file)) : file.mediaType === componentStateMediaType)
         throw new Error('组件状态身份和位置由活动绑定固定，不能作为普通文件更改。')
     }
   }
@@ -277,7 +355,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     }
   }
   protected async synchronize() {
-    if (this.stopped || this.denied || this.sending || !this.state.ready || this.state.conflict) return
+    if (this.stopped || this.denied || this.sending || this.remoteMutation || this.record.remoteOperation || !this.state.ready || this.state.conflict) return
     this.sending = true
     let attempted: WorkSync | undefined
     try {
