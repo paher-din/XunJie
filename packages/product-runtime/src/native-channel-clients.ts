@@ -19,7 +19,7 @@ export async function createNativeChannelClients(options: {
   environment: RuntimeEnvironment;
   resources: RuntimeResources;
   client: {
-    list(): Promise<{ key: string; cleanupEndpoint?: string }[]>;
+    list(): Promise<{ key: string; cleanupEndpoint?: string; directLocalExecution?: boolean }[]>;
     nativeChannelCall(connectionId: string, operation: Operation, input: unknown): Promise<unknown>;
   };
 }) {
@@ -65,7 +65,7 @@ export async function createNativeChannelClients(options: {
     await retryPersistedCleanup();
     const connections = await options.client.list();
     if (!active || closed) return;
-    const ids = new Set(connections.map(item => item.key).filter(key => /^school:[0-9a-f-]{36}$/.test(key))
+    const ids = new Set(connections.filter(item => !item.directLocalExecution).map(item => item.key).filter(key => /^school:[0-9a-f-]{36}$/.test(key))
       .map(key => key.slice('school:'.length)));
     for (const [id, worker] of workers) {
       if (ids.has(id)) continue;

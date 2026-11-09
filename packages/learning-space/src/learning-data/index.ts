@@ -12,6 +12,7 @@ import type { OwnedStorage, Migration } from '@xunjie/storage';
 import { createActivitySchema, activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import type { CreateActivity, LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data';
 import { teachingDependencyCallSchema } from '@xunjie/contracts/teaching-agent';
+import { isTeachingDependencyRead } from '../teaching-agent/dependency-semantics.js';
 import { createCourseActivitySchema, courseActivityBindingSchema } from '@xunjie/contracts/courses';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
@@ -23,6 +24,7 @@ import { createQuestionDrafts, questionDraftMigration, validateQuestionDrafts } 
 import { createActionIntents, actionIntentMigration, validateActionIntents } from './intents.js';
 import type { ActionIntentOptions } from './intents.js';
 import { createExecutions, executionActionTextMigration, executionMigration, agentExecutionMigration, validateExecutions } from './executions.js';
+import { createExecutionRecords, executionRecordMigration, validateExecutionRecords } from './execution-records.js';
 import { nativeSessionMigration, validateNativeSessions } from './native-sessions.js';
 import { nativeChannelMigration, nativeChannelTargetMigration, nativeChannelObservationMigration, nativeChannelCancellationMigration, nativeChannelCleanupMigration, validateNativeChannel } from './native-channel.js';
 import type { createNativeChannel } from './native-channel.js';
@@ -50,7 +52,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
 nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
-{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration];
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration, executionRecordMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -78,12 +80,13 @@ export async function validateLearningData(storage: OwnedStorage) {
   await validateAgentPreferences(storage);
   await createChunkChannel(storage).validate(value => {
     const call = teachingDependencyCallSchema.safeParse(value);
-    return call.success && call.data.operation === 'activity';
+    return call.success && isTeachingDependencyRead(call.data);
   });
   await validateActivityAgentRoutes(storage);
   await validateWorks(storage);
   await validateQuestionDrafts(storage);
   await validateActionIntents(storage);
+  await validateExecutionRecords(storage);
   await validateExecutions(storage);
   await validateNativeSessions(storage);
   await validateNativeChannel(storage);
@@ -300,6 +303,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   const search = createMaterialSearch({ open, ...(courses ? { courses } : {}), pdf, personal: materials });
   const drafts = createQuestionDrafts(storage, { activity: open, works, courses });
   const intents = createActionIntents(storage, { activity: open, works, drafts, ...actions });
+  const executionRecords = createExecutionRecords(storage, { activity: open, works });
   const executions = createExecutions(storage, { activity: open, works, ...(channel ? { channel } : {}),
     ...(native ? { native: { ...native, activity: open, works,
       authorizeComponent: async (identity, activity, action) => {
@@ -307,7 +311,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         await courses.verifyComponentReference(identity, { releaseId: activity.course.releaseId,
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions,
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions, executionRecords,
     agentPreferences: createAgentPreferences(storage, access),
     conversationArchives: createConversationArchives(storage, access),
     conversationHistory: createConversationHistory(storage, access),

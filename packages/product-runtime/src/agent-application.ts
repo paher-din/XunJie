@@ -18,12 +18,14 @@ import { teachingAgentCallSchema, teachingDependencyCallSchema } from '@xunjie/c
 export function createStandaloneAgentApplication(options: {
   root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration; readOnly(): Promise<boolean>;
   storage: OwnedStorage; binding: StorageBinding;
+  enabled?: boolean;
 }) {
   const { root, environment, configuration, storage, binding } = options;
   const authority = new AsyncLocalStorage<TeachingDispatchAuthority>();
   const activityContext = new AsyncLocalStorage<string | undefined>();
   const bindDependency = createTeachingDependencyBinding(storage);
-  const dependencyConnectionId = configuration.agent?.dependencyConnectionId;
+  const declared = configuration.deployment?.dependencies['learning-data'];
+  const dependencyConnectionId = declared?.kind === 'connection' ? declared.connectionId : configuration.agent?.dependencyConnectionId;
   const connection = dependencyConnectionId ? createAgentConnection(root, dependencyConnectionId, 'teaching.dependencies') : undefined;
   const invoke = async (payload: unknown) => {
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
@@ -64,7 +66,7 @@ export function createStandaloneAgentApplication(options: {
   const handler: CapabilityHandler = async (value, source) => {
     try {
       const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
-      const dependency = config.connections.find(connection => connection.connectionId === config.agent?.dependencyConnectionId);
+      const dependency = config.connections.find(connection => connection.connectionId === dependencyConnectionId);
       if (!dependency || dependency.target.environmentId !== source.sourceEnvironmentId || dependency.target.serviceId !== source.sourceServiceId)
         throw new StorageError('forbidden');
       return await chunked(value, source);
@@ -81,13 +83,14 @@ export function createStandaloneAgentApplication(options: {
       async drain() { await teaching.drain(); await participant.drain(); },
       async resume() { await participant.resume(); teaching.resume(); },
     } }],
-    serviceCapabilities: { [storage.owner.serviceId]: { 'teaching.agent': handler } },
+    serviceCapabilities: (options.enabled === false ? {} : { [storage.owner.serviceId]: { 'teaching.agent': handler } }) as Record<string, Record<string, CapabilityHandler>>,
     async facts() {
+      if (options.enabled === false) return [];
       const current = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
       return current.connections.some(item => item.connectionId === dependencyConnectionId) ? [] : [{ name: 'agent-dependencies', required: false,
         state: 'unavailable' as const, detail: 'agent-dependencies-not-configured' }];
     },
     async handle() { return false; },
-    async start() { if (!await options.readOnly()) teaching.resume(); },
+    async start() { if (options.enabled !== false && !await options.readOnly()) teaching.resume(); },
   };
 }

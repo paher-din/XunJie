@@ -64,6 +64,7 @@ export function createLearningEntry(options: {
   target?: LearningTarget;
   spaces?: ReturnType<typeof createSpaces>;
   learning?: ReturnType<typeof createLearningData>;
+  executions?: ReturnType<typeof createLearningData>['executions'];
   courses?: ReturnType<typeof createCourses>;
   nativeChannel?: ReturnType<typeof createNativeChannel>;
   models?: Awaited<ReturnType<typeof createModelGateway>>;
@@ -72,6 +73,7 @@ export function createLearningEntry(options: {
   teachingSettingsFor?(identity: SpaceIdentity): Promise<TeachingAgentPort>;
   bindAgent?(input: unknown): Promise<unknown>;
   bindModelDevice?(input: unknown): Promise<unknown>;
+  courseExecutionDesign?(operation: 'compile' | 'prepare' | 'read', input: unknown): Promise<unknown>;
   restoredInstallation?(): Promise<boolean>;
   administratorToken: string;
   readOnly?: () => Promise<boolean>;
@@ -86,7 +88,8 @@ export function createLearningEntry(options: {
     complete(requestId: string): Promise<unknown>;
     configureLocal?(input: unknown): Promise<unknown>;
     configureModel?(input: unknown): Promise<unknown>;
-    forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string): Promise<unknown>;
+    configureAgent?(input: unknown): Promise<unknown>;
+    forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string, search?: string): Promise<unknown>;
   };
 }) {
   const { spaces, learning, environment } = options;
@@ -186,7 +189,7 @@ export function createLearningEntry(options: {
           route.startsWith('artifacts/') ? 2000000 : route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
             : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
-              || /^agent\/[0-9a-f-]{36}\/skills\//.test(route) ? 8000000 : 65536) : undefined, expected);
+              || /^agent\/[0-9a-f-]{36}\/skills\//.test(route) ? 8000000 : 65536) : undefined, expected, new URL(request.url!, endpoint).search);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -197,6 +200,9 @@ export function createLearningEntry(options: {
       } else if (route === 'manage/model-binding' && method === 'POST' && options.client?.configureModel) {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
         result = await options.client.configureModel(await readLearningBody(request));
+      } else if (route === 'manage/client-agent-binding' && method === 'POST' && options.client?.configureAgent) {
+        if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
+        result = await options.client.configureAgent(await readLearningBody(request));
       } else if (route === 'native-channel/cleanup' && method === 'POST') {
         if (!options.nativeChannel) throw new StorageError('forbidden');
         result = await options.nativeChannel.cleanup(await readLearningBody(request, 16000000));
@@ -253,7 +259,10 @@ export function createLearningEntry(options: {
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
-        if (route === 'manage/model-device-binding') {
+        if (['manage/course-execution-compile', 'manage/course-deployment-prepare', 'manage/course-deployment-read'].includes(route)) {
+          if (!options.courseExecutionDesign) throw new StorageError('unavailable');
+          result = await options.courseExecutionDesign(route.endsWith('-compile') ? 'compile' : route.endsWith('-prepare') ? 'prepare' : 'read', await readLearningBody(request, 8000000));
+        } else if (route === 'manage/model-device-binding') {
           if (!options.bindModelDevice) throw new StorageError('unavailable');
           result = await options.bindModelDevice(await readLearningBody(request));
         } else if (route === 'manage/model-binding') {
@@ -352,6 +361,7 @@ export function createLearningEntry(options: {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (!options.models && route === 'models/school-default' && method === 'GET') { sendLearning(response, 200, null); return true; }
         if (!options.models) throw new StorageError('unavailable');
         if (method !== 'GET' && method !== 'POST') throw new StorageError('missing');
         result = route === 'models/school-default' && method === 'GET' ? await options.models.school.read(identity)
@@ -460,42 +470,43 @@ export function createLearningEntry(options: {
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         const parts = route.split('/');
+        const executions = options.executions ?? learning.executions;
         const assertAgent = async (association: AgentExecutionAssociation) => {
           const teaching = await options.teachingFor?.(identity, parts[1]!) ?? options.teaching;
           if (!teaching) throw new StorageError('unavailable');
           return teaching.assertCommandDispatch(identity, parts[1]!, association);
         };
         if (parts.length === 3 && parts[2] === 'agent-pending' && method === 'GET')
-          result = await learning.executions.agent.pendingBrowser(identity, parts[1]!);
+          result = await executions.agent.pendingBrowser(identity, parts[1]!);
         else if (parts.length === 4 && parts[2] === 'agent-stops' && method === 'GET')
-          result = await learning.executions.agent.browserStops(identity, parts[1]!, parts[3]!);
+          result = await executions.agent.browserStops(identity, parts[1]!, parts[3]!);
         else if (parts.length === 5 && parts[2] === 'agent' && parts[4] === 'claim' && method === 'POST') {
           const input = agentBrowserClaimInputSchema.parse(await readLearningBody(request));
-          result = await learning.executions.agent.claimBrowser(identity, parts[1]!, parts[3]!, input.browserId, assertAgent);
+          result = await executions.agent.claimBrowser(identity, parts[1]!, parts[3]!, input.browserId, assertAgent);
         } else if (parts.length === 5 && parts[2] === 'agent' && parts[4] === 'accept' && method === 'POST') {
           const input = agentBrowserAcceptanceInputSchema.parse(await readLearningBody(request));
-          result = await learning.executions.agent.acceptBrowser(identity, parts[1]!, parts[3]!, input.browserId, input.acceptance, assertAgent);
+          result = await executions.agent.acceptBrowser(identity, parts[1]!, parts[3]!, input.browserId, input.acceptance, assertAgent);
         } else if (parts.length === 2 && method === 'POST')
-          result = await learning.executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
+          result = await executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
         else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'history' && method === 'GET')
-          result = await learning.executions.history(identity, parts[1]!, parts[3]);
+          result = await executions.history(identity, parts[1]!, parts[3]);
         else if (parts.length === 4 && parts[3] === 'artifact' && method === 'GET')
-          result = await learning.executions.artifact(identity, parts[1]!, parts[2]!);
+          result = await executions.artifact(identity, parts[1]!, parts[2]!);
         else if (parts.length === 3 && parts[2] === 'sessions' && method === 'GET')
-          result = await learning.executions.sessions(identity, parts[1]!);
+          result = await executions.sessions(identity, parts[1]!);
         else if ((parts.length === 3 || parts.length === 4) && parts[2] === 'checkpoints' && method === 'GET')
-          result = await learning.executions.checkpoints(identity, parts[1]!, parts[3]);
-        else if (parts.length === 3 && method === 'GET') result = await learning.executions.read(identity, parts[1]!, parts[2]!);
+          result = await executions.checkpoints(identity, parts[1]!, parts[3]);
+        else if (parts.length === 3 && method === 'GET') result = await executions.read(identity, parts[1]!, parts[2]!);
         else if (parts.length === 5 && parts[3] === 'controls' && method === 'GET')
-          result = await learning.executions.controlReceipt(identity, parts[1]!, parts[2]!, parts[4]!);
+          result = await executions.controlReceipt(identity, parts[1]!, parts[2]!, parts[4]!);
         else if (parts.length === 4 && parts[3] === 'control' && method === 'POST')
-          result = await learning.executions.control(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
+          result = await executions.control(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
         else if (parts.length === 4 && parts[3] === 'report' && method === 'POST')
-          result = await learning.executions.report(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
+          result = await executions.report(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
         else if (parts.length === 4 && parts[3] === 'stop' && method === 'POST')
-          result = await learning.executions.stop(identity, parts[1]!, parts[2]!, await readLearningBody(request));
+          result = await executions.stop(identity, parts[1]!, parts[2]!, await readLearningBody(request));
         else if (parts.length === 4 && parts[3] === 'result' && method === 'POST')
-          result = await learning.executions.result(identity, parts[1]!, parts[2]!, await readLearningBody(request, 32*1024*1024));
+          result = await executions.result(identity, parts[1]!, parts[2]!, await readLearningBody(request, 32*1024*1024));
         else throw new StorageError('missing');
       } else if (route.startsWith('intents/')) {
         const identity = await current(request);

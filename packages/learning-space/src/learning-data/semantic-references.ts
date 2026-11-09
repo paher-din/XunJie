@@ -12,6 +12,7 @@ import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import { readAluReflectionSource } from './alu-reflections.js';
 import { readExecutionSource } from './execution-source.js';
+import { readSyncedExecutionRecord, readSyncedExecutionArtifact } from './execution-records.js';
 const fail = (): never => { throw new StorageError('invalid'); };
 const corrupt = (): never => { throw new StorageError('corrupt'); };
 type ComponentSource = Extract<QuestionReferenceInput['source'], { kind: 'component' }>;
@@ -90,12 +91,26 @@ async function originalCheckWorks(storage: OwnedStorage, activity: LearningActiv
 async function originalV3Result(storage: OwnedStorage, activity: LearningActivity, binding: ComponentBinding,
   source: ComponentSource, requireAlu: boolean, counterexample = false) {
   if (source.objectId !== source.requestId || !source.requestId || !source.executionRef) return fail();
-  const { action, query } = await readExecutionSource(storage, activity, { requestId: source.requestId, executionRef: source.executionRef });
+  const original = await readExecutionSource(storage, activity, { requestId: source.requestId, executionRef: source.executionRef });
+  const { action, query } = original;
   const instance = action.execution.instance, manifest = binding.definition.manifest;
   if (action.protocolVersion !== 3 || instance.key !== source.bindingKey || instance.instanceId !== source.instanceId || instance.componentId !== source.componentId
     || instance.componentVersion !== source.componentVersion || instance.definitionDigest !== source.definitionDigest
     || instance.stateVersion !== manifest.stateVersion || instance.hostApiVersion !== manifest.hostApiVersion
     || requireAlu && action.execution.basis.runtime.adapterId !== 'icarus-alu') return fail();
+  if (original.record) {
+    if (!original.record.result) throw new StorageError('unavailable');
+    if (original.record.result.contentId !== source.contentId) return fail();
+    const artifact = await readSyncedExecutionArtifact(storage, original.record);
+    if (!artifact) throw new StorageError('unavailable');
+    if (counterexample) {
+      if (action.execution.operation.operationId !== 'check-all' || artifact.name !== 'check-report.json'
+        || artifact.mediaType !== 'application/json') return fail();
+      await originalCheckWorks(storage, activity, action.requestId, action.execution.basis.works, artifact.text);
+    }
+    return { action, output: artifact.output, state: query.statusKnowledge === 'confirmed' ? query.state : 'unknown',
+      resources: artifact.resources ?? [], name: artifact.name, mediaType: artifact.mediaType, text: artifact.text };
+  }
   const { rows: [row] } = await storage.read('SELECT * FROM execution_results WHERE request_id=$1', [source.requestId]);
   if (!row) throw new StorageError('unavailable');
   if (row.activity_id !== activity.activityId || row.request_id !== source.requestId || row.content_id !== source.contentId
@@ -207,17 +222,32 @@ export async function verifySemanticReference(storage: OwnedStorage, activity: L
       encoding: String(row.encoding), mediaType: String(row.media_type), value })) return fail();
     content = JSON.parse(value).content;
   } else {
-    const { rows: [row] } = await storage.read(`SELECT r.*,c.body AS action FROM execution_results r JOIN execution_commands c
-      ON c.request_id=r.request_id WHERE r.activity_id=$1 AND r.request_id=$2`, [activity.activityId, source.requestId]);
-    if (!row) throw new StorageError('unavailable');
-    if ((row.action as { protocolVersion?: unknown })?.protocolVersion === 3) {
-      const original = await originalV3Result(storage, activity, binding, source, false);
-      content = original.output;
+    const recorded = await readSyncedExecutionRecord(storage, activity, source.requestId!);
+    if (recorded) {
+      if (!recorded.result) throw new StorageError('unavailable');
+      const action = JSON.parse(recorded.actionText) as { protocolVersion: number; execution: { instance: { key: string; definitionDigest: string } } };
+      if (recorded.result?.contentId !== source.contentId || recorded.executionRef !== source.executionRef
+        || source.objectId !== source.requestId || action.execution.instance.key !== binding.key
+        || action.execution.instance.definitionDigest !== binding.definition.digest) return fail();
+      if (action.protocolVersion === 3) content = (await originalV3Result(storage, activity, binding, source, false)).output;
+      else {
+        const artifact = await readSyncedExecutionArtifact(storage, recorded);
+        if (!artifact) throw new StorageError('unavailable');
+        content = artifact.output;
+      }
     } else {
-      if (row.content_id !== source.contentId || row.execution_ref !== source.executionRef || source.objectId !== source.requestId
-      || executionActionSchema.parse(row.action).execution.instance.key !== binding.key || executionActionSchema.parse(row.action).execution.instance.definitionDigest !== binding.definition.digest
-      || bytes.length !== Number(row.byte_length) || createHash('sha256').update(bytes).digest('hex') !== row.sha256) return fail();
-      content = row.output;
+      const { rows: [row] } = await storage.read(`SELECT r.*,c.body AS action FROM execution_results r JOIN execution_commands c
+        ON c.request_id=r.request_id WHERE r.activity_id=$1 AND r.request_id=$2`, [activity.activityId, source.requestId]);
+      if (!row) throw new StorageError('unavailable');
+      if ((row.action as { protocolVersion?: unknown })?.protocolVersion === 3) {
+        const original = await originalV3Result(storage, activity, binding, source, false);
+        content = original.output;
+      } else {
+        if (row.content_id !== source.contentId || row.execution_ref !== source.executionRef || source.objectId !== source.requestId
+          || executionActionSchema.parse(row.action).execution.instance.key !== binding.key || executionActionSchema.parse(row.action).execution.instance.definitionDigest !== binding.definition.digest
+          || bytes.length !== Number(row.byte_length) || createHash('sha256').update(bytes).digest('hex') !== row.sha256) return fail();
+        content = row.output;
+      }
     }
   }
   if (!adapter || range.version !== adapter.version) {

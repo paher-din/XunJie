@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { LearningTarget, SpaceIdentity } from './spaces.js';
 import { componentBindingsSchema } from './components.js';
-import { courseExecutionPlanSchema } from './execution-plan.js';
+import { courseExecutionPlanSchema, courseExecutionPlanV2Schema } from './execution-plan.js';
 import { teachingHelpPolicySchema } from './course-help.js';
 import { courseSkillPackagesSchema } from './agent-skills.js';
 
@@ -102,6 +102,22 @@ export const courseImportSchema = z.object({
   resources: z.array(courseImportResourceSchema).max(100),
 }).strict();
 export type CourseImport = z.infer<typeof courseImportSchema>;
+
+/** Same design can be compiled and prepared without introducing a mutable course draft. */
+export const courseExecutionDesignInputSchema = z.object({
+  courseId: z.uuid(), taskId: z.uuid(), releaseId: z.uuid(), components: componentBindingsSchema,
+  plan: z.object({ ...courseExecutionPlanV2Schema.shape, planDigest: courseDigestSchema.optional() }).strict(),
+}).strict();
+export type CourseExecutionDesignInput = z.infer<typeof courseExecutionDesignInputSchema>;
+export const prepareCourseDeploymentSchema = courseExecutionDesignInputSchema.extend({ requestId: z.uuid() });
+export const courseDeploymentSchema = z.object({ requestId: z.uuid(), courseId: z.uuid(), taskId: z.uuid(),
+  releaseId: z.uuid(), planDigest: courseDigestSchema, plan: courseExecutionPlanV2Schema,
+  state: z.enum(['ready', 'blocked']), preparedAt: z.string(),
+  targets: z.array(z.object({ componentKey: z.string(), operationId: z.string(),
+    target: z.enum(['student-browser', 'student-runtime', 'school-runtime']),
+    state: z.enum(['ready', 'unavailable']), detail: z.string().max(300) }).strict()).max(32),
+}).strict();
+export type CourseDeployment = z.infer<typeof courseDeploymentSchema>;
 
 export const courseRegistrationResultSchema = z.object({
   kind: z.literal('course-release'), requestId: z.uuid(), courseId: z.uuid(), taskId: z.uuid(),

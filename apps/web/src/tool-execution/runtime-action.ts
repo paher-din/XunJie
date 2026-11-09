@@ -1,8 +1,10 @@
-import { executionActionV3Schema } from '@xunjie/contracts/execution'
+import { executionActionV3Schema, isCourseExecutionPlanV2 } from '@xunjie/contracts/execution'
 import { acceptsState, type ComponentBinding } from '@xunjie/contracts/components'
 import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
+import { operationPlacement, teacherExecutionLimits, verifyTeacherExecutionPlan } from './placement'
+import { observeExecutionDevice } from './device'
 import { digestOf, readComponentState } from './action'
 import { aluControls } from './adapters/alu'
 import { aluCaseDraftSchema, aluCaseFromAction, aluInputsSchema, isAluCodeWork, type AluCaseDraft } from '@xunjie/contracts/alu-learning'
@@ -61,6 +63,15 @@ export async function runtimeAction(workspace:ReliableWorkspace, activity:Learni
   if(works.some(file=>file.name===manifest.runtime.resources.find(resource=>resource.resourceId===operation.observation.scaffoldResourceId)?.path))
     throw new Error('invalid-input')
   const scope=actionScopeFromWorkspaceKey(workspace.key)
+  const plan = structuredClone(activity.course.executionPlan)
+  const limits = teacherExecutionLimits({ ...operation.budgets, concurrentJobs: manifest.budget.concurrentJobs,
+    queuedJobs: manifest.budget.queuedJobs }, binding, operation.operationId, plan)
+  if (isCourseExecutionPlanV2(plan)) {
+    const decision = operationPlacement(binding, operation.operationId, 'job',
+      { plan, device: observeExecutionDevice(), remoteAvailable: false })
+    if (decision.location !== 'browser' || decision.owner !== 'device') throw new Error('capability-unavailable')
+    await verifyTeacherExecutionPlan(binding, operation.operationId, 'browser', plan)
+  }
   return executionActionV3Schema.parse({protocolVersion:3,kind:'execution',requestId,scope,
     receiver:{receiverId,location:'local',kind:'execution'},execution:{
       instance:{instanceId,key:binding.key,componentId:manifest.componentId,componentVersion:manifest.version,
@@ -69,11 +80,11 @@ export async function runtimeAction(workspace:ReliableWorkspace, activity:Learni
       basis:{works,...(options.enabledBy?{enabledBy:structuredClone(options.enabledBy)}:{}),runtime:manifest.runtime && {
         adapterId:manifest.runtime.adapterId,adapterVersion:manifest.runtime.adapterVersion,bundleIdentity:manifest.runtime.bundleIdentity,resources:manifest.runtime.resources},
         compile:operation.compile,observation:operation.observation,course:{releaseId:activity.course.releaseId,
-          behaviorRuleDigest:await digestOf(activity.course.requirements),planDigest:activity.course.executionPlan.planDigest},
+          behaviorRuleDigest:await digestOf(activity.course.requirements),planDigest:plan.planDigest},
         expected:{stateContentId:includeState&&stateFile?stateFile.contentId:null}},
-      limits:{...operation.budgets,concurrentJobs:manifest.budget.concurrentJobs,queuedJobs:manifest.budget.queuedJobs},
-      plan:{planId:activity.course.executionPlan.planId,planVersion:activity.course.executionPlan.planVersion,
-        planDigest:activity.course.executionPlan.planDigest,location:'browser',kind:'job'},initiator:{kind:'student',principalId:scope.principalId}}})
+      limits,
+      plan:{planId:plan.planId,planVersion:plan.planVersion,
+        planDigest:plan.planDigest,location:'browser',kind:'job'},initiator:{kind:'student',principalId:scope.principalId}}})
 }
 
 /** Evaluated by the original receiver inside its acceptance transaction, after async protection. */

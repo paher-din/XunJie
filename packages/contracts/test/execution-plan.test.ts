@@ -162,3 +162,29 @@ test('an unobserved device fact is never turned into a promise or a relocation',
     device: device({ platform: null, native: null }), remoteAvailable: false });
   assert.equal(job.state, 'browser-satisfied');
 });
+
+test('V2 places the same operation name independently for each component and never falls back', () => {
+  const legacy = sessionPlan({ components: [
+    { key: 'local', definitionDigest: definition, configurationDigest: configuration, operations: ['step'] },
+    { key: 'school', definitionDigest: definition, configurationDigest: configuration, operations: ['step'] }], remote: null });
+  const v2 = courseExecutionPlanSchema.parse({ ...legacy, version: 2,
+    placements: ['local', 'school'].map(componentKey => ({ componentKey, operationId: 'step',
+      target: componentKey === 'local' ? 'student-runtime' : 'school-runtime',
+      resources: [{ resourceId: '11111111-1111-4111-8111-111111111111', sha256: definition, byteLength: 1 }],
+      budgets: { memoryMiB: 64, operationTimeoutMs: 5000, maxMs: 600000 } })) });
+  const locate = (componentKey: string, remoteAvailable = true) => decideExecutionPlacement({ componentKey,
+    operationId: 'step', kind: 'session', adapter, plan: v2, device: device(), remoteAvailable });
+  assert.equal(locate('local').owner, 'device');
+  assert.equal(locate('school').owner, 'school-node');
+  assert.equal(locate('school').state, 'school-required');
+  assert.equal(locate('school', false).owner, null);
+  assert.equal(locate('school', false).state, 'target-unavailable');
+  assert.throws(() => decideExecutionPlacement({ operationId: 'step', kind: 'session', adapter,
+    plan: v2, device: device(), remoteAvailable: true }), /not-planned/);
+  assert.equal(plannedExecutionScope(v2, { key: 'school', definitionDigest: definition, operationId: 'step',
+    location: 'native', target: 'student-runtime' }), 'forbidden');
+  const basis = courseExecutionPlanBasis(v2);
+  assert.equal(basis.version, 2);
+  assert.equal(basis.placements?.length, 2);
+  assert.notDeepEqual(basis, courseExecutionPlanBasis(legacy));
+});

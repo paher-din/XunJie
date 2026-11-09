@@ -3,6 +3,7 @@ export { prepareProductPrerequisites } from './prerequisites.js';
 export { ProductInstallationRequiredError, ProductPrerequisitePreparationError } from './prerequisites.js';
 export type { ProductPrerequisiteResult } from './prerequisites.js';
 export type { InstallOptions } from './runtime.js';
+export { resolveDeployment, describeDeployment, validateDeployment } from './deployment.js';
 export type { RuntimeResources, DatabaseConfiguration, DatabaseBinding } from './postgres.js';
 export { resolveCredential } from './postgres.js';
 export { createProductRuntimeHost } from './host.js';

@@ -17,6 +17,7 @@ import { createRecoveryManager, RecoveryError } from './recovery.js';
 import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
 import { recordRecoverySuccession } from './recovery-successions.js';
 import { validateAgentTransfers } from './agent-transfer-journal.js';
+import { describeDeployment, validateDeployment } from './deployment.js';
 import { createSshRecoveryReceiver } from './ssh-recovery.js';
 import type { SshRecoveryReceiver } from './ssh-recovery.js';
 import type { BackupPolicy, ReceiverExecutionBoundary, RecoveryOwner } from './recovery-types.js';
@@ -82,6 +83,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   const releaseOnce = async () => { if (!released) { released = true; await release(); } };
   const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
   const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
+  validateDeployment(environment, config);
   const isolatedMode = async () => await exists(join(root, 'recovery-state.json'))
     && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
   if (!['school', 'agent'].includes(environment.profile) && (!['127.0.0.1', '::1'].includes(config.host)
@@ -212,7 +214,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       : await authorityClosed() ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
         : dependencies.some(value => value.state !== 'ready') ? 'degraded' : 'ready';
     const reason = startupFailure ?? (state === 'failed' ? maintenance.status().error : undefined);
-    return { state, environment, endpoint, dependencies, ...(reason ? { reason } : {}) };
+    return { state, environment, endpoint, dependencies, deployment: describeDeployment(environment, latest), ...(reason ? { reason } : {}) };
   }
 
   const authorities = new Map<string, ReturnType<typeof createConnectionAuthority>>();

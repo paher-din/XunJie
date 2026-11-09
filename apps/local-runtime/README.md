@@ -1,5 +1,7 @@
 # XunJie 产品 CLI（候选交付）
 
+模块启用、学校数据＋本机 Agent／模型／执行、教师执行位置设计及发布流程见 [可组合部署](../../docs/student-agent-implementation/composable-deployment.md)。已有环境通过 `configure-deployment --file ... --dry-run` 预览，停止后应用；`status.deployment` 区分启用模块与保留的历史 owner。
+
 WP03 新增 `component-import` / `component-read` / `component-status`，用于登记不可变组件、读取固定定义、启停新装载；样例生成、输入及平台限制见 [#169 操作与交接](../../docs/student-agent-implementation/wp03-component-host.md)。沿用产品管理授权，停用不会删除学生作品。
 
 混合部署管理新增 `learning-binding --file` 与远端维护的 `fence-source --file`；成员创建支持首次固定 target，takeover 的 receiver 支持既有 SSH 部署配置。具体输入、认证边界及恢复顺序见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。原同机 receiver 的 `{id,root}` 仍受支持。

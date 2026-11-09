@@ -156,7 +156,8 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     // A course plan may allow only a browser job, or only this one session operation.
     verifyPlannedExecution(activity, { key: action.execution.instance.key,
       definitionDigest: action.execution.instance.definitionDigest,
-      operationId: execution.operation.operationId, location: 'native' });
+      operationId: execution.operation.operationId, location: 'native',
+      target: action.receiver.location === 'remote' ? 'school-runtime' : 'student-runtime', budgets: { ...session!.limits, inputBytes: execution.limits.inputBytes, outputBytes: execution.limits.outputBytes } });
     const declared = manifest.session;
     if (declared.adapterId !== session.adapterId || declared.adapterVersion !== session.adapterVersion
       || declared.operation.operationId !== execution.operation.operationId) fail('identity-conflict');
@@ -165,11 +166,12 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     if (limits.timeMs > budgets.operationTimeoutMs || limits.inputBytes > budgets.inputBytes
       || limits.outputBytes > budgets.outputBytes || limits.concurrentJobs > budgets.concurrentSessions
       || limits.queuedJobs > budgets.queuedSessions) fail('invalid');
-    if (session.limits.operationTimeoutMs !== budgets.operationTimeoutMs
-      || session.limits.idleMs !== budgets.idleMs || session.limits.maxMs !== budgets.maxMs
-      || session.limits.memoryMiB !== budgets.memoryMiB
-      || session.limits.concurrentSessions !== budgets.concurrentSessions
-      || session.limits.queuedSessions !== budgets.queuedSessions) fail('invalid');
+    const coursePlan = activity.course?.executionPlan;
+    const narrowed = coursePlan && 'version' in coursePlan && coursePlan.version === 2;
+    if (Object.entries(session.limits).some(([key, value]) => narrowed
+      ? value > budgets[key as keyof typeof session.limits] : value !== budgets[key as keyof typeof session.limits])
+      || limits.timeMs > session.limits.operationTimeoutMs || limits.concurrentJobs > session.limits.concurrentSessions
+      || limits.queuedJobs > session.limits.queuedSessions) fail('invalid');
     const plan = execution.plan;
     if (plan.planId !== 'native-session' || plan.planVersion !== 1
       || plan.planDigest !== canonicalDigest({ planId: plan.planId, planVersion: plan.planVersion,
@@ -189,9 +191,10 @@ export function createNativeSessions(storage: OwnedStorage, options: NativeSessi
     const adapter = adapters.get(`${session.adapterId}@${session.adapterVersion}`);
     // The product registry corroborates a platform limitation. A missing install, permission or
     // preparation can never turn a supported adapter into a remote-only operation.
-    if (school && (!placement?.secureTransport || !plan.remote || !device.platform
+    if (school && !('version' in plan && plan.version === 2) && (!placement?.secureTransport || !plan.remote || !device.platform
       || !adapter?.platforms || adapter.platforms.includes(device.platform))) fail('forbidden');
-    const decision = decideExecutionPlacement({ operationId: action.execution.operation.operationId, kind: 'session',
+    if (school && !placement?.secureTransport) fail('forbidden');
+    const decision = decideExecutionPlacement({ componentKey: action.execution.instance.key, operationId: action.execution.operation.operationId, kind: 'session',
       adapter: { adapterId: session.adapterId, adapterVersion: session.adapterVersion }, plan, device,
       remoteAvailable: school && placement?.secureTransport === true });
     if (decision.location !== 'native' || decision.owner !== (school ? 'school-node' : 'device')) fail('forbidden');

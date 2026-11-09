@@ -1,6 +1,6 @@
 ---
 name: xunjie-development
-description: XunJie 成员首次上手与日常开发协作。用于准备开发环境、加入团队、切换本地与云端、使用固定数据基线、交接业务复现或 Agent 调试包、排查连接及查看测试账号。只读咨询只核实和回答；学生实验运行位置与产品部署设计另按产品契约处理。
+description: XunJie 成员首次上手与日常开发协作。用于准备开发环境、正式产品预览与开发学校部署、加入团队、切换本地与云端、使用固定数据基线、交接业务复现或 Agent 调试包、排查连接及查看测试账号。只读咨询只核实和回答；学生实验位置按课程发布方案处理。
 ---
 
 # XunJie 开发协作
@@ -20,6 +20,8 @@ description: XunJie 成员首次上手与日常开发协作。用于准备开发
 先核对真实 registration/env；再运行 `node skills/xunjie-development/scripts/intro-state.mjs status --worktree <项目根>` 判断跨会话是否已介绍。`introShown` 只证明说明已展示，就绪以实时工具结果为准。仅实际交付介绍后 `mark-shown`，失败只续缺项；时机与受限 home 边界见 [首引导状态](../../docs/development-tooling.md#首引导状态)。
 
 ## 按需操作
+
+正式产品预览、学校模块部署、Agent／模型／执行运行位置或当前开发学校的启停接入，先读 [正式产品开发环境](references/product-development.md)。本轮学校只提供账号、课程和学校数据，Agent、个人模型与执行在开发者本机；以实际 `status.deployment` 核实，不把旧演示 `xj-dev` 的 cloud-api 切换当成正式产品拓扑。
 
 日常启动、切换、基线、复现、手动登录/查看测试账号或维护任务只读 [操作路由](references/operations.md) 对应一行，再进入该操作需要的说明。Skill 发现或换宿主问题只读 [安装与发现](../../docs/development-tooling.md#安装与发现)。
 

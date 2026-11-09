@@ -48,7 +48,7 @@ export function createAggregationAdapter(options: {
       const algorithm = await options.provider.load(action)
       await context.checkpoint()
       context.signal.throwIfAborted()
-      const outcome = await run({ ...job, bytes: algorithm.bytes, memoryPages: algorithm.memoryPages,
+      const outcome = await run({ ...job, bytes: algorithm.bytes, memoryPages: Math.min(algorithm.memoryPages, limits.memoryPages),
         entry: algorithm.entry }, context.signal)
       await context.checkpoint()
       // The manifest declared the result structure; a run whose numbers do not fit it is not published.

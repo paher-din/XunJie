@@ -93,17 +93,20 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
       || manifest.stateVersion !== instance.stateVersion || manifest.hostApiVersion !== instance.hostApiVersion
       || binding.definition.digest !== instance.definitionDigest) fail('identity-conflict');
     verifyPlannedExecution(activity, { key: instance.key, definitionDigest: instance.definitionDigest,
-      operationId: execution.operation.operationId, location: 'native' });
+      operationId: execution.operation.operationId, location: 'native', target: 'student-runtime', budgets: { ...execution.session!.limits, inputBytes: execution.limits.inputBytes, outputBytes: execution.limits.outputBytes } });
     if (session.adapterId !== declared.adapterId || session.adapterVersion !== declared.adapterVersion
       || execution.operation.operationId !== declared.operation.operationId || execution.operation.effect !== 'input') fail('identity-conflict');
     if (!acceptsState(declared.parameters, execution.parameters)) fail('invalid');
     const budgets = declared.budgets, limits = execution.limits;
     if (limits.timeMs > budgets.operationTimeoutMs || limits.inputBytes > budgets.inputBytes
       || limits.outputBytes > budgets.outputBytes || limits.concurrentJobs > budgets.concurrentSessions
-      || limits.queuedJobs > budgets.queuedSessions
-      || session.limits.operationTimeoutMs !== budgets.operationTimeoutMs || session.limits.idleMs !== budgets.idleMs
-      || session.limits.maxMs !== budgets.maxMs || session.limits.memoryMiB !== budgets.memoryMiB
-      || session.limits.concurrentSessions !== budgets.concurrentSessions || session.limits.queuedSessions !== budgets.queuedSessions) fail('invalid');
+      || limits.queuedJobs > budgets.queuedSessions) fail('invalid');
+    const coursePlan = activity.course?.executionPlan;
+    const narrowed = coursePlan && 'version' in coursePlan && coursePlan.version === 2;
+    if (Object.entries(session.limits).some(([key, value]) => narrowed
+      ? value > budgets[key as keyof typeof session.limits] : value !== budgets[key as keyof typeof session.limits])
+      || limits.timeMs > session.limits.operationTimeoutMs || limits.concurrentJobs > session.limits.concurrentSessions
+      || limits.queuedJobs > session.limits.queuedSessions) fail('invalid');
     const plan = execution.plan;
     if (plan.planId !== 'native-session' || plan.planVersion !== 1 || plan.planDigest !== canonicalHash({
       planId: plan.planId, planVersion: plan.planVersion, componentId: manifest.componentId,
@@ -167,7 +170,7 @@ export function createChannelExecutions(storage: OwnedStorage, options: {
     if (!node) fail('missing');
     const coursePlan = activity.course?.executionPlan;
     if (coursePlan) {
-      const placement = decideExecutionPlacement({ operationId: action.execution.operation.operationId, kind: 'session',
+      const placement = decideExecutionPlacement({ componentKey: action.execution.instance.key, operationId: action.execution.operation.operationId, kind: 'session',
         adapter: declared, plan: coursePlan, remoteAvailable: false, device: { platform: node.platform,
           browser: { worker: false, webassembly: false, sandboxedFrame: false },
           native: { supported: true, installed: true, authorized: true, prepared: 'ready' } } });

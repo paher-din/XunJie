@@ -1,14 +1,12 @@
 import { acceptsState, matchesComponentState, componentStateSchema, componentStateName, type ComponentBinding, type ComponentManifest } from '@xunjie/contracts/components'
-import { canonicalValue as canonical, executionActionSchema, defaultExecutionLimits, type ExecutionAction, type ExecutionLimits, type ExecutionPlan } from '@xunjie/contracts/execution'
+import { executionActionSchema, defaultExecutionLimits, type ExecutionAction, type ExecutionLimits, type ExecutionPlan, type CourseExecutionPlan } from '@xunjie/contracts/execution'
+import { operationPlacement, teacherExecutionLimits, verifyTeacherExecutionPlan, type ExecutionPlacement } from './placement'
 import type { ReliableWorkspace } from '../reliable-workspace'
 import { actionScopeFromWorkspaceKey } from '../reliable-workspace/actions'
 
 export const componentStateMediaType = 'application/vnd.xunjie.component-state+json'
-export { canonical }
-export async function digestOf(value: unknown) {
-  const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)))
-  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')
-}
+export { canonical, digestOf } from './identity'
+import { digestOf } from './identity'
 const inputActivityId = (instanceId: string, key: string) => instanceId.slice(0, -(key.length + 1))
 /** The instance state file is the only mutable input a run may cite; it is read, never guessed. */export function readComponentState(workspace: ReliableWorkspace, binding: ComponentBinding, instanceId: string) {
   const manifest = binding.definition.manifest
@@ -37,6 +35,13 @@ export function browserLimits(manifest: ComponentManifest,
     concurrentJobs: defaultExecutionLimits.concurrentJobs, queuedJobs: defaultExecutionLimits.queuedJobs }
 }
 
+export function browserExecutionLimits(binding: ComponentBinding,
+  operation: { operationId: string; budgets: { timeMs: number; outputBytes: number } }, plan?: CourseExecutionPlan) {
+  const manifest = binding.definition.manifest
+  if (manifest.formatVersion !== 1 || !manifest.algorithm) throw new Error('capability-unavailable')
+  return teacherExecutionLimits(browserLimits(manifest, operation), binding, operation.operationId, plan)
+}
+
 /**
  * One assembly for every legitimate run entry: the view and the workspace panel both cite the same
  * fixed basis, plan and limits. The component never supplies the basis it is being judged by.
@@ -44,14 +49,19 @@ export function browserLimits(manifest: ComponentManifest,
 export async function executionAction(input: {
   workspace: ReliableWorkspace; binding: ComponentBinding; instanceId: string
   receiver: ExecutionAction['receiver']; operationId: string; parameters: unknown
-  expectedContentId: string | null; requestId: string
+  expectedContentId: string | null; requestId: string; placement?: ExecutionPlacement
 }): Promise<ExecutionAction> {
-  input = { ...input, binding: structuredClone(input.binding), receiver: structuredClone(input.receiver), parameters: structuredClone(input.parameters) }
+  input = { ...input, binding: structuredClone(input.binding), receiver: structuredClone(input.receiver), parameters: structuredClone(input.parameters),
+    placement: input.placement && structuredClone(input.placement) }
   const manifest = input.binding.definition.manifest
   if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
   const operation = manifest.operations.find(item => item.operationId === input.operationId)
   if (!operation) throw new Error('capability-unavailable')
   if (!acceptsState(operation.parameters, input.parameters)) throw new Error('invalid-input')
+  if (input.placement) {
+    const decision = operationPlacement(input.binding, operation.operationId, 'job', input.placement)
+    if (decision.location !== 'browser' || decision.owner !== 'device') throw new Error('capability-unavailable')
+  }
   const state = readComponentState(input.workspace, input.binding, input.instanceId)
   if (state.contentId !== input.expectedContentId) throw new Error('conflict')
   const resources = [{ kind: 'entry' as const, resourceId: manifest.entry.resourceId, sha256: manifest.entry.sha256,
@@ -60,6 +70,8 @@ export async function executionAction(input: {
       sha256: manifest.algorithm.resource.sha256, byteLength: manifest.algorithm.resource.byteLength,
       mediaType: manifest.algorithm.resource.mediaType }]
   const scope = actionScopeFromWorkspaceKey(input.workspace.key)
+  const limits = browserExecutionLimits(input.binding, operation, input.placement?.plan)
+  await verifyTeacherExecutionPlan(input.binding, operation.operationId, 'browser', input.placement?.plan)
   return executionActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: input.requestId, scope,
     receiver: input.receiver,
     execution: {
@@ -71,7 +83,7 @@ export async function executionAction(input: {
       basis: { works: state.file ? [state.file] : [], state: state.file ? { name: componentStateName(input.binding.key), contentId: state.file.contentId,
         sha256: await digestOf(JSON.parse(state.file.value)) } : null,
         expected: { stateContentId: input.expectedContentId }, resources },
-      limits: browserLimits(manifest, operation),
+      limits,
       plan: await browserPlan(manifest, operation.operationId),
       initiator: { kind: 'student', principalId: scope.principalId } } })
 }
