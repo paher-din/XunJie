@@ -10,15 +10,11 @@ A framework for building ui, components and design systems. Components are added
 
 > **IMPORTANT:** Run all CLI commands using the project's package runner: `npx shadcn@latest`, `pnpm dlx shadcn@latest`, or `bunx --bun shadcn@latest` — based on the project's `packageManager`. Examples below use `npx shadcn@latest` but substitute the correct runner for the project.
 
-> **YiZhi:** Run shadcn commands from `desktop/`, where this project's `components.json` and `package.json` live.
+> **XunJie:** Run discovery commands from the repository root using `npx shadcn@latest`. Reuse `@xunjie/ui` first; shadcn is an external component and design resource. Adapt adopted reusable components into `packages/ui` using `DESIGN.md` and the existing design tokens. Business pages consume them through `@xunjie/ui` functional subpaths. Apply Tailwind-specific guidance below only when the target actually uses Tailwind.
 
 ## Current Project Context
 
-```json
-!`cd "$(git rev-parse --show-toplevel)/desktop" && npx shadcn@latest info --json`
-```
-
-The JSON above contains the project config and installed components. Use `npx shadcn@latest docs <component>` to get documentation and example URLs for any component.
+Read `AGENTS.md`, `DESIGN.md`, and `packages/ui/README.md`, then inspect the target package and its existing components. If the target has a `components.json`, run `npx shadcn@latest info --json` from that directory to obtain its actual configuration. Otherwise, use explicit registry searches such as `npx shadcn@latest search @shadcn -q "empty state"`, `view`, and `docs` to discover resources without initializing shadcn. Configure installation paths and dependencies within `packages/ui` when a task adopts a component; initialize shadcn only when that integration requires it.
 
 ## Principles
 
@@ -178,8 +174,8 @@ npx shadcn@latest docs button dialog select
 
 ## Workflow
 
-1. **Get project context** — already injected above. Run `npx shadcn@latest info` again if you need to refresh.
-2. **Check installed components first** — before running `add`, always check the `components` list from project context or list the `resolvedPaths.ui` directory. Don't import components that haven't been added, and don't re-add ones already installed.
+1. **Get project context** — follow Current Project Context above; run `npx shadcn@latest info` from the target configuration directory when one exists.
+2. **Check installed components first** — inspect the `@xunjie/ui` exports and source; when shadcn project context is available, also check its `components` list or `resolvedPaths.ui` directory. Don't import components that haven't been added, and don't re-add ones already installed.
 3. **Find components** — `npx shadcn@latest search`.
 4. **Get docs and examples** — run `npx shadcn@latest docs <component>` to get URLs, then fetch them. Use `npx shadcn@latest view` to browse registry items you haven't installed. To preview changes to installed components, use `npx shadcn@latest add --diff`.
 5. **Install or update** — `npx shadcn@latest add`. When updating existing components, use `--dry-run` and `--diff` to preview changes first (see [Updating Components](#updating-components) below).
