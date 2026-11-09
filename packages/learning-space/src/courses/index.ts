@@ -15,12 +15,15 @@ import type {
 } from '@xunjie/contracts/courses';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema } from '@xunjie/contracts/execution';
+import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema, isCourseExecutionPlanV2 } from '@xunjie/contracts/execution';
 import { spaceMigrations } from '../spaces/index.js';
 import { memberAgentBindingMigration } from '../spaces/agent-bindings.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
 import type { ComponentBinding } from '@xunjie/contracts/components';
+import { courseDeploymentMigration, validateCourseDeployments, verifyCourseExecutionDesign, assertCourseDeploymentPrepared } from './execution-design.js';
+import type { CoursePublicationOptions } from './execution-design.js';
+export type { CoursePublicationOptions } from './execution-design.js';
 import { createComponents, componentMigration, componentStatusMigration, componentReportMigration } from './components.js';
 
 export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'course-catalog-and-releases', sql: `
@@ -52,7 +55,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration, memberAgentBindingMigration];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration, memberAgentBindingMigration, courseDeploymentMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
@@ -115,6 +118,7 @@ function declaredOperations(manifest: ComponentBinding['definition']['manifest']
 function verifyExecutionPlan(content: StoredContent) {
   const plan = content.executionPlan;
   if (!plan) return;
+  if (isCourseExecutionPlanV2(plan)) return verifyCourseExecutionDesign(plan, content.components ?? []);
   const bindings = content.components ?? [];
   if (!bindings.length) fail('invalid');
   if (planDigest(plan) !== plan.planDigest) fail('invalid');
@@ -242,7 +246,7 @@ function readImportResources(input: CourseImport): Map<string, Buffer> {
 
 /** Only this module writes course facts; learning data reaches it through the narrow authority interface. */
 export function createCourses(storage: OwnedStorage, spaces: { authorize(identity: SpaceIdentity): Promise<void>;
-  schoolSpace(): Promise<string> }) {
+  schoolSpace(): Promise<string> }, publication: CoursePublicationOptions = {}) {
   const components = createComponents(storage);
   async function accessActive(identity: SpaceIdentity, courseId: string): Promise<boolean> {
     const { rows } = await storage.read('SELECT 1 FROM course_access WHERE course_id=$1 AND space_id=$2 AND principal_id=$3 AND active',
@@ -312,6 +316,11 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
         || reference.byteLength !== material.byteLength || reference.mediaType !== material.mediaType) fail('invalid');
     }
     const receipt = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
+      // A stored preparation is historical evidence; disabled or unavailable school targets cannot
+      // authorize a new publication. Cached successful requests return before this fresh check.
+      if (content.executionPlan && isCourseExecutionPlanV2(content.executionPlan))
+        await assertCourseDeploymentPrepared(storage, { courseId: content.courseId, taskId: content.taskId,
+          releaseId: content.releaseId, plan: content.executionPlan, components: content.components ?? [] }, publication);
       const { rows: [course] } = await tx.query('SELECT space_id,name FROM courses WHERE course_id=$1', [content.courseId]);
       if (course) {
         if (course.space_id !== spaceId || course.name !== input.course.name) fail('identity-conflict');
@@ -575,6 +584,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   async function validate() {
+    await validateCourseDeployments(storage);
     await components.validate();
     const { rows: courses } = await storage.read('SELECT course_id,space_id,name FROM courses');
     for (const course of courses) {

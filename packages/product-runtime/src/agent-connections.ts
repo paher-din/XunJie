@@ -8,7 +8,7 @@ import { createOutboundConnection, RuntimeConnectionError } from './connections.
 import { readJson } from './io.js';
 import { resolveCredential } from './postgres.js';
 import type { InstalledConfiguration } from './runtime.js';
-import { createChunkClient } from '@xunjie/learning-space';
+import { createChunkClient, isTeachingDependencyRead, teachingDependencyCallSchema } from '@xunjie/learning-space';
 import { withAgentTransfer } from './agent-transfer-journal.js';
 import { teachingDispatchAuthoritySchema } from '@xunjie/contracts/teaching-agent';
 
@@ -43,9 +43,21 @@ export function createAgentConnection(root: string, connectionId: string, capabi
     // multiplying reverse authorization calls into several durable round trips.
     const operation = (payload as { operation?: string }).operation;
     const readOnlyQuery = capability === 'teaching.agent' && operation === 'conversation'
-      || capability === 'teaching.dependencies' && operation === 'activity';
+      || capability === 'teaching.dependencies' && isTeachingDependencyRead(teachingDependencyCallSchema.parse(payload));
     if (['authorize', 'identityFor', 'assertCommandDispatch', 'assertModelDispatch'].includes(operation ?? ''))
       return send(payload);
+    if (capability === 'teaching.dependencies' && ['activity','data','course'].includes(operation ?? '')
+      && isTeachingDependencyRead(teachingDependencyCallSchema.parse(payload))) {
+      try {
+        const reply = z.union([z.object({ directRead: z.literal(1), value: z.unknown() }).strict(),
+          z.object({ directRead: z.literal(1), chunked: z.literal(true) }).strict()]).parse(
+          await send({ directRead: 1, input: payload }));
+        if ('value' in reply) return reply.value;
+      } catch (error) {
+        // Older peers do not know this envelope. Only pure reads can use the existing chunk path.
+        if (!(error instanceof StorageError) || error.code !== 'invalid') throw error;
+      }
+    }
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
     const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
     const connection = config.connections.find(item => item.connectionId === connectionId);

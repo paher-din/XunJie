@@ -2,10 +2,11 @@ import { z } from 'zod'
 import { acceptsState, componentMessageSchema, componentChangeSchema, componentStateSchema,
   componentStateName, componentInstanceId, componentReferenceSelectionSchema, componentReferenceLocateSchema, componentExecutionSubmitSchema, componentExecutionQuerySchema,
   componentExecutionStopSchema, componentEventSchema, type ComponentEvent, type ComponentBinding } from '@xunjie/contracts/components'
-import { executionCapabilitiesSchema, decideExecutionPlacement, type CourseExecutionPlan, type ExecutionDevice } from '@xunjie/contracts/execution'
+import { executionCapabilitiesSchema, type CourseExecutionPlan, type ExecutionDevice } from '@xunjie/contracts/execution'
 import type { ReliableWorkspace } from '../reliable-workspace'
+import { operationPlacement, verifyTeacherExecutionPlan } from '../tool-execution/placement'
 import type { ExecutionController } from '../tool-execution/controller'
-import { canonical, componentStateMediaType, browserLimits, browserPlan, executionAction, readComponentState } from '../tool-execution/action'
+import { canonical, componentStateMediaType, browserLimits, browserExecutionLimits, browserPlan, executionAction, readComponentState } from '../tool-execution/action'
 
 export { componentStateMediaType }
 export function componentError(error: unknown) {
@@ -30,8 +31,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
   function decisionFor(operationId: string) {
     if (!placement || manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) return undefined
     try {
-      return decideExecutionPlacement({ operationId, kind: 'job', adapter: null,
-        plan: placement.plan, device: placement.device, remoteAvailable: placement.remoteAvailable })
+      return operationPlacement(binding, operationId, 'job', placement)
     } catch { return undefined } // The release and its plan disagree, so this operation states nothing.
   }
   const submitted = new Set<string>()
@@ -58,7 +58,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
     if (manifest.formatVersion !== 1 || !manifest.operations || !manifest.algorithm) throw new Error('capability-unavailable')
     if (!execution || !execution.canRun()) throw new Error('capability-unavailable')
     const decision = decisionFor(input.operationId)
-    if (decision && decision.location !== 'browser') throw new Error('capability-unavailable')
+    if (placement && (!decision || decision.location !== 'browser' || decision.owner !== 'device')) throw new Error('capability-unavailable')
     const preceding = accepting
     let release!: () => void
     accepting = new Promise<void>(resolve => { release = resolve })
@@ -69,7 +69,7 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
         const action = await executionAction({ workspace, binding, instanceId, receiver: {
           receiverId: execution.controller.receiver.identity.receiverId, location: 'local', kind: 'execution' },
           operationId: input.operationId, parameters: input.parameters, expectedContentId: input.expectedContentId,
-          requestId: input.requestId })
+          requestId: input.requestId, placement })
         assertWritable()
         if (!execution.canRun()) throw new Error('capability-unavailable')
         await execution.controller.submit(action)
@@ -133,14 +133,20 @@ export function createComponentBridge(workspace: ReliableWorkspace, activityId: 
       const decisions = manifest.operations.map(item => decisionFor(item.operationId))
       return executionCapabilitiesSchema.parse({ plans: execution
         ? await Promise.all(manifest.operations.map(item => browserPlan(manifest, item.operationId))) : [],
-      operations: manifest.operations.map((item, index) => {
+      operations: await Promise.all(manifest.operations.map(async (item, index) => {
         const decision = decisions[index]
-        const blocked = !!decision && decision.location !== 'browser'
-        return { operationId: item.operationId, instanceId, limits: browserLimits(manifest, item),
+        let blocked = !!placement && (!decision || decision.location !== 'browser' || decision.owner !== 'device')
+        let limits = browserLimits(manifest, item)
+        try {
+          limits = browserExecutionLimits(binding, item, placement?.plan)
+          await verifyTeacherExecutionPlan(binding, item.operationId, 'browser', placement?.plan)
+        } catch { blocked = true }
+        return { operationId: item.operationId, instanceId, limits,
           available: runnable && !blocked,
-          reason: !runnable ? '当前视图不可发起执行。' : blocked ? decision!.detail : null,
+          reason: !runnable ? '当前视图不可发起执行。' : blocked ? decision?.location === null
+            ? decision.detail : 'capability-unavailable' : null,
           ...(decision ? { decision } : {}) }
-      }),
+      })),
       running: counts.running, queued: counts.queued })
     }
     if (capability === 'execution.submit') {

@@ -20,7 +20,10 @@ export function createMemberAgentBindings(storage: OwnedStorage, authorize: (ide
       const input = teachingAgentBindingInputSchema.parse(value);
       await authorize(input.identity);
       const binding = teachingAgentBindingSchema.parse({ version: 1, connectionId: input.connectionId,
-        target: input.target, installationId: input.installationId });
+        target: input.target, installationId: input.installationId,
+        ...(input.delivery ? { delivery: input.delivery } : {}), ...(input.grantId ? { grantId: input.grantId } : {}),
+        ...(input.executionGrantId ? { executionGrantId: input.executionGrantId } : {}),
+        ...(input.deviceModules ? { deviceModules: input.deviceModules } : {}) });
       const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
       const receipt = await storage.request({ requestId: 'member-agent-binding:'+input.requestId, fingerprint }, async tx => {
         await tx.query(`INSERT INTO member_agent_bindings VALUES($1,$2,$3)

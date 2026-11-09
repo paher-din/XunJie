@@ -3,6 +3,22 @@ import { z } from 'zod';
 export const runtimeProtocolVersion = 1 as const;
 export const deploymentUnits = ['client', 'space-course', 'learning-data', 'teaching-agent', 'model-connection', 'tool-execution'] as const;
 
+export const runtimeModules = ['space-course', 'learning-data', 'teaching-agent', 'model-connection', 'tool-execution'] as const;
+export const runtimeModuleSchema = z.enum(runtimeModules);
+export type RuntimeModule = z.infer<typeof runtimeModuleSchema>;
+export const deploymentDependencySchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('local') }).strict(),
+  z.object({ kind: z.literal('connection'), connectionId: z.uuid() }).strict(),
+]);
+/** Placement belongs to the installer; execution placement within a course belongs to its release. */
+export const deploymentConfigurationSchema = z.object({
+  formatVersion: z.literal(1),
+  modules: z.array(runtimeModuleSchema).max(runtimeModules.length)
+    .refine(value => new Set(value).size === value.length, 'Deployment modules must be unique'),
+  dependencies: z.partialRecord(runtimeModuleSchema, deploymentDependencySchema).default({}),
+}).strict();
+export type DeploymentConfiguration = z.infer<typeof deploymentConfigurationSchema>;
+
 export const runtimeServiceSchema = z.object({
   environmentId: z.uuid(),
   serviceId: z.uuid(),
@@ -54,6 +70,10 @@ export interface RuntimeStatus {
   dependencies: RuntimeDependencyStatus[];
   endpoint?: string;
   reason?: string;
+  deployment?: {
+    configuration: DeploymentConfiguration;
+    modules: { unit: RuntimeModule; enabled: boolean; serviceId?: string; retained: boolean }[];
+  };
 }
 
 export interface MaintenanceParticipantDescriptor {

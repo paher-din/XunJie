@@ -2,6 +2,8 @@
 
 本模块与 spaces 同属空间/课程 owner，拥有课程、项目任务、不可变发布版本、课程资格和活动关联准备记录。学习数据 owner 只通过 `prepare/confirm/authorize` 窄接口消费，不能直接读写本模块表；产品宿主也不拼接两侧事务。
 
+教师侧开发者与编码 Agent 接入 `createCourseExecutionDesign`、`courses.execution-design` 及准备后发布的流程，见 [教师设计、部署与发布接口](../../../../docs/deployment.md#教师设计部署与发布接口)。
+
 | 能力 | 行为 |
 | --- | --- |
 | `registerRelease` | 消费版本化导入清单与资源字节；先校验路径、重复、摘要/长度、起始作品引用和资源归属，再用稳定 `uploadId` 写入资源并重读，最后在所属短事务登记课程/任务/发布/材料引用与回执 |

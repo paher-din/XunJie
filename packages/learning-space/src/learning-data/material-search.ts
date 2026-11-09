@@ -34,7 +34,7 @@ const excerpt = (text: string, index: number, length: number) => text.slice(Math
  */
 export function createMaterialSearch(options: {
   open(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
-  courses?: CourseBindingAuthority;
+  courses?: Pick<CourseBindingAuthority, 'readMaterial'>;
   pdf?: Pick<ReturnType<typeof createPdfMaterials>, 'reading'>;
   personal?: Pick<ReturnType<typeof createPersonalMaterials>, 'original'>;
 }) {

@@ -181,6 +181,12 @@ export const teachingAgentBindingSchema = z.object({
   version: z.literal(1), connectionId: z.uuid(),
   target: runtimeServiceSchema.refine(service => service.unit === 'teaching-agent'),
   installationId: z.uuid(),
+  delivery: z.enum(['service', 'client']).optional(),
+  grantId: z.uuid().optional(),
+  /** Independently approved execution service -> data owner grant; never the Agent grant. */
+  executionGrantId: z.uuid().optional(),
+  /** Installer-confirmed device modules; never fetched by connecting back to the device. */
+  deviceModules: z.array(runtimeServiceSchema).max(10).optional(),
 }).strict();
 export type TeachingAgentBinding = z.infer<typeof teachingAgentBindingSchema>;
 export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({ version: true }).extend({
@@ -205,8 +211,13 @@ export const teachingToolOutcomeSchema = z.object({ state: z.enum(['not-dispatch
 export const teachingDispatchAuthoritySchema = z.object({ runId: z.uuid(), activityId: z.uuid(),
   driverId: z.string().min(1).max(1000), generation: z.number().int().positive() }).strict();
 export const teachingDependencyCallSchema = z.object({ version: z.literal(1),
-  operation: z.enum(['authorize', 'identityFor', 'activity', 'model', 'tool.definitions', 'tool.contributions', 'tool.prepare', 'tool.dispatch', 'tool.reconcile', 'tool.stop']),
+  operation: z.enum(['authorize', 'identityFor', 'activity', 'model', 'data', 'course', 'intent.begin', 'intent.receipt', 'intent.cancel', 'execution.record', 'execution',
+    'tool.definitions', 'tool.contributions', 'tool.prepare', 'tool.dispatch', 'tool.reconcile', 'tool.stop']),
   identity: spaceIdentitySchema.optional(),
   activityId: z.uuid().optional(),
   scope: z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict().optional(),
-  authority: teachingDispatchAuthoritySchema.optional(), args: z.array(z.unknown()).max(4) }).strict();
+  authority: teachingDispatchAuthoritySchema.optional(), args: z.array(z.unknown()).max(4) }).strict()
+  .refine(input => input.operation !== 'execution.record' || !!input.identity && !!input.activityId
+    && input.scope === undefined && input.args.length === 2 && typeof input.args[1] === 'string'
+    && /^[a-f0-9]{64}$/.test(input.args[1]) && (!input.authority || input.authority.activityId === input.activityId),
+  'Execution record uploads require an actor, activity and fixed event digest');

@@ -52,10 +52,13 @@ export function createTeachingDependencyService(options: {
   identityFor(scope: z.infer<typeof scopeSchema>): Promise<SpaceIdentity>;
   activity(identity: SpaceIdentity, activityId: string): Promise<z.infer<typeof activitySchema>>;
   tools: TeachingToolHost;
-  models: LearningModelPort;
+  models?: LearningModelPort;
   modelRequest?(request: LearningModelRequest): Promise<LearningModelReply>;
+  dataRequest?(input: TeachingDependencyCall): Promise<unknown>;
+  intentRequest?(input: TeachingDependencyCall): Promise<unknown>;
+  executionRequest?(input: TeachingDependencyCall): Promise<unknown>;
 }) {
-  const models = createLearningModelService(options.models, options.authorize);
+  const models = options.models ? createLearningModelService(options.models, options.authorize) : undefined;
   return async (value: unknown): Promise<unknown> => {
     const input = teachingDependencyCallSchema.parse(value);
     if (input.operation === 'identityFor') {
@@ -65,12 +68,25 @@ export function createTeachingDependencyService(options: {
     }
     const identity = spaceIdentitySchema.parse(input.identity);
     await options.authorize(identity);
+    if (input.operation === 'execution') {
+      if (!options.executionRequest) throw new StorageError('unavailable');
+      return options.executionRequest(input);
+    }
+    if (input.operation === 'data' || input.operation === 'course' || input.operation === 'execution.record') {
+      if (!options.dataRequest) throw new StorageError('unavailable');
+      return options.dataRequest(input);
+    }
+    if (input.operation.startsWith('intent.')) {
+      if (!options.intentRequest) throw new StorageError('unavailable');
+      return options.intentRequest(input);
+    }
     if (input.operation === 'authorize') {
       if (input.activityId) await options.activity(identity, input.activityId);
       return { authorized: true };
     }
     if (input.operation === 'activity') return options.activity(identity, z.uuid().parse(input.args[0]));
     if (input.operation === 'model') {
+      if (!models) throw new StorageError('unavailable');
       const request = learningModelRequestSchema.parse(input.args[0]);
       if (JSON.stringify(request.identity) !== JSON.stringify(identity)) throw new StorageError('forbidden');
       return options.modelRequest ? options.modelRequest(request) : models(request);

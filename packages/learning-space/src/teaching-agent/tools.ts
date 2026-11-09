@@ -7,7 +7,7 @@ import { componentInstanceId, componentStateName, matchesComponentState } from '
 import { canonicalValue, decideExecutionPlacement, defaultExecutionLimits, executionActionSchema, anyExecutionActionSchema, executionControlSchema, isTerminalExecutionState,
   type AnyExecutionAction, type ExecutionDevice, type ExecutionQuery } from '@xunjie/contracts/execution';
 import type { ModelToolIntent } from '@xunjie/contracts/model-connections';
-import type { createLearningData } from '../learning-data/index.js';
+import type { TeachingToolData } from './tool-data.js';
 import type { createCourses } from '../courses/index.js';
 import type { AgentExecutionContext, AgentExecutionOrigin } from '../learning-data/agent-executions.js';
 import { verifyPlannedExecution } from '../learning-data/plan.js';
@@ -29,8 +29,10 @@ const freeze = <T>(value: T): T => {
 };
 type HostScope = TeachingToolScope & { assertDispatch?: () => Promise<void>; device?: ExecutionDevice };
 type Courses = Pick<ReturnType<typeof createCourses>, 'referenceText' | 'verifyComponentReference' | 'readComponent' | 'readComponentAlgorithm'>;
+/** Compatibility name for hosts already consuming this exported port. */
+export type TeachingToolsLearning = TeachingToolData;
 export function createTeachingTools(options: {
-  learning: () => ReturnType<typeof createLearningData>;
+  learning: () => TeachingToolData;
   courses: Courses;
   models?: TeachingImageModels;
   /** Alternative to scope.assertDispatch for hosts that reconstruct a permit by original association. */
@@ -178,6 +180,14 @@ export function createTeachingTools(options: {
         key: binding.key, definitionDigest: binding.definition.digest });
       if (manifest.formatVersion === 3) {
         const action = aluVerificationAction(scope, binding, commandId, String(args.operationId), args.parameters);
+        const coursePlan = scope.activity.course.executionPlan;
+        if (coursePlan && 'version' in coursePlan && coursePlan.version === 2) {
+          const budgets = coursePlan.placements.find(item => item.componentKey === binding.key
+            && item.operationId === action.execution.operation.operationId)?.budgets ?? fail('forbidden');
+          for (const key of Object.keys(action.execution.limits))
+            action.execution.limits[key as keyof typeof action.execution.limits] = Math.min(
+              action.execution.limits[key as keyof typeof action.execution.limits], budgets[key] ?? 0);
+        }
         for (const file of action.execution.basis.works) {
           const original = await learning().works.content(scope.identity, scope.activity.activityId, file.contentId);
           if (original.objectId !== file.objectId || original.value !== file.value || original.kind !== file.kind
@@ -221,12 +231,22 @@ export function createTeachingTools(options: {
         let receiverLocation = fixedAction?.receiver.location ?? 'local';
         if (native && !fixedAction && scope.activity.course.executionPlan) {
           if (!device) fail('unavailable');
-          const placement = decideExecutionPlacement({ operationId, kind: 'session', adapter: manifest.session!,
+          const placement = decideExecutionPlacement({ componentKey: binding.key, operationId, kind: 'session', adapter: manifest.session!,
             plan: scope.activity.course.executionPlan, device, remoteAvailable: environment?.remoteAvailable ?? false });
           if (placement.location !== 'native' || placement.owner !== 'device' && placement.owner !== 'school-node') fail('unavailable');
           receiverLocation = placement.owner === 'school-node' ? 'remote' : 'local';
         }
         if (native && receiverLocation === 'remote') location = 'remote';
+        const coursePlan = scope.activity.course.executionPlan;
+        const teacherBudgets = coursePlan && 'version' in coursePlan && coursePlan.version === 2
+          ? coursePlan.placements.find(item => item.componentKey === binding.key && item.operationId === operationId)?.budgets : undefined;
+        if (teacherBudgets) for (const key of (native ? ['inputBytes', 'outputBytes'] : Object.keys(limits)))
+          limits[key as keyof typeof limits] = Math.min(limits[key as keyof typeof limits], teacherBudgets[key] ?? 0);
+        if (teacherBudgets && native) {
+          limits.timeMs = Math.min(limits.timeMs, teacherBudgets.operationTimeoutMs!);
+          limits.concurrentJobs = Math.min(limits.concurrentJobs, teacherBudgets.concurrentSessions!);
+          limits.queuedJobs = Math.min(limits.queuedJobs, teacherBudgets.queuedSessions!);
+        }
         const action = executionActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: commandId,
           scope: { environmentId: scope.identity.environmentId, spaceId: scope.identity.spaceId,
             principalId: scope.identity.principalId, activityId: scope.activity.activityId },
@@ -242,7 +262,7 @@ export function createTeachingTools(options: {
               planDigest: digest({ planId, planVersion: 1, componentId: manifest.componentId, componentVersion: manifest.version, operationId }) },
             ...(native ? { session: { adapterId: manifest.session!.adapterId, adapterVersion: manifest.session!.adapterVersion,
               limits: Object.fromEntries(['operationTimeoutMs', 'idleMs', 'maxMs', 'memoryMiB', 'concurrentSessions', 'queuedSessions']
-                .map(key => [key, (manifest.session!.budgets as Record<string, number>)[key]])) } } : {}),
+                .map(key => [key, Math.min((manifest.session!.budgets as Record<string, number>)[key]!, teacherBudgets?.[key] ?? Infinity)])) } } : {}),
             ...(device ? { device } : {}), initiator: { kind: 'agent', principalId: scope.identity.principalId } } });
         detail = { binding, action, requestId: commandId };
       }

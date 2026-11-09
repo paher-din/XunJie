@@ -46,7 +46,8 @@ async function fixture() {
   // work channel. Command parsing, identity checks and chain validation use the production code.
   const storage = { owner, async read(sql, args) {
     let rows;
-    if (sql.includes('FROM execution_commands')) rows = [commands.get(args[0])].filter(Boolean);
+    if (sql.includes('to_regclass') && sql.includes('execution_records')) rows = [{ present: false }];
+    else if (sql.includes('FROM execution_commands')) rows = [commands.get(args[0])].filter(Boolean);
     else if (sql.includes('FROM activities')) rows = [{ id: activity.activityId, body: activity,
       space_environment_id: identity.environmentId, space_id: identity.spaceId, principal_id: identity.principalId }];
     else if (sql.includes('FROM work_contents')) {

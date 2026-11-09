@@ -118,6 +118,7 @@ export function createRuntimeRecoveryTarget(options: { root: string; resources: 
       const installed = await runtime.install({ profile: source.profile === 'model' || source.profile === 'agent' ? source.profile
         : databaseConfiguration.mode === 'none' ? 'remote' : databaseConfiguration.mode === 'external' ? 'school' : 'local',
         ...options.installation, ...(data.configuration.agent ? { agent: data.configuration.agent } : {}), database: databaseConfiguration,
+        ...(data.configuration.deployment ? { deployment: data.configuration.deployment } : {}),
         ...(data.configuration.learningAdmissionPolicy ? { learningAdmissionPolicy: data.configuration.learningAdmissionPolicy } : {}),
         requiredServiceIds: data.configuration.requiredServiceIds });
       const environment: RuntimeEnvironment = { ...source, installationId: randomUUID(),
@@ -173,7 +174,7 @@ export async function restoreProductRecovery(options: { root: string; backupDire
   const ownerIds = new Set(manifest.services.map(owner => owner.serviceId));
   const ownerEnvironment = { ...manifest.source, services: manifest.source.services.filter(service => ownerIds.has(service.serviceId)) };
   const targets = options.targets ?? (ownerEnvironment.services.some(service =>
-    ['space-course', 'learning-data', 'model-connection', 'teaching-agent'].includes(service.unit))
+    ['space-course', 'learning-data', 'model-connection', 'teaching-agent', 'tool-execution'].includes(service.unit))
     ? createLearningRecoveryTargets({ root: options.root, environment: ownerEnvironment, resources: options.resources,
       admin: () => recoveryDatabase(options.root) }) : []);
   return restoreRecoverySet({ backupDirectory: options.backupDirectory, targetRoot: options.root, key: options.key,

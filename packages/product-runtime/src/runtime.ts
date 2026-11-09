@@ -19,6 +19,9 @@ import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
 import { RecoveryError } from './recovery.js';
 import type { RetirementProof } from './recovery.js';
 import { learningAdmissionPolicySchema, type LearningAdmissionPolicy } from '@xunjie/learning-space';
+import type { DeploymentConfiguration } from '@xunjie/contracts/product-runtime';
+import { deploymentConfigurationSchema } from '@xunjie/contracts/product-runtime';
+import { describeDeployment, validateDeployment } from './deployment.js';
 
 export interface InstallOptions {
   profile: RuntimeEnvironment['profile'];
@@ -30,6 +33,7 @@ export interface InstallOptions {
   requiredServiceIds?: string[];
   agent?: { dependencyConnectionId: string };
   learningAdmissionPolicy?: LearningAdmissionPolicy;
+  deployment?: DeploymentConfiguration;
 }
 export interface InstalledConfiguration {
   installed: boolean;
@@ -42,6 +46,7 @@ export interface InstalledConfiguration {
   connections: RuntimeConnection[];
   agent?: { dependencyConnectionId: string };
   learningAdmissionPolicy?: LearningAdmissionPolicy;
+  deployment?: DeploymentConfiguration;
 }
 export interface RunningInstance extends ProcessOwner { endpoint: string }
 
@@ -157,6 +162,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     return {
       state: !config.installed ? 'uninstalled' : saved?.state === 'failed' ? 'failed' : 'stopped',
       environment: await environment(), dependencies: [],
+      deployment: describeDeployment(await environment(), config),
       ...(saved?.reason ? { reason: saved.reason } : {}),
     };
   }
@@ -220,6 +226,9 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     prepare: (input?: InstallOptions) => prepare(input),
     async install(input: InstallOptions = { profile: 'local' }): Promise<RuntimeStatus> {
       runtimeEnvironmentSchema.shape.profile.parse(input.profile);
+      const deployment = input.deployment === undefined ? undefined : deploymentConfigurationSchema.parse(input.deployment);
+      validateDeployment({ profile: input.profile }, { deployment, agent: input.agent,
+        database: input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' } });
       const learningAdmissionPolicy = input.learningAdmissionPolicy === undefined ? undefined
         : learningAdmissionPolicySchema.parse(input.learningAdmissionPolicy);
       await requirePrepared(input, true);
@@ -270,10 +279,29 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
           installed: true, resources, database, host, port: input.publicEndpoint ? port : Number(new URL(existing.services[0]!.endpoint).port || port),
           ...(input.tls ? { tls: input.tls } : {}), ...(input.agent ? { agent: input.agent } : {}), requiredServiceIds: input.requiredServiceIds ?? [], connections: [],
           ...(learningAdmissionPolicy ? { learningAdmissionPolicy } : {}),
+          ...(deployment ? { deployment } : {}),
         } satisfies InstalledConfiguration);
         const installed: RuntimeStatus = { state: 'installed', environment: existing, dependencies: [] };
         await atomicJson(join(root, 'status.json'), installed);
         return installed;
+      });
+    },
+    async configureDeployment(value: unknown, settings: { dryRun?: boolean } = {}) {
+      const deployment = deploymentConfigurationSchema.parse(value);
+      return withLock(root, async () => {
+        const config = await configuration(), identity = await environment();
+        validateDeployment(identity, { ...config, deployment });
+        const before = describeDeployment(identity, config);
+        const after = describeDeployment(identity, { ...config, deployment });
+        const changes = after.modules.filter(module => module.enabled !== before.modules.find(item => item.unit === module.unit)?.enabled);
+        if (!settings.dryRun) {
+          if (await control('status')) throw new Error('Stop the environment before applying a deployment configuration. Data is retained.');
+          if (await exists(join(root, 'recovery-state.json'))
+            && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active')
+            throw new Error('An isolated recovery target keeps its authenticated deployment until takeover.');
+          await atomicJson(configPath, { ...config, deployment });
+        }
+        return { applied: !settings.dryRun, deployment: after, changes, restartRequired: true };
       });
     },
     async start(): Promise<RuntimeStatus> {

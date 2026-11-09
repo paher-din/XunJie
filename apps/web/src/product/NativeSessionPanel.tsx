@@ -7,7 +7,7 @@ import { stateLabel } from '../tool-execution/ledger'
 import { declaredSession, sessionAction, sessionPlacement } from '../tool-execution/session'
 import { createComponentBridge } from '../component-host/bridge'
 import { readComponentState } from '../tool-execution/action'
-import { executionEnvironmentSchema, observeExecutionDevice, observeExecutionPlatform, sessionExecutionDevice, type ExecutionEnvironment } from '../tool-execution/device'
+import { executionEnvironmentSchema, observeExecutionPlatform, sessionPlacementFromEnvironment, type ExecutionEnvironment } from '../tool-execution/device'
 import { learningRequest } from './learningTransport'
 import type { ExecutionPlatform } from '@xunjie/contracts/execution'
 import './execution-panel.css'
@@ -72,10 +72,8 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
   const observation = (record?.session?.observation ?? null) as Observation | null
   const observations = [...(record?.session?.observations ?? [])].reverse()
   const terminal = record ? isTerminalExecutionState(record.state) : false
-  const placementFor = (facts: ExecutionEnvironment | undefined, observedPlatform: ExecutionPlatform | null) => plan ? {
-    plan, device: facts ? sessionExecutionDevice(facts, observedPlatform, declared) : observeExecutionDevice(),
-    remoteAvailable: facts?.secureTransport === true && facts.remoteAvailable,
-  } : undefined
+  const placementFor = (facts: ExecutionEnvironment | undefined, observedPlatform: ExecutionPlatform | null) =>
+    plan ? sessionPlacementFromEnvironment(binding, plan, facts, observedPlatform) : undefined
   const placement = placementFor(environment, platform)
   let decision: ReturnType<typeof sessionPlacement> | undefined
   let placementIssue = ''

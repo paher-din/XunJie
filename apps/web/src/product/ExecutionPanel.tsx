@@ -4,6 +4,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { useRef, useState, useSyncExternalStore } from 'react'
 import type { ExecutionRecord } from '../tool-execution/ledger'
 import { stateLabel } from '../tool-execution/ledger'
+import { observeExecutionDevice } from '../tool-execution/device'
 import { executionAction, readComponentState } from '../tool-execution/action'
 import { useActivitySession } from './ActivitySession'
 import { recordPresenters } from './execution-presenters'
@@ -42,7 +43,9 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
         receiver: { receiverId: execution.receiver.identity.receiverId, location: 'local', kind: 'execution' },
         operationId: binding.definition.manifest.operations?.[0]?.operationId ?? 'aggregate',
         parameters: (current.content as { parameters: unknown }).parameters,
-        expectedContentId: current.contentId, requestId: crypto.randomUUID() })
+        expectedContentId: current.contentId, requestId: crypto.randomUUID(),
+        placement: activity.course?.executionPlan ? { plan: activity.course.executionPlan,
+          device: observeExecutionDevice(), remoteAvailable: false } : undefined })
       await execution.submit(action)
       setNote('已按当前表格与参数提交一次计算。')
     } catch (error) {

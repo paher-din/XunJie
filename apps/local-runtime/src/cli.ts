@@ -24,6 +24,7 @@ const commands: Record<string, readonly string[]> = {
   start: ['resources'],
   status: ['resources'],
   stop: ['resources'],
+  'configure-deployment': ['file', 'resources', 'dry-run'],
   uninstall: ['resources'],
   delete: ['environment-id', 'resources'],
   database: ['resources'],
@@ -50,6 +51,7 @@ const commands: Record<string, readonly string[]> = {
   'model-task': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
   'agent-binding': ['file', 'resources'],
+  'client-agent-binding': ['file', 'resources'],
   'model-device-binding': ['file', 'resources'],
   'model-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
@@ -58,6 +60,9 @@ const commands: Record<string, readonly string[]> = {
   'component-status': ['file', 'resources'],
   'course-access': ['file', 'resources'],
   'course-result': ['file', 'resources'],
+  'course-execution-compile': ['file', 'resources'],
+  'course-deployment-prepare': ['file', 'resources'],
+  'course-deployment-read': ['file', 'resources'],
 };
 
 // Keep known secret values out of messages even if a downstream error includes them.
@@ -158,6 +163,7 @@ async function main(): Promise<void> {
         out: { type: 'string' }, 'environment-id': { type: 'string' },
         'grant-id': { type: 'string' }, 'service-id': { type: 'string' }, json: { type: 'boolean' },
         help: { type: 'boolean' },
+        'dry-run': { type: 'boolean' },
       },
     });
   } catch {
@@ -232,7 +238,8 @@ async function main(): Promise<void> {
     return { database: input.database as RestoreInput['database'], databaseCredential,
       installation: input.installation as RestoreInput['installation'] };
   };
-  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result' | 'component-import' | 'component-read' | 'component-status', body: unknown, timeout = 15000) => {
+  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result' | 'component-import' | 'component-read' | 'component-status'
+    | 'course-execution-compile' | 'course-deployment-prepare' | 'course-deployment-read', body: unknown, timeout = 15000) => {
     const status = await run(() => runtime.status());
     if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本产品环境');
     const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
@@ -245,6 +252,14 @@ async function main(): Promise<void> {
   };
 
   switch (command) {
+    case 'course-execution-compile':
+    case 'course-deployment-prepare':
+    case 'course-deployment-read':
+      output(await manageCourse(command, await jsonFile(required('file'), '课程执行设计')));
+      break;
+    case 'configure-deployment':
+      output(await runtime.configureDeployment(await jsonFile(required('file'), '部署配置'), { dryRun: values['dry-run'] === true }));
+      break;
     case 'fence-source': {
       const input = await jsonFile(required('file'), '接收方失权核验');
       if (typeof input.expectedReceiver !== 'string' || typeof input.sourceEnvironmentId !== 'string'
@@ -410,6 +425,7 @@ async function main(): Promise<void> {
     case 'school-connection':
     case 'learning-binding':
     case 'agent-binding':
+    case 'client-agent-binding':
     case 'model-device-binding':
     case 'model-binding': {
       const input = await jsonFile(required('file'), '产品管理操作');

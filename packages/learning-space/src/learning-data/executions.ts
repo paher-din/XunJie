@@ -89,7 +89,7 @@ export function createExecutions(storage: OwnedStorage, options: {
       || manifest.stateVersion !== instance.stateVersion || manifest.hostApiVersion !== instance.hostApiVersion
       || binding.definition.digest !== instance.definitionDigest) fail('identity-conflict');
     if(action.protocolVersion===3) {
-      verifyPlannedExecution(activity,{key:instance.key,definitionDigest:instance.definitionDigest,operationId:action.execution.operation.operationId,location:'browser'});
+      verifyPlannedExecution(activity,{key:instance.key,definitionDigest:instance.definitionDigest,operationId:action.execution.operation.operationId,location:'browser',target:'student-browser',budgets:action.execution.limits});
       verifyRuntimeBasis(activity,binding,action);return;
     }
     if (manifest.formatVersion !== 1) fail('missing');
@@ -97,7 +97,7 @@ export function createExecutions(storage: OwnedStorage, options: {
     if (!operation || operation.effect !== action.execution.operation.effect) fail('missing');
     // The course plan the activity was opened with fixes which operation may run and where.
     verifyPlannedExecution(activity, { key: instance.key, definitionDigest: instance.definitionDigest,
-      operationId: operation.operationId, location: 'browser' });
+      operationId: operation.operationId, location: 'browser', target: 'student-browser', budgets: action.execution.limits });
     const limits = action.execution.limits;
     // A command may tighten a declared budget; it may never exceed the manifest or the adapter ceiling.
     if (limits.timeMs > operation.budgets.timeMs || limits.outputBytes > operation.budgets.outputBytes
@@ -471,7 +471,9 @@ export function createExecutions(storage: OwnedStorage, options: {
 }
 
 /** Recovery validation: every stored command still names its own activity, basis and artifact. */
-export async function validateExecutions(storage: OwnedStorage) {
+export async function validateExecutions(storage: OwnedStorage, options: {
+  activityOwner?(activityId: string): Promise<OwnedStorage['owner']>;
+} = {}) {
   await validateAgentExecutionCommands(storage);
   const corrupt = (detail: string): never => {
     const error = new StorageError('corrupt');
@@ -482,9 +484,10 @@ export async function validateExecutions(storage: OwnedStorage) {
   for (const row of rows) {
     const { rows: [activity] } = await storage.read(
       'SELECT id,body,space_environment_id,space_id,principal_id FROM activities WHERE id=$1', [row.activity_id]);
+    const expectedOwner = options.activityOwner ? await options.activityOwner(String(row.activity_id)) : storage.owner;
     const source = (() => {
       try {
-        const body = parseExecutionActivity(activity, storage.owner);
+        const body = parseExecutionActivity(activity, expectedOwner);
         return { ...parseExecutionSource(row, body), body };
       } catch { return corrupt('command source'); }
     })();

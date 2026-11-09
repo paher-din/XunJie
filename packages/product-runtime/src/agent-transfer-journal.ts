@@ -39,6 +39,8 @@ function fixed(value: unknown): unknown {
 }
 function semantics(payload: unknown) {
   const item = payload as { operation?: string; args?: unknown[]; identity?: unknown; scope?: unknown; activityId?: unknown };
+  if (['data', 'course', 'intent.begin', 'intent.receipt', 'intent.cancel'].includes(item.operation ?? ''))
+    return { dynamic: true, association: fixed(payload) };
   const nested = item.operation === 'model' ? item.args?.[0] as typeof item : item;
   const operation = nested?.operation ?? '';
   // These domain operations explicitly query/reconcile their original identity. Reissuing them

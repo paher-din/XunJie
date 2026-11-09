@@ -25,6 +25,12 @@ export interface ActionIntentOptions {
   receiversFor?(identity: SpaceIdentity, activityId: string): Promise<readonly ActionReceiver[]>;
   /** The evidence owner verifies scope/version and idempotently retains it for this action identity. */
   retainEvidence?(identity: SpaceIdentity, activityId: string, evidence: ActionInput['evidence'][number], requestId: string): Promise<void>;
+  /** Host-only authorization using trusted transport context and this stored action.
+   * Check the bound Agent owner, live grant and source installation here; a receipt is
+   * not proof of its sender. Must not invoke the receiver. Actor/activity checks always run.
+   */
+  authorizeExternal?(identity: SpaceIdentity, activityId: string, action: ActionView,
+    operation: 'beginExternalDispatch' | 'recordExternalReceipt' | 'requestExternalCancellation'): Promise<void>;
 }
 const dispatchLifetimes = new WeakMap<OwnedStorage, { closed: boolean; active: Map<string, Promise<ActionView>> }>();
 function lifetime(storage: OwnedStorage) {
@@ -95,11 +101,11 @@ export function createActionIntents(storage: OwnedStorage, options: {
     });
     return (await read(identity, activityId, input.requestId))!;
   }
-  async function update(activityId: string, requestId: string, change: (current: ActionView) => ActionView) {
+  async function update(activityId: string, requestId: string, change: (current: ActionView) => ActionView | Promise<ActionView>) {
     const result = await storage.request({ requestId: 'action-state:' + randomUUID(), fingerprint: requestId }, async tx => {
       const { rows: [row] } = await tx.query('SELECT * FROM action_intents WHERE activity_id=$1 AND request_id=$2 FOR UPDATE', [activityId, requestId]);
       if (!row) throw new StorageError('missing');
-      const next = actionViewSchema.parse(change(view(row)));
+      const next = actionViewSchema.parse(await change(view(row)));
       await tx.query('UPDATE action_intents SET state=$2,cancel_requested=$3,receipt=$4 WHERE request_id=$1',
         [requestId, next.state, next.cancelRequested, next.receipt ? JSON.stringify(next.receipt) : null]);
       return next;
@@ -186,7 +192,58 @@ export function createActionIntents(storage: OwnedStorage, options: {
       }
     }
   }
-  return { prepare, read, list, dispatch, cancel, capabilities: async (identity: SpaceIdentity, activityId: string) => {
+  async function externalUpdate(identity: SpaceIdentity, activityId: string, requestId: string,
+    operation: Parameters<NonNullable<ActionIntentOptions['authorizeExternal']>>[3],
+    change: (current: ActionView) => ActionView) {
+    await authorize(identity, activityId); z.uuid().parse(requestId);
+    if (operation === 'beginExternalDispatch') {
+      if (dispatchLife.closed) throw new StorageError('maintenance');
+      await storage.pendingIntents(); // the same storage dispatch/generation gate as server dispatch
+    }
+    return update(activityId, requestId, async current => {
+      const scope = current.input.scope;
+      if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId
+        || scope.principalId !== identity.principalId || scope.activityId !== activityId) throw new StorageError('forbidden');
+      if (current.input.requestId !== requestId || digest(current.input) !== current.inputDigest) throw new StorageError('corrupt');
+      await options.authorizeExternal?.(identity, activityId, structuredClone(current), operation);
+      if (operation === 'beginExternalDispatch' && dispatchLife.closed) throw new StorageError('maintenance');
+      return change(current);
+    });
+  }
+  /** Records admission only. The local gateway validates this fixed ActionView and invokes
+   * its own receiver. A repeated dispatched action must query that original receiver first;
+   * null is not proof of non-acceptance, and cancelRequested prohibits a new accept.
+   */
+  async function beginExternalDispatch(identity: SpaceIdentity, activityId: string, requestId: string): Promise<ActionView> {
+    return externalUpdate(identity, activityId, requestId, 'beginExternalDispatch', current =>
+      current.state === 'prepared' && !current.cancelRequested ? { ...current, state: 'dispatched' } : current);
+  }
+  /** The caller must authenticate the receipt's original Agent before calling this method.
+   * Matching identity/digest/receiver prevents substitution; it does not authenticate payloads.
+   */
+  async function recordExternalReceipt(identity: SpaceIdentity, activityId: string, requestId: string, value: unknown): Promise<ActionView> {
+    return externalUpdate(identity, activityId, requestId, 'recordExternalReceipt', current => {
+      const receipt = actionReceiptSchema.parse(value);
+      if (receipt.requestId !== requestId || receipt.inputDigest !== current.inputDigest
+        || receiverKey(receipt.receiver) !== receiverKey(current.input.receiver)) throw new StorageError('identity-conflict');
+      if (current.receipt) {
+        if (JSON.stringify(current.receipt) !== JSON.stringify(receipt)) throw new StorageError('identity-conflict');
+        return current;
+      }
+      if (current.state !== 'dispatched' && !(current.state === 'cancelled' && receipt.state === 'cancelled'))
+        throw new StorageError('conflict');
+      // Cancellation after admission is an intent, not proof of withdrawal. A late
+      // original acceptance wins truthfully and retains the cancellation flag.
+      return { ...current, state: receipt.state === 'rejected' ? 'failed' : receipt.state, receipt };
+    });
+  }
+  async function requestExternalCancellation(identity: SpaceIdentity, activityId: string, requestId: string): Promise<ActionView> {
+    return externalUpdate(identity, activityId, requestId, 'requestExternalCancellation', current =>
+      current.state === 'prepared' ? { ...current, state: 'cancelled', cancelRequested: true }
+      : current.state === 'dispatched' ? { ...current, cancelRequested: true } : current);
+  }
+  return { prepare, read, list, dispatch, cancel, beginExternalDispatch, recordExternalReceipt, requestExternalCancellation,
+    capabilities: async (identity: SpaceIdentity, activityId: string) => {
     await authorize(identity, activityId); return [...(await available(identity, activityId)).values()].map(receiver => actionReceiverSchema.parse(receiver.identity));
   }, closeDispatch() { dispatchLife.closed = true; },
   async drain() {

@@ -5,11 +5,15 @@ import type { AnyExecutionAction, ExecutionAcceptance, ExecutionQuery } from '@x
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
+import { readSyncedExecutionRecord } from './execution-records.js';
+import type { ExecutionRecord } from '@xunjie/contracts/execution-records';
 
 export interface ExecutionSource {
   action: AnyExecutionAction;
-  acceptance: ExecutionAcceptance;
+  acceptance: ExecutionAcceptance | null;
   query: ExecutionQuery;
+  /** A synchronized source remains owned by its original execution service. */
+  record?: ExecutionRecord;
 }
 const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 const same = (left: unknown, right: unknown) => JSON.stringify(canonicalValue(left)) === JSON.stringify(canonicalValue(right));
@@ -75,17 +79,25 @@ export function parseExecutionSource(row: Record<string, unknown>, activity: Lea
   return source;
 }
 
-/** Read through the original execution owner. Caller identities are constraints, never proof of stored facts. */
+/** Read synchronized original facts first, then the legacy owner store. Never contact an executor.
+ * Caller identities are constraints, never proof of stored facts.
+ */
 export async function readExecutionSource(storage: OwnedStorage, activity: LearningActivity,
   reference: { requestId: string; inputDigest?: string; executionRef?: string }): Promise<ExecutionSource> {
-  const { rows: [row] } = await storage.read('SELECT * FROM execution_commands WHERE request_id=$1', [reference.requestId]);
-  if (!row) throw new StorageError('unavailable');
   const { rows: [activityRow] } = await storage.read(
     'SELECT id,body,space_environment_id,space_id,principal_id FROM activities WHERE id=$1', [activity.activityId]);
   const saved = parseExecutionActivity(activityRow, storage.owner);
   if (saved.activityId !== activity.activityId || saved.identity.environmentId !== activity.identity.environmentId
     || saved.identity.spaceId !== activity.identity.spaceId || saved.identity.principalId !== activity.identity.principalId) return invalid();
-  const source = parseExecutionSource(row, saved);
+  const record = await readSyncedExecutionRecord(storage, saved, reference.requestId);
+  let source: ExecutionSource;
+  if (record) source = { action: anyExecutionActionSchema.parse(JSON.parse(record.actionText)), query: record.query,
+    acceptance: record.reception.kind === 'browser' ? record.reception.acceptance : null, record };
+  else {
+    const { rows: [row] } = await storage.read('SELECT * FROM execution_commands WHERE request_id=$1', [reference.requestId]);
+    if (!row) throw new StorageError('unavailable');
+    source = parseExecutionSource(row, saved);
+  }
   if (source.query.requestId !== reference.requestId
     || reference.inputDigest !== undefined && source.query.inputDigest !== reference.inputDigest
     || reference.executionRef !== undefined && source.query.executionRef !== reference.executionRef) return invalid();

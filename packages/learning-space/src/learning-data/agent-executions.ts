@@ -63,7 +63,7 @@ export function verifyAgentRuntimeBasis(activity: LearningActivity, action: Exec
     || binding.definition.manifest.hostApiVersion !== instance.hostApiVersion
     || componentInstanceId(activity.activityId, instance.key) !== instance.instanceId) fail('identity-conflict');
   verifyPlannedExecution(activity, { key: instance.key, definitionDigest: instance.definitionDigest,
-    operationId: operation.operationId, location: 'browser' });
+    operationId: operation.operationId, location: 'browser', target: 'student-browser', budgets: action.execution.limits });
   verifyRuntimeBasis(activity, binding, action);
 }
 
