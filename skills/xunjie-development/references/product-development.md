@@ -6,7 +6,7 @@
 
 学校启用 `space-course`、`learning-data`，提供学校账号、课程及学校活动／作品／学习证据。本机启用 `space-course`、`learning-data`、`teaching-agent`、`model-connection`、`tool-execution`：本机数据模块负责个人空间，已连接学校空间仍访问学校数据。本机 Agent 直接使用本机模型连接访问供应商，执行也在开发者自己的电脑。
 
-学校未启用 Agent、统一模型和执行；停用模块的历史数据保留并参与维护验证。学校不会访问学生本机 Agent、模型或执行接口。本机对学校的访问用于当前授权、课程与学校数据，以及执行证据的主动上传。教师方案指定位置的产品接口与其他受支持组合见 [可组合部署](../../../docs/student-agent-implementation/composable-deployment.md)。
+学校未启用 Agent、统一模型和执行；停用模块的历史数据保留并参与维护验证。学校不会访问学生本机 Agent、模型或执行接口。本机对学校的访问用于当前授权、课程与学校数据，以及执行证据的主动上传。教师方案指定位置的产品接口与其他受支持组合见 [可组合部署](../../../docs/deployment.md)。
 
 | 入口／位置 | 用途与归属 |
 | --- | --- |
@@ -36,7 +36,7 @@
 
 学校应用由当前源码的 `scripts/package-product.mjs#buildApplication` 构建后更新既有 `app/` 快照，复用原运行资源。源码版本／构建摘要记录在学校同级 `school-v2-source-info.json`；以该文件和实际运行结果核实，不能从本机分支名推断云端版本。
 
-设备配对与本机 Agent／执行上传连接按 [连接步骤](../../../docs/student-agent-implementation/composable-deployment.md#连接本机-agent-与学校数据)完成。当前有效学校连接继续使用，不清空配对数据。学校只授权本机向外调用：Agent 依赖授权与执行证据上传授权分开，不部署反向隧道。
+设备配对与本机 Agent／执行上传连接按 [连接步骤](../../../docs/deployment.md#连接本机-agent-与学校数据)完成。当前有效学校连接继续使用，不清空配对数据。学校只授权本机向外调用：Agent 依赖授权与执行证据上传授权分开，不部署反向隧道。
 
 学校测试账号从负责人本机 `~/Library/Application Support/XunJie/school-test/student-account.json` 在授权操作内读取，密码只用于该学校的登录；不在聊天或日志输出。通用成员接入账号仍按 [操作路由](operations.md#手动登录与查看测试账号)取得，勿将负责人测试账号当作团队共享配置。
 

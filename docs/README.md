@@ -4,6 +4,7 @@
 | --- | --- |
 | 整个产品项目的 ideation 来源 | [最初产品想法](<基于个性化学生画像的引导式项目制教学测验 Agent 系统.md>) |
 | 学生端 Agent 的设计、Wayfinder 决议、研究材料与实施工作包 | [student-agent-implementation](student-agent-implementation/README.md) |
+| 产品模块部署、学校与本机组合、设备接入及教师执行方案的准备与发布 | [可组合部署与课程执行位置](deployment.md) |
 | 本地前后端、共享数据和独立复现环境 | [开发协作](development-collaboration.md) |
 | 已有开发工具、入口与使用边界 | [开发工具](development-tooling.md) |
 | workspace 安装/构建/测试入口及运行安装、存储接入 | [工程入口与 WP01 交接](student-agent-implementation/engineering-entrypoints.md) |

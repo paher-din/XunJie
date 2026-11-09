@@ -1,6 +1,6 @@
 # XunJie 产品 CLI（候选交付）
 
-模块启用、学校数据＋本机 Agent／模型／执行、教师执行位置设计及发布流程见 [可组合部署](../../docs/student-agent-implementation/composable-deployment.md)。已有环境通过 `configure-deployment --file ... --dry-run` 预览，停止后应用；`status.deployment` 区分启用模块与保留的历史 owner。
+模块启用、学校数据＋本机 Agent／模型／执行、教师执行位置设计及发布流程见 [可组合部署](../../docs/deployment.md)。已有环境通过 `configure-deployment --file ... --dry-run` 预览，停止后应用；`status.deployment` 区分启用模块与保留的历史 owner。
 
 WP03 新增 `component-import` / `component-read` / `component-status`，用于登记不可变组件、读取固定定义、启停新装载；样例生成、输入及平台限制见 [#169 操作与交接](../../docs/student-agent-implementation/wp03-component-host.md)。沿用产品管理授权，停用不会删除学生作品。
 
