@@ -1,0 +1,6 @@
+.st-empty { display: flex; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 48px 24px; border: 1px dashed var(--line-strong); border-radius: 12px; text-align: center; }
+.st-empty [data-slot='empty-header'] { display: flex; max-width: 360px; flex-direction: column; align-items: center; gap: 8px; }
+.st-empty [data-slot='empty-icon'] { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 8px; border-radius: 12px; background: var(--chip-bg); color: var(--muted); }
+.st-empty [data-slot='empty-title'] { margin: 0; font-size: 17px; font-weight: 500; color: var(--ink); }
+.st-empty [data-slot='empty-description'] { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; text-wrap: pretty; }
+.st-empty [data-slot='empty-content'] { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 360px; min-width: 0; }

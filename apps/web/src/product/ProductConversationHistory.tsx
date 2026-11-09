@@ -1,188 +1,160 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { conversationArchiveStateSchema } from '@xunjie/contracts/learning-data'
-import type { LearningActivity } from '@xunjie/contracts/learning-data'
-import { ArchivedConversationRow } from '@xunjie/ui/foundation'
+import type { ConversationHistoryItem, LearningActivity } from '@xunjie/contracts/learning-data'
+import { ConversationPane } from '@xunjie/ui/foundation'
 import { Icon } from '@xunjie/ui/icons'
 
-type ArchiveState = { key: string; ids: string[]; ready: boolean; busy: boolean; error: string }
-type ArchiveSession = { key: string; spaceKey: string; namespace: string; expectedSubject: string;
-  disposed: boolean; ready: boolean; refreshPending: boolean; migrationWarning: string;
-  tail: Promise<void>; pending: number; controller: AbortController }
+export { useConversationHistory } from './useConversationHistory'
 
-function legacyArchive(key: string): { raw: string; ids: string[] } | null {
-  const raw = localStorage.getItem(key)
-  if (raw === null) return null
-  const saved: unknown = JSON.parse(raw)
-  if (!Array.isArray(saved) || saved.some(id => typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
-    throw new Error('invalid legacy archive')
-  }
-  return { raw, ids: [...new Set(saved as string[])] }
+const PAGE_SIZE = 8
+const FOLDABLE_GROUPS = new Set(['置顶', '更早'])
+const CLOSED_MENU = { id: null as string | null, up: false, closing: false }
+
+export function conversationTitle(activity: LearningActivity, labels: readonly ConversationHistoryItem[]) {
+  return labels.find(item => item.activityId === activity.activityId)?.title || activity.goal || activity.question || '资料学习'
 }
 
-async function archiveRequest(session: ArchiveSession, suffix = '', body?: unknown) {
-  const response = await fetch('/api/learning/conversation-archives' + suffix, {
-    method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store',
-    signal: AbortSignal.any([session.controller.signal, AbortSignal.timeout(30000)]),
-    headers: { 'content-type': 'application/json', 'x-xj-space': session.spaceKey, 'x-xj-namespace': session.namespace,
-      'x-xj-expected-subject': session.expectedSubject },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  })
-  if (!response.ok) throw Object.assign(new Error('archive request failed'), { status: response.status })
-  return conversationArchiveStateSchema.parse(await response.json()).archivedIds
-}
-
-function enqueue<T>(session: ArchiveSession, operation: () => Promise<T>): Promise<T> {
-  const next = session.tail.then(() => {
-    if (session.disposed) throw new Error('archive session closed')
-    return operation()
-  })
-  session.tail = next.then(() => {}, () => {})
-  return next
-}
-
-/** The learning owner persists archive state; the old local list is imported only once. */
-export function useConversationArchive(key: string, spaceKey: string, namespace: string, expectedSubject: string) {
-  const [state, setState] = useState<ArchiveState>({ key: '', ids: [], ready: false, busy: false, error: '' })
-  const sessionRef = useRef<ArchiveSession | null>(null)
-  const refreshRef = useRef<() => void>(() => {})
-  useEffect(() => {
-    if (!key || !spaceKey || !namespace || !expectedSubject) {
-      sessionRef.current = null
-      setState({ key, ids: [], ready: false, busy: false, error: '' })
-      return
-    }
-    const session: ArchiveSession = { key, spaceKey, namespace, expectedSubject, disposed: false, ready: false,
-      refreshPending: false, migrationWarning: '',
-      tail: Promise.resolve(), pending: 0, controller: new AbortController() }
-    sessionRef.current = session
-    setState({ key, ids: [], ready: false, busy: false, error: '' })
-    const current = () => sessionRef.current === session && !session.disposed
-    const refresh = () => {
-      if (session.refreshPending || session.disposed) return
-      session.refreshPending = true
-      void enqueue(session, async () => {
-        if (!session.ready) {
-          let legacy: ReturnType<typeof legacyArchive> = null
-          try { legacy = legacyArchive(key) }
-          catch { session.migrationWarning = '无法读取此浏览器原有的归档，原记录已保留。' }
-          if (legacy !== null) {
-            for (let offset = 0; offset < legacy.ids.length; offset += 200) {
-              await archiveRequest(session, '/import', { requestId: crypto.randomUUID(), activityIds: legacy.ids.slice(offset, offset + 200) })
-            }
-          }
-          const ids = await archiveRequest(session)
-          if (legacy !== null && current()) try {
-            if (localStorage.getItem(key) === legacy.raw) localStorage.removeItem(key)
-          } catch { /* Import is safe to retry. */ }
-          session.ready = true
-          if (current()) setState(previous => ({ ...previous, ids, ready: true, error: session.migrationWarning }))
-        } else {
-          const ids = await archiveRequest(session)
-          if (current()) setState(previous => ({ ...previous, ids, error: session.migrationWarning }))
-        }
-      }).catch(() => {
-        if (current()) setState(previous => ({ ...previous, error: '无法读取归档，请检查连接后重试。' }))
-      }).finally(() => { session.refreshPending = false })
-    }
-    refreshRef.current = refresh
-    refresh()
-    const onFocus = () => { if (!document.hidden) refresh() }
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onFocus)
-    const timer = window.setInterval(onFocus, 5000)
-    return () => {
-      session.disposed = true; session.controller.abort()
-      if (sessionRef.current === session) sessionRef.current = null
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onFocus)
-      window.clearInterval(timer)
-    }
-  }, [key, spaceKey, namespace, expectedSubject])
-  const setArchived = useCallback(async (activityId: string, archived: boolean) => {
-    const session = sessionRef.current
-    if (!session || !session.ready || session.pending > 0) return false
-    session.pending++
-    setState(previous => previous.key === session.key ? { ...previous, busy: true, error: '' } : previous)
-    const body = { requestId: crypto.randomUUID(), activityId, archived }
-    try {
-      await enqueue(session, async () => {
-        try { await archiveRequest(session, '/set', body) }
-        catch (error) {
-          if (session.disposed || (typeof (error as { status?: unknown }).status === 'number' && (error as { status: number }).status < 500)) throw error
-          await archiveRequest(session, '/set', body)
-        }
-        const ids = await archiveRequest(session)
-        if (sessionRef.current === session && !session.disposed) setState(previous => ({ ...previous, ids, error: session.migrationWarning }))
-      })
-      return !session.disposed
-    } catch {
-      if (sessionRef.current === session && !session.disposed) setState(previous => ({ ...previous, error: '归档操作未确认，请检查连接后再次操作。' }))
-      return false
-    } finally {
-      session.pending--
-      if (sessionRef.current === session && !session.disposed) setState(previous => ({ ...previous, busy: session.pending > 0 }))
-    }
-  }, [])
-  return { ids: state.key === key ? state.ids : [], ready: state.key === key && state.ready,
-    busy: state.key === key && state.busy, error: state.key === key ? state.error : '', setArchived,
-    retry: () => refreshRef.current() }
-}
-
-export function ProductConversationHistory({ activities, activeId, archivedIds, archiveOpen, query, error, ready, busy,
-  onNew, onOpen, onArchiveOpenChange, onQueryChange, onArchive, onRestore, onRetry }: {
+export function ProductConversationHistory({ activities, activeId, labels, archiveOpen, query, error, ready, busy,
+  scopeKey, visible = true, readOnly = false, onNew, onOpen, onArchiveOpenChange, onQueryChange,
+  onArchive, onRestore, onRename, onPin, onDelete, onRetry }: {
   activities: LearningActivity[] | null
   activeId?: string
-  archivedIds: readonly string[]
+  labels: readonly ConversationHistoryItem[]
   archiveOpen: boolean
   query: string
   error: string
   ready: boolean
   busy: boolean
+  scopeKey: string
+  visible?: boolean
+  readOnly?: boolean
   onNew: () => void
   onOpen: (id: string) => void
   onArchiveOpenChange: (open: boolean) => void
   onQueryChange: (query: string) => void
-  onArchive: (id: string) => void
-  onRestore: (id: string) => void
+  onArchive: (id: string) => Promise<boolean>
+  onRestore: (id: string) => Promise<boolean>
+  onRename: (id: string, title: string) => Promise<boolean>
+  onPin: (id: string, pinned: boolean) => Promise<boolean>
+  onDelete: (id: string) => Promise<boolean>
   onRetry: () => void
 }) {
-  const conversations = activities?.filter(activity => !activity.course) ?? []
-  const archived = conversations.filter(activity => archivedIds.includes(activity.activityId))
+  const [menu, setMenu] = useState(CLOSED_MENU)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const renaming = useRef<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [shown, setShown] = useState(PAGE_SIZE)
+  const [archivedShown, setArchivedShown] = useState(PAGE_SIZE)
+  const [foldedGroups, setFoldedGroups] = useState<string[]>([])
+  const [foldingGroup, setFoldingGroup] = useState<string | null>(null)
+  const closeTimer = useRef<number | undefined>(undefined)
+  const foldTimer = useRef<number | undefined>(undefined)
+  const anchor = useRef<HTMLElement | null>(null)
+  const search = useRef<HTMLInputElement>(null)
+  const currentScope = useRef(scopeKey); currentScope.current = scopeKey
+  const clearMenu = useCallback(() => { window.clearTimeout(closeTimer.current); setMenu(CLOSED_MENU) }, [])
+  const closeMenu = useCallback((restoreFocus = false) => {
+    window.clearTimeout(closeTimer.current)
+    setMenu(previous => previous.id ? { ...previous, closing: true } : previous)
+    closeTimer.current = window.setTimeout(() => setMenu(CLOSED_MENU), 140)
+    if (restoreFocus && anchor.current?.isConnected && !anchor.current.closest('[inert]')) anchor.current.focus({ preventScroll: true })
+  }, [])
+  const clearModes = useCallback(() => {
+    clearMenu(); renaming.current = null; setRenamingId(null); setConfirmingId(null)
+  }, [clearMenu])
+  useEffect(() => {
+    clearModes(); setShown(PAGE_SIZE); setArchivedShown(PAGE_SIZE)
+  }, [scopeKey, visible, archiveOpen, clearModes])
+  useEffect(() => { setFoldedGroups([]); setFoldingGroup(null) }, [scopeKey])
+  useEffect(() => () => { window.clearTimeout(closeTimer.current); window.clearTimeout(foldTimer.current) }, [])
+  useEffect(() => {
+    if (!menu.id || !visible) return
+    const outside = (event: PointerEvent) => {
+      if (!anchor.current?.closest('.agent-conv-row')?.contains(event.target as Node)) closeMenu()
+    }
+    const scroll = (event: Event) => {
+      if (event.target === document || event.target instanceof Element && anchor.current && event.target.contains(anchor.current)) closeMenu()
+    }
+    const resize = () => closeMenu()
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('scroll', scroll, true)
+    window.addEventListener('resize', resize)
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('scroll', scroll, true); window.removeEventListener('resize', resize) }
+  }, [menu.id, visible, closeMenu])
+
+  const states = new Map(labels.map(item => [item.activityId, item]))
+  const conversations = (activities ?? []).filter(activity => !activity.course && !states.get(activity.activityId)?.deleted)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.activityId.localeCompare(b.activityId))
+    .map(activity => ({ id: activity.activityId, title: conversationTitle(activity, labels),
+      pinned: states.get(activity.activityId)?.pinned ?? false, archived: states.get(activity.activityId)?.archived ?? false,
+      createdAt: activity.createdAt }))
+  const archived = conversations.filter(item => item.archived)
   const term = query.trim().toLowerCase()
-  const title = (activity: LearningActivity) => activity.goal || activity.question || '资料学习'
-  const matches = (activity: LearningActivity) => title(activity).toLowerCase().includes(term)
-  const active = conversations.filter(activity => !archivedIds.includes(activity.activityId) && matches(activity))
-  const archivedHits = term ? archived.filter(matches) : []
-  const archivedRows = (items: LearningActivity[]) => items.map(activity => <ArchivedConversationRow
-    key={activity.activityId} title={title(activity)} disabled={busy} onRestore={() => onRestore(activity.activityId)} />)
+  const matches = (item: { title: string }) => item.title.toLowerCase().includes(term)
+  const active = conversations.filter(item => !item.archived && matches(item))
+  const pinned = active.filter(item => item.pinned)
+  const rest = active.filter(item => !item.pinned)
+  const visibleItems = term ? rest : rest.slice(0, shown)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime()
+  const groups = [
+    { label: '今天', items: visibleItems.filter(item => Date.parse(item.createdAt) >= today) },
+    { label: '昨天', items: visibleItems.filter(item => Date.parse(item.createdAt) >= yesterday && Date.parse(item.createdAt) < today) },
+    { label: '更早', items: visibleItems.filter(item => !(Date.parse(item.createdAt) >= yesterday)) },
+  ].filter(group => group.items.length)
+  useEffect(() => {
+    if (ready && activities !== null && archiveOpen && archived.length === 0) onArchiveOpenChange(false)
+  }, [ready, activities, archiveOpen, archived.length, onArchiveOpenChange])
+  const focusSearch = () => requestAnimationFrame(() => { if (search.current?.isConnected && !search.current.closest('[inert]')) search.current.focus({ preventScroll: true }) })
+  const focusPin = (id: string) => requestAnimationFrame(() => {
+    const row = [...document.querySelectorAll<HTMLElement>('[data-conversation-id]')].find(item => item.dataset.conversationId === id && !item.closest('[inert]'))
+    row?.querySelector<HTMLButtonElement>('.agent-conv-pin')?.focus({ preventScroll: true })
+  })
+  const loadMore = useCallback(() => setShown(value => value + PAGE_SIZE), [])
+  const loadMoreArchived = useCallback(() => setArchivedShown(value => value + PAGE_SIZE), [])
+
   return <>
-    <button type="button" className="agent-newchat" onClick={onNew}>
-      <span className="navicon"><Icon name="pen-new-square" size={14} /></span>新对话
-    </button>
-    {(archived.length > 0 || archiveOpen) && <button type="button" className={'agent-archive-entry' + (archiveOpen ? ' on' : '')}
-      aria-expanded={archiveOpen} onClick={() => onArchiveOpenChange(!archiveOpen)}>
-      <Icon name={archiveOpen ? 'alt-arrow-left' : 'archive'} size={14} />已归档<span className="count">{archived.length}</span>
-    </button>}
-    {error && <div className="agent-side-empty" role="alert">{error} <button type="button" onClick={onRetry}>重试</button></div>}
-    {!ready ? <div className="agent-side-empty">{error ? '暂时无法显示对话' : '正在读取对话…'}</div>
-      : archiveOpen ? <div className="agent-groups"><div className="agent-group">
-      {archived.length ? archivedRows(archived) : <div className="agent-side-empty">暂无已归档对话</div>}
-    </div></div> : <>
-      <div className="agent-search"><Icon name="minimalistic-magnifier" size={14} />
-        <input aria-label="搜索对话" placeholder="搜索对话…" value={query} onChange={event => onQueryChange(event.target.value)} /></div>
-      <div className="agent-groups"><div className="agent-group">
-        {active.map(activity => <div className={'agent-conv-row' + (activeId === activity.activityId ? ' active' : '')} key={activity.activityId}>
-          <button type="button" className={'agent-conv' + (activeId === activity.activityId ? ' active' : '')}
-            aria-current={activeId === activity.activityId ? 'page' : undefined} onClick={() => onOpen(activity.activityId)}>{title(activity)}</button>
-          <button type="button" className="agent-conv-more" aria-label={`归档「${title(activity)}」`} title="归档" disabled={busy}
-            onClick={() => onArchive(activity.activityId)}><Icon name="archive" size={14} /></button>
-        </div>)}
-        {archivedHits.length > 0 && <><div className="agent-group-label">已归档</div>{archivedRows(archivedHits)}</>}
-        {activities === null ? <div className="agent-side-empty">正在读取对话…</div>
-          : active.length === 0 && archivedHits.length === 0 ? <div className="agent-side-empty">
-            {term ? `没有匹配「${query.trim()}」的对话` : '开始提问后，对话会留在这里'}
-          </div> : null}
-      </div></div>
-    </>}
+    {error && <div className="agent-side-empty" role="alert">{error} <button type="button" className="agent-side-clear" onClick={onRetry}>重试</button></div>}
+    {!ready || activities === null ? <>
+      <button type="button" className="agent-newchat" onClick={onNew}><span className="navicon"><Icon name="pen-new-square" size={14} /></span>新对话</button>
+      <div className="agent-side-empty" role="status">{error ? '暂时无法显示对话' : '正在读取对话…'}</div>
+    </> : <ConversationPane archived={archived} archivedVisible={archived.slice(0, archivedShown)}
+      archivedHits={term ? archived.filter(matches) : []} pinned={pinned} groups={groups} archiveOpen={archiveOpen}
+      query={query} searching={!!term} activeId={activeId ?? null} menu={menu} renamingId={renamingId} confirmingId={confirmingId}
+      foldedGroups={foldedGroups} foldingGroup={foldingGroup} foldableGroups={FOLDABLE_GROUPS} actionsDisabled={busy || readOnly}
+      remaining={!term && rest.length > shown} moreArchived={archived.length > archivedShown}
+      foldSignal={foldedGroups.join('|') + ':' + (foldingGroup ?? '')} searchRef={search}
+      onNew={() => { clearModes(); onNew() }} onOpen={id => { clearModes(); onOpen(id) }}
+      onToggleArchive={open => { clearModes(); onArchiveOpenChange(open) }}
+      onSearch={value => { clearModes(); setShown(PAGE_SIZE); onQueryChange(value) }} onClearSearch={() => onQueryChange('')}
+      onToggleMenu={(id, target) => {
+        if (menu.id === id && !menu.closing) { closeMenu(true); return }
+        clearModes(); anchor.current = target
+        const row = target.closest('.agent-conv-row')
+        const bottom = row?.closest('.side-nav, .railpanel .agent-groups')?.getBoundingClientRect().bottom ?? window.innerHeight
+        setMenu({ id, up: bottom - (row?.getBoundingClientRect().bottom ?? 0) < 116, closing: false })
+      }}
+      onTogglePin={(id, pinned) => { clearMenu(); void onPin(id, pinned).then(saved => { if (saved) focusPin(id) }) }}
+      onStartRename={id => { clearMenu(); renaming.current = id; setRenamingId(id); setConfirmingId(null) }}
+      onCommitRename={(id, title) => {
+        if (renaming.current !== id) return
+        const startedScope = scopeKey
+        void onRename(id, title).then(saved => {
+          if (saved && currentScope.current === startedScope && renaming.current === id) { renaming.current = null; setRenamingId(null); focusSearch() }
+        })
+      }}
+      onCancelRename={() => { renaming.current = null; setRenamingId(null); focusSearch() }}
+      onArchive={id => { clearMenu(); void onArchive(id).then(saved => { if (saved) focusSearch() }) }}
+      onAskDelete={id => { clearMenu(); setConfirmingId(id); renaming.current = null; setRenamingId(null) }}
+      onConfirmDelete={id => { const startedScope = scopeKey; void onDelete(id).then(saved => {
+        if (saved && currentScope.current === startedScope) { setConfirmingId(null); focusSearch() }
+      }) }}
+      onCancelDelete={() => { setConfirmingId(null); focusSearch() }}
+      onRestore={id => { void onRestore(id).then(saved => { if (saved) focusSearch() }) }}
+      onToggleGroup={label => {
+        clearMenu(); setFoldedGroups(previous => previous.includes(label) ? previous.filter(item => item !== label) : [...previous, label])
+        setFoldingGroup(label); window.clearTimeout(foldTimer.current)
+        foldTimer.current = window.setTimeout(() => setFoldingGroup(null), 240)
+      }} onLoadMore={loadMore} onLoadMoreArchived={loadMoreArchived} />}
   </>
 }

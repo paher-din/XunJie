@@ -3,7 +3,7 @@ import { transferableAbortController } from 'node:util'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, createElement, useImperativeHandle, type ReactNode, type RefObject } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import type { CreateActivity, LearningActivity } from '@xunjie/contracts/learning-data'
+import type { ConversationHistoryItem, CreateActivity, LearningActivity } from '@xunjie/contracts/learning-data'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { LearningApp } from './LearningApp'
@@ -38,6 +38,7 @@ vi.mock('./ProductConversation', () => ({ ProductConversation: ({ activity, work
 let root: Root, host: HTMLDivElement, identity: SpaceIdentity, namespace: string, pendingKey: string
 let activities: Map<string, LearningActivity>, created: CreateActivity[], receiptReads: string[]
 let archivedIds: Set<string>
+let labels: Map<string, Pick<ConversationHistoryItem, 'title' | 'pinned' | 'deleted'>>
 let loseCreationReply: boolean, releaseCreation: (() => void) | undefined, holdCreation: Promise<void> | undefined
 let rejectLeave = false
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
@@ -48,6 +49,10 @@ function button(label: string) {
   expect(found, label).toBeDefined(); return found!
 }
 async function click(label: string) { await act(async () => { button(label).click(); await settle() }) }
+async function conversationMenu(activityId: string, action: string) {
+  await act(async () => { host.querySelector<HTMLButtonElement>(`[data-conversation-id="${activityId}"] .agent-conv-more`)!.click(); await settle() })
+  await click(action)
+}
 async function fillQuestion(text: string) {
   await act(async () => {
     const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
@@ -90,7 +95,9 @@ beforeEach(async () => {
     kind: 'personal', name: '测试用户' }
   namespace = crypto.randomUUID()
   pendingKey = `xj.activity-request.${namespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}`
-  activities = new Map(); archivedIds = new Set(); created = []; receiptReads = []; loseCreationReply = false; holdCreation = undefined; releaseCreation = undefined; rejectLeave = false
+  activities = new Map(); archivedIds = new Set(); labels = new Map(); created = []; receiptReads = []; loseCreationReply = false; holdCreation = undefined; releaseCreation = undefined; rejectLeave = false
+  const historyState = () => ({ items: [...new Set([...archivedIds, ...labels.keys()])].map(activityId => ({ activityId,
+    title: null, pinned: false, deleted: false, ...labels.get(activityId), archived: archivedIds.has(activityId) })) })
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     const route = url.replace('/api/learning/', '')
     if (route === 'context') return response({ clientNamespace: namespace, profile: 'local', identities: [{ key: 'personal', identity }] })
@@ -101,6 +108,14 @@ beforeEach(async () => {
       return response({ archivedIds: [...archivedIds] })
     }
     if (route === 'conversation-archives') return response({ archivedIds: [...archivedIds] })
+    if (route === 'conversation-history') return response(historyState())
+    if (route === 'conversation-history/update') {
+      const input = JSON.parse(options.body as string) as { activityId: string; action: string; title?: string; pinned?: boolean }
+      const existing = labels.get(input.activityId) ?? { title: null, pinned: false, deleted: false }
+      labels.set(input.activityId, { ...existing, ...(input.action === 'delete' ? { deleted: true }
+        : input.action === 'rename' ? { title: input.title! } : { pinned: input.pinned! }) })
+      return response(historyState())
+    }
     if (route.startsWith('receipts/')) {
       const requestId = route.slice('receipts/'.length); receiptReads.push(requestId)
       return response(activities.get(requestId) ?? null)
@@ -183,15 +198,30 @@ it('protects an open conversation before archiving it without closing the activi
   await startQuestion('要归档的对话')
   const activity = [...activities.values()][0]
   expect(activity).toBeDefined()
-  const archive = () => host.querySelector<HTMLButtonElement>('[aria-label="归档「要归档的对话」"]')!
-  expect(archive()).not.toBeNull()
   rejectLeave = true
-  await act(async () => { archive().click(); await settle() })
+  await conversationMenu(activity.activityId, '归档')
   expect(archivedIds.has(activity.activityId)).toBe(false)
   expect(host.querySelector('#activity-title')).not.toBeNull()
   rejectLeave = false
-  await act(async () => { archive().click(); await settle() })
+  await conversationMenu(activity.activityId, '归档')
   expect(archivedIds.has(activity.activityId)).toBe(true)
+  expect(activity.status).toBe('open')
+  expect(host.querySelector('#activity-title')).toBeNull()
+  expect(location.search).not.toContain('activity=')
+})
+
+it('protects an open conversation before deleting its entry and keeps the activity', async () => {
+  await startQuestion('删除前保留输入的对话')
+  const activity = [...activities.values()][0]
+  await conversationMenu(activity.activityId, '删除')
+  expect(labels.get(activity.activityId)?.deleted).not.toBe(true)
+  rejectLeave = true
+  await act(async () => { host.querySelector<HTMLButtonElement>('.agent-conv-confirm .danger')!.click(); await settle() })
+  expect(labels.get(activity.activityId)?.deleted).not.toBe(true)
+  expect(host.querySelector('#activity-title')).not.toBeNull()
+  rejectLeave = false
+  await act(async () => { host.querySelector<HTMLButtonElement>('.agent-conv-confirm .danger')!.click(); await settle() })
+  expect(labels.get(activity.activityId)?.deleted).toBe(true)
   expect(activity.status).toBe('open')
   expect(host.querySelector('#activity-title')).toBeNull()
   expect(location.search).not.toContain('activity=')

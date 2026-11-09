@@ -98,7 +98,7 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
     finally { if (live.current) setReading(false) }
   }
   return <Dialog.Root open onOpenChange={open => { if (!open) onClose() }}><Dialog.Portal>
-    <Dialog.Overlay className="overlay pc-overlay" /><Dialog.Content className="st-dialog" aria-describedby={undefined}
+    <Dialog.Overlay className="overlay pc-overlay" /><Dialog.Content className="st-dialog product-connection-dialog" aria-describedby={undefined}
       onCloseAutoFocus={event => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus() }}>
       <div className="st-dialog-head"><Dialog.Title className="st-dialog-title">{connection ? '编辑供应商' : '添加供应商'}</Dialog.Title>
         <Dialog.Close asChild><button type="button" className="pc-x" aria-label="关闭"><Icon name="close" size={18} /></button></Dialog.Close></div>
@@ -110,9 +110,10 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
           const protocol = event.target.value as ModelConfiguration['protocol']
           change({ protocol, path: ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[protocol] })
         }}><option value="chat-completions">Chat Completions</option><option value="responses">Responses</option><option value="messages">Anthropic Messages</option></select></Field>
+        <Field label="模型 ID" tip="目录不可用时可直接填写已知型号"><TextInput aria-label="模型 ID" className="st-mono-input" value={configuration.modelId} onChange={event => change({ modelId: event.target.value })} /></Field>
+        <details className="product-connection-advanced"><summary>高级配置</summary>
         <p className="detail">最终路径：{configuration.baseUrl.replace(/\/$/, '')}{configuration.path}</p>
         {configuration.protocol === 'messages' && <p className="detail">Messages 的 Base URL 不含末尾 /v1；DeepSeek 官方地址为 https://api.deepseek.com/anthropic。协议名称不会改变目标模型。</p>}
-        <Field label="模型 ID" tip="目录不可用时可直接填写已知型号"><TextInput aria-label="模型 ID" className="st-mono-input" value={configuration.modelId} onChange={event => change({ modelId: event.target.value })} /></Field>
         <Field label="方言"><select className="st-input" aria-label="方言" value={configuration.dialect} onChange={event => change({ dialect: event.target.value as ModelConfiguration['dialect'] })}>
           <option value="standard">标准协议</option><option value="deepseek">DeepSeek</option><option value="command-code">Command Code</option></select></Field>
         <Field label="参数模式"><select className="st-input" aria-label="参数模式" value={configuration.parameterMode} onChange={event => change({ parameterMode: event.target.value as ModelConfiguration['parameterMode'] })}>
@@ -124,6 +125,7 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
         <Field label="最大输出 token" tip="学习请求使用此值；连接检查仍有自己的小输出上限"><TextInput aria-label="最大输出 token" className="st-mono-input"
           inputMode="numeric" value={configuration.maxOutputTokens ?? ''} placeholder="例如 8192"
           onChange={event => change({ maxOutputTokens: event.target.value ? Number(event.target.value) : undefined })} /></Field>
+        </details>
         <p className="detail">一次文本检查不会验证图像、工具或 strict schema 能力。</p>
         {error && <p role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}

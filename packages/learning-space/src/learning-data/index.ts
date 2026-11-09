@@ -4,6 +4,7 @@ import { agentExecutionOriginMigration, agentExecutionAuthorityMigration } from 
 import { activityAgentRouteMigration, validateActivityAgentRoutes } from './agent-routes.js';
 import { agentPreferenceMigration, createAgentPreferences, validateAgentPreferences } from './agent-preferences.js';
 import { conversationArchiveMigration, createConversationArchives, validateConversationArchives } from './conversation-archives.js';
+import { conversationHistoryMigration, createConversationHistory, validateConversationHistory } from './conversation-history.js';
 import { chunkChannelMigrationSql, createChunkChannel } from '../teaching-agent/chunk-channel.js';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -49,7 +50,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
 nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
-{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration];
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -71,6 +72,7 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 export async function validateLearningData(storage: OwnedStorage) {
   await validateTeachingArtifacts(storage);
   await validateConversationArchives(storage);
+  await validateConversationHistory(storage);
   await validatePdfMaterials(storage);
   await validatePersonalMaterials(storage);
   await validateAgentPreferences(storage);
@@ -308,5 +310,6 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions,
     agentPreferences: createAgentPreferences(storage, access),
     conversationArchives: createConversationArchives(storage, access),
+    conversationHistory: createConversationHistory(storage, access),
     validate: () => validateLearningData(storage) };
 }

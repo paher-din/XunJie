@@ -40,3 +40,17 @@ export const conversationArchiveSetSchema = z.object({ requestId: z.uuid(), acti
 export type ConversationArchiveSet = z.infer<typeof conversationArchiveSetSchema>;
 export const conversationArchiveImportSchema = z.object({ requestId: z.uuid(), activityIds: z.array(z.uuid()) }).strict();
 export type ConversationArchiveImport = z.infer<typeof conversationArchiveImportSchema>;
+
+/** Labels and visibility do not change the activity or any teaching records. */
+export const conversationHistoryItemSchema = z.object({ activityId: z.uuid(), title: z.string().nullable(),
+  pinned: z.boolean(), deleted: z.boolean(), archived: z.boolean() }).strict();
+export type ConversationHistoryItem = z.infer<typeof conversationHistoryItemSchema>;
+export const conversationHistoryStateSchema = z.object({ items: z.array(conversationHistoryItemSchema) }).strict();
+export type ConversationHistoryState = z.infer<typeof conversationHistoryStateSchema>;
+export const conversationHistoryUpdateSchema = z.discriminatedUnion('action', [
+  z.object({ requestId: z.uuid(), activityId: z.uuid(), action: z.literal('rename'),
+    title: z.string().trim().min(1).max(200) }).strict(),
+  z.object({ requestId: z.uuid(), activityId: z.uuid(), action: z.literal('pin'), pinned: z.boolean() }).strict(),
+  z.object({ requestId: z.uuid(), activityId: z.uuid(), action: z.literal('delete') }).strict(),
+]);
+export type ConversationHistoryUpdate = z.infer<typeof conversationHistoryUpdateSchema>;

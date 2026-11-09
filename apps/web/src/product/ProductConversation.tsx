@@ -13,9 +13,10 @@ import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts
 import './product-agent.css'
 
 /** The same reliable activity session can be read as a conversation or opened as a workspace. */
-export function ProductConversation({ activity, spaceKey, namespace, authorized, workspaceRef, onWorkspace, onModels, error }: {
+export function ProductConversation({ activity, spaceKey, namespace, authorized, workspaceRef, onWorkspace, onModels, error, title }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; onWorkspace(artifactId?: string): Promise<void>; onModels(): void; error: ReactNode
+  title?: string
 }) {
   const { workspace, draft, actions, inputInteraction } = useActivitySession()
   const references = useWorkspaceReferences()
@@ -30,7 +31,7 @@ export function ProductConversation({ activity, spaceKey, namespace, authorized,
 
   return <div className="product-conversation">
     <header className="product-conversation-head">
-      <h1>{activity.goal || activity.question || '自主学习'}</h1>
+      <h1>{title || activity.goal || activity.question || '自主学习'}</h1>
       <button type="button" className="outline" onClick={() => void onWorkspace()}><IconText name="arrow-right" position="end">进入工作区</IconText></button>
     </header>
     <div className="product-conversation-scroll">

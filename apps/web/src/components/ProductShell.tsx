@@ -15,7 +15,7 @@ export interface ProductShellProps {
   onProfile: () => void
   active?: 'home' | 'agent' | 'settings'
   avatar?: string | null
-  agentHistory?: (close: () => void) => ReactNode
+  agentHistory?: (close: () => void, visible: boolean) => ReactNode
   archivedCount?: number
   archiveOpen?: boolean
   onArchiveOpenChange?: (open: boolean) => void
@@ -153,7 +153,7 @@ export function ProductShell({ children, immersive, identityName, avatar, onHome
   }, [railPanelVisible, railPanel, archiveOpen, closeRailPanel])
 
   return <ShellFrame className="product-shell" collapsed={collapsed} immersive={immersive} mainRef={mainRef}
-    navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {})} openHome={onHome} openAgent={onAgent} />}
+    navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} />}
     bottom={<div className="side-bottom">
       <ProductAccount name={identityName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} />
       <button type="button" className={'side-icon' + (active === 'settings' ? ' active' : '')} data-tip="设置与帮助" aria-label="设置与帮助" onClick={onSettings}><Icon name="settings" size={16} /></button>
@@ -188,7 +188,7 @@ export function ProductShell({ children, immersive, identityName, avatar, onHome
       </div>
     </>}
     overlays={<RailHistoryPanel visible={railPanelVisible} panelRef={railPanelRef} onClose={closeRailPanel}>
-      {agentHistory?.(closeRailPanel)}
+      {agentHistory?.(closeRailPanel, railPanelVisible)}
     </RailHistoryPanel>}>{children}</ShellFrame>
 }
 

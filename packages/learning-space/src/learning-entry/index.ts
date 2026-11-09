@@ -167,11 +167,14 @@ export function createLearningEntry(options: {
       if ((route.startsWith('artifacts/') || route.startsWith('workspaces/') || route.startsWith('pdf/') || route.startsWith('materials/') || route.startsWith('drafts/') || route.startsWith('intents/')
         || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')
         || route === 'conversation-archives' || route.startsWith('conversation-archives/')
+        || route === 'conversation-history' || route.startsWith('conversation-history/')
         || route === 'skills' || route.startsWith('skills/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       if ((route === 'conversation-archives' && method !== 'GET')
-        || ((route === 'conversation-archives/set' || route === 'conversation-archives/import') && method !== 'POST')) throw new StorageError('missing');
+        || ((route === 'conversation-archives/set' || route === 'conversation-archives/import') && method !== 'POST')
+        || (route === 'conversation-history' && method !== 'GET')
+        || (route === 'conversation-history/update' && method !== 'POST')) throw new StorageError('missing');
       let result: unknown;
       const remote = request.headers['x-xj-space'];
       if (readOnly && typeof remote === 'string' && remote.startsWith('school:')) throw new StorageError('forbidden');
@@ -383,6 +386,13 @@ export function createLearningEntry(options: {
         if (parts.length === 1 && method === 'GET') result = await learning.agentPreferences.read(identity);
         else if (parts.length === 1 && method === 'POST') result = await learning.agentPreferences.save(identity, await readLearningBody(request));
         else if (parts.length === 3 && parts[1] === 'receipts' && method === 'GET') result = await learning.agentPreferences.receipt(identity, parts[2]!);
+        else throw new StorageError('missing');
+      } else if (route === 'conversation-history' || route.startsWith('conversation-history/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] !== undefined && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (route === 'conversation-history' && method === 'GET') result = await learning.conversationHistory.read(identity);
+        else if (route === 'conversation-history/update' && method === 'POST') result = await learning.conversationHistory.update(identity, await readLearningBody(request));
         else throw new StorageError('missing');
       } else if (route === 'conversation-archives' || route.startsWith('conversation-archives/')) {
         const identity = await current(request);

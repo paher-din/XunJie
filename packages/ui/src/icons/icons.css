@@ -29,5 +29,5 @@
 .mi-check > .ui-icon, .mi-effort-check > .ui-icon { display: block; }
 /* 原字符按钮没有内容布局，换成 SVG 后也必须以按钮盒居中。 */
 button:has(> .ui-icon:only-child) { display: inline-flex; align-items: center; justify-content: center; }
-/* ④ B_FULL 落地：badge/tag/chip/pill/status 族去胶囊（评审定稿 b_full） */
-[class*="badge"],[class*="tag"],[class*="chip"],[class*="pill"],[class*="status"],.pc-tag,.ws-chip,.db-badge { border-radius: 6px; }
+/* 标签族去胶囊；账户按钮和浮层使用各自的圆角。 */
+[class*="badge"],[class*="tag"],[class*="chip"],[class*="pill"]:not(:where(.account-pill,.account-menu)),[class*="status"],.pc-tag,.ws-chip,.db-badge { border-radius: 6px; }

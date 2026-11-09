@@ -4,7 +4,7 @@ import {
   LegacyModelDialogs, LegacyModelSettingsView, ModelConfigActions, ModelConnectionTestRow, ModelDialogView,
   ModelFields, ModelProviderCard, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
-  RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, Slider, TextInput, Toggle,
+  RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
 } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
@@ -159,6 +159,9 @@ function LegacyModelPopulated() { return <LegacyModelDemo /> }
 function LegacyModelEmpty() { return <LegacyModelDemo empty /> }
 
 export const settingsEntries: CatalogEntry[] = [
+  { id: 'settings-empty-state', name: 'SettingsEmptyState', description: '由 shadcn Empty 适配的设置空态，包含图标、标题、说明和操作。', importPath: settings,
+    source: 'packages/ui/src/settings/SettingsEmptyState.tsx', exampleSource, props: ['icon, title, description, children'], dependencies: [],
+    states: [{ id: 'default', name: '无数据', component: () => <Frame><SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。"><button type="button" className="outline">返回学习空间</button></SettingsEmptyState></Frame> }] },
   { id: 'about-settings-view', name: 'AboutSettingsView', description: '关于与版本示例。', importPath: settings, source: 'packages/ui/src/settings/AboutSettingsView.tsx', exampleSource, props: ['version, credits, checking, checkUpdate'], dependencies: ['更新状态为本地示例'], states: [{ id: 'default', name: '默认', component: AboutDemo }] },
   { id: 'account-settings-view', name: 'AccountSettingsView', description: '账户资料与安全表单。', importPath: settings, source: 'packages/ui/src/settings/AccountSettingsView.tsx', exampleSource, props: ['account, name, avatarData, pwd', '保存、头像与绑定回调'], dependencies: ['不保存账户或密码'], states: [{ id: 'default', name: '示例资料', component: AccountDemo }] },
   { id: 'agent-settings-view', name: 'AgentSettingsView', description: '引导偏好与角色预览。', importPath: settings, source: 'packages/ui/src/settings/AgentSettingsView.tsx', exampleSource, props: ['agent, account, nickname, onAgentChange'], dependencies: ['设置只保存在内存'], states: [{ id: 'default', name: '交互示例', component: AgentDemo }] },

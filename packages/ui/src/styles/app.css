@@ -402,9 +402,12 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /* 2026-10-01 评审：原 16px 缩进导致新对话/搜索与导航图标错列；
-     收敛到 4px 使子项图标中心 x=31，与导航图标、收起态轨道同列 */
-  padding-left: 4px;
+  /* 子项背景与一级导航左对齐，层级留在右侧；内容维持原来的图标和文字列。 */
+  padding-right: 4px;
+}
+.agent-sub-inner :is(.agent-newchat, .agent-search, .agent-archive-entry,
+  .agent-group-label, .agent-conv, .agent-side-empty, .agent-conv-rename, .agent-conv-confirm) {
+  padding-left: 14px;
 }
 /* 新对话：次级操作，比一级导航小一号、更轻 */
 .agent-newchat {
@@ -460,7 +463,7 @@ h3 {
   gap: 8px;
   /* 左内边距 6px：头像圆心落在侧栏 31px 图标列上（10 + 6 + 头像半径 15） */
   padding: 6px 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
@@ -504,7 +507,7 @@ h3 {
   padding: 6px;
   background: var(--raised);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   box-shadow:
     var(--shadow-menu);
   opacity: 0;
@@ -2706,6 +2709,11 @@ h3 {
   bottom: calc(100% + 6px);
   --mo-y: 3px;
   transform-origin: calc(100% - 12px) calc(100% + 24px);
+}
+.agent-conv-menu:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
 }
 @keyframes conv-menu-pop {
   from {
@@ -8189,8 +8197,8 @@ button.st-check.checked:hover {
   background: currentColor;
   opacity: 0.22;
 }
-/* ④ B_FULL 落地：badge/tag/chip/pill/status 族去胶囊（评审定稿 b_full） */
-[class*="badge"],[class*="tag"],[class*="chip"],[class*="pill"],[class*="status"],.pc-tag,.ws-chip,.db-badge {
+/* 标签族去胶囊；账户按钮和浮层使用各自的圆角。 */
+[class*="badge"],[class*="tag"],[class*="chip"],[class*="pill"]:not(:where(.account-pill,.account-menu)),[class*="status"],.pc-tag,.ws-chip,.db-badge {
   border-radius: 6px;
 }
 

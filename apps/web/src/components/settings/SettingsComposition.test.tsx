@@ -37,6 +37,20 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); document.body.innerHTML = '' })
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
+it('moves radio focus and selection with arrow keys while skipping unavailable choices', async () => {
+  const onChange = vi.fn()
+  await draw(createElement(ui.RadioCard, { value: 'a', onChange, ariaLabel: '交互方式',
+    options: [{ value: 'a', title: '方式 A' }, { value: 'b', title: '不可用', disabled: true }, { value: 'c', title: '方式 C' }] }))
+  const radios = [...document.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
+  expect(radios.map(item => item.tabIndex)).toEqual([0, -1, -1])
+  await act(async () => { radios[0].focus(); radios[0].dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })) })
+  expect(document.activeElement).toBe(radios[2])
+  expect(onChange).toHaveBeenLastCalledWith('c')
+  await act(async () => radios[2].dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Home', bubbles: true })))
+  expect(document.activeElement).toBe(radios[0])
+  expect(onChange).toHaveBeenLastCalledWith('a')
+})
+
 it('keeps action availability controlled and dispatches each enabled action once', async () => {
   const onReload = vi.fn(), onToggle = vi.fn()
   const props = { saving: false, enabled: true, reloadDisabled: false, toggleDisabled: false, onReload, onToggle }

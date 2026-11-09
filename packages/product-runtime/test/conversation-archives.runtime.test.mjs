@@ -22,6 +22,8 @@ const deferred = () => {
 };
 const setInput = (activityId, archived) => ({ requestId: randomUUID(), activityId, archived });
 const importInput = activityIds => ({ requestId: randomUUID(), activityIds });
+const historyInput = (activityId, action, fields = {}) => ({ requestId: randomUUID(), activityId, action, ...fields });
+const historyItem = (state, id) => state.items.find(item => item.activityId === id);
 const subject = identity => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const exec = promisify(execFile);
 async function pgTool(fixture, name, args, connection = fixture.admin) {
@@ -46,7 +48,7 @@ test('conversation archive contracts reject malformed and extra fields', () => {
 test('main and UI migration histories converge without losing archive state', { timeout: 90000 }, async () => {
   const fixture = await nativeFixture();
   try {
-    const archive = learningMigrations.at(-1);
+    const archive = learningMigrations.find(item => item.name === 'subject-conversation-archives');
     assert.equal(archive.version, 26);
     assert.equal(archive.formerVersion, 25);
     for (const history of ['main', 'ui']) {
@@ -68,16 +70,31 @@ test('main and UI migration histories converge without losing archive state', { 
         }
         await opened.participant().closeWrites(); await opened.participant().closeDispatch();
         await opened.close();
+        // Both published version-25 histories first converge at 26, then add labels at 27.
+        await storage.provisionStorage({ admin: fixture.admin, owner, password,
+          migrations: learningMigrations.filter(item => item.version <= 26) });
         await storage.provisionStorage({ admin: fixture.admin, owner, password, migrations: learningMigrations });
         opened = await storage.openStorage({ binding, migrations: learningMigrations, backend });
         const current = createLearningData(opened, authority);
         assert.deepEqual(await current.open(identity, activity.activityId), activity);
         assert.deepEqual(await current.conversationArchives.read(identity), { archivedIds: history === 'ui' ? [activity.activityId] : [] });
+        assert.deepEqual(await current.conversationHistory.read(identity), { items: history === 'ui'
+          ? [{ activityId: activity.activityId, title: null, pinned: false, deleted: false, archived: true }] : [] });
         assert.deepEqual(await current.artifacts.list(identity, activity.activityId), []);
         if (history === 'ui') assert.equal((await opened.read('SELECT archived FROM conversation_archives WHERE activity_id=$1', [restored.activityId])).rows[0].archived, false);
         assert.deepEqual((await opened.read('SELECT version,name FROM _storage_migrations WHERE version>=25 ORDER BY version')).rows,
-          [{ version: 25, name: 'activity-teaching-artifacts' }, { version: 26, name: archive.name }]);
+          [{ version: 25, name: 'activity-teaching-artifacts' }, { version: 26, name: archive.name },
+            { version: 27, name: 'subject-conversation-labels' }]);
         await validateLearningData(opened);
+        await opened.participant().resume();
+        await current.conversationHistory.update(identity, historyInput(activity.activityId, 'rename', { title: '升级后标题' }));
+        await current.conversationHistory.update(identity, historyInput(activity.activityId, 'pin', { pinned: true }));
+        await current.conversationHistory.update(identity, historyInput(activity.activityId, 'delete'));
+        await opened.close();
+        opened = await storage.openStorage({ binding, migrations: learningMigrations, backend });
+        assert.deepEqual(await createLearningData(opened, authority).conversationHistory.read(identity), { items: [
+          { activityId: activity.activityId, title: '升级后标题', pinned: true, deleted: true, archived: history === 'ui' },
+        ] });
       } finally { await opened.close(); }
     }
   } finally { await fixture.close(); }
@@ -287,12 +304,48 @@ test('conversation archives use the learning owner, preserve tombstones and surv
       readOnly = false;
       assert.deepEqual(await (await api('conversation-archives/set', setInput(id, false))).json(), { archivedIds: [] });
       assert.deepEqual(await (await api('conversation-archives/import', importInput([id]))).json(), { archivedIds: [] });
+      for (const route of ['conversation-history', 'conversation-history/update']) {
+        const body = route.endsWith('/update') ? historyInput(id, 'pin', { pinned: true }) : undefined;
+        for (const headers of [{ 'x-xj-expected-subject': subject(other) }, { 'x-xj-expected-subject': '' },
+          { 'x-xj-namespace': randomUUID() }, { 'x-xj-space': 'school' }, { origin: 'https://foreign.invalid' }]) {
+          assert.equal((await api(route, body, headers)).status, 403);
+        }
+      }
+      assert.equal((await api('conversation-history', undefined, {}, 'DELETE')).status, 404);
+      assert.equal((await api('conversation-history', {}, {}, 'POST')).status, 404);
+      assert.equal((await api('conversation-history/update')).status, 404);
+      assert.equal((await api('conversation-history/unknown')).status, 404);
+      assert.equal((await api('conversation-history/update', historyInput(id, 'pin', { pinned: true }), { 'x-xj-namespace': '' })).status, 403);
+      assert.equal((await api('conversation-history/update', historyInput(id, 'rename', { title: ' ' }))).status, 400);
+      assert.equal((await api('conversation-history/update', historyInput(randomUUID(), 'delete'))).status, 404);
+      assert.equal((await api('conversation-history/update', historyInput(courseId, 'delete'))).status, 403);
+      assert.equal((await api('conversation-history/update', historyInput(id, 'rename', { title: ' HTTP标题 ' }))).status, 200);
+      assert.equal(historyItem(await (await api('conversation-history/update', historyInput(id, 'pin', { pinned: true }))).json(), id).title, 'HTTP标题');
+      assert.deepEqual(historyItem(await (await api('conversation-history')).json(), id),
+        { activityId: id, title: 'HTTP标题', pinned: true, deleted: false, archived: false });
+      readOnly = true;
+      assert.equal((await api('conversation-history/update', historyInput(id, 'delete'))).status, 503);
+      assert.equal((await api('conversation-history')).status, 200);
+      readOnly = false;
+      assert.equal((await api('conversation-history/update', historyInput(id, 'delete'))).status, 200);
+      assert.equal(historyItem(await (await api('conversation-history')).json(), id).deleted, true);
+      assert.equal((await api('conversation-history/update', historyInput(id, 'pin', { pinned: false }))).status, 404);
       const logged = await api('login', { loginName: 'archive-member', password: memberPassword });
       assert.equal(logged.status, 200);
       const cookie = logged.headers.get('set-cookie').split(';')[0];
       const schoolId = await create(member), schoolHeaders = { cookie, 'x-xj-space': 'school', 'x-xj-expected-subject': subject(member) };
       assert.deepEqual(await (await api('conversation-archives/set', setInput(schoolId, true), schoolHeaders)).json(), { archivedIds: [schoolId] });
       assert.equal((await api('conversation-archives/set', setInput(id, true), schoolHeaders)).status, 404);
+      assert.equal((await api('conversation-history/update', historyInput(id, 'delete'), schoolHeaders)).status, 404);
+      assert.equal((await api('conversation-history/update', historyInput(schoolId, 'rename', { title: '学校标题' }), schoolHeaders)).status, 200);
+      assert.deepEqual(historyItem(await (await api('conversation-history', undefined, schoolHeaders)).json(), schoolId),
+        { activityId: schoolId, title: '学校标题', pinned: false, deleted: false, archived: true });
+      assert.equal(historyItem(await (await api('conversation-history')).json(), schoolId), undefined);
+      await spaces.setMembership({ requestId: randomUUID(), principalId: member.principalId, active: false });
+      try {
+        assert.equal((await api('conversation-history', undefined, schoolHeaders)).status, 403);
+        assert.equal((await api('conversation-history/update', historyInput(schoolId, 'delete'), schoolHeaders)).status, 403);
+      } finally { await spaces.setMembership({ requestId: randomUUID(), principalId: member.principalId, active: true }); }
       assert.deepEqual(await (await api('conversation-archives')).json(), { archivedIds: [] });
       await archives.set(member, setInput(schoolId, false));
       await new Promise(resolve => server.close(resolve)); server = undefined;
@@ -302,7 +355,7 @@ test('conversation archives use the learning owner, preserve tombstones and surv
       let entry, transport, malformed;
       let remoteArchiveCalls = 0;
       const schoolServer = createServer((request, response) => {
-        if (request.url.startsWith('/api/learning/conversation-archives')) {
+        if (/^\/api\/learning\/conversation-(archives|history)/.test(request.url)) {
           remoteArchiveCalls++;
           if (malformed !== undefined) {
             response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify(malformed)); return;
@@ -336,6 +389,25 @@ test('conversation archives use the learning owner, preserve tombstones and surv
         assert.deepEqual(await remoteClient.forward(connectionId, 'conversation-archives', undefined, expected), { archivedIds: [] });
         assert.deepEqual(await remoteClient.forward(connectionId, 'conversation-archives/set', setInput(id, true), expected), { archivedIds: [id] });
         assert.deepEqual(await remoteClient.forward(connectionId, 'conversation-archives/import', importInput([id]), expected), { archivedIds: [id] });
+        const savedRename = historyInput(id, 'rename', { title: '远端标题' });
+        const historyRead = () => remoteClient.forward(connectionId, 'conversation-history', undefined, expected);
+        assert.equal(historyItem(await historyRead(), id).archived, true);
+        assert.equal(historyItem(await remoteClient.forward(connectionId, 'conversation-history/update', savedRename, expected), id).title, '远端标题');
+        assert.equal(historyItem(await remoteClient.forward(connectionId, 'conversation-history/update', historyInput(id, 'pin', { pinned: true }), expected), id).pinned, true);
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history', undefined, subject(other)), { code: 'forbidden' });
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history', undefined, ''), { code: 'forbidden' });
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history', {}), { code: 'invalid' });
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history/update'), { code: 'invalid' });
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history/update', historyInput(id, 'rename', { title: ' ' })));
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history/unknown'), { code: 'forbidden' });
+        const badHistory = [null, { items: [], extra: true }, { items: [{ activityId: id }] },
+          { items: [{ activityId: id, title: null, pinned: false, deleted: false, archived: 'true' }] }];
+        for (const bad of badHistory) {
+          malformed = bad;
+          await assert.rejects(historyRead(), { code: 'unavailable' });
+          await assert.rejects(remoteClient.forward(connectionId, 'conversation-history/update', historyInput(id, 'delete'), expected), { code: 'unavailable' });
+        }
+        malformed = undefined;
         await assert.rejects(remoteClient.forward(connectionId, 'conversation-archives', undefined, subject(other)), { code: 'forbidden' });
         await assert.rejects(remoteClient.forward(connectionId, 'conversation-archives', undefined, ''), { code: 'forbidden' });
         await assert.rejects(remoteClient.forward(connectionId, 'conversation-archives/set'), { code: 'invalid' });
@@ -365,6 +437,16 @@ test('conversation archives use the learning owner, preserve tombstones and surv
         assert.equal((await api('conversation-archives/set', setInput(id, false), { 'x-xj-expected-subject': subject(other) })).status, 403);
         assert.deepEqual(await (await api('conversation-archives/set', setInput(id, false))).json(), { archivedIds: [] });
         assert.deepEqual(await (await api('conversation-archives/import', importInput([id]))).json(), { archivedIds: [] });
+        assert.equal(historyItem(await (await api('conversation-history')).json(), id).title, '远端标题');
+        for (const route of ['conversation-history', 'conversation-history/update']) {
+          const body = route.endsWith('/update') ? historyInput(id, 'pin', { pinned: false }) : undefined;
+          assert.equal((await api(route, body, { 'x-xj-expected-subject': subject(other) })).status, 403);
+          assert.equal((await api(route, body, { 'x-xj-namespace': randomUUID() })).status, 403);
+          assert.equal((await api(route, body, { origin: 'https://foreign.invalid' })).status, 403);
+        }
+        assert.equal((await api('conversation-history', undefined, {}, 'DELETE')).status, 404);
+        assert.equal((await api('conversation-history/update')).status, 404);
+        assert.equal(historyItem(await (await api('conversation-history/update', historyInput(id, 'rename', { title: '代理标题' }))).json(), id).title, '代理标题');
         const runtimeConnectionId = randomUUID();
         const grant = await transport.authorize({ sourceEnvironmentId: owner.environmentId, sourceServiceId: owner.serviceId,
           sourceInstallationId: environment.installationId, capabilities: ['learning.authority'] });
@@ -379,11 +461,33 @@ test('conversation archives use the learning owner, preserve tombstones and surv
         assert.deepEqual(await localClient.forward(connectionId, 'conversation-archives/set', setInput(id, true), expected), { archivedIds: [id] });
         assert.deepEqual(await localClient.forward(connectionId, 'conversation-archives', undefined, expected), { archivedIds: [id] });
         assert.deepEqual(await localClient.forward(connectionId, 'conversation-archives/import', importInput([id]), expected), { archivedIds: [id] });
+        assert.equal(historyItem(await localClient.forward(connectionId, 'conversation-history', undefined, expected), id).title, '代理标题');
+        assert.equal(historyItem(await localClient.forward(connectionId, 'conversation-history/update', historyInput(id, 'rename', { title: '本地标题' }), expected), id).title, '本地标题');
+        assert.equal(historyItem(await localClient.forward(connectionId, 'conversation-history/update', savedRename, expected), id).title, '本地标题');
+        assert.equal(historyItem(await localClient.forward(connectionId, 'conversation-history/update', historyInput(id, 'delete'), expected), id).deleted, true);
+        await localClient.forward(connectionId, 'conversation-archives/set', setInput(id, false), expected);
+        await localClient.forward(connectionId, 'conversation-archives/import', importInput([id]), expected);
+        assert.equal(historyItem(await localClient.forward(connectionId, 'conversation-history', undefined, expected), id).deleted, true);
+        await assert.rejects(localClient.forward(connectionId, 'conversation-history/update', historyInput(id, 'pin', { pinned: false }), expected), { code: 'missing' });
+        const malformedLocal = createSchoolClient(localRoot, environment, { target,
+          create(authority, courses) {
+            const owned = createLearningData(learningStorage, authority, courses);
+            return { ...owned, conversationHistory: {
+              async read(who) { await owned.conversationHistory.read(who); return { items: [], extra: true }; },
+              async update(who, input) { await owned.conversationHistory.update(who, input); return null; },
+            } };
+          } });
+        await assert.rejects(malformedLocal.forward(connectionId, 'conversation-history', undefined, expected), { code: 'unavailable' });
+        await assert.rejects(malformedLocal.forward(connectionId, 'conversation-history/update', historyInput(id, 'delete'), expected), { code: 'unavailable' });
         assert.equal(remoteArchiveCalls, before, 'locally owned archives never go to the remote learning owner');
         await assert.rejects(localClient.forward(connectionId, 'conversation-archives/set', setInput(activity.activityId, true), expected), { code: 'missing' });
+        await assert.rejects(localClient.forward(connectionId, 'conversation-history/update', historyInput(activity.activityId, 'delete'), expected), { code: 'missing' });
         await spaces.revokeConnection(member, connectionId);
         await assert.rejects(localClient.forward(connectionId, 'conversation-archives', undefined, expected), { code: 'forbidden' });
         await assert.rejects(remoteClient.forward(connectionId, 'conversation-archives', undefined, expected), { code: 'unavailable' });
+        await assert.rejects(localClient.forward(connectionId, 'conversation-history', undefined, expected), { code: 'forbidden' });
+        await assert.rejects(localClient.forward(connectionId, 'conversation-history/update', savedRename, expected), { code: 'forbidden' });
+        await assert.rejects(remoteClient.forward(connectionId, 'conversation-history', undefined, expected), { code: 'unavailable' });
         await archives.set(member, setInput(id, false));
       } finally {
         if (proxy) { proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve)); }

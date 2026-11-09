@@ -14,7 +14,7 @@ import { useModelSelection } from './ModelSelection'
 import { ProductHome } from './ProductHome'
 import { ProductAgent } from './ProductAgent'
 import { ProductConversation } from './ProductConversation'
-import { ProductConversationHistory, useConversationArchive } from './ProductConversationHistory'
+import { ProductConversationHistory, conversationTitle, useConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { ProductProfile } from './ProductProfile'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
@@ -185,7 +185,7 @@ function LearningView() {
   const identity = context?.identities.find(item => item.key === key)?.identity
   const modelSelection = useModelSelection(identity, key, context?.clientNamespace ?? '')
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
-  const conversationArchive = useConversationArchive(pendingKey ? pendingKey + ':conversation-archive' : '', key,
+  const conversationHistory = useConversationHistory(pendingKey ? pendingKey + ':conversation-archive' : '', key,
     context?.clientNamespace ?? '', identity ? [identity.environmentId, identity.spaceId, identity.principalId].join('.') : '')
   const draftKey = pendingKey ? pendingKey + ':draft' : ''
   const coursePendingKey = context && identity?.kind === 'school'
@@ -193,6 +193,17 @@ function LearningView() {
   const activityAuthorized = !!opened && !!identity && contextVerified
     && opened.identity.environmentId === identity.environmentId && opened.identity.spaceId === identity.spaceId
     && opened.identity.principalId === identity.principalId
+
+  const openedConversationDeleted = !!opened && conversationHistory.items.some(item => item.activityId === opened.activityId && item.deleted)
+  useEffect(() => {
+    if (!openedConversationDeleted || !agentOpen || modelsOpen || !activityAuthorized) return
+    let current = true
+    const activityId = opened!.activityId, generation = epoch.current
+    void protectActivity().then(() => {
+      if (current && generation === epoch.current && currentView.current.opened?.activityId === activityId) rememberActivity(null)
+    }).catch(() => { if (current) setError('当前输入尚未得到保护，请保留此页面并复制或导出作品。') })
+    return () => { current = false }
+  }, [openedConversationDeleted, agentOpen, modelsOpen, activityAuthorized, opened?.activityId, pendingKey])
 
   useEffect(() => { setArchiveOpen(false); setHistoryQuery('') }, [pendingKey])
 
@@ -559,12 +570,12 @@ function LearningView() {
       }) }}><label>学校账号<input autoComplete="username" required value={loginName} onChange={event => setLoginName(event.target.value)} /></label>
         <label>密码<input type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
         <button type="submit" disabled={busy}>登录此学校</button></form>}
-      {context.profile !== 'school' && <details><summary>连接学校提供的入口</summary>
+      {context.profile !== 'school' && <details open={!context.identities.some(item => item.identity.kind === 'school')}><summary>连接学校提供的入口</summary>
         <form onSubmit={event => { event.preventDefault(); void action(async () => {
           const pending = await api('client/start', { requestId: crypto.randomUUID(), schoolEndpoint }) as PendingConnection
           setPendingConnection(pending)
-        }) }}><label>学校入口<input type="url" required value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
-          <button type="submit" disabled={busy}>前往学校认证</button></form>
+        }) }}><label>学校入口<input type="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
+          <button type="submit" className="primary" disabled={busy}>前往学校认证</button></form>
         {pendingConnection && <div><p><a href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a></p>
           <button type="button" disabled={busy} onClick={() => void action(async generation => {
             const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
@@ -633,26 +644,33 @@ function LearningView() {
   const settingsTab: ProductSettingsTab = settingsPage === 'school' || settingsPage === 'models' || settingsPage === 'agent'
     || settingsPage === 'portrait' || settingsPage === 'privacy' || settingsPage === 'about' ? settingsPage : 'account'
   const conversationOpen = !!opened && agentOpen && !opened.course
-  const archivedCount = visibleActivities?.filter(activity => !activity.course && conversationArchive.ids.includes(activity.activityId)).length ?? 0
+  const archivedCount = visibleActivities?.filter(activity => !activity.course && conversationHistory.archivedIds.includes(activity.activityId)).length ?? 0
+  async function changeConversationVisibility(id: string, remove: boolean) {
+    let saved = false
+    await action(async generation => {
+      const wasOpen = currentView.current.opened?.activityId === id
+      if (wasOpen) {
+        await protectActivity()
+        if (generation !== epoch.current || currentView.current.opened?.activityId !== id) return
+      }
+      saved = await (remove ? conversationHistory.remove(id) : conversationHistory.setArchived(id, true))
+      if (saved && wasOpen && generation === epoch.current && currentView.current.opened?.activityId === id) rememberActivity(null)
+    })
+    return saved
+  }
   return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} identityName={identity?.name ?? '学习空间'}
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
     archivedCount={archivedCount} archiveOpen={archiveOpen} onArchiveOpenChange={setArchiveOpen}
-    agentHistory={close => <ProductConversationHistory activities={visibleActivities} activeId={opened?.activityId}
-      archivedIds={conversationArchive.ids} archiveOpen={archiveOpen} query={historyQuery} error={conversationArchive.error}
-      ready={conversationArchive.ready} busy={conversationArchive.busy} onRetry={conversationArchive.retry}
+    agentHistory={(close, visible) => <ProductConversationHistory activities={visibleActivities} activeId={opened?.activityId}
+      labels={conversationHistory.items} archiveOpen={archiveOpen} query={historyQuery} error={conversationHistory.error}
+      ready={conversationHistory.ready} busy={conversationHistory.busy || busy} onRetry={conversationHistory.retry}
+      scopeKey={pendingKey} visible={visible} readOnly={!!context?.readOnly || !contextVerified}
       onNew={() => { close(); setArchiveOpen(false); openAgent() }} onOpen={id => { close(); void action(() => openActivity(id, true)) }}
       onArchiveOpenChange={setArchiveOpen} onQueryChange={setHistoryQuery}
-      onArchive={id => void action(async generation => {
-        const wasOpen = currentView.current.opened?.activityId === id
-        if (wasOpen) {
-          await protectActivity()
-          if (generation !== epoch.current || currentView.current.opened?.activityId !== id) return
-        }
-        const saved = await conversationArchive.setArchived(id, true)
-        if (saved && wasOpen && generation === epoch.current && currentView.current.opened?.activityId === id) rememberActivity(null)
-      })}
-      onRestore={id => { void conversationArchive.setArchived(id, false) }} />}>
+      onArchive={id => changeConversationVisibility(id, false)} onDelete={id => changeConversationVisibility(id, true)}
+      onRename={conversationHistory.rename} onPin={conversationHistory.setPinned}
+      onRestore={id => conversationHistory.setArchived(id, false)} />}>
     {profileOpen && <ProductProfile identityName={identity?.name ?? '学习空间'} spaceKind={identity?.kind}
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
     {modelsOpen && <ProductSettings identityName={identity?.name ?? '学习空间'} onBack={closeModels}
@@ -664,6 +682,7 @@ function LearningView() {
       <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly} viewActive={!modelsOpen}>
       {conversationOpen ? <ProductConversation activity={opened} spaceKey={key} namespace={context.clientNamespace}
+        title={conversationTitle(opened, conversationHistory.items)}
         authorized={activityAuthorized}
         workspaceRef={workspace} onWorkspace={openWorkspace} onModels={openModels} error={error || notice ? feedback : null} /> : <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
         requestedArtifactId={requestedArtifactId}

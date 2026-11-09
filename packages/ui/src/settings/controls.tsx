@@ -208,8 +208,22 @@ export function RadioCard<T extends string>({
           role="radio"
           aria-checked={o.value === value}
           disabled={o.disabled}
+          tabIndex={o.value === value || !options.some(item => item.value === value && !item.disabled) && o === options.find(item => !item.disabled) ? 0 : -1}
           className={'st-card' + (o.value === value ? ' active' : '')}
           onClick={() => onChange(o.value)}
+          onKeyDown={event => {
+            if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+            event.preventDefault()
+            const available = options.filter(item => !item.disabled)
+            const index = available.findIndex(item => item.value === o.value)
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? available.length - 1
+              : (index + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) + available.length) % available.length
+            const option = available[next]
+            if (!option) return
+            const buttons = [...event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+            buttons[next]?.focus()
+            onChange(option.value)
+          }}
         >
           {o.icon}
           <span className="st-card-text">

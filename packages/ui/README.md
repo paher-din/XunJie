@@ -34,6 +34,8 @@ import { Button } from '@xunjie/ui/foundation'
 
 图标 SVG、角色图片、Logo 原稿和霞鹜文楷字体随本包提供；字体许可见 [OFL.txt](src/assets/fonts/OFL.txt)，图标来源见 [ATTRIBUTION.md](src/icons/ATTRIBUTION.md)。本包不依赖旧版 Web 的 `public` 目录。
 
+`SettingsEmptyState` 采用 shadcn/ui Empty 的图标、标题、说明和操作分层，已适配循阶 token，无 Tailwind 运行依赖；来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。实屏目录提供空态示例。
+
 ## 实屏目录与检查
 
 从仓库根目录启动 `npm run dev:prep -w @xunjie/web`，访问 `http://127.0.0.1:5601/ui-catalog.html`。目录使用正式包的真实组件和隔离示例数据；每个示例的稳定入口与覆盖情况以目录注册表为准。目录用于开发验收，不是学生或教师的产品入口。
