@@ -10,7 +10,7 @@
 
 | 入口／位置 | 用途与归属 |
 | --- | --- |
-| `http://127.0.0.1:57417/` | 正式产品开发预览，源码取当前 `codex/composable-deployment` checkout |
+| `http://127.0.0.1:57417/` | 正式产品开发预览，源码取启动时的当前 checkout；分支以 `git status` 核对 |
 | `~/Library/Application Support/XunJie/environments/default` | 本机既有环境：PostgreSQL、个人数据、Agent Run、个人模型凭据、执行记录和学校连接；保留原环境身份 |
 | `http://127.0.0.1:3445/` | 当前负责人电脑的 SSH 转发，进入学校回环 `3444`；不是本机学校副本 |
 | 远端 `~/xunjie-school-dev.NK1GQlUI/school-v2` | 开发学校的 PostgreSQL 与学校业务资源；应用快照在同级 `app/` |
