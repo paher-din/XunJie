@@ -5552,6 +5552,9 @@ h3 {
 .pc-records .pc-section-title {
   margin-bottom: 12px;
 }
+.pc-empty { margin: 20px 0; color: var(--muted); font-size: 13px; }
+.pc-band > .pc-empty { padding: 0 20px; }
+.pc-foot > .pc-acts:only-child { margin-left: auto; }
 .pc-band {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

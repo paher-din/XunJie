@@ -262,8 +262,9 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
     if (saved.start !== undefined) element.setSelectionRange(saved.start, saved.end ?? saved.start, saved.direction)
     // Restore once at the visible-view boundary, never after a catalog/draft response.
     const active = document.activeElement
-    if ((saved.focused || saved.start === undefined) && (!active || active === document.body || active === document.documentElement || active === element
-      || active.closest('[inert]') || active.classList.contains('main')))
+    const openedFromTrigger = active === closeFocusRef?.current
+    if ((saved.focused || saved.start === undefined || openedFromTrigger) && (!active || active === document.body || active === document.documentElement || active === element
+      || openedFromTrigger || active.closest('[inert]') || active.classList.contains('main')))
       element.focus({ preventScroll: true })
   }, [open, viewActive, workspaceKey])
   useLayoutEffect(() => {

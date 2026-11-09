@@ -9,26 +9,37 @@ import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { LearningApp } from './LearningApp'
 import { firstQuestionKey, parsePendingActivityRequest, readFirstQuestion } from './first-question'
 
-// Exercise the real home controls, router and creation/recovery transport. The
+// Exercise the real Agent controls, router and creation/recovery transport. The
 // separate conversation regression exercises the real durable queue and receipt.
 vi.mock('../lib/theme', () => ({ useTheme() {} }))
-vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onModels, onHome }: {
-  children: ReactNode; onModels(): void; onHome(): void
-}) => createElement('main', null, createElement('button', { onClick: onModels }, '打开模型设置'),
-  createElement('button', { onClick: onHome }, '返回首页'), children) }))
+vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onSettings, onHome, onAgent, agentHistory }: {
+  children: ReactNode; onSettings(): void; onHome(): void; onAgent(): void; agentHistory(close: () => void): ReactNode
+}) => createElement('main', null, createElement('button', { onClick: onSettings }, '打开侧栏设置'),
+  createElement('button', { onClick: onHome }, '返回首页'),
+  createElement('button', { onClick: onAgent }, 'Agent 对话'), createElement('nav', { 'aria-label': '对话历史' }, agentHistory(() => {})), children) }))
+vi.mock('./ProductSettings', () => ({ ProductSettings: ({ modelSettings, onBack }: { modelSettings: ReactNode; onBack(): void }) =>
+  createElement('div', null, '设置视图', modelSettings, createElement('button', { onClick: onBack }, '关闭设置')) }))
 vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => createElement('p', null, '模型设置视图') }))
 vi.mock('./ActivityReferences', () => ({ ActivityReferences: ({ children }: { children: ReactNode }) => children,
   CourseMaterialReferences: () => null, CourseRequirementsReference: () => null }))
 vi.mock('./ActivityPage', () => ({ ActivityPage: ({ activity, workspaceRef }: {
   activity: LearningActivity; workspaceRef: RefObject<ActivityWorkspaceHandle | null>
 }) => {
-  useImperativeHandle(workspaceRef, () => ({ leave: async () => {} }))
-  return createElement('h1', { id: 'activity-title' }, activity.goal)
+  useImperativeHandle(workspaceRef, () => ({ leave: async () => { if (rejectLeave) throw new Error('保护失败') } }))
+  return createElement('h1', { id: 'activity-title' }, activity.goal || activity.question)
+} }))
+vi.mock('./ProductConversation', () => ({ ProductConversation: ({ activity, workspaceRef }: {
+  activity: LearningActivity; workspaceRef: RefObject<ActivityWorkspaceHandle | null>
+}) => {
+  useImperativeHandle(workspaceRef, () => ({ leave: async () => { if (rejectLeave) throw new Error('保护失败') } }))
+  return createElement('h1', { id: 'activity-title' }, activity.goal || activity.question)
 } }))
 
 let root: Root, host: HTMLDivElement, identity: SpaceIdentity, namespace: string, pendingKey: string
 let activities: Map<string, LearningActivity>, created: CreateActivity[], receiptReads: string[]
+let archivedIds: Set<string>
 let loseCreationReply: boolean, releaseCreation: (() => void) | undefined, holdCreation: Promise<void> | undefined
+let rejectLeave = false
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
 const response = (value: unknown) => new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } })
 const pending = () => parsePendingActivityRequest(JSON.parse(localStorage.getItem(pendingKey)!))
@@ -39,10 +50,19 @@ function button(label: string) {
 async function click(label: string) { await act(async () => { button(label).click(); await settle() }) }
 async function fillQuestion(text: string) {
   await act(async () => {
-    const field = host.querySelector<HTMLTextAreaElement>('.product-new-activity textarea')!
+    const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
+    expect(field).not.toBeNull()
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(field, text)
     field.dispatchEvent(new Event('input', { bubbles: true })); await settle()
   })
+}
+async function startQuestion(text: string) {
+  await click('Agent 对话')
+  await fillQuestion(text)
+  const send = host.querySelector<HTMLButtonElement>('button[aria-label="发送消息"]')!
+  expect(send).not.toBeNull()
+  expect(send.disabled).toBe(false)
+  await act(async () => { send.click(); await settle() })
 }
 async function mount() {
   await act(async () => { root.render(createElement(LearningApp)); await settle() })
@@ -54,6 +74,11 @@ async function reload() {
 
 beforeEach(async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  // jsdom does not implement the image decoding or layout observer used by the real Agent UI.
+  vi.stubGlobal('Image', class { src = ''; decode() { return Promise.resolve() } })
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
   // React Router creates Node's native Request; its signal must come from the
   // same implementation instead of jsdom's otherwise compatible DOM signal.
   const abort = transferableAbortController()
@@ -65,11 +90,17 @@ beforeEach(async () => {
     kind: 'personal', name: '测试用户' }
   namespace = crypto.randomUUID()
   pendingKey = `xj.activity-request.${namespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}`
-  activities = new Map(); created = []; receiptReads = []; loseCreationReply = false; holdCreation = undefined; releaseCreation = undefined
+  activities = new Map(); archivedIds = new Set(); created = []; receiptReads = []; loseCreationReply = false; holdCreation = undefined; releaseCreation = undefined; rejectLeave = false
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     const route = url.replace('/api/learning/', '')
     if (route === 'context') return response({ clientNamespace: namespace, profile: 'local', identities: [{ key: 'personal', identity }] })
     if (route === 'models/selection') return response({ version: 0, selected: null, options: [] })
+    if (route === 'conversation-archives/set') {
+      const input = JSON.parse(options.body as string) as { activityId: string; archived: boolean }
+      if (input.archived) archivedIds.add(input.activityId); else archivedIds.delete(input.activityId)
+      return response({ archivedIds: [...archivedIds] })
+    }
+    if (route === 'conversation-archives') return response({ archivedIds: [...archivedIds] })
     if (route.startsWith('receipts/')) {
       const requestId = route.slice('receipts/'.length); receiptReads.push(requestId)
       return response(activities.get(requestId) ?? null)
@@ -97,17 +128,19 @@ afterEach(async () => {
   host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals()
 })
 
-it.each([{ send: true, legacy: false }, { send: false, legacy: false }, { send: false, legacy: true }])(
-  'recovers the original creation and saved send intent after an ACK loss and reload (send=$send, legacy=$legacy)', async ({ send, legacy }) => {
+it.each(['send', 'old-envelope', 'legacy'] as const)(
+  'recovers the original creation and saved send intent after an ACK loss and reload (%s)', async (format) => {
   loseCreationReply = true
-  await fillQuestion('The fixed initial question')
-  await click(send ? '建立并开始对话' : '建立学习活动')
+  await startQuestion('The fixed initial question')
   expect(created).toHaveLength(1)
-  const saved = pending(), originalQuestionId = saved.firstQuestion?.requestId
+  const original = pending(), originalQuestionId = original.firstQuestion?.requestId
+  expect(originalQuestionId).toBeTypeOf('string')
+  if (format === 'old-envelope') localStorage.setItem(pendingKey, JSON.stringify({ ...original, firstQuestion: null }))
+  if (format === 'legacy') localStorage.setItem(pendingKey, JSON.stringify(original.input))
+  const saved = pending()
   expect(saved.input).toEqual(created[0])
-  if (send) expect(originalQuestionId).toBeTypeOf('string')
+  if (format === 'send') expect(saved.firstQuestion?.requestId).toBe(originalQuestionId)
   else expect(saved.firstQuestion).toBeNull()
-  if (legacy) localStorage.setItem(pendingKey, JSON.stringify(saved.input))
   await reload()
   await click('核对并继续原请求')
   expect(created).toHaveLength(1)
@@ -115,52 +148,80 @@ it.each([{ send: true, legacy: false }, { send: false, legacy: false }, { send: 
   expect(localStorage.getItem(pendingKey)).toBeNull()
   const activity = activities.get(saved.input.requestId)!
   expect(host.querySelector('#activity-title')).not.toBeNull()
-  expect(readFirstQuestion(activity.activityId)).toEqual(send ? {
+  expect(readFirstQuestion(activity.activityId)).toEqual(format === 'send' ? {
     requestId: originalQuestionId, question: 'The fixed initial question',
   } : null)
 })
 
 it('retains the authorized first question when creation completes after a view change', async () => {
   holdCreation = new Promise(resolve => { releaseCreation = resolve })
-  await fillQuestion('The first question belongs to the created activity')
-  await click('建立并开始对话')
+  await startQuestion('The first question belongs to the created activity')
   const saved = pending()
   expect(saved.firstQuestion).not.toBeNull()
-  await click('打开模型设置')
+  await click('打开侧栏设置')
   expect(host.textContent).toContain('模型设置视图')
   await act(async () => { releaseCreation!(); await settle() })
   const activity = activities.get(saved.input.requestId)!
   expect(host.textContent).toContain('模型设置视图')
   expect(readFirstQuestion(activity.activityId)).toEqual(saved.firstQuestion)
   expect(localStorage.getItem(pendingKey)).toBeNull()
+  await click('关闭设置')
+  expect(host.textContent).not.toContain('上次发起的学习尚未确认')
+  expect(host.querySelector('nav[aria-label="对话历史"]')?.textContent).toContain(activity.question)
+  const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
+  expect(field.disabled).toBe(false)
+  expect(field.readOnly).toBe(false)
+  await fillQuestion('A new question can be sent')
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="发送消息"]')!.disabled).toBe(false)
+  await click('返回首页')
+  const activityCard = host.querySelector<HTMLButtonElement>(`[data-activity-id="${activity.activityId}"]`)
+  expect(activityCard?.textContent).toContain(activity.question)
+  expect(created).toHaveLength(1)
+})
+
+it('protects an open conversation before archiving it without closing the activity', async () => {
+  await startQuestion('要归档的对话')
+  const activity = [...activities.values()][0]
+  expect(activity).toBeDefined()
+  const archive = () => host.querySelector<HTMLButtonElement>('[aria-label="归档「要归档的对话」"]')!
+  expect(archive()).not.toBeNull()
+  rejectLeave = true
+  await act(async () => { archive().click(); await settle() })
+  expect(archivedIds.has(activity.activityId)).toBe(false)
+  expect(host.querySelector('#activity-title')).not.toBeNull()
+  rejectLeave = false
+  await act(async () => { archive().click(); await settle() })
+  expect(archivedIds.has(activity.activityId)).toBe(true)
+  expect(activity.status).toBe('open')
+  expect(host.querySelector('#activity-title')).toBeNull()
+  expect(location.search).not.toContain('activity=')
 })
 
 it('keeps the same activity tree mounted across settings and browser back/forward navigation', async () => {
-  await fillQuestion('Keep the original activity mounted')
-  await click('建立学习活动')
+  await startQuestion('Keep the original activity mounted')
   const title = host.querySelector('#activity-title')!
   expect(title).not.toBeNull()
-  await click('打开模型设置')
+  await click('打开侧栏设置')
   expect(host.querySelector('#activity-title')).toBe(title)
   expect(title.closest('[inert]')).not.toBeNull()
   await act(async () => { history.back(); await settle() })
-  await vi.waitFor(async () => { await act(settle); expect(location.search).not.toContain('settings=models') })
+  await vi.waitFor(async () => { await act(settle); expect(location.search).not.toContain('settings=account') })
   expect(host.querySelector('#activity-title')).toBe(title)
   expect(title.closest('[inert]')).toBeNull()
   await act(async () => { history.forward(); await settle() })
-  await vi.waitFor(async () => { await act(settle); expect(location.search).toContain('settings=models') })
+  await vi.waitFor(async () => { await act(settle); expect(location.search).toContain('settings=account') })
   expect(host.querySelector('#activity-title')).toBe(title)
   expect(title.closest('[inert]')).not.toBeNull()
 })
 
 it('does not recreate a discarded automatic-send intent when the original creation replies late', async () => {
   holdCreation = new Promise(resolve => { releaseCreation = resolve })
-  await fillQuestion('This request will be discarded')
-  await click('建立并开始对话')
+  await startQuestion('This request will be discarded')
   const saved = pending()
-  await click('打开模型设置')
+  await click('打开侧栏设置')
   await click('返回首页')
-  await click('放弃这次请求并重新填写')
+  await click('Agent 对话')
+  await click('放弃这次请求')
   await act(async () => { releaseCreation!(); await settle() })
   const activity = activities.get(saved.input.requestId)!
   expect(readFirstQuestion(activity.activityId)).toBeNull()
@@ -175,8 +236,7 @@ it('keeps both original identities until the first question handoff itself is pr
     if (key.startsWith(firstQuestionKey('')) && rejectFirstQuestion) throw new Error('Synthetic full browser storage')
     return setItem.call(this, key, value)
   })
-  await fillQuestion('Do not discard the send intent before handoff')
-  await click('建立并开始对话')
+  await startQuestion('Do not discard the send intent before handoff')
   const saved = pending()
   expect(saved.firstQuestion).not.toBeNull()
   expect(created).toHaveLength(1)

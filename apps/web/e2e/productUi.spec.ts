@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential } from '@xunjie/product-runtime'
 import { controlledActionReceiver } from '../../server/tests/support/action-receiver.mjs'
 import { annotationPackage } from '../../../components/material-annotation/package.mjs'
+import { openCourseTasks, selectProductSpace } from './support/product-ui'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires the native PostgreSQL distribution')
@@ -40,8 +41,11 @@ test.afterAll(async () => {
 })
 async function newActivity(page: Page, goal = '自主学习-' + randomUUID()) {
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill(goal)
-  await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
+  await page.getByRole('button', { name: 'Agent 对话', exact: true }).click()
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill(goal)
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.product-conversation h1')).toHaveText(goal)
+  await page.getByRole('button', { name: '进入工作区', exact: true }).click()
   await expect(page.locator('#activity-title')).toHaveText(goal)
   return new URL(page.url()).searchParams.get('activity')!
 }
@@ -84,7 +88,7 @@ test('default product entry uses shared UI and stable file identities through re
   await page.goBack()
   await expect(page.locator('.monaco-editor .view-lines')).toContainText('同名新作品')
   await page.goForward()
-  await expect(page.getByRole('heading', { name: '我的学习活动' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的课程' })).toBeVisible()
   await expect(page.getByRole('button', { name: /保存|冻结|确认作品/ })).toHaveCount(0)
   await expect(page.getByText(/演示统计|热力/)).toHaveCount(0)
 })
@@ -110,7 +114,7 @@ test('browser history cannot bypass a refused local protection transaction', asy
   await expect(page.getByLabel('可复制的当前原文')).toHaveValue('已有正文仍在内存')
   await page.evaluate(() => { (window as unknown as { productUiQuota: { refuse: boolean } }).productUiQuota.refuse = false })
   await page.goBack()
-  await expect(page.locator('.product-home')).toBeVisible()
+  await expect(page.locator('.product-conversation')).toBeVisible()
   await page.goForward()
   await expect(page.locator('.monaco-editor .view-lines')).toContainText('已有正文仍在内存')
   await expect.poll(async () => (await readWorks(page, id)).files[0]?.value).toBe('已有正文仍在内存')
@@ -119,8 +123,11 @@ test('browser history cannot bypass a refused local protection transaction', asy
 test('selection, fixed send and later input survive the integrated discussion panel and reload', async ({ page }) => {
   const id = await newActivity(page)
   await newFile(page, '依据.c'); await page.keyboard.insertText('// 固定选择甲')
+  await expect.poll(async () => (await readWorks(page, id)).files[0]?.value).toBe('// 固定选择甲')
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
-  await page.getByRole('button', { name: '询问 Agent', exact: true }).click()
+  const askSelection = page.getByRole('button', { name: '询问 Agent', exact: true })
+  if (await askSelection.isVisible()) await askSelection.click()
+  await expect(page.getByRole('region', { name: '上下文引用' }).locator('li')).toHaveCount(1)
   const input = page.getByRole('textbox', { name: '你的问题', exact: true })
   await input.fill('问题甲')
   const releaseAccept = receiver.holdAccept()
@@ -132,14 +139,19 @@ test('selection, fixed send and later input survive the integrated discussion pa
     await page.keyboard.insertText('\n// 作品乙')
     await expect(page.getByRole('region', { name: '上下文引用' }).locator('li')).toHaveCount(1)
     releaseAccept()
-    await expect.poll(() => receiver.acceptedIds().length).toBeGreaterThan(0)
-    const accepted = receiver.acceptedIds().map(requestId => receiver.acceptedInput(requestId)).find(value => value?.scope.activityId === id)!
+    await expect.poll(() => receiver.acceptedIds().some(requestId => {
+      const value = receiver.acceptedInput(requestId)
+      return value?.scope.activityId === id && value.draft.question === '问题甲'
+    })).toBe(true)
+    const accepted = receiver.acceptedIds().map(requestId => receiver.acceptedInput(requestId)).find(value => value?.scope.activityId === id && value.draft.question === '问题甲')!
     expect(accepted.draft.question).toBe('问题甲')
     expect(accepted.works[0].value).toBe('// 固定选择甲')
     expect(accepted.draft.references[0].copy).toBe('// 固定选择甲')
     await expect(input).toHaveValue('发送后继续输入乙')
     await expect.poll(async () => (await readWorks(page, id)).files[0]?.value).toContain('// 作品乙')
-    await page.reload(); await page.getByRole('button', { name: '打开对话', exact: true }).click()
+    await page.reload()
+    if (await page.getByRole('button', { name: '打开对话', exact: true }).isVisible())
+      await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(input).toHaveValue('发送后继续输入乙')
     await expect(page.locator('.monaco-editor .view-lines')).toContainText('// 作品乙')
   } finally { releaseAccept() }
@@ -170,7 +182,7 @@ test('course content and shared navigation keep usable widths, theme and keyboar
   await expect(page.locator('.shell')).not.toHaveClass(/collapsed/)
   await page.getByRole('button', { name: /外观/ }).click(); await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: /外观/ })).toBeFocused()
-  await page.getByRole('button', { name: /课程入口回归.*查看任务/ }).click()
+  await openCourseTasks(page, '课程入口回归')
   await page.getByRole('button', { name: /最近发布/ }).click()
   await page.getByRole('button', { name: '从这一版本开始活动' }).click()
   await expect(page.getByLabel('课程材料', { exact: true })).toContainText(bytes.toString())
@@ -200,7 +212,7 @@ test('a late browser-history activity read cannot reopen the activity after forw
   const goal = '历史活动读取-' + randomUUID()
   const id = await newActivity(page, goal)
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
-  await expect(page.getByRole('button', { name: goal, exact: true })).toBeVisible()
+  await expect(page.locator(`[data-activity-id="${id}"]`)).toContainText(goal)
   let releaseRead!: () => void, reading!: () => void, delivered!: () => void
   const held = new Promise<void>(resolve => { releaseRead = resolve })
   const started = new Promise<void>(resolve => { reading = resolve })
@@ -226,9 +238,9 @@ test('a late browser-history activity read cannot reopen the activity after forw
 test('course browser history retires both visible and in-flight release details from the other course', async ({ page }) => {
   const courses = await courseHistoryFixture(page)
   await page.goto(endpoint + '/?space=school')
-  await page.getByRole('button', { name: /课程历史 A.*查看任务/ }).click()
+  await openCourseTasks(page, '课程历史 A')
   await page.getByRole('button', { name: '全部课程', exact: true }).click()
-  await page.getByRole('button', { name: /课程历史 B.*查看任务/ }).click()
+  await openCourseTasks(page, '课程历史 B')
   await page.getByRole('button', { name: /最近发布/ }).click()
   await expect(page.locator('#release-title')).toHaveText(courses[1].title)
   await page.goBack()
@@ -255,6 +267,10 @@ test('course browser history retires both visible and in-flight release details 
 
 test('an initial activity reopen cannot undo browser back to the list while its read is pending', async ({ page }) => {
   const id = await newActivity(page)
+  await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
+  await expect(page.locator(`[data-activity-id="${id}"]`)).toBeVisible()
+  await page.goto(endpoint + '/?space=personal&activity=' + id)
+  await expect(page.locator('#activity-title')).toBeVisible()
   let releaseRead!: () => void, reading!: () => void, delivered!: () => void
   const held = new Promise<void>(resolve => { releaseRead = resolve })
   const started = new Promise<void>(resolve => { reading = resolve })
@@ -332,7 +348,8 @@ test('component-only navigation protects an unretained action and its independen
     await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
     await expect(page.locator('#activity-title')).toHaveCount(0)
     await page.locator(`[data-activity-id="${activity.activityId}"]`).click()
-    await page.getByRole('button', { name: '打开对话', exact: true }).click()
+    if (await page.getByRole('button', { name: '打开对话', exact: true }).isVisible())
+      await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(input).toHaveValue('发送后继续写的独立草稿')
     release()
     await expect.poll(() => receiver.acceptedIds().filter(id => receiver.acceptedInput(id)?.scope.activityId === activity.activityId).length).toBe(1)
@@ -346,18 +363,20 @@ test('cross-space browser history waits for the destination list before reopenin
   const personalGoal = '个人历史-' + randomUUID(), schoolGoal = '学校历史-' + randomUUID()
   await newActivity(page, personalGoal)
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
-  await expect(page.getByRole('button', { name: personalGoal, exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '学校空间', exact: true }).click()
-  await page.locator('.product-new-activity summary').click()
-  await page.getByLabel('学习目标', { exact: true }).fill(schoolGoal)
-  await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
+  await expect(page.locator('[data-activity-id]').filter({ hasText: personalGoal })).toBeVisible()
+  await selectProductSpace(page, '学校空间')
+  const created = await page.request.post(endpoint + '/api/learning/activities', { headers: { 'x-xj-space': 'school' },
+    data: { requestId: randomUUID(), goal: schoolGoal, question: '', references: [] } })
+  expect(created.status()).toBe(200)
+  const schoolId = (await created.json()).activityId
+  await page.getByRole('button', { name: '刷新任务', exact: true }).click()
+  await page.locator(`[data-activity-id="${schoolId}"]`).click()
   await expect(page.locator('#activity-title')).toHaveText(schoolGoal)
-  const schoolId = new URL(page.url()).searchParams.get('activity')!
   await newFile(page, '学校历史.txt'); await page.keyboard.insertText('学校空间的原文')
   await page.getByRole('button', { name: '返回活动列表', exact: true }).click()
-  await expect(page.getByRole('button', { name: schoolGoal, exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '个人空间', exact: true }).click()
-  await expect(page.getByRole('button', { name: personalGoal, exact: true })).toBeVisible()
+  await expect(page.locator(`[data-activity-id="${schoolId}"]`)).toContainText(schoolGoal)
+  await selectProductSpace(page, '个人空间')
+  await expect(page.locator(`[data-activity-id]`).filter({ hasText: personalGoal })).toBeVisible()
   await page.evaluate(() => history.go(-2))
   await expect(page.locator('#activity-title')).toHaveText(schoolGoal)
   await expect(page.getByRole('button', { name: '学校历史.txt', exact: true })).toBeVisible()
@@ -381,11 +400,11 @@ test('a late older course result cannot clear the newer unknown request', async 
   })
   try {
     await page.goto(endpoint + '/?space=school')
-    await page.getByRole('button', { name: /课程历史 A.*查看任务/ }).click()
+    await openCourseTasks(page, '课程历史 A')
     await page.getByRole('button', { name: /最近发布/ }).click()
     await page.getByRole('button', { name: '从这一版本开始活动', exact: true }).click(); await sentA
     await page.getByRole('button', { name: '全部课程', exact: true }).click()
-    await page.getByRole('button', { name: /课程历史 B.*查看任务/ }).click()
+    await openCourseTasks(page, '课程历史 B')
     await page.getByRole('button', { name: '放弃这次请求', exact: true }).click()
     await page.getByRole('button', { name: /最近发布/ }).click()
     await page.getByRole('button', { name: '从这一版本开始活动', exact: true }).click(); await sentB

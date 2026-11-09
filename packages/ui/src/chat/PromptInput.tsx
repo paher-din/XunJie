@@ -13,6 +13,8 @@ export interface PromptInputProps<Effort extends string = string> {
   onStop?: () => void
   autoFocus?: boolean
   attachments: readonly PromptAttachment[]
+  /** 未接入附件的宿主可以移除入口和拖放行为。 */
+  showAttachments?: boolean
   onAddFiles: (files: File[]) => void
   /** 退场动画完成后通知宿主移除；文件与 object URL 归宿主管理。 */
   onRemoveAttachment: (id: string) => void
@@ -26,6 +28,7 @@ export interface PromptInputProps<Effort extends string = string> {
   efforts: readonly Effort[]
   onEffortChange: (modelId: string, effort: Effort) => void
   effortDisabled?: boolean
+  showEffort?: boolean
   status?: { role: 'alert' | 'status'; text: string }
   /** 仅容纳上下文指示，不替代输入主体或模型菜单。容量事实由宿主提供。 */
   contextIndicator?: ReactNode
@@ -33,9 +36,9 @@ export interface PromptInputProps<Effort extends string = string> {
 
 /** 完整受控输入 UI；不读取模型 store，不上传、读取文件或写入持久状态。 */
 export function PromptInput<Effort extends string = string>({ value, onChange, onSend, canSend,
-  submitting = false, busy = false, onStop, autoFocus, attachments, onAddFiles, onRemoveAttachment,
+  submitting = false, busy = false, onStop, autoFocus, attachments, showAttachments = true, onAddFiles, onRemoveAttachment,
   accept, attachmentTitle, model, models, onModelChange, modelDisabled, effort, efforts,
-  onEffortChange, effortDisabled, status, contextIndicator }: PromptInputProps<Effort>) {
+  onEffortChange, effortDisabled, showEffort = true, status, contextIndicator }: PromptInputProps<Effort>) {
   const [leaving, setLeaving] = useState<Record<string, TileRect>>({})
   const [dragging, setDragging] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
@@ -193,6 +196,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
       }}
       onDragEnter={(e) => {
         e.preventDefault()
+        if (!showAttachments) return
         dragDepth.current += 1
         setDragging(true)
       }}
@@ -205,7 +209,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
         e.preventDefault()
         dragDepth.current = 0
         setDragging(false)
-        onAddFiles(Array.from(e.dataTransfer.files))
+        if (showAttachments) onAddFiles(Array.from(e.dataTransfer.files))
       }}
     >
       {/* 附件区常挂载：高度在 0 与内容实测高度之间过渡（CSS transition），
@@ -241,7 +245,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
         }}
       />
       <div className="prompt-toolbar">
-        <button
+        {showAttachments && <button
           type="button"
           className="prompt-attach"
           aria-label="添加附件"
@@ -250,7 +254,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
           onClick={() => fileRef.current?.click()}
         >
           <Icon name="paperclip" size={16} />
-        </button>
+        </button>}
         <div className="prompt-actions">
           {contextIndicator}
           {status && <span role={status.role}>{status.text}</span>}
@@ -306,7 +310,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
               </div>
             )}
           </div>
-          <div className="prompt-effort" ref={effortRef}>
+          {showEffort && <div className="prompt-effort" ref={effortRef}>
             <button
               type="button"
               className={effortOpen ? 'prompt-model-btn open' : 'prompt-model-btn'}
@@ -356,7 +360,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
                 ))}
               </div>
             )}
-          </div>
+          </div>}
           {busy ? (
             <button
               type="button"
@@ -381,7 +385,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
         multiple
         hidden
         onChange={(e) => {
-          if (e.target.files) onAddFiles(Array.from(e.target.files))
+          if (showAttachments && e.target.files) onAddFiles(Array.from(e.target.files))
           e.target.value = ''
         }}
       />

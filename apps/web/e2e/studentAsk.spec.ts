@@ -50,6 +50,15 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
   await api(request, 'models/selection', { requestId: randomUUID(), expectedVersion: selection.version,
     source: { kind: 'personal', connectionId, grantId } })
 }
+// Keep the former goal and first question together in the new single-message entry.
+async function startConversation(page: import('@playwright/test').Page, goal: string, question: string) {
+  const firstQuestion = `${goal}。\n${question}`
+  await page.getByRole('button', { name: 'Agent 对话', exact: true }).click()
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill(firstQuestion)
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.product-conversation-head h1')).toHaveText(firstQuestion)
+  return firstQuestion
+}
 test.beforeAll(async () => {
   if (evidence) await mkdir(evidence, { recursive: true })
   upstream = createServer(async (request, response) => {
@@ -86,10 +95,8 @@ test.afterAll(async () => {
 test('capture the formal conversation baseline before student response UI', async ({ page }) => {
   test.skip(process.env.XUNJIE_CAPTURE_STUDENT_ASK_BASELINE !== '1', 'Only capture before changing the product UI')
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('理解四态累加的先验预测')
-  await page.getByLabel('起始问题', { exact: true }).fill('先问我的预测，再结合我的回答解释。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('理解四态累加的先验预测')
+  await startConversation(page, '理解四态累加的先验预测', '先问我的预测，再结合我的回答解释。')
+  await expect(page.locator('.product-conversation-head h1')).toHaveText('理解四态累加的先验预测。\n先问我的预测，再结合我的回答解释。')
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-before-${process.platform}.png`) })
 })
@@ -103,12 +110,11 @@ test('the existing conversation presents a durable Agent question and explicitly
       source: '当前四态累加的先验预测', options: [{ id: 'one', label: '1' }, { id: 'three', label: '3' }], allowText: true, skippable: true } } })
     : reply(response, { text: '依据你选择的 1 继续：3 加 2 再对 4 取余，结果为 1。' })
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('理解四态累加的先验预测')
-  await page.getByLabel('起始问题', { exact: true }).fill('先问我的预测，再结合我的回答解释。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
+  await startConversation(page, '理解四态累加的先验预测', '先问我的预测，再结合我的回答解释。')
   const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
   await expect(card).toBeVisible({ timeout: 20000 })
   await expect(card).toContainText('你预计状态 3 再输入 2 会变成几？')
+  await page.getByText('发送记录', { exact: true }).click()
   await expect(page.getByRole('region', { name: '待发与接收记录', exact: true })).not.toContainText(/"runId"|"inputId"/)
   await card.getByRole('radio', { name: '1', exact: true }).check()
   if (evidence) await page.screenshot({ path: join(evidence, `student-ask-choice-${process.platform}.png`) })
@@ -135,9 +141,10 @@ test('IP opens the same unanswered question without stealing focus or treating d
   }
   try {
     await page.goto(endpoint)
-    await page.getByLabel('学习目标', { exact: true }).fill('保留焦点与新问题草稿')
-    await page.getByLabel('起始问题', { exact: true }).fill('请先问我准备怎样核对。')
-    await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
+    await startConversation(page, '保留焦点与新问题草稿', '请先问我准备怎样核对。')
+    // The IP reminder and collapsed conversation belong to the workspace surface.
+    await page.getByRole('button', { name: '进入工作区', exact: true }).click()
+    await expect(page.locator('#activity-title')).toHaveText('保留焦点与新问题草稿。\n请先问我准备怎样核对。')
     await expect.poll(() => payloads.length).toBe(before + 1)
     const activityId = new URL(page.url()).searchParams.get('activity')!
     const draft = page.getByLabel('你的问题', { exact: true })
@@ -190,9 +197,7 @@ test('Chinese text survives an unaccepted send and a lost acceptance reply is qu
     await route.continue()
   })
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('可靠保存中文回应')
-  await page.getByLabel('起始问题', { exact: true }).fill('请通过明确提问等我回答。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
+  await startConversation(page, '可靠保存中文回应', '请通过明确提问等我回答。')
   await expect(page).toHaveURL(/[?&]activity=[0-9a-f-]+/)
   const activityId = new URL(page.url()).searchParams.get('activity')!
   const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
@@ -234,9 +239,7 @@ test('explicit skip remains distinct and the response entry works with keyboard,
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 1000, height: 760 })
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('可以跳过的预测')
-  await page.getByLabel('起始问题', { exact: true }).fill('先问我是否要做预测，允许跳过。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
+  await startConversation(page, '可以跳过的预测', '先问我是否要做预测，允许跳过。')
   const card = page.getByRole('group', { name: 'Agent 的提问', exact: true })
   await expect(card).toBeVisible()
   const option = card.getByRole('radio', { name: '预计为 1', exact: true })

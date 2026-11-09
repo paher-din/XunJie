@@ -86,10 +86,10 @@ export function ConversationRow({ title, active, pinned, mode = 'normal', menuOp
   </div>
 }
 
-export function ArchivedConversationRow({ title, onRestore }: { title: string; onRestore: () => void }) {
+export function ArchivedConversationRow({ title, onRestore, disabled = false }: { title: string; onRestore: () => void; disabled?: boolean }) {
   return <div className="agent-conv-row archived">
     <span className="agent-conv" title={title}>{title}</span>
-    <button className="agent-conv-restore" onClick={onRestore} aria-label={`恢复「${title}」`}>恢复</button>
+    <button className="agent-conv-restore" onClick={onRestore} disabled={disabled} aria-label={`恢复「${title}」`}>恢复</button>
   </div>
 }
 

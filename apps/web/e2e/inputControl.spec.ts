@@ -53,7 +53,7 @@ test('personal interaction settings persist and the busy composer freezes the ch
     await f.configure()
     const saved = await f.api('agent-settings')
     if (saved.busyInputMode !== 'steering') await f.api('agent-settings', { requestId: crypto.randomUUID(), expectedVersion: saved.version, busyInputMode: 'steering' })
-    await page.goto(f.endpoint + '/?settings=models')
+    await page.goto(f.endpoint + '/?settings=agent')
     const preferences = page.getByRole('radiogroup', { name: '忙碌时发送的默认方式', exact: true })
     await expect(preferences.getByRole('radio', { name: /引导当前任务/ })).toHaveAttribute('aria-checked', 'true')
     await preferences.getByRole('radio', { name: /本轮结束后处理/ }).click()

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { createServer, type ServerResponse } from 'node:http'
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication, resolveCredential, restoreProductRecovery } from '@xunjie/product-runtime'
 import { aluPackage, aluCoursePackage } from '../../../components/alu-experiment/package.mjs'
+import { selectProductSpace } from './support/product-ui'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires the native PostgreSQL distribution')
@@ -48,11 +49,17 @@ test.afterAll(async () => {
   if (root) await rm(root, { recursive: true, force: true })
 })
 
-async function activity(page: Page) {
+async function activity(page: Page, firstQuestion = '探索自己的解释') {
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('探索自己的解释')
-  await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('探索自己的解释')
+  await selectProductSpace(page, '个人空间')
+  await page.getByRole('button', { name: 'Agent 对话', exact: true }).click()
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill(firstQuestion)
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.product-conversation-head h1')).toHaveText(firstQuestion)
+  await page.getByRole('button', { name: '进入工作区', exact: true }).click()
+  await expect(page.locator('#activity-title')).toHaveText(firstQuestion)
+  // Keep the conversation collapsed initially, as in the original activity setup.
+  await page.getByRole('button', { name: '收起对话', exact: true }).click()
   return new URL(page.url()).searchParams.get('activity')!
 }
 function payload(title = '比较学习卡') {
@@ -87,6 +94,36 @@ async function model(page: Page) {
   const selection = await api(page, 'models/selection')
   await api(page, 'models/selection', { requestId: randomUUID(), expectedVersion: selection.version, source: { kind: 'personal', connectionId, grantId } })
 }
+
+test('an Agent conversation retains card input after reload and opens the same revision in the workspace tool tab', async ({ page }) => {
+  const created = await api(page, 'activities', { requestId: randomUUID(), goal: '对话卡片进入工具区', question: '', references: [] })
+  const id = created.activityId
+  await page.goto(endpoint + '/?space=personal&view=agent&activity=' + id)
+  await expect(page.locator('.product-conversation-head h1')).toHaveText('对话卡片进入工具区')
+  const published = await publish(page, id, { payload: payload('从对话打开的比较卡') })
+  const card = page.locator(`.product-conversation .teaching-artifact-card[data-artifact-id="${published.artifactId}"]`)
+  await expect(card).toHaveAttribute('data-revision-id', published.revisionId)
+  const input = card.frameLocator('iframe').getByRole('textbox', { name: '我的解释', exact: true })
+  await expect(input).toBeEditable()
+  await input.fill('对话内填写并保留的中文解释')
+  await expect.poll(async () => (await api(page, 'workspaces/' + id)).files.some((file: { name: string; value: string }) =>
+    file.name === `components/artifact-${published.artifactId}.json`
+    && JSON.parse(file.value).content.answer === '对话内填写并保留的中文解释')).toBe(true)
+  await page.reload()
+  await expect(input).toHaveValue('对话内填写并保留的中文解释')
+  await input.fill('进入工具区前继续补充的解释')
+  await card.getByRole('button', { name: '在工具区打开', exact: true }).click()
+  await expect(page).toHaveURL(url => url.searchParams.get('activity') === id
+    && url.searchParams.get('artifact') === published.artifactId && !url.searchParams.has('view'))
+  await expect(page.locator('#activity-title')).toHaveText('对话卡片进入工具区')
+  await expect(page.getByRole('tab', { name: /^从对话打开的比较卡/ })).toHaveAttribute('aria-selected', 'true')
+  const center = page.locator(`.teaching-artifact-center[data-artifact-id="${published.artifactId}"]`)
+  await expect(center).toHaveAttribute('data-revision-id', published.revisionId)
+  const centerInput = center.frameLocator('iframe').getByRole('textbox', { name: '我的解释', exact: true })
+  await expect(centerInput).toBeEditable()
+  await expect(centerInput).toHaveValue('进入工具区前继续补充的解释')
+})
+
 test('a checked card activates in its activity and retains unshelved input after refresh and center close', async ({ page }) => {
   const id = await activity(page)
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
@@ -354,10 +391,8 @@ test('native streamed tool arguments produce one static themed preview and then 
     })
   }
   await model(page)
-  const id = await activity(page)
+  const id = await activity(page, '请生成一个能填写解释的比较页面')
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
-  await page.getByRole('textbox', { name: '你的问题', exact: true }).fill('请生成一个能填写解释的比较页面')
-  await page.getByRole('button', { name: '发送问题', exact: true }).click()
   try {
     const preview = page.locator('.teaching-artifact-preview')
     await expect(preview).toHaveCount(1, { timeout: 20000 })
@@ -389,10 +424,8 @@ test('automatic and ordinary input responses do not consume a Wait, while omitte
   modelHandler = (_body, response, index) => modelReply(response, index === 1 ? { name: 'student_ask', arguments: {
     question: '请用自己的话解释你的比较依据。', source: '学生正在比较两个解释', options: [], allowText: true, skippable: true } } : '回应与补充问题已保留。')
   await model(page)
-  const id = await activity(page)
+  const id = await activity(page, '先向我提出一个需要明确回答的问题')
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
-  await page.getByRole('textbox', { name: '你的问题', exact: true }).fill('先向我提出一个需要明确回答的问题')
-  await page.getByRole('button', { name: '发送问题', exact: true }).click()
   await expect.poll(async () => (await api(page, `agent/${id}/conversation`)).questions.filter((question: { state: string }) => question.state === 'pending').length).toBe(1)
   const question = (await api(page, `agent/${id}/conversation`)).questions[0]
   await page.getByRole('combobox', { name: '本次发送方式', exact: true }).selectOption('queue')

@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
-import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
+import { activitySchema, courseActivityResultSchema, conversationArchiveStateSchema,
+  conversationArchiveSetSchema, conversationArchiveImportSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
 import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema,
   componentRuntimeResourceContentSchema, componentPreparationReportsSchema,
@@ -627,6 +628,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       },
     });
     const identity = connection.grant!.identity;
+    if (route === 'conversation-archives') return learning.conversationArchives.read(identity);
+    if (route === 'conversation-archives/set') return learning.conversationArchives.set(identity, body);
+    if (route === 'conversation-archives/import') return learning.conversationArchives.import(identity, body);
     if (route === 'agent-settings') return body === undefined ? learning.agentPreferences.read(identity) : learning.agentPreferences.save(identity, body);
     if (route.startsWith('agent-settings/receipts/')) return learning.agentPreferences.receipt(identity, route.slice('agent-settings/receipts/'.length));
     if (route === 'activities') return body === undefined ? learning.list(identity) : learning.create(identity, body as never);
@@ -692,6 +696,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!new RegExp(`^(?:execution-environment|activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|artifacts/${id}(?:/(?:check|adopt|shelf|checks/${id}|candidates/${id}|receipts/${id}|${id}(?:/revisions/${id}(?:/resource)?)?))?` +
       `|agent-settings(?:/receipts/${id})?` +
+      `|conversation-archives(?:/(?:set|import))?` +
       `|skills(?:/(?:import|select|disable))?` +
       `|pdf/${id}(?:/read|/find|/course|/(?:documents|reads|originals)/${id})?` +
       `|releases/${id}/materials/${id}|releases/${id}/components/${key}(?:/algorithm|/dependencies/${key}|/preparation-reports?` +
@@ -704,12 +709,22 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
-    if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
+    if (expectedSubject !== undefined && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
+    if (route === 'conversation-archives' && body !== undefined
+      || (route === 'conversation-archives/set' || route === 'conversation-archives/import') && body === undefined) throw new StorageError('invalid');
+    if (route === 'conversation-archives/set') body = conversationArchiveSetSchema.parse(body);
+    if (route === 'conversation-archives/import') body = conversationArchiveImportSchema.parse(body);
     if (route.startsWith('models/')) return modelForward(connection, route, body);
-    if (connection.localBinding && /^(artifacts|pdf|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(artifacts|pdf|conversation-archives|agent-settings|activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
-      return localForward(connection, route, body);
+      const value = await localForward(connection, route, body);
+      if (route === 'conversation-archives' || route.startsWith('conversation-archives/')) {
+        const result = conversationArchiveStateSchema.safeParse(value);
+        if (!result.success) throw new StorageError('unavailable');
+        return result.data;
+      }
+      return value;
     }
     if (!connection.localBinding && local && JSON.stringify(connection.grant.target) === JSON.stringify(local.target)
       && !['connections/revoke', 'courses'].includes(route) && !route.startsWith('releases/')) throw new StorageError('unavailable');
@@ -743,6 +758,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (parts[5] === 'resource') return parsed(teachingArtifactResourceSchema, value);
       return parsed(teachingArtifactRevisionSchema, value);
     }
+    if (route === 'conversation-archives' || route.startsWith('conversation-archives/')) return parsed(conversationArchiveStateSchema, value);
     if (route.startsWith('pdf/')) {
       if (route.endsWith('/find')) return parsed(pdfSearchResultSchema, value);
       if (route.split('/').length === 2 && body === undefined) return parsed(z.array(pdfDocumentSchema), value);

@@ -9,31 +9,35 @@ const icons: IconName[] = ['virtual-board', 'code-square', 'structure']
 export interface CourseTilesProps {
   courses: string[]; toneOf: (id: string) => number; onOpen: (id: string, keyboard: boolean) => void
   titleOf?: (id: string) => string; summaryOf: (id: string) => string
+  actionOf?: (id: string) => string; idKind?: 'course' | 'activity'
 }
 
-export function CourseTiles({ courses, toneOf, onOpen, titleOf = id => id, summaryOf }: CourseTilesProps) {
+export function CourseTiles({ courses, toneOf, onOpen, titleOf = id => id, summaryOf, actionOf, idKind = 'course' }: CourseTilesProps) {
   const ref = useRef<HTMLDivElement>(null)
   const hover = useFluidHover(ref)
   return <div className="course-tiles" ref={ref} {...hover.handlers}>
     <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
     {courses.map((id, index) => <CourseTile key={id} id={id} title={titleOf(id)} summary={summaryOf(id)}
-      tone={toneOf(id)} index={index} register={hover.registerItem} onOpen={keyboard => onOpen(id, keyboard)} />)}
+      tone={toneOf(id)} index={index} register={hover.registerItem} onOpen={keyboard => onOpen(id, keyboard)}
+      action={actionOf?.(id)} idKind={idKind} />)}
   </div>
 }
 export interface CourseTileProps {
   id: string; title: string; summary: string; tone: number; index: number
+  action?: string; idKind?: 'course' | 'activity'
   register: (index: number, element: HTMLElement | null) => void; onOpen: (keyboard: boolean) => void
 }
 
-export function CourseTile({ id, title, summary, tone, index, register, onOpen }: CourseTileProps) {
+export function CourseTile({ id, title, summary, tone, index, register, onOpen, action = '查看任务', idKind = 'course' }: CourseTileProps) {
   const ref = useRef<HTMLButtonElement>(null)
   useRegisterFluidHoverItem(register, index, ref)
-  return <button ref={ref} className="course-tile" data-course-id={id} onClick={event => onOpen(event.detail === 0)}>
+  return <button ref={ref} className="course-tile" data-course-id={idKind === 'course' ? id : undefined}
+    data-activity-id={idKind === 'activity' ? id : undefined} onClick={event => onOpen(event.detail === 0)}>
     {/* DESIGN.md C1–C4: the geometric fallback is the confirmed cover. No illustration has been
         produced yet, so never request a non-existent /courses/*.png (which only caused a 404). */}
     <span className={`course-cover-ph course-${tone % 3}`} aria-hidden><Icon name={icons[tone % 3]} size={48} /></span>
     <span className="course-tile-body"><h3>{title}</h3><p>{summary}</p>
-      <span className="course-tile-foot"><span className="cb-primary">查看任务</span></span>
+      <span className="course-tile-foot"><span className="cb-primary">{action}</span></span>
     </span>
   </button>
 }

@@ -11,7 +11,12 @@ import { ActivityPage } from './ActivityPage'
 import { ProductShell } from '../components/ProductShell'
 import { PersonalModelSettings } from './PersonalModelSettings'
 import { useModelSelection } from './ModelSelection'
-import { CourseTiles, LearningTaskCard, LearningCardGrid } from '../components/home/LearningCards'
+import { ProductHome } from './ProductHome'
+import { ProductAgent } from './ProductAgent'
+import { ProductConversation } from './ProductConversation'
+import { ProductConversationHistory, useConversationArchive } from './ProductConversationHistory'
+import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
+import { ProductProfile } from './ProductProfile'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
@@ -89,9 +94,14 @@ function LearningView() {
   const contentReadEpoch = useRef(0)
   const actionEpoch = useRef(0)
   const approvedSearch = useRef<string | null>(null)
-  const [connectionsOpen, setConnectionsOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const selectedCourseId = new URLSearchParams(route.search).get('course')
-  const modelsOpen = new URLSearchParams(route.search).get('settings') === 'models'
+  const settingsPage = new URLSearchParams(route.search).get('settings')
+  const modelsOpen = settingsPage !== null
+  const agentOpen = new URLSearchParams(route.search).get('view') === 'agent'
+  const requestedArtifactId = new URLSearchParams(route.search).get('artifact')
   const [context, setContext] = useState<Context | null>(null)
   const api = (path: string, body?: unknown, space?: string, signal?: AbortSignal) =>
     requestLearning(path, body, space, signal, context?.clientNamespace)
@@ -113,7 +123,6 @@ function LearningView() {
   const [schoolEndpoint, setSchoolEndpoint] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
   const [pendingRequest, setPendingRequest] = useState<PendingActivityRequest | null>(null)
-  const askNext = useRef<boolean | null>(null)
   const [coursePending, setCoursePending] = useState<CreateCourseActivity | null>(null)
   const [notice, setNotice] = useState('')
   const [reload, setReload] = useState(0)
@@ -147,8 +156,10 @@ function LearningView() {
     ++epoch.current
     setBusy(false)
     const url = new URL(location.href)
+    if (!activity || activity.activityId !== url.searchParams.get('activity') || nextKey && nextKey !== key) url.searchParams.delete('artifact')
     if (activity) url.searchParams.set('activity', activity.activityId)
     else url.searchParams.delete('activity')
+    if (nextKey && nextKey !== key) url.searchParams.delete('course')
     if (nextKey) url.searchParams.set('space', nextKey)
     if (url.search !== location.search) {
       approvedSearch.current = url.search
@@ -174,11 +185,16 @@ function LearningView() {
   const identity = context?.identities.find(item => item.key === key)?.identity
   const modelSelection = useModelSelection(identity, key, context?.clientNamespace ?? '')
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
+  const conversationArchive = useConversationArchive(pendingKey ? pendingKey + ':conversation-archive' : '', key,
+    context?.clientNamespace ?? '', identity ? [identity.environmentId, identity.spaceId, identity.principalId].join('.') : '')
+  const draftKey = pendingKey ? pendingKey + ':draft' : ''
   const coursePendingKey = context && identity?.kind === 'school'
     ? `xj.course-activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
   const activityAuthorized = !!opened && !!identity && contextVerified
     && opened.identity.environmentId === identity.environmentId && opened.identity.spaceId === identity.spaceId
     && opened.identity.principalId === identity.principalId
+
+  useEffect(() => { setArchiveOpen(false); setHistoryQuery('') }, [pendingKey])
 
   useEffect(() => {
     const target = returnFocus.current
@@ -267,7 +283,8 @@ function LearningView() {
     setActivities(null); setOpened(null); setCatalog(null); setRelease(null); setCoursePending(null); rememberMaterial(null)
     setError(''); setPendingRequest(null); setBusy(false)
     if (formScope.current !== pendingKey) {
-      formScope.current = pendingKey; setGoal(''); setQuestion(''); setReference('')
+      formScope.current = pendingKey; setGoal(''); setReference('')
+      try { setQuestion(draftKey ? sessionStorage.getItem(draftKey) ?? '' : '') } catch { setQuestion('') }
     }
     if (coursePendingKey) {
       try {
@@ -359,7 +376,7 @@ function LearningView() {
     rememberActivity(null, next)
     ++epoch.current; setKey(next); setOpened(null); setActivities(null); setError(''); setNotice('')
     setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
-    setGoal(''); setQuestion(''); setReference(''); setBusy(false)
+    setGoal(''); setReference(''); setBusy(false)
   }
   async function action(operation: (generation: number) => Promise<void>) {
     const generation = epoch.current
@@ -371,18 +388,18 @@ function LearningView() {
     }
     finally { if (operationId === actionEpoch.current && generation === epoch.current) setBusy(false) }
   }
-  async function createActivity() {
+  async function createActivity(firstMessage?: string) {
     const generation = epoch.current
     const startedSearch = currentSearch.current
     const scopeKey = pendingKey
     const selected = key
     const protectedRequest = localStorage.getItem(scopeKey)
     const previous = protectedRequest ? parsePendingActivityRequest(JSON.parse(protectedRequest)) : pendingRequest
-    const input = previous?.input ?? createActivitySchema.parse({ requestId: crypto.randomUUID(), goal, question,
-      references: reference ? [{ kind: 'url', url: reference, label: reference }] : [] })
-    const firstQuestion = previous?.firstQuestion ?? (askNext.current === true && input.question.trim()
+    const input = previous?.input ?? createActivitySchema.parse({ requestId: crypto.randomUUID(),
+      goal: firstMessage === undefined ? goal : '', question: firstMessage ?? question,
+      references: firstMessage === undefined && reference ? [{ kind: 'url', url: reference, label: reference }] : [] })
+    const firstQuestion = previous?.firstQuestion ?? (firstMessage !== undefined && input.question.trim()
       ? { requestId: crypto.randomUUID(), question: input.question } : null)
-    askNext.current = null
     // Protect both operations before creation. A lost creation reply must not erase
     // the already authorized first question or manufacture another Agent identity.
     const pending: PendingActivityRequest = { version: 1, input, firstQuestion }
@@ -396,13 +413,25 @@ function LearningView() {
       const saved = localStorage.getItem(scopeKey)
       const current = saved ? parsePendingActivityRequest(JSON.parse(saved)) : null
       const completing = current?.input.requestId === input.requestId
+      const currentIdentity = currentView.current.context?.identities.find(item => item.key === selected)?.identity
+      const sameScope = currentView.current.key === selected && currentView.current.context?.clientNamespace === context?.clientNamespace
+        && currentIdentity?.environmentId === identity?.environmentId && currentIdentity?.spaceId === identity?.spaceId
+        && currentIdentity?.principalId === identity?.principalId
       // A deliberately discarded/replaced pending request no longer authorizes
       // a late response to recreate its automatic-send intent.
       if (completing && current.firstQuestion) rememberFirstQuestion(activity.activityId, current.firstQuestion)
       if (completing && localStorage.getItem(scopeKey) === saved) localStorage.removeItem(scopeKey)
+      if (completing) {
+        try { if (sessionStorage.getItem(scopeKey + ':draft') === input.question) sessionStorage.removeItem(scopeKey + ':draft') } catch { /* Optional draft cache. */ }
+        if (sameScope) {
+          setQuestion(currentQuestion => currentQuestion === input.question ? '' : currentQuestion)
+          setPendingRequest(currentRequest => currentRequest?.input.requestId === input.requestId ? null : currentRequest)
+          setActivities(previousActivities => [activity, ...(previousActivities ?? []).filter(item => item.activityId !== activity.activityId)])
+          setActivitiesFor(scopeKey)
+        }
+      }
       if (completing && generation === epoch.current && startedSearch === currentSearch.current) {
-        setPendingRequest(null); rememberActivity(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
-        setActivitiesFor(scopeKey)
+        rememberActivity(activity)
         setGoal(''); setQuestion(''); setReference('')
       }
     } catch (error) {
@@ -460,13 +489,15 @@ function LearningView() {
   }
   function discardPending() {
     if (pendingKey) localStorage.removeItem(pendingKey)
+    try { if (draftKey) sessionStorage.removeItem(draftKey) } catch { /* Optional draft cache. */ }
     setPendingRequest(null); setGoal(''); setQuestion(''); setReference(''); setError('')
   }
-  async function openActivity(activityId: string) {
+  async function openActivity(activityId: string, asConversation = false) {
     await protectActivity()
     returnFocus.current = { key, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     const params = new URLSearchParams(currentSearch.current)
     params.set('activity', activityId); params.set('space', key)
+    if (asConversation) params.set('view', 'agent')
     navigate({ pathname: route.pathname, search: params.toString() })
   }
   async function changeStatus(activity: LearningActivity) {
@@ -497,6 +528,12 @@ function LearningView() {
   }
 
   const schoolControls = context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
+      {context.profile !== 'school' && context.identities.some(item => item.identity.kind === 'school') && <div className="product-school-list">
+        {context.identities.filter(item => item.identity.kind === 'school').map(item => <div className="product-school-row" key={item.key}>
+          <span>{item.identity.name}</span>{item.key === key ? <span className="detail">当前空间</span> :
+            <button type="button" className="outline" disabled={busy} onClick={() => void switchSpace(item.key)}>切换到此学校</button>}
+        </div>)}
+      </div>}
       {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
@@ -546,13 +583,39 @@ function LearningView() {
   const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
   const visibleRelease = release?.courseId === selectedCourseId ? release : null
   const visibleActivities = activitiesFor === pendingKey ? activities : null
-  const goHome = () => void action(async () => { await protectActivity(); rememberActivity(null); rememberMaterial(null); setReload(value => value + 1) })
-  const now = new Date()
-  const greeting = now.getHours() < 12 ? '上午好' : now.getHours() < 18 ? '下午好' : '晚上好'
-  const openModels = () => void action(async () => {
-    await workspace.current?.leave()
-    const params = new URLSearchParams(currentSearch.current); params.set('settings', 'models')
-    navigate({ pathname: route.pathname, search: params.toString() })
+  const changePage = (page: 'home' | 'agent') => void action(async () => {
+    await protectActivity()
+    const params = new URLSearchParams(currentSearch.current)
+    params.delete('activity'); params.delete('course'); params.delete('settings'); params.delete('artifact')
+    if (page === 'agent') params.set('view', 'agent')
+    else params.delete('view')
+    const nextKey = page === 'agent' ? context?.identities.find(item => item.identity.kind === 'personal')?.key ?? key : key
+    if (nextKey) params.set('space', nextKey)
+    const search = params.toString()
+    approvedSearch.current = search ? '?' + search : ''
+    navigate({ pathname: route.pathname, search })
+    setOpened(null); setRelease(null); rememberMaterial(null)
+    if (nextKey !== key) setKey(nextKey)
+    else setReload(value => value + 1)
+  })
+  const goHome = () => changePage('home')
+  const openAgent = () => changePage('agent')
+  const openSettings = (tab: ProductSettingsTab = 'account') => void action(async () => {
+    await protectActivity()
+    const params = new URLSearchParams(currentSearch.current); params.set('settings', tab)
+    const search = params.toString()
+    approvedSearch.current = search ? '?' + search : ''
+    navigate({ pathname: route.pathname, search })
+  })
+  const openModels = () => openSettings('models')
+  const openWorkspace = (artifactId?: string) => action(async () => {
+    await protectActivity()
+    const params = new URLSearchParams(currentSearch.current); params.delete('view')
+    if (artifactId) params.set('artifact', artifactId)
+    else params.delete('artifact')
+    const search = params.toString()
+    approvedSearch.current = search ? '?' + search : ''
+    navigate({ pathname: route.pathname, search })
   })
   const closeModels = () => {
     const params = new URLSearchParams(currentSearch.current); params.delete('settings')
@@ -561,19 +624,49 @@ function LearningView() {
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
   }
-  return <ProductShell immersive={!!opened && !modelsOpen} identityName={identity?.name ?? '学习空间'}
-    spaces={context?.identities.map(item => ({ key: item.key, label: item.identity.kind === 'personal' ? '个人空间'
-      : context.identities.filter(other => other.identity.kind === 'school').length > 1 ? `学校空间 · ${item.identity.name}` : '学校空间' })) ?? []}
-    spaceKey={key} onSpaceChange={next => void switchSpace(next)} onHome={() => { closeModels(); goHome() }} onModels={openModels}
-    modelName={modelSelection.selection?.selected?.connection.name ?? '未选用模型'}
-    onConnections={() => { closeModels(); goHome(); setConnectionsOpen(true) }}>
-    {modelsOpen && context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
-      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
-      readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} /> : null}
+  const selectSettingsTab = (tab: ProductSettingsTab) => {
+    const params = new URLSearchParams(currentSearch.current); params.set('settings', tab)
+    const search = params.toString()
+    approvedSearch.current = search ? '?' + search : ''
+    navigate({ pathname: route.pathname, search })
+  }
+  const settingsTab: ProductSettingsTab = settingsPage === 'school' || settingsPage === 'models' || settingsPage === 'agent'
+    || settingsPage === 'portrait' || settingsPage === 'privacy' || settingsPage === 'about' ? settingsPage : 'account'
+  const conversationOpen = !!opened && agentOpen && !opened.course
+  const archivedCount = visibleActivities?.filter(activity => !activity.course && conversationArchive.ids.includes(activity.activityId)).length ?? 0
+  return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} identityName={identity?.name ?? '学习空间'}
+    active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
+    onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
+    archivedCount={archivedCount} archiveOpen={archiveOpen} onArchiveOpenChange={setArchiveOpen}
+    agentHistory={close => <ProductConversationHistory activities={visibleActivities} activeId={opened?.activityId}
+      archivedIds={conversationArchive.ids} archiveOpen={archiveOpen} query={historyQuery} error={conversationArchive.error}
+      ready={conversationArchive.ready} busy={conversationArchive.busy} onRetry={conversationArchive.retry}
+      onNew={() => { close(); setArchiveOpen(false); openAgent() }} onOpen={id => { close(); void action(() => openActivity(id, true)) }}
+      onArchiveOpenChange={setArchiveOpen} onQueryChange={setHistoryQuery}
+      onArchive={id => void action(async generation => {
+        const wasOpen = currentView.current.opened?.activityId === id
+        if (wasOpen) {
+          await protectActivity()
+          if (generation !== epoch.current || currentView.current.opened?.activityId !== id) return
+        }
+        const saved = await conversationArchive.setArchived(id, true)
+        if (saved && wasOpen && generation === epoch.current && currentView.current.opened?.activityId === id) rememberActivity(null)
+      })}
+      onRestore={id => { void conversationArchive.setArchived(id, false) }} />}>
+    {profileOpen && <ProductProfile identityName={identity?.name ?? '学习空间'} spaceKind={identity?.kind}
+      onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
+    {modelsOpen && <ProductSettings identityName={identity?.name ?? '学习空间'} onBack={closeModels}
+      initialTab={settingsTab} onTabChange={selectSettingsTab}
+      schoolControls={schoolControls} modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
+        identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
+        readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} /> : null} />}
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>
       <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly} viewActive={!modelsOpen}>
-      <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
+      {conversationOpen ? <ProductConversation activity={opened} spaceKey={key} namespace={context.clientNamespace}
+        authorized={activityAuthorized}
+        workspaceRef={workspace} onWorkspace={openWorkspace} onModels={openModels} error={error || notice ? feedback : null} /> : <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
+        requestedArtifactId={requestedArtifactId}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
@@ -588,31 +681,38 @@ function LearningView() {
             {opened.references.length > 0 && <><h3>学习材料</h3>{opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}</>}
           </>}
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
-        </>} />
-    </ActivityReferences></div> : !(modelsOpen && context && identity) ? <div className="content home-page product-home">
-      {context?.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
-      <div className="intro"><h1>{greeting}{identity ? `，${identity.name}` : '，从这里开始学习'}</h1><span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span></div>
+        </>} />}
+    </ActivityReferences></div> : modelsOpen ? null : !context || !identity ? <div className="content home-page product-home">
       {feedback}
       {!context && !error && <p role="status">正在连接学习空间…</p>}
       {!context && error && <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button>}
-      {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">连接这台客户端</h2>
-        <p>确认后，此客户端可以使用你在本学校的学习活动。你可以随时撤销连接。</p>
-        <button type="button" className="primary" disabled={busy || !context?.identities.some(item => item.key === 'school')}
-          onClick={() => void action(async () => { await api('connections/approve', { requestId: authorize }); setNotice('连接已批准，请返回原客户端完成连接。') })}>允许连接</button>
-      </section>}
-      {(connectionsOpen || context?.profile === 'school' && !identity || authorize) && schoolControls}
-      {context && identity && <>
-        {identity.kind === 'school' && <section className="course-region" aria-labelledby="course-title">
-          <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>{selectedCourse?.name ?? '我的课程'}<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : catalog ? `${catalog.length} 门` : ''}</small></h2>
-            {selectedCourse && <button type="button" className="outline" onClick={() => selectCourse(null)}>全部课程</button>}</div>
-          {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>
-            <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
-            <button type="button" className="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
+      {schoolControls}
+    </div> : agentOpen ? <ProductAgent question={question} onQuestion={value => {
+      setQuestion(value)
+      try { if (draftKey) sessionStorage.setItem(draftKey, value) } catch { /* Optional draft cache. */ }
+    }} onSend={() => void action(() => createActivity(question))} pending={pendingRequest}
+      onRetry={() => void action(() => createActivity())} onDiscard={discardPending}
+      onSettings={openModels} selection={modelSelection} busy={busy} readOnly={!!context.readOnly} error={error} />
+    : <>
+      {(context.readOnly || authorize || notice || error || pendingRequest || coursePending) && <div className="content product-home-alerts">
+        {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
+        {feedback}
+        {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">连接这台客户端</h2>
+          <p>确认后，此客户端可以使用你在本学校的学习活动。你可以随时撤销连接。</p>
+          <button type="button" className="primary" disabled={busy || !context.identities.some(item => item.key === 'school')}
+            onClick={() => void action(async () => { await api('connections/approve', { requestId: authorize }); setNotice('连接已批准，请返回原客户端完成连接。') })}>允许连接</button>
+        </section>}
+        {pendingRequest && <p role="status">上次发起的学习尚未确认。 <button type="button" className="outline" onClick={openAgent}>查看原请求</button></p>}
+        {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>
+          <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
+          <button type="button" className="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
+      </div>}
+      {selectedCourseId && identity.kind === 'school' ? <div className="content home-page product-home">
+        <section className="course-region" aria-labelledby="course-title">
+          <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>{selectedCourse?.name ?? '我的课程'}<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : ''}</small></h2>
+            <button type="button" className="outline" onClick={() => selectCourse(null)}>全部课程</button></div>
           {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : '正在读取课程…'}</p>
-            : catalog.length === 0 ? <div className="empty">尚未获得课程资格。请联系课程管理员授予后再刷新。</div>
-            : !selectedCourse ? <CourseTiles courses={catalog.map(course => course.courseId)} toneOf={id => catalog.findIndex(course => course.courseId === id)}
-              titleOf={id => catalog.find(course => course.courseId === id)!.name}
-              summaryOf={id => `${catalog.find(course => course.courseId === id)!.tasks.length} 个任务`} onOpen={id => selectCourse(id)} />
+            : !selectedCourse ? <p className="empty">无法找到这门课程。</p>
             : <div className="task-card-grid">{selectedCourse.tasks.map(task => <article key={task.taskId} className="product-course-task">
               <h3>{task.title}</h3>{task.summary && <p>{task.summary}</p>}
               <div className="product-release-list">{task.releases.map((item, index) => <button type="button" className="outline" key={item.releaseId} disabled={busy}
@@ -621,42 +721,16 @@ function LearningView() {
           {visibleRelease && <article className="product-release" aria-labelledby="release-title"><h3 id="release-title">{visibleRelease.taskTitle}</h3>
             <CourseSections content={visibleRelease} level={4} busy={busy} onMaterial={item => void action(() => readMaterial(visibleRelease.releaseId, item))} />
             {material && <p role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
-            <button type="button" className="primary" disabled={busy || !!coursePending || context?.readOnly} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
+            <button type="button" className="primary" disabled={busy || !!coursePending || context.readOnly} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
           </article>}
-        </section>}
-        <section aria-labelledby="activities-title">
-          <div className="sectionhead"><h2 id="activities-title">我的学习活动</h2><button type="button" className="outline" disabled={busy}
-            onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>刷新列表</button></div>
-          {visibleActivities === null ? <p>{error ? '列表尚未读取成功。' : '正在读取活动…'}</p>
-            : visibleActivities.length === 0 ? <p className="empty">从一个目标、问题或资料开始。</p>
-            : <LearningCardGrid>{register => visibleActivities.map((activity, index) => <LearningTaskCard key={activity.activityId} register={register} index={index}
-              activityId={activity.activityId}
-              accessibleLabel={activity.course?.taskTitle || activity.goal || activity.question || '资料学习'}
-              title={activity.course?.taskTitle || activity.goal || activity.question || '资料学习'}
-              goal={activity.course?.objectives[0] || activity.question || undefined}
-              badge={<span className={'status' + (activity.status === 'closed' ? ' pending' : '')}>{activity.status === 'closed' ? '已关闭' : '进行中'}</span>}
-              footer={activity.course?.courseName ?? '自主学习'} action={activity.status === 'closed' ? '重新开始' : '继续学习'}
-              onOpen={() => void action(() => openActivity(activity.activityId))} />)}</LearningCardGrid>}
         </section>
-        <section aria-labelledby="new-activity-title" className="product-new-activity"><details open={identity.kind === 'personal' || !!pendingRequest}>
-          <summary><h2 id="new-activity-title">开始一次自主学习</h2></summary>
-          <form onSubmit={event => { event.preventDefault(); void action(createActivity) }}>
-            <label>学习目标<input value={goal} maxLength={4000} disabled={!!pendingRequest} onChange={event => setGoal(event.target.value)} placeholder="你想完成什么？" /></label>
-            <label>起始问题<textarea value={question} maxLength={10000} disabled={!!pendingRequest} onChange={event => setQuestion(event.target.value)} rows={2} /></label>
-            <label>资料链接（可选）<input type="url" value={reference} disabled={!!pendingRequest} onChange={event => setReference(event.target.value)} placeholder="https://" /></label>
-            {pendingRequest && <p className="detail">上次建立活动的结果尚未核对，将先查询原请求。</p>}
-            {pendingRequest && <button type="button" className="outline" disabled={busy} onClick={discardPending}>放弃这次请求并重新填写</button>}
-            <div className="product-create-actions">
-              <button className="primary" type="submit" disabled={busy || context?.readOnly || !pendingRequest && !goal.trim() && !question.trim() && !reference}
-                onClick={() => { askNext.current = false }}>
-                {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
-              <button className="outline" type="submit" disabled={busy || context?.readOnly || !question.trim()}
-                onClick={() => { askNext.current = true }}>建立并开始对话</button>
-            </div>
-            <p className="detail">「建立并开始对话」会把你填写的起始问题发送给 Agent；「建立学习活动」只保存目标与问题，稍后可在活动中发送。</p>
-          </form>
-        </details></section>
-      </>}
-    </div> : null}
+      </div> : <ProductHome identityName={identity.name} activities={visibleActivities} courses={catalog} spaceKind={identity.kind} dashboardKey={pendingKey + ':dashboard'}
+        availableSpaces={context.identities.map(item => ({ key: item.key, kind: item.identity.kind,
+          label: item.identity.kind === 'personal' ? '个人空间' : item.identity.name }))}
+        spaceKey={key} onSpaceChange={next => void switchSpace(next)} busy={busy} error={error}
+        onOpenActivity={id => void action(() => openActivity(id, identity.kind === 'personal'))} onOpenCourse={selectCourse}
+        onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
+        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />}
+    </>}
   </ProductShell>
 }

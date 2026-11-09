@@ -86,28 +86,23 @@ export function SidebarToggle({ collapsed, buttonRef, onToggle }: {
     aria-expanded={!collapsed} title="切换边栏"><Icon name="panel-left-close" size={18} /></button>
 }
 
-export interface SidebarRailProps {
+export interface SidebarRailNavigationProps {
   onHome: boolean
   onAgent: boolean
   panel: 'history' | 'search' | null
   archivedCount: number
   archiveOpen: boolean
-  account: ShellAccount
-  accountOpen: boolean
-  railVisible: boolean
-  accountRef?: RefObject<HTMLDivElement | null>
-  accountActions: AccountActions
+  showEmptyArchive?: boolean
   openHome: () => void
   openAgent: (anchor: HTMLButtonElement) => void
   newConversation: () => void
   toggleArchive: (anchor: HTMLButtonElement) => void
   toggleSearch: (anchor: HTMLButtonElement) => void
-  toggleAccount: () => void
 }
 
-export function SidebarRail({ onHome, onAgent, panel, archivedCount, archiveOpen, account, accountOpen, railVisible,
-  accountRef, accountActions, openHome, openAgent, newConversation, toggleArchive, toggleSearch, toggleAccount }: SidebarRailProps) {
-  const avatar = <AccountAvatar name={account.name} avatar={account.avatar} />
+export function SidebarRailNavigation({ onHome, onAgent, panel, archivedCount, archiveOpen, showEmptyArchive = false,
+  openHome, openAgent, newConversation, toggleArchive, toggleSearch }: SidebarRailNavigationProps) {
+  const showArchive = onAgent && (showEmptyArchive || archivedCount > 0)
   return <>
     <button className={'railbtn r-home' + (onHome ? ' active' : '')} onClick={openHome} title="首页" aria-label="首页">
       <Icon name="home-2" size={20} variant={onHome ? 'bold' : 'linear'} />
@@ -118,14 +113,31 @@ export function SidebarRail({ onHome, onAgent, panel, archivedCount, archiveOpen
     </button>
     <button className={'railbtn r-new' + (onAgent ? '' : ' off')} onClick={newConversation} title="新对话" aria-label="新对话"
       aria-hidden={onAgent ? undefined : true} tabIndex={onAgent ? undefined : -1}><Icon name="pen-new-square" size={14} /></button>
-    <button className={'railbtn r-archive' + (onAgent && archivedCount > 0 ? '' : ' off') + (archiveOpen && panel === 'history' ? ' active' : '')}
+    <button className={'railbtn r-archive' + (showArchive ? '' : ' off') + (archiveOpen && panel === 'history' ? ' active' : '')}
       onClick={event => toggleArchive(event.currentTarget)} title="已归档" aria-label="已归档"
-      aria-expanded={onAgent && archiveOpen && panel === 'history'} aria-hidden={onAgent && archivedCount > 0 ? undefined : true}
-      tabIndex={onAgent && archivedCount > 0 ? undefined : -1}><Icon name="archive" size={14} /></button>
+      aria-expanded={onAgent && archiveOpen && panel === 'history'} aria-hidden={showArchive ? undefined : true}
+      tabIndex={showArchive ? undefined : -1}><Icon name="archive" size={14} /></button>
     <button className={'railbtn r-search' + (onAgent ? '' : ' off')} onClick={event => toggleSearch(event.currentTarget)}
       title="搜索对话" aria-label="搜索对话" aria-hidden={onAgent ? undefined : true} tabIndex={onAgent ? undefined : -1}>
       <Icon name="minimalistic-magnifier" size={14} />
     </button>
+  </>
+}
+
+export interface SidebarRailProps extends SidebarRailNavigationProps {
+  account: ShellAccount
+  accountOpen: boolean
+  railVisible: boolean
+  accountRef?: RefObject<HTMLDivElement | null>
+  accountActions: AccountActions
+  toggleAccount: () => void
+}
+
+export function SidebarRail({ account, accountOpen, railVisible, accountRef, accountActions, toggleAccount,
+  ...navigation }: SidebarRailProps) {
+  const avatar = <AccountAvatar name={account.name} avatar={account.avatar} />
+  return <>
+    <SidebarRailNavigation {...navigation} />
     <div className="rail-account" ref={accountRef}>
       <button className={'railbtn r-account' + (accountOpen ? ' open' : '')} onClick={toggleAccount}
         title="账户" aria-label="账户菜单" aria-haspopup="menu" aria-expanded={accountOpen && railVisible}>{avatar}</button>

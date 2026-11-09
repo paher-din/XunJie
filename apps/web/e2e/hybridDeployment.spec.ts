@@ -90,8 +90,11 @@ for (const mode of ['personal', 'school-shared', 'hybrid-local-owner'] as const)
     } else await page.goto(endpoint + (mode === 'hybrid-local-owner' ? '/?space=' + encodeURIComponent(hybridKey) : ''))
     const goal = mode + '-' + randomUUID()
     if (mode === 'personal') {
-      await page.getByLabel('学习目标', { exact: true }).fill(goal)
-      await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
+      await page.getByRole('button', { name: 'Agent 对话', exact: true }).click()
+      await page.getByLabel('向 Agent 提问', { exact: true }).fill(goal)
+      await page.getByRole('button', { name: '发送消息', exact: true }).click()
+      await expect(page.locator('.product-conversation h1')).toHaveText(goal)
+      await page.getByRole('button', { name: '进入工作区', exact: true }).click()
     } else {
       await openCourseTasks(page, '部署验收课程')
       await page.getByRole('button', { name: /最近发布/ }).click()

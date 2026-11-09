@@ -23,6 +23,11 @@ import type { BackupPolicy, ReceiverExecutionBoundary, RecoveryOwner } from './r
 
 export interface ProductHostOptions {
   root: string;
+  /** Optional frontend for local development; API and runtime routes stay on this host. */
+  frontend?: {
+    handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
+    close(): Promise<void>;
+  };
   participants?: MaintenanceParticipant[];
   recoveryOwners?: readonly RecoveryOwner[];
   /** Compose real owner modules after native PostgreSQL is available. */
@@ -272,6 +277,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       if (await target.handle(request, response)) return;
     }
     if (!['GET', 'HEAD'].includes(request.method ?? '') || pathname.startsWith('/runtime/')) { send(response, 404, { error: 'not_found' }); return; }
+    if (!pathname.startsWith('/api/') && options.frontend && await options.frontend.handle(request, response)) return;
     const relative = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).slice(1);
     const webRoot = await realpath(config.resources.webRoot);
     const file = await realpath(resolve(webRoot, relative));
@@ -461,7 +467,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     await application?.lifecycle?.close();
     for (const owner of suppliedOwners) await owner.close?.();
     await atomicJson(join(root, 'status.json'), { state: 'stopped', environment, dependencies: [] } satisfies RuntimeStatus);
-    await Promise.all([close(publicServer, publicSockets), close(controlServer)]);
+    await Promise.all([close(publicServer, publicSockets), close(controlServer), options.frontend?.close()]);
     await rm(join(root, 'instance.json'), { force: true });
     await rm(join(root, 'launch.json'), { force: true });
     await releaseOnce();
@@ -524,7 +530,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     return { status, stop, maintenance, recovery, environment, endpoint };
   } catch (error) {
     completeStartup();
-    await Promise.allSettled([application?.lifecycle?.close(), close(publicServer, publicSockets), close(controlServer)]);
+    await Promise.allSettled([application?.lifecycle?.close(), close(publicServer, publicSockets), close(controlServer), options.frontend?.close()]);
     await releaseOnce();
     await atomicJson(join(root, 'status.json'), { state: 'failed', environment, dependencies: [], reason: (error as Error).message });
     throw error;

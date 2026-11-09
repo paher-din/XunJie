@@ -60,11 +60,12 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error }: {
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error, requestedArtifactId }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
   onModels?: () => void
+  requestedArtifactId?: string | null
   details: (openCoursePdf: (materialId: string) => void) => ReactNode; account: ReactNode; error: ReactNode
 }) {
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
@@ -121,6 +122,19 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     await workspace.leave(); await draft.leave(); await actions.leave()
   } }), [workspace, draft, actions, scope])
   const [toolError, setToolError] = useState('')
+  const openedRequest = useRef<string | null>(null)
+  const requestedArtifactReady = artifacts.entries.some(entry => entry.artifact.artifactId === requestedArtifactId && entry.revision)
+  useEffect(() => {
+    if (!layoutReady || !requestedArtifactId || !requestedArtifactReady || openedRequest.current === requestedArtifactId) return
+    let current = true
+    void workspace.leave().then(() => {
+      if (!current) return
+      openedRequest.current = requestedArtifactId
+      artifacts.setOpened(requestedArtifactId)
+      center.current?.openGenTab(requestedArtifactId)
+    }).catch(() => { if (current) setToolError('当前输入尚未保护，请保留页面后继续。') })
+    return () => { current = false }
+  }, [layoutReady, requestedArtifactId, requestedArtifactReady, workspace, artifacts.setOpened])
   const locateTool: TeachingToolLocator = async record => {
     if (record.name === 'search_materials') {
       const search = record.result?.search as { matches?: { source?: Record<string, unknown>;

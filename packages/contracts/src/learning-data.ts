@@ -32,3 +32,11 @@ export const courseActivityResultSchema = z.object({ requestId: z.uuid(),
   state: z.enum(['pending', 'accepted', 'rejected']), activity: activitySchema.nullable(),
   error: z.string().nullable() }).strict();
 export type CourseActivityResult = z.infer<typeof courseActivityResultSchema>;
+
+/** Conversation visibility is independent of the activity's open/closed lifecycle. */
+export const conversationArchiveStateSchema = z.object({ archivedIds: z.array(z.uuid()) }).strict();
+export type ConversationArchiveState = z.infer<typeof conversationArchiveStateSchema>;
+export const conversationArchiveSetSchema = z.object({ requestId: z.uuid(), activityId: z.uuid(), archived: z.boolean() }).strict();
+export type ConversationArchiveSet = z.infer<typeof conversationArchiveSetSchema>;
+export const conversationArchiveImportSchema = z.object({ requestId: z.uuid(), activityIds: z.array(z.uuid()) }).strict();
+export type ConversationArchiveImport = z.infer<typeof conversationArchiveImportSchema>;

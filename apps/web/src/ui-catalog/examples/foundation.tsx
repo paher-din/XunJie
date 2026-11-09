@@ -446,6 +446,9 @@ export const foundationEntries: CatalogEntry[] = [
   { id: 'sidebar-rail', name: 'SidebarRail', description: '收起侧栏后的导航轨道与账户入口。', importPath: foundation, source: 'packages/ui/src/foundation/ShellParts.tsx', exampleSource: source, props: ['onHome, onAgent, panel, archivedCount, archiveOpen', 'account, accountOpen, railVisible, accountRef?', '导航、搜索、归档和账户回调'], dependencies: ['通过 ShellFrame 的 rail 插槽放置；示例面板与操作均为本地状态'], states: [
     { id: 'home', name: '首页', component: RailHome }, { id: 'agent', name: '对话', component: RailAgent }, { id: 'account', name: '账户菜单', component: RailAccount },
   ] },
+  { id: 'sidebar-rail-navigation', name: 'SidebarRailNavigation', description: '收起侧栏后的导航与对话快捷入口。', importPath: foundation, source: 'packages/ui/src/foundation/ShellParts.tsx', exampleSource: source, props: ['onHome, onAgent, panel, archivedCount, archiveOpen', 'showEmptyArchive?', '导航、搜索和归档回调'], dependencies: ['与 SidebarRail 使用相同导航；账户入口由调用方提供'], states: [
+    { id: 'home', name: '首页', component: RailHome }, { id: 'agent', name: '对话', component: RailAgent },
+  ] },
   { id: 'rail-history-panel', name: 'RailHistoryPanel', description: '收起侧栏时的历史浮层与遮罩。', importPath: foundation, source: 'packages/ui/src/foundation/ShellParts.tsx', exampleSource: source, props: ['visible: boolean', 'onClose, children, panelRef?'], dependencies: ['内容由调用方提供；固定定位与遮罩在独立预览中呈现'], states: [
     { id: 'open', name: '展开', component: PanelOpen }, { id: 'closed', name: '收起', component: PanelClosed },
   ] },

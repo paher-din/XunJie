@@ -1,5 +1,5 @@
 import { evidenceDirectory } from './evidence'
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir, release } from 'node:os'
@@ -10,6 +10,7 @@ import { promisify } from 'node:util'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime'
+import { selectProductSpace } from './support/product-ui'
 
 test.skip(!process.env.XUNJIE_PRODUCT_POSTGRES_BIN, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
@@ -60,11 +61,18 @@ test.afterAll(async ({}, info) => {
   if (output) await writeFile(join(output, 'selection-chrome-' + process.platform + '.json'), JSON.stringify({ platform: process.platform, os: release(),
     browser: 'installed Chrome', browserVersion, headless: info.project.use.headless !== false, measuredAt: new Date().toISOString(), cases }, null, 2))
 })
+async function openPersonalSpaceSettings(page: Page) {
+  await selectProductSpace(page, '个人空间')
+  const settings = page.getByRole('button', { name: '设置与帮助', exact: true })
+  if (!await settings.isVisible()) await page.getByRole('button', { name: '切换边栏' }).click()
+  await settings.click()
+  await page.getByRole('button', { name: '模型', exact: true }).click()
+}
 test('school website explicitly selects and revokes a personal model and preserves learning without a model', async ({ page }) => {
   const [name, value] = schoolCookie.split('=')
   await page.context().addCookies([{ name, value, url: schoolEndpoint }])
   await page.goto(schoolEndpoint + '/?settings=models')
-  await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '个人模型配置', exact: true })).toBeVisible()
   if (process.env.XUNJIE_CAPTURE_BEFORE === '1' && output) await page.screenshot({ path: join(output, 'before-school-model-selection.png'), fullPage: true })
   const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
   await expect(choices).toBeVisible()
@@ -80,9 +88,12 @@ test('school website explicitly selects and revokes a personal model and preserv
   await choices.getByRole('button', { name: '撤销此空间授权', exact: true }).click()
   await expect(choices.getByText('原授权已撤销，请重新选用模型。', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
-  await page.locator('summary').filter({ hasText: '开始一次自主学习' }).click()
-  await page.getByLabel('学习目标', { exact: true }).fill('未选模型也能编辑活动')
-  await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
+  const created = await page.request.post(schoolEndpoint + '/api/learning/activities', { headers: { 'x-xj-space': 'school' },
+    data: { requestId: randomUUID(), goal: '未选模型也能编辑活动', question: '', references: [] } })
+  expect(created.status()).toBe(200)
+  const activity = await created.json()
+  await page.getByRole('button', { name: '刷新任务', exact: true }).click()
+  await page.locator(`[data-activity-id="${activity.activityId}"]`).click()
   await expect(page.locator('#activity-title')).toHaveText('未选模型也能编辑活动')
 })
 test('installed client exposes the device connection to the actual school subject and keeps space choices separate', async ({ page }) => {
@@ -99,7 +110,7 @@ test('installed client exposes the device connection to the actual school subjec
     && animation.effect?.getComputedTiming().iterations !== Infinity).length)).toBe(0)
   if (output) await page.screenshot({ path: join(output, 'after-device-model-selection-dark-narrow.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await page.getByRole('button', { name: '个人空间', exact: true }).click()
+  await openPersonalSpaceSettings(page)
   await expect(choices.getByText('未选用模型', { exact: true })).toBeVisible()
   await expect(choices.getByText('学校默认服务', { exact: true })).toHaveCount(0)
 })
@@ -116,7 +127,7 @@ test('a late school selection receipt cannot replace a new personal-space view o
   })
   try {
     await schoolCard.getByRole('button', { name: '选用', exact: true }).click(); await reached
-    await page.getByRole('button', { name: '个人空间', exact: true }).click()
+    await openPersonalSpaceSettings(page)
     await expect(choices.getByText('未选用模型', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: '添加供应商', exact: true }).click()
     const name = page.getByRole('dialog').getByRole('textbox', { name: '连接名称', exact: true })

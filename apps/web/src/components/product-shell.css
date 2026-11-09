@@ -1,72 +1,12 @@
-/* Product-only content; geometry, surfaces, motion and themes come from app.css. */
-.product-shell .product-spaces {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 8px 0;
+.product-shell .rail .theme-wrap {
+  position: absolute;
+  left: 15px;
+  bottom: 63px;
 }
 
-.product-shell .product-space-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.product-shell .navicon,
-.product-shell .product-identity > .ui-icon {
-  flex: none;
-}
-
-.product-shell .product-identity {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  padding: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.product-shell .rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 63px 0 14px 2px;
-}
-
-.product-shell .product-rail-nav {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  overflow-y: auto;
-}
-
-.product-shell .railbtn {
+.product-shell .rail .theme-wrap .railbtn {
   position: static;
-  flex: none;
   padding: 0;
-  font-size: 13px;
-}
-
-.product-shell .product-rail-bottom {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding-top: 6px;
-}
-
-.product-shell .product-rail-identity {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  color: var(--ink);
 }
 
 .product-shell .rail .theme-menu {

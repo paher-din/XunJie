@@ -1,0 +1,189 @@
+.product-settings {
+  min-height: 0;
+  min-width: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.product-settings .product-settings-back {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.product-settings-pane[hidden] {
+  display: none;
+}
+
+.product-settings-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.product-settings-identity > .avatar {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+.product-settings-identity dl {
+  min-width: 0;
+  margin: 0;
+}
+
+.product-settings-identity dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.product-settings-identity dd {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.product-settings-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.product-settings-school form {
+  display: grid;
+  gap: 16px;
+  max-width: 640px;
+  margin-top: 20px;
+}
+
+.product-settings-school label {
+  display: grid;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.product-settings-school input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.product-settings-school form > button {
+  justify-self: start;
+}
+
+.product-settings-school summary {
+  cursor: pointer;
+}
+
+.product-school-list { margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; }
+.product-school-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.product-school-row + .product-school-row { border-top: 1px solid var(--line); }
+
+.product-settings-school a {
+  color: var(--accent-deep);
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+
+/* PersonalModelSettings remains intact; the settings shell owns page chrome. */
+.product-settings-model > .product-model-settings {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.product-settings-model > .product-model-settings > .sectionhead {
+  display: none;
+}
+
+.product-settings-model > .product-model-settings > .st-body-in {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.product-settings-model[data-settings-section='agent'] .product-personal-model,
+.product-settings-model[data-settings-section='models'] .product-personal-agent { display: none; }
+
+.product-settings :focus-visible,
+.product-profile :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.product-profile-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.product-profile .pc-scroll {
+  padding-top: 24px;
+  padding-bottom: 32px;
+}
+
+@media (max-width: 1180px) {
+  .product-settings {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+  }
+
+  .product-settings .st-nav {
+    padding: 20px 16px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+
+  .product-settings .st-title {
+    margin-left: 10px;
+  }
+
+  .product-settings .st-nav nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .product-settings .product-settings-back {
+    margin-top: 12px;
+    align-self: flex-start;
+  }
+
+  .product-settings .st-body {
+    overflow-y: auto;
+  }
+
+  .product-settings .st-body-in {
+    padding: 24px 16px 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-profile {
+    animation: none;
+  }
+
+  .product-settings .st-nav-item,
+  .product-profile .pc-x {
+    transition: none;
+  }
+}

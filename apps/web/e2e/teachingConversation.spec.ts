@@ -76,17 +76,28 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
     data: { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId, grantId } } })).status()).toBe(200)
 }
 
+async function prepareFirstQuestion(page: import('@playwright/test').Page, goal: string, question: string) {
+  const firstQuestion = `${goal}。\n${question}`
+  await page.getByRole('button', { name: 'Agent 对话', exact: true }).click()
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill(firstQuestion)
+  return firstQuestion
+}
+
+async function sendFirstQuestion(page: import('@playwright/test').Page, firstQuestion: string) {
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.product-conversation-head h1')).toHaveText(firstQuestion)
+}
+
 test('a missing model keeps the activity and first question and offers the real settings entry', async ({ page }) => {
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('缺模型时保留活动')
-  await page.getByLabel('起始问题', { exact: true }).fill('还没有模型时，这个问题应当保留。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('缺模型时保留活动')
+  const firstQuestion = await prepareFirstQuestion(page, '缺模型时保留活动', '还没有模型时，这个问题应当保留。')
+  await sendFirstQuestion(page, firstQuestion)
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
-  await expect(page.getByRole('button', { name: '打开模型设置', exact: true })).toBeVisible()
-  await expect(page.locator('.teaching-message.student').filter({ hasText: '还没有模型时，这个问题应当保留。' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '设置与帮助', exact: true })).toBeVisible()
+  await expect(page.locator('.teaching-message.student > .preserve-lines')).toHaveText(firstQuestion)
   if (output) await page.screenshot({ path: join(output, `teaching-missing-model-${process.platform}.png`), fullPage: false })
-  await page.getByRole('button', { name: '打开模型设置', exact: true }).click()
+  await page.getByRole('button', { name: '设置与帮助', exact: true }).click()
+  await page.getByRole('button', { name: '模型', exact: true }).click()
   await expect(page.getByRole('region', { name: '当前空间模型' })).toBeVisible({ timeout: 20000 })
   await page.getByRole('button', { name: '添加供应商', exact: true }).click()
   await expect(page.getByLabel('上下文窗口', { exact: true })).toBeVisible()
@@ -99,15 +110,17 @@ test('the formal home and activity conversation persist a first question, a foll
   test.setTimeout(120_000)
   await configureModel(request)
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('界面持久学习对话')
-  await page.getByLabel('起始问题', { exact: true }).fill('请解释界面中的第一个学习问题。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).scrollIntoViewIfNeeded()
+  const firstQuestion = await prepareFirstQuestion(page, '界面持久学习对话', '请解释界面中的第一个学习问题。')
+  await page.getByRole('button', { name: '发送消息', exact: true }).scrollIntoViewIfNeeded()
   if (output) await page.screenshot({ path: join(output, `teaching-home-${process.platform}.png`), fullPage: false })
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('界面持久学习对话')
+  await sendFirstQuestion(page, firstQuestion)
   await expect(page.getByRole('region', { name: '与 Agent 的对话' })).toBeVisible()
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 20000 })
-  await expect(page.locator('.teaching-message.student').filter({ hasText: '请解释界面中的第一个学习问题。' })).toBeVisible()
+  await expect(page.locator('.teaching-message.student > .preserve-lines')).toHaveText(firstQuestion)
+  // Collapse/reopen and IME behavior remain workspace checks after the real conversation entry.
+  await page.getByRole('button', { name: '进入工作区', exact: true }).click()
+  await expect(page.locator('#activity-title')).toHaveText(firstQuestion)
+  await expect(page.getByRole('region', { name: '与 Agent 的对话' })).toBeVisible()
   const composer = page.getByLabel('你的问题', { exact: true })
   await page.getByRole('button', { name: '收起对话', exact: true }).click()
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
@@ -146,7 +159,7 @@ test('the formal home and activity conversation persist a first question, a foll
   await switchedCard.getByRole('button', { name: /选用$/ }).click()
   await expect(page.getByText('已为当前学习活动切换到「fixture-ui-switched」。已有消息和结果保留原出处。', { exact: true })).toBeVisible({ timeout: 20000 })
   await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('界面持久学习对话')
+  await expect(page.locator('#activity-title')).toHaveText(firstQuestion)
 
   await page.getByLabel('你的问题', { exact: true }).fill('这是界面中的第二个问题。')
   await page.getByRole('button', { name: '发送问题', exact: true }).click()
@@ -209,19 +222,16 @@ test('a product process restart reopens the persisted conversation in the same C
   await configureModel(request)
   const expected = '界面回答' + (replies.length + 1)
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('重启恢复对话')
-  await page.getByLabel('起始问题', { exact: true }).fill('重启之后这个问题和回答还在吗？')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('重启恢复对话')
+  const firstQuestion = await prepareFirstQuestion(page, '重启恢复对话', '重启之后这个问题和回答还在吗？')
+  await sendFirstQuestion(page, firstQuestion)
   await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
   const activityId = new URL(page.url()).searchParams.get('activity')!
   await host.stop()
   host = await createProductRuntimeHost({ root, createApplication: context => createProductLearningApplication(context) })
   endpoint = host.endpoint
-  await page.goto(endpoint + '/?space=personal&activity=' + activityId)
-  await expect(page.locator('#activity-title')).toHaveText('重启恢复对话')
-  const open = page.getByRole('button', { name: '打开对话', exact: true })
-  if (await open.isVisible()) await open.click()
+  await page.goto(endpoint + '/?space=personal&view=agent&activity=' + activityId)
+  await expect(page.locator('.product-conversation-head h1')).toHaveText(firstQuestion)
+  await expect(page.locator('.teaching-message.student > .preserve-lines')).toHaveText(firstQuestion)
   await expect(page.getByText(expected, { exact: true })).toBeVisible({ timeout: 20000 })
   if (output) await page.screenshot({ path: join(output, `teaching-restart-${process.platform}.png`), fullPage: false })
 })

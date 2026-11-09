@@ -26,7 +26,46 @@ let upstream: ReturnType<typeof createServer>
 let answer: (payload: ModelPayload, response: ServerResponse) => Promise<void> | void
 const modelErrors: string[] = []
 const exec = promisify(execFile)
-interface ModelPayload { messages: { role: string; content?: string; tool_call_id?: string }[] }
+interface ModelPayload {
+  messages: { role: string; content?: string; tool_call_id?: string }[]
+  tools?: { type: string; function: { name: string; parameters: {
+    anyOf?: { properties?: Record<string, { const?: string }> }[]
+  } } }[]
+}
+
+/** Use the advertised binding for this exact component, including duplicate logical tool names. */
+function courseOperationName(payload: ModelPayload, componentKey: string, operationId: string) {
+  const matches = (payload.tools ?? []).filter(tool => tool.type === 'function'
+    && tool.function.parameters.anyOf?.some(operation => operation.properties?.componentKey?.const === componentKey
+      && operation.properties?.operationId?.const === operationId))
+  expect(matches, `one advertised tool for ${componentKey}/${operationId}`).toHaveLength(1)
+  return matches[0].function.name
+}
+
+/** Multiple-component activities expose course tools through the real discovery/load pair. */
+function prepareCourseTool(payload: ModelPayload, response: ServerResponse, componentKey: string, operationId: string) {
+  if (payload.tools?.some(tool => tool.function.parameters.anyOf?.some(operation =>
+    operation.properties?.componentKey?.const === componentKey && operation.properties?.operationId?.const === operationId))) return false
+  const discoveryId = 'discover-' + componentKey
+  const discovered = payload.messages.find(message => message.role === 'tool' && message.tool_call_id === discoveryId)
+  if (!discovered) {
+    expect(payload.tools?.some(tool => tool.function.name === 'discover_tools')).toBe(true)
+    reply(response, { call: { id: discoveryId, name: 'discover_tools', arguments: {
+      purpose: 'course_operation', source: null, object: componentKey, cursor: null, pageSize: 1,
+    } } })
+  } else {
+    const result = JSON.parse(discovered.content ?? '{}') as { entries: {
+      bindingId: string; source: { componentKey?: string }; definition: { name: string }
+    }[] }
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0].source.componentKey).toBe(componentKey)
+    expect(result.entries[0].definition.name).toBe('course_operation')
+    expect(payload.tools?.some(tool => tool.function.name === 'load_tools')).toBe(true)
+    reply(response, { call: { id: 'load-' + componentKey, name: 'load_tools',
+      arguments: { bindingIds: [result.entries[0].bindingId] } } })
+  }
+  return true
+}
 
 function signal() {
   let resolve!: () => void
@@ -185,10 +224,13 @@ test('the formal conversation shows the real fixed work read and retains it afte
 test('capture the existing formal conversation baseline before UI changes', async ({ page }) => {
   test.skip(process.env.XUNJIE_CAPTURE_TEACHING_BASELINE !== '1', 'Opt-in baseline capture before editing the UI')
   await page.goto(endpoint)
-  await page.getByLabel('学习目标', { exact: true }).fill('读取作品并解释课程工具结果')
-  await page.getByLabel('起始问题', { exact: true }).fill('请根据固定的表格解释聚合结果。')
-  await page.getByRole('button', { name: '建立并开始对话', exact: true }).click()
-  await expect(page.locator('#activity-title')).toHaveText('读取作品并解释课程工具结果')
+  const firstQuestion = '读取作品并解释课程工具结果。\n请根据固定的表格解释聚合结果。'
+  await page.getByRole('button', { name: 'Agent 对话', exact: true }).click()
+  await page.getByLabel('向 Agent 提问', { exact: true }).fill(firstQuestion)
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.product-conversation-head h1')).toHaveText(firstQuestion)
+  await page.getByRole('button', { name: '进入工作区', exact: true }).click()
+  await expect(page.locator('#activity-title')).toHaveText(firstQuestion)
   await expect(page.getByText('尚未选择模型，问题与草稿已保留。')).toBeVisible({ timeout: 20000 })
   if (evidence) await page.screenshot({ path: join(evidence, `tools-before-${process.platform}.png`) })
 })
@@ -218,9 +260,10 @@ test('real native and browser operations retain results; a disconnected browser 
   const states: number[] = []
   let calls = 0
   answer = (payload, response) => {
+    if (prepareCourseTool(payload, response, 'counter', 'start_session')) return
     calls++
     if (calls === 1) {
-      reply(response, { call: { id: 'start-real-session', name: 'course_operation',
+      reply(response, { call: { id: 'start-real-session', name: courseOperationName(payload, 'counter', 'start_session'),
         arguments: { componentKey: 'counter', operationId: 'start_session', parameters: {} } } })
       return
     }
@@ -230,7 +273,7 @@ test('real native and browser operations retain results; a disconnected browser 
     const observation = result.query.session!.observation as { value: number }
     states.push(observation.value)
     expect(observation.value).toBe([0, 1, 3, 1][states.length - 1])
-    if (states.length < 4) reply(response, { call: { id: 'advance-' + states.length, name: 'course_operation',
+    if (states.length < 4) reply(response, { call: { id: 'advance-' + states.length, name: courseOperationName(payload, 'counter', 'advance'),
       arguments: { componentKey: 'counter', operationId: 'advance', requestId: result.query.requestId,
         expectedSeq: result.query.session!.appliedSeq, parameters: { value: [1, 2, 2][states.length - 1] } } } })
     else reply(response, { text: '原生会话已按固定输入推进，实际状态依次为 1、3、1。' })
@@ -243,8 +286,12 @@ test('real native and browser operations retain results; a disconnected browser 
   await expect(page.locator('.teaching-message.assistant')).toContainText('实际状态依次为 1、3、1', { timeout: 30000 })
     .catch(async error => { throw new Error(error.message + '\n' + JSON.stringify({ modelErrors,
       conversation: await api(page.request, 'agent/' + activity.activityId + '/conversation', undefined, {}) })) })
-  await expect(page.locator('.teaching-tool-record')).toHaveCount(4)
-  const last = page.locator('.teaching-tool-record').last()
+  await expect(page.locator('.teaching-tool-record')).toHaveCount(6)
+  const nativeRecords = page.locator('.teaching-tool-record').filter({ has: page.locator('.teaching-tool-name').filter({ hasText: /^course_operation$/ }) })
+  await expect(nativeRecords).toHaveCount(4)
+  await expect(page.locator('.teaching-tool-name').filter({ hasText: /^discover_tools$/ })).toHaveCount(1)
+  await expect(page.locator('.teaching-tool-name').filter({ hasText: /^load_tools$/ })).toHaveCount(1)
+  const last = nativeRecords.last()
   await last.locator(':scope > summary').click()
   await last.getByText('参数', { exact: true }).click()
   await expect(last.locator('.teaching-tool-data')).toContainText('数值2')
@@ -252,7 +299,7 @@ test('real native and browser operations retain results; a disconnected browser 
   await expect(page.locator('.native-session-observation strong')).toHaveText('1', { timeout: 20000 })
   await expect(page.frameLocator('.component-view iframe').getByText('组件已就绪')).toBeVisible()
   if (evidence) await page.screenshot({ path: join(evidence, `tools-native-after-${process.platform}.png`) })
-  const previous = page.locator('.teaching-tool-record').nth(2)
+  const previous = nativeRecords.nth(2)
   await previous.locator(':scope > summary').click()
   await previous.getByRole('button', { name: '定位原结果', exact: true }).click()
   const previousObservation = page.getByRole('list', { name: '已确认观察' }).getByRole('listitem').filter({ hasText: '第 2 次' })
@@ -279,8 +326,9 @@ test('real native and browser operations retain results; a disconnected browser 
   }).toBe('88')
   let finiteCalls = 0
   answer = (payload, response) => {
+    if (prepareCourseTool(payload, response, 'table', 'aggregate')) return
     finiteCalls++
-    if (finiteCalls === 1) reply(response, { call: { id: 'real-browser-aggregation', name: 'course_operation',
+    if (finiteCalls === 1) reply(response, { call: { id: 'real-browser-aggregation', name: courseOperationName(payload, 'table', 'aggregate'),
       arguments: { componentKey: 'table', operationId: 'aggregate',
         parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } } } })
     else {
@@ -312,9 +360,9 @@ test('real native and browser operations retain results; a disconnected browser 
     lostAcceptance.resolve()
   })
   let lostCalls = 0
-  answer = (_payload, response) => {
+  answer = (payload, response) => {
     lostCalls++
-    reply(response, { call: { id: 'lost-acceptance', name: 'course_operation', arguments: {
+    reply(response, { call: { id: 'lost-acceptance', name: courseOperationName(payload, 'table', 'aggregate'), arguments: {
       componentKey: 'table', operationId: 'aggregate', parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' },
     } } })
   }
@@ -325,7 +373,9 @@ test('real native and browser operations retain results; a disconnected browser 
   const lostCommand = (await api(page.request, 'agent/' + activity.activityId + '/conversation', undefined, {})).tools.at(-1).commandId
   await page.getByRole('region', { name: '与 Agent 的对话' }).getByRole('button', { name: '停止', exact: true }).click()
   await expect(page.getByText('回答已停止，已发生的内容仍保留。')).toBeVisible({ timeout: 20000 })
-  await page.unroute(acceptRoute)
+  // Drain in-flight receipt interceptions before removing the fault; otherwise a
+  // late route.fetch completion can try to abort a route Playwright already released.
+  await page.unrouteAll({ behavior: 'wait' })
   await expect.poll(async () => (await api(page.request, `executions/${activity.activityId}/${lostCommand}`, undefined, {}))?.state)
     .toBe('cancelled')
   await expect(page.locator('.teaching-tool-record').last().locator('.teaching-tool-status')).toHaveText('已取消')
@@ -341,9 +391,9 @@ test('real native and browser operations retain results; a disconnected browser 
   // Lose the real claim response after it commits, then disconnect before local acceptance.
   // A new browser profile must query the original record, never claim another node's task.
   let browserCalls = 0
-  answer = (_payload, response) => {
+  answer = (payload, response) => {
     browserCalls++
-    if (browserCalls === 1) reply(response, { call: { id: 'wait-for-original-browser', name: 'course_operation',
+    if (browserCalls === 1) reply(response, { call: { id: 'wait-for-original-browser', name: courseOperationName(payload, 'table', 'aggregate'),
       arguments: { componentKey: 'table', operationId: 'aggregate',
         parameters: { groupColumn: '小组', valueColumn: '得分', aggregate: 'mean' } } } })
     else reply(response, { text: '浏览器已接受任务；计算结果尚未到达。' })

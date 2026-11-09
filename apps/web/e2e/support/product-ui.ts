@@ -48,13 +48,17 @@ export async function clickActivityAction(page: Page, name: string) {
 }
 
 export async function selectProductSpace(page: Page, name: string) {
-  const back = page.getByRole('button', { name: '返回活动列表', exact: true })
-  if (await back.isVisible()) {
-    await back.click()
-    await expect(back).toHaveCount(0)
+  const category = name === '个人空间' ? '个人' : '学校'
+  const tabs = page.getByRole('group', { name: '课程分类' })
+  if (!await tabs.isVisible()) await page.getByRole('button', { name: '首页', exact: true }).click()
+  await expect(tabs).toBeVisible()
+  const tab = tabs.getByRole('button', { name: category, exact: true })
+  await tab.click()
+  await expect(tab).toHaveAttribute('aria-pressed', 'true')
+  const schools = page.getByLabel('选择学校', { exact: true })
+  if (category === '学校' && name !== '学校空间' && await schools.isVisible()) {
+    await schools.selectOption({ label: name })
   }
-  await page.getByRole('button', { name, exact: true }).click()
-  await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true')
 }
 
 export async function openCourseTasks(page: Page, name: string) {

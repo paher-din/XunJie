@@ -127,9 +127,9 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   }
   return <div className="content product-model-settings">
     <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
-    <div className="st-body-in"><AgentInteractionSettings controller={interaction} />
-      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} />
-      <ModelSelection controller={selection}
+    <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
+      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} /></div>
+      <div className="product-personal-model"><ModelSelection controller={selection}
       onSelected={saved => switchConversation(saved.version)}
       onCheck={() => void act('selected', '检查当前模型', () => check({ selected: true, selectionVersion: selection.selection!.version }))} />
       {activityId && selection.selection?.selected && <div className="product-model-selection-actions">
@@ -140,7 +140,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       <div role="region" aria-label="个人连接配置"><ModelTab connections={connections} attempts={attempts} loading={loading} error={[loadError, actionError?.message].filter(Boolean).join('；')}
       onReload={() => void reload(true)} onNew={() => setDialog({ connection: null })} onEdit={connection => setDialog({ connection })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}
-      onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div>
+      onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div></div>
     {dialog && <ModelConnectionDialog connection={dialog.connection} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readConnection} onCheck={check} onCancel={cancel} />}
   </div>
 }
