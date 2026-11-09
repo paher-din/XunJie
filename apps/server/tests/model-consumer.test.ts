@@ -82,7 +82,9 @@ test('production consumer admits runnable teacher B while teacher A waits behind
   assert.equal((await job(f,a,a1)).status,'succeeded');
   assert.equal((await job(f,a,a2)).attemptCount,1);
   calls[3]!.resolve({text:JSON.stringify(candidates)});
-  await until(()=>budget.status().active===0);
+  await until(()=>calls.length===5);
+  assert.equal((await job(f,a,a2)).status,'succeeded');
+  assert.equal(budget.status().active,1,'remaining A backlog continues after the first two jobs complete');
 });
 
 test('production consumer removes a cancelled unsent job and keeps the next job behind its member chat',async t=>{
