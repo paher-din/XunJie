@@ -56,12 +56,15 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
     source jsonb NOT NULL,body jsonb NOT NULL);
   ALTER TABLE model_paired_grants DROP CONSTRAINT model_paired_grants_kind_check;
   ALTER TABLE model_paired_grants ADD CONSTRAINT model_paired_grants_kind_check CHECK(kind IN ('segment','attempt','pin'));
-` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration, modelProviderMigration, modelCatalogueMigration];
+` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration, modelProviderMigration, modelCatalogueMigration, { version: 22, name: 'direct-personal-model-routes', sql: `
+  ALTER TABLE model_paired_grants ALTER COLUMN grant_id DROP NOT NULL;
+` }];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
 export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void>;
+  deviceOwner?(identity: SpaceIdentity): Promise<SpaceIdentity | null>;
   catalogueFetch?: typeof fetch;
   /** Trusted composition/test transport; the target is still checked before credentials leave. */
   supplierFetch?: typeof fetch;
@@ -230,6 +233,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   };
   const selection = createModelSelections(storage, {
     authorize: options.authorize, school: schoolDefault, list,
+    ...(options.deviceOwner ? { deviceOwner: options.deviceOwner } : {}),
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); },
     async connection(scope, connectionId) {
       const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [scope, connectionId]);
@@ -308,7 +312,6 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       if (!learning && Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
       const ownerScope = attempt.source?.ownerScope ?? scopeOf(identity);
       if (attempt.source?.kind === 'school' && (identity.kind !== 'school' || ownerScope !== schoolScope(identity.spaceId))) throw new StorageError('forbidden');
-      if (attempt.source?.kind === 'personal' && ownerScope !== scopeOf(identity) && !attempt.source.grantId) throw new StorageError('forbidden');
       await selection.authorizeAttempt(identity, attempt.source, attempt.connection.connectionId);
       const { rows: [credential] } = await storage.read('SELECT temporary FROM model_credentials WHERE id=$1 AND scope=$2', [ref, ownerScope]);
       if (!credential) throw new StorageError('forbidden');

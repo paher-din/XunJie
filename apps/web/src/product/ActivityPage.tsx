@@ -19,6 +19,8 @@ import { teachingConversationSchema, type TeachingStudentQuestion } from '@xunji
 import { learningRequest, workspaceScope } from './learningTransport'
 import { GuidancePresentation } from '../components/workspace/guidance/GuidancePresentation'
 import { AgentInputMode } from './AgentInteraction'
+import { AgentModelPicker, useAgentModelPicker } from './AgentModelPicker'
+import type { ModelSelectionController } from './ModelSelection'
 import { waitForComposerComposition } from '../components/workspace/references/composer-view'
 import { PdfMaterials, PdfMaterialEntries, usePdfMaterials } from './PdfMaterials'
 import { PersonalMaterials, PersonalMaterialEntries, usePersonalMaterials } from './PersonalMaterials'
@@ -60,11 +62,11 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error, requestedArtifactId }: {
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error, requestedArtifactId, selection }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
-  onModels?: () => void
+  onModels?: () => void; selection: ModelSelectionController
   requestedArtifactId?: string | null
   details: (openCoursePdf: (materialId: string) => void) => ReactNode; account: ReactNode; error: ReactNode
 }) {
@@ -87,6 +89,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
   const [workLocation, setWorkLocation] = useState<{ objectId: string }>()
   const [componentLocation, setComponentLocation] = useState<ComponentResultLocation & { key: string }>()
   const readOnly = workspace.isReadOnly()
+  const picker = useAgentModelPicker(selection, activity, spaceKey, namespace)
   const scope = workspaceScope(namespace, activity)
   const [layoutReady, setLayoutReady] = useState(false)
   useEffect(() => { const taskId = namespace + ':' + activity.activityId; includePdfTab(taskId); includeCenterTab(taskId, PERSONAL_TOOL); setLayoutReady(true) }, [namespace, activity.activityId])
@@ -308,8 +311,11 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           onActiveChange={setConversationActive} onLocateTool={locateTool} onQuestionChange={setPendingQuestion}
           focusQuestionId={focusQuestionId} onQuestionFocused={questionFocused} artifacts={artifacts} onOpenArtifact={openArtifact} />
         <AgentInputMode active={conversationActive} />
-        <WorkspaceReferenceComposer closeFocusRef={ask} sendBlocked={!inputInteraction.ready}
-          blockedHint="正在核对本次发送方式，问题与引用仍保留。" blockedLabel="核对发送方式…"
+        <WorkspaceReferenceComposer closeFocusRef={ask}
+          modelPicker={<AgentModelPicker controller={picker} disabled={!authorized || readOnly} onSettings={onModels} />}
+          sendBlocked={!inputInteraction.ready || picker.blocked}
+          blockedHint={picker.blocked ? '正在切换模型，问题与引用仍保留。' : '正在核对本次发送方式，问题与引用仍保留。'}
+          blockedLabel={picker.blocked ? '切换模型中…' : '核对发送方式…'}
           submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
       </aside>
     </div>

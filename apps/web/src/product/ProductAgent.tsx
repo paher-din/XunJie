@@ -1,6 +1,7 @@
 import { useRef } from 'react'
-import { AgentEmptyState, ChatComposerDock, PromptInput, type PromptModelOption } from '@xunjie/ui/chat'
+import { AgentEmptyState, ChatComposerDock, PromptInput } from '@xunjie/ui/chat'
 import type { ModelSelectionController } from './ModelSelection'
+import { useAgentModelPicker, AgentModelFeedback } from './AgentModelPicker'
 import type { PendingActivityRequest } from './first-question'
 import './product-agent.css'
 
@@ -12,24 +13,7 @@ export function ProductAgent({ question, onQuestion, onSend, pending, onRetry, o
   onSettings(): void; selection: ModelSelectionController; busy: boolean; readOnly: boolean; error: string
 }) {
   const anchor = useRef<HTMLDivElement>(null)
-  const choices = selection.selection?.options ?? []
-  const byId = new Map<string, (typeof choices)[number]>()
-  for (const choice of choices) {
-    if (!choice.connection.enabled || !choice.connection.hasCredential || choice.connection.adapterState !== 'ready') continue
-    const id = `${choice.kind}:${choice.connection.connectionId}`
-    const previous = byId.get(id)
-    if (!previous || choice.kind === 'personal' && choice.grantId) byId.set(id, choice)
-  }
-  const available = [...byId.values()]
-  const options: PromptModelOption[] = available.map(choice => ({
-    id: `${choice.kind}:${choice.connection.connectionId}`,
-    name: choice.connection.name,
-    note: choice.kind === 'school' ? '学校提供' : '个人连接', icon: 'model',
-  }))
-  const selected = selection.selection?.selected
-  const selectedId = selected ? `${selected.kind}:${selected.connection.connectionId}` : ''
-  const model: PromptModelOption = options.find(option => option.id === selectedId)
-    ?? { id: selectedId, name: selected?.connection.name ?? '未选用模型', note: '', icon: 'model' }
+  const picker = useAgentModelPicker(selection)
 
   return <div className="agent-layout product-agent">
     <div className="product-agent-body">
@@ -43,20 +27,20 @@ export function ProductAgent({ question, onQuestion, onSend, pending, onRetry, o
       </div>}
       {error && <p className="learning-error" role="alert">{error}</p>}
       {readOnly && <p role="status">当前学习空间只读，无法开始新对话。</p>}
-      {!selected && !readOnly && <p>尚未选用模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
+      {!picker.models.length && !readOnly && !selection.stale && <p>尚未配置模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
     </div>
     <ChatComposerDock anchorRef={anchor} atBottom
       suggestions={{ items: [], show: false, onPick: () => {} }}
       followUps={{ items: [], show: false, onPick: () => {}, label: '' }}
       onBackToBottom={() => {}}
       input={<PromptInput value={question} onChange={value => onQuestion(value.slice(0, 10000))} autoFocus
-        onSend={onSend} canSend={!!question.trim() && !busy && !pending && !readOnly}
+        onSend={onSend} canSend={!!question.trim() && !busy && !pending && !readOnly && !picker.blocked}
         submitting={busy || !!pending || readOnly} attachments={[]} showAttachments={false}
         onAddFiles={() => {}} onRemoveAttachment={() => {}} attachmentTitle=""
-        model={model} models={options} modelDisabled={busy || readOnly || selection.busy || selection.stale || !options.length}
-        onModelChange={id => { const choice = available.find(item => `${item.kind}:${item.connection.connectionId}` === id); if (choice) void selection.choose(choice) }}
+        model={picker.model} models={picker.models} modelDisabled={busy || readOnly || picker.busy || picker.stale || !picker.models.length}
+        onModelChange={picker.change}
         effort="" efforts={[]} onEffortChange={() => {}} showEffort={false}
-        status={selection.error ? { role: 'status', text: selection.error } : undefined} />}
+        contextIndicator={<AgentModelFeedback controller={picker} />} />}
       disclaimer="从问题开始，你的学习对话会保存在当前空间" />
   </div>
 }

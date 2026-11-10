@@ -30,7 +30,7 @@ const providerOf = (model: ModelConnection): ModelProvider => ({ providerId: mod
   name: model.name, baseUrl: model.baseUrl, protocol: model.protocol, enabled: model.providerEnabled ?? true,
   hasCredential: model.hasCredential, models: [model, ...structuredClone(extraModels)] })
 const selection: ModelSelectionController = { selection: { version: 0, selected: null, options: [] }, error: '', busy: false, stale: false,
-  reload: vi.fn(async () => {}), choose: vi.fn(async () => {}), revoke: vi.fn(async () => {}) }
+  reload: vi.fn(async () => {}), choose: vi.fn(async () => {}) }
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 const alerts = () => [...document.querySelectorAll('[role="alert"]')].map(element => element.textContent).join('\n')
@@ -51,6 +51,24 @@ const poll = async () => { await act(async () => { vi.advanceTimersByTime(1000);
 async function mount(subject = identity) {
   await act(async () => { root.render(createElement(PersonalModelSettings, { identity: subject, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })); await settle() })
 }
+
+it('lists the school as a supplier and checks its model without selecting or granting it', async () => {
+  const previous = selection.selection
+  selection.selection = { version: 0, selected: null, options: [{ kind: 'school', connection: { ...initial, name: '学校统一服务' },
+    policy: { checksAllowed: true, maxChecksPerHour: 4, maxOutputTokens: 64, timeoutMs: 10000 } }] }
+  try {
+    await mount()
+    const card = [...document.querySelectorAll('.st-provider')].find(item => item.querySelector('.st-provider-name')?.textContent === '学校')!
+    expect(card).toBeDefined()
+    expect(card.textContent).toContain('学校提供')
+    expect(card.querySelector('[role="switch"]')).toBeNull()
+    expect(document.querySelector('[aria-label="当前空间模型"]')).toBeNull()
+    await click('连接检查', card)
+    const check = vi.mocked(fetch).mock.calls.find(([url, init]) => String(url).endsWith('/models/checks') && init?.method === 'POST')!
+    expect(JSON.parse(check[1]!.body as string).source).toEqual({ school: { connectionId: initial.connectionId, version: initial.version } })
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/models/grants'))).toBe(false)
+  } finally { selection.selection = previous }
+})
 
 it('refreshes model information when the model pane is entered, while hidden settings do not trigger it', async () => {
   await act(async () => { root.render(null); await settle() })

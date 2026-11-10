@@ -4,7 +4,7 @@ import {
   ActionBar, AgentEmptyState, AgentMessage, AttachmentTile, BackToBottom, Block, Chars,
   ChatComposerDock, ChatError, ChatViewport, CodeBlock, ConceptBlock, ConceptCard, FailureCard,
   GenCard, GenFailCard, GenLiveCard, Inline, ListBlock, Markdown, MessageRail, MessageTaskCard,
-  PromptInput, QueueNotice, QuizCard, StepsBlock, StopLine, TableBlock, TaskPicker,
+  PromptInput, PromptModelPicker, QueueNotice, QuizCard, StepsBlock, StopLine, TableBlock, TaskPicker,
   ThinkingSettled, ThinkTail, TurnAriaStatus, UserMessage, WaitTail, Waveform,
   type ChatMessageData, type ConceptCardData, type GenCardData, type GenHostFactory,
   type PromptAttachment, type TileRect, type TurnPhase,
@@ -63,6 +63,13 @@ function AttachmentDemo({ kind = 'file' }: { kind?: 'file' | 'image' | 'uploadin
 function BackDemo() {
   const [count, setCount] = useState(0)
   return <div style={{ width: 360, paddingTop: 80 }}><div className="composer-anchor away" style={{ position: 'relative' }}><BackToBottom onClick={() => setCount(value => value + 1)} /><output>回底回调 {count} 次</output></div></div>
+}
+function ModelPickerDemo({ disabled = false, empty = false }: { disabled?: boolean; empty?: boolean }) {
+  const models = [{ id: 'one', name: '示例模型一', note: '个人供应商', icon: 'model' as const },
+    { id: 'two', name: '示例模型二', note: '学校', icon: 'model' as const }]
+  const [selected, setSelected] = useState('one')
+  return <div style={{ padding: '180px 24px 24px' }}><PromptModelPicker model={models.find(model => model.id === selected)!}
+    models={empty ? [] : models} onChange={setSelected} disabled={disabled || empty} /></div>
 }
 function InputDemo({ mode = 'ready', embedded = false, value: controlled, onValueChange }: { mode?: 'ready' | 'attachments' | 'disabled' | 'busy' | 'error'; embedded?: boolean; value?: string; onValueChange?: (text: string) => void }) {
   const [draft, setDraft] = useState(''), [modelId, setModel] = useState('sample-one'), [effort, setEffort] = useState('高')
@@ -215,6 +222,11 @@ function GeneratedDemo({ part = 'card', mode = 'live' }: { part?: 'card' | 'live
 function GenFailureDemo() { const [count, setCount] = useState(0); return <Frame><GenFailCard code="EXAMPLE_GENERATION_FAILED" onRetry={() => setCount(value => value + 1)} /><output>本地重试回调 {count} 次</output></Frame> }
 
 export const chatEntries: CatalogEntry[] = [
+  { id: 'prompt-model-picker', name: 'PromptModelPicker', description: '复用输入框的模型菜单；型号、供应商和选用由调用方提供。', importPath,
+    source: 'packages/ui/src/chat/PromptModelPicker.tsx', exampleSource, props: ['model/models/onChange/disabled', 'open/onOpenChange'], dependencies: ['Icon'], states: [
+      { id: 'ready', name: '选用模型／键盘操作', component: ModelPickerDemo }, { id: 'disabled', name: '不可切换', component: () => <ModelPickerDemo disabled /> },
+      { id: 'empty', name: '暂无模型', component: () => <ModelPickerDemo empty /> },
+    ] },
   { id: 'action-bar', name: 'ActionBar', description: '复制反馈、时间戳与本地重新生成回调。', importPath, source: agentSource, exampleSource, props: ['text/at/onRetry'], dependencies: ['浏览器剪贴板'], states: [{ id: 'interactive', name: '复制／重新生成', component: ActionsDemo }] },
   { id: 'agent-empty-state', name: 'AgentEmptyState', description: '角色与可选说明，不自行判断首次使用。', importPath, source: sectionSource, exampleSource, props: ['title/description'], dependencies: ['MascotSvg'], states: [
     { id: 'first', name: '首次使用示例', component: () => <AgentEmptyState title="你好，我是循阶教学助手" description="目录示例：解答课程难点，梳理实验思路。" /> },

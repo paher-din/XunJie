@@ -788,10 +788,10 @@ function LearningView() {
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>
       <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly} viewActive={!modelsOpen}>
-      {conversationOpen ? <ProductConversation activity={opened} spaceKey={key} namespace={context.clientNamespace}
+      {conversationOpen ? <ProductConversation activity={opened} spaceKey={key} namespace={context.clientNamespace} selection={modelSelection}
         title={conversationTitle(opened, conversationHistory.items)}
         authorized={activityAuthorized}
-        workspaceRef={workspace} onWorkspace={openWorkspace} onModels={openModels} error={error || notice ? feedback : null} /> : <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
+        workspaceRef={workspace} onWorkspace={openWorkspace} onModels={openModels} error={error || notice ? feedback : null} /> : <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} selection={modelSelection}
         requestedArtifactId={requestedArtifactId}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}

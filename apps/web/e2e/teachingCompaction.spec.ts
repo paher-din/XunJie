@@ -80,23 +80,26 @@ test('formal long conversation preserves history, draft and controls across comp
     expect(f.payloads).toHaveLength(9)
 
     const existing = (await f.api('models/connections') as ModelConnection[])[0]
-    const connectionId = randomUUID(), grantId = randomUUID()
+    const connectionId = randomUUID()
     await f.api('models/connections', { requestId: randomUUID(), connectionId, expectedVersion: 0,
       name: '继续学习模型', protocol: existing.protocol, baseUrl: existing.baseUrl, path: existing.path,
       modelId: 'fixture-compaction-successor', dialect: existing.dialect, parameterMode: existing.parameterMode,
       enabled: true, contextWindow: 262144, maxOutputTokens: 2048, credential: { action: 'replace', value: 'synthetic-compaction-key' } })
-    await f.api('models/grants', { requestId: randomUUID(), grantId, connectionId, owner: 'self' })
-    await page.getByRole('button', { name: '切换模型', exact: true }).click()
-    const models = page.getByRole('region', { name: '当前空间模型' })
-    await models.getByRole('button', { name: '重新读取选用', exact: true }).click()
-    await models.locator('.st-provider').filter({ hasText: '继续学习模型' }).getByRole('button', { name: /选用$/ }).click()
-    await expect(page.getByText('已为当前学习活动切换到「fixture-compaction-successor」。已有消息和结果保留原出处。', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
+    await page.reload()
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
+    await expect(question).toHaveValue(/尚未发送的中文草稿/)
+    await page.getByRole('button', { name: '切换模型', exact: true }).click()
+    const switched = page.waitForResponse(response => response.url().endsWith('/model-switches') && response.request().method() === 'POST')
+    await page.getByRole('menu', { name: '模型', exact: true })
+      .getByRole('menuitemradio', { name: 'fixture-compaction-successor 继续学习模型', exact: true }).click()
+    const switchResponse = await switched
+    expect(switchResponse.status()).toBe(200)
+    expect((await switchResponse.json()).state).toBe('completed')
     holdLast = true
     await question.fill('继续当前问题，但允许我停止。')
     await page.getByRole('button', { name: '发送问题', exact: true }).click()
     await until(() => f.payloads.length === 10, 'The explicitly selected model receives the follow-up.')
+    expect(f.payloads[9].model).toBe('fixture-compaction-successor')
     await question.fill('停止期间保留的新草稿')
     await page.getByRole('button', { name: '停止', exact: true }).click()
     releaseLast()

@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Icon, type IconName } from '../icons'
+import { Icon } from '../icons'
+import { PromptModelPicker, type PromptModelOption } from './PromptModelPicker'
+export type { PromptModelOption } from './PromptModelPicker'
 import { AttachmentTile, type PromptAttachment, type TileRect } from './AttachmentTile'
 
-export interface PromptModelOption { id: string; name: string; note: string; icon: IconName }
 export interface PromptInputProps<Effort extends string = string> {
   value: string
   onChange: (value: string) => void
@@ -42,32 +43,19 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
   const [leaving, setLeaving] = useState<Record<string, TileRect>>({})
   const [dragging, setDragging] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
-  /** 菜单退出动画进行中：保持挂载 140ms 播完再卸载。 */
-  const [modelClosing, setModelClosing] = useState(false)
   const [effortOpen, setEffortOpen] = useState(false)
   const [effortClosing, setEffortClosing] = useState(false)
   /** 附件区内容实测高度（px）：容器高度过渡到这个值，长/缩才不是直接切换。 */
   const [attachHeight, setAttachHeight] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const modelRef = useRef<HTMLDivElement>(null)
   const effortRef = useRef<HTMLDivElement>(null)
   const attachRowRef = useRef<HTMLDivElement>(null)
   const dragDepth = useRef(0)
-  const modelCloseTimer = useRef<number | null>(null)
   const effortCloseTimer = useRef<number | null>(null)
   const removeTimers = useRef<number[]>([])
 
   // 收起：标记 closing 并挂 140ms 定时器，播完退场动画再卸载
-  const closeModel = () => {
-    if (!modelOpen || modelClosing) return
-    setModelClosing(true)
-    modelCloseTimer.current = window.setTimeout(() => {
-      setModelOpen(false)
-      setModelClosing(false)
-      modelCloseTimer.current = null
-    }, 140)
-  }
   const closeEffort = () => {
     if (!effortOpen || effortClosing) return
     setEffortClosing(true)
@@ -79,15 +67,6 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
   }
   // 打开：清掉进行中的收起定时器（退场动画中途再点 = 重新打开），
   // 并让另一枚按钮走退场动画收起
-  const openModel = () => {
-    if (modelCloseTimer.current !== null) {
-      clearTimeout(modelCloseTimer.current)
-      modelCloseTimer.current = null
-    }
-    setModelClosing(false)
-    setModelOpen(true)
-    closeEffort()
-  }
   const openEffort = () => {
     if (effortCloseTimer.current !== null) {
       clearTimeout(effortCloseTimer.current)
@@ -95,14 +74,12 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
     }
     setEffortClosing(false)
     setEffortOpen(true)
-    closeModel()
+    setModelOpen(false)
   }
-  const toggleModel = () => (modelOpen && !modelClosing ? closeModel() : openModel())
   const toggleEffort = () => (effortOpen && !effortClosing ? closeEffort() : openEffort())
 
   useEffect(
     () => () => {
-      if (modelCloseTimer.current !== null) clearTimeout(modelCloseTimer.current)
       if (effortCloseTimer.current !== null) clearTimeout(effortCloseTimer.current)
       removeTimers.current.forEach((t) => clearTimeout(t))
     },
@@ -111,15 +88,14 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
 
   // 点击选择器外部或按 Esc 收起模型 / 思考强度菜单
   useEffect(() => {
-    if (!modelOpen && !effortOpen) return
+    if (!effortOpen) return
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node
-      if (!modelRef.current?.contains(target)) closeModel()
       if (!effortRef.current?.contains(target)) closeEffort()
     }
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        closeModel()
+        setModelOpen(false)
         closeEffort()
       }
     }
@@ -129,7 +105,7 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [modelOpen, modelClosing, effortOpen, effortClosing])
+  }, [effortOpen, effortClosing])
 
   // 输入区自动增高，上限约 8 行。
   // 高度值写 inline style、变化由 CSS transition 播，所以不能沿用「直接置 0 再读 scrollHeight」：
@@ -258,58 +234,8 @@ export function PromptInput<Effort extends string = string>({ value, onChange, o
         <div className="prompt-actions">
           {contextIndicator}
           {status && <span role={status.role}>{status.text}</span>}
-          <div className="prompt-model" ref={modelRef}>
-            <button
-              type="button"
-              className={modelOpen ? 'prompt-model-btn open' : 'prompt-model-btn'}
-              aria-label="切换模型"
-              disabled={modelDisabled}
-              aria-expanded={modelOpen}
-              aria-haspopup="menu"
-              onClick={() => toggleModel()}
-            >
-              {/* key 驱动换模型时的内容切换微动效 */}
-              <span className="prompt-model-swap" key={model.id}>
-                <Icon className="prompt-model-icon" name={model.icon} />
-                <span className="prompt-model-label">{model.name}</span>
-              </span>
-              <Icon name="alt-arrow-down" size={12} className="caret" />
-            </button>
-            {modelOpen && (
-              <div
-                className={modelClosing ? 'prompt-model-menu closing' : 'prompt-model-menu'}
-                role="menu"
-              >
-                {models.map((m) => (
-                  <div
-                    key={m.id}
-                    role="menuitemradio"
-                    aria-checked={m.id === model.id}
-                    tabIndex={0}
-                    className="prompt-model-item"
-                    onClick={() => {
-                      onModelChange(m.id)
-                      closeModel()
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onModelChange(m.id)
-                        closeModel()
-                      }
-                    }}
-                  >
-                    <Icon className="mi-icon" name={m.icon} size={20} />
-                    <span className="mi-copy">
-                      <span className="mi-name">{m.name}</span>
-                      <span className="mi-note">{m.note}</span>
-                    </span>
-                    <span className="mi-check">{m.id === model.id && <Icon name="check" size={14} />}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <PromptModelPicker model={model} models={models} onChange={onModelChange} disabled={modelDisabled}
+            open={modelOpen} onOpenChange={value => { setModelOpen(value); if (value) closeEffort() }} />
           {showEffort && <div className="prompt-effort" ref={effortRef}>
             <button
               type="button"

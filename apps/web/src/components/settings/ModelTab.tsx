@@ -1,14 +1,16 @@
-import type { ModelAttempt, ModelConnection, ModelProvider } from '@xunjie/contracts/model-connections'
+import type { ModelAttempt, ModelConnection, ModelProvider, ModelCheckPolicy } from '@xunjie/contracts/model-connections'
 import { Section, ModelProviderCard, Toggle, reasoningEffortLabels } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
 
 const states: Record<ModelAttempt['state'], string> = { accepted: '检查已接收，尚未开始', dispatched: '正在检查',
   completed: '检查已完成', incomplete: '检查未完整结束', failed: '检查失败', cancelled: '已停止本机检查', unknown: '检查结果待核实' }
 const capabilities = { unknown: '尚未验证', declared: '服务声明', verified: '已验证', unsupported: '不支持' }
+type SchoolModel = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ providers, attempts, loading, error, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel, onReload }: {
+export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts, loading, error, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel, onReload }: {
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
+  schoolModels?: SchoolModel[]; onSchoolCheck?(choice: SchoolModel): void
   toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
   onNew(): void; onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void; onCheck(connection: ModelConnection): void
   onCancel(attempt: ModelAttempt): void; onReload(): void
@@ -21,7 +23,24 @@ export function ModelTab({ providers, attempts, loading, error, toggleState, onT
       </div>
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">正在读取配置…</p>}
-      {!loading && !error && providers.length === 0 && <p className="detail">尚未添加供应商。添加后可配置模型并检查连接。</p>}
+      {!loading && !error && providers.length === 0 && schoolModels.length === 0 && <p className="detail">尚未添加供应商。</p>}
+      {schoolModels.length > 0 && <ModelProviderCard name="学校" address={schoolModels[0]!.connection.baseUrl}
+        credentialLabel="学校提供" actions={null}>
+        <div className="st-configured-models" aria-label="学校的模型">
+          {schoolModels.map(choice => <div className="st-configured-model" key={choice.connection.connectionId}>
+            <div className="st-configured-model-head"><span className="st-model-chip">{choice.connection.modelId}</span>
+              <span className="st-configured-model-effort">{reasoningEffortLabels[choice.connection.reasoningEffort ?? 'auto']}</span>
+            </div>
+            <div className="st-provider-test"><button type="button" className="outline st-xs"
+              disabled={loading || !onSchoolCheck || !choice.policy.checksAllowed || !choice.connection.enabled || !choice.connection.hasCredential
+                || choice.connection.adapterState !== 'ready' || attempts.some(attempt => attempt.connection.connectionId === choice.connection.connectionId
+                  && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))}
+              onClick={() => onSchoolCheck?.(choice)}>连接检查</button>
+              {!choice.connection.enabled && <span>学校已停用</span>}
+            </div>
+          </div>)}
+        </div>
+      </ModelProviderCard>}
       {providers.map(provider => <ModelProviderCard key={provider.providerId} name={provider.name} address={provider.baseUrl}
         credentialLabel={provider.hasCredential ? '密钥已保存' : '尚未保存密钥'}
         actions={<><button type="button" className="outline st-xs" disabled={Boolean(toggleState[provider.providerId])} onClick={() => onEdit(provider)}>编辑</button>
@@ -48,7 +67,6 @@ export function ModelTab({ providers, attempts, loading, error, toggleState, onT
           {toggleState[provider.providerId] === 'unknown' && <button type="button" className="outline st-xs" onClick={() => onToggle(provider)}>核对开关提交</button>}
         </div>
       </ModelProviderCard>)}
-      <p className="detail">配置由原持有方保留，跨空间使用需单独授权。未配置或检查失败不影响建立活动、编辑作品和保留问题。</p>
     </Section>
     {attempts.length > 0 && <details>
       <summary>连接检查记录（{attempts.length}）</summary>

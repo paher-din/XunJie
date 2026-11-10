@@ -7,6 +7,14 @@
 .product-agent-pending p { flex: 1 1 100%; }
 .product-agent .chat-composer { flex: none; }
 .product-agent .prompt-actions { margin-left: auto; }
+.product-model-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.product-model-feedback { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.product-model-feedback[role='alert'] { color: var(--danger-deep); }
+.product-model-feedback button { margin-left: 8px; color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; }
+.wr-composer .product-model-picker .prompt-model-btn { padding: 8px; border: 0; background: transparent; color: var(--muted); }
+.wr-composer .product-model-picker .prompt-model-btn:is(:hover, .open) { background: var(--chip-bg); color: var(--ink-soft); }
+.product-model-picker .prompt-model-menu { left: 0; right: auto; max-width: min(360px, calc(100vw - 64px)); }
+.wr-send:has(.product-model-picker) > .wr-hint { margin-left: auto; }
 
 .product-conversation { height: calc(100vh - 22px); min-height: 0; display: flex; flex-direction: column; }
 .product-conversation-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 32px; border-bottom: 1px solid var(--line); }

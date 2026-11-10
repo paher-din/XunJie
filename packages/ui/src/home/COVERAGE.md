@@ -105,7 +105,7 @@
 | 旧视觉／交互单元 | 正式落点与输入边界 | 状态 |
 | --- | --- | --- |
 | PromptInput form、textarea、工具行、发送／停止 | `PromptInput`：`value/onChange/onSend/canSend/submitting/busy/onStop` | 已迁；保留 Enter、Shift+Enter、IME、禁用和自动焦点 |
-| 模型按钮／列表／键盘选择／选中标志 | `PromptInput`：`model/models/onModelChange/modelDisabled`，`PromptModelOption` | 已迁；正式包没有模拟供应商数据 |
+| 模型按钮／列表／键盘选择／选中标志 | `PromptModelPicker`，由 `PromptInput` 及正式对话输入区共用；`PromptModelOption` | 已迁；正式包没有模拟供应商数据 |
 | 思考强度按钮／菜单 | `PromptInput`：`effort/efforts/onEffortChange/effortDisabled` | 已迁；选项与当前值受控，不读取 store |
 | 模型／强度 swap 动画和 140ms 互斥退场 | `PromptInput` 内部展示状态 | 已迁；保留外部点击、Escape 与退场中重开 |
 | textarea 增高／收缩及附件区测量 | `PromptInput` 内部测量状态 | 已迁；保留 200px 上限、原 transition 写法和 ResizeObserver |

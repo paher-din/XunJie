@@ -152,13 +152,21 @@ async function events(activityId: string) {
 async function conversation(activityId: string) {
   return must('agent/' + activityId + '/conversation', undefined, member())
 }
-async function switchTo(page: import('@playwright/test').Page, name: string, expectedModel: string) {
+async function chooseModel(page: import('@playwright/test').Page, name: string, modelId: string) {
   await page.getByRole('button', { name: '切换模型', exact: true }).click()
-  const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
-  await expect(choices).toBeVisible()
-  const card = choices.locator('.st-provider').filter({ hasText: name })
-  await card.getByRole('button', { name: /^(授权并选用|选用)$/, exact: true }).click()
-  await expect(page.getByText(`已为当前学习活动切换到「${expectedModel}」。已有消息和结果保留原出处。`, { exact: true })).toBeVisible({ timeout: 90000 })
+  await page.getByRole('menu', { name: '模型', exact: true })
+    .getByRole('menuitemradio', { name: `${modelId} ${name}`, exact: true }).click()
+}
+async function switchTo(page: import('@playwright/test').Page, name: string, expectedModel: string) {
+  const switched = page.waitForResponse(response => response.url().endsWith('/model-switches') && response.request().method() === 'POST')
+  await chooseModel(page, name, expectedModel)
+  const response = await switched
+  expect(response.status()).toBe(200)
+  expect((await response.json()).state).toBe('completed')
+  await page.getByRole('button', { name: '切换模型', exact: true }).click()
+  await expect(page.getByRole('menu', { name: '模型', exact: true })
+    .getByRole('menuitemradio', { name: `${expectedModel} ${name}`, exact: true })).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
 }
 
 async function resetToSchool() {
@@ -274,7 +282,6 @@ test('school and personal models switch both ways while prior questions, answers
 
   await switchTo(page, '个人 Responses 模型', 'personal-responses')
   if (output) await page.screenshot({ path: join(output, 'model-switch-school-to-personal-darwin.png') })
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await expect(page.locator('#activity-title')).toHaveText('模型切换与学习延续')
   await page.reload()
   await openActivity(page, activityId, '模型切换与学习延续')
@@ -287,9 +294,8 @@ test('school and personal models switch both ways while prior questions, answers
   await expect(schoolAnswer).toBeVisible()
   if (output) await page.screenshot({ path: join(output, 'model-switch-personal-answer-darwin.png') })
 
-  await switchTo(page, '学校统一模型', 'school-chat')
+  await switchTo(page, '学校', 'school-chat')
   if (output) await page.screenshot({ path: join(output, 'model-switch-personal-to-school-darwin.png') })
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await page.reload()
   await openActivity(page, activityId, '模型切换与学习延续')
   await ask(page, '回到学校模型后的第三问。')
@@ -297,7 +303,6 @@ test('school and personal models switch both ways while prior questions, answers
   await expect(schoolAgain.getByText('来源：学校模型 · school-chat · chat-completions', { exact: true })).toBeVisible()
 
   await switchTo(page, '个人 Messages 模型', 'personal-messages')
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await page.reload()
   await openActivity(page, activityId, '模型切换与学习延续')
   await ask(page, '这是个人 Messages 协议下的第四问。')
@@ -330,11 +335,8 @@ test('a switch requested during a slow answer waits for the original call, keeps
   await ask(page, '请慢速回答这个在途切换问题。')
   await expect(page.getByText('Agent 正在生成回答…', { exact: true })).toBeVisible({ timeout: 15000 })
 
-  await page.getByRole('button', { name: '切换模型', exact: true }).click()
-  const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
-  const card = choices.locator('.st-provider').filter({ hasText: '个人 Responses 模型' })
-  await card.getByRole('button', { name: /^(授权并选用|选用)$/, exact: true }).click()
-  await expect(page.getByText('当前回答或工具仍在收尾；切换请求已保留，完成后将继续核对。', { exact: true })).toBeVisible({ timeout: 60000 })
+  await chooseModel(page, '个人 Responses 模型', 'personal-responses')
+  await expect(page.getByText('当前回答完成后使用新模型。', { exact: true })).toBeVisible({ timeout: 60000 })
   if (output) await page.screenshot({ path: join(output, 'model-switch-inflight-paused-darwin.png') })
 
   const switchEventsBefore = await events(activityId)
@@ -348,7 +350,6 @@ test('a switch requested during a slow answer waits for the original call, keeps
   const competing = await api('agent/' + activityId + '/model-switches', { requestId: randomUUID(), selectionVersion: selection.version }, member())
   expect(competing.status).toBe(409)
 
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await page.reload()
   await openActivity(page, activityId, '在途切换与重复请求')
   const schoolAnswer = await waitAnswer(page, '学校模型回答2')
@@ -371,18 +372,21 @@ test('a lost switch reply is explicit, keeps the activity readable after reload 
   await ask(page, '先确认原有学校回答。')
   await waitAnswer(page, '学校模型回答4')
 
-  let aborted = 0
-  await page.route('**/agent/*/model-switches', async route => { aborted += 1; await route.abort('failed') })
-  await page.getByRole('button', { name: '切换模型', exact: true }).click()
-  const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
-  const card = choices.locator('.st-provider').filter({ hasText: '个人 Responses 模型' })
-  await card.getByRole('button', { name: /^(授权并选用|选用)$/, exact: true }).click()
-  await expect(page.getByText(/切换结果尚未确认/)).toBeVisible({ timeout: 20000 })
-  await page.unroute('**/agent/*/model-switches')
+  const switchRequests: { requestId: string; selectionVersion: number }[] = []
+  await page.route('**/agent/*/model-switches', async route => {
+    switchRequests.push(route.request().postDataJSON())
+    await route.abort('failed')
+  })
+  await chooseModel(page, '个人 Responses 模型', 'personal-responses')
+  await expect(page.getByRole('alert').filter({ hasText: '模型切换未确认，请重试。' })).toBeVisible({ timeout: 20000 })
   if (output) await page.screenshot({ path: join(output, 'model-switch-network-lost-darwin.png') })
-  expect(aborted).toBeGreaterThan(0)
+  expect(switchRequests).toHaveLength(1)
+  await page.getByRole('button', { name: '重试', exact: true }).click()
+  await expect.poll(() => switchRequests.length).toBe(2)
+  expect(switchRequests[1]).toEqual(switchRequests[0])
+  await expect(page.getByRole('alert').filter({ hasText: '模型切换未确认，请重试。' })).toBeVisible()
+  await page.unroute('**/agent/*/model-switches')
 
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
   await page.reload()
   await expect(page.locator('#activity-title')).toHaveText('网络中断与进程重启')
   const open = page.getByRole('button', { name: '打开对话', exact: true })
@@ -401,10 +405,7 @@ test('a lost switch reply is explicit, keeps the activity readable after reload 
   await expect(page.getByText('学校模型回答4', { exact: true })).toBeVisible()
   if (output) await page.screenshot({ path: join(output, 'model-switch-after-restart-darwin.png') })
 
-  await page.getByRole('button', { name: '切换模型', exact: true }).click()
-  await page.getByRole('button', { name: '将当前选用应用到学习活动', exact: true }).click()
-  await expect(page.getByText('已为当前学习活动切换到「personal-responses」。已有消息和结果保留原出处。', { exact: true })).toBeVisible({ timeout: 90000 })
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
+  await switchTo(page, '个人 Responses 模型', 'personal-responses')
   await page.reload()
   await openActivity(page, activityId, '网络中断与进程重启')
   await ask(page, '重试切换后的继续提问。')

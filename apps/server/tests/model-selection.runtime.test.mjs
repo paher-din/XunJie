@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { createServer } from 'node:http';
+import pg from 'pg';
 
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresVersion: '18.6',
   postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN,
@@ -19,7 +20,7 @@ async function product(run) {
   const root = await mkdtemp(join(tmpdir(), 'xj-model-selection-'));
   const runtime = openProductRuntime({ root, resources });
   try {
-    await runtime.install({ profile: 'local' }); const { endpoint } = await runtime.start();
+    await runtime.install({ profile: 'local' }); const { endpoint, environment } = await runtime.start();
     const api = async (path, body, headers = {}) => {
       const response = await fetch(endpoint + '/api/learning/' + path, { headers: { 'content-type': 'application/json', ...headers },
         ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
@@ -34,8 +35,10 @@ async function product(run) {
       assert.equal(response.status, 200);
       return { identity: created.value, headers: { cookie: response.headers.get('set-cookie').split(';')[0], 'x-xj-space': 'school' } };
     };
-    await run({ api, admin, member, runtime, root });
-  } finally { await runtime.stop(); }
+    await run({ api, admin, member, runtime, root, modelServiceId: environment.services.find(item => item.unit === 'model-connection').serviceId });
+  } finally {
+    try { await runtime.stop(); } finally { await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
+  }
 }
 const configuration = () => ({ requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '学校文本模型',
   protocol: 'chat-completions', baseUrl: 'https://fixture.invalid/v1', path: '/chat/completions', modelId: 'fixture-model',
@@ -183,4 +186,48 @@ test('personal connection reuse needs explicit subject-scoped grants and revocat
       assert.equal(received.length, 1, 'revocation never switches back to school or resends the original attempt');
     });
   } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('configured personal models select directly, remain owner-scoped, and survive restart without grants', { timeout: 180000 }, async () => {
+  await product(async ({ api, member, runtime, root, modelServiceId }) => {
+    const alice = await member('direct-model-alice'), bob = await member('direct-model-bob');
+    const { policy: _policy, ...input } = configuration();
+    const local = { 'x-xj-space': 'personal' };
+    assert.equal((await api('models/connections', input, local)).status, 200);
+    const select = (expectedVersion = 0, owner = 'self') => ({ requestId: randomUUID(), expectedVersion,
+      source: { kind: 'personal', connectionId: input.connectionId, owner } });
+    const personal = await api('models/selection', select(), local);
+    assert.equal(personal.status, 200);
+    assert.equal(personal.value.selected.origin, 'self');
+    assert.equal(personal.value.selected.grantId, undefined);
+    assert.equal((await api('models/selection', select(), alice.headers)).status, 404,
+      'connection ids do not confer access to another owner');
+    assert.equal((await api('models/selection', select(0, 'device'), alice.headers)).status, 403,
+      'school webpages cannot claim the server host personal identity');
+    const schoolInput = { ...input, requestId: randomUUID(), connectionId: randomUUID() };
+    assert.equal((await api('models/connections', schoolInput, alice.headers)).status, 200);
+    const schoolSelect = { requestId: randomUUID(), expectedVersion: 0,
+      source: { kind: 'personal', connectionId: schoolInput.connectionId, owner: 'self' } };
+    assert.equal((await api('models/selection', schoolSelect, bob.headers)).status, 404);
+    const schoolSelected = await api('models/selection', schoolSelect, alice.headers);
+    assert.equal(schoolSelected.status, 200);
+    assert.equal(schoolSelected.value.selected.grantId, undefined);
+    await runtime.stop(); await runtime.start();
+    assert.deepEqual((await api('models/selection', undefined, local)).value, personal.value);
+    const restarted = (await api('models/selection', undefined, alice.headers)).value;
+    assert.equal(restarted.version, schoolSelected.value.version);
+    assert.deepEqual(restarted.selected, schoolSelected.value.selected);
+    assert.equal((await api('models/selection', select(0), local)).status, 409);
+    const binding = JSON.parse(await resolveCredential(root, 'storage-' + modelServiceId));
+    const client = new pg.Client(binding.connection);
+    try {
+      await client.connect();
+      const schema = '"' + binding.schema.replaceAll('"', '""') + '"';
+      const { rows: [counts] } = await client.query(`SELECT (SELECT count(*)::int FROM ${schema}.model_use_grants) AS grants,
+        (SELECT count(*)::int FROM ${schema}.model_selections) AS selections`);
+      assert.equal(counts.grants, 0, 'direct selections never create model-use grants, including after restart');
+      assert.equal(counts.selections, 2);
+    } finally { await client.end(); }
+
+  });
 });

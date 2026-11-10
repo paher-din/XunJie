@@ -246,9 +246,9 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
   </details>
 }
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
-export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel }: {
+export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false, blockedHint, blockedLabel, submitLabel, modelPicker }: {
   closeFocusRef?: RefObject<HTMLElement | null>; sendBlocked?: boolean
-  blockedHint?: string; blockedLabel?: string; submitLabel?: string
+  blockedHint?: string; blockedLabel?: string; submitLabel?: string; modelPicker?: ReactNode
 } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
     draftConflict, draftConflictReady, resolveDraftConflict, readOnly, skills, workspaceKey, viewActive = true } = useWorkspaceReferences()
@@ -323,7 +323,7 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
             event.preventDefault(); void submit()
           }
         }} />
-      <div className="wr-send"><span className="wr-hint">{sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
+      <div className="wr-send">{modelPicker}<span className="wr-hint">{sendBlocked ? blockedHint ?? '当前回答结束后再发送；问题会先保存在草稿中。'
         : sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
           : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
             : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>

@@ -27,7 +27,7 @@ import { modelDeviceTaskSchema, routeArtifacts, routeModels, ModelCapabilityErro
   modelOriginSuccessionSchema, modelOriginRecoveryOperationSchema } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelSelectionSchema, modelGrantInputSchema, modelGrantSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
+import { modelSelectionSchema, selectModelSchema, modelGrantInputSchema, modelGrantSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
   modelPortableResultSchema, modelSegmentBoundarySchema, modelSegmentProvenanceSchema, modelCapabilityInputSchema, modelCapabilityFailureSchema } from '@xunjie/contracts/model-connections';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
@@ -310,7 +310,17 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     // personal selection remains local; importing choices must never replace Root's choice.
     if (connection.modelBinding && !connection.agentBinding) {
       if (route === 'models/selection') {
-        if (body !== undefined) return remoteCall();
+        if (body !== undefined) {
+          const input = selectModelSchema.parse(body);
+          if (input.source.kind === 'personal' && !input.source.grantId) {
+            const holder = input.source.owner === 'device' ? personal : identity;
+            if (holder && (await models.list(holder)).some(item => item.connectionId === input.source.connectionId)) {
+              await publishModelChoices(connection);
+              return remoteCall({ ...input, source: { ...input.source, owner: 'device' } });
+            }
+          }
+          return remoteCall(input);
+        }
         const localChoices = await publishModelChoices(connection);
         const selection = modelSelectionSchema.parse(await remoteCall());
         // The Root displays a remote device; this installed client still knows

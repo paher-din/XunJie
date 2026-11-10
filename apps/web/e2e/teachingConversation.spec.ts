@@ -62,7 +62,7 @@ test.afterEach(async () => {
 
 async function configureModel(request: import('@playwright/test').APIRequestContext,
   headers: Record<string, string> = { 'content-type': 'application/json', 'x-xj-space': 'personal' }) {
-  const connectionId = randomUUID(), grantId = randomUUID()
+  const connectionId = randomUUID()
   const port = (upstream.address() as { port: number }).port
   const saved = await request.post(endpoint + '/api/learning/models/connections', { headers, data: {
     requestId: randomUUID(), connectionId, expectedVersion: 0, name: '界面模型', protocol: 'chat-completions',
@@ -70,10 +70,8 @@ async function configureModel(request: import('@playwright/test').APIRequestCont
     parameterMode: 'plain', enabled: true, contextWindow: 262144, maxOutputTokens: 8192,
     credential: { action: 'replace', value: 'synthetic-ui-key' } } })
   expect(saved.status()).toBe(200)
-  expect((await request.post(endpoint + '/api/learning/models/grants', { headers,
-    data: { requestId: randomUUID(), grantId, connectionId, owner: 'self' } })).status()).toBe(200)
   expect((await request.post(endpoint + '/api/learning/models/selection', { headers,
-    data: { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId, grantId } } })).status()).toBe(200)
+    data: { requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId, owner: 'self' } } })).status()).toBe(200)
 }
 
 async function prepareFirstQuestion(page: import('@playwright/test').Page, goal: string, question: string) {
@@ -98,11 +96,12 @@ test('a missing model keeps the activity and first question and offers the real 
   if (output) await page.screenshot({ path: join(output, `teaching-missing-model-${process.platform}.png`), fullPage: false })
   await page.getByRole('button', { name: '设置与帮助', exact: true }).click()
   await page.getByRole('button', { name: '模型', exact: true }).click()
-  await expect(page.getByRole('region', { name: '当前空间模型' })).toBeVisible({ timeout: 20000 })
+  await expect(page.getByRole('region', { name: '个人连接配置', exact: true })).toBeVisible({ timeout: 20000 })
+  await expect(page.getByRole('region', { name: '当前空间模型', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: '添加供应商', exact: true }).click()
-  await expect(page.getByLabel('上下文窗口', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('最大输出 token', { exact: true })).toBeVisible()
-  await page.getByLabel('上下文窗口', { exact: true }).scrollIntoViewIfNeeded()
+  await expect(page.getByLabel('模型 ID的上下文窗口', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('模型 ID的最大输出 token', { exact: true })).toBeVisible()
+  await page.getByLabel('模型 ID的上下文窗口', { exact: true }).scrollIntoViewIfNeeded()
   if (output) await page.screenshot({ path: join(output, `teaching-model-settings-${process.platform}.png`), fullPage: false })
 })
 
@@ -140,7 +139,7 @@ test('the formal home and activity conversation persist a first question, a foll
   await expect(page.getByText('界面回答1', { exact: true })).toBeVisible({ timeout: 20000 })
   await expect(page.getByText('来源：个人模型 · fixture-ui · chat-completions', { exact: true })).toBeVisible()
 
-  const switchedConnectionId = randomUUID(), switchedGrantId = randomUUID()
+  const switchedConnectionId = randomUUID()
   const headers = { 'content-type': 'application/json', 'x-xj-space': 'personal' }
   const port = (upstream.address() as { port: number }).port
   expect((await request.post(endpoint + '/api/learning/models/connections', { headers, data: {
@@ -148,17 +147,15 @@ test('the formal home and activity conversation persist a first question, a foll
     protocol: 'chat-completions', baseUrl: `http://127.0.0.1:${port}/v1`, path: '/chat/completions',
     modelId: 'fixture-ui-switched', dialect: 'standard', parameterMode: 'plain', enabled: true,
     contextWindow: 262144, maxOutputTokens: 8192, credential: { action: 'replace', value: 'synthetic-ui-switched-key' } } })).status()).toBe(200)
-  expect((await request.post(endpoint + '/api/learning/models/grants', { headers, data: {
-    requestId: randomUUID(), grantId: switchedGrantId, connectionId: switchedConnectionId, owner: 'self' } })).status()).toBe(200)
+  await page.reload()
+  if (await reopen.isVisible()) await reopen.click()
   await page.getByRole('button', { name: '切换模型', exact: true }).click()
-  await page.getByRole('region', { name: '当前空间模型' })
-    .getByRole('button', { name: '重新读取选用', exact: true }).click()
-  const switchedCard = page.getByRole('region', { name: '当前空间模型' })
-    .locator('.st-provider').filter({ hasText: '切换界面模型' })
-  await expect(switchedCard).toBeVisible({ timeout: 20000 })
-  await switchedCard.getByRole('button', { name: /选用$/ }).click()
-  await expect(page.getByText('已为当前学习活动切换到「fixture-ui-switched」。已有消息和结果保留原出处。', { exact: true })).toBeVisible({ timeout: 20000 })
-  await page.getByRole('button', { name: '返回学习空间', exact: true }).click()
+  const switched = page.waitForResponse(response => response.url().endsWith('/model-switches') && response.request().method() === 'POST')
+  await page.getByRole('menu', { name: '模型', exact: true })
+    .getByRole('menuitemradio', { name: 'fixture-ui-switched 切换界面模型', exact: true }).click()
+  const switchResponse = await switched
+  expect(switchResponse.status()).toBe(200)
+  expect((await switchResponse.json()).state).toBe('completed')
   await expect(page.locator('#activity-title')).toHaveText(firstQuestion)
 
   await page.getByLabel('你的问题', { exact: true }).fill('这是界面中的第二个问题。')
@@ -205,8 +202,9 @@ test('a course activity asks through the fixed help policy in the formal convers
   const activityId = (await created.json()).activityId as string
   await configureModel(page.request, { 'content-type': 'application/json' })
   const expected = '界面回答' + (replies.length + 1)
-  await page.goto(endpoint + '/?space=school&activity=' + activityId)
-  await expect(page.getByRole('heading', { name: '课程问答任务', exact: true })).toBeVisible()
+  await page.goto(endpoint + '/?space=school')
+  await page.locator(`[data-activity-id="${activityId}"]`).click()
+  await expect(page.locator('#activity-title')).toHaveText('课程问答任务')
   const open = page.getByRole('button', { name: '打开对话', exact: true })
   await expect(open).toBeVisible()
   await open.click()

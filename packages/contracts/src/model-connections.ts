@@ -115,7 +115,8 @@ export const modelSelectionSchema = z.object({ version: z.number().int().nonnega
   options: z.array(modelChoiceSchema), unavailableReason: z.string().optional(), restoredInstallation: z.literal(true).optional() }).strict();
 export const modelSelectionSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('school'), connectionId: z.uuid() }).strict(),
-  z.object({ kind: z.literal('personal'), connectionId: z.uuid(), grantId: z.uuid() }).strict(),
+  z.object({ kind: z.literal('personal'), connectionId: z.uuid(), owner: z.enum(['self', 'device']).optional(), grantId: z.uuid().optional() }).strict()
+    .refine(value => !!value.owner || !!value.grantId, 'Personal source requires an owner'),
 ]);
 export const selectModelSchema = z.object({ requestId: z.uuid(), expectedVersion: z.number().int().nonnegative(), source: modelSelectionSourceSchema }).strict();
 export const modelGrantInputSchema = z.object({ requestId: z.uuid(), grantId: z.uuid(), connectionId: z.uuid(), owner: z.enum(['self', 'device']) }).strict();

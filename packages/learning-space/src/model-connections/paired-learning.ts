@@ -239,7 +239,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
       return destination;
     });
   }
-  async function fixGrant(identity: SpaceIdentity, kind: 'segment' | 'attempt' | 'pin', id: string, grantId: string, version: number) {
+  async function fixGrant(identity: SpaceIdentity, kind: 'segment' | 'attempt' | 'pin', id: string, grantId: string | null, version: number) {
     const scope = modelScopeOf(identity);
     await storage.request({ requestId: 'paired-grant:' + hash([scope, kind, id]), fingerprint: hash([grantId, version]) }, async tx => {
       options.assertWritable();
@@ -260,7 +260,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
     const fixed = await grantRoute(identity, kind, id);
     if (fixed) {
       if (fixed.binding_version !== destination.binding.version) throw new StorageError('corrupt');
-      await models.selection.assertDeviceGrantActive(identity, String(fixed.grant_id));
+      if (fixed.grant_id) await models.selection.assertDeviceGrantActive(identity, String(fixed.grant_id));
     } else {
       // Pre-pointer segments without a recoverable source remain readable, but cannot
       // bypass an explicit revocation at their original device using an unknown grant.
@@ -310,7 +310,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
           } else if (destination.kind === 'device' && pinId) {
             const grant = await grantRoute(identity, 'pin', String(pinId));
             if (!grant) throw new StorageError('corrupt');
-            await fixGrant(identity, 'segment', segment.segmentId, String(grant.grant_id), Number(grant.binding_version));
+            await fixGrant(identity, 'segment', segment.segmentId, grant.grant_id ? String(grant.grant_id) : null, Number(grant.binding_version));
           }
           if (choice.kind === 'school') forwarded = { ...input, args: [{ ...segment, source: { school: { connectionId: choice.connection.connectionId, version: choice.connection.version } } }] };
         } else {
@@ -332,8 +332,8 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
         for (const entry of history.portable) if (entry.resultRef && hash(await route(identity, 'result', entry.resultRef)) !== hash(destination)) throw new StorageError('conflict');
         await fixRoute(identity, 'segment', segment.segmentId, destination);
         const source = forwarded.args[1] as { kind?: string; grantId?: string } | undefined;
-        if (destination.kind === 'device' && source?.kind === 'personal' && source.grantId)
-          await fixGrant(identity, 'segment', segment.segmentId, source.grantId, destination.binding.version);
+        if (destination.kind === 'device' && source?.kind === 'personal')
+          await fixGrant(identity, 'segment', segment.segmentId, source.grantId ?? null, destination.binding.version);
       } else if (operation.startsWith('segments.')) {
         destination = await route(identity, 'segment', args[0] as string);
         if (operation === 'segments.settle') for (const result of (args[1] as { results: { images: { imageId: string }[] }[] }).results)
@@ -346,7 +346,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
           if (hash(await route(identity, 'image', image.imageId)) !== hash(destination)) throw new StorageError('conflict');
         await fixRoute(identity, 'attempt', attempt.attemptId, destination);
         const fixed = await grantRoute(identity, 'segment', attempt.segmentId);
-        if (destination.kind === 'device' && fixed) await fixGrant(identity, 'attempt', attempt.attemptId, String(fixed.grant_id), Number(fixed.binding_version));
+        if (destination.kind === 'device' && fixed) await fixGrant(identity, 'attempt', attempt.attemptId, fixed.grant_id ? String(fixed.grant_id) : null, Number(fixed.binding_version));
       } else if (operation.startsWith('checks.')) destination = await route(identity, 'attempt', args[0] as string);
       else if (operation === 'results.retain') destination = await route(identity, 'result', (args[0] as { resultRef: string }).resultRef);
       else if (operation === 'images.read') destination = await route(identity, 'image', (args[0] as { imageId: string }).imageId);
@@ -365,7 +365,7 @@ export function createPairedLearningModels(storage: OwnedStorage, models: Models
         await fixRoute(identity, 'pin', args[0] as string, destination);
         if (selected) {
           if (selected.source.kind !== 'personal') throw new StorageError('corrupt');
-          await fixGrant(identity, 'pin', args[0] as string, selected.source.grantId, selected.binding.version);
+          await fixGrant(identity, 'pin', args[0] as string, selected.source.grantId ?? null, selected.binding.version);
           forwarded = { ...input, operation: 'selection.pinSource', args: [args[0], args[1], selected.source] };
         }
       } else if (operation === 'selection.pinned') {

@@ -134,7 +134,6 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   return <section aria-label="与 Agent 的对话" className="teaching-conversation">
     <div className="teaching-conversation-header">
       <h3>学习对话</h3>
-      {onModels && !readOnly && <button type="button" className="outline" onClick={onModels}>切换模型</button>}
     </div>
     {messages.length === 0 && <p className="detail">还没有对话。输入问题并发送后，回答会在这里持续保留。</p>}
     {timeline.map(entry => {

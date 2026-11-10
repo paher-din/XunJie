@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -154,5 +154,78 @@ test('installed client uses the real school subject to choose school or device m
     assert.equal(requests.length, 5);
   } finally {
     await client.stop(); await school.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
+  }
+});
+
+
+test('installed client with a local Agent selects a remote school model from its listed options', { timeout: 180000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-remote-school-selection-'));
+  const schoolRoot = join(root, 'school'), clientRoot = join(root, 'client');
+  const school = openProductRuntime({ root: schoolRoot, resources });
+  const client = openProductRuntime({ root: clientRoot, resources });
+  try {
+    await school.install({ profile: 'school' });
+    await client.install({ profile: 'local' });
+    const schoolState = await school.start(), clientState = await client.start();
+    const call = async (endpoint, route, body, headers = {}) => {
+      const response = await fetch(endpoint + '/api/learning/' + route, {
+        headers: { 'content-type': 'application/json', ...headers },
+        ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+      return { status: response.status, value: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
+    };
+    const admin = { authorization: 'Bearer ' + await resolveCredential(schoolRoot, 'control') };
+    const password = randomUUID(), loginName = 'remote-school-selection';
+    assert.equal((await call(schoolState.endpoint, 'manage/members', { requestId: randomUUID(), loginName, password }, admin)).status, 200);
+    const login = await call(schoolState.endpoint, 'login', { loginName, password });
+    const configuration = { requestId: randomUUID(), expectedVersion: 0, connectionId: randomUUID(), name: '远端学校模型',
+      protocol: 'chat-completions', baseUrl: 'https://1.1.1.1/v1', path: '/chat/completions', modelId: 'school-selection-fixture',
+      dialect: 'standard', parameterMode: 'plain', enabled: true, credential: { action: 'replace', value: 'synthetic-school-selection' },
+      policy: { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 64, timeoutMs: 10000 } };
+    assert.equal((await call(schoolState.endpoint, 'manage/model-default', configuration, admin)).status, 200);
+    const requestId = randomUUID();
+    assert.equal((await call(clientState.endpoint, 'client/start', { requestId, schoolEndpoint: schoolState.endpoint })).status, 200);
+    assert.equal((await call(schoolState.endpoint, 'connections/approve', { requestId }, { cookie: login.cookie })).status, 200);
+    assert.equal((await call(clientState.endpoint, 'client/complete', { requestId })).status, 200);
+    const localAgent = clientState.environment.services.find(item => item.unit === 'teaching-agent');
+    const schoolData = schoolState.environment.services.find(item => item.unit === 'learning-data');
+    const dependencyId = randomUUID();
+    const dependency = await school.authorize({ sourceEnvironmentId: localAgent.environmentId, sourceServiceId: localAgent.serviceId,
+      sourceInstallationId: clientState.environment.installationId, capabilities: ['teaching.dependencies'] }, schoolData.serviceId);
+    await client.connect({ connectionId: dependencyId, sourceEnvironmentId: localAgent.environmentId, sourceServiceId: localAgent.serviceId,
+      target: schoolData, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [], credentialRef: 'school-selection-dependency' }, dependency.token);
+    const memberConnection = JSON.parse(await resolveCredential(clientRoot, 'school-client-' + requestId));
+    assert.equal((await call(schoolState.endpoint, 'manage/agent-binding', { requestId: randomUUID(), identity: memberConnection.grant.identity,
+      connectionId: requestId, target: localAgent,
+      installationId: clientState.environment.installationId, delivery: 'client', grantId: dependency.grantId }, admin)).status, 200);
+    assert.equal((await call(clientState.endpoint, 'manage/client-agent-binding', { connectionId: requestId,
+      dependencyConnectionId: dependencyId, target: { environmentId: localAgent.environmentId, serviceId: localAgent.serviceId, version: 1 } },
+      { authorization: 'Bearer ' + await resolveCredential(clientRoot, 'control') })).status, 200);
+    const connection = JSON.parse(await resolveCredential(clientRoot, 'school-client-' + requestId));
+    assert.equal(!!connection.agentBinding, true, 'the installed client uses its local Agent');
+    const headers = { 'x-xj-space': 'school:' + requestId };
+    const initial = await call(clientState.endpoint, 'models/selection', undefined, headers);
+    assert.equal(initial.status, 200);
+    const choice = initial.value.options.find(item => item.kind === 'school');
+    assert.equal(choice.connection.connectionId, configuration.connectionId);
+    const input = { requestId: randomUUID(), expectedVersion: initial.value.version,
+      source: { kind: 'school', connectionId: choice.connection.connectionId } };
+    const selected = await call(clientState.endpoint, 'models/selection', input, headers);
+    assert.equal(selected.status, 200, 'a listed remote school model must be selectable with the local Agent');
+    assert.equal(selected.value.version, input.expectedVersion + 1);
+    assert.deepEqual(selected.value.selected, choice);
+    assert.deepEqual((await call(clientState.endpoint, 'models/selection', input, headers)).value, selected.value);
+    const refreshed = await call(clientState.endpoint, 'models/selection', { ...input, requestId: randomUUID(), expectedVersion: selected.value.version }, headers);
+    assert.equal(refreshed.status, 200);
+    await client.stop(); await client.start();
+    const reopened = await call(clientState.endpoint, 'models/selection', undefined, headers);
+    assert.equal(reopened.value.version, refreshed.value.version);
+    assert.deepEqual(reopened.value.selected, choice);
+    assert.equal((await call(clientState.endpoint, 'models/selection', { ...input, requestId: randomUUID() }, headers)).status, 409);
+    assert.equal((await call(schoolState.endpoint, 'manage/model-default', { ...configuration, requestId: randomUUID(),
+      expectedVersion: 1, enabled: false, credential: { action: 'keep' } }, admin)).status, 200);
+    assert.equal((await call(clientState.endpoint, 'models/selection', { ...input, requestId: randomUUID(), expectedVersion: reopened.value.version }, headers)).status, 503);
+  } finally {
+    await Promise.allSettled([client.stop(), school.stop()]);
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });

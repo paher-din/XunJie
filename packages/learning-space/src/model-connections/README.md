@@ -16,7 +16,7 @@
 | `checks.cancel(identity, id)` | 未外发确认未开始；外发后 abort 本机 SDK；保留终态竞争的实际事实，上游计算/费用仍未知 |
 | `checks.progress(identity, id)` | 只返回学习 attempt 已通过凭据尾部扣留并持久化的安全正文前缀与修订号；探针不写进度 |
 | `school.save(spaceId, input)` | 仅受认证的宿主管理入口调用；每个学校一个默认连接，CAS 更新、停用、检查许可和限额 |
-| `selection.read/save`、`selection.createGrant/revoke` | 真实主体的显式引用、费用来源及授权版本；撤销不删除历史，不回退到学校额度 |
+| `selection.read/save`、兼容用 `selection.createGrant/revoke` | 本人及可信设备配置直接选用，固定实际所有者与费用来源；历史 grant 撤销不删除调用历史，不回退到学校额度 |
 | `images.upload` | 接收本主体的固定 PNG 原件或有来源的变换版本；不接受 URL、教师材料 ID 或任意文件路径 |
 | `segments.create/read/settle` | 固定路线、格式版本、system/工具/参数前缀、序号、完整结果引用及调用方工具结清 |
 
@@ -42,13 +42,13 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 
 学校维护者使用 `xunjie school-model --root <学校环境> --file <私有 JSON>`，其输入为 `schoolModelInputSchema`：正常连接保存字段、`requestId/expectedVersion/credential`，以及 `policy: { checksAllowed, maxChecksPerHour, maxOutputTokens, timeoutMs }`。首次版本为 0；更新用返回版本；`enabled:false` 停用，`credential.action:"clear"` 显式清除。凭据放私有文件，命令只输出脱敏配置；管理凭据由产品在本机解析，学生不能调用管理写入。没有“管理员允许个人模型”开关。
 
-正式设置通过 `models/selection` 读取学校默认、本人及本机持有的选项。个人选项的“授权并选用”先用 `models/grants` 为**当前已认证主体**建立引用，再以选择版本 CAS 提交；`owner:device` 只由安装客户端证明本机持有者。学校网页的个人连接由该网页所在持有方保管，跨组件的本机模型由安装客户端持有。不存在以账号同名、请求中的主体 ID 或连接 ID 借用密钥的入口。
+Agent 对话的模型选择器通过 `models/selection` 读取学校服务、本人及本机持有的选项。已配置的个人供应商直接以 `{kind:"personal",connectionId,owner:"self"|"device"}` 提交选择版本 CAS，无须创建模型使用授权；学校服务作为供应商展示，选择仍使用 `{kind:"school",connectionId}`。`owner:device` 只由可信宿主或已配对设备证明本机持有者。旧 `{kind:"personal",connectionId,grantId}` 的存储、调用及撤销继续兼容。学校网页的个人连接由该网页所在持有方保管，跨组件的本机模型由安装客户端持有。不存在以账号同名、请求中的主体 ID 或连接 ID 借用密钥的入口。
 
 安装客户端沿 WP02 的真实学校连接授权实时核验身份及目标；学校服务在学校生成，个人服务在本机生成。客户端 owner 持久绑定每个 attempt/segment/image ID 的原持有方和输入摘要，重复接收和后续查询/取消不会因当前选择改变而转发到另一方。断连/撤销后不能继续外发；完整独立部署、跨机和代际接管归 #168。`x-xj-expected-subject/namespace` 只作视图隔离，不能建立身份。
 
 跨学校/本机持有方换段时，客户端模型 owner 通过原持有方认证读取 `models/results/<ref>` 的完成/结清公开事实，使用 `segments/<id>/close` 明确封存旧段，再保存带原 owner、路线、结果引用和可见文本摘要的 `provenance`。新持有方只收到调用方可移植文本，不伪称自己验证了外部原件，也不搬运旧 native/tool ID；原出处由客户端的持久段路由记录保留并返回。原件继续被原 owner 的段/尝试保留。多 owner 之间不做分布式事务：创建新段失败时旧边界仍可查询，修正请求可引用同一已封存边界重新创建，不自动恢复旧调用。
 
-接收和紧邻 SDK 外发前均重新检查成员、个人授权版本、连接启用及凭据可用性。普通配置更新不更换已接受请求的模型、地址、参数、凭据引用或费用来源；清除/替换凭据、停用和撤销阻止尚未外发者。共享学校检查上限按费用来源串行准入，不从个人借额；原生探针与检查均有持久准入和物理并发上限，不是 WP07 的学习 Run 预算。
+接收和紧邻 SDK 外发前均重新检查成员、实际配置所有者、连接启用及凭据可用性；历史 grant 路径还核验原授权版本。普通配置更新不更换已接受请求的模型、地址、参数、凭据引用或费用来源；清除/替换凭据、停用和撤销阻止尚未外发者。共享学校检查上限按费用来源串行准入，不从个人借额；原生探针与检查均有持久准入和物理并发上限，不是 WP07 的学习 Run 预算。
 
 ## 原生 Chat 调用 wire
 
@@ -98,11 +98,11 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 
 `service.ts` 的 `LearningModelPort` 覆盖选择、原生段、学习请求、公开进度、请求重建、固定图片与结果保留。`paired-learning.ts` 在学校模型 owner 保存任务及段/attempt/图片/结果的固定目标；后续选择或绑定变化不能把旧请求转发到新设备。设备模型凭据留在设备，SDK 外发前重新验证原 Agent 服务、安装、授权和 Run 领取代际。单次任务内部读取共享接受时的准入结果，外发校验独立执行；未知回包使用原业务身份核对。版本化任务支持建段前准备，不伪造尚未存在的 Run 或 attempt。
 
-Root 的 `models.selection.read/save` 保存同一成员选择版本，合并学校默认、Root self 和已配对设备的选项。设备经原 `learning.authority` 的 `modelChoices` 发布公开投影；学校设置页可直接发现选项，无需先打开活动或调用 Agent。迁移 14 保存设备元数据及按原 outbox 接受顺序更新的刷新事实；绑定、发布和设备个人空间的选择都不改 Root pointer。显式选设备仍用原 `selection.save` 的 `{kind:'personal',connectionId,grantId}`。个人凭据、native 与费用事实留在实际 owner。旧段、attempt、图片及结果沿已持久路由继续访问；设备离线不改选择，不借用 Root 或学校额度，未选设备的离线不阻塞已有 Root 选择。
+Root 的 `models.selection.read/save` 保存同一成员选择版本，合并学校默认、Root self 和已配对设备的选项。设备经原 `learning.authority` 的 `modelChoices` 发布公开投影；学校设置页可直接发现选项，无需先打开活动或调用 Agent。迁移 14 保存设备元数据及按原 outbox 接受顺序更新的刷新事实；绑定、发布和设备个人空间的选择都不改 Root pointer。显式选设备使用 `selection.save` 的 `{kind:'personal',connectionId,owner:'device'}`。Root 保存固定 binding，转发时根据公开选项记录的 `ownerKind` 在设备解析原 self/device 所有者，不创建 grant。迁移 22 允许固定调用路由以空 grant 标记直接选用，与历史撤销规则隔离。个人凭据、native 与费用事实留在实际 owner。旧段、attempt、图片及结果沿已持久路由继续访问；设备离线不改选择，不借用 Root 或学校额度，未选设备的离线不阻塞已有 Root 选择。
 
-`paired-grants.ts` 与迁移 15 保存授权创建、撤销、固定 grant 路由和结清事实。学校网页为设备选项创建授权时，任务由原设备实际建立 grant，Root 导入确认事实后才返回，现有“授权并选用”的连续请求无需中间刷新。撤销先在 Root 持久禁止该 grant 的新调用，包含原段和在途 attempt，再由原 owner 确认 inactive；未知回包保留原任务和原因，重查不会改变 owner。安装客户端的学校空间读写同一 Root pointer，其已有 school-scope 配置、个人配置与凭据继续由设备保管，个人空间的选择保持独立。授权任务遇到临时不可用、维护、资源忙或未知提交时保持 pending；恢复后沿原 task/request/grant 核实，不提交永久错误回执。调度按实际 binding 读取未结清任务，单批最多 16 条，维护验证及备份包含这些事实。
+`paired-grants.ts` 与迁移 15 仅为旧客户端及历史调用保留授权创建、撤销、固定 grant 路由和结清事实。新选择和学习调用不建立模型使用授权。撤销先在 Root 持久禁止该 grant 的新调用，包含原段和在途 attempt，再由原 owner 确认 inactive；未知回包保留原任务和原因，重查不会改变 owner。安装客户端的学校空间读写同一 Root pointer，其已有 school-scope 配置、个人配置与凭据继续由设备保管，个人空间的选择保持独立。授权任务遇到临时不可用、维护、资源忙或未知提交时保持 pending；恢复后沿原 task/request/grant 核实，不提交永久错误回执。调度按实际 binding 读取未结清任务，单批最多 16 条，维护验证及备份包含这些事实。
 
-`selection.resolve` 是学习 service 的新增操作，对指定 source 的真实 grant 重新核验并返回 snapshot，不读取或修改设备当前 selection。设备学习建段允许第二个 source 参数，实际 owner 重新校验该 grant，并把它纳入原段创建指纹。宿主对外部设备选择消费 paired adapter；原始 Root `selection.snapshot` 对设备 pointer 明确拒绝本地解析。安装客户端学校视图已接 Root 入口，个人视图继续使用设备自己的 pointer。
+`selection.resolve` 是学习 service 的新增操作，对指定 source 的实际配置所有者（历史 source 则核验 grant）重新核验并返回 snapshot，不读取或修改设备当前 selection。设备学习建段允许第二个 source 参数，实际 owner 重新校验该 source，并把它纳入原段创建指纹。宿主对外部设备选择消费 paired adapter；原始 Root `selection.snapshot` 对设备 pointer 明确拒绝本地解析。安装客户端学校视图已接 Root 入口，个人视图继续使用设备自己的 pointer。
 
 学习网络 `selection.read` 拒绝不同主体的可选 `deviceOwner`。本机 UI 由可信宿主解析个人身份后直接调用 `Gateway.selection.read(schoolIdentity, personalIdentity)`，保留原有本人设备用途；对端不能通过参数指定另一账号。
 

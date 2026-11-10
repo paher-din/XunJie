@@ -182,6 +182,8 @@ export async function createProductLearningApplication(context: {
     const modelGateway = model ? await createModelGateway(model.storage, {
       ...(configuration.learningAdmissionPolicy ? { learningAdmissionPolicy: configuration.learningAdmissionPolicy } : {}),
       holder: environment.profile === 'school' ? 'school' : 'device',
+      ...(environment.profile === 'school' ? {} : { deviceOwner: (identity: SpaceIdentity) => identity.kind === 'school' && identity.environmentId === environment.environmentId
+        ? Promise.resolve(null) : spaces.readPersonal() }),
       async authorize(identity) {
         await agentDependencyAuthorization.getStore()?.(identity);
         if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);

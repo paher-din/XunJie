@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCredentialValueSchema, modelDirectorySchema, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
-import { teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelProviderDialog } from '../components/settings/ModelProviderDialog'
 import { z } from 'zod'
-import { ModelSelection, type ModelSelectionController } from './ModelSelection'
+import { type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
 import { PersonalSkillsSettings } from './PersonalSkillsSettings'
 import { useModelDirectory, type ReadModelDirectory } from '../components/settings/useModelDirectory'
@@ -31,8 +30,6 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   const toggleRunning = useRef(new Set<string>())
   const [loading, setLoading] = useState(false), [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState<{ key: string; message: string } | null>(null)
-  const [switchStatus, setSwitchStatus] = useState('')
-  const [switchFailed, setSwitchFailed] = useState(false)
   const actions = useRef(new Map<string, number>())
   const reads = useRef(0)
   // Pending polls must not prevent a completed read from publishing.
@@ -162,39 +159,16 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     if (saved.connectionId !== connectionId || saved.version !== version) throw new Error('配置已更新，请重新打开。')
     return saved.value
   }, [request])
-  const switchConversation = async (selectionVersion: number) => {
-    if (!activityId) return
-    setSwitchFailed(false)
-    setSwitchStatus('正在核对原回答与工具边界…')
-    try {
-      const result = teachingModelSwitchSchema.parse(await request(`../agent/${activityId}/model-switches`, {
-        requestId: crypto.randomUUID(), selectionVersion }))
-      setSwitchFailed(result.state !== 'completed' && result.reason !== 'segment-busy')
-      setSwitchStatus(result.state === 'completed'
-        ? `已为当前学习活动切换到「${result.model.modelId}」。已有消息和结果保留原出处。`
-        : result.reason === 'segment-busy'
-          ? '当前回答或工具仍在收尾；切换请求已保留，完成后将继续核对。'
-          : '切换尚未完成；原模型边界和草稿已保留，没有自动回退到其他模型。')
-    } catch (error) {
-      setSwitchFailed(true)
-      setSwitchStatus(error instanceof Error ? `切换结果尚未确认：${error.message}` : '切换结果尚未确认；请重新读取后重试。')
-    }
-  }
   return <div ref={rootElement} className="content product-model-settings">
     <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} /></div>
-      <div className="product-personal-model"><ModelSelection controller={selection}
-      onSelected={saved => switchConversation(saved.version)}
-      onCheck={() => void act('selected', '检查当前模型', () => check({ selected: true, selectionVersion: selection.selection!.version }))} />
-      {activityId && selection.selection?.selected && <div className="product-model-selection-actions">
-        <button type="button" className="outline" disabled={switchStatus === '正在核对原回答与工具边界…'}
-          onClick={() => void switchConversation(selection.selection!.version)}>将当前选用应用到学习活动</button>
-      </div>}
-      {activityId && <p role={switchFailed ? 'alert' : 'status'} className={switchFailed ? 'learning-error' : 'detail'}>{switchStatus || '从当前学习活动进入设置；新选用会在原调用和工具结清后继续此活动。'}</p>}
-      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={[loadError, actionError?.message].filter(Boolean).join('；')}
+      <div className="product-personal-model">
+      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={[loadError, selection.error, actionError?.message].filter(Boolean).join('；')}
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
-      onReload={() => void reload(true)} onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
+      schoolModels={selection.selection?.options.filter(choice => choice.kind === 'school') ?? []}
+      onSchoolCheck={choice => void act('school-check', '检查学校模型', () => check({ school: { connectionId: choice.connection.connectionId, version: choice.connection.version } }))}
+      onReload={() => { void reload(true); void selection.reload() }} onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}
       onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div></div>
     {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onDirectory={readDirectory} onCheck={check} onCancel={cancel} />}

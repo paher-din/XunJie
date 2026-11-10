@@ -146,6 +146,22 @@ test('Root revoke denies existing segments and stops the in-flight SDK before an
     await f.publish();
     await assert.rejects(f.root.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: 2, source: { kind: 'personal', connectionId: f.selfId, grantId: grant.grantId } }), { code: 'forbidden' });
     assert.equal((await f.root.selection.read(f.identity)).selected.connection.connectionId, f.schoolId);
+    // A historical grant revocation cannot disable direct use of an owned configuration.
+    const direct = await f.root.selection.save(f.identity, { requestId: randomUUID(), expectedVersion: 2,
+      source: { kind: 'personal', connectionId: f.selfId, owner: 'device' } });
+    assert.equal(direct.selected.grantId, undefined);
+    const pinId = randomUUID();
+    const fixed = await f.client.selection.pin(f.identity, pinId, direct.version);
+    assert.equal(fixed.source.grantId, undefined);
+    const directSegmentId = randomUUID(), directAttemptId = randomUUID();
+    await f.client.segments.create(f.identity, { requestId: randomUUID(), segmentId: directSegmentId, purpose: 'learning',
+      source: { selected: true, selectionVersion: direct.version, pinId }, prefix: { system: '', tools: [] }, portable: [] });
+    await f.client.checks.receive(f.identity, { attemptId: directAttemptId, segmentId: directSegmentId, purpose: 'learning',
+      expectedSequence: 0, input: { text: '直接使用本人配置', images: [], toolResults: [] }, limits: { maxOutputTokens: 32 } });
+    const accepted = await f.client.checks.read(f.identity, directAttemptId);
+    assert.equal(accepted.state, 'accepted');
+    assert.equal(accepted.source.grantId, undefined);
+    assert.equal(f.received.length, 1, 'the old unknown usage reservation is preserved');
     await f.root.validate(); await f.device.validate();
   } finally { await f.close(); }
 });

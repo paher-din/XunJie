@@ -10,16 +10,19 @@ import { AgentInputMode } from './AgentInteraction'
 import { useActivitySession } from './ActivitySession'
 import { workspaceScope } from './learningTransport'
 import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts'
+import { AgentModelPicker, useAgentModelPicker } from './AgentModelPicker'
+import type { ModelSelectionController } from './ModelSelection'
 import './product-agent.css'
 
 /** The same reliable activity session can be read as a conversation or opened as a workspace. */
-export function ProductConversation({ activity, spaceKey, namespace, authorized, workspaceRef, onWorkspace, onModels, error, title }: {
+export function ProductConversation({ activity, spaceKey, namespace, authorized, workspaceRef, onWorkspace, onModels, error, title, selection }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; onWorkspace(artifactId?: string): Promise<void>; onModels(): void; error: ReactNode
-  title?: string
+  title?: string; selection: ModelSelectionController
 }) {
   const { workspace, draft, actions, inputInteraction } = useActivitySession()
   const references = useWorkspaceReferences()
+  const picker = useAgentModelPicker(selection, activity, spaceKey, namespace)
   const artifacts = useTeachingArtifacts(activity, spaceKey, namespace, authorized)
   const [active, setActive] = useState(false)
   const scope = workspaceScope(namespace, activity)
@@ -45,8 +48,10 @@ export function ProductConversation({ activity, spaceKey, namespace, authorized,
     </div>
     <div className="product-conversation-input">
       <details className="product-conversation-mode"><summary>发送方式</summary><AgentInputMode active={active} /></details>
-      <WorkspaceReferenceComposer sendBlocked={!inputInteraction.ready}
-        blockedHint="正在核对本次发送方式，问题与引用仍保留。" blockedLabel="核对发送方式…"
+      <WorkspaceReferenceComposer modelPicker={<AgentModelPicker controller={picker} disabled={!authorized || workspace.isReadOnly()} onSettings={onModels} />}
+        sendBlocked={!inputInteraction.ready || picker.blocked}
+        blockedHint={picker.blocked ? '正在切换模型，问题与引用仍保留。' : '正在核对本次发送方式，问题与引用仍保留。'}
+        blockedLabel={picker.blocked ? '切换模型中…' : '核对发送方式…'}
         submitLabel={active ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} />
     </div>
   </div>

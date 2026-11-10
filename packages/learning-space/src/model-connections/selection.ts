@@ -24,6 +24,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   school(identity: SpaceIdentity): Promise<School | null>;
   connection(scope: string, connectionId: string): Promise<ModelConnection>;
   list(identity: SpaceIdentity): Promise<ModelConnection[]>;
+  deviceOwner?(identity: SpaceIdentity): Promise<SpaceIdentity | null>;
   assertWritable(): void;
 }) {
   let deviceRevoker: ((identity: SpaceIdentity, id: string, value: unknown) => Promise<unknown>) | undefined;
@@ -40,6 +41,14 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return { choice, source: { kind: 'school' as const, ownerScope: 'school:' + identity.environmentId + ':' + identity.spaceId,
         feeSource: 'school:' + identity.environmentId + ':' + identity.spaceId } };
     }
+    if (!source.grantId) {
+      const actor = source.owner === 'device' ? await owner.deviceOwner?.(identity) : identity;
+      if (!actor) throw new StorageError('forbidden');
+      await owner.authorize(actor);
+      const ownerScope = modelScopeOf(actor), connection = await owner.connection(ownerScope, source.connectionId);
+      return { choice: { kind: 'personal' as const, connection, policy: personalPolicy, origin: source.owner ?? 'self' },
+        source: { kind: 'personal' as const, ownerScope, feeSource: ownerScope } };
+    }
     const authorization = await grant(source.grantId);
     if (modelScopeOf(authorization.recipient) !== modelScopeOf(identity) || authorization.connectionId !== source.connectionId) throw new StorageError('forbidden');
     if (!authorization.active) throw new StorageError('forbidden');
@@ -55,6 +64,14 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   }
   async function deviceChoice(identity: SpaceIdentity, source: Source, binding: z.infer<typeof modelDeviceBindingSchema>) {
     if (source.kind !== 'personal') throw new StorageError('corrupt');
+    if (!source.grantId) {
+      const { rows: [row] } = await storage.read('SELECT body FROM model_device_connection_choices WHERE scope=$1 AND connection_id=$2 AND binding_version=$3',
+        [modelScopeOf(identity), source.connectionId, binding.version]);
+      if (!row) throw new StorageError('forbidden');
+      const item = deviceRawChoiceSchema.parse(row.body);
+      if (!item.active || fingerprint(item.binding) !== fingerprint(binding)) throw new StorageError('forbidden');
+      return item.choice;
+    }
     const { rows: [row] } = await storage.read('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3',
       [modelScopeOf(identity), source.grantId, binding.version]);
     if (!row) throw new StorageError('forbidden');
@@ -105,6 +122,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
   }
   async function read(identity: SpaceIdentity, deviceOwner?: SpaceIdentity) {
     await owner.authorize(identity);
+    deviceOwner ??= await owner.deviceOwner?.(identity) ?? undefined;
     const saved = await current(identity);
     const options: (School | Personal)[] = [];
     const school = await owner.school(identity); if (school) options.push(school);
@@ -131,7 +149,7 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       return { version: saved?.version ?? 0, selected: resolved?.choice ?? null, options };
     } catch (error) {
       if (!(error instanceof StorageError) || !['forbidden', 'missing'].includes(error.code)) throw error;
-      return { version: saved?.version ?? 0, selected: null, options, unavailableReason: 'grant-revoked' };
+      return { version: saved?.version ?? 0, selected: null, options, unavailableReason: saved?.source.kind === 'personal' && !saved.source.grantId ? 'connection-unavailable' : 'grant-revoked' };
     }
   }
   async function save(identity: SpaceIdentity, value: unknown) {
@@ -139,10 +157,15 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     const input = selectModelSchema.parse(value), scope = modelScopeOf(identity), hash = fingerprint({ scope, input });
     const prior = await storage.receipt('model-selection:' + input.requestId, hash); if (prior) return prior.result;
     let device: z.infer<typeof modelDeviceBindingSchema> | undefined;
-    if (input.source.kind === 'personal') {
+    if (input.source.kind === 'personal' && input.source.grantId) {
       const { rows: [row] } = await storage.read(`SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=
         (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [scope, input.source.grantId]);
       if (row) device = deviceModelChoiceSchema.parse(row.body).binding;
+    }
+    if (input.source.kind === 'personal' && !input.source.grantId && input.source.owner === 'device') {
+      const { rows: [row] } = await storage.read(`SELECT body FROM model_device_connection_choices WHERE scope=$1 AND connection_id=$2 AND binding_version=
+        (SELECT max(version) FROM model_member_devices WHERE scope=$1)`, [scope, input.source.connectionId]);
+      if (row) device = deviceRawChoiceSchema.parse(row.body).binding;
     }
     const resolved = device ? { choice: await deviceChoice(identity, input.source, device) } : await resolve(identity, input.source);
     if (!resolved || !resolved.choice.connection.enabled) throw new StorageError('unavailable');
@@ -150,9 +173,17 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     return (await storage.request({ requestId: 'model-selection:' + input.requestId, fingerprint: hash }, async tx => {
       if ('source' in resolved) {
         await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + resolved.source.ownerScope]);
-        const currentConnection = await owner.connection(resolved.source.ownerScope, resolved.choice.connection.connectionId);
-        if (!currentConnection.enabled) throw new StorageError('unavailable');
-        resolved.choice = { ...resolved.choice, connection: currentConnection };
+        if (resolved.source.kind === 'school') {
+          // The installed client's school model may live entirely at the remote owner.
+          const currentSchool = await owner.school(identity);
+          if (!currentSchool || currentSchool.connection.connectionId !== input.source.connectionId
+            || !currentSchool.connection.enabled) throw new StorageError('unavailable');
+          resolved.choice = currentSchool;
+        } else {
+          const currentConnection = await owner.connection(resolved.source.ownerScope, resolved.choice.connection.connectionId);
+          if (!currentConnection.enabled) throw new StorageError('unavailable');
+          resolved.choice = { ...resolved.choice, connection: currentConnection };
+        }
       }
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-selection:' + scope]);
       const { rows: [row] } = await tx.query('SELECT body FROM model_selections WHERE scope=$1 FOR UPDATE', [scope]);
@@ -272,7 +303,17 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     await owner.authorize(identity);
     const saved = await current(identity);
     if (expectedVersion !== undefined && (saved?.version ?? 0) !== expectedVersion) throw new StorageError('conflict');
-    if (saved?.device) { await deviceChoice(identity, saved.source, saved.device); return { binding: saved.device, source: saved.source }; }
+    if (saved?.device) {
+      await deviceChoice(identity, saved.source, saved.device);
+      let source = saved.source;
+      if (source.kind === 'personal' && !source.grantId) {
+        const { rows: [row] } = await storage.read('SELECT body FROM model_device_connection_choices WHERE scope=$1 AND connection_id=$2 AND binding_version=$3',
+          [modelScopeOf(identity), source.connectionId, saved.device.version]);
+        if (!row) throw new StorageError('forbidden');
+        source = { ...source, owner: deviceRawChoiceSchema.parse(row.body).ownerKind };
+      }
+      return { binding: saved.device, source };
+    }
     return null;
   }
   async function resolveChoice(identity: SpaceIdentity, value: unknown) {
@@ -282,7 +323,14 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     return fixed;
   }
   async function authorizeAttempt(identity: SpaceIdentity, source: ModelAttempt['source'], connectionId: string) {
-    if (!source?.grantId) return;
+    if (!source?.grantId) {
+      if (source?.kind === 'personal' && source.ownerScope !== modelScopeOf(identity)) {
+        const actor = await owner.deviceOwner?.(identity);
+        if (!actor || modelScopeOf(actor) !== source.ownerScope) throw new StorageError('forbidden');
+        await owner.authorize(actor);
+      }
+      return;
+    }
     const authorization = await grant(source.grantId);
     if (!authorization.active || authorization.connectionId !== connectionId || authorization.version !== source.grantVersion || modelScopeOf(authorization.recipient) !== modelScopeOf(identity)
       || modelScopeOf(authorization.owner) !== source.ownerScope) throw new StorageError('forbidden');
@@ -300,12 +348,19 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       const item = savedSelectionSchema.parse(row.body);
       if (item.device) {
         if (item.source.kind !== 'personal') throw new StorageError('corrupt');
-        const { rows: [choice] } = await storage.read('SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3', [row.scope, item.source.grantId, item.device.version]);
-        if (!choice || fingerprint(deviceModelChoiceSchema.parse(choice.body).binding) !== fingerprint(item.device)
-          || deviceModelChoiceSchema.parse(choice.body).choice.connection.connectionId !== item.source.connectionId) throw new StorageError('corrupt');
+        const legacy = !!item.source.grantId;
+        const { rows: [choice] } = await storage.read(legacy
+          ? 'SELECT body FROM model_device_choices WHERE scope=$1 AND grant_id=$2 AND binding_version=$3'
+          : 'SELECT body FROM model_device_connection_choices WHERE scope=$1 AND connection_id=$2 AND binding_version=$3',
+          [row.scope, legacy ? item.source.grantId : item.source.connectionId, item.device.version]);
+        const parsed = choice && (legacy ? deviceModelChoiceSchema : deviceRawChoiceSchema).parse(choice.body);
+        if (!parsed || fingerprint(parsed.binding) !== fingerprint(item.device)
+          || parsed.choice.connection.connectionId !== item.source.connectionId) throw new StorageError('corrupt');
         continue;
       }
-      if (item.source.kind === 'personal') {
+      if (item.source.kind === 'personal' && !item.source.grantId && item.source.owner === 'self')
+        await owner.connection(String(row.scope), item.source.connectionId);
+      if (item.source.kind === 'personal' && item.source.grantId) {
         const authorization = await grant(item.source.grantId);
         if (authorization.connectionId !== item.source.connectionId || modelScopeOf(authorization.recipient) !== row.scope) throw new StorageError('corrupt');
       }
@@ -317,7 +372,12 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       const source = modelAttemptSchema.shape.source.unwrap().parse(fixed.source);
       const original = selectModelSchema.shape.source.parse(row.source);
       if (source.kind !== original.kind || fixed.choice.connection.connectionId !== original.connectionId) throw new StorageError('corrupt');
-      if (original.kind === 'personal') {
+      if (original.kind === 'personal' && !original.grantId) {
+        if (source.grantId || source.grantVersion || source.feeSource !== source.ownerScope
+          || original.owner === 'self' && source.ownerScope !== row.scope) throw new StorageError('corrupt');
+        await owner.connection(source.ownerScope, original.connectionId);
+      }
+      if (original.kind === 'personal' && original.grantId) {
         const authorization = await grant(original.grantId);
         if (modelScopeOf(authorization.recipient) !== row.scope || authorization.connectionId !== original.connectionId
           || source.grantId !== original.grantId || source.ownerScope !== modelScopeOf(authorization.owner)) throw new StorageError('corrupt');

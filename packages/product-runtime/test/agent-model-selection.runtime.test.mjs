@@ -134,11 +134,9 @@ test('installed school settings share the Root pointer and independent Agent dis
     // The installed school form must read the Root pointer before Agent warmup or any local selection.
     assert.deepEqual(await deviceApi('models/selection', undefined, selected), rootPointer);
     await deviceApi('models/connections', configuration(personalModelId, 'device-route'), personal);
-    const personalGrantId = randomUUID();
-    const personalGrant = await deviceApi('models/grants', { requestId: randomUUID(), grantId: personalGrantId,
-      connectionId: personalModelId, owner: 'self' }, personal);
     const personalPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: 0,
-      source: { kind: 'personal', connectionId: personalModelId, grantId: personalGrantId } }, personal);
+      source: { kind: 'personal', connectionId: personalModelId, owner: 'self' } }, personal);
+    assert.equal(personalPointer.selected.grantId, undefined);
     // Existing school-scope personal configurations remain on this installed device.
     const localConfiguration = await deviceApi('models/connections', configuration(localSchoolModelId, 'local-school-scope'), selected);
     const editedConfiguration = await deviceApi('models/connections', { ...configuration(localSchoolModelId, 'local-school-scope'),
@@ -149,26 +147,15 @@ test('installed school settings share the Root pointer and independent Agent dis
     const settings = await deviceApi('models/selection', undefined, selected);
     const rawSelf = settings.options.find(choice => choice.connection.connectionId === localSchoolModelId && !choice.grantId);
     assert.equal(rawSelf?.origin, 'self', 'the installed form retains the actual holder of its ungranted school-scope configuration');
-    const localGrantId = randomUUID();
-    await deviceApi('models/grants', { requestId: randomUUID(), grantId: localGrantId, connectionId: localSchoolModelId,
-      owner: rawSelf.origin === 'device' ? 'device' : 'self' }, selected);
-    // No reload between grants and selection: this is the real choose() sequence.
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
-      source: { kind: 'personal', connectionId: localSchoolModelId, grantId: localGrantId } }, selected);
-    assert.equal((await schoolApi('models/selection')).selected.grantId, localGrantId);
-    assert.ok((await deviceApi('models/connections', undefined, selected)).some(item => item.connectionId === localSchoolModelId),
-      'authorizing/selecting a configuration never moves it to Root or removes it from the original settings list');
+      source: { kind: 'personal', connectionId: localSchoolModelId, owner: 'self' } }, selected);
+    assert.equal((await schoolApi('models/selection')).selected.connection.connectionId, localSchoolModelId);
+    assert.equal(rootPointer.selected.grantId, undefined);
     const rawDevice = settings.options.find(choice => choice.connection.connectionId === personalModelId && !choice.grantId);
     assert.equal(rawDevice?.origin, 'device');
-    const deviceGrantId = randomUUID();
-    const deviceGrant = await deviceApi('models/grants', { requestId: randomUUID(), grantId: deviceGrantId,
-      connectionId: personalModelId, owner: 'device' }, selected);
-    assert.deepEqual(deviceGrant.owner, personalGrant.owner, 'the credential owner remains the device personal identity');
-    assert.equal(deviceGrant.recipient.principalId, identity.principalId);
-    // Match ModelSelection.choose: grant acknowledgement is followed immediately by pointer save, without reload.
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
-      source: { kind: 'personal', connectionId: personalModelId, grantId: deviceGrantId } }, selected);
-    assert.ok(rootPointer.options.some(choice => choice.grantId === deviceGrantId), 'grant creation publishes choices before pointer save');
+      source: { kind: 'personal', connectionId: personalModelId, owner: 'device' } }, selected);
+    assert.equal(rootPointer.selected.grantId, undefined);
     assert.equal(rootPointer.selected.origin, 'device');
     assert.deepEqual(await schoolApi('models/selection'), rootPointer);
     assert.deepEqual(await deviceApi('models/selection', undefined, personal), personalPointer);
@@ -204,6 +191,12 @@ test('installed school settings share the Root pointer and independent Agent dis
       assert.deepEqual(await deviceApi(route, input, selected), result);
       return { input, result, route };
     }
+    rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
+      source: { kind: 'personal', connectionId: localSchoolModelId, owner: 'self' } }, selected);
+    await ask(localSchoolModelId, 'local-school-scope');
+    rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
+      source: { kind: 'personal', connectionId: personalModelId, owner: 'device' } }, selected);
+    await switchTo(personalModelId);
     await ask(personalModelId, 'device-route');
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'school', connectionId: schoolModelId } }, selected);
@@ -211,7 +204,7 @@ test('installed school settings share the Root pointer and independent Agent dis
     assert.deepEqual(await schoolApi('models/selection'), rootPointer);
     // A device's personal pointer can change without overriding the school Root pointer.
     await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: personalPointer.version,
-      source: { kind: 'personal', connectionId: personalModelId, grantId: personalGrantId } }, personal);
+      source: { kind: 'personal', connectionId: personalModelId, owner: 'self' } }, personal);
     const schoolPointer = await deviceApi('models/selection', undefined, selected);
     assert.equal(schoolPointer.version, rootPointer.version); assert.deepEqual(schoolPointer.selected, rootPointer.selected);
     await switchTo(schoolModelId);
@@ -219,35 +212,23 @@ test('installed school settings share the Root pointer and independent Agent dis
     // Root self is configured by the Root school webpage, not moved from the installed device.
     await schoolApi('models/connections', configuration(selfModelId, 'root-self-route'));
     assert.ok((await schoolApi('models/connections')).some(item => item.connectionId === selfModelId));
-    const selfGrantId = randomUUID();
-    const selfGrant = await schoolApi('models/grants', { requestId: randomUUID(), grantId: selfGrantId,
-      connectionId: selfModelId, owner: 'self' });
-    assert.deepEqual(selfGrant.owner, identity, 'self in a school space belongs to the Root model owner');
-    rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
-      source: { kind: 'personal', connectionId: selfModelId, grantId: selfGrantId } }, selected);
+    rootPointer = await schoolApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
+      source: { kind: 'personal', connectionId: selfModelId, owner: 'self' } });
     await switchTo(selfModelId);
     await ask(selfModelId, 'root-self-route');
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
-      source: { kind: 'personal', connectionId: personalModelId, grantId: deviceGrantId } }, selected);
+      source: { kind: 'personal', connectionId: personalModelId, owner: 'device' } }, selected);
     const fixedDeviceSwitch = await switchTo(personalModelId);
     rootPointer = await deviceApi('models/selection', { requestId: randomUUID(), expectedVersion: rootPointer.version,
       source: { kind: 'school', connectionId: schoolModelId } }, selected);
     await agent.stop(); await agent.start();
     assert.deepEqual(await deviceApi(fixedDeviceSwitch.route, fixedDeviceSwitch.input, selected), fixedDeviceSwitch.result,
       'restart and later Root selection must not retarget the original device switch');
-    assert.equal(payloads.length, 3, 'changing/reading selection does not dispatch hidden model requests');
-    await deviceApi('models/grants/'+deviceGrantId+'/revoke', { requestId: randomUUID(), expectedVersion: deviceGrant.version }, selected);
-    const revokedSwitch = await fetch(deviceState.endpoint+'/api/learning/'+fixedDeviceSwitch.route, { method: 'POST',
-      headers: { 'content-type': 'application/json', ...selected }, body: JSON.stringify(fixedDeviceSwitch.input) });
-    assert.equal(revokedSwitch.status, 403, 'the completed switch receipt cannot bypass live Root/device grant revocation');
-    const revokedView = await schoolApi('models/selection');
-    assert.ok(!revokedView.options.some(choice => choice.grantId === deviceGrantId));
-    const denied = await fetch(deviceState.endpoint+'/api/learning/models/selection', { method:'POST',
-      headers:{'content-type':'application/json',...selected}, body:JSON.stringify({ requestId:randomUUID(),
-        expectedVersion:rootPointer.version, source:{kind:'personal',connectionId:personalModelId,grantId:deviceGrantId} }) });
-    assert.equal(denied.status,403,JSON.stringify(await denied.json()));
-    assert.equal((await deviceApi('models/selection', undefined, personal)).selected.grantId, personalGrantId,
-      'revoking a school device grant preserves the personal-space grant and pointer');
+    assert.equal(payloads.length, 4, 'changing/reading selection does not dispatch hidden model requests');
+    assert.equal((await deviceApi('models/selection', undefined, personal)).selected.connection.connectionId, personalModelId);
+    await device.stop(); await device.start();
+    assert.deepEqual(await deviceApi(fixedDeviceSwitch.route, fixedDeviceSwitch.input, selected), fixedDeviceSwitch.result,
+      'direct model switches survive device restart without model grants');
     const controlBase = `agent/${activity.activityId}`;
     assert.equal(await deviceApi(`${controlBase}/controls/${randomUUID()}`, undefined, selected), null);
     const originalInput = (await deviceApi(`${controlBase}/conversation`, undefined, selected)).inputs.at(-1);
@@ -261,7 +242,19 @@ test('installed school settings share the Root pointer and independent Agent dis
       { method: 'POST', headers: { 'content-type': 'application/json', ...selected }, body: JSON.stringify(continued) });
     assert.equal(refused.status, 409);
     assert.equal((await deviceApi(`${controlBase}/controls/${continued.requestId}`, undefined, selected)).status, 'rejected');
-    assert.equal(payloads.length, 3, 'Input/control receipt queries and rejected late edits never create a model call.');
+    assert.equal(payloads.length, 4, 'Input/control receipt queries and rejected late edits never create a model call.');
+    for (const [name, state] of [['school', schoolState], ['device', deviceState]]) {
+      const service = state.environment.services.find(item => item.unit === 'model-connection');
+      const binding = JSON.parse(await resolveCredential(join(directory, name), 'storage-' + service.serviceId));
+      const client = new pg.Client(binding.connection);
+      try {
+        await client.connect();
+        const schema = '"' + binding.schema.replaceAll('"', '""') + '"';
+        const { rows: [counts] } = await client.query(`SELECT count(*)::int AS grants FROM ${schema}.model_use_grants`);
+        assert.equal(counts.grants, 0, name + ': direct model use must not create hidden model-use grants');
+      } finally { await client.end(); }
+    }
+
   } finally {
     await Promise.allSettled([agent.stop(), device.stop(), school.stop()]);
     upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve));
