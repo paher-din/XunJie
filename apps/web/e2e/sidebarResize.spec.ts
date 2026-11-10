@@ -43,6 +43,43 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.sidebar')).toBeVisible()
 })
 
+test('持续拉开时吸附按时结束，之后跟手到最大宽度并可连续收回', async ({ page }) => {
+  const handle = page.getByRole('separator', { name: '调整侧栏宽度' })
+  await handle.press('Home')
+  await expect.poll(() => settledSidebarWidth(page)).toBe(60)
+  const y = await startDrag(page)
+  const samples: { pointer: number; edge: number; grip: number; time: number }[] = []
+  const sample = (pointer: number) => page.evaluate(pointer => new Promise<{
+    pointer: number; edge: number; grip: number; time: number
+  }>(resolve => requestAnimationFrame(() => requestAnimationFrame(time => {
+    const main = document.querySelector('.main')!.getBoundingClientRect()
+    const grip = document.querySelector('.sidebar-resize-handle')!.getBoundingClientRect()
+    resolve({ pointer, edge: main.left, grip: grip.left + grip.width / 2, time })
+  }))), pointer)
+  for (let x = 72; x <= 360; x += 12) {
+    await page.mouse.move(x, y)
+    samples.push(await sample(x))
+  }
+  const snapStart = samples.find(frame => frame.pointer >= 112)!.time
+  const tracking = samples.filter(frame => frame.time - snapStart > 260)
+  expect(tracking.length).toBeGreaterThan(0)
+  expect.soft(Math.max(...tracking.map(frame => Math.abs(frame.pointer - frame.edge))),
+    '吸附结束后仍持续落后鼠标，不能等停止移动才追上').toBeLessThan(1)
+  await page.mouse.up()
+  expect(await settledSidebarWidth(page)).toBe(360)
+
+  await startDrag(page)
+  const closing: typeof samples = []
+  for (let x = 348; x >= 60; x -= 12) {
+    await page.mouse.move(x, y)
+    closing.push(await sample(x))
+  }
+  await page.mouse.up()
+  expect(await settledSidebarWidth(page)).toBe(60)
+  expect([...samples, ...closing].every(frame => Math.abs(frame.edge - frame.grip) < 1)).toBe(true)
+  expect(closing.every((frame, index) => index === 0 || frame.edge <= closing[index - 1].edge + 0.5)).toBe(true)
+})
+
 test('连续拖动微调松手后保持新宽度，不被浏览器的连续点击识别覆盖', async ({ page }) => {
   const handle = page.getByRole('separator', { name: '调整侧栏宽度' })
   await handle.press('End')

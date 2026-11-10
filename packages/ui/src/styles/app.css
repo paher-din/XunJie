@@ -216,30 +216,29 @@ h3 {
   background: var(--chip-active);
   color: var(--ink);
 }
-/* 与展开态各行同一列（中心 x=31，展开态子项缩进 16→4px 后同列）；整体较初版上移 20px */
+/* 图标中心与展开态对应行对齐。 */
 .railbtn.r-home {
-  top: 63px;
+  top: 62px;
   --d: 0.1s;
 }
 .railbtn.r-agent {
-  top: 106px;
+  top: 102px;
   --d: 0.14s;
 }
 .railbtn.r-new {
-  top: 146px;
+  top: 139.75px;
   --d: 0.18s;
 }
-/* 归档（2026-10-11）：位置跟着展开态展开区走——「新对话」下 33px 是「已归档」入口行，
-   再下 32px 是搜索框，所以搜索从 181 挪到 211，级联延迟顺延到 0.22 / 0.26 / 0.30。
-   有归档且站在 /agent 区才露面（对应展开态入口行只在有归档时出现） */
 .railbtn.r-archive {
-  top: 179px;
+  top: 174.5px;
   --d: 0.22s;
 }
 .railbtn.r-search {
-  top: 211px;
+  top: 208.5px;
   --d: 0.26s;
 }
+/* 没有归档入口时，搜索行与展开态一样上移。 */
+.railbtn.r-archive.off + .railbtn.r-search { top: 174.5px; }
 /* 轨道底部的账户头像：头像圆心落在 31px 的图标列上（30px 头像在 38px 悬停圆底里居中 →
    圆心 = left 12 + 19），与展开态账号胶囊头像逐像素同坐标（圆圈 16–46 / 距底 19–49）。
    padding 必须清零：button 的 UA padding（1px 6px）把内容盒压得比 30px 头像还窄，

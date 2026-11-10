@@ -1,6 +1,6 @@
 // Adapted from Astryx ResizeHandle / resizeGesture, @astryxdesign/core 0.7.11.
 // Copyright (c) Meta Platforms, Inc. and affiliates. MIT; see THIRD_PARTY_NOTICES.md.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject, type TransitionEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
 import './sidebar-resize.css'
 
 const DEFAULT_WIDTH = 248
@@ -29,7 +29,7 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [maxWidth, setMaxWidth] = useState(MAX_WIDTH)
   const [resizing, setResizing] = useState(false)
-  const [snapping, setSnapping] = useState(false)
+  const [snap, setSnap] = useState<{ edge: number; openness: number; collapsed: boolean } | null>(null)
   const [dragWidth, setDragWidth] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
   const pointerGestures = useRef({ previousDragged: false, currentDragged: false })
@@ -41,6 +41,22 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
   const visibleWidth = Math.min(width, maxWidth)
   const edge = immersive ? 0 : Math.min(dragWidth ?? (collapsed ? RAIL_WIDTH : visibleWidth), maxWidth)
   const openness = Math.max(0, Math.min(1, (edge - RAIL_WIDTH) / (MIN_WIDTH - RAIL_WIDTH)))
+
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container || !snap) return
+    if (snap.collapsed !== collapsed || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setSnap(null)
+      return
+    }
+    // Animate progress once per snap. Pointer moves can change the destination
+    // without restarting the clock and making the grip keep chasing the pointer.
+    const animation = container.animate({ '--sidebar-snap-progress': ['0', '1'] }, {
+      duration: 240, easing: 'cubic-bezier(0.3, 1, 0.35, 1)', fill: 'both',
+    })
+    animation.onfinish = () => setSnap(null)
+    return () => { animation.onfinish = null; animation.cancel() }
+  }, [containerRef, snap, collapsed])
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -61,7 +77,7 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
     active.target.ownerDocument.documentElement.classList.remove('xj-sidebar-resizing')
     if (active.target.hasPointerCapture(active.pointerId)) active.target.releasePointerCapture(active.pointerId)
     setResizing(false)
-    setSnapping(false)
+    if (outcome === 'revert') setSnap(null)
     setDragWidth(null)
     if (outcome === 'revert') {
       setWidth(active.expandedWidth)
@@ -88,11 +104,11 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
     active.size = Math.max(RAIL_WIDTH, Math.min(maxWidth, next))
     if (!active.collapsed && active.size <= COLLAPSE_AT) {
       active.collapsed = true
-      setSnapping(true)
+      startSnap(true)
       onCollapsedChange?.(true)
     } else if (active.collapsed && active.size >= EXPAND_AT) {
       active.collapsed = false
-      setSnapping(true)
+      startSnap(false)
       onCollapsedChange?.(false)
     }
     // Apply the same bounds while painting and committing, so release cannot
@@ -100,8 +116,13 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
     setDragWidth(active.collapsed ? RAIL_WIDTH : clamp(active.size, maxWidth))
   }
 
-  const onTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget && event.propertyName === '--sidebar-edge') setSnapping(false)
+  const startSnap = (nextCollapsed: boolean) => {
+    const container = containerRef.current
+    if (!container) return
+    // A reversal starts from the rendered position, including an unfinished snap.
+    const style = getComputedStyle(container)
+    setSnap({ edge: parseFloat(style.getPropertyValue('--sidebar-edge')),
+      openness: parseFloat(style.getPropertyValue('--sidebar-openness')), collapsed: nextCollapsed })
   }
 
   const handle = enabled && <button type="button" className="sidebar-resize-handle" role="separator"
@@ -122,7 +143,7 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
         startSize, expandedWidth: width, size: startSize, moved: false,
         wasCollapsed: collapsed, collapsed, target: event.currentTarget }
       setDragWidth(startSize)
-      setSnapping(false)
+      setSnap(null)
       event.currentTarget.ownerDocument.documentElement.classList.add('xj-sidebar-resizing')
       setResizing(true)
     }}
@@ -163,5 +184,6 @@ export function useSidebarResize(containerRef: RefObject<HTMLDivElement | null>,
       event.preventDefault()
     }}><span className="sidebar-resize-pill" aria-hidden="true" /></button>
 
-  return { width: visibleWidth, minWidth: MIN_WIDTH, edge, openness, resizing, snapping, onTransitionEnd, handle }
+  return { width: visibleWidth, minWidth: MIN_WIDTH, edge, openness, resizing,
+    snap: snap?.collapsed === collapsed ? snap : null, handle }
 }

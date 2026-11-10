@@ -43,11 +43,17 @@ export function ShellFrame({
   const shellRef = useRef<HTMLDivElement>(null)
   const resize = useSidebarResize(shellRef, collapsed, immersive, onCollapsedChange)
   return (
-    <div ref={shellRef} style={{ '--sidebar-width': `${resize.width}px`, '--sidebar-edge': `${resize.edge}px`,
-      '--sidebar-openness': resize.openness, '--sidebar-min-width': `${resize.minWidth}px` } as CSSProperties}
+    <div ref={shellRef} style={{ '--sidebar-width': `${resize.width}px`,
+      '--sidebar-edge': resize.snap
+        ? `calc(${resize.snap.edge}px + (${resize.edge}px - ${resize.snap.edge}px) * var(--sidebar-snap-progress))`
+        : `${resize.edge}px`,
+      '--sidebar-openness': resize.snap
+        ? `calc(${resize.snap.openness} + (${resize.openness} - ${resize.snap.openness}) * var(--sidebar-snap-progress))`
+        : resize.openness,
+      '--sidebar-min-width': `${resize.minWidth}px` } as CSSProperties}
       data-sidebar-resizable={!!onCollapsedChange || undefined}
       data-sidebar-resizing={resize.resizing || undefined}
-      data-sidebar-snapping={resize.snapping || undefined} onTransitionEnd={resize.onTransitionEnd}
+      data-sidebar-snapping={!!resize.snap || undefined}
       className={('shell' + (immersive ? ' immersive' : '') + (collapsed ? ' collapsed' : '') + ' ' + className).trim()}>
       <aside className="sidebar" inert={sidebarHidden} aria-hidden={sidebarHidden ? true : undefined}>
         <div className="brand xunjie-brand">
