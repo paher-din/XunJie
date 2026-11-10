@@ -39,12 +39,16 @@ try {
     '--outDir', runtimeOutput, '--declaration', 'false'], { cwd: repository, stdio: 'inherit' });
   if (compile.error) throw compile.error;
   if (compile.status !== 0) throw new Error('Product runtime compilation failed.');
+  const { prepareProductDevelopment, assertProductDevelopmentServices } = await import(pathToFileURL(join(runtimeOutput, 'development.js')).href);
+  const prepared = await prepareProductDevelopment(root);
+  if (prepared.upgraded) console.log('已迁接旧版开发环境，将按部署配置创建实际服务。');
   const { createProductRuntimeHost } = await import(pathToFileURL(join(runtimeOutput, 'host.js')).href);
   const { createProductLearningApplication } = await import(pathToFileURL(join(runtimeOutput, 'learning-entry.js')).href);
   frontend = await createProductDevFrontend({ webRoot: join(repository, 'apps/web'),
     cacheDir: join(cache, 'vite-product-dev') });
   host = await createProductRuntimeHost({ root, createApplication: createProductLearningApplication, frontend });
   const status = await host.status();
+  assertProductDevelopmentServices(status);
   console.log(`Product development: ${status.endpoint} (${status.state})`);
 } catch (error) {
   await host?.stop().catch(() => {});

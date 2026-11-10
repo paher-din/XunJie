@@ -4,13 +4,23 @@
 
 ## 成员电脑上的 Agent 执行
 
-1. 核对当前 checkout 和工具帮助。首次取得本轮实现使用 `codex/team-school-access` 分支，后续使用负责人交付的固定提交；已有 checkout 保留无关改动。只读咨询仅核实和回答。
-2. 检查本机既有正式产品环境和 `installation.json.resources`。已有环境保留原身份、数据库和学校连接。首次机器按项目 README 准备 Node 24.21.0、锁文件依赖和对应平台产品运行资源，安装 `profile=local`，启用 `space-course`、`learning-data`、`teaching-agent`、`model-connection`、`tool-execution`。开发预览入口 `npm run dev:product` 要求该正式环境已安装。
+1. 核对当前 checkout 和工具帮助，使用负责人交付的 `main` 固定提交，并确认包含本页的初始化与旧环境迁接能力；已有 checkout 保留无关改动。只读咨询仅核实和回答。
+2. 检查本机既有正式产品环境和 `installation.json.resources`，明确本次 `--root` 的完整路径并保留原身份、数据库和学校连接。首次机器按项目 README 准备 Node 24.21.0、锁文件依赖和对应平台产品运行资源，安装 `profile=local`；当前安装入口默认保存显式五模块部署配置。用 `npm run dev:product -- --root <本机环境>` 启动，按下方“连接前核对实际服务”确认就绪后再认证学校。
 3. 从成员本人取得的私有账号文件读取 `schoolEndpoint`、`loginName`、`password`，不回显密码。负责人电脑上的交付文件位于 `~/.config/xunjie-cloud/school-members/<账号>.private.json`，该路径不是成员电脑的默认位置，也不复制其他成员的文件。仅用户要自己查看时给私有文件链接。
 4. 在本机产品「连接学校」填写上述入口，打开学校认证页，用本人账号登录并批准设备，返回本机完成连接。学校验证已批准连接并分别授权本机 Agent、执行上传，客户端保存两条连接；不需要成员提供服务器 SSH 或维护凭据。
 5. 进入学校空间，核对两门现有开发课程可见，创建本人活动。成员自行设置个人模型连接，授权给当前学校空间后选用；密钥保留在本机。用本机 Agent 和课程执行核对真实链路，分别报告页面、模型及执行结果。
 
 首次连接失败时继续原连接请求。相同请求、同一设备重试复用原授权；部分完成的接线不能报告就绪。页面刷新后丢失待完成提示时，Agent 从本机环境的 `credentials/school-client-*` 只读取 `requestId`、`schoolEndpoint`、`setupPending`，向原本机入口重发 `POST /api/learning/client/complete`，请求体为 `{"requestId":"<原请求 ID>"}`；`verifier` 和 token 不回显。成功后核对学校空间可见及两条 Agent／执行连接均保存。账号已有其他活动设备时明确报告绑定冲突，由负责人处理设备替换，保留旧活动的原 owner。
+
+## 连接前核对实际服务
+
+读取本次启动入口的 `/runtime/status`，确认 `state=ready`、`profile=local`，并逐项核对 `deployment.configuration.modules` 与 `environment.services[].unit`。标准成员环境的实际服务应包含 `space-course`、`learning-data`、`teaching-agent`、`model-connection`、`tool-execution`；只有模块声明、没有同名实际服务，仍属于未完成初始化。成员操作以其本人电脑的状态为准。
+
+`installation.json.deployment` 缺失时是旧版隐式部署。当前 `dev:product` 会在旧环境停止后，通过正式 `configureDeployment` dry-run 和应用步骤保存显式配置，再按原环境身份与资源启动；已有显式自定义部署保持原配置。旧环境仍在运行时，先保护当前输入并正常停止原进程，再用当前代码启动。启动后的服务核对必须通过。
+
+旧代码遇到“`modules` 含 `tool-execution`、实际 `services` 缺失、完成连接返回 503”的组合时，按原环境调用 `openProductRuntime({ root }).configureDeployment(...)`：先 dry-run、正常 `stop()`、应用标准五模块配置，再启动。只在正式 API 成功后继续；故障时保留原目录、数据库和凭据。启动命令更换目录或端口不能替代这次迁接。
+
+认证请求有效期为五分钟。仍有效的请求按原 `requestId` 续办；已过期时从“重新填写学校链接”发起新认证。只核对和交付请求编号、模块名、服务名及结果，密码、`verifier` 和 token 保持私有。
 
 ## 课程开发操作
 

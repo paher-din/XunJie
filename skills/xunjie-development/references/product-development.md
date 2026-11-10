@@ -22,8 +22,8 @@
 ## 日常启动与停止
 
 1. 检查当前 Git 状态、Node 24.21.0 与既有环境，保留无关工作。读本机 `environment.json`、`installation.json` 只取状态需要的字段，凭据文件不回显。
-2. 在目标 checkout 执行 `npm run dev:product`（可用 `-- --root <既有环境目录>`）。该入口编译当前后端并使用前端开发预览；后端接线变化需要受控重启，前端普通改动直接更新。
-3. 从启动输出取得实际页面入口，读取 `/runtime/status` 核对 `deployment.configuration.modules`。学校侧也核对其实际状态；仅页面 HTTP 200 不能证明 Agent／模型／执行位置正确。
+2. 在目标 checkout 执行 `npm run dev:product`（可用 `-- --root <既有环境目录>`）。该入口编译当前后端并使用前端开发预览；停止的旧版隐式部署会经正式 API 迁接为显式配置，保留原环境身份和数据。后端接线变化需要受控重启，前端普通改动直接更新。
+3. 从启动输出取得实际页面入口，读取 `/runtime/status`，同时核对 `deployment.configuration.modules` 与 `environment.services[].unit`，按 [连接前核对实际服务](school-access.md#连接前核对实际服务)确认五个服务均已启动。学校侧也核对其实际状态；仅页面 HTTP 200 或模块声明不能证明 Agent／模型／执行位置正确。
 4. 停止使用 `openProductRuntime({root}).stop()` 或当前产品 CLI 的 `stop --root ...`，让执行与数据库按正式流程排空。预览宿主退出前保留未保存输入；不要批量 kill Node／PostgreSQL 或删除数据目录。
 
 本机没有把源码构建升级为新的分发包。当前环境的原 Node／PostgreSQL 资源仍可复用；维护时先读 `installation.json.resources`，不要把该资源目录当旧包清掉。

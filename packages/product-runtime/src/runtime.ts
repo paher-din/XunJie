@@ -21,7 +21,7 @@ import type { RetirementProof } from './recovery.js';
 import { learningAdmissionPolicySchema, type LearningAdmissionPolicy } from '@xunjie/learning-space';
 import type { DeploymentConfiguration } from '@xunjie/contracts/product-runtime';
 import { deploymentConfigurationSchema } from '@xunjie/contracts/product-runtime';
-import { describeDeployment, validateDeployment } from './deployment.js';
+import { describeDeployment, resolveDeployment, validateDeployment } from './deployment.js';
 
 export interface InstallOptions {
   profile: RuntimeEnvironment['profile'];
@@ -226,7 +226,11 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     prepare: (input?: InstallOptions) => prepare(input),
     async install(input: InstallOptions = { profile: 'local' }): Promise<RuntimeStatus> {
       runtimeEnvironmentSchema.shape.profile.parse(input.profile);
-      const deployment = input.deployment === undefined ? undefined : deploymentConfigurationSchema.parse(input.deployment);
+      const deployment = input.deployment === undefined
+        ? input.profile === 'local' ? resolveDeployment({ profile: input.profile }, {
+          database: input.database ?? { mode: 'managed' }, agent: input.agent,
+        }) : undefined
+        : deploymentConfigurationSchema.parse(input.deployment);
       validateDeployment({ profile: input.profile }, { deployment, agent: input.agent,
         database: input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' } });
       const learningAdmissionPolicy = input.learningAdmissionPolicy === undefined ? undefined
