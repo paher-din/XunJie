@@ -12,7 +12,7 @@ import { useActivitySession } from './ActivitySession'
 import './agent-interaction.css'
 
 type Mode = 'steering' | 'queue'
-export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, namespace: string, writable = true) {
+export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, namespace: string, writable = true, enabled = true) {
   const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])
   const key = JSON.stringify([scope, 'agent-settings'])
   const [settings, setSettings] = useState<TeachingInteractionSettings | null>(null)
@@ -56,6 +56,7 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
     } catch { if (alive.current && current.current === scope) setError('交互设置暂时无法读取，问题与草稿仍保留。') }
   }, [scope, request])
   useEffect(() => {
+    if (!enabled) return
     alive.current = true; current.current = scope
     setSettings(null); setOverride(null); setError('')
     void reload()
@@ -68,7 +69,7 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
     const focus = () => { void reload() }
     window.addEventListener('focus', focus)
     return () => { alive.current = false; broadcast?.close(); channel.current = null; window.removeEventListener('focus', focus) }
-  }, [scope, key, reload, deliver, writable])
+  }, [scope, key, reload, deliver, writable, enabled])
   const save = async (mode: Mode) => {
     if (!settings || !writable || saving.current) return
     const requestId = crypto.randomUUID()

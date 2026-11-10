@@ -9,7 +9,7 @@ import { readSkillPackage, skillImportInput, useSkillCatalog, type SkillCatalogE
 import { learningSubjectRequest } from './learningTransport'
 import './skills.css'
 
-type Props = { identity: SpaceIdentity; spaceKey: string; namespace: string; readOnly?: boolean
+type Props = { identity: SpaceIdentity; spaceKey: string; namespace: string; readOnly?: boolean; active?: boolean
   activityId?: string; courseId?: string }
 type Operation = { route: string; input: unknown; label: string; importKind?: 'local' | 'github'; inputUrl?: string }
 const entryKey = (skill: TeachingSkillReference) => `${skill.skillId}:${skill.version}`
@@ -19,8 +19,8 @@ export function PersonalSkillsSettings(props: Props) {
     props.identity.principalId, props.activityId, props.courseId])
   return <SkillsSettingsBody key={key} {...props} />
 }
-function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false }: Props) {
-  const catalog = useSkillCatalog(identity, spaceKey, namespace)
+function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, active = true }: Props) {
+  const catalog = useSkillCatalog(identity, spaceKey, namespace, undefined, active)
   const [search, setSearch] = useState(''), [importOpen, setImportOpen] = useState(false)
   const [githubOpen, setGithubOpen] = useState(false), [githubUrl, setGithubUrl] = useState('')
   const [importMenuOpen, setImportMenuOpen] = useState(false)
@@ -30,9 +30,9 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false }:
   const [localFiles, setLocalFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const [pending, setPending] = useState<Operation | null>(null)
-  useToastFeedback(catalog.error)
-  useToastFeedback(error)
-  useToastFeedback(notice, 'success')
+  useToastFeedback(active ? catalog.error : '')
+  useToastFeedback(active ? error : '')
+  useToastFeedback(active ? notice : '', 'success')
   const [rejectedToggle, setRejectedToggle] = useState<Operation | null>(null)
   const live = useRef(false), acting = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null), directoryInput = useRef<HTMLInputElement>(null)

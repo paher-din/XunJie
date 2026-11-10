@@ -89,14 +89,17 @@ it('refreshes model information when the model pane is entered, while hidden set
   })
   const requests = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/models/directory'))
   const configurations = () => vi.mocked(fetch).mock.calls.filter(([url]) => /\/models\/(providers|checks)$/.test(String(url)))
+  const agentSettings = () => vi.mocked(fetch).mock.calls.filter(([url]) => /\/(skills|agent-settings)$/.test(String(url)))
   expect(requests()).toHaveLength(0)
   expect(configurations()).toHaveLength(0)
+  expect(agentSettings()).toHaveLength(0)
   await poll()
   expect(configurations()).toHaveLength(0)
   const pane = document.querySelector('section')!
   await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
   expect(requests().some(([, init]) => JSON.parse(init!.body as string).refresh === true)).toBe(true)
   expect(configurations()).toHaveLength(2)
+  expect(agentSettings()).toHaveLength(0)
   const before = requests().length
   await act(async () => { pane.hidden = true; pane.dataset.settingsSection = 'account'; await settle() })
   const beforeConfigurations = configurations().length
@@ -105,6 +108,8 @@ it('refreshes model information when the model pane is entered, while hidden set
   expect(requests()).toHaveLength(before)
   await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
   expect(requests().length).toBeGreaterThan(before)
+  await act(async () => { pane.dataset.settingsSection = 'agent'; await settle() })
+  expect(agentSettings()).toHaveLength(2)
 })
 
 it('does not notify the account pane when a model read fails after leaving model settings', async () => {

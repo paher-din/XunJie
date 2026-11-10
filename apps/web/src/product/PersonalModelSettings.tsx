@@ -23,7 +23,6 @@ export function PersonalModelSettings(props: PersonalModelSettingsProps) {
   return <PersonalModelSettingsBody key={JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])} {...props} />
 }
 function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId, courseId, readOnly = false }: PersonalModelSettingsProps) {
-  const interaction = useAgentInteraction(identity, spaceKey, namespace, !readOnly)
   const [providers, setProviders] = useState<ModelProvider[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
   const [dialog, setDialog] = useState<{ provider: ModelProvider | null; addModel?: boolean } | null>(null)
   const [toggleState, setToggleState] = useState<Record<string, 'saving' | 'unknown'>>({})
@@ -36,16 +35,20 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   // Pending polls must not prevent a completed read from publishing.
   const appliedRead = useRef(0)
   const live = useRef(true)
-  const rootElement = useRef<HTMLDivElement>(null), [modelsVisible, setModelsVisible] = useState(false)
+  const rootElement = useRef<HTMLDivElement>(null), [modelsVisible, setModelsVisible] = useState(false), [agentVisible, setAgentVisible] = useState(false)
   useEffect(() => {
     const pane = rootElement.current?.closest<HTMLElement>('[data-settings-section]')
-    if (!pane) { setModelsVisible(true); return }
-    const observe = () => setModelsVisible(!pane.hidden && pane.dataset.settingsSection === 'models')
+    if (!pane) { setModelsVisible(true); setAgentVisible(true); return }
+    const observe = () => {
+      setModelsVisible(!pane.hidden && pane.dataset.settingsSection === 'models')
+      setAgentVisible(!pane.hidden && pane.dataset.settingsSection === 'agent')
+    }
     observe()
     const observer = new MutationObserver(observe)
     observer.observe(pane, { attributes: true, attributeFilter: ['hidden', 'data-settings-section'] })
     return () => observer.disconnect()
   }, [])
+  const interaction = useAgentInteraction(identity, spaceKey, namespace, !readOnly, agentVisible)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const request = useCallback(async (route: string, body?: unknown) => {
     const path = route.startsWith('../') ? '/api/learning/' + route.slice(3) : '/api/learning/models/' + route
@@ -176,7 +179,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   return <div ref={rootElement} className="content product-model-settings">
     <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
-      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} /></div>
+      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} /></div>
       <div className="product-personal-model">
       <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
       recoveryError={modelsVisible ? [loadError, selection.error].filter(Boolean).join('；') : ''}

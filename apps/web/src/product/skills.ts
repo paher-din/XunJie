@@ -18,7 +18,7 @@ export function draftSkillOption(skill: SkillCatalogEntry) {
     ...(unavailable ? { unavailable } : {}) }
 }
 
-export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, activityId?: string) {
+export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, activityId?: string, enabled = true) {
   const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, activityId])
   const current = useRef(scope), live = useRef(false), reads = useRef(0)
   const client = useRef({})
@@ -47,6 +47,10 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
     }
   }, [scope, activityId, request])
   useEffect(() => {
+    if (!enabled) {
+      setState(previous => ({ ...previous, loading: false, error: '' }))
+      return
+    }
     live.current = true
     setState({ scope, data: null, loading: true, error: '', epoch: 0 })
     const changed = (changedNamespace: string, sender: object) => {
@@ -57,7 +61,7 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
     const refresh = () => { void reload() }
     window.addEventListener('focus', refresh)
     return () => { live.current = false; reads.current++; catalogChanges.delete(changed); window.removeEventListener('focus', refresh) }
-  }, [scope, reload])
+  }, [scope, reload, enabled])
   return { ...(state.scope === scope ? state : { data: null, loading: true, error: '' }), reload, request,
     // An older rendered controller cannot fix pins while its catalog is being replaced.
     isCurrent: () => live.current && current.current === scope && state.scope === scope && !!state.data
