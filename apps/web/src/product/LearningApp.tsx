@@ -20,6 +20,7 @@ import { ProductProfile } from './ProductProfile'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
+import { startSchoolAuthorization } from './school-authorization'
 
 
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
@@ -34,6 +35,10 @@ const messages: Record<string, string> = {
   corrupt: '课程材料或发布版本已损坏，请联系课程管理员。', 'resource-busy': '材料正在准备中，请稍后重试。',
 }
 async function requestLearning(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
+  const request = () => sendLearningRequest(path, body, key, signal, namespace)
+  return path === 'client/start' ? startSchoolAuthorization(request) : request()
+}
+async function sendLearningRequest(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
   // Course coordination includes several authenticated owner calls; timeout still leaves the original request queryable.
   const timeout = path === 'course-activities' || path === 'activity-status' ? 60000 : 30000
   const response = await fetch('/api/learning/' + path, { method: body === undefined ? 'GET' : 'POST',
