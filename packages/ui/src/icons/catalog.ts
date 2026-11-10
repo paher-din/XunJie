@@ -1939,6 +1939,18 @@ export const iconCatalog = {
     "sourceUrl": "https://github.com/480-Design/Solar-Icon-Set",
     "modified": false
   },
+  "brand-github": {
+    "label": "GitHub 品牌",
+    "tone": "neutral",
+    "variant": "native",
+    "source": "GitHub Octicons",
+    "author": "GitHub, Inc.",
+    "license": "GitHub 品牌标识；Octicons 源码 MIT",
+    "sourceUrl": "https://github.com/primer/octicons/blob/68ec2de8d0ddfcbb7497da01d0b7d98eb5593020/icons/mark-github-16.svg",
+    "modified": false,
+    "usages": [{ "label": "GitHub 导入", "group": "设置页", "scope": "现有", "reviewId": "" }],
+    "files": { "native": "brand-github-native.svg" }
+  },
   "brand-deepseek": {
     "label": "DeepSeek 模型品牌",
     "tone": "neutral",

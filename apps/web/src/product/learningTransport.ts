@@ -12,12 +12,12 @@ export async function learningRequest(activity: LearningActivity, spaceKey: stri
   return learningSubjectRequest(activity.identity, spaceKey, namespace, route, body)
 }
 export async function learningSubjectRequest(identity: SpaceIdentity, spaceKey: string, namespace: string,
-  route: string, body?: unknown): Promise<unknown> {
+  route: string, body?: unknown, timeoutMs = 30000): Promise<unknown> {
   const response = await fetch('/api/learning/' + route, { method: body === undefined ? 'GET' : 'POST',
     credentials: 'same-origin', redirect: 'error', cache: 'no-store',
     headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
       'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) })
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(timeoutMs) })
   let value: unknown
   try { value = await response.json() }
   catch { throw Object.assign(new Error('原服务返回了不完整响应。'), { code: response.ok ? 'corrupt' : 'unavailable' }) }

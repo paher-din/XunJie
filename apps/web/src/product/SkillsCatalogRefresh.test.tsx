@@ -87,7 +87,6 @@ it.each([false, true])('refreshes defaults after confirmed settings while retain
   await click('打开设置')
   const updated = Array.from(host.querySelectorAll<HTMLElement>('.personal-skills .skill-entry')).find(item => item.textContent!.includes('版本 2'))!
   await act(async () => { updated.querySelector<HTMLInputElement>('input')!.click(); await settle() })
-  await click('应用到所选范围')
   expect(writes).toEqual([expect.objectContaining({ skills: [pin(sourceV2)] })])
   expect(releaseActivity).toBeTypeOf('function')
   await click('返回活动')

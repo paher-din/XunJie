@@ -1,5 +1,6 @@
 import { routeArtifacts } from './artifacts-http.js';
 import { artifactViewDocument } from './artifacts-view.js';
+import { fetchGithubSkill, GithubSkillImportError } from './github-skill.js';
 export { routeArtifacts };
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes } from 'node:crypto';
@@ -49,6 +50,12 @@ export function sendLearning(response: ServerResponse, code: number, value: unkn
   response.end(JSON.stringify(value));
 }
 export function learningFailure(response: ServerResponse, error: unknown) {
+  if (error instanceof GithubSkillImportError) {
+    const status = error.code === 'invalid-url' || error.code === 'invalid-package' || error.code === 'too-large' ? 400
+      : error.code === 'not-found' ? 404 : error.code === 'rate-limit' ? 429 : 503;
+    sendLearning(response, status, { error: `github-${error.code}` });
+    return;
+  }
   if (error instanceof ModelCapabilityError) {
     sendLearning(response, 422, { error: error.code, decision: error.decision });
     return;
@@ -187,7 +194,11 @@ export function createLearningEntry(options: {
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
-        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
+        if (route === 'skills/github-package' && method === 'POST') {
+          await options.client.forward(remote.slice(7), 'skills', undefined, expected);
+          const { url } = z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(await readLearningBody(request));
+          result = await fetchGithubSkill(url);
+        } else result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
           route.startsWith('artifacts/') ? 2000000 : route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
             : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
@@ -418,6 +429,10 @@ export function createLearningEntry(options: {
           : await options.teachingSettingsFor?.(identity) ?? options.teaching;
         if (!teaching) throw new StorageError('unavailable');
         if (route === 'skills' && method === 'GET') result = await teaching.skills.list(identity, activityId);
+        else if (route === 'skills/github-package' && method === 'POST') {
+          const { url } = z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(await readLearningBody(request));
+          result = await fetchGithubSkill(url);
+        }
         else if (route === 'skills/import' && method === 'POST') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(await readLearningBody(request, 8000000)));
         else if (route === 'skills/select' && method === 'POST') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(await readLearningBody(request)));
         else if (route === 'skills/disable' && method === 'POST') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(await readLearningBody(request)));

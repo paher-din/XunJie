@@ -22,6 +22,7 @@
 | `ProviderIdentityFields` 名称、地址、密钥字段 | `ProviderIdentityFields` | 已迁入 |
 | 正式供应商模型 ID、思考强度、容量与手动档位 | `ConnectionModelFields` | 纯表单已迁入；模型资料、档位适配和保存由正式控制器接入；目录与人工声明不代表实际能力验证 |
 | 供应商与接入方式选择、品牌图形 | `SettingsSelect`、`ModelProviderLogo` | Base UI 交互与循阶 token；资源随组件包分发，业务选项由调用方提供 |
+| 设置操作菜单 | `SettingsActionMenu` | 复用循阶按钮和弹层样式，操作及图标由调用方提供 |
 | 预设模型搜索与手填 ID | `ModelIdInput` | Base UI Combobox；列表、加载状态和刷新操作由调用方接入，保留自由输入 |
 | `ModelSettingsFeedback` 已确认保存 / 错误状态槽 | `ModelSettingsFeedback` | 已迁入，使用公开反馈数据类型 |
 | `PrivacyTab.ConfirmAction` 就地二次确认 | `ConfirmAction` | 已迁入 |

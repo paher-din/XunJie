@@ -1,6 +1,6 @@
 {
   "frozenOn": "2026-10-10",
-  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）",
+  "source": "Approved color-polish-v2 review; Solar and OpenMoji SVG bodies from local Iconify snapshot; original custom SVGs from review; profile semantic additions: four unmodified Solar Linear bodies from iconify/icon-sets and one original analogy SVG; 2026-10-11 sun-linear.svg 项目自绘（本地快照无太阳图形，按 Solar Linear 同风格补绘）、model-linear.svg 项目自绘（模型语义）; 2026-11-10 provider-custom-linear.svg 项目自绘（自定义供应商接入）; brand-github-native.svg 来自 GitHub Octicons 原始图形（见 ATTRIBUTION.md）",
   "assets": {
     "add-linear.svg": "11b8cc61c3e1a94aa66880d91fdabcfff42071e30dcb7e28db35147de910f20e",
     "alt-arrow-down-linear.svg": "ee2188dc0f0ba9f91ad7e6e0c0fb0aa8e5c8cc778c008bed363d3dc6096d592c",
@@ -17,6 +17,7 @@
     "book-2-linear.svg": "1d0efedffb194a320227fd57a70f0732b3286da6628396701a57f37ce3a4bb68",
     "brain-linear.svg": "23630acf5bc7be570cc5de214c275d83287af164c2ae6dc5642ca6899c9e54ce",
     "brand-deepseek-native.svg": "5d2c1b237c7491fc075ee24195fb1d1231e8c269e38eaddb48ed364c5ef2c1d0",
+    "brand-github-native.svg": "7421820090b50ac79d7c2bf7c951a433d7098a8a9c474809207bdd45f62d9d46",
     "brand-mimo-native.svg": "77c68a40b6d4ea277694caeb3920a68a28f29cba84142c1602403b4b0aaad97d",
     "calculator-linear.svg": "dc4805026d03bc3cae0a357003b46cd40c9fead4a71539c2b7d916c879723e2c",
     "calendar-linear.svg": "662ef5e2953cb5501645ae66b499ec0fae81baa827d932c1ce2554ddd89de167",

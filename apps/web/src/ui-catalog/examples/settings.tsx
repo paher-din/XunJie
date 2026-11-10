@@ -5,7 +5,7 @@ import {
   ModelFields, ModelProviderCard, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
   RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
-  SettingsSelect, ModelIdInput, ModelProviderLogo,
+  SettingsSelect, SettingsActionMenu, ModelIdInput, ModelProviderLogo,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
 } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
@@ -99,6 +99,17 @@ function SettingsSelectDemo() {
       { value: 'deepseek', label: 'DeepSeek 官方', icon: <ModelProviderLogo providerId="deepseek" />, dividerBefore: true },
       { value: 'kimi', label: 'Kimi', icon: <ModelProviderLogo providerId="kimi" /> }]} /></Field></Frame>
 }
+function SettingsActionMenuDemo() {
+  const [selected, setSelected] = useState(''), [open, setOpen] = useState(false), [showPanel, setShowPanel] = useState(false)
+  return <Frame><SettingsActionMenu label="导入" icon={<Icon name="add" size={16} />} open={open}
+    onOpenChange={next => { setOpen(next); if (!next) setShowPanel(false) }} panelLabel="示例地址"
+    panel={showPanel ? <form style={{ display: 'grid', gap: 8, padding: 6 }} onSubmit={event => {
+      event.preventDefault(); setSelected('示例导入'); setOpen(false); setShowPanel(false)
+    }}><TextInput aria-label="示例地址" placeholder="输入示例地址" autoFocus /><button type="submit" className="primary">导入</button></form> : undefined} items={[
+    { id: 'local', label: '本地导入', icon: <Icon name="folder-with-files" size={16} />, onSelect: () => setSelected('本地导入') },
+    { id: 'github', label: 'GitHub 导入', icon: <Icon name="brand-github" size={16} />, keepOpen: true, onSelect: () => setShowPanel(true) },
+  ]} /><output>{selected}</output></Frame>
+}
 function ModelIdInputDemo() {
   const [value, setValue] = useState('')
   return <Frame><Field label="模型 ID"><ModelIdInput label="示例模型 ID" value={value} onChange={setValue}
@@ -187,6 +198,9 @@ export const settingsEntries: CatalogEntry[] = [
   { id: 'settings-select', name: 'SettingsSelect', description: '沿用循阶字段样式的品牌下拉，支持键盘选择与分隔。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, disabled?'],
     dependencies: ['Base UI Select；图标由调用方提供'], states: [{ id: 'default', name: '供应商选择', component: SettingsSelectDemo }] },
+  { id: 'settings-action-menu', name: 'SettingsActionMenu', description: '带图标的操作菜单。', importPath: settings,
+    source: 'packages/ui/src/settings/SettingsActionMenu.tsx', exampleSource, props: ['label, icon?, items, disabled?', 'open?, onOpenChange?, panel?, panelLabel?'],
+    dependencies: ['操作由调用方提供'], states: [{ id: 'default', name: '导入菜单', component: SettingsActionMenuDemo }] },
   { id: 'model-id-input', name: 'ModelIdInput', description: '可搜索并自由填写的模型 ID，列表由调用方提供。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, loading?'],
     dependencies: ['Base UI Combobox；本地合成列表'], states: [{ id: 'default', name: '搜索或手填', component: ModelIdInputDemo }] },

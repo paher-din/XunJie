@@ -81,11 +81,11 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
 export type AgentInteractionController = ReturnType<typeof useAgentInteraction>
 
 export function AgentInteractionSettings({ controller }: { controller: AgentInteractionController }) {
-  return <Section title="Agent 交互" desc="只影响之后发送的消息；已收到的内容保持发送时的方式。">
+  return <Section title="运行中发送方式" desc="设置在 Agent 执行期间发送的新输入默认引导或排队。">
     {controller.settings ? <RadioCard<Mode> ariaLabel="忙碌时发送的默认方式" value={controller.settings.busyInputMode}
       onChange={mode => void controller.save(mode)} options={[
         { value: 'steering', title: '引导当前任务', desc: '在下一步纳入补充，已开始的操作保留真实状态。', disabled: controller.busy || !controller.writable },
-        { value: 'queue', title: '本轮结束后处理', desc: '完整一轮正常结束后，按接收顺序处理。', disabled: controller.busy || !controller.writable },
+        { value: 'queue', title: '排队处理', desc: '完整一轮正常结束后，按接收顺序处理。', disabled: controller.busy || !controller.writable },
       ]} /> : <p role="status" className="detail">正在读取交互设置…</p>}
     {controller.busy && <p role="status" className="detail">正在保存交互设置…</p>}
     {controller.error && <p role="alert" className="learning-error">{controller.error}</p>}

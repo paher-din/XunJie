@@ -92,9 +92,7 @@ export function ProductSettings({ identityName, onBack, onPersonalSpace, busy = 
           </div>
         </section>
         <section id={`${id}-portrait`} aria-labelledby={`${id}-portrait-nav`} hidden={active !== 'portrait'} inert={active !== 'portrait'}>
-          <SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。">
-            <button type="button" className="outline" onClick={onBack}>返回学习空间</button>
-          </SettingsEmptyState>
+          <SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。" />
         </section>
         <section id={`${id}-personal`} aria-labelledby={`${id}-${active === 'agent' ? 'agent' : 'models'}-nav`}
           hidden={active !== 'agent' && active !== 'models'} inert={active !== 'agent' && active !== 'models'}

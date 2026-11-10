@@ -38,4 +38,6 @@
 
 `brand-deepseek-native.svg` 与 `brand-mimo-native.svg` 从本仓库原有 `app/public/models/` 原样迁入。来源与授权沿用原有资产记录，本轮未重新核验；不以通用图标库的许可覆盖品牌图形或商标。看板明确标为「既有品牌资源」。
 
+`brand-github-native.svg` 原样取自 [GitHub Octicons 的 mark-github-16](https://github.com/primer/octicons/blob/68ec2de8d0ddfcbb7497da01d0b7d98eb5593020/icons/mark-github-16.svg)，以单色用于 GitHub 导入入口；图形本身未修改，填色随主题变化。Octicons 仓库采用 MIT 许可，GitHub 标识及商标仍依 [GitHub 品牌指南](https://brand.github.com/foundations/logo)使用；完整许可见组件包的 `THIRD_PARTY_NOTICES.md`。
+
 图标看板逐项显示来源、作者、许可和修改说明；此文件随应用源码保留，后续正式分发时一并放入第三方资源说明。
