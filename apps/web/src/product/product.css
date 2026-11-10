@@ -115,3 +115,5 @@
   padding: 12px 0; font-size: 13px; color: var(--muted); }
 .teaching-run-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .product-create-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.product-settings a.product-school-auth-link,
+.product-settings a.product-school-auth-link:hover { text-decoration: none; }

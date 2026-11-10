@@ -22,7 +22,6 @@ const requestId = '00000000-0000-4000-8000-000000000009'
 const authorizationUrl = 'https://school.example.edu/?authorize=' + requestId
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
-const popup = () => ({ opener: window, closed: false, location: { replace: vi.fn() }, close: vi.fn() })
 const pending = () => response({ requestId, connectionId: requestId, schoolEndpoint: 'https://school.example.edu', authorizationUrl })
 
 beforeEach(() => {
@@ -52,18 +51,40 @@ afterEach(async () => {
   host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals()
 })
 
-async function submitSchool() {
+async function submitSchool(schoolEndpoint = 'https://school.example.edu') {
   await act(async () => { root.render(<LearningApp />); await settle() })
   const add = [...host.querySelectorAll('button')].find(button => button.textContent?.trim() === '添加学校')
   if (add) await act(async () => { add.click(); await settle() })
   const input = host.querySelector<HTMLInputElement>('input[type="url"]')!
   expect(input).not.toBeNull()
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'https://school.example.edu')
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, schoolEndpoint)
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
   await act(async () => { input.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
 }
+
+it.each([
+  'http://127.0.0.1:57417/?space=personal&view=agent&settings=models',
+  'https://school.example.edu/login',
+  'https://school.example.edu/?settings=models',
+  'https://school.example.edu/#account',
+  'https://student:password@school.example.edu',
+  'http://school.example.edu',
+])('rejects an invalid school entry without opening a window or starting a connection: %s', async schoolEndpoint => {
+  await submitSchool(schoolEndpoint)
+  expect(window.open).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalledWith('/api/learning/client/start', expect.anything())
+  expect(host.textContent).toContain('学校入口')
+  expect(host.querySelector<HTMLInputElement>('input[type="url"]')?.value).toBe(schoolEndpoint)
+})
+
+it('rejects this product origin as a school even when the URL has no query', async () => {
+  await submitSchool(location.origin)
+  expect(window.open).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalledWith('/api/learning/client/start', expect.anything())
+  expect(host.textContent).toContain('学校入口')
+})
 
 it('keeps authentication available when the start response contains a reserved connection ID', async () => {
   await submitSchool()
@@ -73,24 +94,17 @@ it('keeps authentication available when the start response contains a reserved c
   expect(fetch).not.toHaveBeenCalledWith('/api/learning/client/complete', expect.anything())
 })
 
-it('opens the authentication window during the click and navigates after the start response', async () => {
-  const authentication = popup()
-  vi.mocked(window.open).mockReturnValue(authentication as unknown as Window)
+it('opens authentication only after the school confirms connection preparation', async () => {
   await submitSchool()
-  expect(window.open).toHaveBeenCalledOnce()
-  expect(authentication.opener).toBeNull()
-  expect(authentication.location.replace).not.toHaveBeenCalled()
+  expect(window.open).not.toHaveBeenCalled()
   await act(async () => { finishStart(pending()); await settle() })
-  expect(authentication.location.replace).toHaveBeenCalledWith(authorizationUrl)
+  expect(window.open).toHaveBeenCalledExactlyOnceWith(authorizationUrl, '_blank', 'noopener,noreferrer')
   expect(host.querySelector<HTMLAnchorElement>('a')?.href).toBe(authorizationUrl)
 })
 
-it('closes the reserved window when preparation fails and keeps the link editable', async () => {
-  const authentication = popup()
-  vi.mocked(window.open).mockReturnValue(authentication as unknown as Window)
+it.each([400, 403, 503])('stays on the editable form without opening a window when preparation returns HTTP %s', async status => {
   await submitSchool()
-  await act(async () => { finishStart(response({ error: 'unavailable' }, 503)); await settle() })
-  expect(authentication.close).toHaveBeenCalledOnce()
+  await act(async () => { finishStart(response({ error: status === 400 ? 'invalid' : status === 403 ? 'forbidden' : 'unavailable' }, status)); await settle() })
+  expect(window.open).not.toHaveBeenCalled()
   expect(host.querySelector<HTMLInputElement>('input[type="url"]')?.value).toBe('https://school.example.edu')
-  expect(authentication.location.replace).not.toHaveBeenCalled()
 })

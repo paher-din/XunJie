@@ -39,7 +39,7 @@ const messages: Record<string, string> = {
 }
 async function requestLearning(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
   const request = () => sendLearningRequest(path, body, key, signal, namespace)
-  return path === 'client/start' ? startSchoolAuthorization(request) : request()
+  return path === 'client/start' ? startSchoolAuthorization(body, request) : request()
 }
 async function sendLearningRequest(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
   // Course coordination includes several authenticated owner calls; timeout still leaves the original request queryable.
@@ -617,7 +617,7 @@ function LearningView() {
           setPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
         }
       })}>{pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
-      {!pendingConnection.connectionId && <a className="outline" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a>}
+      {!pendingConnection.connectionId && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
     </div>
     {!pendingConnection.connectionId && <button type="button" className="product-school-text-action" disabled={busy} onClick={event => {
       setPendingConnection(null); openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))
