@@ -11,10 +11,10 @@ export function Toaster(props: ToasterProps) {
   return <Sonner position="top-center" offset={24} mobileOffset={16} visibleToasts={3} closeButton
     duration={5000} gap={8} className="xj-toaster" containerAriaLabel="通知" customAriaLabel="通知"
     icons={{ success: <Icon name="check-circle" tone="neutral" size={18} />, info: <Icon name="info-circle" tone="neutral" size={18} />,
-      warning: <Icon name="danger-triangle" tone="neutral" size={18} />, error: <Icon name="danger-triangle" tone="neutral" size={18} />,
-      close: <Icon name="close" size={12} /> }}
-    style={{ '--normal-bg': 'var(--inverse)', '--normal-text': 'var(--on-inverse)',
-      '--normal-border': 'var(--inverse)', '--border-radius': '8px' } as CSSProperties}
+      warning: <Icon name="danger-triangle" tone="neutral" size={18} />, error: <Icon name="danger-triangle" tone="neutral" size={18} /> }}
+    style={{ '--normal-bg': 'var(--raised)', '--normal-text': 'var(--ink)',
+      '--normal-border': 'var(--line)', '--normal-bg-hover': 'var(--hover-bg)',
+      '--normal-border-hover': 'var(--line-strong)', '--border-radius': '8px' } as CSSProperties}
     toastOptions={{ closeButtonAriaLabel: '关闭通知' }} {...props} />
 }
 

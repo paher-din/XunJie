@@ -19,8 +19,7 @@
 }
 
 .xj-toaster [data-sonner-toast] [data-description] {
-  color: var(--on-inverse);
-  opacity: 0.85;
+  color: var(--muted);
   overflow-wrap: anywhere;
 }
 
@@ -28,16 +27,27 @@
   color: var(--danger);
 }
 
-.xj-toaster [data-sonner-toast] [data-close-button] {
-  background: var(--inverse);
-  color: var(--on-inverse);
-  border-color: var(--on-inverse);
+.xj-toaster [data-sonner-toast][data-styled='true'] [data-close-button] {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--raised);
+  color: var(--ink-soft);
+  border-color: var(--line);
 }
 
-.xj-toaster [data-sonner-toast] [data-close-button]:hover {
-  background: var(--primary-hover);
-  color: var(--on-inverse);
-  border-color: var(--on-inverse);
+.xj-toaster [data-sonner-toast] [data-close-button] > svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+}
+
+.xj-toaster [data-sonner-toast][data-styled='true']:hover [data-close-button]:hover {
+  background: var(--hover-bg);
+  color: var(--ink);
+  border-color: var(--line-strong);
 }
 
 .xj-toaster [data-sonner-toast] button:focus-visible {

@@ -37,7 +37,7 @@ import { Button } from '@xunjie/ui/foundation'
 
 `SettingsEmptyState` 采用 shadcn/ui Empty 的图标、标题、说明和操作分层，已适配循阶 token，无 Tailwind 运行依赖；来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。实屏目录提供空态示例。
 
-学生端通知统一使用 `@xunjie/ui/feedback`：应用根挂载一次 `Toaster`，操作回调使用 `toast.success()`、`toast.error()`、`toast.info()` 或 `toast.warning()`；已有异步状态可用 `useToastFeedback(message, kind)` 接入，避免轮询和重绘重复通知。通知采用 shadcn/ui Sonner，沿用顶部居中、`inverse` 底色与主题 token，支持关闭、堆叠、键盘和减少动效。任务进度、作品冲突及续办操作仍在各自内容区域呈现。
+学生端通知统一使用 `@xunjie/ui/feedback`：应用根挂载一次 `Toaster`，操作回调使用 `toast.success()`、`toast.error()`、`toast.info()` 或 `toast.warning()`；已有异步状态可用 `useToastFeedback(message, kind)` 接入，避免轮询和重绘重复通知。通知采用 shadcn/ui Sonner，顶部居中，采用 `raised` 底色、`ink` 文字和 `line` 描边，跟随浅色／深色主题，支持关闭、堆叠、键盘和减少动效。任务进度、作品冲突及续办操作仍在各自内容区域呈现。
 
 `ShellFrame` 提供 `onCollapsedChange` 时启用调宽：采用 Astryx 短竖条与指针捕获交互，使用循阶 token 和现有 60px 图标轨道。默认宽 248px，展开最小 152px，最大为 360px 与容器宽度 40% 中较小者（不低于 152px）。拖到 96px 时即用 240ms 平滑收至 60px 图标轨道，反向拖到 112px 时直接接续展开，无须松手。两个阈值之间维持当前吸附状态；动画中可反向打断，过渡区同步交接导航透明度。双击或 Enter 切换收起，方向键调宽，Home 收起，End 调至上限；展开宽度只在本次外壳挂载期间保留。来源与许可同见第三方说明。
 

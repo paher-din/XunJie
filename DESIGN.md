@@ -273,8 +273,8 @@ components:
     rounded: "{rounded.radius-16}"
     padding: "14px 18px"
   toast:
-    backgroundColor: "{colors.inverse}"
-    textColor: "{colors.on-solid}"
+    backgroundColor: "{colors.raised}"
+    textColor: "{colors.ink}"
     rounded: "{rounded.radius-8}"
     padding: "10px 18px"
   mosaic:
@@ -437,7 +437,7 @@ frontmatter 记录浅色主题的规范值；深色主题按文末「深色模�
 | 独立对话页输入（prompt-input） | 浅色／深色使用现有 `raised` 底，12px 圆角、1px 边界与 `panel-shadow`；聚焦使用 `accent` 边界 + `focus-glow`，不改变尺寸。正文与输入共用 780px 宽度上限；附件与发送均保持 36px 正圆；模型菜单仍为中档阴影 |
 | 浮层 | 提示 = `inverse` 底白字 8px 圆角（轻档）；菜单 = 白卡 12px 圆角（中档，开为 S 曲线 scale+fade、锚在按钮处，关为 0.14s 加速收束后卸载，菜单项按 30/65/100ms 错峰浮入）；托盘 / 悬浮对话面板 / rail 面板 = 白卡（托盘用 `inverse` 底）16px 圆角（重档） |
 | 对话框（个人资料卡） | 20px 圆角、宽 `min(1120px, 100vw − 40px)`、高度随内容并受视口约束；760px 以下单栏。宽度上限取决于「宽高比向视口靠拢」：高度已被 `100dvh − 40px` 顶住，上限偏小（原 860px）时卡片在宽窗口里会读成竖长条 |
-| Sonner 通知 | `inverse` 底 + 白字、8px 圆角、顶部居中；学生端通过 `@xunjie/ui/feedback` 统一显示操作成功、失败与提醒，支持关闭与堆叠；字段校验、任务进度和冲突处理保留上下文 |
+| Sonner 通知 | `raised` 底 + `ink` 字、`line` 描边、8px 圆角、顶部居中；浅色模式使用白底深字，深色模式跟随主题浮层色。学生端通过 `@xunjie/ui/feedback` 统一显示操作成功、失败与提醒，支持关闭与堆叠；关闭图标在圆形按钮中居中；字段校验、任务进度和冲突处理保留上下文 |
 | 构成图（mosaic） | `inverse` 深底板 16px 圆角、4px 间隙、四格现状四色（有意例外）；格内大数字 34px/600 |
 | 成就徽章 | OpenMoji 彩色图案 + 奶白圆底；未解锁用 CSS 降饱和 + 独立文字；等级数字是界面元素 |
 | 图标 | Solar Linear 单色为主（24×24 画布、1.5px 线宽、圆润端点与转角、`currentColor`），当前导航用 Bold；内容类型可小面积语义色；附件统一折角文件轮廓。`IconText` 未指定尺寸时按相邻字号 1.15em 缩放并限制在 14–18px，独立取用默认 16px |
