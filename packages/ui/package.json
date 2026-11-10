@@ -44,8 +44,10 @@
     "react-dom": "^19.1.0"
   },
   "dependencies": {
+    "@astryxdesign/core": "0.7.12",
     "@base-ui/react": "^1.9.0",
     "@radix-ui/react-dialog": "^1.1.6",
+    "@stylexjs/stylex": "0.19.0",
     "@xunjie/contracts": "0.1.0",
     "marked": "^18.1.0",
     "monaco-editor": "0.57.0",

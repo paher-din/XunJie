@@ -41,14 +41,13 @@ it('keeps model drafts and pending operations mounted through category switches 
   const draft = host.querySelector<HTMLInputElement>('[aria-label="模型草稿"]')!
   draft.value = '未保存的模型地址'
   await click('检查')
-  await click('学校连接')
+  await click('账户')
   const models = draft.closest<HTMLElement>('.product-settings-pane')!
   expect(models.hidden).toBe(true)
   expect(models.hasAttribute('inert')).toBe(true)
   await act(async () => { finish(); await completion })
   await renderSettings({ initialTab: 'models', identityName: '已核对的身份', modelSettings: <Models /> })
-  expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('学校连接')
-  await click('账户')
+  expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('账户')
   await click('模型')
   expect(host.querySelector('[aria-label="模型草稿"]')).toBe(draft)
   expect(draft.value).toBe('未保存的模型地址')
@@ -60,7 +59,7 @@ it('keeps model drafts and pending operations mounted through category switches 
 
 it('supports school sign-in without an identity or models, preserving the supplied form and callbacks', async () => {
   const login = vi.fn(), onBack = vi.fn()
-  await renderSettings({ initialTab: 'school', onBack,
+  await renderSettings({ initialTab: 'account', onBack,
     schoolControls: <form onSubmit={event => { event.preventDefault(); login(new FormData(event.currentTarget).get('account')) }}>
       <label>学校账号<input name="account" /></label><button type="submit">登录此学校</button>
     </form> })
@@ -68,7 +67,7 @@ it('supports school sign-in without an identity or models, preserving the suppli
   account.value = 'school-user'
   await click('模型')
   expect(host.querySelector('.product-settings-model')?.textContent).toBe('个人设置暂不可用。')
-  await click('学校连接')
+  await click('账户')
   expect(host.querySelector('[name="account"]')).toBe(account)
   await click('登录此学校')
   expect(login).toHaveBeenCalledWith('school-user')

@@ -6194,7 +6194,7 @@ h3 {
   animation: user-edit-open 0.24s cubic-bezier(0.3, 1, 0.35, 1) backwards;
 }
 /* 焦点在里面的 textarea 上，描边与柔光落在整张编辑卡（同 .st-input:focus 的口径） */
-.user-edit:focus-within {
+.user-edit:has(> .user-edit-field:focus) {
   border-color: var(--accent);
   box-shadow: var(--panel-shadow), var(--focus-glow);
 }
@@ -7146,6 +7146,14 @@ h3 {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--focus-glow);
+}
+@media (forced-colors: active) {
+  .st-input:focus-visible,
+  .user-edit:has(> .user-edit-field:focus-visible),
+  .agent-layout .prompt-input:has(> textarea:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
 }
 .st-mono-input {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -10334,7 +10342,7 @@ button.st-check.checked:hover {
 .agent-layout .prompt-input {
   box-shadow: var(--panel-shadow);
 }
-.agent-layout .prompt-input:focus-within {
+.agent-layout .prompt-input:has(> textarea:focus) {
   border-color: var(--accent);
   box-shadow: var(--panel-shadow), var(--focus-glow);
 }

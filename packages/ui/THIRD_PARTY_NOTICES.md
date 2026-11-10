@@ -66,6 +66,9 @@ SOFTWARE.
 
 # Astryx
 
+`src/foundation/DestructiveButton.tsx` wraps Astryx `Button` from
+`@astryxdesign/core@0.7.12`; its colors, sizing and focus follow XunJie tokens.
+
 `src/foundation/useSidebarResize.tsx` and `src/foundation/sidebar-resize.css`
 adapt the pill grip, pointer capture, cancellation and keyboard interactions from
 Astryx `ResizeHandle.tsx` and `resizeGesture.ts`, inspected from the published

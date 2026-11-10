@@ -196,7 +196,10 @@
 .t-rm-file-drop strong { font-size: 13px; color: var(--ink-soft); font-weight: 400; overflow-wrap: anywhere; }
 .t-rm-file-drop > span { font-size: 11px; }
 .t-rm-file-drop > input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.t-rm-file-drop:focus-within { border-color: var(--accent); box-shadow: var(--focus-glow); }
+.t-rm-file-drop:has(> input:focus-visible) { border-color: var(--accent); box-shadow: var(--focus-glow); }
+@media (forced-colors: active) {
+  .t-rm-file-drop:has(> input:focus-visible) { outline: 2px solid Highlight; outline-offset: 2px; }
+}
 .t-rm-content-field > span { justify-content: space-between; }
 .t-rm-content-field > span > small { color: var(--muted); font: 400 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .t-rm-content-field > span > small.t-rm-error { color: var(--danger-deep); }

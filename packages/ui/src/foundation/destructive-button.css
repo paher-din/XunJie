@@ -1,0 +1,27 @@
+button.xj-destructive-button {
+  --color-error: color-mix(in srgb, var(--status-overdue-bg), var(--tint-rose-icon) 50%);
+  --color-on-error: var(--status-overdue-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-error);
+  color: var(--color-on-error);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+button.xj-destructive-button:not(:disabled):not([aria-disabled="true"]):hover {
+  background: color-mix(in srgb, var(--color-error), var(--color-on-error) 5%);
+  filter: none;
+}
+
+button.xj-destructive-button:is(:disabled, [aria-disabled="true"]) { opacity: .5; cursor: not-allowed; }
+
+@media (forced-colors: active) {
+  button.xj-destructive-button { border: 1px solid ButtonText; }
+}

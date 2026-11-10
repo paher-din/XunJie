@@ -17,6 +17,9 @@ import { ProductConversation } from './ProductConversation'
 import { ProductConversationHistory, conversationTitle, useConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { ProductProfile } from './ProductProfile'
+import { Button, ConfirmationDialog } from '@xunjie/ui/foundation'
+import { Icon } from '@xunjie/ui/icons'
+import { TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
@@ -24,7 +27,7 @@ import { startSchoolAuthorization } from './school-authorization'
 
 
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
-type PendingConnection = { requestId: string; authorizationUrl: string }
+type PendingConnection = { requestId: string; authorizationUrl: string; connectionId?: string }
 type CreateCourseActivity = { requestId: string; releaseId: string }
 const messages: Record<string, string> = {
   forbidden: '访问资格已失效，请重新登录或联系学校管理员。原活动仍属于原空间。',
@@ -127,6 +130,13 @@ function LearningView() {
   const [password, setPassword] = useState('')
   const [schoolEndpoint, setSchoolEndpoint] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
+  const [schoolFormOpen, setSchoolFormOpen] = useState(false)
+  const [disconnectTarget, setDisconnectTarget] = useState<{ key: string; name: string } | null>(null)
+  const [disconnectError, setDisconnectError] = useState('')
+  const disconnectTrigger = useRef<HTMLButtonElement | null>(null)
+  const disconnectSection = useRef<HTMLElement | null>(null)
+  const disconnectPending = useRef(false)
+  const schoolStartRequest = useRef<{ requestId: string; schoolEndpoint: string } | null>(null)
   const [pendingRequest, setPendingRequest] = useState<PendingActivityRequest | null>(null)
   const [coursePending, setCoursePending] = useState<CreateCourseActivity | null>(null)
   const [notice, setNotice] = useState('')
@@ -237,9 +247,9 @@ function LearningView() {
     const authentication = authEpoch.current
     await protectActivity()
     const next = await api('context') as Context
-    if (generation !== epoch.current || authentication !== authEpoch.current) return
+    if (generation !== epoch.current || authentication !== authEpoch.current) return false
     await protectActivity()
-    if (generation !== epoch.current || authentication !== authEpoch.current) return
+    if (generation !== epoch.current || authentication !== authEpoch.current) return false
     const nextKey = prefer && next.identities.some(item => item.key === prefer) ? prefer
       : next.identities.some(item => item.key === key) ? key : next.identities[0]?.key ?? ''
     rememberActivity(null, nextKey); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null)
@@ -248,6 +258,7 @@ function LearningView() {
     setContext(next)
     setReload(value => value + 1)
     setKey(nextKey)
+    return true
   }
   useEffect(() => {
     let disposed = false
@@ -543,14 +554,110 @@ function LearningView() {
     rememberMaterial({ title: content.title, url })
   }
 
-  const schoolControls = context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
-      {context.profile !== 'school' && context.identities.some(item => item.identity.kind === 'school') && <div className="product-school-list">
-        {context.identities.filter(item => item.identity.kind === 'school').map(item => <div className="product-school-row" key={item.key}>
-          <span>{item.identity.name}</span>{item.key === key ? <span className="detail">当前空间</span> :
-            <button type="button" className="outline" disabled={busy} onClick={() => void switchSpace(item.key)}>切换到此学校</button>}
+  async function disconnectSchool(schoolKey: string) {
+    const authentication = ++authEpoch.current
+    await protectActivity()
+    await api('connections/revoke', { connectionId: schoolKey.slice(7) }, schoolKey)
+    if (authentication !== authEpoch.current) return
+    if (currentView.current.key === schoolKey) await protectActivity()
+    const current = currentView.current.context
+    if (authentication !== authEpoch.current || !current) return
+    const next = { ...current, identities: current.identities.filter(item => item.key !== schoolKey) }
+    try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
+    setContext(next)
+    if (currentView.current.key === schoolKey) {
+      const nextKey = next.identities.some(item => item.key === 'personal') ? 'personal' : next.identities[0]?.key ?? ''
+      const params = new URLSearchParams(currentSearch.current)
+      params.delete('activity'); params.delete('artifact'); params.delete('course')
+      if (nextKey) params.set('space', nextKey)
+      else params.delete('space')
+      const search = params.toString()
+      approvedSearch.current = search ? '?' + search : ''
+      navigate({ pathname: route.pathname, search })
+      ++epoch.current
+      setOpened(null); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
+      setKey(nextKey); setBusy(false); setReload(value => value + 1)
+    }
+  }
+
+  function confirmDisconnect() {
+    if (!disconnectTarget || disconnectPending.current || busy) return
+    const target = disconnectTarget
+    disconnectPending.current = true
+    setDisconnectError('')
+    void action(async () => {
+      try {
+        await disconnectSchool(target.key)
+        setDisconnectTarget(null)
+      } catch (cause) {
+        setDisconnectError(errorText(cause))
+      } finally {
+        disconnectPending.current = false
+      }
+    })
+  }
+
+  const schoolIdentities = context?.identities.filter(item => item.identity.kind === 'school') ?? []
+  function openSchoolForm(section: HTMLElement | null) {
+    setError(''); setSchoolFormOpen(true)
+    requestAnimationFrame(() => section?.querySelector<HTMLInputElement>('.product-school-connect-form input')?.focus())
+  }
+  const schoolConnectionForm = pendingConnection ? <div className="product-school-pending">
+    <p role="status">{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
+    <div className="product-school-actions">
+      <button type="button" className="primary" disabled={busy} onClick={() => void action(async generation => {
+        let connectionId = pendingConnection.connectionId
+        if (!connectionId) {
+          const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
+          if (generation !== epoch.current) return
+          connectionId = connection.connectionId
+          setPendingConnection({ ...pendingConnection, connectionId })
+        }
+        if (await refreshContext('school:' + connectionId, generation)) {
+          setPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
+        }
+      })}>{pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
+      {!pendingConnection.connectionId && <a className="outline" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a>}
+    </div>
+    {!pendingConnection.connectionId && <button type="button" className="product-school-text-action" disabled={busy} onClick={event => {
+      setPendingConnection(null); openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))
+    }}>重新填写学校链接</button>}
+  </div> : schoolFormOpen ? <form className="product-school-form product-school-connect-form" onSubmit={event => { event.preventDefault(); void action(async () => {
+    const request = schoolStartRequest.current?.schoolEndpoint === schoolEndpoint
+      ? schoolStartRequest.current : { requestId: crypto.randomUUID(), schoolEndpoint }
+    schoolStartRequest.current = request
+    const pending = await api('client/start', request) as PendingConnection
+    schoolStartRequest.current = null
+    setPendingConnection(pending)
+  }) }}>
+    <label>学校链接<TextInput type="url" autoComplete="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
+    <div className="product-school-actions">
+      <Button type="submit" disabled={busy}>{busy ? '正在准备…' : '连接'}</Button>
+      <Button type="button" variant="outline" disabled={busy} onClick={event => {
+        const section = event.currentTarget.closest<HTMLElement>('.product-school')
+        setError(''); setSchoolFormOpen(false)
+        requestAnimationFrame(() => section?.querySelector<HTMLButtonElement>('.product-school-add')?.focus())
+      }}>取消</Button>
+    </div>
+  </form> : <Button type="button" variant="outline" className="product-school-add" disabled={busy}
+    onClick={event => openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))}>
+      <span className="product-school-add-icon"><Icon name="add" size={22} /></span>
+      <span>添加学校</span>
+    </Button>
+  const schoolControls = context && <section className="product-school" tabIndex={-1}><h2>学校连接</h2>
+      {context.profile !== 'school' && (schoolIdentities.length > 0 ? <div className="product-school-list">
+        {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
+          <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
+            <div><strong>{item.identity.name}</strong><span className={item.key === key ? 'product-school-status is-current' : 'product-school-status'}>{item.key === key ? '当前空间' : '已连接'}</span></div></div>
+          {item.key.startsWith('school:') && <button type="button" className="product-school-disconnect" aria-label={`断开${item.identity.name}的连接`} disabled={busy}
+            onClick={event => {
+              disconnectTrigger.current = event.currentTarget
+              disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+              setDisconnectError(''); setDisconnectTarget({ key: item.key, name: item.identity.name })
+            }}>断开连接</button>}
         </div>)}
-      </div>}
-      {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async () => {
+      </div> : schoolConnectionForm)}
+      {context.identities.some(item => item.key === 'school') ? <div className="product-school-session"><span className="product-school-status">已登录此学校</span><button type="button" className="outline" disabled={busy} onClick={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
         await api('logout', {}); if (authentication !== authEpoch.current) return
@@ -568,33 +675,13 @@ function LearningView() {
           setKey(nextKey)
           setReload(value => value + 1)
         }
-      })}>退出学校登录</button> : context.profile === 'school' && <form onSubmit={event => { event.preventDefault(); void action(async generation => {
+      })}>退出学校登录</button></div> : context.profile === 'school' && <form className="product-school-form" onSubmit={event => { event.preventDefault(); void action(async generation => {
         ++authEpoch.current
         await api('login', { loginName, password }); if (generation !== epoch.current) return
         setPassword(''); await refreshContext('school', generation)
-      }) }}><label>学校账号<input autoComplete="username" required value={loginName} onChange={event => setLoginName(event.target.value)} /></label>
-        <label>密码<input type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
-        <button type="submit" disabled={busy}>登录此学校</button></form>}
-      {context.profile !== 'school' && <details open={!context.identities.some(item => item.identity.kind === 'school')}><summary>连接学校提供的入口</summary>
-        <form onSubmit={event => { event.preventDefault(); void action(async () => {
-          const pending = await api('client/start', { requestId: crypto.randomUUID(), schoolEndpoint }) as PendingConnection
-          setPendingConnection(pending)
-        }) }}><label>学校入口<input type="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
-          <button type="submit" className="primary" disabled={busy}>前往学校认证</button></form>
-        {pendingConnection && <div>
-          <button type="button" className="primary" disabled={busy} onClick={() => void action(async generation => {
-            const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
-            if (generation !== epoch.current) return
-            setPendingConnection(null); await refreshContext('school:' + connection.connectionId, generation)
-          })}>已在学校批准，完成连接</button>
-          <a className="outline" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a></div>}
-      </details>}
-      {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async generation => {
-        await protectActivity()
-        await api('connections/revoke', { connectionId: key.slice(7) }, key)
-        // The revoked connection is gone; re-read so the stale school space cannot be selected again.
-        if (generation === epoch.current) await refreshContext(context.identities.some(item => item.key === 'personal') ? 'personal' : undefined, generation)
-      })}>撤销此客户端连接</button>}
+      }) }}><label>学校账号<TextInput autoComplete="username" required value={loginName} onChange={event => setLoginName(event.target.value)} /></label>
+        <label>密码<TextInput type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
+        <button type="submit" className="primary" disabled={busy}>登录此学校</button></form>}
     </section>
   const feedback = <>{error && <p className="learning-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}</>
   const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
@@ -617,7 +704,7 @@ function LearningView() {
   })
   const goHome = () => changePage('home')
   const openAgent = () => changePage('agent')
-  const openSettings = (tab: ProductSettingsTab = 'account') => void action(async () => {
+  const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     await protectActivity()
     const params = new URLSearchParams(currentSearch.current); params.set('settings', tab)
     const search = params.toString()
@@ -647,7 +734,7 @@ function LearningView() {
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
   }
-  const settingsTab: ProductSettingsTab = settingsPage === 'school' || settingsPage === 'models' || settingsPage === 'agent'
+  const settingsTab: ProductSettingsTab = settingsPage === 'models' || settingsPage === 'agent'
     || settingsPage === 'portrait' || settingsPage === 'privacy' || settingsPage === 'about' ? settingsPage : 'account'
   const conversationOpen = !!opened && agentOpen && !opened.course
   const archivedCount = visibleActivities?.filter(activity => !activity.course && conversationHistory.archivedIds.includes(activity.activityId)).length ?? 0
@@ -677,11 +764,25 @@ function LearningView() {
       onArchive={id => changeConversationVisibility(id, false)} onDelete={id => changeConversationVisibility(id, true)}
       onRename={conversationHistory.rename} onPin={conversationHistory.setPinned}
       onRestore={id => conversationHistory.setArchived(id, false)} />}>
+    <ConfirmationDialog open={!!disconnectTarget} title="断开学校连接？"
+      description={<>断开后，将无法在此访问<strong>「{disconnectTarget?.name}」</strong>的学习内容。{disconnectTarget?.key === key && context?.identities.some(item => item.key === 'personal') && '你将返回个人学习空间。'}需要时可重新连接。</>}
+      confirmLabel="确认断开" pendingLabel="正在断开…" busy={busy} error={disconnectError}
+      onClose={() => { setDisconnectTarget(null); setDisconnectError('') }} onConfirm={confirmDisconnect}
+      onReturnFocus={() => {
+        requestAnimationFrame(() => {
+          if (disconnectTrigger.current?.isConnected) disconnectTrigger.current.focus()
+          else (disconnectSection.current?.querySelector<HTMLElement>('.product-school-add, input') ?? disconnectSection.current)?.focus()
+        })
+      }} />
     {profileOpen && <ProductProfile identityName={identity?.name ?? '学习空间'} spaceKind={identity?.kind}
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
     {modelsOpen && <ProductSettings identityName={identity?.name ?? '学习空间'} onBack={closeModels}
-      initialTab={settingsTab} onTabChange={selectSettingsTab}
-      schoolControls={schoolControls} modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
+      initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
+      busy={busy} onPersonalSpace={identity?.kind === 'school' && context?.identities.some(item => item.key === 'personal')
+        ? () => void switchSpace('personal') : undefined}
+      accountFeedback={error || notice ? feedback : null}
+      schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
+      modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
         readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} /> : null} />}
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>

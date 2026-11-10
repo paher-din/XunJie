@@ -1,0 +1,31 @@
+.xj-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--overlay);
+}
+
+.xj-confirm-dialog {
+  position: fixed;
+  z-index: 90;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: min(440px, calc(100vw - 40px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-tray);
+}
+
+.xj-confirm-title { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.5; }
+.xj-confirm-description { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.xj-confirm-description strong { color: var(--ink-soft); font-weight: 500; }
+.xj-confirm-error { margin: 16px 0 0; color: var(--danger-deep); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.xj-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.xj-confirm-actions .outline { min-height: 32px; padding: 6px 16px; font-size: 13px; }
+.xj-confirm-actions button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }

@@ -5,15 +5,19 @@ import { Icon, IconText, type IconName } from '@xunjie/ui/icons'
 import { Section, SettingsEmptyState } from '@xunjie/ui/settings'
 import './product-settings.css'
 
-export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | 'school' | 'privacy' | 'about'
+export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | 'privacy' | 'about'
 
 export interface ProductSettingsProps {
   identityName: string
   onBack: () => void
+  onPersonalSpace?: () => void
+  busy?: boolean
   schoolControls: ReactNode
+  accountFeedback?: ReactNode
   modelSettings: ReactNode
   /** Initial selection only; use "models" when opening from a learning activity. */
   initialTab?: ProductSettingsTab
+  focusSchool?: boolean
   onTabChange?: (tab: ProductSettingsTab) => void
 }
 
@@ -22,27 +26,34 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
   { id: 'portrait', label: '学生画像', icon: 'user-id' },
   { id: 'agent', label: 'Agent 个性化', icon: 'assistant-mark' },
   { id: 'models', label: '模型', icon: 'model' },
-  { id: 'school', label: '学校连接', icon: 'link' },
   { id: 'privacy', label: '数据与隐私', icon: 'shield-check' },
   { id: 'about', label: '关于', icon: 'info-circle' },
 ]
-const descriptions: Record<ProductSettingsTab, string> = {
-  account: '查看当前身份，管理你的学习空间。', portrait: '了解当前空间中的学生画像。',
-  agent: '调整对话方式，管理 Agent 使用的 Skills。', models: '选择当前空间使用的模型，管理供应商连接。',
-  school: '连接学校，在不同学习空间之间切换。', privacy: '了解学习内容的保存与对话整理方式。', about: '面向高校课程的 AI 项目学习空间。',
-}
-
 /** Business operations and identity changes remain owned by the caller. */
-export function ProductSettings({ identityName, onBack, schoolControls, modelSettings, initialTab = 'account', onTabChange }: ProductSettingsProps) {
+export function ProductSettings({ identityName, onBack, onPersonalSpace, busy = false, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
+  const school = useRef<HTMLDivElement>(null)
   useEffect(() => setActive(initialTab), [initialTab])
   useEffect(() => {
     if (body.current) body.current.scrollTop = 0
     if (window.matchMedia?.('(max-width: 760px)').matches) document.getElementById(`${id}-${active}-nav`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
   }, [active, id])
   const select = (tab: ProductSettingsTab) => { setActive(tab); onTabChange?.(tab) }
+  const revealSchool = () => {
+    school.current?.focus({ preventScroll: true })
+    school.current?.scrollIntoView?.({ block: 'start' })
+  }
+  useEffect(() => {
+    if (!focusSchool || active !== 'account') return
+    const frame = requestAnimationFrame(revealSchool)
+    return () => cancelAnimationFrame(frame)
+  }, [active, focusSchool])
+  const showSchool = () => {
+    select('account')
+    requestAnimationFrame(revealSchool)
+  }
 
   // SettingsLayout keys its body by the active tab. Reuse its visual structure,
   // keeping these panes mounted so drafts and in-flight operations survive navigation.
@@ -65,24 +76,20 @@ export function ProductSettings({ identityName, onBack, schoolControls, modelSet
       <div className="st-body-in">
         <header className="product-settings-heading" key={active}>
           <h1>{tabs.find(tab => tab.id === active)?.label}</h1>
-          <p>{descriptions[active]}</p>
         </header>
         <section id={`${id}-account`} aria-labelledby={`${id}-account-nav`}
           hidden={active !== 'account'} inert={active !== 'account'} className="product-settings-pane">
-          <Section title="身份信息">
-            <div className="product-settings-identity">
+          <div className="product-settings-identity">
+            <div className="product-settings-current">
               <AccountAvatar name={identityName} />
-              <dl><div><dt>当前身份</dt><dd>{identityName}</dd></div></dl>
+              <dl><div><dt>当前学习空间</dt><dd>{identityName}</dd></div></dl>
             </div>
-          </Section>
-          <div className="product-settings-links">
-            <button type="button" onClick={() => select('school')}><IconText name="link" size={18}>学校连接</IconText><Icon name="alt-arrow-right" size={16} /></button>
-            <button type="button" onClick={() => select('models')}><IconText name="model" size={18}>模型设置</IconText><Icon name="alt-arrow-right" size={16} /></button>
+            {onPersonalSpace && <button type="button" className="outline" disabled={busy} onClick={onPersonalSpace}>切换到个人空间</button>}
           </div>
-        </section>
-        <section id={`${id}-school`} aria-labelledby={`${id}-school-nav`}
-          hidden={active !== 'school'} inert={active !== 'school'} className="product-settings-pane product-settings-school">
-          {schoolControls ?? <p className="product-settings-empty">当前没有可用的学校连接操作。</p>}
+          <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">
+            {accountFeedback}
+            {schoolControls ?? <p className="product-settings-empty" role="status">正在读取学校连接…</p>}
+          </div>
         </section>
         <section id={`${id}-portrait`} aria-labelledby={`${id}-portrait-nav`} hidden={active !== 'portrait'} inert={active !== 'portrait'}>
           <SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。">
@@ -96,7 +103,7 @@ export function ProductSettings({ identityName, onBack, schoolControls, modelSet
         </section>
         <section id={`${id}-privacy`} aria-labelledby={`${id}-privacy-nav`} hidden={active !== 'privacy'} inert={active !== 'privacy'}>
           <Section title="学习空间"><p className="product-settings-copy">个人空间与学校空间分别保存学习内容。</p>
-            <button type="button" className="outline" onClick={() => select('school')}>管理学校连接</button></Section>
+            <button type="button" className="outline" onClick={showSchool}>管理学校连接</button></Section>
           <Section title="对话整理"><dl className="product-settings-facts">
             <div><dt>归档</dt><dd>从对话列表收起，可在归档箱恢复。</dd></div>
             <div><dt>删除对话入口</dt><dd>移除侧栏中的对话入口，学习活动和作品仍保留。</dd></div>

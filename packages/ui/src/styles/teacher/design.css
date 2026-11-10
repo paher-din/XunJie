@@ -80,7 +80,6 @@
 .td-resource-option:last-child { border-bottom: 0; }
 .td-resource-option:hover { background: var(--hover-bg); }
 .td-resource-option:has(input:checked) { background: var(--accent-soft); }
-.td-resource-option:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
 .td-resource-option > input { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
 .td-resource-option > svg { margin-top: 2px; flex-shrink: 0; color: var(--muted); }
 .td-resource-option > span { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
@@ -112,8 +111,12 @@
 .td-prompt-shortcuts > button:hover { background: var(--hover-bg); color: var(--ink); }
 .td-prompt-shortcuts svg { transform: rotate(45deg); flex-shrink: 0; }
 .td-composer { border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px; background: var(--paper); }
-.td-composer:focus-within { border-color: var(--accent); box-shadow: var(--focus-glow); }
+.td-composer:has(> textarea:focus) { border-color: var(--accent); box-shadow: var(--focus-glow); }
 .td-composer textarea { width: 100%; background: transparent; resize: vertical; min-height: 68px; outline: 0; color: var(--ink); border: 0; font-size: 12px; line-height: 1.7; padding: 0; }
+.td-composer textarea:focus-visible { outline: 0; }
+@media (forced-colors: active) {
+  .td-composer:has(> textarea:focus-visible) { outline: 2px solid Highlight; outline-offset: 2px; }
+}
 .td-composer textarea::placeholder { color: var(--muted); }
 .td-composer > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; }
 .td-composer button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; width: 32px; height: 32px; flex-shrink: 0; background: var(--primary); color: var(--on-primary); cursor: pointer; }
