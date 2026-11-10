@@ -1,11 +1,15 @@
+import { getModelPreset } from './model-presets.js';
+
 /** Browser/server shared wire rules; no SDK, network access, DOM or Node globals. */
-export type ReasoningEffort = 'auto' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-export const modelReasoningEfforts = ['auto', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type ReasoningEffort = 'auto' | 'none' | 'enabled' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export const modelReasoningEfforts = ['auto', 'none', 'enabled', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
 
 export interface ReasoningRoute {
   protocol: 'chat-completions' | 'responses' | 'messages';
   baseUrl: string;
   modelId: string;
+  presetId?: string | undefined;
+  variantId?: string | undefined;
   dialect?: 'standard' | 'deepseek' | 'command-code' | undefined;
   parameterMode?: 'plain' | 'thinking' | undefined;
   reasoningEffort?: ReasoningEffort | undefined;
@@ -14,9 +18,10 @@ export interface ReasoningRoute {
   reasoningLevels?: ReasoningEffort[] | undefined;
 }
 
-type Family = 'openai' | 'anthropic' | 'deepseek' | 'qwen' | 'glm' | 'kimi' | 'unknown';
+type Family = 'openai' | 'anthropic' | 'deepseek' | 'qwen' | 'glm' | 'kimi' | 'mimo' | 'minimax' | 'unknown';
 type Encoding = 'none' | 'openai' | 'openrouter' | 'deepseek' | 'anthropic-adaptive' | 'anthropic-budget'
-  | 'anthropic-budget-effort' | 'anthropic-effort' | 'thinking-toggle' | 'thinking-effort' | 'qwen-toggle';
+  | 'anthropic-budget-effort' | 'anthropic-effort' | 'thinking-toggle' | 'thinking-effort' | 'qwen-toggle'
+  | 'mimo-toggle' | 'minimax-toggle' | 'kimi-effort' | 'protocol-toggle';
 export interface ModelProfile {
   dialect: 'standard' | 'deepseek' | 'command-code';
   efforts: ReasoningEffort[];
@@ -26,6 +31,8 @@ export interface ModelProfile {
   /** Identity for lookup only; the request must retain the original modelId. */
   canonicalModelId: string;
   encoding: Encoding;
+  reasoningKind?: 'effort' | 'toggle' | 'none';
+  defaultEffort?: ReasoningEffort;
 }
 
 // Reviewed sources (not an assertion that any relay exposes every native API):
@@ -65,6 +72,7 @@ function knownModelProfile(route: ReasoningRoute): ModelProfile {
     : host === 'api.deepseek.com' ? 'deepseek' : route.dialect ?? 'standard';
   const profile: ModelProfile = { dialect, efforts: ['auto'], source: 'unknown', family: 'unknown',
     canonicalModelId: id, encoding: 'none' };
+  const kimiCode = /^(?:api\.kimi\.(?:com|ai))$/.test(host) && /^https?:\/\/[^/]+\/coding(?:\/|$)/i.test(route.baseUrl);
   // A gateway's model name does not establish its parameter dialect or levels.
   // OpenRouter documents a unified reasoning object on Chat and Responses;
   // per-model levels still need the caller's catalog/manual declaration.
@@ -76,6 +84,20 @@ function knownModelProfile(route: ReasoningRoute): ModelProfile {
     return { ...profile, source: 'known', family, encoding, efforts: ['auto', ...levels],
       dialect: dialect === 'command-code' ? dialect : family === 'deepseek' ? 'deepseek' : dialect };
   };
+  const typed = (family: Family, encoding: Encoding, levels: ReasoningEffort[],
+    reasoningKind: 'effort' | 'toggle' | 'none', defaultEffort?: ReasoningEffort): ModelProfile => ({
+    ...known(family, encoding, levels), reasoningKind, ...(defaultEffort ? { defaultEffort } : {}),
+  });
+  if (/^mimo-v2\.(?:5(?:-pro)?|6-(?:flash|pro)(?:-ultraspeed)?)$/.test(id))
+    return typed('mimo', 'mimo-toggle', ['none', 'enabled'], 'toggle', 'enabled');
+  if (id === 'minimax-m3' && route.protocol === 'messages')
+    return typed('minimax', 'minimax-toggle', ['none', 'enabled'], 'toggle', 'none');
+  if (/^kimi-k3(?:\.1-pro(?:-highspeed)?)?$/.test(id)
+    || kimiCode && /^(?:k3(?:-256k|\.1-pro(?:-highspeed)?)?|kimi-for-coding)$/.test(id)) {
+    const codeSwitch = kimiCode && !id.startsWith('k3.1');
+    return typed('kimi', 'kimi-effort', [...(codeSwitch ? ['none'] as const : []), 'low', 'high', 'max'],
+      'effort', kimiCode && id !== 'kimi-for-coding' ? 'high' : 'max');
+  }
   const openai = (levels: ReasoningEffort[], responsesOnly = false) => known('openai',
     route.protocol === 'messages' || responsesOnly && route.protocol !== 'responses' ? 'none' : 'openai',
     route.protocol === 'messages' || responsesOnly && route.protocol !== 'responses' ? [] : levels);
@@ -96,13 +118,14 @@ function knownModelProfile(route: ReasoningRoute): ModelProfile {
     return claude('anthropic-adaptive', ['none', ...standardLevels, ...(id === 'claude-opus-4-6' || id === 'claude-sonnet-4-6' ? [] : ['xhigh'] as ReasoningEffort[]), 'max']);
   if (id === 'claude-opus-4-5') return claude('anthropic-budget-effort', ['none', ...standardLevels]);
   if (/^claude-(?:(?:sonnet|opus)-4(?:-0)?|opus-4-1|(?:sonnet|haiku)-4-5|3-7-sonnet)$/.test(id))
-    return claude('anthropic-budget', ['none']);
+    return claude('anthropic-budget', ['none', 'enabled']);
   if (/^claude-(?:3-5-(?:sonnet|haiku)|3-(?:opus|sonnet|haiku))$/.test(id)) return claude('none', []);
 
   // V4/V4.1 and the official current aliases have independently selectable
   // low/high/max, not OpenAI's medium or xhigh aliases.
   if (/^deepseek-(?:v4-(?:flash|pro)(?:-\d{4})?|v4\.1-flash(?:-\d{4})?|flash|pro)$/.test(id))
-    return known('deepseek', 'deepseek', ['none', 'low', 'high', 'max']);
+    return { ...known('deepseek', 'deepseek', ['none', 'low', 'high', 'max']),
+      ...(host === 'api.deepseek.com' ? { reasoningKind: 'effort' as const, defaultEffort: 'high' as const } : {}) };
   if (/^deepseek-(?:chat|reasoner|v3\.2(?:-exp)?)$/.test(id))
     return known('deepseek', 'deepseek', ['none']);
   if (/^deepseek-r1(?:-0528)?$/.test(id)) return known('deepseek', 'none', []);
@@ -110,15 +133,15 @@ function knownModelProfile(route: ReasoningRoute): ModelProfile {
   // These models have a thinking switch, not a documented effort ladder.
   if (/^qwen3-(?:0\.6b|1\.7b|4b|8b|14b|32b|30b-a3b|235b-a22b)$/.test(id))
     return known('qwen', route.protocol === 'chat-completions' ? 'qwen-toggle' : 'none',
-      route.protocol === 'chat-completions' ? ['none'] : []);
+      route.protocol === 'chat-completions' ? ['none', 'enabled'] : []);
   if (/^glm-(?:4\.[567](?:-air|-airx|-flash)?|5(?:\.1)?)$/.test(id))
     return known('glm', route.protocol === 'chat-completions' ? 'thinking-toggle' : 'none',
-      route.protocol === 'chat-completions' ? ['none'] : []);
+      route.protocol === 'chat-completions' ? ['none', 'enabled'] : []);
   if (/^glm-5\.[23](?:-flash)?$/.test(id)) return known('glm',
     route.protocol === 'chat-completions' ? 'thinking-effort' : 'none', route.protocol !== 'chat-completions' ? []
       : id.startsWith('glm-5.3') ? ['low', 'high', 'max'] : ['none', 'high', 'max']);
   if (id === 'kimi-k2.5') return known('kimi', route.protocol === 'chat-completions' ? 'thinking-toggle' : 'none',
-    route.protocol === 'chat-completions' ? ['none'] : []);
+    route.protocol === 'chat-completions' ? ['none', 'enabled'] : []);
   if (/^kimi-k2(?:-thinking(?:-turbo)?|-0905-preview|-0711-preview)?$/.test(id)) return known('kimi', 'none', []);
   return profile;
 }
@@ -126,25 +149,58 @@ function knownModelProfile(route: ReasoningRoute): ModelProfile {
 function declaredLevelsError(route: ReasoningRoute): string | undefined {
   if (route.reasoningLevels !== undefined && (!Array.isArray(route.reasoningLevels)
     || route.reasoningLevels.some(level => level === 'auto' || !(modelReasoningEfforts as readonly string[]).includes(level))))
-    return '声明的思考档位只能包含 none、minimal、low、medium、high、xhigh、max，不能包含 auto。';
+    return '声明的思考档位只能包含 none、enabled、minimal、low、medium、high、xhigh、max，不能包含 auto。';
+  if (route.reasoningLevels?.includes('enabled') && route.reasoningLevels.some(level => level !== 'enabled' && level !== 'none'))
+    return 'enabled 表示思考开关，不能与思考强度档位混合声明。';
+}
+
+/** A selected preset only controls wire encoding at that preset's exact route.
+ * It supplies neither model capabilities nor verification for unknown models. */
+function declaredPresetEncoding(route: ReasoningRoute): Encoding | undefined {
+  if (!route.presetId) return;
+  const expected = getModelPreset(route.presetId, route.variantId)?.baseUrls[route.protocol];
+  const normalized = (value: string) => value.replace(/\/+$/, '').replace(/^(https?:\/\/[^/]+)/i, authority => authority.toLowerCase());
+  if (!expected || normalized(expected) !== normalized(route.baseUrl)) return;
+  if (route.presetId === 'deepseek') return 'deepseek';
+  if (route.presetId === 'zhipu') return route.protocol === 'chat-completions' ? 'thinking-effort'
+    : route.protocol === 'responses' ? 'openai' : 'anthropic-effort';
+  if (route.presetId === 'kimi') return 'kimi-effort';
 }
 
 export function resolveModelProfile(route: ReasoningRoute): ModelProfile {
   const error = declaredLevelsError(route);
   if (error) throw new RangeError(error);
   const profile = knownModelProfile(route);
-  if (route.reasoningLevels === undefined) return profile;
+  // MiMo explicitly maps all non-none effort names to the same ON switch.
+  // A relay catalogue must not turn that into a fabricated effort ladder.
+  if (profile.encoding === 'mimo-toggle') return describe(profile);
+  if (route.reasoningLevels === undefined) return describe(profile);
   const levels = [...new Set(route.reasoningLevels)];
-  let encoding = profile.encoding;
+  let encoding: Encoding = profile.encoding;
   // User/catalog declarations override this small reviewed fallback, including
   // alias models. For an unknown dialect use only the selected protocol's
   // standard effort field; never infer a private thinking switch from levels.
   if (profile.source === 'unknown' || encoding === 'none'
-    || levels.some(level => level !== 'none') && ['qwen-toggle', 'thinking-toggle', 'anthropic-budget'].includes(encoding))
+    || levels.some(level => level !== 'none' && level !== 'enabled') && ['qwen-toggle', 'thinking-toggle', 'anthropic-budget'].includes(encoding))
     encoding = route.protocol === 'messages' ? 'anthropic-effort'
       : hostname(route.baseUrl) === 'openrouter.ai' ? 'openrouter' : 'openai';
+  if (profile.source === 'unknown' && levels.length && !levels.includes('enabled'))
+    encoding = declaredPresetEncoding(route) ?? encoding;
   if (!levels.length) encoding = 'none';
-  return { ...profile, source: 'manual', efforts: ['auto', ...levels], encoding };
+  if (levels.includes('enabled') && !['mimo-toggle', 'minimax-toggle', 'qwen-toggle', 'thinking-toggle',
+    'anthropic-budget', 'anthropic-budget-effort'].includes(encoding)) encoding = 'protocol-toggle';
+  const resolved = describe({ ...profile, source: 'manual', efforts: ['auto', ...levels], encoding });
+  if (resolved.defaultEffort && !resolved.efforts.includes(resolved.defaultEffort)) delete resolved.defaultEffort;
+  return resolved;
+}
+
+function describe(profile: ModelProfile): ModelProfile {
+  const levels = profile.efforts.filter(level => level !== 'auto');
+  const reasoningKind = levels.includes('enabled') || ['anthropic-budget', 'qwen-toggle', 'thinking-toggle'].includes(profile.encoding)
+    ? 'toggle' : levels.some(level => level !== 'none') ? 'effort' : 'none';
+  return { ...profile, ...(profile.source === 'unknown' ? {} : { reasoningKind }),
+    ...(profile.family === 'glm' && profile.canonicalModelId.startsWith('glm-5.3') && profile.encoding === 'thinking-effort'
+      ? { defaultEffort: 'max' as const } : {}) };
 }
 
 /** Unknown models accept only auto unless the caller explicitly declares levels. */
@@ -163,11 +219,13 @@ export function modelReasoningError(route: ReasoningRoute, maxOutputTokens?: num
     return 'Messages 标准协议没有 minimal effort 的通用表达；请选择该协议支持的其他档位。';
   if (route.protocol === 'messages' && effort === 'none' && profile.encoding === 'anthropic-effort')
     return '此 Messages 模型尚未确认支持关闭思考，不能把 none 转换为 thinking: disabled；请使用 auto。';
+  if (route.protocol === 'messages' && effort === 'enabled' && profile.encoding === 'protocol-toggle')
+    return '此 Messages 模型尚未确认原生思考开关及预算形式；请使用 auto。';
   if (maxOutputTokens !== undefined && (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1))
     return '输出上限必须是正整数。';
-  const manual = effort !== undefined && effort !== 'none' && route.protocol === 'messages'
-    && (profile.encoding === 'anthropic-budget-effort' && effort !== 'auto'
-      || (profile.encoding === 'anthropic-budget' || profile.encoding === 'anthropic-budget-effort') && route.parameterMode === 'thinking');
+  const manual = effort !== undefined && effort !== 'none' && effort !== 'auto' && route.protocol === 'messages'
+    && (profile.encoding === 'anthropic-budget-effort'
+      || profile.encoding === 'anthropic-budget' && effort === 'enabled');
   if (manual && maxOutputTokens !== undefined && maxOutputTokens <= 1024)
     return '此模型的思考预算至少为 1024 token；输出上限必须大于 1024，才能保留最终回答空间。';
 }
@@ -190,15 +248,26 @@ export function modelReasoningParameters(route: ReasoningRoute, maxOutputTokens:
     return thinking ? enabledThinking(route) : { thinking: { type: 'disabled' } };
   }
   if (effort === 'auto') {
-    // auto omits the effort, allowing the vendor's default. An existing thinking
-    // toggle can still turn thinking on without pinning a concrete effort.
-    if (route.parameterMode !== 'thinking') return {};
-    if (profile.encoding === 'anthropic-adaptive') return { thinking: { type: 'adaptive' } };
-    if (profile.encoding === 'anthropic-budget' || profile.encoding === 'anthropic-budget-effort') return enabledThinking(route);
-    if (profile.encoding === 'thinking-toggle' || profile.encoding === 'thinking-effort' || profile.encoding === 'deepseek')
-      return route.protocol === 'responses' ? {} : enabledThinking(route);
-    if (profile.encoding === 'qwen-toggle') return { enable_thinking: true };
+    // An explicit auto always follows the model's true default, even if the
+    // historical parameterMode still says thinking. Missing effort retains the
+    // exact old behavior above, so existing snapshots are not reinterpreted.
     return {};
+  }
+  if (profile.encoding === 'mimo-toggle') return route.protocol === 'responses'
+    ? { reasoning: { effort: effort === 'none' ? 'none' : 'high' } }
+    : { thinking: { type: effort === 'none' ? 'disabled' : 'enabled' } };
+  if (profile.encoding === 'minimax-toggle') return { thinking: { type: effort === 'none' ? 'disabled' : 'adaptive' } };
+  if (profile.encoding === 'kimi-effort') {
+    if (route.protocol === 'responses') return { reasoning: { effort } };
+    if (route.protocol === 'messages') return effort === 'none' ? { thinking: { type: 'disabled' } }
+      : { thinking: { type: 'enabled' }, output_config: { effort } };
+    return { reasoning_effort: effort };
+  }
+  if (effort === 'enabled') {
+    if (profile.encoding === 'qwen-toggle') return { enable_thinking: true };
+    if (profile.encoding === 'anthropic-budget' || profile.encoding === 'anthropic-budget-effort') return enabledThinking(route);
+    if (route.protocol === 'responses') return { reasoning: { effort: 'high' } };
+    return { thinking: { type: 'enabled' } };
   }
   if (profile.encoding === 'openrouter') return { reasoning: { effort } };
   if (profile.encoding === 'openai') return route.protocol === 'responses'

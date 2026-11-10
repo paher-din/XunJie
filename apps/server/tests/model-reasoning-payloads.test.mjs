@@ -22,6 +22,7 @@ await build({ stdin: { contents: `
 `, resolveDir: repository }, outfile: join(temporary, 'source.mjs'), bundle: true, platform: 'node',
   format: 'esm', packages: 'external', alias: { '@xunjie/contracts': join(repository, 'packages/contracts/src') } });
 const { adapterReady, connectionCheckPayload, limitPayload, runModel, measuredCapabilities, decideModelCapabilities,
+  modelSessionPayload, modelSessionHeaders,
   parseLearningModelResult, createLearningModelService, createLearningModelClient, createChatWork } = await import(pathToFileURL(join(temporary, 'source.mjs')));
 const identity = { kind: 'personal', name: 'Reasoning fixture', environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
 function configuration(protocol, modelId, changes = {}) {
@@ -51,6 +52,18 @@ const cases = [
   ['chat-completions', 'deepseek/deepseek-v4.1-flash', 'high', { baseUrl: 'https://openrouter.ai/api/v1', reasoningLevels: ['high'] }, { reasoning: { effort: 'high' } }],
   ['responses', 'deepseek/deepseek-v4.1-flash', 'high', { baseUrl: 'https://openrouter.ai/api/v1', reasoningLevels: ['high'] }, { reasoning: { effort: 'high' } }],
   ['chat-completions', 'deepseek/deepseek-v4.1-flash', 'max', { baseUrl: 'https://relay.example/v1', reasoningLevels: ['max'] }, { reasoning_effort: 'max' }],
+  ['chat-completions', 'mimo-v2.6-pro', 'enabled', { baseUrl: 'https://api.xiaomimimo.com/v1' }, { thinking: { type: 'enabled' } }],
+  ['responses', 'mimo-v2.6-pro', 'enabled', { baseUrl: 'https://api.xiaomimimo.com/v1' }, { reasoning: { effort: 'high' } }],
+  ['messages', 'mimo-v2.6-pro', 'enabled', { baseUrl: 'https://api.xiaomimimo.com/anthropic' }, { thinking: { type: 'enabled' } }],
+  ['chat-completions', 'kimi-k3', 'max', { baseUrl: 'https://api.moonshot.cn/v1' }, { reasoning_effort: 'max' }],
+  ['responses', 'k3', 'low', { baseUrl: 'https://api.kimi.com/coding/v1' }, { reasoning: { effort: 'low' } }],
+  ['messages', 'k3', 'high', { baseUrl: 'https://api.kimi.com/coding' }, { thinking: { type: 'enabled' }, output_config: { effort: 'high' } }],
+  ['messages', 'minimax-m3', 'enabled', { baseUrl: 'https://opencode.ai/inference/go/anthropic' }, { thinking: { type: 'adaptive' } }],
+  ['chat-completions', 'brand-new-glm', 'high', { presetId: 'zhipu', variantId: 'coding', baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4', reasoningLevels: ['high'] },
+    { thinking: { type: 'enabled' }, reasoning_effort: 'high' }],
+  ['messages', 'brand-new-kimi', 'high', { presetId: 'kimi', variantId: 'code', baseUrl: 'https://api.kimi.com/coding', reasoningLevels: ['high'] },
+    { thinking: { type: 'enabled' }, output_config: { effort: 'high' } }],
+  ['chat-completions', 'mimo-v2.6-pro-ultraspeed', 'enabled', { baseUrl: 'https://api.xiaomimimo.com/v1' }, { thinking: { type: 'enabled' } }],
 ];
 
 test('native checks and strict JSON snapshots retain actual multi-provider reasoning parameters', () => {
@@ -217,7 +230,7 @@ test('actual SDK HTTP bodies retain the selected effort and match strict request
   const requests = [];
   const server = createServer(async (request, response) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
-    requests.push({ path: request.url, body: JSON.parse(Buffer.concat(chunks).toString()) });
+    requests.push({ path: request.url, headers: request.headers, body: JSON.parse(Buffer.concat(chunks).toString()) });
     // The fixture refuses after capturing the request; it asserts wire encoding,
     // without pretending to verify a real provider or its model capabilities.
     response.writeHead(400, { 'content-type': 'application/json' });
@@ -239,6 +252,56 @@ test('actual SDK HTTP bodies retain the selected effort and match strict request
       assert.equal(actual.path, new URL(fixed.baseUrl).pathname + fixed.path);
       assert.deepEqual(actual.body, payload, modelId);
       assert.deepEqual(snap(actual.body), payload, modelId);
+      if (protocol === 'messages' && modelId.startsWith('mimo-')) {
+        assert.equal(actual.headers.authorization, 'Bearer synthetic-reasoning-fixture-key');
+        assert.equal(actual.headers['x-api-key'], undefined);
+      }
     }
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+});
+
+test('OpenCode receives a stable real-session header on every native SDK protocol', async () => {
+  const captured = [];
+  const capture = async (_url, init) => {
+    captured.push({ headers: new Headers(init.headers), body: JSON.parse(init.body) });
+    return new Response(JSON.stringify({ error: { type: 'invalid_request_error', message: 'Synthetic capture' } }),
+      { status: 400, headers: { 'content-type': 'application/json' } });
+  };
+  for (const protocol of ['chat-completions', 'responses', 'messages']) {
+    const baseUrl = protocol === 'messages' ? 'https://opencode.ai/inference/go/anthropic' : 'https://opencode.ai/inference/go/openai/v1';
+    const fixed = configuration(protocol, 'new-model', { baseUrl, reasoningEffort: 'auto' });
+    const payload = connectionCheckPayload(fixed, 65536);
+    for (const session of ['xunjie-segment-a', 'xunjie-segment-a', 'xunjie-segment-b']) {
+      await runModel(fixed, 'synthetic-session-key', payload, new AbortController().signal, 1000,
+        false, undefined, capture, undefined, undefined, undefined, session);
+      assert.equal(captured.at(-1).headers.get('x-opencode-session'), session);
+      assert.deepEqual(captured.at(-1).body, payload);
+      assert.equal('x-opencode-session' in captured.at(-1).body, false);
+    }
+  }
+  assert.deepEqual(modelSessionHeaders(configuration('chat-completions', 'custom', { baseUrl: 'https://opencode.ai.evil.example/inference/go' }), 'session'), {});
+  assert.deepEqual(modelSessionHeaders(configuration('chat-completions', 'custom', { baseUrl: 'https://opencode.ai/inference/openai/v1' }), 'session'), {});
+});
+
+test('Kimi Code cache keys survive native request retention, policy limiting and SDK serialization', async () => {
+  for (const protocol of ['chat-completions', 'responses', 'messages']) {
+    const baseUrl = protocol === 'messages' ? 'https://api.kimi.com/coding' : 'https://api.kimi.com/coding/v1';
+    const fixed = configuration(protocol, 'k3', { baseUrl, reasoningEffort: 'auto' });
+    const original = connectionCheckPayload(fixed, 65536);
+    const payload = modelSessionPayload(fixed, original, 'xunjie-real-segment');
+    assert.equal(original.prompt_cache_key, undefined);
+    assert.equal(payload.prompt_cache_key, 'xunjie-real-segment');
+    assert.deepEqual(snap(payload), payload);
+    assert.equal(limitPayload(fixed, payload, 4096).prompt_cache_key, payload.prompt_cache_key);
+    let body;
+    await runModel(fixed, 'synthetic-kimi-key', payload, new AbortController().signal, 1000, false, undefined,
+      async (_url, init) => {
+        body = JSON.parse(init.body);
+        return new Response(JSON.stringify({ error: { type: 'invalid_request_error', message: 'Synthetic capture' } }),
+          { status: 400, headers: { 'content-type': 'application/json' } });
+      });
+    assert.deepEqual(body, payload);
+    const ordinary = { ...fixed, baseUrl: 'https://api.moonshot.cn/v1' };
+    assert.equal(modelSessionPayload(ordinary, original, 'session'), original);
+  }
 });

@@ -4,7 +4,7 @@ import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelAttemptSchema, modelAttemptInputSchema, modelProgressSchema } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelLearningInput, ModelTool, ModelProgress, ModelToolProgress } from '@xunjie/contracts/model-connections';
-import { connectionCheckPayload, limitPayload, runModel, type NativePayload } from './transport.js';
+import { connectionCheckPayload, limitPayload, modelSessionPayload, runModel, type NativePayload } from './transport.js';
 import { validateResponsesNative } from './responses.js';
 import { createLearningAdmission, learningReservationUnits, lockLearningAdmission, type LearningAdmissionPolicy } from './learning-admission.js';
 import { validateMessagesNative, type MessagesPayload } from './messages.js';
@@ -21,6 +21,8 @@ export type ModelCleanupStatus = Pick<ModelAttempt, 'attemptId' | 'state' | 'dis
 const cleanupScopeSchema = z.object({ environmentId: z.uuid(), spaceId: z.uuid(), principalId: z.uuid() }).strict();
 const scopeOf = (identity: ModelCleanupScope) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const sessionOf = (identity: ModelCleanupScope, attemptId: string, segmentId?: string) =>
+  'xunjie-' + digest({ scope: scopeOf(identity), ...(segmentId ? { segmentId } : { attemptId }) });
 export function createChecks(storage: OwnedStorage, owner: {
   dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } | undefined;
   authorize(identity: SpaceIdentity): Promise<void>;
@@ -217,8 +219,10 @@ export function createChecks(storage: OwnedStorage, owner: {
     const snapshot = input.purpose === 'connection-check' ? await owner.snapshot(identity, input.source) : await owner.prepareChat(identity, input);
       const limits = learning ? input.limits : snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
         timeoutMs: Math.min(input.limits.timeoutMs!, snapshot.policy.timeoutMs) } : input.limits;
-      const payload = snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
+      const basePayload = snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
         : connectionCheckPayload(snapshot.connection, limits.maxOutputTokens);
+      const payload = modelSessionPayload(snapshot.connection, basePayload,
+        sessionOf(identity, input.attemptId, snapshot.segment?.segmentId));
       const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
         bytes: Buffer.from(JSON.stringify(payload)), mediaType: 'application/json', contentVersion: 1 });
       const body: ModelAttempt = { attemptId: input.attemptId, purpose: input.purpose, connection: snapshot.connection,
@@ -447,7 +451,8 @@ export function createChecks(storage: OwnedStorage, owner: {
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
         : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs ?? 2_147_483_647,
-          !!attempt.segment, metadata?.applicationSchema, trackedFetch, onText, metadata?.tools, onTools);
+          !!attempt.segment, metadata?.applicationSchema, trackedFetch, onText, metadata?.tools, onTools,
+          sessionOf(identity, attempt.attemptId, attempt.segment?.segmentId));
       // A local abort, EOF without a terminal, or dispatcher death proves no upstream end.
       // A validated terminal or final usage does. HTTP rejection proves the call was refused.
       upstreamEnded = !openedUpstream || result.state === 'completed' || result.usage.state === 'final'

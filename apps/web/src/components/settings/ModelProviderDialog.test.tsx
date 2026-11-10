@@ -1,0 +1,246 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { act } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { getModelPreset, type ModelDirectory, type ModelDirectoryInput, type ModelProvider, type SaveModelProvider } from '@xunjie/contracts/model-connections'
+import { ModelProviderDialog } from './ModelProviderDialog'
+
+let root: Root
+const provider = (): ModelProvider => {
+  const connectionId = crypto.randomUUID()
+  return { providerId: crypto.randomUUID(), version: 1, name: '测试供应商', protocol: 'chat-completions',
+    baseUrl: 'https://example.invalid/v1', enabled: true, hasCredential: false,
+    models: [{ connectionId, version: 1, routeId: crypto.randomUUID(), name: '测试供应商', protocol: 'chat-completions',
+      baseUrl: 'https://example.invalid/v1', path: '/chat/completions', modelId: 'custom-model', enabled: true,
+      dialect: 'standard', parameterMode: 'plain', reasoningEffort: 'auto', hasCredential: false,
+      adapterState: 'ready', capabilities: { text: 'unknown', images: 'unknown', tools: 'unknown', strictSchema: 'unknown' } }] }
+}
+const input = (name: string) => document.querySelector<HTMLInputElement>(`input[aria-label="${name}"]`)!
+async function type(name: string, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input(name), value)
+    input(name).dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+async function click(label: string) {
+  const button = [...document.querySelectorAll('button')].find(item => item.textContent?.trim() === label)!
+  expect(button).toBeDefined()
+  await act(async () => { button.click() })
+}
+type Props = Parameters<typeof ModelProviderDialog>[0]
+async function draw(saved = provider(), onProfiles: Props['onProfiles'] = vi.fn(async () => ({ profiles: [], stale: true })), overrides: Partial<Props> = {}) {
+  const onSave = vi.fn(async (_input: SaveModelProvider) => saved), onClose = vi.fn()
+  await act(async () => root.render(<ModelProviderDialog provider={saved} attempts={[]} onSave={onSave} onClose={onClose}
+    onRead={vi.fn(async () => saved)} onReadCredential={vi.fn(async () => '')} onProfiles={onProfiles}
+    onCheck={vi.fn()} onCancel={vi.fn()} {...overrides} />))
+  return { onSave, onClose, onProfiles }
+}
+
+beforeEach(() => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  window.matchMedia ??= vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} })
+  Element.prototype.scrollIntoView ??= vi.fn()
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host)
+})
+
+async function selectSupplier(label: string) {
+  await act(async () => { document.querySelector<HTMLButtonElement>('button[aria-label="供应商"]')!.click() })
+  await act(async () => {
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === label)
+    expect(option, label).toBeDefined()
+    option!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option!.click()
+  })
+}
+const cachedDirectory = (input: ModelDirectoryInput): ModelDirectory => ({
+  models: getModelPreset(input.presetId ?? 'custom', input.variantId)?.models ?? [],
+  catalogue: { status: 'ready', updatedAt: '2026-01-01T00:00:00.000Z' },
+  ...(input.presetId && input.presetId !== 'custom' ? { supplier: { status: 'needs-credential' as const } } : {}),
+})
+
+it('lists custom first and all six providers with their real access methods', async () => {
+  await draw()
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="供应商"]')!.click())
+  expect([...document.querySelectorAll('[role="option"]')].map(item => item.textContent?.trim()))
+    .toEqual(['自定义', 'DeepSeek 官方', 'OpenCode Go', 'Command Code', '智谱', 'Kimi', '小米 MiMo'])
+  await act(async () => {
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === 'Kimi')!
+    option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click()
+  })
+  expect(document.querySelector('button[aria-label="接入方式"]')?.textContent).toContain('普通 API')
+  expect(input('Base URL').value).toBe('https://api.moonshot.cn/v1')
+  expect(input('Base URL').readOnly).toBe(true)
+})
+
+it('autofills Kimi official output and MiMo toggle without inventing strength levels', async () => {
+  const { onSave } = await draw()
+  await selectSupplier('Kimi'); await type('模型 ID', 'kimi-k3.1-pro')
+  expect(input('模型 ID的最大输出 token').value).toBe('1M')
+  expect(document.querySelector<HTMLSelectElement>('[aria-label="模型 ID的思考强度"]')!.value).toBe('max')
+  await selectSupplier('小米 MiMo'); await type('模型 ID', 'mimo-v2.6-pro')
+  const reasoning = document.querySelector<HTMLSelectElement>('[aria-label="模型 ID的思考强度"]')!
+  expect([...reasoning.options].map(option => option.value)).toEqual(['auto', 'none', 'enabled'])
+  expect(reasoning.value).toBe('enabled')
+  expect(input('模型 ID的最大输出 token').value).toBe('128K')
+  await type('模型 ID的上下文窗口', '512k'); await click('保存')
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ maxOutputTokens: 131072, contextWindow: 524288, reasoningEffort: 'enabled' })
+})
+
+it('saves the per-model route for a provider whose Claude model uses Messages', async () => {
+  const { onSave } = await draw()
+  await selectSupplier('Command Code'); await type('模型 ID', 'claude-sonnet-4-6'); await click('保存')
+  expect(onSave.mock.calls[0][0]).toMatchObject({ presetId: 'command-code', protocol: 'chat-completions', baseUrl: 'https://api.commandcode.ai/provider/v1' })
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ protocol: 'messages', baseUrl: 'https://api.commandcode.ai/provider' })
+})
+
+it('Escape closes only the open supplier or model menu and retains the edited draft', async () => {
+  const { onClose } = await draw()
+  await type('连接名称', '未保存的供应商名称')
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="供应商"]')!.click())
+  await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(onClose).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="combobox"][aria-expanded="true"]')).toBeNull()
+  await selectSupplier('DeepSeek 官方')
+  await type('模型 ID', 'my-private-model')
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="展开模型 ID列表"]')!.click())
+  expect(input('模型 ID').getAttribute('aria-expanded')).toBe('true')
+  await act(async () => input('模型 ID').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(onClose).not.toHaveBeenCalled()
+  expect(input('模型 ID').getAttribute('aria-expanded')).toBe('false')
+  expect(input('模型 ID').value).toBe('my-private-model')
+  expect(input('连接名称').value).toBe('未保存的供应商名称')
+  await act(async () => input('模型 ID').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(onClose).toHaveBeenCalledOnce()
+})
+
+it('retains custom ids, per-model edits, and separate secret drafts when switching providers', async () => {
+  const onDirectory = vi.fn(async (query: ModelDirectoryInput) => cachedDirectory(query))
+  await draw(provider(), undefined, { onDirectory })
+  await selectSupplier('DeepSeek 官方'); await type('API Key', 'synthetic-deepseek-only')
+  await type('模型 ID', 'private-alias'); await type('模型 ID的上下文窗口', '512k')
+  await selectSupplier('Kimi')
+  expect(input('API Key').value).toBe('')
+  expect(onDirectory.mock.calls.filter(([query]) => query.presetId === 'kimi').every(([query]) => query.credential?.action !== 'replace')).toBe(true)
+  await type('API Key', 'synthetic-kimi-only')
+  await selectSupplier('DeepSeek 官方')
+  expect(input('API Key').value).toBe('synthetic-deepseek-only')
+  expect(input('模型 ID').value).toBe('private-alias')
+  expect(input('模型 ID的上下文窗口').value).toBe('512k')
+})
+
+it('ignores late refresh responses after changing provider and keeps manually edited fields', async () => {
+  let release!: (value: ModelDirectory) => void
+  const delayed = new Promise<ModelDirectory>(resolve => { release = resolve })
+  const onDirectory = vi.fn(async (query: ModelDirectoryInput) => query.presetId === 'deepseek' && query.refresh ? delayed : cachedDirectory(query))
+  await draw(provider(), undefined, { onDirectory })
+  await selectSupplier('DeepSeek 官方')
+  await selectSupplier('小米 MiMo'); await type('模型 ID', 'mimo-v2.6-pro'); await type('模型 ID的上下文窗口', '512k')
+  await act(async () => { release(cachedDirectory({ presetId: 'deepseek' })); await Promise.resolve() })
+  expect(input('模型 ID').value).toBe('mimo-v2.6-pro')
+  expect(input('模型 ID的上下文窗口').value).toBe('512k')
+  expect(document.querySelector<HTMLSelectElement>('[aria-label="模型 ID的思考强度"]')!.value).toBe('enabled')
+})
+
+it('opening the model list keeps a previous failure visible while its retry is pending', async () => {
+  let retry = false, release!: (value: ModelDirectory) => void
+  const pending = new Promise<ModelDirectory>(resolve => { release = resolve })
+  const onDirectory = vi.fn(async (query: ModelDirectoryInput) => {
+    if (!query.refresh) return cachedDirectory(query)
+    if (retry) return pending
+    throw Object.assign(new Error('forbidden'), { code: 'forbidden' })
+  })
+  await draw(provider(), undefined, { onDirectory })
+  await selectSupplier('DeepSeek 官方')
+  const previous = document.querySelector('[role="alert"]')?.textContent
+  expect(previous).toContain('当前空间无法读取模型资料')
+  retry = true
+  try {
+    await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="展开模型 ID列表"]')!.click())
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(previous)
+  } finally {
+    await act(async () => release(cachedDirectory({ presetId: 'deepseek' })))
+  }
+})
+
+it('manual refresh bypasses the automatic interval, merges repeated clicks and explains a retryable failure', async () => {
+  let release!: (value: ModelDirectory) => void
+  const pending = new Promise<ModelDirectory>(resolve => { release = resolve })
+  const onDirectory = vi.fn(async (query: ModelDirectoryInput) => query.manual ? pending : cachedDirectory(query))
+  await draw(provider(), undefined, { onDirectory })
+  await selectSupplier('DeepSeek 官方'); await type('模型 ID', 'deepseek-flash')
+  await type('模型 ID的上下文窗口', '512k')
+  await click('更新模型资料')
+  expect(onDirectory.mock.calls.filter(([query]) => query.manual)).toHaveLength(1)
+  const updateButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === '更新模型资料')!
+  await act(async () => { updateButton.click(); updateButton.click() })
+  expect(onDirectory.mock.calls.filter(([query]) => query.manual)).toHaveLength(1)
+  const retryAt = new Date(Date.now() + 150).toISOString()
+  await act(async () => release({ ...cachedDirectory({ presetId: 'deepseek' }),
+    catalogue: { status: 'failed', error: 'rate-limited', retryAt }, supplier: { status: 'failed', error: 'rate-limited', retryAt } }))
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('供应商暂时限流')
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('后重试')
+  expect(input('模型 ID的上下文窗口').value).toBe('512k')
+  expect([...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === '稍后重试')?.disabled).toBe(true)
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
+  expect([...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === '更新模型资料')?.disabled).toBe(false)
+})
+afterEach(async () => {
+  await act(async () => root.unmount())
+  document.body.innerHTML = ''; vi.unstubAllGlobals()
+})
+
+it('shows fallback capacities and saves blank unknown-model fields as 256K/64K numbers', async () => {
+  const { onSave, onClose } = await draw()
+  expect(input('模型 ID的上下文窗口').value).toBe('256K')
+  expect(input('模型 ID的最大输出 token').value).toBe('64K')
+  await type('模型 ID的上下文窗口', '')
+  await type('模型 ID的最大输出 token', '')
+  await click('保存')
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ contextWindow: 262144, maxOutputTokens: 65536 })
+  expect(onClose).toHaveBeenCalledOnce()
+})
+
+it.each([
+  ['1.5m', '64k', 1572864, 65536],
+  ['262144', '1048576', 262144, 1048576],
+])('saves %s / %s as exact integer tokens', async (context, output, expectedContext, expectedOutput) => {
+  const { onSave } = await draw()
+  await type('模型 ID的上下文窗口', context)
+  await type('模型 ID的最大输出 token', output)
+  await click('保存')
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ contextWindow: expectedContext, maxOutputTokens: expectedOutput })
+})
+
+it('retains invalid text, associates inline errors and blocks saving until corrected', async () => {
+  const { onSave } = await draw()
+  await type('模型 ID的上下文窗口', '256KB')
+  await type('模型 ID的最大输出 token', '0.1K')
+  await click('保存')
+  expect(onSave).not.toHaveBeenCalled()
+  for (const name of ['模型 ID的上下文窗口', '模型 ID的最大输出 token']) {
+    expect(input(name).getAttribute('aria-invalid')).toBe('true')
+    expect(document.getElementById(input(name).getAttribute('aria-describedby')!)?.textContent).toContain('K / M')
+  }
+  expect(input('模型 ID的上下文窗口').value).toBe('256KB')
+  await type('模型 ID的上下文窗口', '256k')
+  await type('模型 ID的最大输出 token', '64K')
+  await click('保存')
+  expect(onSave).toHaveBeenCalledOnce()
+})
+
+it('uses supplied model metadata before fallback and preserves saved or manually edited capacities', async () => {
+  const saved = provider()
+  saved.models[0]!.contextWindow = 524288
+  const onProfiles = vi.fn(async () => ({ profiles: [{ modelId: 'custom-model', dialect: 'standard' as const,
+    efforts: ['auto' as const], source: 'catalogue' as const, contextWindow: 1048576, maxOutputTokens: 393216 }], stale: false }))
+  const { onSave } = await draw(saved, onProfiles)
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)) })
+  expect(input('模型 ID的上下文窗口').value).toBe('512K')
+  expect(input('模型 ID的最大输出 token').value).toBe('384K')
+  await type('模型 ID的最大输出 token', '32k')
+  await click('更新模型资料')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)) })
+  expect(input('模型 ID的最大输出 token').value).toBe('32k')
+  await click('保存')
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ contextWindow: 524288, maxOutputTokens: 32768 })
+})

@@ -2,10 +2,17 @@ import { z } from 'zod';
 import { spaceIdentitySchema } from './spaces.js';
 import { storageOwnerSchema } from './storage.js';
 import { modelReasoningEfforts } from './model-reasoning.js';
+import { maximumModelTokenCount } from './model-capacity.js';
+import { modelPresetIdSchema } from './model-directory.js';
+export * from './model-directory.js';
+export { modelProviderPresets, getModelPreset, resolvePresetModelRoute } from './model-presets.js';
+export type { ModelProviderPreset, ModelPresetVariant, PresetModel, ModelPresetProtocol } from './model-presets.js';
+export { modelCapacityDefaults, maximumModelTokenCount, resolveModelCapacity, parseModelTokenCount,
+  modelTokenCountError, formatModelTokenCount } from './model-capacity.js';
 export { modelReasoningEfforts, resolveModelProfile, modelReasoningParameters, modelReasoningError } from './model-reasoning.js';
 export type { ReasoningEffort, ReasoningRoute } from './model-reasoning.js';
 
-const reasoningLevelsSchema = z.array(z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])).max(7)
+const reasoningLevelsSchema = z.array(z.enum(['none', 'enabled', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])).max(8)
   .refine(levels => new Set(levels).size === levels.length, 'Duplicate reasoning level');
 
 /** Model owner wire. SDK objects, credentials and native reasoning never enter public projections. */
@@ -34,13 +41,14 @@ export const modelConfigurationSchema = z.object({
   modelId: z.string().trim().min(1).max(200), dialect: z.enum(['standard', 'deepseek', 'command-code']),
   parameterMode: z.enum(['plain', 'thinking']), enabled: z.boolean(),
   /** Learning calls use the values saved with the connection, never probe limits. */
-  contextWindow: z.number().int().min(1).max(10_000_000).optional(),
-  maxOutputTokens: z.number().int().min(1).max(1_000_000).optional(),
+  contextWindow: z.number().int().min(1).max(maximumModelTokenCount).optional(),
+  maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount).optional(),
   reasoningEffort: z.enum(modelReasoningEfforts).optional(),
   reasoningLevels: reasoningLevelsSchema.optional(),
   reasoningSource: z.enum(['catalogue', 'manual', 'profile', 'unknown']).optional(),
   /** Provider and model choices are independent; enabled is their effective conjunction. */
   providerId: z.uuid().optional(), providerEnabled: z.boolean().optional(), modelEnabled: z.boolean().optional(),
+  presetId: modelPresetIdSchema.optional(), variantId: z.string().min(1).max(80).optional(),
 }).strict().refine(value => value.path === ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[value.protocol]);
 export const modelCredentialChangeSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('keep') }).strict(), z.object({ action: z.literal('clear') }).strict(),
@@ -68,13 +76,18 @@ export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
 
 export const modelProviderSchema = z.object({ providerId: z.uuid(), version: z.number().int().nonnegative(),
   name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema, baseUrl: modelBaseUrlSchema,
+  presetId: modelPresetIdSchema.optional(), variantId: z.string().min(1).max(80).optional(),
   enabled: z.boolean(), hasCredential: z.boolean(), models: z.array(modelConnectionSchema).min(1).max(64) }).strict();
 export const providerModelInputSchema = z.object({ connectionId: z.uuid(), expectedVersion: z.number().int().nonnegative(),
   modelId: z.string().trim().min(1).max(200), enabled: z.boolean(), reasoningEffort: z.enum(modelReasoningEfforts).optional(),
+  protocol: modelProtocolSchema.optional(), baseUrl: modelBaseUrlSchema.optional(),
   reasoningLevels: reasoningLevelsSchema.optional(),
-  contextWindow: z.number().int().min(1).max(10_000_000).optional(), maxOutputTokens: z.number().int().min(1).max(1_000_000).optional() }).strict();
+  contextWindow: z.number().int().min(1).max(maximumModelTokenCount).optional(), maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount).optional() }).strict()
+  .refine(value => (value.protocol === undefined) === (value.baseUrl === undefined), 'Model route requires both protocol and baseUrl')
+  .refine(value => !value.baseUrl || !modelBaseUrlError(value.baseUrl, value.protocol!), { path: ['baseUrl'], message: 'Invalid model base URL' });
 export const saveModelProviderSchema = z.object({ requestId: z.uuid(), providerId: z.uuid(), expectedVersion: z.number().int().nonnegative(),
   name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema, baseUrl: modelBaseUrlSchema, enabled: z.boolean(),
+  presetId: modelPresetIdSchema.optional(), variantId: z.string().min(1).max(80).optional(),
   credential: modelCredentialChangeSchema, models: z.array(providerModelInputSchema).min(1).max(64) }).strict()
   .refine(value => !modelBaseUrlError(value.baseUrl, value.protocol), { path: ['baseUrl'], message: 'Invalid base URL for this protocol' })
   .refine(value => new Set(value.models.map(model => model.connectionId)).size === value.models.length &&
@@ -85,6 +98,7 @@ export const modelProfilesInputSchema = z.object({ baseUrl: modelBaseUrlSchema, 
   modelIds: z.array(z.string().trim().min(1).max(200)).min(1).max(64), refresh: z.boolean().optional() }).strict();
 export const modelProfileSchema = z.object({ modelId: z.string(), dialect: z.enum(['standard', 'deepseek', 'command-code']),
   efforts: z.array(z.enum(modelReasoningEfforts)), source: z.enum(['catalogue', 'manual', 'profile', 'unknown']),
+  defaultEffort: z.enum(modelReasoningEfforts).optional(), reasoningKind: z.enum(['effort', 'toggle', 'none']).optional(),
   contextWindow: z.number().int().positive().optional(), maxOutputTokens: z.number().int().positive().optional() }).strict();
 export const modelProfilesSchema = z.object({ profiles: z.array(modelProfileSchema), updatedAt: z.iso.datetime().optional(), stale: z.boolean() }).strict();
 export type ModelProfile = z.infer<typeof modelProfileSchema>;

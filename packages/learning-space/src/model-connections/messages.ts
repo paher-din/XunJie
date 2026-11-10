@@ -12,7 +12,10 @@ export { validateMessagesNative } from './messages-native.js';
 
 export const messagesSdkVersion = '@anthropic-ai/sdk@1.1.0';
 export const messagesAdapterVersion = 'xunjie-messages-native-v1';
-export type MessagesPayload = Anthropic.MessageCreateParamsStreaming;
+export type MessagesPayload = Omit<Anthropic.MessageCreateParamsStreaming, 'thinking'> & {
+  thinking?: { type: 'disabled' | 'adaptive' } | { type: 'enabled'; budget_tokens?: number };
+  prompt_cache_key?: string;
+};
 export const unsupportedMessagesRoute = (configuration: ModelConfiguration) => configuration.protocol === 'messages'
   && configuration.baseUrl.replace(/\/$/, '') + configuration.path === 'https://api.commandcode.ai/provider/v1/messages'
   && configuration.modelId === 'deepseek/deepseek-v4.1-flash';
@@ -26,12 +29,17 @@ export function messagesCheckPayload(configuration: ModelConfiguration, tokens: 
 }
 export async function runMessages(configuration: ModelConfiguration, apiKey: string, payload: MessagesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void,
+  requestHeaders?: Record<string, string>) {
   let limited = false, upstream: ModelUpstream | undefined;
   const sensitive = createSensitiveOutput(apiKey);
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
-  const client = new Anthropic({ apiKey, baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0,
+  const host = new URL(configuration.baseUrl).hostname;
+  const mimo = host === 'api.xiaomimimo.com' || /^token-plan-(?:cn|sgp|ams)\.xiaomimimo\.com$/.test(host);
+  // MiMo documents api-key or Bearer, not Anthropic's x-api-key spelling.
+  const client = new Anthropic({ ...(mimo ? { apiKey: null, authToken: apiKey } : { apiKey }),
+    baseURL: configuration.baseUrl.replace(/\/$/, ''), maxRetries: 0,
     timeout: timeoutMs, logLevel: 'off', fetchOptions: { redirect: 'error' },
     ...(configuration.dialect === 'deepseek' ? { defaultHeaders: { 'anthropic-version': '2023-06-01' } } : {}),
     fetch: async (input, init) => {
@@ -48,7 +56,8 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
   try {
     // Raw SDK events, with bounded explicit aggregation. No SDK multi-turn/tool helpers.
     // In SDK 1.1.0 MessageStream overwrites each signature_delta; we preserve all fragments.
-    const stream = await client.messages.create(payload, { signal: requestSignal });
+    const stream = await client.messages.create(payload as Anthropic.MessageCreateParamsStreaming, { signal: requestSignal,
+      ...(requestHeaders ? { headers: requestHeaders } : {}) });
     for await (const event of stream) { events.push(structuredClone(event)); assembler.add(event); toolProgress?.(assembler.toolArguments); progress?.(assembler.text); }
   } catch (error) {
     const status = (error instanceof Anthropic.APIError ? error.status : undefined)

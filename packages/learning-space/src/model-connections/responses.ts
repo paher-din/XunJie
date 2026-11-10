@@ -24,7 +24,8 @@ export function responsesCheckPayload(configuration: ModelConfiguration, maxOutp
 class MalformedResponse extends Error {}
 export async function runResponses(configuration: ModelConfiguration, apiKey: string, payload: ResponsesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void,
+  requestHeaders?: Record<string, string>) {
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
@@ -50,7 +51,8 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
       return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
     } });
   try {
-    const stream = await client.responses.create({ ...payload, store: false }, { signal: requestSignal });
+    const stream = await client.responses.create({ ...payload, store: false }, { signal: requestSignal,
+      ...(requestHeaders ? { headers: requestHeaders } : {}) });
     for await (const value of stream) {
       const encoded = JSON.stringify(value); bytes += Buffer.byteLength(encoded);
       if (bytes > 2_000_000) { stream.controller.abort(); reason = 'response-limit'; break; }

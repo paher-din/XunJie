@@ -2,6 +2,7 @@
 export * from './controls'
 export * from './ModelFields'
 export * from './ConnectionModelFields'
+export * from './SettingsSelect'
 export * from './SettingsLayout'
 export * from './RadarChart'
 export * from './ModelProviderCard'

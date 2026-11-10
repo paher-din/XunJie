@@ -22,6 +22,8 @@
 
 ## 项目专属图形
 
+`provider-custom-linear.svg` 为自定义供应商补绘的项目图形：插头与加号表示添加自己的模型服务连接，沿用 24px 画布、1.5px 线宽及圆润端点与转角，归属与许可同本节其他项目图形。
+
 `eye-linear.svg` 为密钥显隐按钮补绘的项目图形，沿用 24px 画布、1.5px 线宽及圆润端点，归属与许可同本节其他项目图形。
 
 `learning-space`、`assistant-mark`、`virtual-board`、`digital-waveform`、`load-board`、`insert-prompt`、`unpin` 是本项目确认的自绘图形；归属学习空间项目，未另行指定公共开源许可。`file-presentation` 单独遵循上述 Solar 衍生许可。

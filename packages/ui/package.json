@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "循阶正式界面组件、样式与视觉资源",
-  "sideEffects": ["**/*.css"],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./foundation": "./src/foundation/index.ts",
@@ -42,7 +44,9 @@
     "react-dom": "^19.1.0"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
     "@radix-ui/react-dialog": "^1.1.6",
+    "@xunjie/contracts": "0.1.0",
     "marked": "^18.1.0",
     "monaco-editor": "0.57.0",
     "remend": "^1.4.0"

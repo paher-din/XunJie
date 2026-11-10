@@ -2,7 +2,8 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { OwnedStorage, Migration, OwnedTransaction } from '@xunjie/storage';
 import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema, schoolModelInputSchema, schoolModelSchema } from '@xunjie/contracts/model-connections';
+import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema, schoolModelInputSchema, schoolModelSchema,
+  modelBaseUrlError, getModelPreset, resolvePresetModelRoute } from '@xunjie/contracts/model-connections';
 import type { ModelConfiguration, ModelConnection, ModelCheckPolicy, SaveModelConnection } from '@xunjie/contracts/model-connections';
 import { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
@@ -27,7 +28,9 @@ export type { PairedModelOrigin, PairedLearningOptions, ModelDeviceBinding } fro
 import { createModelDeviceTasks, modelDeviceTaskMigration } from './device-tasks.js';
 import { modelTargetFetch, validateModelTarget, type ModelTargetClass } from './network-policy.js';
 import { createModelProviders, modelProviderMigration } from './providers.js';
-import { createModelProfiles } from './profiles.js';
+import { createModelProfiles, modelPresetCatalogues } from './profiles.js';
+import { cataloguePersistence, createCatalogueCache, modelCatalogueMigration } from './catalogue-cache.js';
+import { createModelDirectory, type DirectorySource } from './directory.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -53,13 +56,16 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
     source jsonb NOT NULL,body jsonb NOT NULL);
   ALTER TABLE model_paired_grants DROP CONSTRAINT model_paired_grants_kind_check;
   ALTER TABLE model_paired_grants ADD CONSTRAINT model_paired_grants_kind_check CHECK(kind IN ('segment','attempt','pin'));
-` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration, modelProviderMigration];
+` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration, modelProviderMigration, modelCatalogueMigration];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
 export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void>;
   catalogueFetch?: typeof fetch;
+  /** Trusted composition/test transport; the target is still checked before credentials leave. */
+  supplierFetch?: typeof fetch;
+  catalogueNow?: () => number;
   /** Recheck live remote authorization immediately before the SDK opens its request. */
   authorizeDispatch?(identity: SpaceIdentity): Promise<void>;
   /** Live check for a running original attempt; MUST bypass any task admission cache. */
@@ -144,10 +150,60 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     });
     return modelConnectionSchema.parse(receipt.result);
   }
-  const catalogue = createModelProfiles(options.catalogueFetch);
+  const directoryCache = createCatalogueCache(options.catalogueNow, cataloguePersistence(storage));
+  await directoryCache.initialize();
+  const catalogue = createModelProfiles(options.catalogueFetch, options.catalogueNow, directoryCache);
   const profiles = { async read(identity: SpaceIdentity, value: unknown) { await options.authorize(identity); return catalogue.read(value); } };
+  const directory = createModelDirectory(catalogue, { authorize: options.authorize, key,
+    ...(options.catalogueNow ? { now: options.catalogueNow } : {}),
+    source(input) {
+      if (input.presetId && input.presetId !== 'custom') {
+        const variant = getModelPreset(input.presetId, input.variantId);
+        if (!variant) throw new StorageError('invalid');
+        const protocol = input.protocol ?? (variant.baseUrls['chat-completions'] ? 'chat-completions' : variant.baseUrls.responses ? 'responses' : 'messages');
+        const baseUrl = variant.baseUrls[protocol];
+        if (!baseUrl || input.baseUrl && input.baseUrl.replace(/\/+$/, '') !== baseUrl.replace(/\/+$/, '')) throw new StorageError('invalid');
+        return { baseUrl, protocol, modelsUrl: variant.modelsUrl, catalogues: modelPresetCatalogues(input.presetId, variant.id),
+          route: (modelId, supported) => resolvePresetModelRoute(input.presetId!, input.variantId, modelId, supported),
+          models: variant.models.map(model => ({ ...model, ...resolvePresetModelRoute(input.presetId!, input.variantId, model.modelId, model.protocols) })) };
+      }
+      if (!input.baseUrl) return;
+      const protocol = input.protocol ?? 'chat-completions';
+      if (modelBaseUrlError(input.baseUrl, protocol)) throw new StorageError('invalid');
+      const baseUrl = input.baseUrl.replace(/\/+$/, '');
+      return { baseUrl, protocol, modelsUrl: baseUrl + (protocol === 'messages' ? '/v1/models' : '/models'), catalogues: [], models: [] };
+    },
+    async credential(identity, input, source) {
+      if (input.credential?.action === 'replace') return input.credential.value;
+      if (input.credential?.action === 'clear' || !input.savedCredential) return '';
+      const current = await stored(identity, input.savedCredential.connectionId);
+      if (current.version !== input.savedCredential.version) throw new StorageError('conflict');
+      const saved = current.configuration;
+      if (input.presetId && input.presetId !== 'custom') {
+        const requested = getModelPreset(input.presetId, input.variantId);
+        const existing = saved.presetId === input.presetId ? getModelPreset(saved.presetId, saved.variantId) : undefined;
+        if (!requested || !existing || existing.id !== requested.id
+          || existing.baseUrls[saved.protocol]?.replace(/\/+$/, '') !== saved.baseUrl.replace(/\/+$/, '')) throw new StorageError('conflict');
+      } else if (saved.baseUrl.replace(/\/+$/, '') !== source.baseUrl.replace(/\/+$/, '')
+        || saved.protocol !== source.protocol) throw new StorageError('conflict');
+      return (await readCredential(identity, input.savedCredential.connectionId, input.savedCredential.version)).value;
+    },
+    async requestFetch(source: DirectorySource) {
+      const endpoint = new URL(source.modelsUrl);
+      const target = { baseUrl: endpoint.origin, path: endpoint.pathname + endpoint.search + endpoint.hash } as ModelConfiguration;
+      if (options.supplierFetch) { await validateModelTarget(target, targetClass()); return options.supplierFetch; }
+      return modelTargetFetch(target, targetClass());
+    },
+  });
   const providers = createModelProviders(storage, { authorize: options.authorize, project: projection, readCredential,
-    prepare: async input => { await catalogue.read({ baseUrl: input.baseUrl, protocol: input.protocol, modelIds: input.models.map(model => model.modelId) }); },
+    prepare: async (input, identity) => {
+      if (!input.presetId || input.presetId === 'custom') return;
+      const saved = input.credential.action === 'keep' ? input.models.find(model => model.expectedVersion > 0) : undefined;
+      const data = await directory.read(identity, { presetId: input.presetId, ...(input.variantId ? { variantId: input.variantId } : {}),
+        baseUrl: input.baseUrl, protocol: input.protocol, credential: input.credential, refresh: false,
+        ...(saved ? { savedCredential: { connectionId: saved.connectionId, version: saved.expectedVersion } } : {}) });
+      return new Map(data.models.map(model => [model.modelId, model]));
+    },
     profile: catalogue.resolve,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); },
     write: (tx, scope, input) => writeConnection(tx, scope, input, undefined, true) });
@@ -332,6 +388,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await validatePairedLearning(storage);
     await origins.validate();
     await providers.validate();
+    await directory.validate();
   }
   async function readCredential(identity: SpaceIdentity, connectionId: string, version: number) {
     await options.authorize(identity);
@@ -347,7 +404,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     }
     return { connectionId, version: current.version, value };
   }
-  return { list, save, readCredential, providers, profiles, school, selection, images, segments, routing, results, deviceTasks, origins, validate, checks,
-    closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
-    resume() { writesClosed = false; checks.resume(); } };
+  return { list, save, readCredential, providers, profiles, directory, school, selection, images, segments, routing, results, deviceTasks, origins, validate,
+    checks: { ...checks, async drain() { await Promise.all([checks.drain(), directory.drain()]); } },
+    closeWrites() { writesClosed = true; directory.close(); checks.closeAdmission(); checks.closeDispatch(); },
+    resume() { writesClosed = false; directory.resume(); checks.resume(); } };
 }

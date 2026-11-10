@@ -844,7 +844,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       `|/resources/${runtimeResourcePathPattern})?` +
       `|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|executions/${id}(?:/(?:sessions|history(?:/${id})?|checkpoints(?:/${id})?|${id}(?:/(?:report|stop|result|control|artifact)|/controls/${id})?))?` +
-      `|models/(?:selection|connections(?:/${id}/credential)?|providers|profiles|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
+      `|models/(?:selection|connections(?:/${id}/credential)?|providers|profiles|directory|capabilities|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)` +
       `|agent/${id}(?:/(?:conversation|events|capabilities|skills(?:/(?:import|select|disable))?|model-switches|requests/${id}|snapshots/${id}|responses/${id}|controls/${id}|inputs/${id}/control|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }

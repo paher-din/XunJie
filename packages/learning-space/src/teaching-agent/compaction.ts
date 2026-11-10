@@ -77,12 +77,22 @@ function project(row: Record<string, unknown>): CompactionRecord {
 }
 
 /** Counting is an explicit planning estimate, never a tokenizer or usage fact. */
-export function needsCompaction(history: ContextMessage[], resolved: ResolvedAgent, currentText: string) {
+export function estimateContextInput(history: ContextMessage[], resolved: ResolvedAgent, currentText: string) {
+  return Math.ceil(Buffer.byteLength(JSON.stringify({ history, system: resolved.prompt.system,
+    tools: resolved.tools.map(tool => tool.definition), currentText })) / compactionPolicy.bytesPerEstimatedToken);
+}
+
+/** Keep model specifications immutable; only a call's reservation is reduced. */
+export function effectiveOutputTokens(model: ResolvedAgent['model'], remaining: number, estimatedInput: number) {
+  return Math.max(0, Math.min(Number(model.maxOutputTokens), remaining,
+    model.contextWindow === undefined ? Infinity : Number(model.contextWindow) - estimatedInput));
+}
+
+export function needsCompaction(history: ContextMessage[], resolved: ResolvedAgent, currentText: string, remainingOutput: number) {
   if (!history.some(item => item.eventId)) return false;
   const historyChars = history.reduce((total, item) => total + item.text.length, 0);
-  const estimatedInput = Math.ceil(Buffer.byteLength(JSON.stringify({ history, system: resolved.prompt.system,
-    tools: resolved.tools.map(tool => tool.definition), currentText })) / compactionPolicy.bytesPerEstimatedToken);
-  const window = Number(resolved.model.contextWindow), output = Number(resolved.model.maxOutputTokens);
+  const estimatedInput = estimateContextInput(history, resolved, currentText);
+  const window = Number(resolved.model.contextWindow), output = effectiveOutputTokens(resolved.model, remainingOutput, estimatedInput);
   return historyChars >= compactionPolicy.triggerChars || Number.isFinite(window) && Number.isFinite(output)
     && estimatedInput + output >= window * compactionPolicy.triggerRatio;
 }
@@ -203,7 +213,7 @@ export function createTeachingCompaction(storage: OwnedStorage) {
     return !incomplete.length && !unpaired.length;
   }
   async function select(tx: OwnedTransaction, run: TeachingRun, stepId: string, resolved: ResolvedAgent,
-    messages: ContextMessage[], inputs: { inputId: string; version: number; input: ActionInput }[]) {
+    messages: ContextMessage[], inputs: { inputId: string; version: number; input: ActionInput }[], remainingOutput: number) {
     const { rows: existing } = await tx.query('SELECT * FROM teaching_compactions WHERE run_id=$1 ORDER BY created_at', [run.runId]);
     const active = existing.find(row => row.state === 'selected' || row.state === 'generated');
     if (active) return project(active).source;
@@ -218,7 +228,7 @@ export function createTeachingCompaction(storage: OwnedStorage) {
         AND NOT EXISTS(SELECT 1 FROM teaching_commands c WHERE c.step_id=s.step_id))) ORDER BY e.seq`,
       [run.activityId, start]);
     const required = await retained(tx, run, resolved, inputs);
-    const summaryTokens = Math.min(compactionPolicy.maxSummaryTokens, Number(resolved.model.maxOutputTokens));
+    const summaryTokens = Math.min(compactionPolicy.maxSummaryTokens, Number(resolved.model.maxOutputTokens), remainingOutput);
     const available = Math.min(compactionPolicy.maxSourceBytes,
       Math.max(0, (Number(resolved.model.contextWindow) - summaryTokens) * 2
         - Buffer.byteLength(JSON.stringify(required)) - Buffer.byteLength(resolved.prompt.system + summaryInstructions)));

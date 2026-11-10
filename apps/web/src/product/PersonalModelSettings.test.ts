@@ -52,6 +52,26 @@ async function mount(subject = identity) {
   await act(async () => { root.render(createElement(PersonalModelSettings, { identity: subject, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })); await settle() })
 }
 
+it('refreshes model information when the model pane is entered, while hidden settings do not trigger it', async () => {
+  await act(async () => { root.render(null); await settle() })
+  vi.mocked(fetch).mockClear()
+  await act(async () => {
+    root.render(createElement('section', { hidden: true, 'data-settings-section': 'account' },
+      createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })))
+    await settle()
+  })
+  const requests = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/models/directory'))
+  expect(requests()).toHaveLength(0)
+  const pane = document.querySelector('section')!
+  await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
+  expect(requests().some(([, init]) => JSON.parse(init!.body as string).refresh === true)).toBe(true)
+  const before = requests().length
+  await act(async () => { pane.hidden = true; pane.dataset.settingsSection = 'account'; await settle() })
+  expect(requests()).toHaveLength(before)
+  await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
+  expect(requests().length).toBeGreaterThan(before)
+})
+
 beforeAll(async () => {
   dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://settings.invalid', pretendToBeVisual: true })
   for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'HTMLSelectElement',
@@ -80,6 +100,7 @@ beforeEach(async () => {
       return readFailure ? response({ error: 'unavailable' }, 503) : response(value)
     }
     const body = JSON.parse(options.body as string)
+    if (path === 'directory') return response({ models: [], catalogue: { status: 'ready' } })
     if (path.endsWith('/credential')) return credentialFailure ? response({ error: 'unavailable' }, 503)
       : body.version !== server.version ? response({ error: 'conflict' }, 409)
         : response({ connectionId: server.connectionId, version: server.version, value: serverKey })

@@ -8,7 +8,7 @@ import { teachingEventKindSchema, teachingIgnorableExtensionSchema, teachingSnap
   type TeachingRun, type TeachingEventKind, type TeachingSnapshot } from '@xunjie/contracts/teaching-agent';
 import type { LearningModelPort } from '../model-connections/service.js';
 import { cleanupScopeFor } from './tools-execution.js';
-import { buildContext, fixedInputText, type ContextMessage } from './context.js';
+import { activityFactsText, buildContext, fixedInputText, type ContextMessage } from './context.js';
 import { teachingExplanationText, teachingPublicArguments } from './help-policy.js';
 import { canonicalDigest, operationId } from './identity.js';
 import type { TeachingToolHost, TeachingToolScope, TeachingPreparedTool, TeachingToolOutcome } from './tool-types.js';
@@ -23,7 +23,7 @@ import type { AgentDefinition, ResolvedAgent, AgentToolBinding } from '@xunjie/c
 import type { TeachingSkillState } from '@xunjie/contracts/agent-skills';
 import { teachingSkillContext } from './skill-runtime.js';
 import { TeachingSkillError } from './skills.js';
-import { compactionPolicy, createTeachingCompaction, needsCompaction, parseCompactionResult, summaryInstructions, summaryMessage,
+import { compactionPolicy, createTeachingCompaction, effectiveOutputTokens, estimateContextInput, needsCompaction, parseCompactionResult, summaryInstructions, summaryMessage,
   type CompactionSource } from './compaction.js';
 import type { FixedTeachingInput } from './inputs.js';
 
@@ -43,6 +43,7 @@ interface Plan {
   selectionPinId?: string;
   contextFacts?: ContextFacts;
   compaction?: CompactionSource;
+  estimatedInputTokens?: number;
 }
 export interface TeachingRunLimits {
   maxModelSteps: number;
@@ -122,6 +123,16 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       SELECT run_id,$2,$3,$4,$5,$6,$7,$8,created_at+($9::text || ' milliseconds')::interval FROM teaching_runs WHERE run_id=$1
       ON CONFLICT DO NOTHING`, [runId, limits.maxModelSteps, limits.maxToolCommands, limits.maxParallelTools, limits.waitMs,
       limits.maxInputTokens, limits.maxOutputTokens, limits.maxCallMs, limits.hardDeadlineMs]);
+  }
+  async function usedBudget(runId: string, tx?: OwnedTransaction) {
+    const { rows: [used] } = await (tx ? tx.query.bind(tx) : storage.read.bind(storage))(`SELECT
+      COALESCE(sum(CASE WHEN usage->>'state'='final' AND usage ? 'inputTokens' THEN (usage->>'inputTokens')::bigint ELSE
+        GREATEST(input_reserved,COALESCE((usage->>'inputTokens')::bigint,0)) END),0) AS input,
+      COALESCE(sum(CASE WHEN usage->>'state'='final' AND usage ? 'outputTokens' THEN (usage->>'outputTokens')::bigint ELSE
+        GREATEST(output_reserved,COALESCE((usage->>'outputTokens')::bigint,0)) END),0) AS output,
+      COALESCE(sum(COALESCE(call_settled_ms,call_reserved_ms)),0) AS call_ms
+      FROM teaching_steps WHERE run_id=$1`, [runId]);
+    return used!;
   }
   async function expired(runId: string) {
     const { rows: [row] } = await storage.read('SELECT deadline<=clock_timestamp() AS expired FROM teaching_budgets WHERE run_id=$1', [runId]);
@@ -280,6 +291,10 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
   }
   async function prepareCompaction(run: TeachingRun, generation: number, scope: TeachingToolScope,
     assembly: Awaited<ReturnType<typeof assembleTeachingAgent>>, history: ContextMessage[], fixed: FixedTeachingInput[], previous?: Row) {
+    const { rows: [budget] } = await storage.read('SELECT max_output_tokens FROM teaching_budgets WHERE run_id=$1', [run.runId]);
+    if (!budget) throw new StorageError('corrupt');
+    const remainingOutput = Number(budget.max_output_tokens) - Number((await usedBudget(run.runId)).output);
+    if (remainingOutput < 1) { await pause(run, generation, 'output-token-budget-exhausted'); return null; }
     const existing = await compactions.pending(run.runId);
     if (existing) {
       let changed = false;
@@ -292,13 +307,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       if (changed) { await pause(run, generation, 'compaction-source-changed'); return null; }
     }
     if (!existing && !previous?.capacity_rejected
-      && !needsCompaction(history, assembly.resolvedAgent, fixed.map(item => fixedInputText(item.input)).join('\n')))
+      && !needsCompaction(history, assembly.resolvedAgent,
+        activityFactsText(scope.activity) + '\n' + fixed.map(item => fixedInputText(item.input)).join('\n'), remainingOutput))
       return { assembly, history, source: undefined };
     let source = existing?.source;
     if (!source) await transaction(run, generation, async tx => {
       if (!await owner.inputs.matches(tx, run, fixed)) throw new StorageError('conflict');
       const id = operationId(`step:${run.runId}:${previous ? Number(previous.step_no) + 1 : 0}`);
-      source = await compactions.select(tx, run, id, assembly.resolvedAgent, history, fixed) ?? undefined;
+      source = await compactions.select(tx, run, id, assembly.resolvedAgent, history, fixed, remainingOutput) ?? undefined;
       if (source) await event(tx, run.activityId, 'context-compaction-selected', { runId: run.runId,
         compactionId: source.compactionId, stepId: id, sourceStart: source.sourceStart, sourceEnd: source.sourceEnd,
         sourceDigest: source.sourceDigest, retainedDigest: source.retainedDigest, policy: source.policy });
@@ -541,15 +557,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       const cleanupHistory = history.filter(message => message.source?.label === '原命令清理状态');
       if (cleanupHistory.length) context.userText += '\n\n' + cleanupHistory.map(message => message.text).join('\n');
       if (context.system.length > Math.min(400000, resolvedAgent.definition.contextPolicy.maxSystemChars)
-        || context.userText.length > Math.min(1000000, resolvedAgent.definition.contextPolicy.maxInputChars)
-        || model.contextWindow !== undefined && connection.maxOutputTokens >= model.contextWindow) {
+        || context.userText.length > Math.min(1000000, resolvedAgent.definition.contextPolicy.maxInputChars)) {
         await owner.finish(run, generation, 'paused', 'capacity-exceeded', run.usage, run.model,
           { kind: 'capacity-paused', body: { runId: run.runId, reason: 'capacity-exceeded',
             requiredScope: { question: scope.input.requestId, references: scope.input.draft.references.map(ref => ref.referenceId),
               works: scope.input.works.map(work => work.contentId), workNames: scope.input.works.map(work => work.name),
               referenceNames: scope.input.draft.references.map(ref => ref.sourceName) },
             systemChars: context.system.length, inputChars: context.userText.length,
-            outputReserve: connection.maxOutputTokens, contextWindow: model.contextWindow, counting: 'unknown' } }); return null;
+            contextWindow: model.contextWindow, counting: 'unknown' } }); return null;
       }
       await transaction(run, generation, async tx => { await retainTeachingAssembly(tx, resolvedAgent); });
       const native = await owner.ensureSegment(scope.identity, scope.activity, run, choice, selection.version,
@@ -618,6 +633,14 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
     const stepId = operationId(`step:${run.runId}:${number}`), attemptId = operationId('model-attempt:' + stepId);
     plan.input.attemptId = attemptId;
     const snapshotId = operationId('model-snapshot:' + stepId);
+    if (plan.resolvedAgent) {
+      // Include newly settled native turns on continuation, without changing the
+      // retained assembly, compaction source or portable-history identities.
+      const history = previous && !plan.compaction && plan.input.segmentId === previous.segment_id
+        ? await owner.historyForAssembly(run.activityId) : plan.contextHistory ?? [];
+      plan.estimatedInputTokens = estimateContextInput(history, plan.resolvedAgent,
+        activityFactsText(scope.activity) + '\n' + JSON.stringify(plan.input.input));
+    }
     await assertDispatch(run, generation);
     let exhausted = '', changed = false;
     await transaction(run, generation, async tx => {
@@ -645,13 +668,7 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         FROM teaching_budgets WHERE run_id=$1 FOR UPDATE`, [run.runId]);
       const { rows: [count] } = await tx.query('SELECT count(*)::integer AS total FROM teaching_steps WHERE run_id=$1', [run.runId]);
       if (Number(count?.total) >= Number(budget!.max_model_steps)) { exhausted = 'model-step-budget-exhausted'; return; }
-      const { rows: [used] } = await tx.query(`SELECT
-        COALESCE(sum(CASE WHEN usage->>'state'='final' AND usage ? 'inputTokens' THEN (usage->>'inputTokens')::bigint ELSE
-          GREATEST(input_reserved,COALESCE((usage->>'inputTokens')::bigint,0)) END),0) AS input,
-        COALESCE(sum(CASE WHEN usage->>'state'='final' AND usage ? 'outputTokens' THEN (usage->>'outputTokens')::bigint ELSE
-          GREATEST(output_reserved,COALESCE((usage->>'outputTokens')::bigint,0)) END),0) AS output,
-        COALESCE(sum(COALESCE(call_settled_ms,call_reserved_ms)),0) AS call_ms
-        FROM teaching_steps WHERE run_id=$1`, [run.runId]);
+      const used = await usedBudget(run.runId, tx);
       // The configured context window is a conservative input upper bound, not a tokenizer estimate.
       const inputReserve = plan.model.contextWindow;
       if (!inputReserve) { exhausted = 'input-budget-bound-unavailable'; return; }
@@ -660,7 +677,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       if (outputRemaining < 1) { exhausted = 'output-token-budget-exhausted'; return; }
       const callRemaining = Math.floor(Math.min(Number(budget!.max_call_ms) - Number(used!.call_ms), Number(budget!.remaining_ms)));
       if (callRemaining < 250) { exhausted = Number(budget!.remaining_ms) < 250 ? 'run-deadline-exceeded' : 'model-call-budget-exhausted'; return; }
-      plan.input.limits.maxOutputTokens = Math.min(plan.input.limits.maxOutputTokens, outputRemaining);
+      plan.input.limits.maxOutputTokens = effectiveOutputTokens(plan.model,
+        Math.min(outputRemaining, plan.compaction?.policy.maxSummaryTokens ?? Infinity), plan.estimatedInputTokens ?? 0);
+      if (plan.input.limits.maxOutputTokens < 1) { exhausted = 'capacity-exceeded'; return; }
       plan.input.limits.timeoutMs = Math.min(plan.input.limits.timeoutMs ?? callRemaining, callRemaining, 2_147_483_647);
       if (plan.resolvedAgent) plan.contextFacts = await fixedContextFacts(tx, run, scope.activity, fixedInputs.map(item => item.inputId));
       const priorSkills = (previous?.plan as Plan | undefined)?.skillState?.loaded ?? [];
@@ -691,6 +710,13 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
         callReserveMs: plan.input.limits.timeoutMs, deadline: new Date(budget!.deadline as string).toISOString() });
     });
     if (changed) return planNext(run, generation, previous);
+    if (exhausted === 'capacity-exceeded') {
+      await owner.finish(run, generation, 'paused', exhausted, run.usage, run.model,
+        { kind: 'capacity-paused', body: { runId: run.runId, reason: exhausted, counting: 'estimated',
+          estimatedInputTokens: plan.estimatedInputTokens, contextWindow: plan.model.contextWindow, outputReserve: 0,
+          requiredScope: requiredInputScope(capacityInputs) } });
+      return null;
+    }
     if (exhausted) { await pause(run, generation, exhausted); return null; }
     const planned = await step(run.runId);
     return planned?.step_id === stepId ? planned : null;
@@ -730,7 +756,9 @@ export function createTeachingRunDriver(storage: OwnedStorage, owner: {
       await event(tx, run.activityId, 'context-assembled', { runId: run.runId, stepId: saved.step_id,
         snapshotId: snapshot.snapshotId, attemptId: snapshot.attemptId, segmentId: snapshot.segmentId,
         payloadSha256: snapshot.payloadSha256, sources: snapshot.sources,
-        capacity: { counter: 'unavailable', payloadChars: JSON.stringify(payload).length, outputReserve: snapshot.maxOutputTokens,
+        capacity: { counter: plan.estimatedInputTokens === undefined ? 'unavailable' : 'estimated',
+          ...(plan.estimatedInputTokens === undefined ? {} : { estimatedInputTokens: plan.estimatedInputTokens }),
+          payloadChars: JSON.stringify(payload).length, outputReserve: snapshot.maxOutputTokens,
           contextWindow: snapshot.contextWindow } });
     });
   }

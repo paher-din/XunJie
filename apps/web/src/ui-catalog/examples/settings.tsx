@@ -5,6 +5,7 @@ import {
   ModelFields, ModelProviderCard, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
   RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
+  SettingsSelect, ModelIdInput, ModelProviderLogo,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
 } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
@@ -86,10 +87,22 @@ function ModelFieldsDemo() {
 }
 function ConnectionFieldsDemo() {
   const [id, setId] = useState('sample-model'), [effort, setEffort] = useState('auto'), [manual, setManual] = useState<string[] | undefined>()
-  const [capacity, setCapacity] = useState<{ contextWindow?: number | undefined; maxOutputTokens?: number | undefined }>({})
+  const [capacity, setCapacity] = useState<{ contextWindow?: string | undefined; maxOutputTokens?: string | undefined }>({})
   return <Frame><ConnectionModelFields modelId={id} effort={effort} efforts={['auto', ...(manual ?? ['low', 'medium', 'high'])]}
     source={manual ? 'manual' : 'catalogue'} manualLevels={manual} {...capacity} referenceContext={128000} referenceOutput={8192}
     onId={setId} onEffort={setEffort} onLevels={setManual} onCapacity={patch => setCapacity(current => ({ ...current, ...patch }))} /></Frame>
+}
+function SettingsSelectDemo() {
+  const [value, setValue] = useState('custom')
+  return <Frame><Field label="供应商"><SettingsSelect label="示例供应商" value={value} onChange={setValue}
+    options={[{ value: 'custom', label: '自定义', icon: <ModelProviderLogo providerId="custom" /> },
+      { value: 'deepseek', label: 'DeepSeek 官方', icon: <ModelProviderLogo providerId="deepseek" />, dividerBefore: true },
+      { value: 'kimi', label: 'Kimi', icon: <ModelProviderLogo providerId="kimi" /> }]} /></Field></Frame>
+}
+function ModelIdInputDemo() {
+  const [value, setValue] = useState('')
+  return <Frame><Field label="模型 ID"><ModelIdInput label="示例模型 ID" value={value} onChange={setValue}
+    options={[{ value: 'sample-text', label: '示例文本模型' }, { value: 'sample-thinking', label: '示例思考模型' }]} /></Field></Frame>
 }
 function ProviderCardDemo() { const [notice, setNotice] = useState(''); return <Frame><ModelProviderCard name="示例供应商" address="https://example.invalid/v1" credentialLabel="示例状态" actions={<button type="button" className="outline" onClick={() => setNotice('已触发示例编辑')}>编辑</button>}><p>示例模型</p></ModelProviderCard><output>{notice}</output></Frame> }
 function IdentityDemo({ error = false }: { error?: boolean }) {
@@ -171,6 +184,15 @@ function LegacyModelPopulated() { return <LegacyModelDemo /> }
 function LegacyModelEmpty() { return <LegacyModelDemo empty /> }
 
 export const settingsEntries: CatalogEntry[] = [
+  { id: 'settings-select', name: 'SettingsSelect', description: '沿用循阶字段样式的品牌下拉，支持键盘选择与分隔。', importPath: settings,
+    source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, disabled?'],
+    dependencies: ['Base UI Select；图标由调用方提供'], states: [{ id: 'default', name: '供应商选择', component: SettingsSelectDemo }] },
+  { id: 'model-id-input', name: 'ModelIdInput', description: '可搜索并自由填写的模型 ID，列表由调用方提供。', importPath: settings,
+    source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, loading?'],
+    dependencies: ['Base UI Combobox；本地合成列表'], states: [{ id: 'default', name: '搜索或手填', component: ModelIdInputDemo }] },
+  { id: 'model-provider-logo', name: 'ModelProviderLogo', description: '本地供应商品牌图形与自定义连接图标。', importPath: settings,
+    source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['providerId'], dependencies: ['包内品牌资产'],
+    states: [{ id: 'default', name: '品牌图形', component: () => <Frame><div className="st-checks">{['custom', 'deepseek', 'opencode-go', 'command-code', 'zhipu', 'kimi', 'mimo'].map(id => <span key={id} className="st-choice-icon"><ModelProviderLogo providerId={id} /></span>)}</div></Frame> }] },
   { id: 'connection-model-fields', name: 'ConnectionModelFields', description: '正式模型 ID、思考强度、容量与手动档位。', importPath: settings,
     source: 'packages/ui/src/settings/ConnectionModelFields.tsx', exampleSource, props: ['modelId, effort, efforts, source, manualLevels?', 'onId, onEffort, onLevels, onCapacity'],
     dependencies: ['资料为合成示例，不发起网络请求'], states: [{ id: 'default', name: '目录与手动配置', component: ConnectionFieldsDemo }] },

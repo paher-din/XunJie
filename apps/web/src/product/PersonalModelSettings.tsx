@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCredentialValueSchema, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
+import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCredentialValueSchema, modelDirectorySchema, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
 import { teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelProviderDialog } from '../components/settings/ModelProviderDialog'
@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { ModelSelection, type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
 import { PersonalSkillsSettings } from './PersonalSkillsSettings'
+import { useModelDirectory, type ReadModelDirectory } from '../components/settings/useModelDirectory'
 
 const failures: Record<string, string> = { conflict: '配置已被更新，当前输入保留，请核对后重新读取。', 'identity-conflict': '原检查身份与内容冲突，请查询原记录。',
   forbidden: '原空间资格已失效，请重新登录原空间。', 'resource-busy': '检查频次或并发已达上限，请保留原检查记录并稍后再试。',
@@ -37,6 +38,16 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   // Pending polls must not prevent a completed read from publishing.
   const appliedRead = useRef(0)
   const live = useRef(true)
+  const rootElement = useRef<HTMLDivElement>(null), [modelsVisible, setModelsVisible] = useState(false)
+  useEffect(() => {
+    const pane = rootElement.current?.closest<HTMLElement>('[data-settings-section]')
+    if (!pane) { setModelsVisible(true); return }
+    const observe = () => setModelsVisible(!pane.hidden && pane.dataset.settingsSection === 'models')
+    observe()
+    const observer = new MutationObserver(observe)
+    observer.observe(pane, { attributes: true, attributeFilter: ['hidden', 'data-settings-section'] })
+    return () => observer.disconnect()
+  }, [])
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const request = useCallback(async (route: string, body?: unknown) => {
     const path = route.startsWith('../') ? '/api/learning/' + route.slice(3) : '/api/learning/models/' + route
@@ -49,6 +60,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     if (!response.ok) throw Object.assign(new Error(failures[result.error] ?? '原请求结果尚未确认，请查询检查记录。'), { code: result.error })
     return result as unknown
   }, [identity.environmentId, identity.spaceId, identity.principalId, spaceKey, namespace])
+  const readDirectory = useCallback<ReadModelDirectory>(async input => modelDirectorySchema.parse(await request('directory', input)), [request])
+  useModelDirectory(readDirectory, { presetId: 'custom' }, modelsVisible && !readOnly)
   const reload = useCallback(async (visible = false) => {
     const generation = ++reads.current
     if (visible) setLoading(true)
@@ -117,8 +130,10 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     const input = togglePending.current.get(id) ?? {
       requestId: crypto.randomUUID(), providerId: id, expectedVersion: provider.version, name: provider.name,
       protocol: provider.protocol, baseUrl: provider.baseUrl, enabled: connectionId ? provider.enabled : !provider.enabled,
+      ...(provider.presetId ? { presetId: provider.presetId } : {}), ...(provider.variantId ? { variantId: provider.variantId } : {}),
       credential: { action: 'keep' as const }, models: provider.models.map(model => ({
         connectionId: model.connectionId, expectedVersion: model.version, modelId: model.modelId,
+        protocol: model.protocol, baseUrl: model.baseUrl,
         enabled: connectionId === model.connectionId ? !(model.modelEnabled ?? model.enabled) : model.modelEnabled ?? model.enabled,
         ...(model.reasoningEffort ? { reasoningEffort: model.reasoningEffort } : {}),
         ...(model.reasoningSource === 'manual' ? { reasoningLevels: model.reasoningLevels ?? [] } : {}),
@@ -165,7 +180,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       setSwitchStatus(error instanceof Error ? `切换结果尚未确认：${error.message}` : '切换结果尚未确认；请重新读取后重试。')
     }
   }
-  return <div className="content product-model-settings">
+  return <div ref={rootElement} className="content product-model-settings">
     <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} /></div>
@@ -182,6 +197,6 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       onReload={() => void reload(true)} onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}
       onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div></div>
-    {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onCheck={check} onCancel={cancel} />}
+    {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onDirectory={readDirectory} onCheck={check} onCancel={cancel} />}
   </div>
 }

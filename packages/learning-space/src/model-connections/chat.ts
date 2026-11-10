@@ -20,14 +20,16 @@ export function checkPayload(configuration: ModelConfiguration, maxOutputTokens:
   let reasoning: Record<string, unknown>;
   try { reasoning = modelReasoningParameters(configuration, maxOutputTokens); }
   catch (error) { if (error instanceof RangeError) throw new StorageError('invalid'); throw error; }
-  const completionLimit = configuration.reasoningEffort !== undefined && resolveModelProfile(configuration).family === 'openai';
+  const family = resolveModelProfile(configuration).family;
+  const completionLimit = family === 'mimo' || configuration.reasoningEffort !== undefined && family === 'openai';
   return { model: configuration.modelId, messages: [{ role: 'user' as const, content: 'Reply briefly with OK to check this model connection.' }],
     ...(completionLimit ? { max_completion_tokens: maxOutputTokens } : { max_tokens: maxOutputTokens }),
     stream: true, stream_options: { include_usage: true }, ...reasoning };
 }
 export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, onTools?: (tools: ModelToolProgress[]) => void,
+  requestHeaders?: Record<string, string>) {
   const sensitive = createSensitiveOutput(apiKey), { clean } = sensitive;
   const progress = onText ? createProgressPublisher(apiKey, onText) : null;
   const toolProgress = onTools ? createJsonToolProgress(nativeTools ?? [], apiKey, onTools) : null;
@@ -52,7 +54,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
     } });
   try {
-    const stream = await client.chat.completions.create(payload, { signal: requestSignal });
+    const stream = await client.chat.completions.create(payload, { signal: requestSignal, ...(requestHeaders ? { headers: requestHeaders } : {}) });
     for await (const value of stream) {
       const encoded = JSON.stringify(value);
       bytes += Buffer.byteLength(encoded);

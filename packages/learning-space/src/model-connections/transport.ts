@@ -6,6 +6,19 @@ import { responsesCheckPayload, runResponses, type ResponsesPayload } from './re
 import { messagesCheckPayload, runMessages, unsupportedMessagesRoute, type MessagesPayload } from './messages.js';
 
 export type NativePayload = ChatPayload | ResponsesPayload | MessagesPayload;
+function isKimiCode(configuration: ModelConfiguration) {
+  const url = new URL(configuration.baseUrl);
+  return ['api.kimi.com', 'api.kimi.ai'].includes(url.hostname) && /^\/coding(?:\/|$)/.test(url.pathname);
+}
+/** Session identities come from the owned segment, or a standalone check attempt. */
+export function modelSessionPayload(configuration: ModelConfiguration, payload: NativePayload, sessionIdentity: string): NativePayload {
+  return isKimiCode(configuration) ? { ...payload, prompt_cache_key: sessionIdentity } : payload;
+}
+export function modelSessionHeaders(configuration: ModelConfiguration, sessionIdentity?: string): Record<string, string> {
+  const url = new URL(configuration.baseUrl);
+  return url.hostname === 'opencode.ai' && /^\/inference\/go(?:\/|$)/.test(url.pathname) && sessionIdentity
+    ? { 'x-opencode-session': sessionIdentity } : {};
+}
 export function adapterReady(configuration: ModelConfiguration) {
   return ['chat-completions', 'responses', 'messages'].includes(configuration.protocol)
     && (configuration.protocol !== 'messages' || !unsupportedMessagesRoute(configuration) && !configuration.baseUrl.replace(/\/+$/, '').endsWith('/v1'))
@@ -34,19 +47,21 @@ export function limitPayload(configuration: ModelConfiguration, payload: NativeP
 }
 export async function runModel(configuration: ModelConfiguration, apiKey: string, payload: NativePayload,
   signal: AbortSignal, timeoutMs: number, segment: boolean, applicationSchema?: Record<string, unknown>,
-  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, applicationTools?: ModelTool[], onTools?: (tools: ModelToolProgress[]) => void) {
+  requestFetch: typeof fetch = fetch, onText?: (text: string) => void, applicationTools?: ModelTool[], onTools?: (tools: ModelToolProgress[]) => void,
+  sessionIdentity?: string) {
   // Native payloads intentionally contain no application preview metadata.
   const definitions = (tools: ModelTool[] | undefined) => tools?.map(tool => {
     const progress = applicationTools?.find(item => item.name === tool.name)?.progress;
     return { ...tool, ...(progress ? { progress } : {}) };
   });
+  const requestHeaders = modelSessionHeaders(configuration, sessionIdentity);
   if (configuration.protocol === 'responses') {
     const request = payload as ResponsesPayload;
     const tools = segment ? request.tools?.map(tool => {
       if (tool.type !== 'function') throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
     }) ?? [] : undefined;
-    return runResponses(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools);
+    return runResponses(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools, requestHeaders);
   }
   if (configuration.protocol === 'messages') {
     const request = payload as MessagesPayload;
@@ -54,7 +69,7 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
       if (!('input_schema' in tool)) throw new StorageError('corrupt');
       return { name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema };
     }) ?? [] : [];
-    return runMessages(configuration, apiKey, request, signal, timeoutMs, definitions(tools) ?? [], applicationSchema, requestFetch, onText, onTools);
+    return runMessages(configuration, apiKey, request, signal, timeoutMs, definitions(tools) ?? [], applicationSchema, requestFetch, onText, onTools, requestHeaders);
   }
   if (configuration.protocol !== 'chat-completions') throw new StorageError('unavailable');
   const request = payload as ChatPayload;
@@ -62,5 +77,5 @@ export async function runModel(configuration: ModelConfiguration, apiKey: string
     if (tool.type !== 'function') throw new StorageError('corrupt');
     return { name: tool.function.name, description: tool.function.description ?? '', inputSchema: tool.function.parameters ?? {} };
   }) ?? [] : undefined;
-  return runChat(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools);
+  return runChat(configuration, apiKey, request, signal, timeoutMs, definitions(tools), applicationSchema, requestFetch, onText, onTools, requestHeaders);
 }

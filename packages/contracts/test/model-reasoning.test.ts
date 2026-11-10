@@ -118,8 +118,8 @@ test('Claude adaptive effort differs from legacy manual-budget models', () => {
   }
   assert.deepEqual(parameters('claude-opus-4-5-20251101', 'medium', { protocol: 'messages' }, 1025),
     { thinking: { type: 'enabled', budget_tokens: 1024 }, output_config: { effort: 'medium' } });
-  assert.deepEqual(resolveModelProfile(route('claude-sonnet-4-5', { protocol: 'messages' })).efforts, ['auto', 'none']);
-  assert.deepEqual(parameters('claude-sonnet-4-5', 'auto', { protocol: 'messages', parameterMode: 'thinking' }),
+  assert.deepEqual(resolveModelProfile(route('claude-sonnet-4-5', { protocol: 'messages' })).efforts, ['auto', 'none', 'enabled']);
+  assert.deepEqual(parameters('claude-sonnet-4-5', 'enabled', { protocol: 'messages', parameterMode: 'thinking' }),
     { thinking: { type: 'enabled', budget_tokens: 1024 } });
   assert.throws(() => parameters('claude-sonnet-4-5', 'high', { protocol: 'messages' }), RangeError);
 });
@@ -131,7 +131,7 @@ test('manual Claude budgets fail clearly below the minimum without changing mode
     assert.match(modelReasoningError(input, output) ?? '', /1024/);
     assert.throws(() => modelReasoningParameters(input, output), /1024/);
     assert.deepEqual(input, copy);
-    assert.throws(() => parameters('claude-sonnet-4-5', 'auto', {
+    assert.throws(() => parameters('claude-sonnet-4-5', 'enabled', {
       protocol: 'messages', parameterMode: 'thinking',
     }, output), /1024/);
   }
@@ -141,11 +141,11 @@ test('manual Claude budgets fail clearly below the minimum without changing mode
 
 test('binary Qwen, GLM and Kimi controls never pretend to have effort tiers', () => {
   assert.deepEqual(parameters('qwen/qwen3-32b', 'none'), { enable_thinking: false });
-  assert.deepEqual(parameters('qwen/qwen3-32b', 'auto', { parameterMode: 'thinking' }), { enable_thinking: true });
+  assert.deepEqual(parameters('qwen/qwen3-32b', 'enabled'), { enable_thinking: true });
   for (const id of ['glm-4.6', 'glm-4.7', 'glm-5', 'glm-5.1', 'moonshotai/kimi-k2.5']) {
-    assert.deepEqual(resolveModelProfile(route(id)).efforts, ['auto', 'none']);
+    assert.deepEqual(resolveModelProfile(route(id)).efforts, ['auto', 'none', 'enabled']);
     assert.deepEqual(parameters(id, 'none'), { thinking: { type: 'disabled' } });
-    assert.deepEqual(parameters(id, 'auto', { parameterMode: 'thinking' }), { thinking: { type: 'enabled' } });
+    assert.deepEqual(parameters(id, 'enabled'), { thinking: { type: 'enabled' } });
     assert.throws(() => parameters(id, 'high'), RangeError);
   }
   assert.deepEqual(resolveModelProfile(route('kimi-k2-thinking')).efforts, ['auto']);
@@ -198,7 +198,7 @@ test('profiles are fresh values and numeric output validation is deterministic',
   const input = route('gpt-5.2');
   resolveModelProfile(input).efforts.push('max');
   assert.equal(isReasoningEffortSupported(input, 'max'), false);
-  assert.deepEqual(modelReasoningEfforts, ['auto', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+  assert.deepEqual(modelReasoningEfforts, ['auto', 'none', 'enabled', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
   for (const output of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])
     assert.throws(() => modelReasoningParameters(input, output), /正整数/);
 });
@@ -326,4 +326,74 @@ test('an unconfirmed relay never inherits DeepSeek private thinking fields merel
   // Explicit old dialect settings keep their original wire even on a custom URL.
   assert.deepEqual(modelReasoningParameters(route('deepseek-flash', { baseUrl: 'https://relay.example/v1',
     dialect: 'deepseek', parameterMode: 'thinking' }), 128), { thinking: { type: 'enabled' } });
+});
+
+test('MiMo exposes an ON/OFF control and never transmits enabled as an effort', () => {
+  for (const id of ['mimo-v2.5', 'mimo-v2.5-pro', 'mimo-v2.6-flash', 'mimo-v2.6-pro']) {
+    for (const protocol of ['chat-completions', 'responses', 'messages'] as const) {
+      const input = route(id, { protocol, baseUrl: 'https://api.xiaomimimo.com/v1' });
+      const profile = resolveModelProfile(input);
+      assert.equal(profile.reasoningKind, 'toggle');
+      assert.equal(profile.defaultEffort, 'enabled');
+      assert.deepEqual(profile.efforts, ['auto', 'none', 'enabled']);
+      assert.deepEqual(modelReasoningParameters({ ...input, reasoningEffort: 'enabled' }, 64),
+        protocol === 'responses' ? { reasoning: { effort: 'high' } } : { thinking: { type: 'enabled' } });
+      assert.deepEqual(modelReasoningParameters({ ...input, reasoningEffort: 'none' }, 64),
+        protocol === 'responses' ? { reasoning: { effort: 'none' } } : { thinking: { type: 'disabled' } });
+      assert.deepEqual(modelReasoningParameters({ ...input, reasoningEffort: 'auto', parameterMode: 'thinking' }, 64), {});
+      assert.equal(isReasoningEffortSupported({ ...input, reasoningLevels: ['low', 'high', 'max'] }, 'high'), false);
+    }
+  }
+});
+
+test('Kimi K3 ordinary API and coding identities retain their distinct defaults and real ladder', () => {
+  for (const [modelId, baseUrl, defaultEffort, off] of [
+    ['kimi-k3', 'https://api.moonshot.cn/v1', 'max', false],
+    ['kimi-k3.1-pro', 'https://api.moonshot.cn/v1', 'max', false],
+    ['k3', 'https://api.kimi.com/coding/v1', 'high', true],
+    ['k3-256k', 'https://api.kimi.com/coding/v1', 'high', true],
+    ['k3.1-pro', 'https://api.kimi.com/coding/v1', 'high', false],
+    ['kimi-for-coding', 'https://api.kimi.ai/coding/v1', 'max', true],
+  ] as const) {
+    const input = route(modelId, { baseUrl });
+    assert.equal(resolveModelProfile(input).defaultEffort, defaultEffort);
+    assert.equal(resolveModelProfile(input).reasoningKind, 'effort');
+    assert.equal(isReasoningEffortSupported(input, 'none'), off);
+    for (const effort of ['low', 'high', 'max'] as const) {
+      assert.deepEqual(modelReasoningParameters({ ...input, reasoningEffort: effort }, 8192), { reasoning_effort: effort });
+      assert.deepEqual(modelReasoningParameters({ ...input, protocol: 'responses', reasoningEffort: effort }, 8192), { reasoning: { effort } });
+    }
+  }
+  assert.deepEqual(resolveModelProfile(route('k3', { baseUrl: 'https://api.kimi.com.evil.example/coding/v1' })).efforts, ['auto']);
+});
+
+test('manual toggle declarations stay distinct from strength and unknown Messages budgets', () => {
+  assert.deepEqual(parameters('private-alias', 'enabled', { reasoningLevels: ['none', 'enabled'] }), { thinking: { type: 'enabled' } });
+  assert.throws(() => parameters('private-alias', 'enabled', { protocol: 'messages', reasoningLevels: ['enabled'] }), /尚未确认/);
+  assert.throws(() => parameters('private-alias', 'enabled', { reasoningLevels: ['enabled', 'high'] }), /混合/);
+  assert.deepEqual(parameters('minimax-m3', 'enabled', { protocol: 'messages' }), { thinking: { type: 'adaptive' } });
+});
+
+test('new preset model declarations select native fields only on the exact bound supplier route', () => {
+  const cases: [Partial<ReasoningRoute>, Record<string, unknown>][] = [
+    [{ presetId: 'deepseek', baseUrl: 'https://api.deepseek.com/v1' }, { thinking: { type: 'enabled' }, reasoning_effort: 'high' }],
+    [{ presetId: 'zhipu', variantId: 'api', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' }, { thinking: { type: 'enabled' }, reasoning_effort: 'high' }],
+    [{ presetId: 'zhipu', variantId: 'coding', baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4' }, { thinking: { type: 'enabled' }, reasoning_effort: 'high' }],
+    [{ presetId: 'kimi', variantId: 'api', baseUrl: 'https://api.moonshot.cn/v1' }, { reasoning_effort: 'high' }],
+    [{ presetId: 'kimi', variantId: 'code', baseUrl: 'https://api.kimi.com/coding', protocol: 'messages' },
+      { thinking: { type: 'enabled' }, output_config: { effort: 'high' } }],
+  ];
+  for (const [changes, expected] of cases) {
+    const input = route('future-reviewed-model', { ...changes, reasoningLevels: ['low', 'high', 'max'], reasoningEffort: 'high' });
+    assert.equal(resolveModelProfile(input).source, 'manual');
+    assert.equal(resolveModelProfile(input).family, 'unknown');
+    assert.deepEqual(modelReasoningParameters(input, 65536), expected);
+    assert.deepEqual(resolveModelProfile({ ...input, reasoningLevels: undefined }).efforts, ['auto']);
+    assert.deepEqual(modelReasoningParameters({ ...input, reasoningEffort: 'auto' }, 65536), {});
+  }
+  for (const changes of [
+    { presetId: 'deepseek', baseUrl: 'https://relay.example/v1' },
+    { presetId: 'zhipu', variantId: 'coding', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' },
+    { presetId: 'zhipu', baseUrl: 'https://open.bigmodel.cn.evil.example/api/paas/v4' },
+  ]) assert.deepEqual(parameters('future-reviewed-model', 'high', { ...changes, reasoningLevels: ['high'] }), { reasoning_effort: 'high' });
 });

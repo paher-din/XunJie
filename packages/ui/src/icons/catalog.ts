@@ -1,5 +1,11 @@
 // 2026-10-10 图标评审定稿。SVG 是唯一图形来源；页面与看板共用此清单。
 export const iconCatalog = {
+  "provider-custom": {
+    "label": "自定义供应商", "tone": "neutral", "variant": "linear",
+    "usages": [{ "label": "自定义供应商接入", "group": "设置页", "scope": "现有", "reviewId": "" }],
+    "files": { "linear": "provider-custom-linear.svg" }, "source": "Project", "author": "学习空间项目",
+    "license": "Project", "sourceUrl": "", "modified": false
+  },
   "eye": {
     "label": "显示密钥", "tone": "neutral", "variant": "linear",
     "usages": [{ "label": "显示或隐藏 API Key", "group": "设置页", "scope": "现有", "reviewId": "" }],

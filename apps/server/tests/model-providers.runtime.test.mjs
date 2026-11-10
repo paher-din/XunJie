@@ -96,6 +96,44 @@ async function product(run) {
 
 test('provider lifecycle uses real native storage and SDK dispatch', { timeout: 240000 }, async t => {
   await product(async ({ api, save, send, restart, received, baseUrl }) => {
+    await t.test('mixed native routes share one provider and retain their primary address, identities and credentials after restart', async () => {
+      const input = provider(baseUrl);
+      input.presetId = 'custom';
+      input.models[1].protocol = 'messages';
+      input.models[1].baseUrl = baseUrl.replace(/\/v1$/, '');
+      const first = await api('providers', input);
+      assert.equal(first.status, 200, JSON.stringify(first.value));
+      let saved = first.value;
+      assert.deepEqual(saved.models.map(model => [model.protocol, model.baseUrl, model.path]), [
+        ['chat-completions', baseUrl, '/chat/completions'], ['messages', input.models[1].baseUrl, '/v1/messages'],
+      ]);
+      const routes = saved.models.map(model => model.routeId);
+      // A compatible older caller may omit per-model routes on a metadata-only edit.
+      const renamed = await api('providers', revision(saved, { name: '共享身份，独立模型协议', presetId: 'custom' }));
+      assert.equal(renamed.status, 200, JSON.stringify(renamed.value));
+      saved = renamed.value;
+      assert.deepEqual(saved.models.map(model => model.protocol), ['chat-completions', 'messages']);
+      assert.deepEqual(saved.models.map(model => model.routeId), routes);
+      assert.equal(saved.protocol, 'chat-completions'); assert.equal(saved.baseUrl, baseUrl);
+      for (const model of saved.models)
+        assert.equal((await api(`connections/${model.connectionId}/credential`, { version: model.version })).value.value, key);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === input.providerId), saved);
+    });
+
+    await t.test('unknown models persist 256K/64K fallbacks while explicit capacities survive later edits and restart', async () => {
+      const input = provider(baseUrl);
+      input.models[1].contextWindow = 2 * 1024 * 1024;
+      input.models[1].maxOutputTokens = 1024 * 1024;
+      let saved = await save(input);
+      const capacities = value => value.models.map(model => [model.contextWindow, model.maxOutputTokens]);
+      assert.deepEqual(capacities(saved), [[262144, 65536], [2097152, 1048576]]);
+      saved = await save(revision(saved, { name: '只改名称' }));
+      assert.deepEqual(capacities(saved), [[262144, 65536], [2097152, 1048576]]);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+    });
+
     await t.test('independent model switches survive parent disable/restore and block pending dispatch', async () => {
       let saved = await save(provider(baseUrl));
       const [a, b] = saved.models;
@@ -200,6 +238,27 @@ test('provider lifecycle uses real native storage and SDK dispatch', { timeout: 
       assert.equal((await api(`connections/${upgraded.models[1].connectionId}/credential`, { version: 1 })).value.value, key);
       upgraded = await save(revision(upgraded, { name: '重启后仍可保存' }));
       assert.equal(upgraded.version, 2);
+    });
+
+    await t.test('metadata-only legacy saves preserve absent effort; explicitly choosing model default clears the legacy thinking mode', async () => {
+      const old = { requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '旧版思考配置',
+        protocol: 'chat-completions', baseUrl: 'https://api.deepseek.com/v1', path: '/chat/completions', modelId: 'deepseek-flash',
+        dialect: 'deepseek', parameterMode: 'thinking', enabled: true, credential: { action: 'replace', value: key } };
+      const created = await api('connections', old);
+      assert.equal(created.status, 200, JSON.stringify(created.value));
+      const legacy = (await api('providers')).value.find(item => item.providerId === old.connectionId);
+      const metadataOnly = revision(legacy, { name: '仅修改名称' });
+      metadataOnly.models[0].enabled = legacy.models[0].enabled;
+      delete metadataOnly.models[0].reasoningEffort;
+      let saved = await save(metadataOnly);
+      assert.equal(saved.models[0].reasoningEffort, undefined);
+      assert.equal(saved.models[0].parameterMode, 'thinking');
+      assert.equal(saved.models[0].dialect, 'deepseek');
+      const explicit = revision(saved);
+      explicit.models[0].reasoningEffort = 'auto';
+      saved = await save(explicit);
+      assert.equal(saved.models[0].reasoningEffort, 'auto');
+      assert.equal(saved.models[0].parameterMode, 'plain');
     });
 
     for (const scope of ['model', 'provider']) await t.test(`a disabled ${scope} cannot be selected through an existing valid grant`, async () => {
