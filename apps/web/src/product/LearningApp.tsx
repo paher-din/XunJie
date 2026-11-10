@@ -24,11 +24,12 @@ import { TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
-import { startSchoolAuthorization } from './school-authorization'
+import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
+  type PendingSchoolConnection } from './school-authorization'
 
 
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
-type PendingConnection = { requestId: string; authorizationUrl: string; connectionId?: string }
+type PendingConnection = PendingSchoolConnection
 type CreateCourseActivity = { requestId: string; releaseId: string }
 const messages: Record<string, string> = {
   forbidden: '访问资格已失效，请重新登录或联系学校管理员。原活动仍属于原空间。',
@@ -40,7 +41,7 @@ const messages: Record<string, string> = {
 }
 async function requestLearning(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
   const request = () => sendLearningRequest(path, body, key, signal, namespace)
-  return path === 'client/start' ? startSchoolAuthorization(body, request) : request()
+  return path === 'client/start' ? startSchoolAuthorization(body, request, namespace ?? '') : request()
 }
 async function sendLearningRequest(path: string, body?: unknown, key?: string, signal?: AbortSignal, namespace?: string): Promise<unknown> {
   // Course coordination includes several authenticated owner calls; timeout still leaves the original request queryable.
@@ -149,6 +150,23 @@ function LearningView() {
   const authEpoch = useRef(0)
   const currentView = useRef({ context, key, opened })
   currentView.current = { context, key, opened }
+  useEffect(() => {
+    if (!context || context.profile === 'school') return
+    const params = new URLSearchParams(location.search)
+    const returned = params.get('schoolAuthorization')
+    const pending = restoreSchoolConnection(context.clientNamespace, returned)
+    setPendingConnection(pending)
+    if (returned) {
+      if (!pending) toast.error('学校认证请求已过期或不属于此客户端，请重新填写学校链接。')
+      else rememberSchoolConnection(context.clientNamespace, pending)
+      params.delete('schoolAuthorization')
+      navigate({ pathname: route.pathname, search: params.toString() }, { replace: true })
+    }
+  }, [context?.clientNamespace, context?.profile])
+  function rememberPendingConnection(pending: PendingConnection | null) {
+    if (context) rememberSchoolConnection(context.clientNamespace, pending)
+    setPendingConnection(pending)
+  }
   const workspace = useRef<ActivityWorkspaceHandle>(null)
   async function protectActivity() {
     if (!currentView.current.opened) return
@@ -608,8 +626,20 @@ function LearningView() {
     setError(''); setSchoolFormOpen(true)
     requestAnimationFrame(() => section?.querySelector<HTMLInputElement>('.product-school-connect-form input')?.focus())
   }
+  async function authenticateSchoolClient() {
+    if (!authorize) return false
+    const returnUrl = schoolAuthorizationReturnUrl(authorize, new URLSearchParams(location.search).get('returnTo'))
+    await api('connections/approve', { requestId: authorize })
+    if (returnToSchoolClient(returnUrl)) return true
+    const params = new URLSearchParams(location.search)
+    params.delete('authorize'); params.delete('returnTo')
+    navigate({ pathname: route.pathname, search: params.toString() }, { replace: true })
+    setNotice('学校认证已完成，请返回原客户端完成连接。')
+    return false
+  }
   const schoolConnectionForm = pendingConnection ? <div className="product-school-pending">
-    <p role="status">{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
+    <p role="status">{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : pendingConnection.authenticated
+      ? '学校认证已完成，点击下方按钮完成连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
     <div className="product-school-actions">
       <button type="button" className="primary" disabled={busy} onClick={() => void action(async generation => {
         let connectionId = pendingConnection.connectionId
@@ -617,17 +647,17 @@ function LearningView() {
           const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
           if (generation !== epoch.current) return
           connectionId = connection.connectionId
-          setPendingConnection({ ...pendingConnection, connectionId })
+          rememberPendingConnection({ ...pendingConnection, connectionId })
         }
         if (await refreshContext('school:' + connectionId, generation)) {
-          setPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
+          rememberPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
           toast.success('学校已连接。')
         }
       })}>{pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
       {!pendingConnection.connectionId && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
     </div>
     {!pendingConnection.connectionId && <button type="button" className="product-school-text-action" disabled={busy} onClick={event => {
-      setPendingConnection(null); openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))
+      rememberPendingConnection(null); openSchoolForm(event.currentTarget.closest<HTMLElement>('.product-school'))
     }}>重新填写学校链接</button>}
   </div> : schoolFormOpen ? <form className="product-school-form product-school-connect-form" onSubmit={event => { event.preventDefault(); void action(async () => {
     const request = schoolStartRequest.current?.schoolEndpoint === schoolEndpoint
@@ -635,7 +665,7 @@ function LearningView() {
     schoolStartRequest.current = request
     const pending = await api('client/start', request) as PendingConnection
     schoolStartRequest.current = null
-    setPendingConnection(pending)
+    rememberPendingConnection(pending)
   }) }}>
     <label>学校链接<TextInput type="url" autoComplete="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
     <div className="product-school-actions">
@@ -753,12 +783,23 @@ function LearningView() {
   }
   if (schoolLoginRequired) return <SessionLogin entryRole="student" loginName={loginName} password={password}
     busy={busy} logoutFailed={false} accountRef={schoolAccount}
-    description={authorize ? '使用学校账号登录，然后批准这台客户端的连接。' : '使用学校账号登录，继续你的学习。'}
+    description={authorize ? '使用学校账号登录并认证，完成后将返回客户端。' : '使用学校账号登录，继续你的学习。'}
+    submitLabel={authorize ? '登录并认证' : undefined}
     onLoginNameChange={setLoginName} onPasswordChange={setPassword}
     onSubmit={() => void action(async generation => {
       ++authEpoch.current
       await api('login', { loginName, password }); if (generation !== epoch.current) return
-      setPassword(''); await refreshContext('school', generation)
+      setPassword('')
+      if (authorize) {
+        try { if (await authenticateSchoolClient()) return }
+        catch (cause) {
+          // Refresh establishes the signed-in view and retires the old action
+          // generation. Keep the approval failure visible on that new view.
+          if (await refreshContext('school', generation)) toast.error(errorText(cause))
+          return
+        }
+      }
+      await refreshContext('school', generation)
     })}
     onRetryLogout={() => void action(async generation => { await refreshContext(undefined, generation) })}
     onRestoreSession={() => void action(async generation => { await refreshContext(undefined, generation) })} />
@@ -832,10 +873,10 @@ function LearningView() {
     : <>
       {(context.readOnly || authorize || pendingRequest || coursePending) && <div className="content product-home-alerts">
         {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
-        {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">连接这台客户端</h2>
-          <p>确认后，此客户端可以使用你在本学校的学习活动。你可以随时撤销连接。</p>
+        {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">学校认证</h2>
+          <p>使用当前学校账号认证，完成后返回客户端连接学校。</p>
           <button type="button" className="primary" disabled={busy || !context.identities.some(item => item.key === 'school')}
-            onClick={() => void action(async () => { await api('connections/approve', { requestId: authorize }); setNotice('连接已批准，请返回原客户端完成连接。') })}>允许连接</button>
+            onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button>
         </section>}
         {pendingRequest && <p role="status">上次发起的学习尚未确认。 <button type="button" className="outline" onClick={openAgent}>查看原请求</button></p>}
         {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>

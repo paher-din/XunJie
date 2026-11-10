@@ -21,6 +21,11 @@ let finishStart: (response: Response) => void
 let start: Promise<Response>
 const requestId = '00000000-0000-4000-8000-000000000009'
 const authorizationUrl = 'https://school.example.edu/?authorize=' + requestId
+const returnedAuthorizationUrl = () => {
+  const url = new URL(authorizationUrl)
+  url.searchParams.set('returnTo', new URL('/?settings=account&schoolAuthorization=' + requestId, location.origin).href)
+  return url.href
+}
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 const settle = async () => { for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setTimeout(resolve, 0)) }
 const pending = () => response({ requestId, connectionId: requestId, schoolEndpoint: 'https://school.example.edu', authorizationUrl })
@@ -104,7 +109,7 @@ it('keeps authentication available when the start response contains a reserved c
   await submitSchool()
   await act(async () => { finishStart(pending()); await settle() })
   expect(host.textContent).not.toContain('学校认证已完成')
-  expect(host.querySelector<HTMLAnchorElement>('a')?.href).toBe(authorizationUrl)
+  expect(host.querySelector<HTMLAnchorElement>('a')?.href).toBe(returnedAuthorizationUrl())
   expect(fetch).not.toHaveBeenCalledWith('/api/learning/client/complete', expect.anything())
 })
 
@@ -112,8 +117,8 @@ it('opens authentication only after the school confirms connection preparation',
   await submitSchool()
   expect(window.open).not.toHaveBeenCalled()
   await act(async () => { finishStart(pending()); await settle() })
-  expect(window.open).toHaveBeenCalledExactlyOnceWith(authorizationUrl, '_blank', 'noopener,noreferrer')
-  expect(host.querySelector<HTMLAnchorElement>('a')?.href).toBe(authorizationUrl)
+  expect(window.open).toHaveBeenCalledExactlyOnceWith(returnedAuthorizationUrl(), '_blank', 'noopener,noreferrer')
+  expect(host.querySelector<HTMLAnchorElement>('a')?.href).toBe(returnedAuthorizationUrl())
 })
 
 it.each([400, 403, 503])('stays on the editable form without opening a window when preparation returns HTTP %s', async status => {

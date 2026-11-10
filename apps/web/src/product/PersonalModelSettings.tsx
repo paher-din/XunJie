@@ -76,7 +76,16 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     }
     finally { if (live.current && visible) setLoading(false) }
   }, [request])
-  useEffect(() => { void reload(true); const timer = setInterval(() => { void reload() }, 1000); return () => clearInterval(timer) }, [reload])
+  useEffect(() => {
+    if (!modelsVisible) return
+    void reload(true)
+    const timer = setInterval(() => { void reload() }, 1000)
+    return () => {
+      clearInterval(timer)
+      // A response started in the model pane cannot notify another settings pane.
+      appliedRead.current = ++reads.current
+    }
+  }, [reload, modelsVisible])
   const check = async (source: ModelCheckInput['source']) => {
     const attemptId = crypto.randomUUID()
     const accepted = modelAttemptSchema.parse(await request('checks', { attemptId, purpose: 'connection-check', source,
@@ -169,8 +178,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} /></div>
       <div className="product-personal-model">
-      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={actionError?.message ?? ''}
-      recoveryError={[loadError, selection.error].filter(Boolean).join('；')}
+      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
+      recoveryError={modelsVisible ? [loadError, selection.error].filter(Boolean).join('；') : ''}
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
       schoolModels={selection.selection?.options.filter(choice => choice.kind === 'school') ?? []}
       onSchoolCheck={choice => void act('school-check', '检查学校模型', () => check({ school: { connectionId: choice.connection.connectionId, version: choice.connection.version } }))}

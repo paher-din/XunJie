@@ -11,6 +11,7 @@ export interface SessionLoginProps {
   logoutFailed: boolean
   notice?: string | null
   description?: ReactNode
+  submitLabel?: string
   accountRef?: RefObject<HTMLInputElement | null>
   previewLink?: ReactNode
   onRoleChange?: (role: EntryRole) => void
@@ -22,7 +23,7 @@ export interface SessionLoginProps {
 }
 
 /** 登录界面只呈现状态并传递输入；认证和会话由宿主处理。 */
-export function SessionLogin({ entryRole, loginName, password, busy, logoutFailed, notice, description, accountRef, previewLink,
+export function SessionLogin({ entryRole, loginName, password, busy, logoutFailed, notice, description, submitLabel = '登录', accountRef, previewLink,
   onRoleChange, onLoginNameChange, onPasswordChange, onSubmit, onRetryLogout, onRestoreSession }: SessionLoginProps) {
   useToastFeedback(notice, 'info')
   return <main className="session-entry">
@@ -37,15 +38,15 @@ export function SessionLogin({ entryRole, loginName, password, busy, logoutFaile
       </div>}
       <form onSubmit={event => { event.preventDefault(); if (!busy && !logoutFailed) onSubmit() }}>
         <label htmlFor="session-account">账号</label>
-        <input ref={accountRef} id="session-account" name="username" autoComplete="username"
+        <input className="st-input" ref={accountRef} id="session-account" name="username" autoComplete="username"
           required maxLength={128} value={loginName} disabled={busy || logoutFailed}
           onChange={event => onLoginNameChange(event.target.value)} />
         <label htmlFor="session-password">密码</label>
-        <input id="session-password" name="password" type="password" autoComplete="current-password"
+        <input className="st-input" id="session-password" name="password" type="password" autoComplete="current-password"
           required maxLength={1024} value={password} disabled={busy || logoutFailed}
           onChange={event => onPasswordChange(event.target.value)} />
         {busy && <div role="status" className="session-notice">正在核对登录状态…</div>}
-        <button className="primary" type="submit" disabled={busy || logoutFailed}>{busy ? '请稍候…' : '登录'}</button>
+        <button className="primary" type="submit" disabled={busy || logoutFailed}>{busy ? '请稍候…' : submitLabel}</button>
       </form>
       {logoutFailed
         ? <button type="button" onClick={onRetryLogout}>重试退出</button>

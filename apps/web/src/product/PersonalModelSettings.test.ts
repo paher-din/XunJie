@@ -88,15 +88,41 @@ it('refreshes model information when the model pane is entered, while hidden set
     await settle()
   })
   const requests = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/models/directory'))
+  const configurations = () => vi.mocked(fetch).mock.calls.filter(([url]) => /\/models\/(providers|checks)$/.test(String(url)))
   expect(requests()).toHaveLength(0)
+  expect(configurations()).toHaveLength(0)
+  await poll()
+  expect(configurations()).toHaveLength(0)
   const pane = document.querySelector('section')!
   await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
   expect(requests().some(([, init]) => JSON.parse(init!.body as string).refresh === true)).toBe(true)
+  expect(configurations()).toHaveLength(2)
   const before = requests().length
   await act(async () => { pane.hidden = true; pane.dataset.settingsSection = 'account'; await settle() })
+  const beforeConfigurations = configurations().length
+  await poll()
+  expect(configurations()).toHaveLength(beforeConfigurations)
   expect(requests()).toHaveLength(before)
   await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
   expect(requests().length).toBeGreaterThan(before)
+})
+
+it('does not notify the account pane when a model read fails after leaving model settings', async () => {
+  await act(async () => { root.render(null); await settle() })
+  let release!: () => void
+  holdRead = new Promise(resolve => { release = resolve })
+  await act(async () => {
+    root.render(createElement(Fragment, null, createElement(feedback.Toaster),
+      createElement('section', { 'data-settings-section': 'models' },
+        createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection }))))
+    await settle()
+  })
+  const pane = document.querySelector('section')!
+  await act(async () => { pane.hidden = true; pane.dataset.settingsSection = 'account'; await settle() })
+  readFailure = true
+  await act(async () => { release(); await settle() })
+  holdRead = undefined
+  expect(alerts()).not.toContain('连接或相应适配器不可用')
 })
 
 beforeAll(async () => {
