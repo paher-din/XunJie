@@ -99,7 +99,7 @@ it.each([false, true])('refreshes an activity after a global toggle while retain
   expect(extraCheckbox().disabled).toBe(false)
   expect(draft.capture().skills).toEqual(explicit ? [pin(sourceV1)] : undefined)
   await act(async () => { extraCheckbox().click(); await settle() })
-  expect(draft.capture().skills).toEqual(explicit ? [pin(sourceV1), pin(extra)] : [pin(sourceV2)])
+  expect(draft.capture().skills).toEqual(explicit ? [pin(sourceV1), pin(extra)] : [pin(extra)])
   expect(host.querySelector('textarea')).toBe(textarea)
   expect(draft.snapshot().question).toBe('保留原问题和选择位置')
 })

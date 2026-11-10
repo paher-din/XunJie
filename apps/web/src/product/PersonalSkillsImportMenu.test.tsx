@@ -24,7 +24,7 @@ const render = async () => {
 }
 afterEach(() => { toast.dismiss(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
-it('replaces the menu with a GitHub form and retains the address after Escape', async () => {
+it('retains the GitHub form through exit and can reopen before exit finishes without losing the address', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ skills: [], selections: [] })))
   const { host, root } = await render()
   try {
@@ -39,9 +39,20 @@ it('replaces the menu with a GitHub form and retains the address after Escape', 
     })
     expect(Array.from(dialog.querySelectorAll('button')).map(button => button.textContent)).toEqual(['导入'])
     await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await settle() })
-    expect(host.querySelector('[role="dialog"]')).toBeNull()
+    expect(host.querySelector('[role="dialog"]')).toBe(dialog)
+    expect(dialog.getAttribute('aria-hidden')).toBe('true')
+    expect(dialog.hasAttribute('inert')).toBe(true)
+    const trigger = host.querySelector<HTMLButtonElement>('[aria-haspopup]')!
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(trigger)
     await click(host, '导入 Skill'); await click(host, 'GitHub 导入')
     expect(host.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!.value).toBe('https://github.com/example/skills')
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 160)) })
+    expect(host.querySelector('[role="dialog"]')?.hasAttribute('inert')).toBe(false)
+    await act(async () => { document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })); await settle() })
+    expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-hidden')).toBe('true')
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 160)) })
+    expect(host.querySelector('.st-action-menu-popup')).toBeNull()
   } finally { await act(async () => { root.unmount(); await settle() }); host.remove() }
 })
 

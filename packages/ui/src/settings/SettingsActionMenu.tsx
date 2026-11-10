@@ -17,12 +17,22 @@ export function SettingsActionMenu({ label, icon, items, disabled = false, open:
 }) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen ?? internalOpen
+  const [present, setPresent] = useState(open), [retainedPanel, setRetainedPanel] = useState(panel)
+  const visiblePanel = open ? panel : retainedPanel
   const setOpen = (next: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(next)
     onOpenChange?.(next)
   }
   const root = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null), menuId = useId()
   const enabledItems = () => Array.from(root.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])
+  useEffect(() => {
+    if (open) { setPresent(true); setRetainedPanel(panel) }
+  }, [open, panel])
+  useEffect(() => {
+    if (open || !present) return
+    const timer = window.setTimeout(() => { setPresent(false); setRetainedPanel(undefined) }, 140)
+    return () => window.clearTimeout(timer)
+  }, [open, present])
   useEffect(() => {
     if (!open) return
     enabledItems()[0]?.focus()
@@ -47,9 +57,11 @@ export function SettingsActionMenu({ label, icon, items, disabled = false, open:
   return <div className="st-action-menu" ref={root}>
     <button ref={trigger} type="button" className="outline st-action-menu-trigger" disabled={disabled}
       aria-haspopup={panel ? 'dialog' : 'menu'} aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={() => setOpen(!open)}>{icon}{label}</button>
-    {open && <div id={menuId} role={panel ? 'dialog' : 'menu'} aria-label={panel ? panelLabel ?? label : label}
-      className={'st-action-menu-popup' + (panel ? ' st-action-menu-panel' : '')} onKeyDown={keyDown}>
-      {panel ?? items.map(item => <button type="button" role="menuitem" className="st-action-menu-item" key={item.id} disabled={item.disabled}
+    {(open || present) && <div id={menuId} role={visiblePanel ? 'dialog' : 'menu'} aria-label={visiblePanel ? panelLabel ?? label : label}
+      aria-hidden={!open || undefined} inert={!open} data-state={open ? 'open' : 'closed'}
+      className={'st-action-menu-popup' + (visiblePanel ? ' st-action-menu-panel' : '')} onKeyDown={keyDown}>
+      {visiblePanel ?? items.map((item, index) => <button type="button" role="menuitem" className="st-action-menu-item" key={item.id} disabled={item.disabled}
+        style={{ animationDelay: `${Math.min(30 + index * 35, 100)}ms` }}
         onClick={() => { if (!item.keepOpen) setOpen(false); item.onSelect() }}>{item.icon}<span>{item.label}</span></button>)}
     </div>}
   </div>

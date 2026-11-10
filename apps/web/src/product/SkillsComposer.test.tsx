@@ -27,6 +27,34 @@ afterEach(async () => {
   host.remove(); vi.useRealTimers(); vi.unstubAllGlobals()
 })
 
+it('pins only the chosen version without treating global defaults or an empty pin list as disabled skills', async () => {
+  const key = crypto.randomUUID(), first = { skillId: crypto.randomUUID(), version: 1 }, second = { skillId: crypto.randomUUID(), version: 2 }
+  const draft = new ReliableQuestionDraft(key, { read: async () => ({ draftId: crypto.randomUUID(), revision: 0, revisionId: null, question: '', references: [] }),
+    receipt: async () => null, sync: vi.fn() })
+  await draft.open(); draft.suspend(); cleanup.push(() => draft.dispose())
+  const state = { receivers: [], ready: true, active: true, items: [] }
+  const actions = { subscribe: () => () => {}, snapshot: () => state } as unknown as ReliableActions
+  await act(async () => {
+    root.render(createElement(DraftReferencesProvider, { workspaceKey: key, draft, actions,
+      skillCatalog: { options: [{ ...first, name: '全局技能', description: '保持可用' }, { ...second, name: '固定技能', description: '本次固定版本' }],
+        defaults: [first, second], loading: false, error: '', reload() {} }, children: createElement(WorkspaceReferenceComposer) })); await settle()
+  })
+  await act(async () => { host.querySelector('button')!.click(); await settle() })
+  const boxes = host.querySelectorAll<HTMLInputElement>('.wr-skills input')
+  expect(Array.from(boxes).map(input => input.checked)).toEqual([false, false])
+  expect(draft.capture().skills).toBeUndefined()
+  await act(async () => { boxes[1].click(); await settle() })
+  expect(draft.capture().skills).toEqual([second])
+  expect(host.textContent).toContain('已固定 1 个版本')
+  await act(async () => { boxes[1].click(); await settle() })
+  expect(draft.capture().skills).toEqual([])
+  expect(host.querySelector('.wr-skills > summary')?.textContent).toContain('使用已启用技能')
+  await act(async () => {
+    Array.from(host.querySelectorAll('button')).find(button => button.textContent === '取消版本固定')!.click(); await settle()
+  })
+  expect(draft.capture().skills).toBeUndefined()
+})
+
 it('keeps the same composing textarea, caret and focus while catalog changes, and edits pins without replacing the controller', async () => {
   const key = crypto.randomUUID(), skill = { skillId: crypto.randomUUID(), version: 1 }
   const draft = new ReliableQuestionDraft(key, { read: async () => ({ draftId: crypto.randomUUID(), revision: 0, revisionId: null, question: '', references: [] }),

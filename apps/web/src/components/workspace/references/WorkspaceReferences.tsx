@@ -197,10 +197,9 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
   const { skills, draftReady, readOnly, viewActive = true } = useWorkspaceReferences()
   const pointerInput = useRef<{ input: HTMLTextAreaElement; start: number; end: number; direction: 'forward' | 'backward' | 'none' } | null>(null)
   if (!skills) return null
+  const pinned = skills.explicit === false ? [] : skills.selected
   const known = new Set(skills.options.map(item => `${item.skillId}:${item.version}`))
-  const unknown = skills.selected.filter(item => !known.has(`${item.skillId}:${item.version}`))
-  const selectedCount = skills.selected.length + skills.options.filter(option => option.fixed
-    && !skills.selected.some(item => item.skillId === option.skillId && item.version === option.version)).length
+  const unknown = pinned.filter(item => !known.has(`${item.skillId}:${item.version}`))
   return <details className="wr-skills" onPointerDownCapture={event => {
     pointerInput.current = null
     const input = inputRef.current
@@ -221,29 +220,29 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
       // Keep the pointer snapshot until that control click has also completed.
       if ((event.target as Element).closest('input,button,summary')) pointerInput.current = null
     }}>
-    <summary>本次问题的 Skills{skills.explicit === false ? ' · 按范围设置'
-      : selectedCount ? ` · 已选 ${selectedCount}` : ' · 未选择'}</summary>
+    <summary>本次问题的 Skills{pinned.length ? ` · 已固定 ${pinned.length} 个版本` : ' · 使用已启用技能'}</summary>
     {skills.loading && <p className="wr-hint" role="status">正在读取 Skills…</p>}
     {skills.error && <p className="wr-notice" role="alert">{skills.error}</p>}
-    {!skills.loading && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可选 Skill，可在个人设置中导入并配置范围。</p>}
+    {!skills.loading && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可用 Skill，可在 Agent 个性化中导入并启用。</p>}
+    {skills.options.length > 0 && <p className="wr-hint">勾选可固定本次使用的版本，其他已启用技能仍可按需使用。</p>}
     {skills.options.map(option => {
-      const checked = option.fixed || skills.selected.some(item => item.skillId === option.skillId && item.version === option.version)
+      const checked = option.fixed || pinned.some(item => item.skillId === option.skillId && item.version === option.version)
       return <label className="wr-skill-option" key={`${option.skillId}:${option.version}`}>
-        <input type="checkbox" checked={checked} disabled={readOnly || !draftReady || skills.loading || !!skills.error || option.fixed || !!option.unavailable && !checked}
+        <input type="checkbox" aria-label={`固定 ${option.name} v${option.version}`} checked={checked} disabled={readOnly || !draftReady || skills.loading || !!skills.error || option.fixed || !!option.unavailable && !checked}
           onChange={event => skills.choose(event.target.checked
-            ? [...skills.selected.filter(item => item.skillId !== option.skillId), { skillId: option.skillId, version: option.version }]
-            : skills.selected.filter(item => item.skillId !== option.skillId))} />
+            ? [...pinned.filter(item => item.skillId !== option.skillId), { skillId: option.skillId, version: option.version }]
+            : pinned.filter(item => item.skillId !== option.skillId))} />
         <span><strong>{option.name} · v{option.version}</strong><small>{option.description}</small>
           {option.fixed && <small>课程固定选用</small>}
           {option.unavailable && <small>{option.unavailable}</small>}</span>
       </label>
     })}
     {unknown.map(option => <label className="wr-skill-option" key={`${option.skillId}:${option.version}`}>
-      <input type="checkbox" checked disabled={readOnly || !draftReady || skills.loading || !!skills.error} onChange={() => skills.choose(skills.selected.filter(item => item.skillId !== option.skillId))} />
-      <span>已选 Skill · v{option.version}<small>原版本暂时无法读取；选择仍保留。</small></span>
+      <input type="checkbox" checked disabled={readOnly || !draftReady || skills.loading || !!skills.error} onChange={() => skills.choose(pinned.filter(item => item.skillId !== option.skillId))} />
+      <span>固定 Skill · v{option.version}<small>原版本暂时无法读取；固定选择仍保留。</small></span>
     </label>)}
     <button type="button" disabled={skills.loading} onClick={skills.reload}>重新读取 Skills</button>
-    {skills.explicit && <button type="button" disabled={readOnly || !draftReady || skills.loading || !!skills.error} onClick={() => skills.choose()}>使用范围设置</button>}
+    {skills.explicit && <button type="button" disabled={readOnly || !draftReady || skills.loading || !!skills.error} onClick={() => skills.choose()}>取消版本固定</button>}
   </details>
 }
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
