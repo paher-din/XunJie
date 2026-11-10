@@ -17,7 +17,7 @@ import { ProductConversation } from './ProductConversation'
 import { ProductConversationHistory, conversationTitle, useConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { ProductProfile } from './ProductProfile'
-import { Button, ConfirmationDialog } from '@xunjie/ui/foundation'
+import { Button, ConfirmationDialog, SessionLogin } from '@xunjie/ui/foundation'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { Icon } from '@xunjie/ui/icons'
 import { TextInput } from '@xunjie/ui/settings'
@@ -129,6 +129,7 @@ function LearningView() {
   const [reference, setReference] = useState('')
   const [loginName, setLoginName] = useState('')
   const [password, setPassword] = useState('')
+  const schoolAccount = useRef<HTMLInputElement>(null)
   const [schoolEndpoint, setSchoolEndpoint] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
   const [schoolFormOpen, setSchoolFormOpen] = useState(false)
@@ -201,6 +202,8 @@ function LearningView() {
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
   const identity = context?.identities.find(item => item.key === key)?.identity
+  const schoolLoginRequired = context?.profile === 'school' && !context.identities.some(item => item.key === 'school')
+  useEffect(() => { if (schoolLoginRequired) schoolAccount.current?.focus() }, [schoolLoginRequired])
   const modelSelection = useModelSelection(identity, key, context?.clientNamespace ?? '')
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
   const conversationHistory = useConversationHistory(pendingKey ? pendingKey + ':conversation-archive' : '', key,
@@ -679,13 +682,7 @@ function LearningView() {
           setKey(nextKey)
           setReload(value => value + 1)
         }
-      })}>退出学校登录</button></div> : context.profile === 'school' && <form className="product-school-form" onSubmit={event => { event.preventDefault(); void action(async generation => {
-        ++authEpoch.current
-        await api('login', { loginName, password }); if (generation !== epoch.current) return
-        setPassword(''); await refreshContext('school', generation)
-      }) }}><label>学校账号<TextInput autoComplete="username" required value={loginName} onChange={event => setLoginName(event.target.value)} /></label>
-        <label>密码<TextInput type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
-        <button type="submit" className="primary" disabled={busy}>登录此学校</button></form>}
+      })}>退出学校登录</button></div> : null}
     </section>
   const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
   const visibleRelease = release?.courseId === selectedCourseId ? release : null
@@ -754,6 +751,18 @@ function LearningView() {
     })
     return saved
   }
+  if (schoolLoginRequired) return <SessionLogin entryRole="student" loginName={loginName} password={password}
+    busy={busy} logoutFailed={false} accountRef={schoolAccount}
+    description={authorize ? '使用学校账号登录，然后批准这台客户端的连接。' : '使用学校账号登录，继续你的学习。'}
+    onLoginNameChange={setLoginName} onPasswordChange={setPassword}
+    onSubmit={() => void action(async generation => {
+      ++authEpoch.current
+      await api('login', { loginName, password }); if (generation !== epoch.current) return
+      setPassword(''); await refreshContext('school', generation)
+    })}
+    onRetryLogout={() => void action(async generation => { await refreshContext(undefined, generation) })}
+    onRestoreSession={() => void action(async generation => { await refreshContext(undefined, generation) })} />
+
   return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} identityName={identity?.name ?? '学习空间'}
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}

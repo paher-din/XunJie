@@ -27,7 +27,8 @@ let profile: 'local' | 'school', connected: boolean, failStart: boolean, failRef
 let starts: Array<{ requestId: string; schoolEndpoint: string }>
 let revoked: Array<{ space: string; connectionId: string }>
 let waitForRevoke: Promise<void> | null
-let activityAvailable: boolean
+let activityAvailable: boolean, failLogin: boolean
+let approvals: Array<{ requestId: string }>
 const personal = { environmentId: '00000000-0000-4000-8000-000000000001', spaceId: '00000000-0000-4000-8000-000000000002', principalId: '00000000-0000-4000-8000-000000000003', kind: 'personal', name: '个人学习空间' }
 const school = { environmentId: '00000000-0000-4000-8000-000000000004', spaceId: '00000000-0000-4000-8000-000000000005', principalId: '00000000-0000-4000-8000-000000000006', kind: 'school', name: '示例学校' }
 const activity = { activityId: '00000000-0000-4000-8000-000000000007', identity: personal,
@@ -70,6 +71,7 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
   vi.spyOn(window, 'open').mockReturnValue(null)
   profile = 'local'; connected = false; failStart = false; failRefresh = false; failRevoke = false; connectionRequest = ''; completeCalls = 0; starts = []; revoked = []; waitForRevoke = null; activityAvailable = false
+  failLogin = false; approvals = []
   localStorage.clear(); sessionStorage.clear()
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
@@ -103,7 +105,11 @@ beforeEach(() => {
       connected = false
       return response({})
     }
-    if (route === 'login') { connected = true; return response({}) }
+    if (route === 'login') {
+      if (failLogin) return response({ error: 'forbidden' }, 403)
+      connected = true; return response({})
+    }
+    if (route === 'connections/approve') { approvals.push(JSON.parse(options.body as string)); return response({}) }
     throw new Error('Unexpected route ' + route)
   }))
 })
@@ -145,15 +151,54 @@ it('keeps the old school link on the account page and makes connection errors an
   expect(host.textContent).toContain('已连接')
 })
 
-it('keeps school sign-in available on the account page before an identity exists', async () => {
+it('uses the shared login page before a school identity exists, then opens the requested account page', async () => {
   profile = 'school'
   history.replaceState(null, '', '/?settings=school')
   await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.querySelector('.session-card')).not.toBeNull()
+  expect(host.textContent).toContain('登录学习空间')
+  expect(host.querySelector('[aria-label="登录身份"]')).toBeNull()
+  expect(host.querySelector('.product-school-form')).toBeNull()
   await fill('input[autocomplete="username"]', 'student')
   await fill('input[type="password"]', 'password')
-  await click('登录此学校')
+  await click('登录')
+  expect(host.querySelector('.session-card')).toBeNull()
   expect(host.textContent).toContain('已登录此学校')
   expect(button('退出学校登录')).not.toBeNull()
+})
+
+it('retains the device authorization through sign-in and approves the original request', async () => {
+  profile = 'school'
+  const requestId = '00000000-0000-4000-8000-000000000021'
+  history.replaceState(null, '', '/?authorize=' + requestId)
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  expect(host.textContent).toContain('使用学校账号登录，然后批准这台客户端的连接。')
+  expect(host.textContent).not.toContain('允许连接')
+  await fill('input[autocomplete="username"]', 'student')
+  await fill('input[type="password"]', 'password')
+  await click('登录')
+  expect(new URLSearchParams(location.search).get('authorize')).toBe(requestId)
+  await click('允许连接')
+  expect(approvals).toEqual([{ requestId }])
+  expect(host.querySelector('[data-sonner-toast][data-type="success"]')?.textContent).toContain('连接已批准')
+})
+
+it('keeps the shared login and entered account available after authentication fails', async () => {
+  profile = 'school'; failLogin = true
+  history.replaceState(null, '', '/?authorize=original-request')
+  await act(async () => { root.render(<LearningApp />); await settle() })
+  await fill('input[autocomplete="username"]', 'student')
+  await fill('input[type="password"]', 'wrong-password')
+  await click('登录')
+  expect(host.querySelector('.session-card')).not.toBeNull()
+  expect(host.querySelector<HTMLInputElement>('input[autocomplete="username"]')?.value).toBe('student')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('重新登录')
+  expect(new URLSearchParams(location.search).get('authorize')).toBe('original-request')
+  expect(approvals).toHaveLength(0)
+  failLogin = false
+  await click('登录')
+  expect(host.querySelector('.session-card')).toBeNull()
+  expect(button('允许连接')).not.toBeNull()
 })
 
 it('returns to an unfinished authorization and lets the user correct the school address', async () => {

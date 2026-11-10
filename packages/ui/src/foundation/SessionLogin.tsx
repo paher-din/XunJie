@@ -10,9 +10,10 @@ export interface SessionLoginProps {
   busy: boolean
   logoutFailed: boolean
   notice?: string | null
+  description?: ReactNode
   accountRef?: RefObject<HTMLInputElement | null>
   previewLink?: ReactNode
-  onRoleChange: (role: EntryRole) => void
+  onRoleChange?: (role: EntryRole) => void
   onLoginNameChange: (value: string) => void
   onPasswordChange: (value: string) => void
   onSubmit: () => void
@@ -21,19 +22,19 @@ export interface SessionLoginProps {
 }
 
 /** 登录界面只呈现状态并传递输入；认证和会话由宿主处理。 */
-export function SessionLogin({ entryRole, loginName, password, busy, logoutFailed, notice, accountRef, previewLink,
+export function SessionLogin({ entryRole, loginName, password, busy, logoutFailed, notice, description, accountRef, previewLink,
   onRoleChange, onLoginNameChange, onPasswordChange, onSubmit, onRetryLogout, onRestoreSession }: SessionLoginProps) {
   useToastFeedback(notice, 'info')
   return <main className="session-entry">
     <section className="session-card" aria-labelledby="session-title">
       <XunjieLogo format="horizontal" label="循阶" />
       <h1 id="session-title">登录学习空间</h1>
-      <p>{entryRole === 'teacher' ? '使用教师账号登录，查看任教课程与固定活动。' : '使用课程提供的账号登录，继续打开获准的任务。'}</p>
-      <div className="st-seg session-role-switch" role="group" aria-label="登录身份">
+      <p>{description ?? (entryRole === 'teacher' ? '使用教师账号登录，查看任教课程与固定活动。' : '使用课程提供的账号登录，继续打开获准的任务。')}</p>
+      {onRoleChange && <div className="st-seg session-role-switch" role="group" aria-label="登录身份">
         {(['student', 'teacher'] as const).map(role => <button key={role} type="button"
           className={`st-seg-item${entryRole === role ? ' active' : ''}`} aria-pressed={entryRole === role}
           disabled={busy || logoutFailed} onClick={() => onRoleChange(role)}>{role === 'student' ? '学生' : '教师'}</button>)}
-      </div>
+      </div>}
       <form onSubmit={event => { event.preventDefault(); if (!busy && !logoutFailed) onSubmit() }}>
         <label htmlFor="session-account">账号</label>
         <input ref={accountRef} id="session-account" name="username" autoComplete="username"

@@ -117,8 +117,8 @@ function ProfileDemo({ empty = false }: { empty?: boolean }) {
 }
 function ProfilePopulated() { return <ProfileDemo /> }
 function ProfileEmpty() { return <ProfileDemo empty /> }
-function LoginDemo({ initialRole = 'student', initialBusy = false, initialLogoutFailed = false, initialNotice = '' }: {
-  initialRole?: EntryRole; initialBusy?: boolean; initialLogoutFailed?: boolean; initialNotice?: string
+function LoginDemo({ initialRole = 'student', initialBusy = false, initialLogoutFailed = false, initialNotice = '', school = false }: {
+  initialRole?: EntryRole; initialBusy?: boolean; initialLogoutFailed?: boolean; initialNotice?: string; school?: boolean
 }) {
   const [role, setRole] = useState<EntryRole>(initialRole)
   const [loginName, setLoginName] = useState(initialRole === 'student' ? 'sample-student' : 'sample-teacher')
@@ -128,7 +128,9 @@ function LoginDemo({ initialRole = 'student', initialBusy = false, initialLogout
   const [notice, setNotice] = useState(initialNotice)
   return <div className="demo-login"><div className="demo-login-controls"><Button type="button" variant="outline" onClick={() => setBusy(value => !value)}>{busy ? '结束示例等待' : '显示示例等待'}</Button></div>
     <SessionLogin entryRole={role} loginName={loginName} password={password} busy={busy} logoutFailed={logoutFailed} notice={notice}
-      onRoleChange={setRole} onLoginNameChange={setLoginName} onPasswordChange={setPassword}
+      {...(!school ? { onRoleChange: setRole } : {})}
+      description={school ? '使用学校账号登录，然后批准这台客户端的连接。' : undefined}
+      onLoginNameChange={setLoginName} onPasswordChange={setPassword}
       onSubmit={() => setNotice('已触发示例登录；没有连接服务。')}
       onRetryLogout={() => { setLogoutFailed(false); setNotice('已触发示例重试；没有连接服务。') }}
       onRestoreSession={() => setNotice('已触发示例会话读取；没有连接服务。')} />
@@ -136,6 +138,7 @@ function LoginDemo({ initialRole = 'student', initialBusy = false, initialLogout
 }
 function LoginStudent() { return <LoginDemo /> }
 function LoginTeacher() { return <LoginDemo initialRole="teacher" /> }
+function LoginSchool() { return <LoginDemo school /> }
 function LoginBusy() { return <LoginDemo initialBusy /> }
 function LoginNotice() { return <LoginDemo initialNotice="示例提示：请检查账号和密码。" /> }
 function LoginLogoutFailed() { return <LoginDemo initialLogoutFailed initialNotice="示例提示：退出未完成。" /> }
@@ -439,8 +442,9 @@ export const foundationEntries: CatalogEntry[] = [
   { id: 'profile-card', name: 'ProfileCard', description: '受控的身份、画像及记录资料卡。', importPath: foundation, source: 'packages/ui/src/foundation/ProfileCard.tsx', exampleSource: source, props: ['open, name, avatar, roleLabel, term, roleDetails', 'identity, accountFacts, accountLabel', 'portrait, records', 'onClose, onLogout, onAccountSettings, onEditProfile'], dependencies: ['Radix Dialog Portal；资料和操作由调用方提供'], states: [
     { id: 'populated', name: '完整资料', component: ProfilePopulated, height: 700 }, { id: 'empty', name: '无画像与记录', component: ProfileEmpty, height: 700 },
   ] },
-  { id: 'session-login', name: 'SessionLogin', description: '由调用方控制的学生 / 教师登录界面。', importPath: foundation, source: 'packages/ui/src/foundation/SessionLogin.tsx', exampleSource: source, props: ['entryRole, loginName, password, busy, logoutFailed', 'notice?, accountRef?, previewLink?', '身份与字段变化、提交、重试和恢复回调'], dependencies: ['示例使用合成账号密码，提交只更新本地提示'], states: [
+  { id: 'session-login', name: 'SessionLogin', description: '由调用方控制的学生 / 教师登录界面。', importPath: foundation, source: 'packages/ui/src/foundation/SessionLogin.tsx', exampleSource: source, props: ['entryRole, loginName, password, busy, logoutFailed', 'notice?, description?, accountRef?, previewLink?', 'onRoleChange?：未提供时隐藏身份切换；字段变化、提交、重试和恢复回调'], dependencies: ['示例使用合成账号密码，提交只更新本地提示'], states: [
     { id: 'student', name: '学生', component: LoginStudent, height: 700 }, { id: 'teacher', name: '教师', component: LoginTeacher, height: 700 },
+    { id: 'school', name: '学校认证', component: LoginSchool, height: 700 },
     { id: 'busy', name: '等待', component: LoginBusy, height: 700 }, { id: 'notice', name: '提示', component: LoginNotice, height: 700 },
     { id: 'logout-failed', name: '退出失败', component: LoginLogoutFailed, height: 700 },
   ] },
