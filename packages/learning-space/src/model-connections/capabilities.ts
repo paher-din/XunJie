@@ -12,9 +12,14 @@ export class ModelCapabilityError extends Error {
   }
 }
 
+// Only an explicit effort changes the legacy reasoning wire. Catalog/manual
+// metadata alone does not invalidate evidence for the unchanged legacy request.
+const unmeasuredReasoning = (configuration: ModelConfiguration) => configuration.reasoningEffort !== undefined;
+
 /** Pure decision over the owner's immutable snapshot. Never probes, dispatches or selects another route. */
 export function decideModelCapabilities(connection: ModelConnection, prefix: ModelCapabilityInput['prefix']): ModelCapabilityDecision {
-  const options = prefix.options, evidence = connection.capabilityEvidence;
+  const options = prefix.options, changedReasoning = unmeasuredReasoning(connection);
+  const evidence = changedReasoning ? undefined : connection.capabilityEvidence;
   const limitations = [...(evidence?.limitations ?? [])];
   const required = new Set<ModelCapabilityRequirement>(options?.requiredCapabilities ?? []);
   if (prefix.tools.some(tool => tool.strict)) required.add('strictTools');
@@ -29,7 +34,7 @@ export function decideModelCapabilities(connection: ModelConnection, prefix: Mod
     if (capability === 'applicationSchema') { state = 'verified'; source = 'application-validator'; }
     else if (capability === 'forcedTool') state = limitations.includes('thinking-forced-tool-unsupported') ? 'unsupported'
       : evidence?.testedToolChoice === 'named' ? 'verified' : 'unknown';
-    else state = connection.capabilities[capability === 'nativeStrict' ? 'strictSchema' : capability] ?? 'unknown';
+    else state = changedReasoning ? 'unknown' : connection.capabilities[capability === 'nativeStrict' ? 'strictSchema' : capability] ?? 'unknown';
     if (capability === 'jsonMode' && connection.protocol === 'messages') {
       state = 'unsupported'; source = 'adapter-constraint';
       if (!limitations.includes('messages-json-object-not-supported')) limitations.push('messages-json-object-not-supported');
@@ -62,6 +67,7 @@ export function measuredCapabilities(configuration: ModelConfiguration) {
       modelId: configuration.modelId, protocol: configuration.protocol, parameterMode: configuration.parameterMode,
       testedToolChoice: 'not-tested' as const, toolImageStrategy: 'not-applicable' as const, limitations: ['provider-catalogue-excludes-messages'] },
   };
+  if (unmeasuredReasoning(configuration)) return { capabilities };
   if (configuration.protocol === 'messages' && messagesSdkVersion === '@anthropic-ai/sdk@1.1.0' && messagesAdapterVersion === 'xunjie-messages-native-v1'
     && endpoint === 'https://api.deepseek.com/anthropic/v1/messages' && configuration.modelId === 'deepseek-flash' && configuration.dialect === 'deepseek') {
     const thinking = configuration.parameterMode === 'thinking';

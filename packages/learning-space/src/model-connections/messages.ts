@@ -3,6 +3,7 @@ import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import Anthropic from '@anthropic-ai/sdk';
 import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUpstream } from '@xunjie/contracts/model-connections';
+import { modelReasoningParameters } from '@xunjie/contracts/model-connections';
 import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative, messagesEventSensitiveValues } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
@@ -16,10 +17,12 @@ export const unsupportedMessagesRoute = (configuration: ModelConfiguration) => c
   && configuration.baseUrl.replace(/\/$/, '') + configuration.path === 'https://api.commandcode.ai/provider/v1/messages'
   && configuration.modelId === 'deepseek/deepseek-v4.1-flash';
 export function messagesCheckPayload(configuration: ModelConfiguration, tokens: number): MessagesPayload {
+  let reasoning: Record<string, unknown>;
+  try { reasoning = modelReasoningParameters(configuration, tokens); }
+  catch (error) { if (error instanceof RangeError) throw new StorageError('invalid'); throw error; }
   return { model: configuration.modelId, max_tokens: tokens, stream: true,
     messages: [{ role: 'user', content: 'Reply briefly with OK to check this model connection.' }],
-    ...(configuration.dialect === 'deepseek' ? { thinking: configuration.parameterMode === 'thinking'
-      ? { type: 'enabled' as const, budget_tokens: 1024 } : { type: 'disabled' as const } } : {}) };
+    ...reasoning };
 }
 export async function runMessages(configuration: ModelConfiguration, apiKey: string, payload: MessagesPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools: ModelTool[] = [], applicationSchema?: Record<string, unknown>,

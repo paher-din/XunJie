@@ -80,15 +80,24 @@ const anthropicPart = z.union([textPart, textPart.extend({ citations: z.array(z.
 ]);
 const format = z.union([z.object({ type: z.literal('json_object') }).strict(),
   z.object({ type: z.literal('json_schema'), name: z.string(), schema: jsonObject, strict: z.boolean() }).strict()]);
-const thinking = z.object({ type: z.enum(['enabled', 'disabled']), budget_tokens: z.number().int().positive().optional() }).strict();
+const effort = z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+const chatThinking = z.object({ type: z.enum(['enabled', 'disabled']) }).strict();
+const thinking = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('disabled') }).strict(),
+  z.object({ type: z.literal('adaptive') }).strict(),
+  z.object({ type: z.literal('enabled'), budget_tokens: z.number().int().min(1024) }).strict(),
+]);
 const toolChoice = z.union([z.enum(['auto', 'none']), z.object({ type: z.literal('function'), function: z.object({ name: z.string() }).strict() }).strict()]);
 const nativeRequest = z.union([
-  z.object({ model: z.string(), messages: z.array(chatMessage), max_tokens: z.number().int().positive(), stream: z.literal(true),
-    stream_options: z.object({ include_usage: z.literal(true) }).strict(), thinking: thinking.optional(),
+  z.object({ model: z.string(), messages: z.array(chatMessage), max_tokens: z.number().int().positive().optional(),
+    max_completion_tokens: z.number().int().positive().optional(), stream: z.literal(true),
+    stream_options: z.object({ include_usage: z.literal(true) }).strict(), thinking: chatThinking.optional(),
+    reasoning_effort: effort.optional(), reasoning: z.object({ effort }).strict().optional(), enable_thinking: z.boolean().optional(),
     tools: z.array(z.object({ type: z.literal('function'), function: toolFunction }).strict()).optional(), tool_choice: toolChoice.optional(),
-    response_format: z.union([z.object({ type: z.literal('json_object') }).strict(), z.object({ type: z.literal('json_schema'), json_schema: format.options[1].omit({ type: true }) }).strict()]).optional() }).strict(),
+    response_format: z.union([z.object({ type: z.literal('json_object') }).strict(), z.object({ type: z.literal('json_schema'), json_schema: format.options[1].omit({ type: true }) }).strict()]).optional() }).strict()
+    .refine(value => (value.max_tokens === undefined) !== (value.max_completion_tokens === undefined)),
   z.object({ model: z.string(), input: z.array(responseItem), instructions: z.string().optional(), max_output_tokens: z.number().int().positive(), stream: z.literal(true), store: z.literal(false),
-    reasoning: z.object({ effort: z.enum(['none', 'high']) }).strict().optional(),
+    reasoning: z.object({ effort }).strict().optional(),
     tools: z.array(toolFunction.extend({ type: z.literal('function') })).optional(),
     tool_choice: z.union([z.enum(['auto', 'none']), z.object({ type: z.literal('function'), name: z.string() }).strict()]).optional(),
     text: z.object({ format }).strict().optional() }).strict(),
@@ -96,7 +105,9 @@ const nativeRequest = z.union([
     max_tokens: z.number().int().positive(), stream: z.literal(true), thinking: thinking.optional(),
     tools: z.array(z.object({ name: z.string(), description: z.string(), input_schema: jsonObject, strict: z.boolean().optional() }).strict()).optional(),
     tool_choice: z.union([z.object({ type: z.enum(['auto', 'none']) }).strict(), z.object({ type: z.literal('tool'), name: z.string() }).strict()]).optional(),
-    output_config: z.object({ format: z.object({ type: z.literal('json_schema'), schema: jsonObject }).strict() }).strict().optional() }).strict(),
+    output_config: z.object({ format: z.object({ type: z.literal('json_schema'), schema: jsonObject }).strict().optional(),
+      effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional() }).strict()
+      .refine(value => value.format !== undefined || value.effort !== undefined).optional() }).strict(),
 ]);
 const learningAttempt = modelAttemptSchema.extend({ createdAt: z.iso.datetime() }).refine(value => value.purpose === 'learning');
 const segment = z.object({ segmentId: z.uuid(), formatVersion: z.literal(1), sequence: z.number().int().nonnegative(),

@@ -3,7 +3,7 @@ import type { OwnedStorage, Migration, OwnedTransaction } from '@xunjie/storage'
 import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema, schoolModelInputSchema, schoolModelSchema } from '@xunjie/contracts/model-connections';
-import type { ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
+import type { ModelConfiguration, ModelConnection, ModelCheckPolicy, SaveModelConnection } from '@xunjie/contracts/model-connections';
 import { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
@@ -26,6 +26,8 @@ export { createPairedLearningModels } from './paired-learning.js';
 export type { PairedModelOrigin, PairedLearningOptions, ModelDeviceBinding } from './paired-learning.js';
 import { createModelDeviceTasks, modelDeviceTaskMigration } from './device-tasks.js';
 import { modelTargetFetch, validateModelTarget, type ModelTargetClass } from './network-policy.js';
+import { createModelProviders, modelProviderMigration } from './providers.js';
+import { createModelProfiles } from './profiles.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -51,12 +53,13 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
     source jsonb NOT NULL,body jsonb NOT NULL);
   ALTER TABLE model_paired_grants DROP CONSTRAINT model_paired_grants_kind_check;
   ALTER TABLE model_paired_grants ADD CONSTRAINT model_paired_grants_kind_check CHECK(kind IN ('segment','attempt','pin'));
-` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration];
+` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration, modelProviderMigration];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
 export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void>;
+  catalogueFetch?: typeof fetch;
   /** Recheck live remote authorization immediately before the SDK opens its request. */
   authorizeDispatch?(identity: SpaceIdentity): Promise<void>;
   /** Live check for a running original attempt; MUST bypass any task admission cache. */
@@ -102,40 +105,52 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await options.authorize(identity);
     return persist(scopeOf(identity), value);
   }
-  async function persist(scope: string, value: unknown, policy?: ModelCheckPolicy) {
+  async function writeConnection(tx: OwnedTransaction, scope: string, value: SaveModelConnection, policy?: ModelCheckPolicy, providerWrite = false) {
     const input = saveModelConnectionSchema.parse(value);
     const configuration = modelConfigurationSchema.parse(Object.fromEntries(Object.entries(input).filter(([name]) =>
       !['requestId', 'expectedVersion', 'credential'].includes(name))));
+    if (policy) {
+      const { rows: [existing] } = await tx.query('SELECT id FROM model_connections WHERE scope=$1', [scope]);
+      if (existing && existing.id !== input.connectionId) throw new StorageError('conflict');
+    }
+    const { rows: [row] } = await tx.query('SELECT body FROM model_connections WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, input.connectionId]);
+    const previous = row?.body as StoredConnection | undefined;
+    if (!providerWrite && (previous?.configuration.providerId || configuration.providerId)) throw new StorageError('conflict');
+    if ((previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
+    await validateModelTarget(configuration, policy ? 'school-approved' : targetClass());
+    let credentialRef = previous?.credentialRef ?? null;
+    if (input.credential.action === 'keep' && credentialRef && previous && targetOf(previous.configuration) !== targetOf(configuration))
+      throw new StorageError('conflict');
+    if (input.credential.action === 'clear') credentialRef = null;
+    if (input.credential.action === 'replace') {
+      credentialRef = randomUUID();
+      const binding = JSON.stringify([scope, input.connectionId, input.expectedVersion + 1, targetOf(configuration)]);
+      const sealed = sealCredential(key, binding, input.credential.value);
+      await tx.query('INSERT INTO model_credentials(id,scope,binding,sealed) VALUES($1,$2,$3,$4)', [credentialRef, scope, binding, sealed]);
+    }
+    const saved: StoredConnection = { configuration, version: input.expectedVersion + 1,
+      routeId: previous?.routeId ?? randomUUID(), credentialRef, ...(policy ? { policy } : {}) };
+    await tx.query(`INSERT INTO model_connections VALUES($1,$2,$3,$4) ON CONFLICT(scope,id)
+      DO UPDATE SET version=EXCLUDED.version,body=EXCLUDED.body`, [scope, input.connectionId, saved.version, saved]);
+    await tx.query('INSERT INTO model_versions VALUES($1,$2,$3,$4)', [scope, input.connectionId, saved.version, saved]);
+    return projection(saved);
+  }
+  async function persist(scope: string, value: unknown, policy?: ModelCheckPolicy) {
+    const input = saveModelConnectionSchema.parse(value);
     const receipt = await storage.request({ requestId: input.requestId, fingerprint: digest({ scope, input, policy }) }, async tx => {
-      // One actor lock serializes creation and CAS even before a connection row exists.
+      // The same scope lock serializes legacy writes and complete provider saves.
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + scope]);
-      if (policy) {
-        const { rows: [existing] } = await tx.query('SELECT id FROM model_connections WHERE scope=$1', [scope]);
-        if (existing && existing.id !== input.connectionId) throw new StorageError('conflict');
-      }
-      const { rows: [row] } = await tx.query('SELECT body FROM model_connections WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, input.connectionId]);
-      const previous = row?.body as StoredConnection | undefined;
-      if ((previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
-      await validateModelTarget(configuration, policy ? 'school-approved' : targetClass());
-      let credentialRef = previous?.credentialRef ?? null;
-      if (input.credential.action === 'keep' && credentialRef && previous && targetOf(previous.configuration) !== targetOf(configuration))
-        throw new StorageError('conflict');
-      if (input.credential.action === 'clear') credentialRef = null;
-      if (input.credential.action === 'replace') {
-        credentialRef = randomUUID();
-        const binding = JSON.stringify([scope, input.connectionId, input.expectedVersion + 1, targetOf(configuration)]);
-        const sealed = sealCredential(key, binding, input.credential.value);
-        await tx.query('INSERT INTO model_credentials(id,scope,binding,sealed) VALUES($1,$2,$3,$4)', [credentialRef, scope, binding, sealed]);
-      }
-      const saved: StoredConnection = { configuration, version: input.expectedVersion + 1,
-        routeId: previous?.routeId ?? randomUUID(), credentialRef, ...(policy ? { policy } : {}) };
-      await tx.query(`INSERT INTO model_connections VALUES($1,$2,$3,$4) ON CONFLICT(scope,id)
-        DO UPDATE SET version=EXCLUDED.version,body=EXCLUDED.body`, [scope, input.connectionId, saved.version, saved]);
-      await tx.query('INSERT INTO model_versions VALUES($1,$2,$3,$4)', [scope, input.connectionId, saved.version, saved]);
-      return projection(saved);
+      return writeConnection(tx, scope, input, policy);
     });
     return modelConnectionSchema.parse(receipt.result);
   }
+  const catalogue = createModelProfiles(options.catalogueFetch);
+  const profiles = { async read(identity: SpaceIdentity, value: unknown) { await options.authorize(identity); return catalogue.read(value); } };
+  const providers = createModelProviders(storage, { authorize: options.authorize, project: projection, readCredential,
+    prepare: async input => { await catalogue.read({ baseUrl: input.baseUrl, protocol: input.protocol, modelIds: input.models.map(model => model.modelId) }); },
+    profile: catalogue.resolve,
+    assertWritable() { if (writesClosed) throw new StorageError('maintenance'); },
+    write: (tx, scope, input) => writeConnection(tx, scope, input, undefined, true) });
   const schoolScope = (spaceId: string) => 'school:' + storage.owner.environmentId + ':' + spaceId;
   async function schoolDefault(identity: SpaceIdentity) {
     if (identity.kind !== 'school') return null;
@@ -316,6 +331,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await deviceTasks.validate();
     await validatePairedLearning(storage);
     await origins.validate();
+    await providers.validate();
   }
   async function readCredential(identity: SpaceIdentity, connectionId: string, version: number) {
     await options.authorize(identity);
@@ -331,7 +347,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     }
     return { connectionId, version: current.version, value };
   }
-  return { list, save, readCredential, school, selection, images, segments, routing, results, deviceTasks, origins, validate, checks,
+  return { list, save, readCredential, providers, profiles, school, selection, images, segments, routing, results, deviceTasks, origins, validate, checks,
     closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
     resume() { writesClosed = false; checks.resume(); } };
 }

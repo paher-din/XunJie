@@ -488,18 +488,23 @@ test('lost real PostgreSQL claim and result COMMIT replies keep truthful physica
       assert.equal(notSent.value.dispatched, false); assert.equal(notSent.value.reason, 'dispatch-not-started');
       await api(`checks/${first.attemptId}/dispatch`, {}); assert.equal(calls, 0);
       const second = check(); await api('checks', second);
-      relay.arm('state=$3,physical_ended=true WHERE');
-      await api(`checks/${second.attemptId}/dispatch`, {});
+      // Result publication binds physical_ended as $4; the claim uses literal false.
+      relay.arm('state=$3,physical_ended=$4 WHERE');
+      const secondDispatch = await api(`checks/${second.attemptId}/dispatch`, {});
+      assert.equal(secondDispatch.status, 200);
       let completed;
       for (let count = 0; count < 150; count++) {
         completed = await api(`checks/${second.attemptId}`);
+        assert.equal(completed.status, 200);
         if (completed.value.physicalRequestEnded) break;
         await new Promise(resolve => setTimeout(resolve, 20));
       }
       assert.equal(relay.cuts(), 2); assert.equal(calls, 1);
       assert.equal(completed.value.state, 'completed'); assert.ok(completed.value.resultRef);
+      assert.equal(completed.value.reason, 'stop'); assert.equal(completed.value.dispatched, true);
       await runtime.stop(); await runtime.start();
       assert.deepEqual((await api(`checks/${second.attemptId}`)).value, completed.value);
+      assert.deepEqual((await api(`checks/${second.attemptId}/dispatch`, {})).value, completed.value);
       assert.equal(calls, 1);
     });
   } finally { await relay?.close(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }

@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import {
-  AboutSettingsView, AccountSettingsView, AgentSettingsView, ConfirmAction, Field, HelpTip,
+  AboutSettingsView, AccountSettingsView, AgentSettingsView, ConfirmAction, ConnectionModelFields, Field, HelpTip,
   LegacyModelDialogs, LegacyModelSettingsView, ModelConfigActions, ModelConnectionTestRow, ModelDialogView,
   ModelFields, ModelProviderCard, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
@@ -84,6 +84,13 @@ function ModelFieldsDemo() {
   const [removed, setRemoved] = useState(false)
   return <Frame>{removed ? <button type="button" onClick={() => setRemoved(false)}>恢复示例模型</button> : <div className="st-model-card"><ModelFields model={draft} onPatch={patch => setDraft(current => ({ ...current, ...patch }))} onRemove={() => setRemoved(true)} /></div>}</Frame>
 }
+function ConnectionFieldsDemo() {
+  const [id, setId] = useState('sample-model'), [effort, setEffort] = useState('auto'), [manual, setManual] = useState<string[] | undefined>()
+  const [capacity, setCapacity] = useState<{ contextWindow?: number | undefined; maxOutputTokens?: number | undefined }>({})
+  return <Frame><ConnectionModelFields modelId={id} effort={effort} efforts={['auto', ...(manual ?? ['low', 'medium', 'high'])]}
+    source={manual ? 'manual' : 'catalogue'} manualLevels={manual} {...capacity} referenceContext={128000} referenceOutput={8192}
+    onId={setId} onEffort={setEffort} onLevels={setManual} onCapacity={patch => setCapacity(current => ({ ...current, ...patch }))} /></Frame>
+}
 function ProviderCardDemo() { const [notice, setNotice] = useState(''); return <Frame><ModelProviderCard name="示例供应商" address="https://example.invalid/v1" credentialLabel="示例状态" actions={<button type="button" className="outline" onClick={() => setNotice('已触发示例编辑')}>编辑</button>}><p>示例模型</p></ModelProviderCard><output>{notice}</output></Frame> }
 function IdentityDemo({ error = false }: { error?: boolean }) {
   const [name, setName] = useState('示例供应商'), [url, setUrl] = useState('https://example.invalid/v1'), [key, setKey] = useState('synthetic-example-key')
@@ -164,6 +171,9 @@ function LegacyModelPopulated() { return <LegacyModelDemo /> }
 function LegacyModelEmpty() { return <LegacyModelDemo empty /> }
 
 export const settingsEntries: CatalogEntry[] = [
+  { id: 'connection-model-fields', name: 'ConnectionModelFields', description: '正式模型 ID、思考强度、容量与手动档位。', importPath: settings,
+    source: 'packages/ui/src/settings/ConnectionModelFields.tsx', exampleSource, props: ['modelId, effort, efforts, source, manualLevels?', 'onId, onEffort, onLevels, onCapacity'],
+    dependencies: ['资料为合成示例，不发起网络请求'], states: [{ id: 'default', name: '目录与手动配置', component: ConnectionFieldsDemo }] },
   { id: 'settings-empty-state', name: 'SettingsEmptyState', description: '由 shadcn Empty 适配的设置空态，包含图标、标题、说明和操作。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsEmptyState.tsx', exampleSource, props: ['icon, title, description, children'], dependencies: [],
     states: [{ id: 'default', name: '无数据', component: () => <Frame><SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。"><button type="button" className="outline">返回学习空间</button></SettingsEmptyState></Frame> }] },

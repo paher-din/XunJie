@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { spaceIdentitySchema } from './spaces.js';
 import { storageOwnerSchema } from './storage.js';
+import { modelReasoningEfforts } from './model-reasoning.js';
+export { modelReasoningEfforts, resolveModelProfile, modelReasoningParameters, modelReasoningError } from './model-reasoning.js';
+export type { ReasoningEffort, ReasoningRoute } from './model-reasoning.js';
+
+const reasoningLevelsSchema = z.array(z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])).max(7)
+  .refine(levels => new Set(levels).size === levels.length, 'Duplicate reasoning level');
 
 /** Model owner wire. SDK objects, credentials and native reasoning never enter public projections. */
 export const modelProtocolSchema = z.enum(['chat-completions', 'responses', 'messages']);
@@ -30,6 +36,11 @@ export const modelConfigurationSchema = z.object({
   /** Learning calls use the values saved with the connection, never probe limits. */
   contextWindow: z.number().int().min(1).max(10_000_000).optional(),
   maxOutputTokens: z.number().int().min(1).max(1_000_000).optional(),
+  reasoningEffort: z.enum(modelReasoningEfforts).optional(),
+  reasoningLevels: reasoningLevelsSchema.optional(),
+  reasoningSource: z.enum(['catalogue', 'manual', 'profile', 'unknown']).optional(),
+  /** Provider and model choices are independent; enabled is their effective conjunction. */
+  providerId: z.uuid().optional(), providerEnabled: z.boolean().optional(), modelEnabled: z.boolean().optional(),
 }).strict().refine(value => value.path === ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[value.protocol]);
 export const modelCredentialChangeSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('keep') }).strict(), z.object({ action: z.literal('clear') }).strict(),
@@ -54,6 +65,29 @@ export const modelConnectionSchema = modelConfigurationSchema.safeExtend({ versi
 export type ModelConfiguration = z.infer<typeof modelConfigurationSchema>;
 export type ModelConnection = z.infer<typeof modelConnectionSchema>;
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
+
+export const modelProviderSchema = z.object({ providerId: z.uuid(), version: z.number().int().nonnegative(),
+  name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema, baseUrl: modelBaseUrlSchema,
+  enabled: z.boolean(), hasCredential: z.boolean(), models: z.array(modelConnectionSchema).min(1).max(64) }).strict();
+export const providerModelInputSchema = z.object({ connectionId: z.uuid(), expectedVersion: z.number().int().nonnegative(),
+  modelId: z.string().trim().min(1).max(200), enabled: z.boolean(), reasoningEffort: z.enum(modelReasoningEfforts).optional(),
+  reasoningLevels: reasoningLevelsSchema.optional(),
+  contextWindow: z.number().int().min(1).max(10_000_000).optional(), maxOutputTokens: z.number().int().min(1).max(1_000_000).optional() }).strict();
+export const saveModelProviderSchema = z.object({ requestId: z.uuid(), providerId: z.uuid(), expectedVersion: z.number().int().nonnegative(),
+  name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema, baseUrl: modelBaseUrlSchema, enabled: z.boolean(),
+  credential: modelCredentialChangeSchema, models: z.array(providerModelInputSchema).min(1).max(64) }).strict()
+  .refine(value => !modelBaseUrlError(value.baseUrl, value.protocol), { path: ['baseUrl'], message: 'Invalid base URL for this protocol' })
+  .refine(value => new Set(value.models.map(model => model.connectionId)).size === value.models.length &&
+    new Set(value.models.map(model => model.modelId)).size === value.models.length, { path: ['models'], message: 'Duplicate model' });
+export type ModelProvider = z.infer<typeof modelProviderSchema>;
+export type SaveModelProvider = z.infer<typeof saveModelProviderSchema>;
+export const modelProfilesInputSchema = z.object({ baseUrl: modelBaseUrlSchema, protocol: modelProtocolSchema,
+  modelIds: z.array(z.string().trim().min(1).max(200)).min(1).max(64), refresh: z.boolean().optional() }).strict();
+export const modelProfileSchema = z.object({ modelId: z.string(), dialect: z.enum(['standard', 'deepseek', 'command-code']),
+  efforts: z.array(z.enum(modelReasoningEfforts)), source: z.enum(['catalogue', 'manual', 'profile', 'unknown']),
+  contextWindow: z.number().int().positive().optional(), maxOutputTokens: z.number().int().positive().optional() }).strict();
+export const modelProfilesSchema = z.object({ profiles: z.array(modelProfileSchema), updatedAt: z.iso.datetime().optional(), stale: z.boolean() }).strict();
+export type ModelProfile = z.infer<typeof modelProfileSchema>;
 
 export const modelCheckPolicySchema = z.object({ checksAllowed: z.boolean(), maxChecksPerHour: z.number().int().min(1).max(60),
   maxOutputTokens: z.number().int().min(1).max(2048), timeoutMs: z.number().int().min(250).max(30000) }).strict();

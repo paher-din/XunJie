@@ -18,12 +18,14 @@ test.use({ trace: 'off' })
 let runtime: Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>, endpoint: string, baseUrl: string
 let runtimeRoot: string
 let calls = 0
+const payloads: { model: string; reasoning_effort?: string }[] = []
 const upstream = createServer(async (request, response) => {
   calls++
+  const chunks = []; for await (const chunk of request) chunks.push(chunk)
+  const input = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+  payloads.push(input)
   response.writeHead(200, { 'content-type': 'text/event-stream' })
   if (request.url === '/v1/responses') {
-    const chunks = []; for await (const chunk of request) chunks.push(chunk)
-    const input = JSON.parse(Buffer.concat(chunks).toString('utf8'))
     if (input.model === 'fixture-responses-cancel') {
       response.write('data: ' + JSON.stringify({ type: 'response.created', response: { id: 'ui-pending', object: 'response', status: 'in_progress', output: [] } }) + '\n\n')
       return
@@ -34,23 +36,27 @@ const upstream = createServer(async (request, response) => {
   }
   response.end('data: ' + JSON.stringify({ id: 'check-ui', choices: [{ index: 0, delta: { content: '检查正常' }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n')
 })
-test.beforeAll(async () => {
-  if (evidenceDirectory()) await mkdir(evidencePath('164'), { recursive: true })
-  if (reviewScreenshots) await mkdir(reviewScreenshots, { recursive: true })
-  await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
-  baseUrl = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/v1`
-  const root = runtimeRoot = await mkdtemp(join(tmpdir(), 'xj-models-chrome-'))
+async function openRuntime(root: string): Promise<typeof runtime> {
   if (process.env.XUNJIE_PRODUCT_TEST_PACKAGE) {
     const product = resolve(process.env.XUNJIE_PRODUCT_TEST_PACKAGE)
     const resources = JSON.parse(await readFile(join(product, 'resources.json'), 'utf8'))
     const execute = promisify(execFile)
     const run = async (command: string, args: string[] = []) => JSON.parse((await execute(resolve(product, resources.nodePath),
       [join(product, 'app/cli.js'), command, '--root', root, ...args], { windowsHide: true, timeout: 180000 })).stdout)
-    runtime = { install: input => run('install', ['--profile', input?.profile ?? 'local']), start: () => run('start'), stop: () => run('stop') }
-  } else runtime = openProductRuntime({ root, resources: {
+    return { install: input => run('install', ['--profile', input?.profile ?? 'local']), start: () => run('start'), stop: () => run('stop') }
+  }
+  return openProductRuntime({ root, resources: {
     nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
     webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
+}
+test.beforeAll(async () => {
+  if (evidenceDirectory()) await mkdir(evidencePath('164'), { recursive: true })
+  if (reviewScreenshots) await mkdir(reviewScreenshots, { recursive: true })
+  await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
+  baseUrl = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/v1`
+  const root = runtimeRoot = await mkdtemp(join(tmpdir(), 'xj-models-chrome-'))
+  runtime = await openRuntime(root)
   await runtime.install({ profile: 'local' }); endpoint = (await runtime.start()).endpoint!
 })
 test.afterAll(async () => { await runtime?.stop(); upstream.closeAllConnections(); await new Promise<void>(resolve => upstream.close(() => resolve())); if (runtimeRoot) await rm(runtimeRoot, { recursive: true, force: true }) })
@@ -97,7 +103,7 @@ test('a delayed save confirmation preserves later form input and its next versio
   let release!: () => void, committed!: () => void
   const held = new Promise<void>(resolve => { release = resolve })
   const reached = new Promise<void>(resolve => { committed = resolve })
-  await page.route('**/api/learning/models/connections', async route => {
+  await page.route('**/api/learning/models/providers', async route => {
     if (route.request().method() !== 'POST') { await route.continue(); return }
     const response = await route.fetch(); committed(); await held; await route.fulfill({ response })
   })
@@ -113,7 +119,7 @@ test('a delayed save confirmation preserves later form input and its next versio
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
     await expect(dialog).toBeHidden()
     await expect(page.getByRole('region', { name: '个人连接配置', exact: true }).getByText('等待时继续填写 B', { exact: true })).toBeVisible()
-  } finally { release(); await page.unroute('**/api/learning/models/connections') }
+  } finally { release(); await page.unroute('**/api/learning/models/providers') }
 })
 
 test('protocol examples, inline address errors and masked saved-key replacement follow the current form value', async ({ page }) => {
@@ -206,7 +212,7 @@ test('Responses settings check drafts, save, reopen and cancel through the forma
   await expect(dialog).toBeHidden()
   await page.reload()
   const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: 'Responses 正式连接' })
-  await card.getByText('SDK 与能力', { exact: true }).click()
+  await card.getByText('连接与能力', { exact: true }).click()
   await expect(card.getByText('responses · 版本 1', { exact: true })).toBeVisible()
   await card.getByRole('button', { name: '连接检查', exact: true }).click()
   await page.getByText(/^连接检查记录（/).click()
@@ -279,7 +285,7 @@ for (const credential of ['unchanged', 'replace', 'clear'] as const) {
     if (credential === 'clear') await dialog.getByLabel('API Key', { exact: true }).fill('')
     const other = await context.newPage()
     const submissions: { requestId: string; expectedVersion: number; credential: { action: string } }[] = []
-    await page.route('**/api/learning/models/connections', async route => {
+    await page.route('**/api/learning/models/providers', async route => {
       if (route.request().method() === 'POST') submissions.push(route.request().postDataJSON())
       await route.continue()
     })
@@ -312,11 +318,11 @@ for (const credential of ['unchanged', 'replace', 'clear'] as const) {
       expect(submissions[1].requestId).not.toBe(submissions[0].requestId)
       expect(submissions[1].credential.action).toBe(credential === 'clear' ? 'clear' : 'replace')
       const saved = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: title + '-本人草稿' })
-      await saved.getByText('SDK 与能力', { exact: true }).click()
+      await saved.getByText('连接与能力', { exact: true }).click()
       await expect(saved.getByText('chat-completions · 版本 3', { exact: true })).toBeVisible()
       await expect(saved.getByText(credential === 'clear' ? '尚未保存密钥' : '密钥已保存', { exact: true })).toBeVisible()
       if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-recovered.png`), fullPage: true })
-    } finally { await other.close(); await page.unroute('**/api/learning/models/connections') }
+    } finally { await other.close(); await page.unroute('**/api/learning/models/providers') }
   })
 }
 
@@ -326,7 +332,7 @@ test('a lost save ACK is reconciled by the identical POST before submitting late
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('未知保存-原提交')
   const submissions: string[] = []
-  await page.route('**/api/learning/models/connections', async route => {
+  await page.route('**/api/learning/models/providers', async route => {
     if (route.request().method() !== 'POST') { await route.continue(); return }
     submissions.push(route.request().postData()!)
     // route.fetch commits through the real owner/PG; only the browser ACK is lost.
@@ -351,8 +357,50 @@ test('a lost save ACK is reconciled by the identical POST before submitting late
     await expect(dialog).toBeHidden()
     expect(submissions.map(input => JSON.parse(input).expectedVersion)).toEqual([1, 1, 2])
     const saved = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '未知保存-后续草稿' })
-    await saved.getByText('SDK 与能力', { exact: true }).click()
+    await saved.getByText('连接与能力', { exact: true }).click()
     await expect(saved.getByText('chat-completions · 版本 3', { exact: true })).toBeVisible()
     if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-recovered.png'), fullPage: true })
-  } finally { await page.unroute('**/api/learning/models/connections') }
+  } finally { await page.unroute('**/api/learning/models/providers') }
+})
+
+test('one provider holds multiple models, switches independently, and sends the selected reasoning effort', async ({ page }) => {
+  const root = await mkdtemp(join(tmpdir(), 'xj-provider-switches-chrome-'))
+  const isolated = await openRuntime(root)
+  try {
+    await isolated.install({ profile: 'local' })
+    await page.goto((await isolated.start()).endpoint! + '/?settings=models')
+    await page.getByRole('button', { name: '添加供应商', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('多模型与思考强度')
+    await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl)
+    await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-multi-model-key')
+    await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('gpt-5.2')
+    await dialog.getByLabel('模型 ID的思考强度', { exact: true }).selectOption('high')
+    await dialog.getByRole('button', { name: '添加模型', exact: true }).click()
+    await dialog.getByRole('textbox', { name: '模型 ID 2', exact: true }).fill('custom-orbit-model')
+    await expect(dialog.getByLabel('模型 ID 2的思考强度', { exact: true }).locator('option')).toHaveCount(1)
+    await expect(dialog.getByText('方言', { exact: true })).toHaveCount(0)
+    await expect(dialog.getByText('参数模式', { exact: true })).toHaveCount(0)
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '多模型与思考强度' })
+    const providerSwitch = card.getByRole('switch', { name: '启用供应商 多模型与思考强度', exact: true })
+    const first = card.getByRole('switch', { name: '启用模型 gpt-5.2', exact: true })
+    const second = card.getByRole('switch', { name: '启用模型 custom-orbit-model', exact: true })
+    await second.click(); await expect(second).not.toBeChecked(); await expect(second).toBeEnabled()
+    await providerSwitch.click(); await expect(providerSwitch).not.toBeChecked(); await expect(providerSwitch).toBeEnabled()
+    await expect(first).toBeChecked(); await expect(second).not.toBeChecked()
+    for (const button of await card.getByRole('button', { name: '连接检查', exact: true }).all()) await expect(button).toBeDisabled()
+    await providerSwitch.click(); await expect(providerSwitch).toBeChecked(); await expect(providerSwitch).toBeEnabled()
+    await expect(first).toBeChecked(); await expect(second).not.toBeChecked()
+    const before = calls
+    await card.locator('.st-configured-model').filter({ hasText: 'gpt-5.2' }).getByRole('button', { name: '连接检查', exact: true }).click()
+    await expect.poll(() => calls).toBe(before + 1)
+    expect(payloads.at(-1)).toMatchObject({ model: 'gpt-5.2', reasoning_effort: 'high' })
+    await card.getByRole('button', { name: '编辑', exact: true }).click()
+    await expect(dialog.getByLabel('模型 ID的思考强度', { exact: true })).toHaveValue('high')
+    await expect(dialog.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'password')
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    await page.reload(); await expect(first).toBeChecked(); await expect(second).not.toBeChecked()
+  } finally { await isolated.stop(); await rm(root, { recursive: true, force: true }) }
 })

@@ -145,9 +145,15 @@ export function createModelSelections(storage: OwnedStorage, owner: {
       if (row) device = deviceModelChoiceSchema.parse(row.body).binding;
     }
     const resolved = device ? { choice: await deviceChoice(identity, input.source, device) } : await resolve(identity, input.source);
-    if (!resolved) throw new StorageError('unavailable');
+    if (!resolved || !resolved.choice.connection.enabled) throw new StorageError('unavailable');
     const projection = await read(identity);
     return (await storage.request({ requestId: 'model-selection:' + input.requestId, fingerprint: hash }, async tx => {
+      if ('source' in resolved) {
+        await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + resolved.source.ownerScope]);
+        const currentConnection = await owner.connection(resolved.source.ownerScope, resolved.choice.connection.connectionId);
+        if (!currentConnection.enabled) throw new StorageError('unavailable');
+        resolved.choice = { ...resolved.choice, connection: currentConnection };
+      }
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-selection:' + scope]);
       const { rows: [row] } = await tx.query('SELECT body FROM model_selections WHERE scope=$1 FOR UPDATE', [scope]);
       const old = row?.body as { version: number } | undefined;

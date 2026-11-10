@@ -110,8 +110,5 @@
 .product-connection-dialog { max-width: min(560px, calc(100vw - 32px)); }
 .product-connection-dialog .st-dialog-body { display: flex; flex-direction: column; gap: 20px; }
 .product-connection-dialog .detail { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
-.product-connection-advanced { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; }
-.product-connection-advanced > summary { cursor: pointer; color: var(--ink-soft); padding: 8px 0; }
-.product-connection-advanced[open] > :not(summary) { margin-top: 16px; }
 .product-connection-dialog :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .product-connection-dialog .st-field { margin-bottom: 0; }

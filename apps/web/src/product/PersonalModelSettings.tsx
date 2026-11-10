@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import { modelAttemptSchema, modelConnectionSchema, modelCredentialValueSchema, type ModelAttempt, type ModelConnection, type ModelCheckInput, type SaveModelConnection } from '@xunjie/contracts/model-connections'
+import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCredentialValueSchema, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
 import { teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent'
 import { ModelTab } from '../components/settings/ModelTab'
-import { ModelConnectionDialog } from '../components/settings/ModelConnectionDialog'
+import { ModelProviderDialog } from '../components/settings/ModelProviderDialog'
 import { z } from 'zod'
 import { ModelSelection, type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
@@ -23,8 +23,11 @@ export function PersonalModelSettings(props: PersonalModelSettingsProps) {
 }
 function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId, courseId, readOnly = false }: PersonalModelSettingsProps) {
   const interaction = useAgentInteraction(identity, spaceKey, namespace, !readOnly)
-  const [connections, setConnections] = useState<ModelConnection[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
-  const [dialog, setDialog] = useState<{ connection: ModelConnection | null } | null>(null)
+  const [providers, setProviders] = useState<ModelProvider[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
+  const [dialog, setDialog] = useState<{ provider: ModelProvider | null; addModel?: boolean } | null>(null)
+  const [toggleState, setToggleState] = useState<Record<string, 'saving' | 'unknown'>>({})
+  const togglePending = useRef(new Map<string, SaveModelProvider>())
+  const toggleRunning = useRef(new Set<string>())
   const [loading, setLoading] = useState(false), [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState<{ key: string; message: string } | null>(null)
   const [switchStatus, setSwitchStatus] = useState('')
@@ -50,10 +53,10 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     const generation = ++reads.current
     if (visible) setLoading(true)
     try {
-      const [configurations, checks] = await Promise.all([request('connections'), request('checks')])
+      const [configurations, checks] = await Promise.all([request('providers'), request('checks')])
       if (!live.current || generation < appliedRead.current) return
       appliedRead.current = generation
-      setConnections(z.array(modelConnectionSchema).parse(configurations)); setAttempts(z.array(modelAttemptSchema).parse(checks)); setLoadError('')
+      setProviders(z.array(modelProviderSchema).parse(configurations)); setAttempts(z.array(modelAttemptSchema).parse(checks)); setLoadError('')
     } catch (error) {
       if (live.current && generation >= appliedRead.current) {
         appliedRead.current = generation
@@ -85,28 +88,60 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     }
   }
   const cancel = async (attempt: ModelAttempt) => { await request('checks/' + attempt.attemptId + '/cancel', {}); await reload() }
-  const readConnection = async (connectionId: string) => {
+  const readProvider = async (providerId: string) => {
     const generation = ++reads.current
-    const configurations = z.array(modelConnectionSchema).parse(await request('connections'))
+    const configurations = z.array(modelProviderSchema).parse(await request('providers'))
     if (live.current && generation >= appliedRead.current) {
       appliedRead.current = generation
-      setConnections(configurations)
+      setProviders(configurations)
     }
-    return configurations.find(item => item.connectionId === connectionId) ?? null
+    return configurations.find(item => item.providerId === providerId) ?? null
   }
-  const save = async (input: SaveModelConnection) => {
-    const saved = modelConnectionSchema.parse(await request('connections', input))
+  const save = async (input: SaveModelProvider) => {
+    const saved = modelProviderSchema.parse(await request('providers', input))
     // The POST receipt is authoritative; a subsequent read failure cannot undo it.
     if (live.current) {
       // Invalidate every read started before this receipt, including explicit reads.
       appliedRead.current = ++reads.current
-      setConnections(previous => previous.some(item => item.connectionId === saved.connectionId)
-        ? previous.map(item => item.connectionId === saved.connectionId ? saved : item) : [saved, ...previous])
+      setProviders(previous => previous.some(item => item.providerId === saved.providerId)
+        ? previous.map(item => item.providerId === saved.providerId ? saved : item) : [saved, ...previous])
       void reload()
       void selection.reload().catch(() => {})
     }
     return saved
   }
+  const toggle = async (provider: ModelProvider, connectionId?: string) => {
+    const id = provider.providerId
+    if (toggleRunning.current.has(id)) return
+    const wasUnknown = togglePending.current.has(id)
+    const input = togglePending.current.get(id) ?? {
+      requestId: crypto.randomUUID(), providerId: id, expectedVersion: provider.version, name: provider.name,
+      protocol: provider.protocol, baseUrl: provider.baseUrl, enabled: connectionId ? provider.enabled : !provider.enabled,
+      credential: { action: 'keep' as const }, models: provider.models.map(model => ({
+        connectionId: model.connectionId, expectedVersion: model.version, modelId: model.modelId,
+        enabled: connectionId === model.connectionId ? !(model.modelEnabled ?? model.enabled) : model.modelEnabled ?? model.enabled,
+        ...(model.reasoningEffort ? { reasoningEffort: model.reasoningEffort } : {}),
+        ...(model.reasoningSource === 'manual' ? { reasoningLevels: model.reasoningLevels ?? [] } : {}),
+        ...(model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow }),
+        ...(model.maxOutputTokens === undefined ? {} : { maxOutputTokens: model.maxOutputTokens }),
+      })),
+    }
+    togglePending.current.set(id, input); toggleRunning.current.add(id)
+    setToggleState(previous => ({ ...previous, [id]: 'saving' }))
+    try {
+      await save(input); togglePending.current.delete(id)
+      if (live.current) { setToggleState(previous => { const next = { ...previous }; delete next[id]; return next }); setActionError(null) }
+    } catch (error) {
+      const code = error instanceof Error && 'code' in error ? error.code : undefined
+      if (code === 'conflict' || !wasUnknown && (code === 'invalid' || code === 'forbidden')) {
+        togglePending.current.delete(id)
+        if (live.current) { setToggleState(previous => { const next = { ...previous }; delete next[id]; return next }); void reload() }
+      } else if (live.current) setToggleState(previous => ({ ...previous, [id]: 'unknown' }))
+      if (live.current) setActionError({ key: 'toggle:' + id, message: error instanceof Error ? error.message : '开关保存结果尚未确认，请核对原提交。' })
+    } finally { toggleRunning.current.delete(id) }
+  }
+  const readProfiles = useCallback(async (input: Parameters<React.ComponentProps<typeof ModelProviderDialog>['onProfiles']>[0]) =>
+    modelProfilesSchema.parse(await request('profiles', input)), [request])
   const readCredential = useCallback(async (connectionId: string, version: number) => {
     const saved = modelCredentialValueSchema.parse(await request('connections/' + connectionId + '/credential', { version }))
     if (saved.connectionId !== connectionId || saved.version !== version) throw new Error('配置已更新，请重新打开。')
@@ -142,10 +177,11 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
           onClick={() => void switchConversation(selection.selection!.version)}>将当前选用应用到学习活动</button>
       </div>}
       {activityId && <p role={switchFailed ? 'alert' : 'status'} className={switchFailed ? 'learning-error' : 'detail'}>{switchStatus || '从当前学习活动进入设置；新选用会在原调用和工具结清后继续此活动。'}</p>}
-      <div role="region" aria-label="个人连接配置"><ModelTab connections={connections} attempts={attempts} loading={loading} error={[loadError, actionError?.message].filter(Boolean).join('；')}
-      onReload={() => void reload(true)} onNew={() => setDialog({ connection: null })} onEdit={connection => setDialog({ connection })}
+      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={[loadError, actionError?.message].filter(Boolean).join('；')}
+      toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
+      onReload={() => void reload(true)} onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}
       onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div></div>
-    {dialog && <ModelConnectionDialog connection={dialog.connection} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readConnection} onReadCredential={readCredential} onCheck={check} onCancel={cancel} />}
+    {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onCheck={check} onCancel={cancel} />}
   </div>
 }

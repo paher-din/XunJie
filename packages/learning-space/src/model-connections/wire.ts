@@ -14,6 +14,8 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   }
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
   if (route === 'models/connections') return body === undefined ? models.list(identity) : models.save(identity, body);
+  if (route === 'models/providers') return body === undefined ? models.providers.list(identity) : models.providers.save(identity, body);
+  if (route === 'models/profiles' && body !== undefined) return models.profiles.read(identity, body);
   const credential = /^models\/connections\/([^/]+)\/credential$/.exec(route);
   if (credential && body !== undefined) return models.readCredential(identity, credential[1]!, readModelCredentialSchema.parse(body).version);
   if (route === 'models/capabilities' && body !== undefined) return models.segments.decideCapabilities(identity, body);

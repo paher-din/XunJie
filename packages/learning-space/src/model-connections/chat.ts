@@ -1,8 +1,9 @@
 import { createJsonToolProgress } from './json-tool-progress.js';
 import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import OpenAI from 'openai';
+import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@xunjie/contracts/model-connections';
-import { modelUsageSchema } from '@xunjie/contracts/model-connections';
+import { modelUsageSchema, modelReasoningParameters, resolveModelProfile } from '@xunjie/contracts/model-connections';
 import { createChatAssembler, compileOutputSchema, chatSensitiveValues } from './chat-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
 import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
@@ -10,12 +11,19 @@ import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
 export const sdkVersion = 'openai@7.42.0';
 export const nativeAdapterVersion = 'xunjie-chat-native-v2';
-export type ChatPayload = OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & { thinking?: { type: string } };
+export type ChatPayload = OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & {
+  thinking?: { type: 'enabled' | 'disabled'; budget_tokens?: number }; enable_thinking?: boolean;
+  reasoning?: { effort: Exclude<NonNullable<ModelConfiguration['reasoningEffort']>, 'auto'> };
+};
 class MalformedResponse extends Error {}
-export function checkPayload(configuration: ModelConfiguration, maxOutputTokens: number) {
+export function checkPayload(configuration: ModelConfiguration, maxOutputTokens: number): ChatPayload {
+  let reasoning: Record<string, unknown>;
+  try { reasoning = modelReasoningParameters(configuration, maxOutputTokens); }
+  catch (error) { if (error instanceof RangeError) throw new StorageError('invalid'); throw error; }
+  const completionLimit = configuration.reasoningEffort !== undefined && resolveModelProfile(configuration).family === 'openai';
   return { model: configuration.modelId, messages: [{ role: 'user' as const, content: 'Reply briefly with OK to check this model connection.' }],
-    max_tokens: maxOutputTokens, stream: true as const, stream_options: { include_usage: true },
-    ...(configuration.dialect === 'deepseek' ? { thinking: { type: configuration.parameterMode === 'thinking' ? 'enabled' : 'disabled' } } : {}) };
+    ...(completionLimit ? { max_completion_tokens: maxOutputTokens } : { max_tokens: maxOutputTokens }),
+    stream: true, stream_options: { include_usage: true }, ...reasoning };
 }
 export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
   signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[], applicationSchema?: Record<string, unknown>,

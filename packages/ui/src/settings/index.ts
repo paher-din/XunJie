@@ -1,6 +1,7 @@
 /** Store-free settings views. Callers retain persistence, routing and demo/real semantics. */
 export * from './controls'
 export * from './ModelFields'
+export * from './ConnectionModelFields'
 export * from './SettingsLayout'
 export * from './RadarChart'
 export * from './ModelProviderCard'

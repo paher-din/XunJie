@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto'
 import { createRequire } from 'node:module'
 import { act, createElement } from 'react'
 import type { Root } from 'react-dom/client'
-import type { ModelAttempt, ModelConnection, SaveModelConnection } from '@xunjie/contracts/model-connections'
+import type { ModelAttempt, ModelConnection, ModelProvider, SaveModelProvider } from '@xunjie/contracts/model-connections'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ModelSelectionController } from './ModelSelection'
 
@@ -18,13 +18,17 @@ const initial: ModelConnection = { connectionId: crypto.randomUUID(), name: '原
   protocol: 'chat-completions', path: '/chat/completions', modelId: 'synthetic', dialect: 'standard', parameterMode: 'plain', enabled: true,
   version: 1, routeId: crypto.randomUUID(), hasCredential: true, adapterState: 'ready',
   capabilities: { text: 'unknown', images: 'unknown', tools: 'unknown', strictSchema: 'unknown' } }
-let server: ModelConnection, saves: SaveModelConnection[], checks: ModelAttempt[], rejectCheck: boolean
+let server: ModelConnection, saves: SaveModelProvider[], checks: ModelAttempt[], rejectCheck: boolean
 let rejectSave: '' | 'before' | 'after' | 'invalid' | 'forbidden' | 'identity-conflict'
 let holdRead: Promise<void> | undefined, holdSave: Promise<void> | undefined
 let readFailure: boolean
 const originalKey = 'synthetic-saved-key'
 let serverKey: string, credentialFailure: boolean
-let receipts: Map<string, { input: string; result: ModelConnection }>
+let receipts: Map<string, { input: string; result: ModelProvider }>
+let extraModels: ModelConnection[]
+const providerOf = (model: ModelConnection): ModelProvider => ({ providerId: model.connectionId, version: model.version,
+  name: model.name, baseUrl: model.baseUrl, protocol: model.protocol, enabled: model.providerEnabled ?? true,
+  hasCredential: model.hasCredential, models: [model, ...structuredClone(extraModels)] })
 const selection: ModelSelectionController = { selection: { version: 0, selected: null, options: [] }, error: '', busy: false, stale: false,
   reload: vi.fn(async () => {}), choose: vi.fn(async () => {}), revoke: vi.fn(async () => {}) }
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
@@ -63,6 +67,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   server = structuredClone(initial); saves = []; checks = []; receipts = new Map(); rejectCheck = true
+  extraModels = []
   rejectSave = ''; holdRead = undefined; holdSave = undefined; readFailure = false; serverKey = originalKey; credentialFailure = false
   vi.mocked(selection.reload).mockReset().mockResolvedValue(undefined)
   vi.stubGlobal('fetch', vi.fn(async (input: string, options: RequestInit = {}) => {
@@ -70,7 +75,7 @@ beforeEach(async () => {
     if (input === '/api/learning/agent-settings' && method === 'GET') return response({ version: 0, busyInputMode: 'steering' })
     if (input === '/api/learning/skills' && method === 'GET') return response({ skills: [], selections: [] })
     if (method === 'GET') {
-      const value = path === 'connections' ? [structuredClone(server)] : structuredClone(checks)
+      const value = path === 'providers' ? [providerOf(structuredClone(server))] : structuredClone(checks)
       await holdRead
       return readFailure ? response({ error: 'unavailable' }, 503) : response(value)
     }
@@ -78,21 +83,26 @@ beforeEach(async () => {
     if (path.endsWith('/credential')) return credentialFailure ? response({ error: 'unavailable' }, 503)
       : body.version !== server.version ? response({ error: 'conflict' }, 409)
         : response({ connectionId: server.connectionId, version: server.version, value: serverKey })
-    if (path === 'connections') {
+    if (path === 'profiles') return response({ profiles: [{ modelId: server.modelId, dialect: 'standard', efforts: ['auto'], source: 'unknown' }], stale: false })
+    if (path === 'providers') {
       saves.push(structuredClone(body)); const failure = rejectSave; rejectSave = ''
       if (failure === 'before') throw new TypeError('synthetic transport loss')
       if (failure === 'invalid' || failure === 'forbidden' || failure === 'identity-conflict') return response({ error: failure }, failure === 'forbidden' ? 403 : 409)
       const prior = receipts.get(body.requestId)
       if (prior) return prior.input === JSON.stringify(body) ? response(prior.result) : response({ error: 'identity-conflict' }, 409)
       if (body.expectedVersion !== server.version) return response({ error: 'conflict' }, 409)
-      const { requestId: _id, expectedVersion: _version, credential, ...configuration } = body
-      server = { ...server, ...configuration, version: server.version + 1,
+      const { requestId: _id, expectedVersion: _version, credential, models, providerId, enabled, ...configuration } = body
+      const { expectedVersion: _modelVersion, enabled: modelEnabled, ...model } = models[0]
+      server = { ...server, ...configuration, ...model, providerId, providerEnabled: enabled, modelEnabled, enabled: enabled && modelEnabled, version: server.version + 1,
         hasCredential: credential.action === 'keep' ? server.hasCredential : credential.action === 'replace' }
+      extraModels = models.slice(1).map(({ expectedVersion, ...item }: SaveModelProvider['models'][number]) => ({ ...server, ...item,
+        version: expectedVersion + 1, routeId: extraModels.find(old => old.connectionId === item.connectionId)?.routeId ?? crypto.randomUUID(),
+        modelEnabled: item.enabled, enabled: enabled && item.enabled }))
       if (credential.action !== 'keep') serverKey = credential.action === 'replace' ? credential.value : ''
-      receipts.set(body.requestId, { input: JSON.stringify(body), result: structuredClone(server) })
+      receipts.set(body.requestId, { input: JSON.stringify(body), result: providerOf(structuredClone(server)) })
       await holdSave
       if (failure === 'after') throw new TypeError('synthetic ACK loss')
-      return response(server)
+      return response(providerOf(server))
     }
     if (path === 'checks') {
       if (rejectCheck) return response({ error: 'resource-busy' }, 409)
@@ -114,6 +124,42 @@ afterEach(async () => {
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
 describe('personal model settings recovery through real React controls', () => {
+  it('keeps provider and model switches independent without reading or resending the key', async () => {
+    const toggle = async (label: string) => { await act(async () => { document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!.click(); await settle() }) }
+    await toggle('启用供应商 原配置')
+    expect(server.enabled).toBe(false); expect(server.providerEnabled).toBe(false); expect(server.modelEnabled).toBe(true)
+    expect(document.querySelector('[aria-label="启用模型 synthetic"]')!.getAttribute('aria-checked')).toBe('true')
+    expect(button('连接检查').disabled).toBe(true)
+    await toggle('启用模型 synthetic'); await toggle('启用供应商 原配置')
+    expect(server.providerEnabled).toBe(true); expect(server.modelEnabled).toBe(false); expect(server.enabled).toBe(false)
+    expect(saves.every(input => input.credential.action === 'keep')).toBe(true)
+    expect(vi.mocked(fetch).mock.calls.some(([path]) => String(path).endsWith('/credential'))).toBe(false)
+  })
+
+  it('adds a second model with its own effort and retains the existing model in one save', async () => {
+    await click('添加模型'); await type('模型 ID 2', 'gpt-5.2')
+    await act(async () => {
+      const select = document.querySelector<HTMLSelectElement>('[aria-label="模型 ID 2的思考强度"]')!
+      select.value = 'high'; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); await settle()
+    })
+    expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('方言')
+    expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('参数模式')
+    await click('保存')
+    expect(saves[0].models.map(model => [model.modelId, model.reasoningEffort])).toEqual([['synthetic', undefined], ['gpt-5.2', 'high']])
+    expect(saves[0].credential).toEqual({ action: 'replace', value: originalKey })
+    expect(document.querySelector('[aria-label="启用模型 gpt-5.2"]')).not.toBeNull()
+    expect(document.querySelectorAll('[aria-label="个人连接配置"] .st-provider')).toHaveLength(1)
+  })
+
+  it.each(['before', 'after'] as const)('reconciles a %s-commit switch failure using the identical request', async failure => {
+    rejectSave = failure
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="启用供应商 原配置"]')!.click(); await settle() })
+    expect(document.querySelector<HTMLButtonElement>('[aria-label="启用供应商 原配置"]')!.disabled).toBe(true)
+    await click('核对开关提交')
+    expect(saves[1]).toEqual(saves[0]); expect(server.version).toBe(2); expect(server.providerEnabled).toBe(false)
+    expect(document.querySelector<HTMLButtonElement>('[aria-label="启用供应商 原配置"]')!.disabled).toBe(false)
+  })
+
   it('loads the saved key masked, reveals it, and saves replacement or empty input exactly as edited', async () => {
     await click('编辑')
     expect(field('API Key').value).toBe(originalKey)

@@ -1,5 +1,5 @@
-import type { ModelAttempt, ModelConnection } from '@xunjie/contracts/model-connections'
-import { Section, ModelProviderCard } from '@xunjie/ui/settings'
+import type { ModelAttempt, ModelConnection, ModelProvider } from '@xunjie/contracts/model-connections'
+import { Section, ModelProviderCard, Toggle, reasoningEffortLabels } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
 
 const states: Record<ModelAttempt['state'], string> = { accepted: '检查已接收，尚未开始', dispatched: '正在检查',
@@ -7,9 +7,10 @@ const states: Record<ModelAttempt['state'], string> = { accepted: '检查已接�
 const capabilities = { unknown: '尚未验证', declared: '服务声明', verified: '已验证', unsupported: '不支持' }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ connections, attempts, loading, error, onNew, onEdit, onCheck, onCancel, onReload }: {
-  connections: ModelConnection[]; attempts: ModelAttempt[]; loading: boolean; error: string
-  onNew(): void; onEdit(connection: ModelConnection): void; onCheck(connection: ModelConnection): void
+export function ModelTab({ providers, attempts, loading, error, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel, onReload }: {
+  providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
+  toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
+  onNew(): void; onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void; onCheck(connection: ModelConnection): void
   onCancel(attempt: ModelAttempt): void; onReload(): void
 }) {
   return <>
@@ -20,23 +21,32 @@ export function ModelTab({ connections, attempts, loading, error, onNew, onEdit,
       </div>
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">正在读取配置…</p>}
-      {!loading && !error && connections.length === 0 && <p className="detail">尚未添加供应商。添加后可配置模型并检查连接。</p>}
-      {connections.map(connection => <ModelProviderCard key={connection.connectionId} name={connection.name} address={connection.baseUrl}
-        credentialLabel={connection.hasCredential ? '密钥已保存' : '尚未保存密钥'}
-        actions={<button type="button" className="outline st-xs" onClick={() => onEdit(connection)}>编辑</button>}>
-        <div className="st-provider-models"><span className="st-model-chip">{connection.modelId}</span>
-          <span className="st-status-pill">{connection.enabled ? '已配置' : '已停用'}</span>
+      {!loading && !error && providers.length === 0 && <p className="detail">尚未添加供应商。添加后可配置模型并检查连接。</p>}
+      {providers.map(provider => <ModelProviderCard key={provider.providerId} name={provider.name} address={provider.baseUrl}
+        credentialLabel={provider.hasCredential ? '密钥已保存' : '尚未保存密钥'}
+        actions={<><button type="button" className="outline st-xs" disabled={Boolean(toggleState[provider.providerId])} onClick={() => onEdit(provider)}>编辑</button>
+          <Toggle checked={provider.enabled} label={`启用供应商 ${provider.name}`} disabled={Boolean(toggleState[provider.providerId])} onChange={() => onToggle(provider)} /></>}>
+        <div className="st-configured-models" aria-label={`${provider.name}的模型`}>
+        {provider.models.map(connection => <div className="st-configured-model" key={connection.connectionId}>
+        <div className="st-configured-model-head"><span className="st-model-chip">{connection.modelId}</span>
+          <span className="st-configured-model-effort">{reasoningEffortLabels[connection.reasoningEffort ?? 'auto']}</span>
+          <Toggle checked={connection.modelEnabled ?? connection.enabled} label={`启用模型 ${connection.modelId}`} disabled={Boolean(toggleState[provider.providerId])}
+            onChange={() => onToggle(provider, connection.connectionId)} />
         </div>
         <div className="st-provider-test"><button type="button" className="outline st-xs" disabled={loading || !connection.enabled || !connection.hasCredential || connection.adapterState !== 'ready'
           || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))}
           onClick={() => onCheck(connection)}>连接检查</button>
           {connection.adapterState !== 'ready' && <span>{connection.capabilities.text === 'unsupported' ? '该目标路线不支持所选协议' : '当前协议、地址或型号组合不可用，请核对配置'}</span>}</div>
         <details>
-          <summary>SDK 与能力</summary>
+          <summary>连接与能力</summary>
           <p className="detail">{connection.protocol} · 版本 {connection.version}</p>
-          <p className="detail">SDK 路径：{connection.path} · {connection.dialect} · {connection.parameterMode === 'thinking' ? '思考模式' : '普通文本'}</p>
           <p className="detail">图像：{capabilities[connection.capabilities.images]} · 工具：{capabilities[connection.capabilities.tools]} · strict schema：{capabilities[connection.capabilities.strictSchema]}</p>
-        </details>
+        </details></div>)}</div>
+        <div className="st-provider-bottom"><button type="button" className="outline st-xs" disabled={Boolean(toggleState[provider.providerId])} onClick={() => onAddModel(provider)}><Icon name="add" size={14} />添加模型</button>
+          {!provider.enabled && <span className="detail">供应商已停用</span>}
+          {toggleState[provider.providerId] === 'saving' && <span role="status" className="detail">正在保存…</span>}
+          {toggleState[provider.providerId] === 'unknown' && <button type="button" className="outline st-xs" onClick={() => onToggle(provider)}>核对开关提交</button>}
+        </div>
       </ModelProviderCard>)}
       <p className="detail">配置由原持有方保留，跨空间使用需单独授权。未配置或检查失败不影响建立活动、编辑作品和保留问题。</p>
     </Section>

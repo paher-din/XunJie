@@ -20,6 +20,7 @@
 | `RadarChart` 能力雷达图 | `RadarChart` | 已迁入 |
 | `ModelProviderCard` 供应商卡头与框架 | `ModelProviderCard` | 已迁入；`actions` / `children` 内的内容另计 |
 | `ProviderIdentityFields` 名称、地址、密钥字段 | `ProviderIdentityFields` | 已迁入 |
+| 正式供应商模型 ID、思考强度、容量与手动档位 | `ConnectionModelFields` | 纯表单已迁入；模型资料、档位适配和保存由正式控制器接入；目录与人工声明不代表实际能力验证 |
 | `ModelSettingsFeedback` 已确认保存 / 错误状态槽 | `ModelSettingsFeedback` | 已迁入，使用公开反馈数据类型 |
 | `PrivacyTab.ConfirmAction` 就地二次确认 | `ConfirmAction` | 已迁入 |
 | `AccountTab` 资料表单、文件选择入口、空间信息、安全表单 | `AccountSettingsView` | 视觉已迁入，仍保留原演示文案；表单值、上传及密码回调由适配层提供 |

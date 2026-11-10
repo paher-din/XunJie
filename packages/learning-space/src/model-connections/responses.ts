@@ -3,6 +3,7 @@ import type { ModelToolProgress } from '@xunjie/contracts/model-connections';
 import OpenAI from 'openai';
 import { StorageError } from '@xunjie/storage';
 import type { ModelConfiguration, ModelTool, ModelToolIntent, ModelUsage, ModelUpstream } from '@xunjie/contracts/model-connections';
+import { modelReasoningParameters } from '@xunjie/contracts/model-connections';
 import { compileOutputSchema } from './chat-native.js';
 import { createResponsesAssembler, object, responsesOutput, responsesUsage, responsesSensitiveValues, responsesEventSensitiveValues, validateResponsesNative } from './responses-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
@@ -13,9 +14,11 @@ export const responsesAdapterVersion = 'xunjie-responses-native-v1';
 export type ResponsesPayload = OpenAI.Responses.ResponseCreateParamsStreaming;
 
 export function responsesCheckPayload(configuration: ModelConfiguration, maxOutputTokens: number): ResponsesPayload {
+  let reasoning: Record<string, unknown>;
+  try { reasoning = modelReasoningParameters(configuration, maxOutputTokens); }
+  catch (error) { if (error instanceof RangeError) throw new StorageError('invalid'); throw error; }
   return { model: configuration.modelId, input: [{ role: 'user', content: 'Reply briefly with OK to check this model connection.' }],
-    max_output_tokens: maxOutputTokens, stream: true, store: false,
-    ...(configuration.dialect === 'deepseek' ? { reasoning: { effort: configuration.parameterMode === 'thinking' ? 'high' as const : 'none' as const } } : {}) };
+    max_output_tokens: maxOutputTokens, stream: true, store: false, ...reasoning };
 }
 
 class MalformedResponse extends Error {}
