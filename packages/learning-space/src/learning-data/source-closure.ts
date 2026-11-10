@@ -206,6 +206,13 @@ const pdfDocumentResources: NonNullable<SourceSpec['resources']> = async (row: S
   typeof row.document_id === 'string' ? [await read(row.document_id)] : [];
 
 const learningSpecs: readonly SourceSpec[] = [
+  { table: 'study_copy_exports', kind: 'study_copy_exports', id: ['scope_key'], version: ['state', 'digest'] },
+  { table: 'study_copy_imports', kind: 'study_copy_imports', id: ['scope_key', 'digest'] },
+  { table: 'study_copy_sources', kind: 'study_copy_sources', id: ['activity_id'] },
+  { table: 'study_copy_cache', kind: 'study_copy_cache', id: ['scope_key', 'cache_key'] },
+  { table: 'study_copy_chunk_scopes', kind: 'study_copy_chunk_scopes', id: ['source_key', 'transfer_id'], version: ['scope_key'] },
+  { table: 'school_acquisitions', kind: 'school_acquisitions', id: ['request_id'] },
+  { table: 'school_submissions', kind: 'school_submissions', id: ['submission_id'], version: ['request_id'] },
   { table: 'activities', kind: 'activities', id: ['id'] },
   { table: 'teaching_artifacts', kind: 'teaching_artifacts', id: ['artifact_id'] },
   { table: 'teaching_artifact_revisions', kind: 'teaching_artifact_revisions', id: ['revision_id'], version: ['version'], resources: async (row, read) => [await read(String(row.resource_id))] },

@@ -12,6 +12,7 @@ import type { LearningActivity, WorkFile } from '@xunjie/contracts/learning-data
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import { readAluReflectionSource } from './alu-reflections.js';
 import { readExecutionSource } from './execution-source.js';
+import { readStudyExecution } from './study-copies.js';
 import { readSyncedExecutionRecord, readSyncedExecutionArtifact } from './execution-records.js';
 const fail = (): never => { throw new StorageError('invalid'); };
 const corrupt = (): never => { throw new StorageError('corrupt'); };
@@ -111,7 +112,8 @@ async function originalV3Result(storage: OwnedStorage, activity: LearningActivit
     return { action, output: artifact.output, state: query.statusKnowledge === 'confirmed' ? query.state : 'unknown',
       resources: artifact.resources ?? [], name: artifact.name, mediaType: artifact.mediaType, text: artifact.text };
   }
-  const { rows: [row] } = await storage.read('SELECT * FROM execution_results WHERE request_id=$1', [source.requestId]);
+  const { rows: [stored] } = await storage.read('SELECT * FROM execution_results WHERE request_id=$1', [source.requestId]);
+  const row = stored ?? (await readStudyExecution(storage, activity, source.requestId))?.result;
   if (!row) throw new StorageError('unavailable');
   if (row.activity_id !== activity.activityId || row.request_id !== source.requestId || row.content_id !== source.contentId
     || row.execution_ref !== source.executionRef) return fail();
@@ -236,9 +238,12 @@ export async function verifySemanticReference(storage: OwnedStorage, activity: L
         content = artifact.output;
       }
     } else {
-      const { rows: [row] } = await storage.read(`SELECT r.*,c.body AS action FROM execution_results r JOIN execution_commands c
+      const { rows: [stored] } = await storage.read(`SELECT r.*,c.body AS action FROM execution_results r JOIN execution_commands c
         ON c.request_id=r.request_id WHERE r.activity_id=$1 AND r.request_id=$2`, [activity.activityId, source.requestId]);
+      const historical = stored ? null : await readStudyExecution(storage, activity, source.requestId!);
+      const row = stored ?? (historical?.result ? { ...historical.result, action: historical.command.body } : null);
       if (!row) throw new StorageError('unavailable');
+      await readExecutionSource(storage, activity, { requestId: source.requestId!, executionRef: source.executionRef! });
       if ((row.action as { protocolVersion?: unknown })?.protocolVersion === 3) {
         const original = await originalV3Result(storage, activity, binding, source, false);
         content = original.output;

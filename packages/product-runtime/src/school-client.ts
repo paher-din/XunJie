@@ -5,13 +5,13 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
-import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
+import { spaceIdentitySchema, learningTargetSchema, schoolAccountSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema, conversationArchiveStateSchema, conversationHistoryStateSchema, conversationHistoryUpdateSchema,
   conversationArchiveSetSchema, conversationArchiveImportSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
-import { componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema,
+import { manifestResources, componentAlgorithmBundleSchema, componentBundleSchema, componentDependencyContentSchema,
   componentRuntimeResourceContentSchema, componentPreparationReportsSchema,
-  componentPreparationReportReceiptSchema } from '@xunjie/contracts/components';
+  componentPreparationReportReceiptSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
 import { executionQuerySchema, executionControlReceiptSchema, checkpointPageSchema, executionHistoryPageSchema, anyExecutionActionSchema, isCourseExecutionPlanV2, canonicalValue, executionDeviceSchema,
   executionArtifactSchema, type ExecutionQuery } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
@@ -20,6 +20,9 @@ import { personalMaterialSchema, personalMaterialVersionContentSchema, personalM
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { teachingInteractionSettingsSchema, teachingControlReceiptSchema, teachingInputControlReceiptSchema } from '@xunjie/contracts/teaching-agent';
 import { teachingSkillLimits } from '@xunjie/contracts/agent-skills';
+import { schoolAcquisitionInputSchema, schoolAcquisitionReceiptSchema, schoolSubmissionInputSchema,
+  schoolSubmissionReceiptSchema, schoolSubmissionSchema, schoolSubmissionListSchema } from '@xunjie/contracts/school-deliveries';
+import { studyTransferSchema } from '@xunjie/contracts/study-copies';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
@@ -43,15 +46,22 @@ import type { RecoveryManifest } from './recovery-types.js';
 import type { RetirementProof } from './recovery.js';
 import { resolveCredential } from './postgres.js';
 import { createAgentConnection } from './agent-connections.js';
-import { createTeachingAgentService, teachingAgentHttpCall, routeExecutionHttp, createTeachingDataService } from '@xunjie/learning-space';
+import { createTeachingAgentService, teachingAgentHttpCall, routeExecutionHttp, createTeachingDataService, createDownloadedCourses } from '@xunjie/learning-space';
+import type { createStudyCopies } from '@xunjie/learning-space';
 import type { TeachingDependencyCall, TeachingAgentPort } from '@xunjie/learning-space';
 
+const connectionProfileSchema = z.object({ version: z.literal(1), localStudy: z.boolean(), connectionId: z.uuid(),
+  identity: spaceIdentitySchema, target: learningTargetSchema, account: schoolAccountSchema }).strict();
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
   target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]),
+  account: schoolAccountSchema.optional(), localStudy: z.object({ version: z.literal(1) }).strict().optional(),
+  profile: z.unknown().optional(),
   deviceSetup: z.object({ version: z.literal(1) }).strict().optional() });
 const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url(), verifier: z.string(),
   clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
   setupPending: z.boolean().optional(),
+  localStudy: z.object({ version: z.literal(1), imported: z.boolean(),
+    exportDigest: z.string().optional(), cleanupPending: z.boolean().optional() }).strict().optional(),
   localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional(),
   modelBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional(),
   agentBinding: z.object({ dependencyConnectionId: z.uuid(), executionConnectionId: z.uuid().optional(), target: learningTargetSchema }).strict().optional() });
@@ -64,12 +74,34 @@ const modelTaskAuthorization = new AsyncLocalStorage<{
   identity: SpaceIdentity; authorize(fresh?: boolean): Promise<void>;
 }>();
 
+function sameExecutionIdentity(current: ExecutionQuery, retained: ExecutionQuery) {
+  if (current.requestId !== retained.requestId || current.inputDigest !== retained.inputDigest
+    || current.executionRef !== retained.executionRef
+    || JSON.stringify(canonicalValue(current.scope)) !== JSON.stringify(canonicalValue(retained.scope)))
+    throw new StorageError('identity-conflict');
+}
+
+/** Neither page may advance past facts the other owner has not returned yet. */
+function mergeExecutionHistory(current: z.infer<typeof executionHistoryPageSchema>, retained: z.infer<typeof executionHistoryPageSchema>) {
+  const entries = new Map(current.entries.map(entry => [entry.query.requestId, entry]));
+  for (const entry of retained.entries) {
+    const existing = entries.get(entry.query.requestId);
+    if (existing) sameExecutionIdentity(existing.query, entry.query);
+    else entries.set(entry.query.requestId, entry);
+  }
+  const cutoff = [current.nextCursor, retained.nextCursor].filter((id): id is string => id !== null).sort()[0];
+  const visible = [...entries.values()].filter(entry => !cutoff || entry.query.requestId <= cutoff)
+    .sort((a, b) => a.query.requestId.localeCompare(b.query.requestId));
+  return { entries: visible.slice(0, 32), nextCursor: visible.length > 32 ? visible[31]!.query.requestId : cutoff ?? null };
+}
+
 /** Installed client retains only its own verifier and scoped grant, never the school's account database. */
 export function createSchoolClient(root: string, environment: RuntimeEnvironment, local?: {
   target: LearningTarget;
   /** Actual model owner; independent of the learning-data target. */
   modelTarget?: LearningTarget;
   create?(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
+  studyCopies?: ReturnType<typeof createStudyCopies>;
   models?: Awaited<ReturnType<typeof createModelGateway>> | undefined;
   personal?(): Promise<SpaceIdentity>;
   teaching?: TeachingAgentPort;
@@ -80,6 +112,169 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
   const cleanupPath = (id: string) => join(root, 'native-channel', z.uuid().parse(id), 'endpoint.json');
+  const studyInitializations = new Map<string, Promise<void>>();
+  function confirmedProfile(connection: Connection) {
+    const parsed = connectionProfileSchema.safeParse(connection.grant?.profile);
+    if (!parsed.success) return null;
+    const profile = parsed.data;
+    if (!connection.grant || profile.connectionId !== connection.requestId
+      || subject(profile.identity) !== subject(connection.grant.identity)
+      || JSON.stringify(canonicalValue(profile.target)) !== JSON.stringify(canonicalValue(connection.grant.target)))
+      throw new StorageError('identity-conflict');
+    return profile;
+  }
+  const localStudyMode = (connection: Connection) => !!local?.studyCopies && !connection.localBinding && !connection.modelBinding
+    && (confirmedProfile(connection)?.localStudy ?? connection.localStudy?.imported === true);
+  async function refreshProfile(connection: Connection): Promise<Connection> {
+    if (!connection.grant || !local?.studyCopies || connection.localBinding || connection.modelBinding
+      || confirmedProfile(connection) || connection.localStudy?.imported) return connection;
+    let profile: z.infer<typeof connectionProfileSchema>;
+    try {
+      const parsed = connectionProfileSchema.safeParse(await call(connection, 'connections/profile', undefined, true));
+      if (!parsed.success) return connection; // An unknown protocol is not permission to move any owner.
+      profile = parsed.data;
+      confirmedProfile({ ...connection, grant: { ...connection.grant, profile } });
+    } catch (error) {
+      if (error instanceof StorageError && ['missing', 'unavailable'].includes(error.code)) return connection;
+      throw error;
+    }
+    return update(connection.requestId, async () => {
+      const current = await read(connection.requestId);
+      if (!current.grant || current.grant.token !== connection.grant!.token
+        || current.schoolEndpoint !== connection.schoolEndpoint) throw new StorageError('forbidden');
+      confirmedProfile({ ...current, grant: { ...current.grant, profile } });
+      current.grant.profile = profile;
+      current.grant.account = profile.account;
+      await atomicJson(path(current.requestId), current);
+      return current;
+    });
+  }
+  async function assertStudyIdentity(connection: Connection) {
+    if (!connection.grant || !(await list({ rememberCleanup: false })).some(item => item.key === 'school:' + connection.requestId
+      && subject(item.identity) === subject(connection.grant!.identity))) throw new StorageError('forbidden');
+    if (!await local!.studyCopies!.hasIdentity(connection.grant.identity)) throw new StorageError('unavailable');
+  }
+  function studyCourses(connection: Connection) {
+    return createDownloadedCourses(local!.studyCopies!, async identity => {
+      if (!connection.grant || subject(identity) !== subject(connection.grant.identity)) throw new StorageError('forbidden');
+      await assertStudyIdentity(connection);
+    });
+  }
+  function studyLearning(connection: Connection) {
+    if (!local?.create || !connection.grant) throw new StorageError('unavailable');
+    return local.create({ resolveBinding: async identity => {
+      if (subject(identity) !== subject(connection.grant!.identity)) throw new StorageError('forbidden');
+      await assertStudyIdentity(connection); return local.target;
+    } }, studyCourses(connection));
+  }
+  async function cacheSchoolRead(connection: Connection, route: string, refresh = false): Promise<unknown> {
+    const copies = local!.studyCopies!, identity = connection.grant!.identity;
+    const retained = await copies.cached(identity, route);
+    if (retained !== null && !refresh) return retained;
+    try {
+      const value = await call(connection, route, undefined, true);
+      await copies.cache(identity, route, value);
+      return value;
+    } catch (error) {
+      // A downloaded copy is usable independently of a temporary school outage.
+      if (retained !== null && error instanceof StorageError && error.code === 'unavailable') return retained;
+      throw error;
+    }
+  }
+  async function downloadActivity(connection: Connection, activity: import('@xunjie/contracts/learning-data').LearningActivity) {
+    const fixed = activity.course;
+    if (!fixed) return;
+    const release = courseReleaseSchema.parse(await cacheSchoolRead(connection, `releases/${fixed.releaseId}`));
+    if (release.contentDigest !== fixed.contentDigest || release.courseId !== fixed.courseId || release.taskId !== fixed.taskId)
+      throw new StorageError('corrupt');
+    const courses = studyCourses(connection);
+    for (const material of fixed.materials) await courses.readMaterial!(activity.identity, fixed.releaseId, material.materialId)
+      .catch(async error => {
+        if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error;
+        await cacheSchoolRead(connection, `releases/${fixed.releaseId}/materials/${material.materialId}`);
+        await courses.readMaterial!(activity.identity, fixed.releaseId, material.materialId);
+      });
+    for (const binding of fixed.components ?? []) {
+      const path = `releases/${fixed.releaseId}/components/${binding.key}`;
+      await cacheSchoolRead(connection, path);
+      await courses.readComponent(activity.identity, fixed.releaseId, binding.key);
+      const manifest = binding.definition.manifest;
+      if (manifest.formatVersion === 1 && manifest.algorithm) {
+        await cacheSchoolRead(connection, path + '/algorithm');
+        await courses.readComponentAlgorithm(activity.identity, fixed.releaseId, binding.key);
+      }
+      for (const resource of manifestResources(manifest)) {
+        let value: { resourceId: string; sha256: string; byteLength: number; mediaType: string; contentBase64: string } | undefined;
+        if (resource.kind === 'runtime') {
+          const content = componentRuntimeResourceContentSchema.parse(await cacheSchoolRead(connection, path + '/resources/' + resource.path));
+          if (content.path !== resource.path || content.role !== resource.role) throw new StorageError('corrupt');
+          value = content;
+        } else if (resource.kind === 'dependency' && manifest.formatVersion === 2) {
+          const dependency = manifest.dependencies.find(item => item.resourceId === resource.resourceId)!;
+          const content = componentDependencyContentSchema.parse(await cacheSchoolRead(connection, path + '/dependencies/' + dependency.dependencyId));
+          if (content.dependencyId !== dependency.dependencyId) throw new StorageError('corrupt');
+          value = content;
+        }
+        if (value) {
+          const bytes = Buffer.from(value.contentBase64, 'base64');
+          if (value.resourceId !== resource.resourceId || value.sha256 !== resource.sha256 || value.byteLength !== resource.byteLength
+            || value.mediaType !== resource.mediaType || bytes.toString('base64') !== value.contentBase64 || bytes.byteLength !== resource.byteLength
+            || createHash('sha256').update(bytes).digest('hex') !== resource.sha256) throw new StorageError('corrupt');
+        }
+      }
+    }
+  }
+  async function finishStudyCleanup(connection: Connection) {
+    if (!connection.localStudy?.cleanupPending || !connection.localStudy.exportDigest) return;
+    await call(connection, 'study-transfer/ack', { digest: connection.localStudy.exportDigest }, true);
+    await update(connection.requestId, async () => {
+      const current = await read(connection.requestId);
+      if (!current.localStudy || current.localStudy.exportDigest !== connection.localStudy!.exportDigest) throw new StorageError('identity-conflict');
+      current.localStudy.cleanupPending = false;
+      await atomicJson(path(connection.requestId), current);
+    });
+  }
+  async function ensureStudy(connection: Connection) {
+    if (!localStudyMode(connection)) return;
+    const active = studyInitializations.get(connection.requestId);
+    if (active) return active;
+    if (connection.localStudy?.imported && await local!.studyCopies!.hasIdentity(connection.grant!.identity)) return;
+    const operation = (async () => {
+      const latest = await read(connection.requestId);
+      if (latest.localStudy?.imported && await local!.studyCopies!.hasIdentity(latest.grant!.identity)) return;
+      const ready = await local!.studyCopies!.cached<{ digest: string }>(latest.grant!.identity, 'study-copy-ready');
+      if (ready && await local!.studyCopies!.hasIdentity(latest.grant!.identity)) {
+        await update(latest.requestId, async () => {
+          const current = await read(latest.requestId);
+          current.localStudy = { version: 1, imported: true, exportDigest: ready.digest, cleanupPending: true };
+          current.setupPending = false;
+          await atomicJson(path(latest.requestId), current);
+        });
+        try { await finishStudyCleanup(await read(latest.requestId)); }
+        catch (error) { if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error; }
+        return;
+      }
+      const transfer = studyTransferSchema.parse(await call(latest, 'study-transfer', undefined, true));
+      const imported = await local!.studyCopies!.importScope(latest.grant!.identity, transfer);
+      const importedLearning = studyLearning(latest);
+      await importedLearning.validate();
+      const activities = await importedLearning.list(latest.grant!.identity);
+      for (const activity of activities) await downloadActivity(latest, activity);
+      await local!.studyCopies!.cache(latest.grant!.identity, 'study-copy-ready', { digest: imported.digest });
+      await update(latest.requestId, async () => {
+        const current = await read(latest.requestId);
+        if (subject(current.grant!.identity) !== subject(latest.grant!.identity)) throw new StorageError('forbidden');
+        current.localStudy = { version: 1, imported: true, exportDigest: imported.digest, cleanupPending: true };
+        current.setupPending = false;
+        await atomicJson(path(latest.requestId), current);
+      });
+      // The imported originals are durable before the school is allowed to remove its redundant copy.
+      try { await finishStudyCleanup(await read(latest.requestId)); }
+      catch (error) { if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error; }
+    })();
+    studyInitializations.set(connection.requestId, operation);
+    try { await operation; } finally { studyInitializations.delete(connection.requestId); }
+  }
   async function recipientRecovery() {
     const file = join(root, 'recovery-state.json');
     if (!local?.modelTarget || !await exists(file)) return undefined;
@@ -130,7 +325,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     try {
       response = await fetch(new URL('/api/learning/' + route, connection.schoolEndpoint), {
         method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(
-          /^(?:agent\/[0-9a-f-]{36}\/)?skills\/import(?:\?|$)/.test(route) ? teachingSkillLimits.importTimeoutMs
+          /^study-transfer(?:\/ack)?$/.test(route) ? 120000
+            : /^(?:agent\/[0-9a-f-]{36}\/)?skills\/import(?:\?|$)/.test(route) ? teachingSkillLimits.importTimeoutMs
             : route.startsWith('pdf/') ? 45000 : 10000),
         headers: { 'content-type': 'application/json', ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -158,6 +354,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   const subject = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind].join('.');
   async function modelAccess(connection: Connection) {
     if (!connection.grant) throw new StorageError('forbidden');
+    if (localStudyMode(connection)) {
+      await ensureStudy(connection); await assertStudyIdentity(connection); return connection.grant.identity;
+    }
     const value = z.object({ identity: spaceIdentitySchema, target: learningTargetSchema }).strict().parse(await call(connection, 'access', undefined, true));
     if (subject(value.identity) !== subject(connection.grant.identity)
       || JSON.stringify(value.target) !== JSON.stringify(connection.grant.target)) throw new StorageError('forbidden');
@@ -166,7 +365,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function identityConnection(identity: SpaceIdentity, fresh = true) {
     for (const item of await list()) {
       if (subject(item.identity) !== subject(identity)) continue;
-      const connection = await read(item.key.slice('school:'.length));
+      const connection = await refreshProfile(await read(item.key.slice('school:'.length)));
       if (fresh) await modelAccess(connection); return connection;
     }
     throw new StorageError('forbidden');
@@ -174,6 +373,16 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function agentDependency(identity: SpaceIdentity, value: TeachingDependencyCall) {
     const connection = await identityConnection(identity, false);
     if (value.identity && subject(value.identity) !== subject(identity)) throw new StorageError('forbidden');
+    if (localStudyMode(connection)) {
+      await ensureStudy(connection); await assertStudyIdentity(connection);
+      const data = studyLearning(connection);
+      if (value.operation === 'authorize') {
+        if (value.activityId) await data.open(identity, value.activityId);
+        return { authorized: true };
+      }
+      return createTeachingDataService({ learning: data, courses: studyCourses(connection),
+        assertWritable: () => assertStudyIdentity(connection) })(value);
+    }
     if (connection.localBinding && local?.create) {
       const binding = connection.localBinding, data = localLearning(connection);
       await checkLocal(connection, binding.runtimeConnectionId);
@@ -249,6 +458,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function publishExecutionRecord(identity: SpaceIdentity, activityId: string,
     event: import('@xunjie/contracts/execution-records').ExecutionRecordEvent) {
     const connection = await identityConnection(identity);
+    if (localStudyMode(connection)) {
+      const executor = environment.services.find(item => item.unit === 'tool-execution');
+      if (!executor) throw new StorageError('forbidden');
+      await studyLearning(connection).executionRecords.sync(identity, activityId, event, { sourceOwner: {
+        environmentId: executor.environmentId, serviceId: executor.serviceId }, installationId: environment.installationId,
+        role: 'tool-execution', assertAuthorized: () => assertStudyIdentity(connection) });
+      return;
+    }
     if (connection.localBinding && local?.create) {
       const executor = environment.services.find(item => item.unit === 'tool-execution');
       if (!executor) throw new StorageError('forbidden');
@@ -270,6 +487,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function executionEnvironmentFor(identity: SpaceIdentity) {
     if (!local?.executionEnvironment) throw new StorageError('unavailable');
     const connection = await identityConnection(identity), here = executionFactsSchema.parse(await local.executionEnvironment(identity));
+    if (localStudyMode(connection)) return { ...here, remoteAvailable: false,
+      placements: here.adapters.map(adapter => ({ target: 'student-runtime', adapterId: adapter.adapterId,
+        adapterVersion: adapter.adapterVersion, available: adapter.available !== false && !!here.device.native?.supported
+          && here.device.native.installed && here.device.native.authorized && here.device.native.prepared === 'ready' })) };
     const school = executionFactsSchema.parse(await call(connection, 'execution-environment', undefined, true));
     const native = here.device.native;
     const remoteAvailable = !connection.localBinding && school.remoteAvailable;
@@ -301,6 +522,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   }
   async function schoolModel(identity: SpaceIdentity) {
     const connection = await identityConnection(identity);
+    if (localStudyMode(connection)) return null;
     return schoolModelSchema.nullable().parse(await call(connection, 'models/school-default', undefined, true));
   }
   async function modelForward(connection: Connection, route: string, body?: unknown) {
@@ -466,13 +688,35 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (connection.grant && !connection.setupPending) {
         if (options.rememberCleanup !== false) await rememberCleanupDestination(connection);
         result.push({ key: `school:${connection.requestId}`, identity: connection.grant.identity, cleanupEndpoint: connection.schoolEndpoint,
-          directLocalExecution: !!connection.agentBinding });
+          directLocalExecution: !!connection.agentBinding || localStudyMode(connection) });
       }
     }
     return result;
   }
+  async function account() {
+    const selected = (await list({ rememberCleanup: false }))[0];
+    if (!selected) return null;
+    const connectionId = selected.key.slice('school:'.length), connection = await read(connectionId);
+    let profile = connection.grant?.account;
+    if (!profile) {
+      try {
+        profile = schoolAccountSchema.parse(await call(connection, 'account', undefined, true));
+        const fixed = profile;
+        await update(connectionId, async () => {
+          const current = await read(connectionId);
+          if (!current.grant || subject(current.grant.identity) !== subject(selected.identity)) throw new StorageError('forbidden');
+          current.grant.account = fixed;
+          await atomicJson(path(connectionId), current);
+        });
+      } catch { /* The bound account remains visible while its school is offline. */ }
+    }
+    return { key: selected.key, accountName: profile?.accountName ?? selected.identity.name,
+      schoolName: profile?.schoolName ?? selected.identity.name };
+  }
   async function start(value: { requestId: string; schoolEndpoint: string }) {
     const input = z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(value);
+    if ((await list({ rememberCleanup: false })).some(item => item.key !== 'school:' + input.requestId))
+      throw new StorageError('conflict');
     const endpoint = new URL(input.schoolEndpoint);
     if (endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash
       || endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(endpoint.hostname))) throw new StorageError('invalid');
@@ -492,6 +736,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     return view(connection);
   }
   async function complete(requestId: string) {
+    const release = await acquireLock(root, 'school-account-binding');
+    try {
+      if ((await list({ rememberCleanup: false })).some(item => item.key !== 'school:' + requestId))
+        throw new StorageError('conflict');
+      return await completeConnection(requestId);
+    } finally { await release(); }
+  }
+  async function completeConnection(requestId: string) {
     const connection = await read(requestId);
     const grant = grantSchema.parse(await call(connection, 'connections/exchange', { requestId, verifier: connection.verifier }));
     if (grant.connectionId !== requestId) throw new StorageError('forbidden');
@@ -503,7 +755,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (current.verifier !== connection.verifier) throw new StorageError('forbidden');
       await rememberCleanupDestination(current);
       current.grant = grant;
-      if (grant.deviceSetup && local?.teaching && !current.localBinding && !current.agentBinding) current.setupPending = true;
+      current.setupPending = confirmedProfile(current)?.localStudy === true && !localStudyMode(current)
+        && !!grant.deviceSetup && !!local?.teaching && !current.localBinding && !current.modelBinding && !current.agentBinding;
       await atomicJson(path(requestId), current);
       return current;
     });
@@ -810,8 +1063,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       },
     });
   }
-  async function localForward(connection: Connection, route: string, body?: unknown) {
-    const learning = localLearning(connection);
+  async function localForward(connection: Connection, route: string, body?: unknown,
+    selectedLearning?: ReturnType<typeof createLearningData>) {
+    const learning = selectedLearning ?? localLearning(connection);
     const identity = connection.grant!.identity;
     if (route === 'conversation-history') return learning.conversationHistory.read(identity);
     if (route === 'conversation-history/update') return learning.conversationHistory.update(identity, body);
@@ -887,6 +1141,168 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (parts[2] === 'receipts') return learning.works.receipt(identity, parts[1]!, parts[3]!);
     return learning.works.content(identity, parts[1]!, parts[3]!);
   }
+  async function studyForward(connection: Connection, route: string, body?: unknown, search = ''): Promise<unknown> {
+    await ensureStudy(connection);
+    connection = await read(connection.requestId);
+    await assertStudyIdentity(connection);
+    const identity = connection.grant!.identity, copies = local!.studyCopies!, learning = studyLearning(connection);
+    if (route.startsWith('models/')) return modelForward(connection, route, body);
+    if (route.startsWith('agent/') || route === 'skills' || route.startsWith('skills/')) {
+      if (!local?.teaching) throw new StorageError('unavailable');
+      return createTeachingAgentService(local.teaching, () => assertStudyIdentity(connection))(
+        teachingAgentHttpCall(identity, route, body === undefined ? 'GET' : 'POST', body, search));
+    }
+    if (route === 'execution-environment') return executionEnvironmentFor(identity);
+    if (route.startsWith('executions/')) {
+      if (!local?.executions) throw new StorageError('unavailable');
+      const parts = route.split('/'), activityId = z.uuid().parse(parts[1]);
+      if (body === undefined && parts[2] === 'history') {
+        const [current, retained] = await Promise.all([local.executions.history(identity, activityId, parts[3]),
+          learning.executions.history(identity, activityId, parts[3])]);
+        return mergeExecutionHistory(current, retained);
+      }
+      const requestId = body !== undefined && parts.length === 2
+        ? anyExecutionActionSchema.parse((body as { action?: unknown }).action).requestId
+        : z.uuid().safeParse(parts[2]).data;
+      if (requestId) {
+        const current = await local.executions.read(identity, activityId, requestId);
+        if (body !== undefined) {
+          // Archived facts are not dispatch authority. An old request must never become a new command.
+          const retained = await learning.executions.read(identity, activityId, requestId);
+          if (!current && await copies.hasExecutionRequest(identity, activityId, requestId)) throw new StorageError('forbidden');
+          if (retained) {
+            if (!current) throw new StorageError('forbidden');
+            sameExecutionIdentity(current, retained);
+          }
+        } else if (parts.length === 3) {
+          return current ?? learning.executions.read(identity, activityId, requestId);
+        } else if (parts.length === 4 && parts[3] === 'artifact') {
+          const artifact = await local.executions.artifact(identity, activityId, requestId);
+          if (artifact !== null) return artifact;
+          const retained = await learning.executions.read(identity, activityId, requestId);
+          if (current && retained) sameExecutionIdentity(current, retained);
+          return learning.executions.artifact(identity, activityId, requestId);
+        }
+      }
+      return routeExecutionHttp(local.executions, local.teaching, identity, route, body);
+    }
+    if (route === 'courses' || route.startsWith('releases/')) {
+      if (body !== undefined) {
+        // Device preparation diagnostics are local process data as well.
+        if (route.endsWith('/preparation-report')) {
+          const input = componentPreparationReportSubmissionSchema.parse(body), parts = route.split('/');
+          const bundle = await studyCourses(connection).readComponent(identity, parts[1]!, parts[3]!);
+          if (input.report.componentId !== bundle.definition.manifest.componentId
+            || input.report.version !== bundle.definition.manifest.version || input.report.definitionDigest !== bundle.definition.digest)
+            throw new StorageError('invalid');
+          const requestKey = `${route}/${input.requestId}`;
+          const previous = await copies.cached(identity, requestKey);
+          if (previous !== null && JSON.stringify(canonicalValue(previous)) !== JSON.stringify(canonicalValue(input)))
+            throw new StorageError('identity-conflict');
+          await copies.cache(identity, requestKey, input);
+          const collection = await copies.cached<{ reportId: string; report: unknown }[]>(identity, route + 's') ?? [];
+          const existing = collection.find(item => item.reportId === input.reportId);
+          if (existing && JSON.stringify(canonicalValue(existing.report)) !== JSON.stringify(canonicalValue(input.report)))
+            throw new StorageError('identity-conflict');
+          await copies.cache(identity, route + 's', [{ reportId: input.reportId, report: input.report },
+            ...collection.filter(item => item.reportId !== input.reportId)].slice(0, 50));
+          return componentPreparationReportReceiptSchema.parse({ reportId: input.reportId, report: input.report });
+        }
+        throw new StorageError('forbidden');
+      }
+      if (route.endsWith('/preparation-reports')) {
+        const reports = await copies.cached<{ reportId: string; report: unknown }[]>(identity, route) ?? [];
+        return componentPreparationReportsSchema.parse(reports.map(item => item.report));
+      }
+      if (route === 'courses' && connection.localStudy?.cleanupPending) {
+        try { await finishStudyCleanup(connection); }
+        catch (error) { if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error; }
+      }
+      return cacheSchoolRead(connection, route, route === 'courses');
+    }
+    if (route === 'activities') {
+      if (body !== undefined) throw new StorageError('forbidden');
+      try {
+        const remote = z.array(activitySchema).parse(await call(connection, route, undefined, true));
+        await copies.importActivities(identity, remote);
+        for (const activity of remote) await downloadActivity(connection, activity);
+      } catch (error) {
+        if (!(error instanceof StorageError) || error.code !== 'unavailable') throw error;
+      }
+      return learning.list(identity);
+    }
+    if (/^activities\/[0-9a-f-]{36}$/.test(route)) {
+      try { return await learning.open(identity, route.slice('activities/'.length)); }
+      catch (error) { if (!(error instanceof StorageError) || error.code !== 'missing') throw error; }
+      const activity = activitySchema.parse(await call(connection, route, undefined, true));
+      await copies.importActivities(identity, [activity]);
+      await downloadActivity(connection, activity);
+      return learning.open(identity, activity.activityId);
+    }
+    if (route === 'course-activities' || route.startsWith('course-activity-results/')) {
+      const requestId = route === 'course-activities'
+        ? z.object({ requestId: z.uuid() }).passthrough().parse(body).requestId : route.slice('course-activity-results/'.length);
+      const cacheKey = 'course-activity-results/' + requestId;
+      const known = await copies.cached(identity, cacheKey);
+      if (known !== null) {
+        const result = courseActivityResultSchema.parse(known);
+        if (result.state === 'accepted') return route === 'course-activities' ? result.activity : result;
+      }
+      await finishStudyCleanup(connection);
+      const value = await call(connection, route, body, true);
+      const result = route === 'course-activities' ? { requestId, state: 'accepted' as const,
+        activity: activitySchema.parse(value), error: null } : courseActivityResultSchema.nullable().parse(value);
+      if (!result?.activity) return result;
+      await copies.importActivities(identity, [result.activity]);
+      await downloadActivity(connection, result.activity);
+      const activity = await learning.open(identity, result.activity.activityId);
+      if (!activity.course) throw new StorageError('corrupt');
+      // Registration and download acknowledgement are distinct durable school operations.
+      const acquisitionDigest = createHash('sha256').update(`school-acquisition/1/${activity.activityId}/${requestId}`).digest('hex');
+      const acquisitionRequestId = `${acquisitionDigest.slice(0, 8)}-${acquisitionDigest.slice(8, 12)}-5${acquisitionDigest.slice(13, 16)}-8${acquisitionDigest.slice(17, 20)}-${acquisitionDigest.slice(20, 32)}`;
+      const input = schoolAcquisitionInputSchema.parse({ requestId: acquisitionRequestId, releaseId: activity.course.releaseId,
+        contentDigest: activity.course.contentDigest });
+      const acquisitionKey = `outbox/acquisition/${activity.activityId}/${requestId}`;
+      await copies.cache(identity, acquisitionKey, input);
+      const receipt = schoolAcquisitionReceiptSchema.parse(await call(connection, 'activity-receipts/' + activity.activityId, input, true));
+      await copies.cache(identity, acquisitionKey, { input, receipt });
+      const localResult = { ...result, activity };
+      await copies.cache(identity, cacheKey, localResult);
+      return route === 'course-activities' ? activity : localResult;
+    }
+    if (route.startsWith('activity-receipts/') || route.startsWith('submissions/')) {
+      const parts = route.split('/'), activityId = z.uuid().parse(parts[1]);
+      await learning.open(identity, activityId);
+      if (parts[0] === 'activity-receipts') {
+        const input = body === undefined ? undefined : schoolAcquisitionInputSchema.parse(body);
+        return call(connection, route, input, true);
+      }
+      if (body !== undefined) {
+        if (parts.length !== 2) throw new StorageError('invalid');
+        const input = schoolSubmissionInputSchema.parse(body);
+        const key = `outbox/submission/${activityId}/${input.requestId}`;
+        const retained = await copies.cached<{ input: unknown; receipt?: unknown }>(identity, key);
+        if (retained && JSON.stringify(canonicalValue(retained.input)) !== JSON.stringify(canonicalValue(input)))
+          throw new StorageError('identity-conflict');
+        await copies.cache(identity, key, { input, ...(retained?.receipt ? { receipt: retained.receipt } : {}) });
+        const known = schoolSubmissionReceiptSchema.nullable().parse(await call(connection,
+          `submissions/${activityId}/receipts/${input.requestId}`, undefined, true));
+        const receipt = known ?? schoolSubmissionReceiptSchema.parse(await call(connection, route, input, true));
+        const contentDigest = createHash('sha256').update(JSON.stringify(canonicalValue({ works: input.works,
+          artifacts: input.artifacts, evidence: input.evidence }))).digest('hex');
+        if (receipt.requestId !== input.requestId || receipt.scope.activityId !== activityId
+          || receipt.scope.principalId !== identity.principalId || receipt.scope.environmentId !== identity.environmentId
+          || receipt.scope.spaceId !== identity.spaceId || receipt.contentDigest !== contentDigest) throw new StorageError('corrupt');
+        await copies.cache(identity, key, { input, receipt });
+        return receipt;
+      }
+      const value = await cacheSchoolRead(connection, route, true);
+      if (parts.length === 2) return schoolSubmissionListSchema.parse(value);
+      if (parts[2] === 'receipts') return schoolSubmissionReceiptSchema.nullable().parse(value);
+      return schoolSubmissionSchema.parse(value);
+    }
+    return localForward(connection, route, body, learning);
+  }
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string, search = '') {
     const id = '[0-9a-f-]{36}';
     const key = '[a-z][a-z0-9-]{0,47}';
@@ -895,6 +1311,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       `|agent-settings(?:/receipts/${id})?` +
       `|conversation-archives(?:/(?:set|import))?` +
       `|conversation-history(?:/update)?` +
+      `|activity-receipts/${id}(?:/${id})?|submissions/${id}(?:/${id}|/receipts/${id})?` +
       `|skills(?:/(?:import|select|disable))?` +
       `|pdf/${id}(?:/read|/find|/course|/(?:documents|reads|originals)/${id})?` +
       `|materials/${id}(?:/requests/${id}|/${id}(?:/remove|/versions/[1-9][0-9]*(?:/read)?)?)?` +
@@ -906,7 +1323,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       `|agent/${id}(?:/(?:conversation|events|capabilities|skills(?:/(?:import|select|disable))?|model-switches|requests/${id}|snapshots/${id}|responses/${id}|controls/${id}|inputs/${id}/control|questions/${id}/(?:responses|presentations)|runs/${id}(?:/(?:stop|continue))?))?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
-    const connection = await read(connectionId);
+    const savedConnection = await read(connectionId);
+    const connection = route === 'connections/revoke' ? savedConnection : await refreshProfile(savedConnection);
     if (!connection.grant) throw new StorageError('forbidden');
     if (expectedSubject !== undefined && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
@@ -917,6 +1335,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'conversation-history' && body !== undefined
       || route === 'conversation-history/update' && body === undefined) throw new StorageError('invalid');
     if (route === 'conversation-history/update') body = conversationHistoryUpdateSchema.parse(body);
+    if (localStudyMode(connection) && route !== 'connections/revoke') return studyForward(connection, route, body, search);
     if (route.startsWith('models/')) return modelForward(connection, route, body);
     if (connection.agentBinding || connection.localBinding && local?.teaching) {
       const identity = await modelAccess(connection);
@@ -950,11 +1369,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
           if (parts[2] === 'history') {
             const here = await local.executions.history(identity, activityId, parts[3]);
             const there = executionHistoryPageSchema.parse(await call(connection, route, undefined, true));
-            const entries = [...here.entries, ...there.entries.filter(item => !here.entries.some(local => local.query.requestId === item.query.requestId))]
-              .sort((a,b) => a.query.requestId.localeCompare(b.query.requestId));
-            const cutoff = [here.nextCursor, there.nextCursor].filter((id): id is string => id !== null).sort()[0];
-            const visible = cutoff ? entries.filter(item => item.query.requestId <= cutoff) : entries;
-            return { entries: visible.slice(0,32), nextCursor: visible.length > 32 ? visible[31]!.query.requestId : cutoff ?? null };
+            return mergeExecutionHistory(here, there);
           }
           if (parts[2] && /^[0-9a-f-]{36}$/.test(parts[2]) && !await local.executions.read(identity, activityId, parts[2]))
             return call(connection, route, body, true);
@@ -1143,6 +1558,6 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     await rememberCleanupDestination(connection);
     return call(connection, `native-channel/${operation}`, input, true);
   }
-  return { list, start, complete, configureLocal, configureModel, configureAgent, forward, nativeChannelCall,
+  return { list, account, start, complete, configureLocal, configureModel, configureAgent, forward, nativeChannelCall,
     authorizeModel, authorizeModelDispatch, schoolModel, pollModelTasks, agentDependency, identityForAgent, publishExecutionRecord, executionEnvironmentFor };
 }

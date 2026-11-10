@@ -21,7 +21,7 @@ it('supports account menu keyboard navigation in both sidebar states', async () 
   const root = createRoot(host)
   const profile = vi.fn()
   const settings = vi.fn()
-  await act(async () => root.render(<ProductShell immersive={false} identityName="小林" active="home"
+  await act(async () => root.render(<ProductShell immersive={false} accountName="小林" active="home"
     onHome={vi.fn()} onAgent={vi.fn()} onSettings={settings} onProfile={profile}><p>内容</p></ProductShell>))
 
   const sidebarTrigger = host.querySelector<HTMLButtonElement>('.account-pill')!
@@ -54,7 +54,7 @@ it('opens and closes collapsed conversation history with keyboard focus', async 
   const root = createRoot(host)
   const onAgent = vi.fn()
   const onArchiveOpenChange = vi.fn()
-  const render = (active: 'home' | 'agent') => <ProductShell immersive={false} identityName="小林" active={active}
+  const render = (active: 'home' | 'agent') => <ProductShell immersive={false} accountName="小林" active={active}
     onHome={vi.fn()} onAgent={onAgent} onSettings={vi.fn()} onProfile={vi.fn()} archiveOpen={false}
     onArchiveOpenChange={onArchiveOpenChange} agentHistory={() => <input aria-label="搜索对话" />}><p>内容</p></ProductShell>
   await act(async () => root.render(render('agent')))

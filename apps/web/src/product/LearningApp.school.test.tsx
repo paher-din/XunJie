@@ -157,11 +157,10 @@ it('keeps the old school link on the account page and makes connection errors an
   expect(completeCalls).toBe(1)
   expect(new URLSearchParams(location.search).get('space')).toBe('school:connection')
   expect(host.textContent).toContain('示例学校')
-  expect(host.textContent).toContain('当前空间')
+  expect(host.textContent).toContain('已绑定')
   expect(host.querySelector('.product-school-pending')).toBeNull()
-  expect(button('切换到个人空间')).not.toBeNull()
-  await click('切换到个人空间')
-  expect(host.textContent).toContain('已连接')
+  expect(host.textContent).not.toContain('切换到个人空间')
+  expect(button('换绑学校')).not.toBeNull()
 })
 
 it('uses the shared login page before a school identity exists, then opens the requested account page', async () => {
@@ -295,7 +294,7 @@ it.each(['personal', 'school:connection'])('manages the one connected school fro
   expect(host.querySelector('input[type="url"]')).toBeNull()
   await click('断开连接')
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('示例学校')
-  expect(document.querySelector('[role="dialog"]')?.textContent?.includes('你将返回个人学习空间')).toBe(space === 'school:connection')
+  expect(document.querySelector('[role="dialog"]')?.textContent?.includes('你将返回本地学习空间')).toBe(space === 'school:connection')
   expect(revoked).toEqual([])
   await clickDialog('取消')
   expect(revoked).toEqual([])

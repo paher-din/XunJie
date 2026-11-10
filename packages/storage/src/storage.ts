@@ -328,14 +328,18 @@ async function open(options: OpenOptions, restoring: boolean): Promise<OwnedStor
     async collect(config) {
       const limit = config.limit ?? 100;
       if (!Number.isInteger(limit) || limit < 1 || limit > 1000 || !Number.isFinite(config.olderThan.getTime())) throw new StorageError('invalid');
+      if (config.resourceIds && (config.resourceIds.length > 10000 || config.resourceIds.some(id =>
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)))) throw new StorageError('invalid');
+      if (config.resourceIds?.length === 0) return [];
       // Row locks serialize the claim with every reference/pin creation. Once
       // deleting is committed, publication refuses this identity permanently.
       const claims = await transaction(async client => {
         const { rows } = await client.query(`SELECT r.resource_id FROM _storage_resources r
           WHERE r.state IN ('ready','failed','deleting') AND r.created_at<$1
+            AND ($3::uuid[] IS NULL OR r.resource_id=ANY($3::uuid[]))
             AND NOT EXISTS(SELECT 1 FROM _storage_references x WHERE x.resource_id=r.resource_id)
             AND NOT EXISTS(SELECT 1 FROM _storage_pins p WHERE p.resource_id=r.resource_id)
-          ORDER BY r.resource_id LIMIT $2 FOR UPDATE OF r SKIP LOCKED`, [config.olderThan,limit]);
+          ORDER BY r.resource_id LIMIT $2 FOR UPDATE OF r SKIP LOCKED`, [config.olderThan,limit,config.resourceIds ?? null]);
         const claimed: string[] = [];
         for (const row of rows) {
           // This is a fresh READ COMMITTED statement *after* the object lock.

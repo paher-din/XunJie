@@ -118,11 +118,22 @@ async function exercisePairedDevice(profile) {
       } while (Date.now() < limit);
       assert.fail(`Missing paired ${operation} receipt`);
     }
+    async function readTerminalAttempt() {
+      const originalAttemptId = attemptId, deadline = Date.now() + 35_000;
+      let observed;
+      do {
+        observed = await submit('read');
+        assert.equal(observed.attemptId, originalAttemptId, 'poll the original attempt, never create a replacement');
+        if (!['accepted', 'dispatched'].includes(observed.state)) return observed;
+        await new Promise(resolve => setTimeout(resolve, 250));
+      } while (Date.now() < deadline);
+      assert.fail(`Original paired attempt did not settle: ${JSON.stringify(observed)}`);
+    }
     assert.equal((await submit('receive', { attemptId, purpose: 'chat-probe', segmentId, expectedSequence: 0,
       input: { text: 'Inspect the fixed image', images: [{ imageId, version: 1 }], toolResults: [] },
       limits: { maxOutputTokens: 64, timeoutMs: 15000 } })).state, 'accepted');
     await submit('dispatch');
-    const toolCall = await submit('read');
+    const toolCall = await readTerminalAttempt();
     assert.equal(toolCall.state, 'completed');
     assert.deepEqual(toolCall.toolIntents, [{ callId: 'paired-marker', name: 'read_marker', arguments: {} }]);
     attemptId = randomUUID();
@@ -130,7 +141,7 @@ async function exercisePairedDevice(profile) {
       input: { text: 'Use the marker', images: [], toolResults: [{ callId: 'paired-marker', outcome: 'success', text: 'fixed marker', images: [] }] },
       limits: { maxOutputTokens: 64, timeoutMs: 15000 } })).state, 'accepted');
     await submit('dispatch');
-    const generated = await submit('read');
+    const generated = await readTerminalAttempt();
     assert.equal(generated.state, 'completed');
     assert.equal(generated.text, 'paired OK');
     assert.ok(generated.resultRef);
@@ -147,7 +158,7 @@ async function exercisePairedDevice(profile) {
     assert.equal(requests.length, 3);
     assert.equal(streamClosed, false);
     assert.equal((await submit('cancel')).cancelRequested, true);
-    const cancelled = await submit('read');
+    const cancelled = await readTerminalAttempt();
     assert.equal(cancelled.state, 'cancelled');
     assert.equal(cancelled.reason, 'client-abort');
     assert.equal(cancelled.physicalRequestEnded, true);
@@ -164,7 +175,7 @@ async function exercisePairedDevice(profile) {
     await submit('receive', { attemptId, purpose: 'chat-probe', segmentId: sensitiveSegmentId, expectedSequence: 0,
       input: { text: 'Synthetic escaped credential fixture', images: [], toolResults: [] }, limits: { maxOutputTokens: 64, timeoutMs: 15000 } });
     await submit('dispatch');
-    const sensitiveResult = await submit('read');
+    const sensitiveResult = await readTerminalAttempt();
     assert.equal(sensitiveResult.state, 'failed'); assert.equal(sensitiveResult.reason, 'credential-in-tool-output');
     assert.deepEqual(sensitiveResult.toolIntents, []); assert.equal(JSON.stringify(sensitiveResult).includes('synthetic-device-chat'), false);
     const modelOwner = deviceStatus.environment.services.find(service => service.unit === 'model-connection');
@@ -299,8 +310,14 @@ async function exercisePairedDevice(profile) {
       const namespace = { 'x-xj-namespace': isolated.environment.clientNamespace };
       await assert.rejects(api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint }),
         /forbidden/, 'a recovered installation must not accept a pairing without the current namespace');
+      await assert.rejects(api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint },
+        { 'x-xj-namespace': deviceStatus.environment.clientNamespace }), /forbidden/, 'the retired namespace cannot start a pairing');
       await api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint }, namespace);
       await api(schoolStatus.endpoint, 'connections/approve', { requestId: reconnect }, { cookie });
+      await assert.rejects(api(isolated.endpoint, 'client/complete', { requestId: reconnect }),
+        /forbidden/, 'completing a recovered pairing also requires the current namespace');
+      await assert.rejects(api(isolated.endpoint, 'client/complete', { requestId: reconnect },
+        { 'x-xj-namespace': deviceStatus.environment.clientNamespace }), /forbidden/, 'the retired namespace cannot complete a pairing');
       await api(isolated.endpoint, 'client/complete', { requestId: reconnect }, namespace);
       const restoredAdmin = { authorization: 'Bearer ' + await resolveCredential(restoredRoot, 'control') };
       await api(isolated.endpoint, 'manage/local-binding', { connectionId: reconnect, runtimeConnectionId: restoredRuntimeConnectionId, target }, restoredAdmin);

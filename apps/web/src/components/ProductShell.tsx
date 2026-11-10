@@ -8,7 +8,7 @@ import './product-shell.css'
 export interface ProductShellProps {
   children: ReactNode
   immersive: boolean
-  identityName: string
+  accountName: string
   onHome: () => void
   onAgent: () => void
   onSettings: () => void
@@ -116,7 +116,7 @@ function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings }: 
 }
 
 /** Product presentation consumes real data and callbacks; it owns no business services or routing. */
-export function ProductShell({ children, immersive, identityName, avatar, onHome, onAgent, onSettings, onProfile, active,
+export function ProductShell({ children, immersive, accountName, avatar, onHome, onAgent, onSettings, onProfile, active,
   agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange }: ProductShellProps) {
   const { collapsed, toggle, setCollapsed } = useShellNavigation()
   const toggleRef = useRef<HTMLButtonElement>(null)
@@ -155,7 +155,7 @@ export function ProductShell({ children, immersive, identityName, avatar, onHome
   return <ShellFrame className="product-shell" collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={immersive} mainRef={mainRef}
     navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} />}
     bottom={<div className="side-bottom">
-      <ProductAccount name={identityName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} />
+      <ProductAccount name={accountName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} />
       <button type="button" className={'side-icon' + (active === 'settings' ? ' active' : '')} data-tip="设置与帮助" aria-label="设置与帮助" onClick={onSettings}><Icon name="settings" size={16} /></button>
       <ProductThemeButton visible={!collapsed && !immersive} />
     </div>}
@@ -184,7 +184,7 @@ export function ProductShell({ children, immersive, identityName, avatar, onHome
       </nav>
       <div className="product-rail-bottom">
         <ProductThemeButton visible={railVisible} rail />
-        <ProductAccount name={identityName} avatar={avatar} visible={railVisible} rail onProfile={onProfile} onSettings={onSettings} />
+        <ProductAccount name={accountName} avatar={avatar} visible={railVisible} rail onProfile={onProfile} onSettings={onSettings} />
       </div>
     </>}
     overlays={<RailHistoryPanel visible={railPanelVisible} panelRef={railPanelRef} onClose={closeRailPanel}>

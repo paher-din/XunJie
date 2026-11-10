@@ -42,6 +42,6 @@ export function ProductAgent({ question, onQuestion, onSend, pending, onRetry, o
         onModelChange={picker.change}
         effort="" efforts={[]} onEffortChange={() => {}} showEffort={false}
         contextIndicator={<AgentModelFeedback controller={picker} />} />}
-      disclaimer="从问题开始，你的学习对话会保存在当前空间" />
+      disclaimer="对话自动保存在本机" />
   </div>
 }

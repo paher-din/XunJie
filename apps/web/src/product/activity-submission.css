@@ -1,0 +1,28 @@
+.activity-submission-dialog { width: min(680px, calc(100vw - 40px)); }
+.activity-submission-section { margin-top: 24px; }
+.activity-submission-section h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.activity-submission-section p { color: var(--muted); font-size: 13px; }
+.activity-submission-section header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.activity-submission-section fieldset { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.activity-submission-section legend { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+.activity-submission-choice { display: flex; align-items: center; gap: 8px; padding-block: 8px; font-size: 13px; overflow-wrap: anywhere; }
+.activity-submission-choice input { flex: none; accent-color: var(--primary); }
+.activity-submission-choice span, .activity-submission-records time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.activity-submission-section details { padding-block: 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.activity-submission-section summary { cursor: pointer; color: var(--ink-soft); font-size: 13px; }
+.activity-submission-section summary:hover { color: var(--ink); }
+.activity-submission-section summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.activity-submission-section pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: var(--sunken); padding: 12px; border-radius: 8px; font-size: 13px; color: var(--ink-soft); }
+.activity-submission-error, .activity-submission-trigger-error { color: var(--danger-deep); font-size: 13px; }
+.activity-submission-trigger-error { max-width: 28ch; }
+.activity-submission-records { list-style: none; padding: 0; margin: 0; }
+.activity-submission-records li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.activity-submission-records time { display: block; }
+.activity-submission-preview { display: block; width: 100%; height: 280px; border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; background: var(--canvas); }
+.activity-submission-state { margin: 12px 0 0; font-size: 13px; }
+.activity-submission-state dt { color: var(--ink-soft); font-weight: 500; }
+.activity-submission-state dd { margin: 0 0 12px; }
+@media (max-width: 640px) {
+  .activity-submission-dialog { padding: 16px; }
+  .activity-submission-records li, .activity-submission-choice { flex-wrap: wrap; }
+}

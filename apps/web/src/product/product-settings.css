@@ -24,7 +24,7 @@
 .product-settings-identity dl { margin: 0; min-width: 0; }
 .product-settings-identity dt { color: var(--muted); font-size: 13px; }
 .product-settings-identity dd { margin: 4px 0 0; font-size: 17px; font-weight: 500; overflow-wrap: anywhere; white-space: pre-wrap; }
-.product-settings-empty, .product-settings-copy { color: var(--muted); font-size: 13px; line-height: 1.7; margin: 0 0 20px; }
+.product-settings-empty { color: var(--muted); font-size: 13px; line-height: 1.7; margin: 0 0 20px; }
 .product-settings-facts { margin: 0; }
 .product-settings-facts > div { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); }
 .product-settings-facts dt { color: var(--ink); font-size: 13px; font-weight: 500; }
@@ -132,3 +132,6 @@
 .product-connection-dialog .detail { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
 .product-connection-dialog :focus-visible:where(:not(.st-input)) { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .product-connection-dialog .st-field { margin-bottom: 0; }
+
+.product-settings-current dl > div + div { margin-top: 12px; }
+.product-school .product-school-rebind, .product-school-list + .product-school-connect-form, .product-school-list + .product-school-pending { margin-top: 16px; }

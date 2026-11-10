@@ -13,6 +13,7 @@ import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
+import { schoolAcquisitionInputSchema, schoolSubmissionInputSchema } from '@xunjie/contracts/school-deliveries';
 import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillTransportBytes } from '@xunjie/contracts/agent-skills';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
@@ -83,6 +84,8 @@ export function createLearningEntry(options: {
   bindModelDevice?(input: unknown): Promise<unknown>;
   courseExecutionDesign?(operation: 'compile' | 'prepare' | 'read', input: unknown): Promise<unknown>;
   deviceSetup?(identity: SpaceIdentity, input: unknown): Promise<unknown>;
+  /** The trusted host checks enabled modules and explicit member/activity owners; absence never authorizes a move. */
+  localStudyAllowed?(identity: SpaceIdentity): Promise<boolean>;
   restoredInstallation?(): Promise<boolean>;
   administratorToken: string;
   readOnly?: () => Promise<boolean>;
@@ -93,6 +96,7 @@ export function createLearningEntry(options: {
     adapters: { adapterId: string; adapterVersion: number; platforms: readonly ExecutionPlatform[] }[] }>;
   client?: {
     list(): Promise<{ key: string; identity: SpaceIdentity }[]>;
+    account?(): Promise<{ key: string; accountName: string; schoolName: string } | null>;
     start(input: { requestId: string; schoolEndpoint: string }): Promise<unknown>;
     complete(requestId: string): Promise<unknown>;
     configureLocal?(input: unknown): Promise<unknown>;
@@ -118,6 +122,17 @@ export function createLearningEntry(options: {
   const cookieFlags = `; Path=/; HttpOnly; SameSite=Strict${endpoint.protocol === 'https:' ? '; Secure' : ''}`;
   function session(request: IncomingMessage) {
     return request.headers.cookie?.split(';').map(part => part.trim()).find(part => part.startsWith(cookieName + '='))?.slice(cookieName.length + 1) ?? '';
+  }
+  async function allowsLocalStudy(identity: SpaceIdentity, target: LearningTarget) {
+    return environment.profile === 'school' && !!learning && !!options.target
+      && target.environmentId === options.target.environmentId && target.serviceId === options.target.serviceId
+      && target.version === options.target.version && await options.localStudyAllowed?.(identity) === true;
+  }
+  async function connectionProfile(identity: SpaceIdentity, connectionId: string) {
+    if (!spaces) throw new StorageError('forbidden');
+    const target = await spaces.resolveBinding(identity);
+    const localStudy = await allowsLocalStudy(identity, target);
+    return { version: 1 as const, localStudy, connectionId, identity, target, account: await spaces.account(identity) };
   }
   async function current(request: IncomingMessage): Promise<SpaceIdentity> {
     if (!spaces) throw new StorageError('forbidden');
@@ -151,7 +166,7 @@ export function createLearningEntry(options: {
         throw new StorageError('maintenance');
       if (options.requiresNamespace && request.method === 'POST'
         && !/^(?:manage|connections|native-channel)\//.test(route)
-        && !['login', 'logout', 'client/start', 'client/complete'].includes(route)
+        && !['login', 'logout'].includes(route)
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
       const artifactView = request.method === 'GET' && /^artifacts\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/revisions\/[0-9a-f-]{36}\/view$/.test(route);
@@ -180,7 +195,8 @@ export function createLearningEntry(options: {
         || route.startsWith('executions/') || route.startsWith('models/') || route.startsWith('agent/') || route.startsWith('agent-settings')
         || route === 'conversation-archives' || route.startsWith('conversation-archives/')
         || route === 'conversation-history' || route.startsWith('conversation-history/')
-        || route === 'skills' || route.startsWith('skills/')) && request.headers['x-xj-namespace']
+        || route === 'skills' || route.startsWith('skills/') || route.startsWith('submissions/')
+        || route.startsWith('activity-receipts/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       if ((route === 'conversation-archives' && method !== 'GET')
@@ -191,6 +207,10 @@ export function createLearningEntry(options: {
       const remote = request.headers['x-xj-space'];
       if (readOnly && typeof remote === 'string' && remote.startsWith('school:')) throw new StorageError('forbidden');
       if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
+      if (environment.profile === 'school' && learning && (/^(?:drafts|intents|materials|pdf|artifacts|executions|agent|agent-settings|conversation-archives|conversation-history)(?:\/|$)/.test(route)
+        || route === 'activity-status' || route === 'activities' && method === 'POST')) {
+        await learning.studyCopies.assertWritable(await current(request));
+      }
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
@@ -200,6 +220,7 @@ export function createLearningEntry(options: {
           result = await fetchGithubSkill(url);
         } else result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
           route === 'skills/import' || /^agent\/[0-9a-f-]{36}\/skills\/import$/.test(route) ? teachingSkillTransportBytes
+            : route.startsWith('submissions/') ? 32*1024*1024
             : route.startsWith('artifacts/') ? 2000000 : route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
             : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
@@ -247,12 +268,22 @@ export function createLearningEntry(options: {
           try { identities.push({ key: 'school', identity: readOnly ? await current(request) : await spaces.authenticate(session(request), 'session') }); }
           catch (error) { if (!(error instanceof StorageError) || error.code !== 'forbidden') throw error; }
         }
-        result = { profile: environment.profile, clientNamespace: environment.clientNamespace, readOnly,
+        const schoolSession = identities.find(item => item.key === 'school');
+        const account = !readOnly && options.client?.account ? await options.client.account()
+          : schoolSession && spaces ? { key: 'school', ...await spaces.account(schoolSession.identity) } : null;
+        result = { profile: environment.profile, clientNamespace: environment.clientNamespace, readOnly, account,
           identities: [...identities, ...(!readOnly ? await options.client?.list() ?? [] : [])] };
       } else if (!spaces || !options.target) throw new StorageError('forbidden');
       else if (route === 'access' && method === 'GET') {
         const identity = await current(request);
         result = { identity, target: await spaces.resolveBinding(identity) };
+      } else if (route === 'account' && method === 'GET') {
+        result = await spaces.account(await current(request));
+      } else if (route === 'connections/profile' && method === 'GET' && environment.profile === 'school' && !readOnly) {
+        const authorization = request.headers.authorization;
+        if (!authorization?.startsWith('Bearer ')) throw new StorageError('forbidden');
+        const connection = await spaces.readConnection(authorization.slice(7));
+        result = await connectionProfile(connection.identity, connection.connectionId);
       } else if (route === 'login' && method === 'POST') {
         const input = z.object({ loginName: z.string(), password: z.string() }).strict().parse(await readLearningBody(request));
         let login;
@@ -361,10 +392,12 @@ export function createLearningEntry(options: {
       } else if (route === 'connections/exchange' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), verifier: z.string() }).strict().parse(await readLearningBody(request));
         const grant = await spaces.exchangeConnection(input.requestId, input.verifier);
-        const target = await spaces.resolveBinding(grant.identity);
+        const profile = await connectionProfile(grant.identity, grant.connectionId), target = profile.target;
         const localTarget = options.target && target.environmentId === options.target.environmentId
           && target.serviceId === options.target.serviceId && target.version === options.target.version;
-        result = { ...grant, target, ...(environment.profile === 'school' && options.deviceSetup && localTarget ? { deviceSetup: { version: 1 } } : {}) };
+        result = { ...grant, target, account: profile.account, profile,
+          ...(profile.localStudy ? { localStudy: { version: 1 } } : {}),
+          ...(profile.localStudy && options.deviceSetup && localTarget ? { deviceSetup: { version: 1 } } : {}) };
       } else if (route === 'connections/device-setup' && method === 'POST' && environment.profile === 'school' && options.deviceSetup) {
         const authorization = request.headers.authorization;
         if (!authorization?.startsWith('Bearer ')) throw new StorageError('forbidden');
@@ -415,6 +448,34 @@ export function createLearningEntry(options: {
           ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
       } else if (!learning) throw new StorageError('forbidden');
+      else if (route === 'study-transfer' && method === 'GET') {
+        const identity = await current(request);
+        const target = await spaces.resolveBinding(identity);
+        if (!await allowsLocalStudy(identity, target)) throw new StorageError('forbidden');
+        await learning.list(identity);
+        result = await learning.studyCopies.exportScope(identity);
+      } else if (route === 'study-transfer/ack' && method === 'POST') {
+        const identity = await current(request);
+        result = await learning.studyCopies.acknowledgeExport(identity,
+          z.object({ digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().parse(await readLearningBody(request)));
+      } else if (route.startsWith('activity-receipts/') || route.startsWith('submissions/')) {
+        const identity = await current(request), parts = route.split('/');
+        const expected = request.headers['x-xj-expected-subject'];
+        if (expected !== undefined && expected !== [identity.environmentId, identity.spaceId, identity.principalId].join('.'))
+          throw new StorageError('forbidden');
+        const activityId = z.uuid().parse(parts[1]);
+        if (parts[0] === 'activity-receipts') {
+          if (parts.length === 2 && method === 'POST') result = await learning.schoolDeliveries.acquire(identity, activityId,
+            schoolAcquisitionInputSchema.parse(await readLearningBody(request)));
+          else if (parts.length === 3 && method === 'GET') result = await learning.schoolDeliveries.acquisitionReceipt(identity, activityId, z.uuid().parse(parts[2]));
+          else throw new StorageError('missing');
+        } else if (parts.length === 2 && method === 'POST') result = await learning.schoolDeliveries.submit(identity, activityId,
+          schoolSubmissionInputSchema.parse(await readLearningBody(request, 32*1024*1024)));
+        else if (parts.length === 2 && method === 'GET') result = await learning.schoolDeliveries.list(identity, activityId);
+        else if (parts.length === 4 && parts[2] === 'receipts' && method === 'GET') result = await learning.schoolDeliveries.receipt(identity, activityId, z.uuid().parse(parts[3]));
+        else if (parts.length === 3 && method === 'GET') result = await learning.schoolDeliveries.read(identity, activityId, z.uuid().parse(parts[2]));
+        else throw new StorageError('missing');
+      }
       else if (route.startsWith('artifacts/')) {
         const identity = await current(request);
         const expected = request.headers['x-xj-expected-subject'];

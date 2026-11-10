@@ -383,6 +383,7 @@ test('normal host serves the unchanged real UI build and authorized session over
     const asset=await fetch(address+bundle);
     assert.equal(asset.status,200);
     assert.match(asset.headers.get('content-type')??'',/javascript/);
+    assert.equal(await asset.text(),readFileSync(new URL('../../../web/dist'+bundle,import.meta.url),'utf8'));
     const session=await fetch(address+'/api/session',{headers:{cookie:student.cookie}});
     assert.equal(session.status,200);
     const sessionBody=await session.json() as {data:{userId:string}};

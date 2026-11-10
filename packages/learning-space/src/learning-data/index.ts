@@ -1,5 +1,7 @@
 import { createTeachingArtifacts, teachingArtifactMigration, validateTeachingArtifacts, type ArtifactAdoptionGuard } from './teaching-artifacts.js';
 import { createHash, randomUUID } from 'node:crypto';
+import { studyCopyMigration, createStudyCopies, validateStudyCopies } from './study-copies.js';
+import { schoolDeliveryMigration, createSchoolDeliveries, validateSchoolDeliveries } from './school-deliveries.js';
 import { agentExecutionOriginMigration, agentExecutionAuthorityMigration } from './agent-executions.js';
 import { activityAgentRouteMigration, validateActivityAgentRoutes } from './agent-routes.js';
 import { agentPreferenceMigration, createAgentPreferences, validateAgentPreferences } from './agent-preferences.js';
@@ -52,7 +54,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
 ` }, questionDraftMigration, actionIntentMigration, executionMigration, nativeSessionMigration, sessionRecoveryMigration, nativeChannelMigration,
 executionActionTextMigration, channelExecutionMigration, nativeChannelTargetMigration, nativeChannelObservationMigration,
 nativeChannelCancellationMigration, nativeChannelCleanupMigration, channelCheckpointMigration, agentExecutionMigration, activityAgentRouteMigration,
-{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration, executionRecordMigration];
+{ version: 19, name: 'learning-owner-agent-chunk-channel', sql: chunkChannelMigrationSql }, agentExecutionOriginMigration, agentPreferenceMigration, agentExecutionAuthorityMigration, pdfMaterialMigration, personalMaterialMigration, teachingArtifactMigration, conversationArchiveMigration, conversationHistoryMigration, executionRecordMigration, studyCopyMigration, schoolDeliveryMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -72,6 +74,8 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 }
 
 export async function validateLearningData(storage: OwnedStorage) {
+  await validateStudyCopies(storage);
+  await validateSchoolDeliveries(storage);
   await validateTeachingArtifacts(storage);
   await validateConversationArchives(storage);
   await validateConversationHistory(storage);
@@ -312,6 +316,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
           key: action.execution.instance.key, definitionDigest: action.execution.instance.definitionDigest });
       } } } : {}) });
   return { create, createCourse, courseResult, list, open, receipt, setStatus, artifacts: createTeachingArtifacts(storage, open, assertArtifactAdoption), works, pdf, materials, search, drafts, intents, executions, executionRecords,
+    studyCopies: createStudyCopies(storage), schoolDeliveries: createSchoolDeliveries(storage, { activity: open }),
     agentPreferences: createAgentPreferences(storage, access),
     conversationArchives: createConversationArchives(storage, access),
     conversationHistory: createConversationHistory(storage, access),

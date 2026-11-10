@@ -8,10 +8,9 @@ import './product-settings.css'
 export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | 'privacy' | 'about'
 
 export interface ProductSettingsProps {
-  identityName: string
+  accountName: string
+  schoolName?: string
   onBack: () => void
-  onPersonalSpace?: () => void
-  busy?: boolean
   schoolControls: ReactNode
   accountFeedback?: ReactNode
   modelSettings: ReactNode
@@ -30,7 +29,7 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
   { id: 'about', label: '关于', icon: 'info-circle' },
 ]
 /** Business operations and identity changes remain owned by the caller. */
-export function ProductSettings({ identityName, onBack, onPersonalSpace, busy = false, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
+export function ProductSettings({ accountName, schoolName, onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
@@ -50,11 +49,6 @@ export function ProductSettings({ identityName, onBack, onPersonalSpace, busy = 
     const frame = requestAnimationFrame(revealSchool)
     return () => cancelAnimationFrame(frame)
   }, [active, focusSchool])
-  const showSchool = () => {
-    select('account')
-    requestAnimationFrame(revealSchool)
-  }
-
   // SettingsLayout keys its body by the active tab. Reuse its visual structure,
   // keeping these panes mounted so drafts and in-flight operations survive navigation.
   return <div className="settings student-settings product-settings">
@@ -81,10 +75,9 @@ export function ProductSettings({ identityName, onBack, onPersonalSpace, busy = 
           hidden={active !== 'account'} inert={active !== 'account'} className="product-settings-pane">
           <div className="product-settings-identity">
             <div className="product-settings-current">
-              <AccountAvatar name={identityName} />
-              <dl><div><dt>当前学习空间</dt><dd>{identityName}</dd></div></dl>
+              <AccountAvatar name={accountName} />
+              <dl><div><dt>账户</dt><dd>{accountName}</dd></div>{schoolName && <div><dt>学校</dt><dd>{schoolName}</dd></div>}</dl>
             </div>
-            {onPersonalSpace && <button type="button" className="outline" disabled={busy} onClick={onPersonalSpace}>切换到个人空间</button>}
           </div>
           <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">
             {accountFeedback}
@@ -100,8 +93,6 @@ export function ProductSettings({ identityName, onBack, onPersonalSpace, busy = 
           {modelSettings ?? <p className="product-settings-empty" role="status">个人设置暂不可用。</p>}
         </section>
         <section id={`${id}-privacy`} aria-labelledby={`${id}-privacy-nav`} hidden={active !== 'privacy'} inert={active !== 'privacy'}>
-          <Section title="学习空间"><p className="product-settings-copy">个人空间与学校空间分别保存学习内容。</p>
-            <button type="button" className="outline" onClick={showSchool}>管理学校连接</button></Section>
           <Section title="对话整理"><dl className="product-settings-facts">
             <div><dt>归档</dt><dd>从对话列表收起，可在归档箱恢复。</dd></div>
             <div><dt>删除对话入口</dt><dd>移除侧栏中的对话入口，学习活动和作品仍保留。</dd></div>

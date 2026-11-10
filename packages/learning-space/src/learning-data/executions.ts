@@ -9,6 +9,7 @@ import { advanceExecution, canonicalValue, defaultExecutionLimits, executionAcce
   executionQuerySchema, executionStopSchema } from '@xunjie/contracts/execution';
 import type { AnyExecutionAction as ExecutionAction, ExecutionQuery } from '@xunjie/contracts/execution';
 import { executionQueryFromRow, parseExecutionActivity, parseExecutionSource } from './execution-source.js';
+import { readStudyExecution, studyExecutionRequests } from './study-copies.js';
 import { verifyRuntimeBasis, verifyEnabledRuntimeSource, verifyAluCasePriorSource } from './runtime-basis.js';
 import { aluCaseFromAction } from '@xunjie/contracts/alu-learning';
 import { executionRetainedResourceSchema, type ExecutionRetainedResource } from '@xunjie/contracts/execution';
@@ -207,17 +208,26 @@ export function createExecutions(storage: OwnedStorage, options: {
     return saved.query;
   }
   async function read(identity: SpaceIdentity, activityId: string, requestId: string, guard?: () => Promise<void>) {
-    await authorize(identity, activityId); z.uuid().parse(requestId);
+    const activity = await authorize(identity, activityId); z.uuid().parse(requestId);
     if (channel && await channel.owns(activityId, requestId)) return channel.read(identity, activityId, requestId, guard);
     if (native && await native.owns(activityId, requestId)) return native.read(identity, activityId, requestId);
     const found = await find(activityId, requestId);
-    return found ? found.query : null;
+    if (found) return found.query;
+    const historical = await readStudyExecution(storage, activity, requestId);
+    return historical ? parseExecutionSource(historical.command, historical.activity).query : null;
   }
   async function history(identity: SpaceIdentity, activityId: string, cursor?: string) {
-    await authorize(identity, activityId);
+    const activity = await authorize(identity, activityId);
     if (cursor) z.uuid().parse(cursor);
     const { rows } = await storage.read(`SELECT * FROM execution_commands WHERE activity_id=$1
       AND ($2::uuid IS NULL OR request_id>$2::uuid) ORDER BY request_id LIMIT 33`, [activityId, cursor ?? null]);
+    for (const requestId of await studyExecutionRequests(storage, activity, cursor)) {
+      const historical = await readStudyExecution(storage, activity, requestId);
+      if (!historical || rows.some(row => row.request_id === requestId)) fail('corrupt');
+      parseExecutionSource(historical.command, historical.activity);
+      rows.push(historical.command);
+    }
+    rows.sort((a, b) => String(a.request_id).localeCompare(String(b.request_id)));
     const entries = rows.slice(0, 32).map(row => {
       const action = executionActionSchema.parse(row.action_text ? JSON.parse(String(row.action_text)) : row.body);
       const stored = query(row);
@@ -231,11 +241,13 @@ export function createExecutions(storage: OwnedStorage, options: {
       nextCursor: rows.length > 32 ? String(rows[31]!.request_id) : null });
   }
   async function artifact(identity: SpaceIdentity, activityId: string, requestId: string) {
-    await authorize(identity, activityId); z.uuid().parse(requestId);
-    const { rows: [row] } = await storage.read('SELECT * FROM execution_results WHERE activity_id=$1 AND request_id=$2',
+    const activity = await authorize(identity, activityId); z.uuid().parse(requestId);
+    const { rows: [stored] } = await storage.read('SELECT * FROM execution_results WHERE activity_id=$1 AND request_id=$2',
       [activityId, requestId]);
+    const historical = stored ? null : await readStudyExecution(storage, activity, requestId);
+    const row = stored ?? historical?.result;
     if (!row) return null;
-    const found = await find(activityId, requestId);
+    const found = historical ? parseExecutionSource(historical.command, historical.activity) : await find(activityId, requestId);
     if (!found || found.query.executionRef !== row.execution_ref) return fail('corrupt');
     if (!found.query.output || found.query.output.contentId !== row.content_id
       || found.query.output.artifact?.sha256 !== row.sha256 || found.query.output.artifact?.byteLength !== row.byte_length)
@@ -243,11 +255,20 @@ export function createExecutions(storage: OwnedStorage, options: {
     const bytes = Buffer.from(await storage.readResource(String(row.content_id)));
     if (bytes.length !== row.byte_length || createHash('sha256').update(bytes).digest('hex') !== row.sha256) fail('corrupt');
     const metadata = row.artifact as { name: string; mediaType: string; resources?:Omit<ExecutionRetainedResource,'text'>[] };
+    if (historical) {
+      for (const ref of [{ contentId: String(row.content_id), sha256: String(row.sha256), byteLength: Number(row.byte_length),
+        mediaType: metadata.mediaType }, ...metadata.resources ?? []]) {
+        const resource = await storage.resource(ref.contentId);
+        if (resource.scope !== `execution/${requestId}` || resource.sha256 !== ref.sha256 || resource.byteLength !== ref.byteLength
+          || resource.mediaType !== ref.mediaType || resource.contentVersion !== 1
+          || canonicalDigest(resource.owner) !== canonicalDigest(storage.owner)) fail('corrupt');
+      }
+    }
     const resources:ExecutionRetainedResource[]=[];
     for(const ref of metadata.resources??[]) {
       const resource=Buffer.from(await storage.readResource(ref.contentId));
       if(resource.length!==ref.byteLength || createHash('sha256').update(resource).digest('hex')!==ref.sha256) fail('corrupt');
-      resources.push({...ref,text:new TextDecoder('utf-8',{fatal:true}).decode(resource)});
+      resources.push({...ref,text:new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(resource)});
     }
     return executionArtifactSchema.parse({ executionRef: row.execution_ref, requestId: row.request_id, scope: found.query.scope,
       name: metadata.name, mediaType: metadata.mediaType, sha256: row.sha256, byteLength: row.byte_length,

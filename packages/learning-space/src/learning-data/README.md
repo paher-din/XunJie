@@ -1,5 +1,17 @@
 # 学习数据 owner
 
+默认产品归属：本机五模块与学校账号／课程、学习数据两模块配合。学校只保存账号、课程、活动登记、领取回执、明确提交及收件回执；个人和学校课程的作品编辑、草稿、引用、资料／PDF、生成内容、Agent 与实验过程均留本机。下文的 owner API 可在本机或显式远端组合装配；不能从“学校活动”推断过程数据存学校。
+
+## 本机学习副本与学校收件
+
+迁移 29 `local-school-study-copies` 由 `studyCopies.exportScope/importScope/acknowledgeExport` 协调：按学校环境、空间与主体冻结旧写入并导出，校验原表范围、请求／引用、资源摘要与字节，在本机持久化后才 ack；产品客户端还须缓存完整固定课程资源并保存 ready 记录。原 outbox 与执行历史作为证据保留，不重新派发。ack 只清本人冗余过程记录／引用，保留官方课程活动登记、正式提交、其他主体与备份 pin；资源仅按本次释放的 `resourceIds` 定向 GC。ack／GC 可用原 digest 重试，未完整导入不清源副本。
+
+本地副本按原主体及活动保存来源，`importActivities` 已有记录时只核对原课程／target，不覆盖 dirty 作品。解绑由客户端撤销访问并隐藏内容，数据保留；同主体重绑继续使用。本机课程 authority 读取已受领的发布、材料、组件及算法，客户端同时缓存依赖与运行资源；完整缓存可供学校断连时继续本机学习，缺项仍返回不可用。
+
+`studyCopies.sourceActivity` 只从已校验的本机导入来源读取原活动，供独立执行 owner 核实目标迁接。执行 owner 的迁移 3 保存迁接关系并更新活动 authority，原命令与原件保持不变。仅有旧浏览器命令／结果的执行事实从导入清单只读投影，继续用于原查询和固定引用校验；这些命令不写回可执行表或队列。
+
+迁移 30 `school-acquisitions-and-submissions` 提供 `schoolDeliveries.acquire/acquisitionReceipt/submit/receipt/list/read`。领取回执只绑定活动与固定发布；提交固定 `works`、`artifacts` 及可选 `evidence`，持久校验资源与 pin 后返回学校收件回执。同一 `requestId`、相同输入幂等，不同输入拒绝；未知结果先查询原回执。原提交可按 `submissionId` 回读，本机继续编辑不改旧提交。HTTP 使用 `activity-receipts/<activityId>[/<requestId>]`、`submissions/<activityId>`、`submissions/<activityId>/receipts/<requestId>` 与 `submissions/<activityId>/<submissionId>`，沿用主体与课程授权；选定实验依据属于学生交付，不生成学校执行命令或“已验证实验”结论。
+
 [#218 PDF](../../../../docs/student-agent-implementation/wp08-218-pdf.md) 在迁移 23 增加本活动的原件与不可变页/区域读取记录。[#219 个人资料与检索](../../../../docs/student-agent-implementation/wp08-219-personal-materials.md) 在迁移 24 增加个人 UTF-8 笔记的不可变版本与固定引用；`search` 在每次查询时按授权范围重读课程材料、个人原件、固定 PDF 原生文字和 Skill 附件，不维护可过期索引。`pdf` 接口复用当前空间、主体及课程资格核验；`pdf-pages` 引用进入同一 `drafts/intents`，原件与已用文字/页图随资源 pin 保留。恢复直接校验保存字节，不重新转换。个人资料不会写入课程发布或教师投影。
 
 本模块拥有无课程活动及其请求身份和回执；通过 `SpaceAuthority.resolveBinding` 取得当前成员与实际目标，不访问空间 owner 的数据库。wire 从 `@xunjie/contracts/learning-data` 消费，生产入口见 [learning-entry](../learning-entry/README.md)。
@@ -10,7 +22,7 @@
 
 建立与状态变化使用稳定请求 ID 和输入摘要。相同身份、相同输入返回原回执；不同输入拒绝。提交未知时使用 `receipt` 查询原身份，未确认前不换请求。活动和请求范围在本 owner 的短事务中提交，不拼接空间 owner 的事务。
 
-课程绑定活动经 `createCourse` 使用同一活动模型，并按 `register -> prepare -> 持久 pending -> confirm -> 可见提交` 协调两个真实 owner：课程 owner 保存原活动 ID、发布版本、内容摘要和保留依据；本 owner 只在对方确认后提交可见活动与成功回执。`courseResult` 查询原请求的 pending/accepted/rejected 状态；重复请求返回同一活动 ID，改发布或主体拒绝。准备或确认前的资源、资格故障不确认成功；已确认但回执丢失时按原身份续接。读取、列出、重开和回执查询都重新核验当前课程资格与原版本；资格撤销后课程活动不再投影，自主活动仍按原路径工作。整合后保留已在 `codex/wp02` 的 v2 作品迁移，课程协调状态与固定绑定追加为 v3；不改写已有作品迁移。原独立课程分支的 v2 验收环境不能直接冒充整合后数据库，正式升级/恢复须核对迁移谱系。
+课程绑定活动经 `createCourse` 使用同一活动模型，并按 `register -> prepare -> 持久 pending -> confirm -> 可见提交` 协调两个真实 owner：课程 owner 保存原活动 ID、发布版本、内容摘要和保留依据；本 owner 只在对方确认后提交可见活动与成功回执。`courseResult` 查询原请求的 pending/accepted/rejected 状态；重复请求返回同一活动 ID，改发布或主体拒绝。准备或确认前的资源、资格故障不确认成功；已确认但回执丢失时按原身份续接。上述原创建与显式远端路径在读取、列出、重开和回执查询时重新核验学校课程资格与原版本；默认本机副本改由下载课程 authority 核对当前本机绑定与固定课程依据，学校暂时断连不阻断已受领活动，新的领取和提交仍核验学校资格。自主活动仍按原路径工作。整合后保留已在 `codex/wp02` 的 v2 作品迁移，课程协调状态与固定绑定追加为 v3；不改写已有作品迁移。原独立课程分支的 v2 验收环境不能直接冒充整合后数据库，正式升级/恢复须核对迁移谱系。
 
 `learning.works.read/sync/receipt/content` 是 [#151 作品接口](../../../../docs/student-agent-implementation/wp02-reliable-works.md)：文本/代码文件、类型化资源与状态共用稳定对象和不可变内容身份；同步携带基线与请求身份，拒绝过期覆盖或同 ID 换内容。大内容先经资源后端持久化及重读校验，再同事务发布引用、版本和回执。历史内容保留引用；删除对象留下 tombstone，不因同名新建被复用。
 
@@ -22,7 +34,7 @@
 
 ## 执行历史与恢复读取（#176）
 
-`learning.executions.history(identity, activityId, cursor?)` 按固定请求身份分页返回原动作、接收回执、查询事实和建立时间；每页最多 32 项，不把历史导入派发队列。`artifact(identity, activityId, requestId)` 先核验活动授权和原执行归属，再核对产物绑定、摘要与字节长度，返回原 UTF-8 内容；不通过重新计算补全丢失资源。对应正式 HTTP 为 `GET executions/<activity>/history[/<cursor>]` 与 `GET executions/<activity>/<request>/artifact`，学校转发使用相同接口并重新校验主体范围。
+`learning.executions.history(identity, activityId, cursor?)` 按固定请求身份分页返回原动作、接收回执、查询事实和建立时间；每页最多 32 项，不把历史导入派发队列。`artifact(identity, activityId, requestId)` 先核验活动授权和原执行归属，再核对产物绑定、摘要与字节长度，返回原 UTF-8 内容；不通过重新计算补全丢失资源。对应正式 HTTP 为 `GET executions/<activity>/history[/<cursor>]` 与 `GET executions/<activity>/<request>/artifact`，显式学校数据部署的转发使用相同接口并重新校验主体范围；默认本机副本直接读取本机执行历史，只有选定提交依据才进入学校收件。
 
 隔离读取不创建作品/问题/执行的新身份，不写浏览器保护分区，也不运行恢复核实写入。原生历史仍保留原节点、执行实例与检查点；真正恢复必须在接管后通过新请求创建关联实例。维护边界逐项重推导原身份、操作位置、停止事实与节点证据，不能仅比较数量或状态类别；浏览器未确认终态时不承诺已排空。
 

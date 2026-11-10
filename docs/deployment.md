@@ -9,12 +9,12 @@
 | 模块 | 保存与负责的内容 | 可用组合 |
 | --- | --- | --- |
 | `space-course` | 学校账号、成员权限、课程、不可变发布与部署准备回执 | 学校必需；本机保留独立个人身份 |
-| `learning-data` | 活动、作品、提问草稿、提交意图和可引用学习证据 | 学校或已授权本机数据 owner |
+| `learning-data` | 本机学习活动、作品、草稿、固定提问动作与实验过程；学校活动登记、领取回执、正式提交及收件回执 | 默认本机与学校按上述边界分工；保留显式数据 owner 绑定 |
 | `teaching-agent` | Agent Run、步骤、模型上下文与工具决策 | 本机、学校或独立 Agent 环境 |
 | `model-connection` | 模型配置、个人凭据、调用记录 | Agent 同机直连；也保留显式学校／独立模型组合 |
 | `tool-execution` | 执行命令、进程、原始回执与结果资源 | 教师指定的学生本机或学校节点；浏览器任务由学生浏览器执行 |
 
-本轮开发采用：
+默认开发组合为本机五模块、学校两模块，数据调用方向如下；实际部署按下文的状态查询核实：
 
 ```mermaid
 flowchart LR
@@ -24,21 +24,25 @@ flowchart LR
   UI --> Execution[本机执行]
   Agent --> Execution
   UI --> School[学校账号与课程]
-  Agent --> Data[学校学习数据]
-  Execution -->|上传原始回执与学习证据| Data
+  UI --> Data[本机学习数据]
+  Agent --> Data
+  Execution --> Data
+  UI -->|领取回执、显式提交及回执查询| Delivery[学校登记与收件]
 ```
 
-学校数据端只校验自己的身份、成员关系、课程权限和写入范围。Agent 的派发检查由 Agent owner 完成；本机执行的派发检查由执行 owner 完成。学校不主动连接学生 loopback、不轮询学生 Run，也不接收个人模型请求正文。保留的独立学校 Agent、学校模型和旧设备领取模型任务机制只供显式选择这些 owner 的部署使用；本机 Agent 绑定后跳过旧模型任务领取链路。
+学校保存账号、课程、活动登记、领取回执、明确提交的固定版本与收件回执；草稿、提问与引用、作品编辑、个人材料／PDF、生成内容、完整会话、模型与执行过程保存在本机。学校数据端校验自己的身份、成员关系、课程权限和收件范围。Agent 的派发检查由 Agent owner 完成；本机执行的派发检查由执行 owner 完成。学校不主动连接学生 loopback、不轮询学生 Run，也不接收个人模型请求正文。保留的独立学校 Agent、学校模型和旧设备领取模型任务机制只供显式选择这些 owner 的部署使用；本机 Agent 绑定后跳过旧模型任务领取链路。
 
 小型活动／课程／数据只读查询通过一次已授权请求返回；超过 512 KiB 的回复使用原分块传输。只读查询每次检查当前权限；模型、执行和数据写入继续使用各自的正式派发与持久回执，不进入此只读路径。
 
-本机执行端主动上传原始命令、原始接受回执、状态和结果资源。学校保存的是事实与资源副本，不把上传事件变成自己的执行队列；引用、提问与证据核验直接读取学校已保存的事实。上传失败保留原执行与未确认上传，恢复后重试，不能因此重新运行。未同步证据保持不可用，不能伪造完成状态。
+默认 `school-client` 在具备本机 `studyCopies`、学校授权元数据允许本机学习、且连接未配置 `localBinding`／`modelBinding` 时使用 `localStudy`。学校按实际启用模块及成员／活动的固定 owner 判定；显式学校或独立 Agent／模型组合沿原 owner 访问。Web 继续使用原 `/api/learning/*` 路径，默认学习过程由客户端转入本机数据、Agent、模型及执行服务；无需另选本机数据入口。执行过程不持续上传学校，学生可在明确提交中选择附带原执行依据；收件不等于学校重新运行或认定实验结果。
+
+显式学校数据部署仍支持执行端主动上传命令、接受回执、状态和结果资源，学校保存事实副本而非重建执行队列。该路径不是默认 `localStudy`；上传丢包按原执行身份查询／重试，不重新运行。
 
 ## 安装与模块切换
 
 新环境的 `install --config` 可以提供 `deployment`；已有环境使用 `configure-deployment`。配置只改变启用集合，保留已有 owner 身份、数据库与历史事实。停用模块仍参与维护与恢复验证，停用不等于清空数据。
 
-学校数据部署文件：
+默认学校部署文件：
 
 ```json
 {"formatVersion":1,"modules":["space-course","learning-data"],"dependencies":{}}
@@ -50,7 +54,7 @@ flowchart LR
 {"formatVersion":1,"modules":["space-course","learning-data","teaching-agent","model-connection","tool-execution"],"dependencies":{}}
 ```
 
-本机 `learning-data` 负责个人空间；学校空间仍指向学校的数据 owner。需要学校身份、课程而学习数据在本机时，通过已有 `learning-binding` 明确绑定，不复制学校账号库。学校执行部署需要同时启用 `space-course`、`learning-data`、`tool-execution`。独立 Agent 保留 `profile=agent` 与显式 `dependencies.learning-data={kind:"connection",connectionId}`；它的远端依赖不能误当作本机模型直连。
+默认本机 `learning-data` 同时保存个人活动与已受领学校课程的学习副本，学校账号与课程登记仍归学校。旧的显式 `learning-binding`／客户端 `localBinding`、`modelBinding` 混合组合继续保留，不复制学校账号库，也不将这些绑定要求作为默认接入步骤。学校执行部署需要同时启用 `space-course`、`learning-data`、`tool-execution`。独立 Agent 保留 `profile=agent` 与显式 `dependencies.learning-data={kind:"connection",connectionId}`；它的远端依赖不能误当作本机模型直连。
 
 ```sh
 xunjie configure-deployment --root <环境目录> --file <部署文件> --dry-run
@@ -62,9 +66,23 @@ xunjie status --root <环境目录>
 
 `status.deployment.configuration.modules` 是实际启用集合；`modules[].retained` 表示保留的停用 owner。学校数据部署不报告原生执行隔离缺失为运行故障，因为该部署没有提供执行模块。
 
+## 默认连接、受领、迁接与提交
+
+客户端只保留一个当前学校账号，经设置认证并完成绑定；换绑须先解绑。解绑只撤销连接、隐藏该学校内容，保留本机数据；同一 `environmentId + spaceId + principalId` 重绑后恢复，重新受领不会覆盖本机已修改的作品（dirty）。学校离线时保留账号显示及已下载内容。
+
+受领保留固定课程版本，并在本机缓存材料、组件包、算法、依赖及运行资源，校验材料／组件摘要后供本机课程 authority 使用。已完整下载的课程可离线继续学习；未缓存资源、新课程领取与学校提交仍需要学校连接，外部模型或远端执行也仍依赖各自服务。
+
+迁移 29 `local-school-study-copies` 按当前学校主体执行 `freeze → 导出 → 本机校验并持久化 → ack → 学校定向清理`。导入保留原活动、请求、历史引用和未知结果，完整课程资源就绪并持久保存 ready 记录后才确认；历史 outbox／执行原件不重新入队。冻结同时约束已进入旧接口的过程写入。ack 按原 digest 幂等续接，学校仅清理该主体的冗余过程记录与引用，再以明确 `resourceIds` 做定向 GC；官方课程及活动登记、正式提交、备份仍引用的资源和其他主体的数据保留。校验不完整不确认，ack 或 GC 丢包继续原迁接，不扩大为全 owner 清扫。
+
+既有本机执行通过本机数据 owner 保存的原活动来源核实目标迁接，执行 owner 的迁移 3 记录旧目标与新目标，保留原命令、回执和结果。学校旧浏览器执行命令／结果在导入清单中只读保留，供原查询、原件回读及固定引用校验使用；不能以归档请求重新创建执行。
+
+迁移 30 增加学校领取与提交收件。领取使用 `activity-receipts/<activityId>`；显式提交使用 `submissions/<activityId>`，固定作品、产物版本及可选 `evidence`。客户端先持久保存原输入与 `requestId`，丢包先通过 `submissions/<activityId>/receipts/<requestId>` 查询，未确认时用原请求重试，不能换内容复用身份；学校保存完整资源后返回收件回执。列表及 `submissions/<activityId>/<submissionId>` 可回读原提交版本；继续编辑只改变本机作品，再次交付使用新的提交身份。
+
 ## 连接本机 Agent 与学校数据
 
-先在本机设置连接学校，通过学校登录批准该设备并完成配对；已有有效连接继续使用。后续管理操作由部署者或其自动化工具完成，学生学习时无需选择 owner 或手动派发。
+以下步骤仅用于显式选择“学校保存学习过程、本机 Agent／执行”的部署，以及保留的独立或混合接线；默认 `localStudy` 不要求登记这组学校过程依赖／执行上传连接。`localBinding` 与 `modelBinding` 的原接口仍按各自目标授权，不能用模块开关代替绑定。
+
+先在本机设置连接学校并完成配对；后续管理操作由部署者或自动化工具完成，学生学习时无需选择 owner 或手动派发。
 
 1. 从两端 `status.environment` 取得真实服务描述与 `installationId`。学校成员的数据 target 必须是学校 `learning-data` 服务。
 2. 在学校学习数据服务分别授权本机 Agent 与本机执行服务，两个 grant 均使用 `teaching.dependencies`，来源绑定各自 serviceId 和本机 installationId。使用 `authorize --service-id <学校数据serviceId> --file ... --out ...`；授权文件和 token 保留在私有目录。
@@ -73,7 +91,7 @@ xunjie status --root <环境目录>
 5. 在本机调用 `client-agent-binding --file ...`，输入 `{connectionId, dependencyConnectionId, executionConnectionId, target}`。两条 connectionId 分别指向 Agent 读写学校数据、执行端上传证据的连接；target 采用本机 Agent 的 `{environmentId,serviceId,version:1}`。
 6. 在本机设置中选用个人模型，并授权给当前学校空间。本机模型配置／密钥与学校学习数据分别保存；这不会启用学校统一模型。
 
-既有活动保留首次固定的 Agent owner；更改成员绑定仅决定尚未固定 owner 的活动。遇到历史 owner 不可用时应恢复原 owner 或做明确迁移，不能静默重派已有 Run。权限撤销、学校断连或维护关闭使新派发失败；恢复查询使用原 requestId、inputDigest 和执行引用，不生成第二次付费调用。
+既有活动保留首次固定的 Agent owner；更改成员绑定仅决定尚未固定 owner 的活动。遇到历史 owner 不可用时应恢复原 owner 或做明确迁移，不能静默重派已有 Run。这组显式远端依赖在权限撤销、学校断连或维护关闭时拒绝新派发；默认已下载本机副本可在学校暂时断连时继续本机学习。恢复查询使用原 requestId、inputDigest 和执行引用，不生成第二次付费调用。
 
 ## 教师设计、部署与发布接口
 
@@ -94,22 +112,22 @@ createCourseExecutionDesign(storage, { authorize, prepareSchoolRuntime })
 
 执行顺序为 `compile → prepare → course-import`。准备操作验证并保留不可变课程资源；学校目标还核验本部署的执行模块、受限运行入口、adapter 和 HTTPS 条件，返回 `ready` 或 `blocked`。发布必须对应同一 courseId、taskId、releaseId、planDigest 的 ready 回执，并再次核验学校目标。学校不提供执行时，学校目标保持 blocked；不会修改为学生本机。
 
-本轮学校执行位置支持课程学校所在的执行 owner，并要求该活动的数据在学校。本机数据的混合组合使用本机执行；学校执行所需的数据绑定由部署者安排，既有活动不自动迁移。额外独立执行集群的安装／调度尚未提供。资源由课程 owner 保留，执行时仅取得固定命令需要的资源；不部署整个学校空间到执行机。
+显式学校执行组合支持课程学校所在的执行 owner，并要求该活动的数据在学校。默认本机副本及本机数据混合组合使用本机执行；学校执行所需的数据绑定由部署者安排，既有活动不自动迁移。额外独立执行集群的安装／调度尚未提供。资源由课程 owner 保留，执行时仅取得固定命令需要的资源；不部署整个学校空间到执行机。
 
 ## 学生自动执行与恢复
 
 客户端读取发布方案和各目标的实际 adapter 能力，自动把浏览器操作交给浏览器，把本机操作交给本机执行 owner，把学校操作交给课程学校执行 owner。学生和本机 Agent 共用相同目标／预算校验；不会因另一个目标可用而改变教师的决定。
 
-本机目标缺安装、授权或运行资源时显示对应缺项；学校目标未准备或断连时等待学校恢复。重复提交使用原执行实例；控制、停止、回执查询和结果读取继续访问原 owner。学校访问只用于权限、课程／资源读取、学习数据同步以及教师明确指定的学校执行。
+本机目标缺安装、授权或运行资源时显示对应缺项；学校目标未准备或断连时等待学校恢复。重复执行请求使用原执行实例；控制、停止、回执查询和结果读取继续访问原 owner。默认学校访问用于账号／课程与活动登记、领取回执及显式提交；学校过程数据同步和教师指定的学校执行仅属于相应显式部署。
 
-执行 owner 与数据 owner 都纳入现有维护、备份和恢复：先停止新派发，再结束／确认未决进程，保留未知状态；恢复的隔离实例在接管前只读。新增执行记录可在学校独立验证，不要求原学生电脑在线。跨机恢复仍使用已有安装级 fencing、重新授权和 namespace 握手；模块切换不能代替 owner 迁移。
+执行 owner 与数据 owner 都纳入现有维护、备份和恢复：先停止新派发，再结束／确认未决进程，保留未知状态；恢复的隔离实例在接管前只读。显式学校数据部署可独立核验已上传执行记录；默认学校只读取已提交的选定依据，不访问未提交的本机过程。跨机恢复仍使用已有安装级 fencing、重新授权和 namespace 握手；模块切换不能代替 owner 迁移。
 
 ## 排障与验证边界
 
-- `models/*` 或 `agent/*` 不可用：核对本机启用模块、学校成员授权和 client Agent 绑定；不要恢复学校代理作为隐式回退。
-- `execution.record` 被拒绝：核对执行端独立 grant、installationId 和学校批准的 deviceModules；不要拿 Agent 的 grant 上传执行证据。
+- `models/*` 或 `agent/*` 不可用：默认核对本机模块、当前绑定与本地副本／模型资源；显式组合另核对成员授权和 client Agent 绑定，不恢复学校代理作为隐式回退。
+- 显式执行上传部署的 `execution.record` 被拒绝：核对执行端独立 grant、installationId 和学校批准的 deviceModules；不要拿 Agent 的 grant 上传执行证据。
 - 教师方案 `blocked`：修复明确目标的运行资源并用新 requestId 重新准备，原准备回执不可改写。
 - 模型返回 404：核对协议、Base URL 与 path；Messages 使用 DeepSeek 时 Base URL 为 `https://api.deepseek.com/anthropic`、path 为 `/v1/messages`。地址变更沿用凭据重新绑定要求。
 - 本机／服务器停止保留数据。清理只针对明确选定的环境或本次临时产物，正在被环境引用的 Node、PostgreSQL、PDF 与 Web 运行资源继续保留。
 
-新拓扑工程回归见 `packages/product-runtime/test/device-agent-school-data.runtime.test.mjs`；教师设计与发布、执行事实原件校验分别由 `apps/server/tests/course-execution-design.runtime.test.mjs`、`execution-records.runtime.test.mjs` 覆盖。实际开发部署及真实模型／Chrome 的验收结果记录在开发环境说明；工程通过不能替代未运行的平台验收或教学效果评估。
+默认本机学习与迁接、学校收件的工程用例见 `packages/product-runtime/test/local-school-study.runtime.test.mjs`、`apps/server/tests/study-copies.runtime.test.mjs` 和 `school-deliveries.runtime.test.mjs`；显式学校数据拓扑用例保留在 `packages/product-runtime/test/device-agent-school-data.runtime.test.mjs`。教师设计与发布、执行事实原件校验分别由 `apps/server/tests/course-execution-design.runtime.test.mjs`、`execution-records.runtime.test.mjs` 覆盖。实际部署版本和模块从安装元数据及实时状态核实；工程测试、真实模型与 Chrome 验收分别按本次运行结果报告，工程通过不能替代未运行的平台验收或教学效果评估。

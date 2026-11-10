@@ -28,6 +28,7 @@ import { PersonalMaterials, PersonalMaterialEntries, usePersonalMaterials } from
 import { panes, type LayoutNode } from '../lib/wsLayout'
 import { useTeachingArtifacts } from '../teaching-artifacts/useTeachingArtifacts'
 import { ArtifactCard } from '../teaching-artifacts/ArtifactCard'
+import { ActivitySubmission } from './ActivitySubmission'
 
 // The center already supports injected named tool bodies; PDF shares its existing tab/layout lifecycle.
 const PDF_TOOL = 'component:__pdf-materials__' as const
@@ -261,6 +262,9 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       <button type="button" className="ws-navbtn" aria-label="返回活动列表" onClick={onBack}><Icon name="arrow-left" size={18} /></button>
       <div className="product-activity-title"><span>{activity.course?.courseName ?? '自主学习'}</span><h1 id="activity-title">{title}</h1></div>
       <div className="ws-head-utilities">
+        <ActivitySubmission activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized}
+          workspace={workspace} artifacts={artifacts.entries} beforeFreeze={() => waitForComposerComposition(scope)}
+          isComposing={() => [...artifacts.guards.values()].some(guard => guard.composing)} />
         <button type="button" className="ws-btn ghost" aria-expanded={materialsOpen} onClick={() => {
           if (window.matchMedia('(width < 1024px)').matches && references.open) { references.setOpen(false); setMaterialsOpen(true) }
           else setMaterialsOpen(value => !value)

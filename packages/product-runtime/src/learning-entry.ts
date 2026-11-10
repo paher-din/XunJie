@@ -92,7 +92,9 @@ export async function createProductLearningApplication(context: {
   const modelOnly = environment.profile === 'model';
   const client = environment.profile === 'school' || environment.profile === 'agent' ? undefined : createSchoolClient(root, environment);
   let schoolClient: ReturnType<typeof createSchoolClient> | undefined;
-  const lifecycle = client && enabled.has('tool-execution') ? await createNativeChannelClients({ root, environment, resources: configuration.resources, client }) : undefined;
+  const lifecycle = client && enabled.has('tool-execution') ? await createNativeChannelClients({ root, environment, resources: configuration.resources,
+    client: { list: () => (schoolClient ?? client).list(),
+      nativeChannelCall: (id, operation, input) => (schoolClient ?? client).nativeChannelCall(id, operation, input) } }) : undefined;
   const database = await databaseBinding(root, configuration.database);
   if (!database && (environment.profile === 'school' || environment.profile === 'agent' || modelOnly)) throw new Error('This product profile requires PostgreSQL.');
   if (!database) return { owners: [], isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}), handle: createLearningEntry({ environment,
@@ -188,18 +190,18 @@ export async function createProductLearningApplication(context: {
         await agentDependencyAuthorization.getStore()?.(identity);
         if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
         if (!client || identity.kind !== 'school') throw new StorageError('forbidden');
-        await client.authorizeModel(identity);
+        await (schoolClient ?? client).authorizeModel(identity);
       },
       async authorizeDispatch(identity) {
         await agentDependencyFreshAuthorization.getStore()?.();
         if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
         if (!client || identity.kind !== 'school') throw new StorageError('forbidden');
-        await client.authorizeModelDispatch(identity);
+        await (schoolClient ?? client).authorizeModelDispatch(identity);
         const authority = localAuthority.getStore();
         if (authority) await (schoolClient ?? client).agentDependency(identity, { version: 1, operation: 'authorize', identity,
           activityId: authority.activityId, args: [] });
       },
-      async schoolDefault(identity) { return client ? client.schoolModel(identity) : null; }, dispatcher: {
+      async schoolDefault(identity) { return client ? (schoolClient ?? client).schoolModel(identity) : null; }, dispatcher: {
       id: JSON.stringify([hostname(), process.pid, await processIdentity(process.pid), environment.installationId]),
       async hasEnded(id) {
         const [host, pid, birth, installationId] = JSON.parse(id) as [string, number, string | null, string?];
@@ -280,6 +282,7 @@ export async function createProductLearningApplication(context: {
       },
       activity: (identity, id) => identity.environmentId === environment.environmentId
         ? learning!.open(identity, id) : schoolData.data.open(identity, id),
+      migratedActivity: async (identity, id) => learning?.studyCopies.sourceActivity(identity, id) ?? null,
       sourceFile: (identity, id, contentId) => identity.environmentId === environment.environmentId
         ? learning!.works.content(identity, id, contentId) : schoolData.data.works.content(identity, id, contentId),
       ...(native ? { native } : {}),
@@ -506,6 +509,8 @@ export async function createProductLearningApplication(context: {
         return { source: context.source, binding: await routes?.read(identity, activityId) ?? await agentBindings.read(identity) };
       }, assertWritable: async () => {
         await agentDependencyFreshAuthorization.getStore()?.();
+        const identity = agentDependencyContext.getStore()?.input.identity;
+        if (environment.profile === 'school' && identity) await learning!.studyCopies.assertWritable(identity);
       } }),
       executionRequest: async input => {
         const context = agentDependencyContext.getStore();
@@ -520,6 +525,7 @@ export async function createProductLearningApplication(context: {
       },
       intentRequest: async input => {
         const identity = spaceIdentitySchema.parse(input.identity), activityId = z.uuid().parse(input.activityId), requestId = z.uuid().parse(input.args[0]);
+        if (environment.profile === 'school') await learning!.studyCopies.assertWritable(identity);
         if (input.operation === 'intent.begin') return learning!.intents.beginExternalDispatch(identity, activityId, requestId);
         if (input.operation === 'intent.cancel') return learning!.intents.requestExternalCancellation(identity, activityId, requestId);
         return learning!.intents.recordExternalReceipt(identity, activityId, requestId, input.args[1]);
@@ -618,6 +624,7 @@ export async function createProductLearningApplication(context: {
     schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
       target: localTarget, ...(model ? { modelTarget: { ...model.storage.owner, version: 1 as const } } : {}), ...(data ? { create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority,
         { ...actions, receiversFor: async () => teaching ? [teaching.receiver] : [] }, undefined, undefined, assertArtifactAdoption) } : {}),
+      ...(environment.profile === 'local' && learning ? { studyCopies: learning.studyCopies } : {}),
       models, personal: spaces.personal, ...(teaching ? { teaching } : {}),
       ...(independentExecution ? { executions: independentExecution.executions } : {}), authority: () => localAuthority.getStore(),
       executionEnvironment: identity => executionEnvironment(identity) });
@@ -806,6 +813,18 @@ export async function createProductLearningApplication(context: {
         if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
       },
       handle: createLearningEntry({ environment, spaces, ...(learning ? { learning } : {}), courses,
+        localStudyAllowed: async identity => {
+          await spaces.authorize(identity);
+          if (environment.profile !== 'school' || !enabled.has('space-course') || !enabled.has('learning-data')
+            || enabled.has('teaching-agent') || enabled.has('model-connection') || enabled.has('tool-execution')
+            || Object.values(deployment.dependencies).some(dependency => dependency.kind === 'connection')) return false;
+          const member = await agentBindings.read(identity);
+          // A client delivery identifies the already-local Agent. A server/independent service binding
+          // must keep its original data/Agent path even when no Agent module is enabled on this school.
+          if (member && member.delivery !== 'client') return false;
+          const pinned = await routes?.listForScope(identity) ?? [];
+          return pinned.every(binding => binding.delivery === 'client');
+        },
         ...(deviceSetup ? { deviceSetup } : {}),
         ...(independentExecution ? { executions: independentExecution.executions } : {}),
         courseExecutionDesign,

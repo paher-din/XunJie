@@ -28,7 +28,37 @@ import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnec
   type PendingSchoolConnection } from './school-authorization'
 
 
-type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[] }
+type Account = { key: string; accountName: string; schoolName: string }
+type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[]; account?: Account | null }
+// Explicit null means unbound. Older servers fall back to one school identity,
+// never the requested route, so a deep link cannot select a different account.
+function normalizeContext(value: Context): Context {
+  const school = value.identities.find(item => item.identity.kind === 'school')
+  const account = value.account === undefined ? school ? { key: school.key, accountName: school.identity.name, schoolName: school.identity.name } : null : value.account
+  return { ...value, account, identities: value.identities.filter(item => item.identity.kind === 'personal' || item.key === account?.key) }
+}
+function knownSpaceKey(context: Context, requested: string | null, activityId: string | null) {
+  if (context.identities.some(item => item.key === requested)) return requested!
+  if (!requested?.startsWith('school:') || !activityId || !context.account) return undefined
+  const bound = context.identities.find(item => item.key === context.account!.key)?.identity
+  if (!bound || bound.kind !== 'school') return undefined
+  try {
+    const cached = activitySchema.parse(JSON.parse(sessionStorage.getItem(
+      `xj.works-activity.${context.clientNamespace}.${requested}.${activityId}`) ?? 'null'))
+    if (cached.activityId === activityId && cached.identity.kind === 'school'
+      && cached.identity.environmentId === bound.environmentId && cached.identity.spaceId === bound.spaceId
+      && cached.identity.principalId === bound.principalId) return context.account.key
+  } catch { /* An unknown old link cannot select or bind another account. */ }
+  return undefined
+}
+function preferredKey(context: Context, preferred: string | null, agent = false) {
+  const personal = context.identities.find(item => item.identity.kind === 'personal')?.key
+  if (agent && personal) return personal
+  return knownSpaceKey(context, preferred, new URLSearchParams(location.search).get('activity'))
+    ?? personal ?? context.identities[0]?.key ?? ''
+}
+type HomeData = { scope: string; personal: LearningActivity[] | null; school: LearningActivity[] | null; courses: Course[] | null; personalError: string; schoolError: string }
+
 type PendingConnection = PendingSchoolConnection
 type CreateCourseActivity = { requestId: string; releaseId: string }
 const messages: Record<string, string> = {
@@ -120,6 +150,7 @@ function LearningView() {
   const [activities, setActivities] = useState<LearningActivity[] | null>(null)
   const [activitiesFor, setActivitiesFor] = useState('')
   const [opened, setOpened] = useState<LearningActivity | null>(null)
+  const [homeData, setHomeData] = useState<HomeData | null>(null)
   const [catalog, setCatalog] = useState<Course[] | null>(null)
   const [release, setRelease] = useState<CourseRelease | null>(null)
   const [material, setMaterial] = useState<{ title: string; url: string } | null>(null)
@@ -134,7 +165,7 @@ function LearningView() {
   const [schoolEndpoint, setSchoolEndpoint] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
   const [schoolFormOpen, setSchoolFormOpen] = useState(false)
-  const [disconnectTarget, setDisconnectTarget] = useState<{ key: string; name: string } | null>(null)
+  const [disconnectTarget, setDisconnectTarget] = useState<{ key: string; name: string; replace?: boolean } | null>(null)
   const [disconnectError, setDisconnectError] = useState('')
   const disconnectTrigger = useRef<HTMLButtonElement | null>(null)
   const disconnectSection = useRef<HTMLElement | null>(null)
@@ -203,14 +234,18 @@ function LearningView() {
       navigate({ pathname: route.pathname, search: url.search })
     }
     if (activity && context) {
-      try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${key}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* IndexedDB owns work protection. */ }
+      try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${nextKey}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* IndexedDB owns work protection. */ }
     }
     setOpened(activity)
   }
   function selectCourse(courseId: string | null) {
     ++contentReadEpoch.current
     const params = new URLSearchParams(route.search)
-    if (courseId) params.set('course', courseId)
+    if (courseId) {
+      if (!context?.account) return
+      params.set('space', context.account.key); params.delete('view'); params.delete('activity'); params.delete('artifact')
+      params.set('course', courseId)
+    }
     else params.delete('course')
     navigate({ pathname: route.pathname, search: params.toString() })
     setRelease(null); rememberMaterial(null)
@@ -220,8 +255,14 @@ function LearningView() {
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
   const identity = context?.identities.find(item => item.key === key)?.identity
+  const accountName = context ? context.account?.accountName ?? '本地学习空间' : '正在连接…'
+  const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
+  const schoolKey = context?.account?.key
   const schoolLoginRequired = context?.profile === 'school' && !context.identities.some(item => item.key === 'school')
   useEffect(() => { if (schoolLoginRequired) schoolAccount.current?.focus() }, [schoolLoginRequired])
+  const routeSpace = new URLSearchParams(route.search).get('space')
+  const unavailableRoute = !!context && !!(new URLSearchParams(route.search).get('activity') || selectedCourseId) && !!routeSpace
+    && !knownSpaceKey(context, routeSpace, new URLSearchParams(route.search).get('activity'))
   const modelSelection = useModelSelection(identity, key, context?.clientNamespace ?? '')
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
   const conversationHistory = useConversationHistory(pendingKey ? pendingKey + ':conversation-archive' : '', key,
@@ -270,7 +311,7 @@ function LearningView() {
   async function refreshContext(prefer?: string, generation = epoch.current) {
     const authentication = authEpoch.current
     await protectActivity()
-    const next = await api('context') as Context
+    const next = normalizeContext(await api('context') as Context)
     if (generation !== epoch.current || authentication !== authEpoch.current) return false
     await protectActivity()
     if (generation !== epoch.current || authentication !== authEpoch.current) return false
@@ -287,19 +328,20 @@ function LearningView() {
   useEffect(() => {
     let disposed = false
     void api('context').then(result => {
-      if (!disposed) { const next = result as Context; setContext(next);
+      if (!disposed) { const next = normalizeContext(result as Context); setContext(next);
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
         const preferred = new URLSearchParams(location.search).get('space')
-        setKey(next.identities.some(i => i.key === preferred) ? preferred! : next.identities[0]?.key ?? '') }
+        setKey(preferredKey(next, preferred, agentOpen && !requestedActivity.current)) }
     }).catch(error => {
       if (disposed) return
       try {
         if ((error as { code?: string }).code === 'forbidden') throw error
-        const cached = JSON.parse(sessionStorage.getItem('xj.works-context.v1') ?? 'null') as Context | null
+        const stored = JSON.parse(sessionStorage.getItem('xj.works-context.v1') ?? 'null') as Context | null
+        const cached = stored ? normalizeContext(stored) : null
         if (!cached || typeof cached.clientNamespace !== 'string') throw error
         cached.identities.forEach(i => spaceIdentitySchema.parse(i.identity))
         const preferred = new URLSearchParams(location.search).get('space')
-        const selected = cached.identities.find(i => i.key === preferred) ?? cached.identities[0]
+        const selected = cached.identities.find(i => i.key === preferredKey(cached, preferred, agentOpen && !requestedActivity.current))
         if (!selected) throw error
         setContextVerified(false); setContext(cached); setKey(selected.key)
       } catch { setError(errorText(error)) }
@@ -318,7 +360,7 @@ function LearningView() {
         if (generation !== epoch.current || authentication !== authEpoch.current) return
         await protectActivity()
         if (generation !== epoch.current || authentication !== authEpoch.current) return
-        const next = value as Context
+        const next = normalizeContext(value as Context)
         // 恢复请求可能早于当前活动挂载完成；按最新视图保留已打开或 URL 请求的活动，避免恢复后落回列表。
         requestedActivity.current = currentView.current.opened?.activityId ?? requestedActivity.current
         setContext(next); setContextVerified(true); setReload(n => n + 1)
@@ -328,6 +370,32 @@ function LearningView() {
     }, 3000)
     return () => clearInterval(timer)
   }, [contextVerified, context, opened])
+  const homeVisible = !agentOpen && !modelsOpen && !new URLSearchParams(route.search).has('activity') && !selectedCourseId
+  const homeScope = context ? JSON.stringify([context.clientNamespace, context.identities]) : ''
+  useEffect(() => {
+    if (!context || !homeVisible) return
+    const controller = new AbortController()
+    const snapshot: HomeData = { scope: homeScope, personal: personalKey ? null : [], school: schoolKey ? null : [],
+      courses: schoolKey ? null : [], personalError: '', schoolError: '' }
+    setHomeData(snapshot)
+    const update = (patch: Partial<HomeData>) => {
+      if (!controller.signal.aborted) setHomeData(previous => previous?.scope === homeScope ? { ...previous, ...patch } : previous)
+    }
+    if (personalKey) void api('activities', undefined, personalKey, controller.signal).then(value => {
+      update({ personal: (value as unknown[]).map(item => activitySchema.parse(item)) })
+    }).catch(cause => update({ personalError: errorText(cause) }))
+    if (schoolKey) {
+      void api('activities', undefined, schoolKey, controller.signal).then(value => {
+        update({ school: (value as unknown[]).map(item => activitySchema.parse(item)) })
+      }).catch(cause => update({ schoolError: errorText(cause) }))
+      void api('courses', undefined, schoolKey, controller.signal).then(value => {
+        update({ courses: courseCatalogSchema.parse(value).courses })
+      }).catch(cause => update({ schoolError: errorText(cause) }))
+    }
+    return () => controller.abort()
+  }, [homeVisible, homeScope, reload])
+  const visibleHome = homeData?.scope === homeScope ? homeData : null
+
   useEffect(() => {
     const generation = ++epoch.current
     const controller = new AbortController()
@@ -393,8 +461,12 @@ function LearningView() {
     const retire = () => controller.abort()
     if (!context) return
     const params = new URLSearchParams(route.search)
-    const desiredKey = params.get('space') ?? context.identities[0]?.key ?? ''
     const activityId = params.get('activity')
+    const desiredKey = agentOpen && !activityId ? personalKey ?? currentView.current.key
+      : knownSpaceKey(context, params.get('space'), activityId) ?? params.get('space') ?? preferredKey(context, null)
+    if ((activityId || params.has('course')) && !context.identities.some(item => item.key === desiredKey)) {
+      setOpened(null); setError('此活动属于未绑定的学校账号，请在设置中绑定原账号后打开。'); return retire
+    }
     requestedActivity.current = activityId
     if (desiredKey !== currentView.current.key) {
       if (!context.identities.some(item => item.key === desiredKey)) return retire
@@ -419,16 +491,8 @@ function LearningView() {
       }
     }).catch(cause => { if (applies()) setError(errorText(cause)) })
     return retire
-  }, [route.search, context?.clientNamespace, key, pendingKey, contextVerified, activities !== null, activitiesFor])
+  }, [route.search, context?.clientNamespace, key, pendingKey, contextVerified, activities !== null, activitiesFor, schoolKey, personalKey])
 
-  async function switchSpace(next: string) {
-    if (next === key) return
-    try { await protectActivity() } catch { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); return }
-    rememberActivity(null, next)
-    ++epoch.current; setKey(next); setOpened(null); setActivities(null); setError(''); setNotice('')
-    setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
-    setGoal(''); setReference(''); setBusy(false)
-  }
   async function action(operation: (generation: number) => Promise<void>) {
     const generation = epoch.current
     const operationId = ++actionEpoch.current
@@ -440,6 +504,7 @@ function LearningView() {
     finally { if (operationId === actionEpoch.current && generation === epoch.current) setBusy(false) }
   }
   async function createActivity(firstMessage?: string) {
+    if (!personalKey || key !== personalKey || identity?.kind !== 'personal') return
     const generation = epoch.current
     const startedSearch = currentSearch.current
     const scopeKey = pendingKey
@@ -543,12 +608,14 @@ function LearningView() {
     try { if (draftKey) sessionStorage.removeItem(draftKey) } catch { /* Optional draft cache. */ }
     setPendingRequest(null); setGoal(''); setQuestion(''); setReference(''); setError('')
   }
-  async function openActivity(activityId: string, asConversation = false) {
+  async function openActivity(activityId: string, asConversation = false, sourceKey = key) {
+    if (!context?.identities.some(item => item.key === sourceKey)) return
     await protectActivity()
-    returnFocus.current = { key, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
+    returnFocus.current = { key: sourceKey, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     const params = new URLSearchParams(currentSearch.current)
-    params.set('activity', activityId); params.set('space', key)
-    if (asConversation) params.set('view', 'agent')
+    params.set('activity', activityId); params.set('space', sourceKey); params.delete('course'); params.delete('artifact')
+    if (asConversation && sourceKey === personalKey) params.set('view', 'agent')
+    else params.delete('view')
     navigate({ pathname: route.pathname, search: params.toString() })
   }
   async function changeStatus(activity: LearningActivity) {
@@ -586,7 +653,7 @@ function LearningView() {
     if (currentView.current.key === schoolKey) await protectActivity()
     const current = currentView.current.context
     if (authentication !== authEpoch.current || !current) return
-    const next = { ...current, identities: current.identities.filter(item => item.key !== schoolKey) }
+    const next = { ...current, account: null, identities: current.identities.filter(item => item.key !== schoolKey) }
     try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
     setContext(next)
     if (currentView.current.key === schoolKey) {
@@ -613,6 +680,10 @@ function LearningView() {
       try {
         await disconnectSchool(target.key)
         setDisconnectTarget(null)
+        if (target.replace) {
+          setPendingConnection(null); schoolStartRequest.current = null
+          openSchoolForm(disconnectSection.current)
+        }
       } catch (cause) {
         setDisconnectError(errorText(cause))
       } finally {
@@ -685,7 +756,7 @@ function LearningView() {
       {context.profile !== 'school' && (schoolIdentities.length > 0 ? <div className="product-school-list">
         {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
           <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
-            <div><strong>{item.identity.name}</strong><span className={item.key === key ? 'product-school-status is-current' : 'product-school-status'}>{item.key === key ? '当前空间' : '已连接'}</span></div></div>
+            <div><strong>{context.account?.schoolName ?? item.identity.name}</strong><span className="product-school-status">已绑定</span></div></div>
           {item.key.startsWith('school:') && <button type="button" className="product-school-disconnect" aria-label={`断开${item.identity.name}的连接`} disabled={busy}
             onClick={event => {
               disconnectTrigger.current = event.currentTarget
@@ -694,6 +765,12 @@ function LearningView() {
             }}>断开连接</button>}
         </div>)}
       </div> : schoolConnectionForm)}
+      {context.profile !== 'school' && schoolIdentities.length > 0 && (schoolFormOpen || pendingConnection ? schoolConnectionForm : <Button type="button" variant="outline" className="product-school-rebind" disabled={busy}
+        onClick={event => {
+          disconnectTrigger.current = event.currentTarget
+          disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+          setDisconnectError(''); setDisconnectTarget({ key: schoolIdentities[0].key, name: context.account?.schoolName ?? schoolIdentities[0].identity.name, replace: true })
+        }}>换绑学校</Button>)}
       {context.identities.some(item => item.key === 'school') ? <div className="product-school-session"><span className="product-school-status">已登录此学校</span><button type="button" className="outline" disabled={busy} onClick={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
@@ -702,7 +779,7 @@ function LearningView() {
         if (currentView.current.key === 'school') await protectActivity()
         if (authentication !== authEpoch.current || !currentView.current.context) return
         ++authEpoch.current
-        const signedOut = { ...currentView.current.context, identities: currentView.current.context.identities.filter(item => item.key !== 'school') }
+        const signedOut = { ...currentView.current.context, account: null, identities: currentView.current.context.identities.filter(item => item.key !== 'school') }
         // The logout response already confirms this fact; clearing it must not depend on a later context request.
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(signedOut)) } catch { /* Optional hint. */ }
         setContext(signedOut)
@@ -723,8 +800,9 @@ function LearningView() {
     params.delete('activity'); params.delete('course'); params.delete('settings'); params.delete('artifact')
     if (page === 'agent') params.set('view', 'agent')
     else params.delete('view')
-    const nextKey = page === 'agent' ? context?.identities.find(item => item.identity.kind === 'personal')?.key ?? key : key
+    const nextKey = page === 'agent' ? personalKey ?? key : key
     if (nextKey) params.set('space', nextKey)
+    else params.delete('space')
     const search = params.toString()
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
@@ -766,7 +844,7 @@ function LearningView() {
   }
   const settingsTab: ProductSettingsTab = settingsPage === 'models' || settingsPage === 'agent'
     || settingsPage === 'portrait' || settingsPage === 'privacy' || settingsPage === 'about' ? settingsPage : 'account'
-  const conversationOpen = !!opened && agentOpen && !opened.course
+  const conversationOpen = !!opened && agentOpen && identity?.kind === 'personal' && !opened.course
   const archivedCount = visibleActivities?.filter(activity => !activity.course && conversationHistory.archivedIds.includes(activity.activityId)).length ?? 0
   async function changeConversationVisibility(id: string, remove: boolean) {
     let saved = false
@@ -804,11 +882,11 @@ function LearningView() {
     onRetryLogout={() => void action(async generation => { await refreshContext(undefined, generation) })}
     onRestoreSession={() => void action(async generation => { await refreshContext(undefined, generation) })} />
 
-  return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} identityName={identity?.name ?? '学习空间'}
+  return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} accountName={accountName}
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
     archivedCount={archivedCount} archiveOpen={archiveOpen} onArchiveOpenChange={setArchiveOpen}
-    agentHistory={(close, visible) => <ProductConversationHistory activities={visibleActivities} activeId={opened?.activityId}
+    agentHistory={(close, visible) => <ProductConversationHistory activities={key === personalKey ? visibleActivities?.filter(activity => !activity.course) ?? null : []} activeId={opened?.activityId}
       labels={conversationHistory.items} archiveOpen={archiveOpen} query={historyQuery} error={conversationHistory.error}
       ready={conversationHistory.ready} busy={conversationHistory.busy || busy} onRetry={conversationHistory.retry}
       scopeKey={pendingKey} visible={visible} readOnly={!!context?.readOnly || !contextVerified}
@@ -817,9 +895,9 @@ function LearningView() {
       onArchive={id => changeConversationVisibility(id, false)} onDelete={id => changeConversationVisibility(id, true)}
       onRename={conversationHistory.rename} onPin={conversationHistory.setPinned}
       onRestore={id => conversationHistory.setArchived(id, false)} />}>
-    <ConfirmationDialog open={!!disconnectTarget} title="断开学校连接？"
-      description={<>断开后，将无法在此访问<strong>「{disconnectTarget?.name}」</strong>的学习内容。{disconnectTarget?.key === key && context?.identities.some(item => item.key === 'personal') && '你将返回个人学习空间。'}需要时可重新连接。</>}
-      confirmLabel="确认断开" pendingLabel="正在断开…" busy={busy} error={disconnectError}
+    <ConfirmationDialog open={!!disconnectTarget} title={disconnectTarget?.replace ? '换绑学校？' : '断开学校连接？'}
+      description={<>{disconnectTarget?.replace && '先解绑当前账号，再绑定新的学校账号。'}断开后，将无法在此访问<strong>「{disconnectTarget?.name}」</strong>的学习内容。{disconnectTarget?.key === key && context?.identities.some(item => item.key === 'personal') && '你将返回本地学习空间。'}本机数据会保留，重新绑定原账号后可继续学习。</>}
+      confirmLabel={disconnectTarget?.replace ? '确认解绑并换绑' : '确认断开'} pendingLabel="正在断开…" busy={busy} error={disconnectError}
       onClose={() => { setDisconnectTarget(null); setDisconnectError('') }} onConfirm={confirmDisconnect}
       onReturnFocus={() => {
         requestAnimationFrame(() => {
@@ -827,12 +905,11 @@ function LearningView() {
           else (disconnectSection.current?.querySelector<HTMLElement>('.product-school-add, input') ?? disconnectSection.current)?.focus()
         })
       }} />
-    {profileOpen && <ProductProfile identityName={identity?.name ?? '学习空间'} spaceKind={identity?.kind}
+    {profileOpen && <ProductProfile accountName={accountName} schoolName={context?.account?.schoolName}
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
-    {modelsOpen && <ProductSettings identityName={identity?.name ?? '学习空间'} onBack={closeModels}
+    {modelsOpen && <ProductSettings accountName={accountName} onBack={closeModels}
       initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
-      busy={busy} onPersonalSpace={identity?.kind === 'school' && context?.identities.some(item => item.key === 'personal')
-        ? () => void switchSpace('personal') : undefined}
+      schoolName={context?.account?.schoolName}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
       modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
@@ -860,11 +937,11 @@ function LearningView() {
           </>}
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />}
-    </ActivityReferences></div> : modelsOpen ? null : !context || !identity ? <div className="content home-page product-home">
+    </ActivityReferences></div> : modelsOpen ? null : unavailableRoute ? <div className="content home-page"><p>此活动属于未绑定的学校账号。请在设置中绑定原账号后打开，本机学习内容会保留。</p><Button onClick={() => openSettings('school')}>管理学校连接</Button><Button variant="outline" onClick={goHome}>返回首页</Button></div> : !context || !identity ? <div className="content home-page product-home">
       {!context && !error && <p role="status">正在连接学习空间…</p>}
       {!context && error && <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button>}
       {schoolControls}
-    </div> : agentOpen ? <ProductAgent question={question} onQuestion={value => {
+    </div> : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <ProductAgent question={question} onQuestion={value => {
       setQuestion(value)
       try { if (draftKey) sessionStorage.setItem(draftKey, value) } catch { /* Optional draft cache. */ }
     }} onSend={() => void action(() => createActivity(question))} pending={pendingRequest}
@@ -879,7 +956,7 @@ function LearningView() {
             onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button>
         </section>}
         {pendingRequest && <p role="status">上次发起的学习尚未确认。 <button type="button" className="outline" onClick={openAgent}>查看原请求</button></p>}
-        {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>
+        {coursePending && <div className="course-pending"><p>{busy ? '正在准备课程活动…' : '上次课程活动的请求结果尚未核对，将先查询原请求。'}</p>
           <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
           <button type="button" className="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
       </div>}
@@ -900,11 +977,11 @@ function LearningView() {
             <button type="button" className="primary" disabled={busy || !!coursePending || context.readOnly} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
           </article>}
         </section>
-      </div> : <ProductHome identityName={identity.name} activities={visibleActivities} courses={catalog} spaceKind={identity.kind} dashboardKey={pendingKey + ':dashboard'}
-        availableSpaces={context.identities.map(item => ({ key: item.key, kind: item.identity.kind,
-          label: item.identity.kind === 'personal' ? '个人空间' : item.identity.name }))}
-        spaceKey={key} onSpaceChange={next => void switchSpace(next)} busy={busy} error={error}
-        onOpenActivity={id => void action(() => openActivity(id, identity.kind === 'personal'))} onOpenCourse={selectCourse}
+      </div> : <ProductHome accountName={accountName} personalActivities={visibleHome?.personal ?? null} schoolActivities={visibleHome?.school ?? null}
+        courses={visibleHome?.courses ?? null} personalKey={personalKey} schoolKey={schoolKey}
+        initialCategory={schoolKey ? 'school' : 'personal'} dashboardKey={(context.clientNamespace + ':home-dashboard')}
+        busy={busy} personalError={visibleHome?.personalError} schoolError={visibleHome?.schoolError}
+        onOpenActivity={(id, source) => void action(() => openActivity(id, source === personalKey, source))} onOpenCourse={selectCourse}
         onStartConversation={openAgent} onConnectSchool={() => openSettings('school')}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} />}
     </>}

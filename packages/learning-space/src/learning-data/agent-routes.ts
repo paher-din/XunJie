@@ -18,6 +18,20 @@ export function createActivityAgentRoutes(storage: OwnedStorage, activity: (iden
   }
   return {
     read,
+    /** Trusted hosts inspect every retained route in an authenticated member scope, including closed/revoked courses.
+     * This does not resolve a new route, query a remote Agent or change its pinned owner. */
+    async listForScope(identity: SpaceIdentity): Promise<TeachingAgentBinding[]> {
+      const { rows } = await storage.read(`SELECT r.body,a.body AS activity FROM activity_agent_routes r
+        JOIN activities a ON a.id=r.activity_id
+        WHERE a.space_environment_id=$1 AND a.space_id=$2 AND a.principal_id=$3`,
+        [identity.environmentId, identity.spaceId, identity.principalId]);
+      return rows.map(row => {
+        const original = activitySchema.parse(row.activity), actor = original.identity;
+        if (actor.kind !== identity.kind || actor.environmentId !== identity.environmentId
+          || actor.spaceId !== identity.spaceId || actor.principalId !== identity.principalId) throw new StorageError('corrupt');
+        return teachingAgentBindingSchema.parse(row.body);
+      });
+    },
     /** Original owner cleanup needs the stored scope, even after course access has been withdrawn. */
     async readForCleanup(identity: SpaceIdentity, activityId: string) {
       const { rows: [activity] } = await storage.read('SELECT body FROM activities WHERE id=$1', [activityId]);

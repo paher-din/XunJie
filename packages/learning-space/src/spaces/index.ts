@@ -158,6 +158,14 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     if (!rows.length) fail('forbidden');
     return member;
   }
+  /** Read an existing connection without exchanging its expired initial authorization or extending its session. */
+  async function readConnection(token: string) {
+    const member = await authenticate(token, 'connection');
+    const { rows: [row] } = await storage.read(`SELECT connection_id FROM sessions WHERE token_hash=$1
+      AND kind='connection' AND NOT revoked AND expires_at>clock_timestamp()`, [sessionDigest(token)]);
+    if (!row?.connection_id) return fail('forbidden');
+    return { identity: member, connectionId: id.parse(row.connection_id) };
+  }
   async function authorizeConnection(member: SpaceIdentity, connectionId: string) {
     await authorize(member); id.parse(connectionId);
     const { rows } = await storage.read(`SELECT connection_id FROM sessions WHERE connection_id=$1 AND principal_id=$2
@@ -201,6 +209,14 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     const { rows } = await storage.read(`SELECT m.principal_id FROM memberships m JOIN spaces s ON s.id=m.space_id
       WHERE m.space_id=$1 AND m.principal_id=$2 AND m.active AND s.kind=$3`, [identity.spaceId, identity.principalId, identity.kind]);
     if (!rows.length) fail('forbidden');
+  }
+  async function account(member: SpaceIdentity) {
+    await authorize(member);
+    const { rows: [row] } = await storage.read(`SELECT p.name AS account_name,s.name AS school_name
+      FROM principals p JOIN spaces s ON s.id=p.space_id WHERE p.space_id=$1 AND p.id=$2`,
+      [member.spaceId, member.principalId]);
+    if (!row || member.kind !== 'school') return fail('forbidden');
+    return { accountName: String(row.account_name), schoolName: String(row.school_name) };
   }
   async function bindMember(identity: SpaceIdentity, target: LearningTarget) {
     await authorize(identity); learningTargetSchema.parse(target);
@@ -276,6 +292,6 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
-  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, lookup, bindMember, resolveBinding,
-    logout, authenticateConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
+  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, account, lookup, bindMember, resolveBinding,
+    logout, authenticateConnection, readConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

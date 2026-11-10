@@ -17,8 +17,17 @@ import type { ExecutionRecordEvent } from '@xunjie/contracts/execution-records';
 const executionSchemaVersions = new Set([1, 2, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 22]);
 export const executionOwnerMigrations: readonly Migration[] = [{ version: 1, name: 'independent-execution-owner', sql:
   learningMigrations.filter(migration => executionSchemaVersions.has(migration.version)).map(migration => migration.sql).join('\n')
-  + '\nCREATE TABLE execution_activity_authorities(activity_id uuid PRIMARY KEY REFERENCES activities(id),target jsonb NOT NULL);' }, executionExportMigration];
+  + '\nCREATE TABLE execution_activity_authorities(activity_id uuid PRIMARY KEY REFERENCES activities(id),target jsonb NOT NULL);' }, executionExportMigration,
+  { version: 3, name: 'local-study-execution-authority', sql: `
+    CREATE TABLE execution_activity_target_migrations(activity_id uuid PRIMARY KEY REFERENCES activities(id),
+      source_activity jsonb NOT NULL,target jsonb NOT NULL);` }];
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(canonicalValue(value))).digest('hex');
+const subject = (identity: SpaceIdentity) => [identity.kind, identity.environmentId, identity.spaceId, identity.principalId];
+const activityScopeDigest = (activity: LearningActivity) => hash([activity.activityId, subject(activity.identity), activity.course]);
+function validLocalMove(storage: OwnedStorage, source: LearningActivity, current: LearningActivity) {
+  return activityScopeDigest(source) === activityScopeDigest(current) && source.identity.kind === 'school'
+    && current.target.environmentId === storage.owner.environmentId && hash(source.target) !== hash(current.target);
+}
 
 async function authority(storage: OwnedStorage, activityId: string) {
   const { rows: [row] } = await storage.read('SELECT target FROM execution_activity_authorities WHERE activity_id=$1', [activityId]);
@@ -34,15 +43,25 @@ export async function validateExecutionOwner(storage: OwnedStorage) {
       || activity.identity.spaceId !== row.space_id || activity.identity.principalId !== row.principal_id
       || hash(activity.target) !== hash(target)) throw new StorageError('corrupt');
   }
+  const { rows: moves } = await storage.read(`SELECT m.*,a.body FROM execution_activity_target_migrations m
+    LEFT JOIN activities a ON a.id=m.activity_id`);
+  for (const row of moves) {
+    const source = activitySchema.parse(row.source_activity), current = activitySchema.parse(row.body);
+    const target = learningTargetSchema.parse(row.target);
+    if (source.activityId !== row.activity_id || !validLocalMove(storage, source, current)
+      || hash(target) !== hash(current.target)) throw new StorageError('corrupt');
+  }
   await validateWorks(storage);
   await validateExecutions(storage, { activityOwner: id => authority(storage, id) });
   await validateNativeSessions(storage);
   await validateExecutionRecordExport(storage);
 }
 
-/** Owns only commands, processes, fixed execution inputs and results. School activities stay at school. */
+/** Owns commands, processes, fixed inputs and results; activity authority remains at its data owner. */
 export function createExecutionOwner(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
+  /** Trusted local study provenance, never a caller-supplied replacement target. */
+  migratedActivity?(identity: SpaceIdentity, activityId: string): Promise<LearningActivity | null>;
   sourceFile(identity: SpaceIdentity, activityId: string, contentId: string): Promise<Omit<WorkFile, 'name'>>;
   native?: NativeSessionHostOptions;
   installationId?: string;
@@ -50,14 +69,35 @@ export function createExecutionOwner(storage: OwnedStorage, options: {
 }) {
   async function open(identity: SpaceIdentity, activityId: string) {
     const activity = activitySchema.parse(await options.activity(identity, z.uuid().parse(activityId)));
-    if (hash(activity.identity) !== hash(identity)) throw new StorageError('forbidden');
+    if (hash(subject(activity.identity)) !== hash(subject(identity))) throw new StorageError('forbidden');
     const { rows: [old] } = await storage.read('SELECT body FROM activities WHERE id=$1', [activityId]);
+    let source: LearningActivity | null = null;
     if (old) {
       const saved = activitySchema.parse(old.body);
-      if (hash([saved.identity, saved.target, saved.course]) !== hash([activity.identity, activity.target, activity.course]))
-        throw new StorageError('identity-conflict');
+      if (activityScopeDigest(saved) !== activityScopeDigest(activity)) throw new StorageError('identity-conflict');
+      if (hash(saved.target) !== hash(activity.target)) {
+        const original = await options.migratedActivity?.(identity, activityId);
+        source = original ? activitySchema.parse(original) : null;
+        if (!source || !validLocalMove(storage, source, activity) || hash(saved.target) !== hash(source.target))
+          throw new StorageError('identity-conflict');
+      }
     }
     await storage.request({ requestId: `execution-context:${activityId}:${hash(activity)}`, fingerprint: hash(activity) }, async tx => {
+      const { rows: [existing] } = await tx.query('SELECT body FROM activities WHERE id=$1 FOR UPDATE', [activityId]);
+      if (existing) {
+        const saved = activitySchema.parse(existing.body);
+        if (activityScopeDigest(saved) !== activityScopeDigest(activity)) throw new StorageError('identity-conflict');
+        if (hash(saved.target) !== hash(activity.target)) {
+          if (!source || !validLocalMove(storage, source, activity) || hash(saved.target) !== hash(source.target))
+            throw new StorageError('identity-conflict');
+          const previous = await tx.query('SELECT 1 FROM execution_activity_target_migrations WHERE activity_id=$1', [activityId]);
+          if (previous.rows.length) throw new StorageError('identity-conflict');
+          await tx.query('INSERT INTO execution_activity_target_migrations VALUES($1,$2,$3)', [activityId, source, activity.target]);
+          const changed = await tx.query('UPDATE execution_activity_authorities SET target=$2 WHERE activity_id=$1 AND target=$3::jsonb',
+            [activityId, activity.target, saved.target]);
+          if (changed.rowCount !== 1) throw new StorageError('corrupt');
+        }
+      }
       await tx.query(`INSERT INTO activities VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET body=EXCLUDED.body`,
         [activityId, identity.environmentId, identity.spaceId, identity.principalId, activity]);
       await tx.query('INSERT INTO execution_activity_authorities VALUES($1,$2) ON CONFLICT DO NOTHING', [activityId, activity.target]);

@@ -1,10 +1,20 @@
 # XunJie 产品运行库
 
-模块组合、学校数据与本机 Agent／模型／执行的接线、课程执行位置及运行恢复规则见 [产品部署说明](../../docs/deployment.md)。
+默认本机学习副本、学校交付与显式混合／独立部署的接线、课程执行位置及运行恢复规则见 [产品部署说明](../../docs/deployment.md)。
 
-学校身份/课程与客户端学习数据的组合、窄领域能力 `learning.authority`、`createSshRecoveryReceiver` 和正式接管配置见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。远端 SSH 仅承接维护，不是学生业务隧道。
+保留的显式学校身份/课程与客户端学习数据混合组合、窄领域能力 `learning.authority`、`createSshRecoveryReceiver` 和正式接管配置见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。远端 SSH 仅承接维护，不是学生业务隧道。
 
 `@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 [#143](../../docs/student-agent-implementation/runtime-acceptance.md)，#145 的命令、失败处理和实际验收见 [维护与恢复](../../docs/student-agent-implementation/maintenance-acceptance.md)，组合结论见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
+
+## 默认学校客户端
+
+默认本机启用 `space-course`、`learning-data`、`teaching-agent`、`model-connection`、`tool-execution`，学校只启用前两个模块，保存账号／课程、活动登记、领取回执、明确提交及学校收件回执。其余学习过程在本机。`school-client` 有本机 `studyCopies`、学校授权元数据允许本机学习，且连接无显式 `localBinding`／`modelBinding` 时采用 `localStudy`；原 Web API 路径不变，默认 Agent、模型、执行及作品／草稿等过程访问转入本机。学校按实际启用模块及成员／活动固定 owner 判定模式，旧显式混合绑定、学校过程数据及独立 Agent／模型部署继续由原接口和授权装配，不能作为默认接入步骤。
+
+客户端按原学校主体受领课程并缓存发布、材料、组件、算法、依赖与运行资源，完整缓存后可离线继续本机学习；外部模型仍依赖实际供应商。解绑隐藏原学校内容、保留本机数据，同主体重绑不会覆盖 dirty 作品。
+
+迁移 29 的学校过程迁接遵循 `freeze → 导出 → 本机校验并持久化完整资源 → ack → 源端定向清理／GC`。客户端持久保存 ready 与清理待办，ack 丢包按原 digest 续接；历史 outbox／未知执行不重放。清理只涉及当前主体冗余过程副本，官方登记、正式提交、其他主体和仍有引用／备份 pin 的资源保留。
+
+领取与正式提交分别走 `activity-receipts/*`、`submissions/*`。客户端先持久保存固定输入及原 `requestId`，提交前查原回执，丢包继续原请求；`works`、产物版本及选定 `evidence` 经学校完整持久化后才有收件回执。已提交版本可回读，后续编辑仍在本机。
 
 ## 公开入口
 
@@ -39,9 +49,9 @@ import {
 
 ## owner 与维护装配
 
-默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
+默认 daemon 在有数据库的产品组合中注册 runtime、空间/课程、学习数据、模型连接和教学 Agent owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合仍可显式连接学校，但不具备默认本机学习副本。`model` 组合持有身份/课程和模型服务，`agent` 组合仅持有 runtime 与独立教学 Agent。生产依赖不得导入验收 owner 或测试宿主。
 
-独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据服务调用 `teaching.dependencies`；学习数据服务通过 `teaching.agent` 调用实际 Agent。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型设备绑定，学生继续使用原活动界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
+显式独立 Agent 通过 `agent.dependencyConnectionId` 固定依赖连接，向学习数据服务调用 `teaching.dependencies`；学习数据服务通过 `teaching.agent` 调用实际 Agent。每个 serviceId 只发布自身实际装配的能力。维护者使用 `authorize(input,targetServiceId)` 签发对应授权，并配置成员 Agent 与独立模型设备绑定，学生继续使用原活动界面。连接、路由、任务及分片资源随各自所属 owner 参加维护、备份和隔离恢复。
 
 `createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 按备份实际描述提供空间/课程、学习数据、模型连接及教学 Agent owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md) 与[模型连接](../learning-space/src/model-connections/README.md)。完整默认组合共五个 owner（含 runtime），独立 Agent 组合共两个。
 

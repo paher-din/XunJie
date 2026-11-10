@@ -24,7 +24,7 @@ const click = async (label: string) => act(async () => {
   button!.click()
 })
 const renderSettings = async (props: Partial<ProductSettingsProps> = {}) => act(async () => {
-  root.render(<ProductSettings identityName="未登录" onBack={() => {}} schoolControls={null} modelSettings={null} {...props} />)
+  root.render(<ProductSettings accountName="未登录" onBack={() => {}} schoolControls={null} modelSettings={null} {...props} />)
 })
 
 it('keeps model drafts and pending operations mounted through category switches and parent updates', async () => {
@@ -46,7 +46,7 @@ it('keeps model drafts and pending operations mounted through category switches 
   expect(models.hidden).toBe(true)
   expect(models.hasAttribute('inert')).toBe(true)
   await act(async () => { finish(); await completion })
-  await renderSettings({ initialTab: 'models', identityName: '已核对的身份', modelSettings: <Models /> })
+  await renderSettings({ initialTab: 'models', accountName: '已核对的身份', modelSettings: <Models /> })
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('账户')
   await click('模型')
   expect(host.querySelector('[aria-label="模型草稿"]')).toBe(draft)
@@ -80,10 +80,10 @@ it('shows only the supplied profile identity and restores focus after Escape', a
   document.body.append(trigger)
   trigger.focus()
   const onClose = vi.fn(() => root.render(null))
-  await act(async () => root.render(<ProductProfile identityName="真实身份" spaceKind="personal" onClose={onClose} onSettings={() => {}} />))
+  await act(async () => root.render(<ProductProfile accountName="真实身份" schoolName="真实学校" onClose={onClose} onSettings={() => {}} />))
   const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
   expect(dialog.textContent).toContain('真实身份')
-  expect(dialog.querySelector('dl')?.textContent).toBe('学习空间个人空间')
+  expect(dialog.querySelector('dl')?.textContent).toBe('学校真实学校')
   expect(dialog.textContent).toContain('暂无画像信息')
   expect(dialog.textContent).not.toMatch(/学习进度|编辑资料|学号|学期/)
   expect(dialog.contains(document.activeElement)).toBe(true)

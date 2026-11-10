@@ -6,6 +6,7 @@ import { activitySchema } from '@xunjie/contracts/learning-data';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
 import { readSyncedExecutionRecord } from './execution-records.js';
+import { readStudyExecution } from './study-copies.js';
 import type { ExecutionRecord } from '@xunjie/contracts/execution-records';
 
 export interface ExecutionSource {
@@ -95,8 +96,9 @@ export async function readExecutionSource(storage: OwnedStorage, activity: Learn
     acceptance: record.reception.kind === 'browser' ? record.reception.acceptance : null, record };
   else {
     const { rows: [row] } = await storage.read('SELECT * FROM execution_commands WHERE request_id=$1', [reference.requestId]);
-    if (!row) throw new StorageError('unavailable');
-    source = parseExecutionSource(row, saved);
+    const historical = row ? null : await readStudyExecution(storage, saved, reference.requestId);
+    if (!row && !historical) throw new StorageError('unavailable');
+    source = parseExecutionSource(row ?? historical!.command, historical?.activity ?? saved);
   }
   if (source.query.requestId !== reference.requestId
     || reference.inputDigest !== undefined && source.query.inputDigest !== reference.inputDigest

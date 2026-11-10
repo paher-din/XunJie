@@ -47,7 +47,7 @@ export interface OwnedStorage {
   readResource(resourceId: string): Promise<Uint8Array>;
   /** Validated opaque bytes for snapshot copying; readResource returns the original payload. */
   readResourceObject(resourceId: string): Promise<Uint8Array>;
-  collect(options: { olderThan: Date; limit?: number }): Promise<string[]>;
+  collect(options: { olderThan: Date; limit?: number; resourceIds?: readonly string[] }): Promise<string[]>;
   participant(): StorageParticipant;
   snapshot<T>(backupId: string, consume: (snapshot: { databaseSnapshot: string; migratorRole: string; manifest: StorageManifest }) => Promise<T>): Promise<T>;
   releaseBackup(backupId: string): Promise<void>;
