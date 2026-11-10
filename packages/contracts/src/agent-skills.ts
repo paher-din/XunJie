@@ -1,8 +1,13 @@
 import { z } from 'zod';
 
 /** Transported files are inert values, never filesystem entries or executable capabilities. */
-export const teachingSkillLimits = { skills: 32, versions: 16, files: 64,
-  fileBytes: 524288, packageBytes: 2097152, bodyBytes: 262144, selections: 32 } as const;
+export const teachingSkillLimits = { skills: 32, versions: 16, files: 4096,
+  fileBytes: 32 * 1024 * 1024, packageBytes: 64 * 1024 * 1024,
+  bodyBytes: 4 * 1024 * 1024, selections: 32, importTimeoutMs: 300000, githubReadTimeoutMs: 300000 } as const;
+// A UTF-8 byte may become a six-character JSON escape. Reserve file metadata as well,
+// so a valid package is not rejected by an unrelated HTTP or Base64 string ceiling.
+export const teachingSkillTransportBytes = teachingSkillLimits.packageBytes * 6 + teachingSkillLimits.files * 4096 + 65536;
+export const teachingSkillContentChars = Math.ceil(teachingSkillLimits.fileBytes / 3) * 4;
 export const teachingSkillPathSchema = z.string().min(1).max(240).refine(path =>
   !/^[\/~]/.test(path) && !/[\\%:\x00-\x1f\x7f]/.test(path) && path.normalize('NFC') === path,
   'Expected a canonical relative package path').refine(path =>
@@ -11,7 +16,7 @@ export const teachingSkillPathSchema = z.string().min(1).max(240).refine(path =>
   'Non-canonical package path');
 export const teachingSkillFileSchema = z.object({ path: teachingSkillPathSchema,
   encoding: z.enum(['utf8', 'base64']), mediaType: z.string().min(1).max(200).optional(),
-  content: z.string().max(700000),
+  content: z.string().max(teachingSkillContentChars),
 }).strict();
 export const teachingSkillReferenceSchema = z.object({ skillId: z.uuid(), version: z.number().int().positive() }).strict();
 export type TeachingSkillReference = z.infer<typeof teachingSkillReferenceSchema>;

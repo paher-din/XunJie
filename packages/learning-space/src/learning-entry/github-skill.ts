@@ -14,10 +14,12 @@ const repositorySchema = z.object({ private: z.literal(false), full_name: z.stri
 const commitSchema = z.object({ sha, commit: z.object({ tree: z.object({ sha }) }) });
 const entrySchema = z.object({ path: z.string().min(1).max(4096), sha, type: z.enum(['blob', 'tree', 'commit']),
   mode: z.enum(['100644', '100755', '040000', '120000', '160000']), size: z.number().int().nonnegative().optional() });
-const treeSchema = z.object({ sha, truncated: z.literal(false), tree: z.array(entrySchema).max(4096) });
-const blobSchema = z.object({ sha, size: z.number().int().nonnegative(), encoding: z.literal('base64'), content: z.string() });
+const maxDepth = 16, maxTreeEntries = teachingSkillLimits.files * maxDepth;
+const treeSchema = z.object({ sha, truncated: z.literal(false), tree: z.array(entrySchema).max(maxTreeEntries) });
 const textExtensions = /\.(?:md|txt|json|ya?ml|toml|csv|tsv|html?|css|[cm]?js|tsx?|jsx|py|sh|bash|sql|xml|svg)$/i;
-const maxDepth = 16, maxRequests = 100, maxWireBytes = 8 * 1024 * 1024, timeoutMs = 60_000;
+const treeResponseBytes = maxTreeEntries * 512 + 65536;
+const maxRequests = teachingSkillLimits.files + maxDepth * 2 + 8;
+const maxWireBytes = teachingSkillLimits.packageBytes + treeResponseBytes * 2;
 
 function parseUrl(input: string) {
   // Validate the original spelling before URL can normalize backslashes or dot segments.
@@ -49,21 +51,23 @@ function packagePath(path: string) {
 /** Server only. No token, arbitrary URL, returned API link, download_url or redirect is ever followed.
  * Root URLs use the default branch; tree URLs resolve the longest existing ref prefix (including slash refs).
  * The chosen directory itself must contain the sole SKILL.md. No ancestor/sibling package is inferred.
- * Budgets: 100 requests, 8 MiB decoded HTTP bodies, 60 s total / 10 s per request, 4096 tree entries.
+ * API requests only resolve metadata. Files use commit-pinned raw URLs, bounded concurrency,
+ * and Git object hashes, so larger packages do not require one API quota entry per file.
  * YAML metadata validation remains with the existing skills.import operation.
  */
 export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage> {
   const { owner, repo, tail } = parseUrl(url);
   const base = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), teachingSkillLimits.githubReadTimeoutMs);
   let requests = 0, wireBytes = 0;
-  async function request<T>(path: string, schema: z.ZodType<T>, limit: number, allowMissing = false): Promise<T | null> {
+  async function read(endpoint: string, limit: number, api: boolean, allowMissing = false) {
+    controller.signal.throwIfAborted();
     if (++requests > maxRequests) fail('too-large', 'GitHub 导入请求数超出限制。');
-    const endpoint = `${base}${path}`;
     const response = await fetch(endpoint, { method: 'GET', redirect: 'error', credentials: 'omit',
-      headers: { accept: 'application/vnd.github+json', 'user-agent': 'XunJie-Skill-Import', 'x-github-api-version': '2022-11-28' },
-      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) });
+      headers: { 'user-agent': 'XunJie-Skill-Import', ...(api
+        ? { accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' } : { accept: 'application/octet-stream' }) },
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]) });
     const cancel = async () => { await response.body?.cancel(); };
     if (response.redirected || (response.url && response.url !== endpoint) || (response.status >= 300 && response.status < 400)) {
       await cancel(); fail('upstream', 'GitHub 返回了重定向；请使用仓库当前的规范链接。');
@@ -93,10 +97,15 @@ export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage>
       }
     } catch (error) { await reader.cancel().catch(() => {}); throw error; }
     finally { reader.releaseLock(); }
+    return { bytes: Buffer.concat(chunks), missingCommit };
+  }
+  async function request<T>(path: string, schema: z.ZodType<T>, limit: number, allowMissing = false): Promise<T | null> {
+    const response = await read(`${base}${path}`, limit, true, allowMissing);
+    if (!response) return null;
     let raw: unknown;
-    try { raw = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+    try { raw = JSON.parse(response.bytes.toString('utf8')); }
     catch { return fail('upstream', 'GitHub 返回了无效 JSON。'); }
-    if (missingCommit) {
+    if (response.missingCommit) {
       const error = z.object({ message: z.string() }).safeParse(raw);
       if (error.success && error.data.message.startsWith('No commit found for SHA: ')) return null;
       fail('upstream', 'GitHub 读取版本失败（HTTP 422）。');
@@ -126,14 +135,14 @@ export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage>
     if (directory.length) packagePath(directory.join('/'));
     let treeSha = commit.commit.tree.sha;
     for (const part of directory) {
-      const parent = (await request(`/git/trees/${treeSha}`, treeSchema, 1024 * 1024))!;
+      const parent = (await request(`/git/trees/${treeSha}`, treeSchema, treeResponseBytes))!;
       if (parent.sha !== treeSha) fail('upstream', 'GitHub 目录版本不符。');
       const children = parent.tree.filter(entry => entry.path === part);
       if (children.length !== 1 || children[0]!.type !== 'tree' || children[0]!.mode !== '040000')
         fail('not-found', 'GitHub 链接必须指向真实的 Skill 包目录。');
       treeSha = children[0]!.sha;
     }
-    const tree = (await request(`/git/trees/${treeSha}?recursive=1`, treeSchema, 1024 * 1024))!;
+    const tree = (await request(`/git/trees/${treeSha}?recursive=1`, treeSchema, treeResponseBytes))!;
     if (tree.sha !== treeSha) fail('upstream', 'GitHub 目录版本不符。');
     const paths = new Map<string, z.infer<typeof entrySchema>>();
     for (const entry of tree.tree) {
@@ -146,7 +155,7 @@ export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage>
         fail('invalid-package', 'Skill 包不能包含符号链接或 Git 子模块。');
     }
     const entries = tree.tree.filter(entry => entry.type === 'blob').sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-    if (!entries.length || entries.length > teachingSkillLimits.files) fail('too-large', 'Skill 包最多包含 64 个文件。');
+    if (!entries.length || entries.length > teachingSkillLimits.files) fail('too-large', `Skill 包最多包含 ${teachingSkillLimits.files} 个文件。`);
     const roots = entries.filter(entry => entry.path === 'SKILL.md' || entry.path.endsWith('/SKILL.md'));
     if (roots.length !== 1 || roots[0]!.path !== 'SKILL.md')
       fail('invalid-package', '所选目录必须包含唯一的根文件 SKILL.md；请链接到具体 Skill 包目录。');
@@ -160,26 +169,32 @@ export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage>
       total += entry.size;
       if (entry.size > teachingSkillLimits.fileBytes || total > teachingSkillLimits.packageBytes
         || (entry.path === 'SKILL.md' && entry.size > teachingSkillLimits.bodyBytes))
-        fail('too-large', 'Skill 包超出大小限制：单文件 512 KiB、整包 2 MiB、SKILL.md 256 KiB。');
+        fail('too-large', `Skill 包超出大小限制：单文件 ${teachingSkillLimits.fileBytes / 1048576} MiB、整包 ${teachingSkillLimits.packageBytes / 1048576} MiB、SKILL.md ${teachingSkillLimits.bodyBytes / 1048576} MiB。`);
     }
-    const files: GithubSkillPackage['files'] = [];
-    for (const entry of entries) {
-      const blob = (await request(`/git/blobs/${entry.sha}`, blobSchema, 768 * 1024))!;
-      const content = blob.content.replace(/[\r\n]/g, '');
-      const bytes = Buffer.from(content, 'base64');
-      if (bytes.toString('base64') !== content || blob.sha !== entry.sha || blob.size !== entry.size || bytes.length !== entry.size
-        || createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== entry.sha)
-        fail('upstream', 'GitHub 文件内容、大小或摘要与固定版本不符。');
-      if (bytes.subarray(0, 100).toString('utf8').startsWith('version https://git-lfs.github.com/spec/v1'))
-        fail('invalid-package', 'Skill 包包含 Git LFS 指针，无法读取完整包。');
-      if (entry.path === 'SKILL.md' || textExtensions.test(entry.path)) {
-        try {
-          files.push({ path: entry.path, encoding: 'utf8', content: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes) });
-          continue;
-        } catch { if (entry.path === 'SKILL.md') fail('invalid-package', 'SKILL.md 必须是 UTF-8 文本。'); }
+    const files: GithubSkillPackage['files'] = new Array(entries.length);
+    const rawBase = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${commit.sha}/`;
+    let next = 0;
+    async function download() {
+      for (;;) {
+        const index = next++, entry = entries[index];
+        if (!entry) return;
+        const path = [...directory, ...entry.path.split('/')].map(encodeURIComponent).join('/');
+        const { bytes } = (await read(rawBase + path, entry.size!, false))!;
+        if (bytes.length !== entry.size
+          || createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== entry.sha)
+          fail('upstream', 'GitHub 文件内容、大小或摘要与固定版本不符。');
+        if (bytes.subarray(0, 100).toString('utf8').startsWith('version https://git-lfs.github.com/spec/v1'))
+          fail('invalid-package', 'Skill 包包含 Git LFS 指针，无法读取完整包。');
+        if (entry.path === 'SKILL.md' || textExtensions.test(entry.path)) {
+          try {
+            files[index] = { path: entry.path, encoding: 'utf8', content: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes) };
+            continue;
+          } catch { if (entry.path === 'SKILL.md') fail('invalid-package', 'SKILL.md 必须是 UTF-8 文本。'); }
+        }
+        files[index] = { path: entry.path, encoding: 'base64', content: bytes.toString('base64') };
       }
-      files.push({ path: entry.path, encoding: 'base64', content });
     }
+    await Promise.all(Array.from({ length: Math.min(8, entries.length) }, download));
     const path = directory.length ? `/${directory.map(encodeURIComponent).join('/')}` : '';
     return { source: `https://github.com/${owner}/${repo}/tree/${commit.sha}${path}`, packageVersion: commit.sha, files };
   } catch (error) {

@@ -13,7 +13,7 @@ import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
-import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema } from '@xunjie/contracts/agent-skills';
+import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillTransportBytes } from '@xunjie/contracts/agent-skills';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
@@ -199,7 +199,8 @@ export function createLearningEntry(options: {
           const { url } = z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(await readLearningBody(request));
           result = await fetchGithubSkill(url);
         } else result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route.startsWith('artifacts/') ? 2000000 : route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
+          route === 'skills/import' || /^agent\/[0-9a-f-]{36}\/skills\/import$/.test(route) ? teachingSkillTransportBytes
+            : route.startsWith('artifacts/') ? 2000000 : route.startsWith('pdf/') ? 29*1024*1024 : route.startsWith('materials/') ? 3*1024*1024 : route === 'models/images' ? 360000 : /^executions\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/result$/.test(route) ? 32*1024*1024
             : route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
             : route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('skills/')
               || /^agent\/[0-9a-f-]{36}\/skills\//.test(route) ? 8000000 : 65536) : undefined, expected, new URL(request.url!, endpoint).search);
@@ -433,7 +434,7 @@ export function createLearningEntry(options: {
           const { url } = z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(await readLearningBody(request));
           result = await fetchGithubSkill(url);
         }
-        else if (route === 'skills/import' && method === 'POST') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(await readLearningBody(request, 8000000)));
+        else if (route === 'skills/import' && method === 'POST') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(await readLearningBody(request, teachingSkillTransportBytes)));
         else if (route === 'skills/select' && method === 'POST') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(await readLearningBody(request)));
         else if (route === 'skills/disable' && method === 'POST') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(await readLearningBody(request)));
         else throw new StorageError('missing');
@@ -484,7 +485,7 @@ export function createLearningEntry(options: {
         else if (parts.length === 3 && parts[2] === 'skills' && method === 'GET')
           result = await teaching.skills.list(identity, activityId);
         else if (parts.length === 4 && parts[2] === 'skills' && method === 'POST') {
-          const body = await readLearningBody(request, parts[3] === 'import' ? 8000000 : 65536);
+          const body = await readLearningBody(request, parts[3] === 'import' ? teachingSkillTransportBytes : 65536);
           if (parts[3] === 'import') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(body));
           else if (parts[3] === 'select') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(body));
           else if (parts[3] === 'disable') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(body));

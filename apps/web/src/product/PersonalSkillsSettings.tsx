@@ -1,8 +1,7 @@
-import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import { teachingSkillDisableSchema, teachingSkillSelectSchema, teachingSkillCatalogEntrySchema, teachingSkillImportSchema,
-  type TeachingSkillRange, type TeachingSkillReference } from '@xunjie/contracts/agent-skills'
+import { teachingSkillDisableSchema, teachingSkillCatalogEntrySchema, teachingSkillImportSchema, teachingSkillLimits,
+  type TeachingSkillReference } from '@xunjie/contracts/agent-skills'
 import { Section, SettingsActionMenu } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
@@ -13,23 +12,19 @@ import './skills.css'
 type Props = { identity: SpaceIdentity; spaceKey: string; namespace: string; readOnly?: boolean
   activityId?: string; courseId?: string }
 type Operation = { route: string; input: unknown; label: string; importKind?: 'local' | 'github'; inputUrl?: string }
-const pin = (skill: TeachingSkillReference) => ({ skillId: skill.skillId, version: skill.version })
 const entryKey = (skill: TeachingSkillReference) => `${skill.skillId}:${skill.version}`
-const rangeKey = (range: TeachingSkillRange) => JSON.stringify(range)
 
 export function PersonalSkillsSettings(props: Props) {
   const key = JSON.stringify([props.namespace, props.spaceKey, props.identity.environmentId, props.identity.spaceId,
     props.identity.principalId, props.activityId, props.courseId])
   return <SkillsSettingsBody key={key} {...props} />
 }
-function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseId, readOnly = false }: Props) {
-  const catalog = useSkillCatalog(identity, spaceKey, namespace, activityId)
-  const [range, setRange] = useState<TeachingSkillRange>({ kind: 'all' })
+function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false }: Props) {
+  const catalog = useSkillCatalog(identity, spaceKey, namespace)
   const [search, setSearch] = useState(''), [importOpen, setImportOpen] = useState(false)
   const [githubOpen, setGithubOpen] = useState(false), [githubUrl, setGithubUrl] = useState('')
   const [importMenuOpen, setImportMenuOpen] = useState(false)
-  // Edits are scoped by range; rereads never overwrite a person's unfinished selection.
-  const [choices, setChoices] = useState<Record<string, TeachingSkillReference[]>>({})
+  const [choices, setChoices] = useState<Record<string, boolean>>({})
   const [source, setSource] = useState(''), [packageVersion, setPackageVersion] = useState('')
   const [files, setFiles] = useState<File[]>([]), [updating, setUpdating] = useState<SkillCatalogEntry | null>(null)
   const [localFiles, setLocalFiles] = useState<File[]>([])
@@ -38,22 +33,11 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
   useToastFeedback(catalog.error)
   useToastFeedback(error)
   useToastFeedback(notice, 'success')
-  const [rejectedSelection, setRejectedSelection] = useState<Operation | null>(null)
+  const [rejectedToggle, setRejectedToggle] = useState<Operation | null>(null)
   const live = useRef(false), acting = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null), directoryInput = useRef<HTMLInputElement>(null)
   const importId = useId(), sourceInput = useRef<HTMLInputElement>(null), githubInput = useRef<HTMLInputElement>(null)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
-  const ranges: { value: TeachingSkillRange; label: string }[] = [
-    { value: { kind: 'all' }, label: '本空间全部活动' }, { value: { kind: 'self-study' }, label: '自主学习' },
-    ...(courseId ? [{ value: { kind: 'course' as const, courseId }, label: '当前课程' }] : []),
-    ...(activityId ? [{ value: { kind: 'activity' as const, activityId }, label: '当前活动' }] : []),
-  ]
-  const currentRange = rangeKey(range)
-  const savedSelection = catalog.data?.selections
-    ? catalog.data.selections.find(item => rangeKey(item.range) === currentRange)?.skills ?? []
-    : (range.kind === 'all' ? catalog.data?.skills.filter(item => item.origin === 'personal' && item.selected).map(pin) : []) ?? []
-  const selected = choices[currentRange] ?? savedSelection
-  const olderSelections = selected.filter(ref => !catalog.data?.skills.some(skill => entryKey(skill) === entryKey(ref)))
   const query = search.trim().toLocaleLowerCase()
   const visibleSkills = catalog.data?.skills.filter(skill => !query || [skill.name, skill.description, skill.source]
     .some(value => value.toLocaleLowerCase().includes(query))) ?? []
@@ -61,15 +45,15 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
     setPending(operation)
     try {
       const result = await catalog.request(operation.route, operation.input)
-      if (operation.route === 'skills/import' || operation.route === 'skills/disable') teachingSkillCatalogEntrySchema.parse(result)
+      const updated = operation.route === 'skills/import' || operation.route === 'skills/disable'
+        ? teachingSkillCatalogEntrySchema.parse(result) : null
       if (!live.current) return false
       setPending(null); setNotice(operation.label + '已确认。'); setError('')
-      if (operation.route === 'skills/select') setRejectedSelection(null)
-      // Do not clear import inputs or range edits: later input may already differ from the sent bytes.
+      if (updated) setRejectedToggle(null)
+      // Preserve pending input until the owner's confirmed state has been read back.
       const refreshed = await catalog.reload()
-      if (refreshed && operation.route === 'skills/select' && live.current) {
-        const selection = teachingSkillSelectSchema.parse(operation.input)
-        setChoices(previous => { const next = { ...previous }; delete next[rangeKey(selection.range)]; return next })
+      if (refreshed && updated && live.current) {
+        setChoices(previous => { const next = { ...previous }; delete next[updated.skillId]; return next })
       }
       if (operation.importKind === 'local') setLocalFiles([])
       if (operation.importKind === 'github' && githubInput.current?.value.trim() === operation.inputUrl) {
@@ -81,9 +65,9 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
       const code = (cause as { code?: string }).code
       if (['invalid', 'conflict', 'identity-conflict', 'forbidden', 'missing'].includes(code ?? '')) {
         setPending(null)
-        if (operation.route === 'skills/select') setRejectedSelection(operation)
+        if (operation.route === 'skills/disable') setRejectedToggle(operation)
       }
-      setError(code === 'invalid' ? '操作未通过校验，请核对 SKILL.md 元信息、附件和选择范围。'
+      setError(code === 'invalid' ? '操作未通过校验，请核对 SKILL.md 元信息和附件。'
         : code === 'forbidden' ? '原空间资格已失效，当前输入仍保留。'
           : code === 'conflict' || code === 'identity-conflict' ? '配置发生冲突，当前输入保留；请重新读取后核对。'
             : '操作结果尚未确认，当前输入已保留；可沿原请求核对。')
@@ -121,7 +105,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
     const url = githubUrl.trim()
     void act(async () => {
       let raw: unknown
-      try { raw = await learningSubjectRequest(identity, spaceKey, namespace, 'skills/github-package', { url }, 75000) }
+      try { raw = await learningSubjectRequest(identity, spaceKey, namespace, 'skills/github-package', { url }, teachingSkillLimits.githubReadTimeoutMs + 15000) }
       catch (cause) {
         const code = (cause as { code?: string }).code
         const reasons: Record<string, string> = {
@@ -141,17 +125,14 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
     })
   }
   const disabled = readOnly || busy || !!pending
-  const saveSelection = (skills: TeachingSkillReference[]) => {
+  const choose = (skill: SkillCatalogEntry, checked: boolean) => {
     if (disabled || !catalog.isCurrent()) return
-    setRejectedSelection(null)
-    setChoices(previous => ({ ...previous, [currentRange]: skills }))
-    void act(() => deliver({ route: 'skills/select', input: teachingSkillSelectSchema.parse({
-      requestId: crypto.randomUUID(), range, skills,
-    }), label: '范围选择' }))
+    setRejectedToggle(null)
+    setChoices(previous => ({ ...previous, [skill.skillId]: checked }))
+    void act(() => deliver({ route: 'skills/disable', input: teachingSkillDisableSchema.parse({
+      requestId: crypto.randomUUID(), skillId: skill.skillId, disabled: !checked,
+    }), label: checked ? '启用 Skill' : '停用 Skill' }))
   }
-  const choose = (skill: SkillCatalogEntry, checked: boolean) => saveSelection(checked
-    ? [...selected.filter(item => item.skillId !== skill.skillId), pin(skill)]
-    : selected.filter(item => item.skillId !== skill.skillId))
   return <Section title="技能/Skills">
     <div className="personal-skills">
       {catalog.loading && <p className="detail" role="status">正在读取 Skills…</p>}
@@ -161,9 +142,6 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
       <div className="skill-toolbar">
         <input className="st-input skill-search" type="search" aria-label="搜索技能" placeholder="搜索技能" value={search}
           onChange={event => setSearch(event.target.value)} />
-        <SelectField className="skill-range" label="使用范围" value={currentRange}
-          onChange={value => setRange(ranges.find(item => rangeKey(item.value) === value)!.value)}
-          options={ranges.map(item => ({ value: rangeKey(item.value), label: item.label }))} />
         <SettingsActionMenu label="导入 Skill" icon={<Icon name="add" size={16} />} disabled={disabled}
           open={importMenuOpen} onOpenChange={open => { setImportMenuOpen(open); if (!open) setGithubOpen(false) }}
           panelLabel="GitHub 导入" panel={githubOpen ? <form className="skill-github" onSubmit={event => { event.preventDefault(); importGithub() }}>
@@ -188,21 +166,17 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
       {catalog.data?.skills.length === 0 && <p className="detail">尚未导入 Skill。</p>}
       {catalog.data && catalog.data.skills.length > 0 && !visibleSkills.length && <p className="detail">没有找到匹配的技能。</p>}
       <div className="skill-list">{visibleSkills.map(skill => <article className="skill-entry" key={entryKey(skill)}>
-        <label className="skill-check"><input type="checkbox" disabled={disabled || !catalog.isCurrent() || skill.origin === 'course'
-          || skill.disabled && !selected.some(item => entryKey(item) === entryKey(skill))}
-          checked={skill.origin === 'course' ? skill.selected : selected.some(item => entryKey(item) === entryKey(skill))}
+        <label className="skill-check"><input type="checkbox" disabled={disabled || !catalog.isCurrent() || skill.origin === 'course'}
+          checked={skill.origin === 'course' ? skill.selected : choices[skill.skillId] ?? !skill.disabled}
           onChange={event => choose(skill, event.target.checked)} />
           <span><strong>{skill.name}</strong><span className="skill-version">{skill.packageVersion} · 版本 {skill.version}</span></span></label>
-        <p>{skill.description}</p><p className="detail">{skill.source} · {skill.origin === 'course' ? '课程提供' : '个人导入'} · {skill.disabled ? '已停用' : '可用'}</p>
+        <p>{skill.description}</p><p className="detail">{skill.source} · {skill.origin === 'course' ? '课程提供' : '个人导入'} · {skill.disabled ? '已停用' : '已启用'}</p>
         {skill.unavailable && <p className="detail">{skill.unavailable.detail}</p>}
         {skill.origin === 'personal' && <div className="skill-actions">
           <button type="button" className="outline st-xs" disabled={disabled} onClick={() => {
             setUpdating(skill); setSource(skill.source); setPackageVersion(''); setFiles([])
             setGithubOpen(false); setImportOpen(true); requestAnimationFrame(() => sourceInput.current?.focus())
           }}>更新版本</button>
-          <button type="button" className="outline st-xs" disabled={disabled} onClick={() => void act(() => deliver({ route: 'skills/disable',
-            input: teachingSkillDisableSchema.parse({ requestId: crypto.randomUUID(), skillId: skill.skillId, disabled: !skill.disabled }),
-            label: skill.disabled ? '启用 Skill' : '停用 Skill' }))}>{skill.disabled ? '启用' : '停用'}</button>
         </div>}
         <details><summary>包信息</summary><ul>{skill.attachments.map(file => <li key={file.path}>{file.path} · {file.byteLength} B</li>)}</ul>
           {skill.metadata.compatibility && <p>兼容要求：{skill.metadata.compatibility}</p>}
@@ -211,13 +185,9 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
           {skill.metadata['allowed-tools'].length > 0 && <p>声明工具：{skill.metadata['allowed-tools'].join('、')}</p>}
         </details>
       </article>)}</div>
-      {!query && olderSelections.map(ref => <label className="skill-check" key={entryKey(ref)}><input type="checkbox" checked disabled={disabled || !catalog.isCurrent()}
-        onChange={() => saveSelection(selected.filter(item => item.skillId !== ref.skillId))} />
-        <span>{catalog.data?.skills.find(skill => skill.skillId === ref.skillId)?.name ?? '原 Skill'} · 固定版本 {ref.version}
-          <small className="detail">原范围仍选用旧版本；勾选目录中的新版可替换。</small></span></label>)}
       {pending && <div className="skill-actions"><button className="outline" type="button" disabled={busy || readOnly} onClick={() => void act(() => deliver(pending))}>核对原操作</button></div>}
-      {rejectedSelection && <div className="skill-actions"><button className="outline" type="button" disabled={disabled || !catalog.isCurrent()}
-        onClick={() => void act(() => deliver({ ...rejectedSelection, input: { ...teachingSkillSelectSchema.parse(rejectedSelection.input), requestId: crypto.randomUUID() } }))}>重试保存</button></div>}
+      {rejectedToggle && <div className="skill-actions"><button className="outline" type="button" disabled={disabled || !catalog.isCurrent()}
+        onClick={() => void act(() => deliver({ ...rejectedToggle, input: { ...teachingSkillDisableSchema.parse(rejectedToggle.input), requestId: crypto.randomUUID() } }))}>重试保存</button></div>}
       <input ref={fileInput} type="file" multiple hidden aria-label="选择 Skill 包文件"
         onChange={event => {
           const chosen = Array.from(event.target.files ?? []); event.target.value = ''

@@ -332,6 +332,15 @@ export async function createProductLearningApplication(context: {
       }, environment: scope => schoolClient ? schoolClient.executionEnvironmentFor(scope.identity) : executionEnvironment(scope.identity) });
     const toolsFor = (scope: { identity: SpaceIdentity }) => scope.identity.environmentId === environment.environmentId ? localTools : deviceTools;
     teaching = agent && models && enabled.has('teaching-agent') ? createTeachingAgent(agent.storage, {
+      ...(environment.profile === 'school' ? {} : { personalSkillOwners: async (identity: SpaceIdentity) => {
+        // Browser members hosted here are separate students. The device's own connected
+        // school accounts share its personal library, just as its personal model setup does.
+        if (identity.kind === 'school' && identity.environmentId === environment.environmentId) return [identity];
+        const personal = await spaces.readPersonal();
+        if (!personal) throw new StorageError('unavailable');
+        const connected = client ? await (schoolClient ?? client).list({ rememberCleanup: false }) : [];
+        return [personal, ...connected.map(item => item.identity)];
+      } }),
       authorize: async identity => {
         if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
         if (!client) throw new StorageError('forbidden');

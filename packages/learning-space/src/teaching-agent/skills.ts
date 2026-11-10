@@ -9,7 +9,7 @@ import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisa
   type TeachingSkillState, type TeachingSkillLoaded, type TeachingSkillLoad, type CourseSkillPackage,
   type TeachingSkillUnavailable, type TeachingSkillRange } from '@xunjie/contracts/agent-skills';
 import { canonicalDigest, operationId } from './identity.js';
-import { parseTeachingSkillPackage, validateTeachingSkillVersion, skillFileBytes } from './skills-package.js';
+import { parseTeachingSkillPackage, validateTeachingSkillVersion, skillFileBytes, parseStoredTeachingSkillLoad } from './skills-package.js';
 
 export const teachingSkillsMigration: Migration = { version: 11, name: 'independent-fixed-skill-packages', sql: `
   CREATE TABLE teaching_skills(owner_key text NOT NULL,skill_id uuid NOT NULL,version integer NOT NULL CHECK(version>0),
@@ -37,8 +37,11 @@ export interface TeachingSkillsScope {
 export type TeachingSkillsGuard = { assertDispatch?: () => Promise<void>; toolNames?: string[]; references?: TeachingSkillReference[] | undefined };
 type Guard = TeachingSkillsGuard;
 type Query = OwnedStorage['read'];
-type Candidate = { fixed: TeachingSkillVersion; entry: TeachingSkillCatalogEntry };
+type Candidate = { fixed: TeachingSkillVersion; entry: TeachingSkillCatalogEntry; ownerKey?: string };
 const key = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('/');
+const person = (identity: SpaceIdentity) => [identity.environmentId, identity.principalId].join('/');
+// Keep historical owner keys intact for receipts/recovery, but a personal library spans spaces.
+const personalOwnerFilter = "split_part(owner_key,'/',1)||'/'||split_part(owner_key,'/',3)=ANY($1::text[])";
 const same = (a: SpaceIdentity, b: SpaceIdentity) => key(a) === key(b);
 const rangeKey = (range: TeachingSkillRange) => range.kind === 'course' ? 'course:' + range.courseId
   : range.kind === 'activity' ? 'activity:' + range.activityId : range.kind;
@@ -65,8 +68,16 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
   authorize(identity: SpaceIdentity): Promise<void>;
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   assertWritable(): void | Promise<void>;
+  /** Trusted host association: a device's own personal identity and its connected school identities. */
+  personalOwners?(identity: SpaceIdentity): Promise<SpaceIdentity[]>;
 }) {
   async function authorize(identity: SpaceIdentity) { spaceIdentitySchema.parse(identity); await options.authorize(identity); }
+  async function owners(identity: SpaceIdentity) {
+    const identities = options.personalOwners ? await options.personalOwners(identity) : [identity];
+    if (!identities.length) throw new StorageError('forbidden');
+    return identities.map(value => spaceIdentitySchema.parse(value));
+  }
+  const subjects = async (identity: SpaceIdentity) => [...new Set((await owners(identity)).map(person))];
   async function activity(identity: SpaceIdentity, activityId: string) {
     z.uuid().parse(activityId);
     const value = await options.activity(identity, activityId);
@@ -75,7 +86,7 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
     return value as TeachingSkillsScope['activity'];
   }
   async function lock(tx: OwnedTransaction, identity: SpaceIdentity) {
-    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['teaching-skills:' + key(identity)]);
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['teaching-skills:' + person((await owners(identity))[0]!)]);
   }
   async function write(identity: SpaceIdentity, requestId: string, input: unknown, effect: (tx: OwnedTransaction) => Promise<unknown>) {
     await authorize(identity); await options.assertWritable();
@@ -84,30 +95,31 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
     });
   }
   async function personal(identity: SpaceIdentity, query: Query = storage.read.bind(storage)) {
-    const { rows } = await query(`SELECT v.body,s.disabled,s.version AS current_version FROM teaching_skill_versions v
-      JOIN teaching_skills s USING(owner_key,skill_id) WHERE v.owner_key=$1 ORDER BY v.skill_id,v.version`, [key(identity)]);
-    return rows.map(row => ({ fixed: validateTeachingSkillVersion(row.body), disabled: Boolean(row.disabled), current: Number(row.current_version) }));
+    const { rows } = await query(`SELECT v.owner_key,v.body,s.disabled,s.version AS current_version FROM teaching_skill_versions v
+      JOIN teaching_skills s USING(owner_key,skill_id) WHERE ${personalOwnerFilter} ORDER BY v.skill_id,v.version`, [await subjects(identity)]);
+    return rows.map(row => ({ ownerKey: String(row.owner_key), fixed: validateTeachingSkillVersion(row.body),
+      disabled: Boolean(row.disabled), current: Number(row.current_version) }));
   }
   async function build(scope: TeachingSkillsScope, toolNames?: string[], query: Query = storage.read.bind(storage)) {
     const { identity } = scope, current = scope.activity;
     const candidates: Candidate[] = [];
     const explicit = teachingSkillReferencesSchema.parse(scope.input?.draft.skills ?? []);
-    let ranges: Record<string, unknown>[] = [], versions: Awaited<ReturnType<typeof personal>> = [];
+    let versions: Awaited<ReturnType<typeof personal>> = [];
     let ownerUnavailable = false;
     try {
-      ranges = (await query('SELECT range_key,body FROM teaching_skill_selections WHERE owner_key=$1', [key(identity)])).rows;
       versions = await personal(identity, query);
     } catch (error) {
       if (!(error instanceof StorageError) || !['missing', 'unavailable'].includes(error.code)) throw error;
       ownerUnavailable = true;
     }
-    const selected: TeachingSkillReference[] = [...explicit];
-    const keys = new Set(['all', current.course ? 'course:' + current.course.courseId : 'self-study', 'activity:' + current.activityId]);
-    for (const row of ranges) if (scope.input?.draft.skills === undefined && keys.has(String(row.range_key)))
-      selected.push(...teachingSkillSelectSchema.parse(row.body).skills);
+    // Imports are enabled globally. A question pin fixes that skill's version, without hiding
+    // other enabled personal skills; an empty question selection is not a global opt-out.
+    const selected: TeachingSkillReference[] = [...explicit, ...versions.filter(item => !item.disabled
+      && item.fixed.version === item.current && !explicit.some(ref => ref.skillId === item.fixed.skillId))
+      .map(item => ({ skillId: item.fixed.skillId, version: item.fixed.version }))];
     for (const item of versions) {
       const chosen = selected.some(ref => ref.skillId === item.fixed.skillId && ref.version === item.fixed.version);
-      if (chosen || item.fixed.version === item.current) candidates.push({ fixed: item.fixed,
+      if (chosen || item.fixed.version === item.current) candidates.push({ fixed: item.fixed, ownerKey: item.ownerKey,
         entry: meta(item.fixed, 'personal', chosen, item.disabled) });
     }
     // Report explicit references that no longer have an owned package, without hiding unrelated skills.
@@ -192,32 +204,36 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
     resolve,
     async import(identity: SpaceIdentity, value: unknown): Promise<TeachingSkillCatalogEntry> {
       const input = teachingSkillImportSchema.parse(value), parsed = parseTeachingSkillPackage(input);
-      const skillId = input.skillId ?? operationId('teaching-skill:' + key(identity) + ':' + input.requestId);
+      const primary = (await owners(identity))[0]!;
+      const skillId = input.skillId ?? operationId('teaching-skill:' + person(primary) + ':' + input.requestId);
       const receipt = await write(identity, input.requestId, { operation: 'import', input }, async tx => {
-        const { rows: [prior] } = await tx.query('SELECT version,disabled FROM teaching_skills WHERE owner_key=$1 AND skill_id=$2', [key(identity), skillId]);
+        const people = await subjects(identity);
+        const { rows: [prior] } = await tx.query(`SELECT owner_key,version,disabled FROM teaching_skills WHERE ${personalOwnerFilter} AND skill_id=$2`, [people, skillId]);
+        const ownerKey = prior ? String(prior.owner_key) : key(primary);
         if (input.skillId && !prior) throw new StorageError('missing');
         if (prior) {
-          const { rows: history } = await tx.query('SELECT body FROM teaching_skill_versions WHERE owner_key=$1 AND skill_id=$2', [key(identity), skillId]);
+          const { rows: history } = await tx.query('SELECT body FROM teaching_skill_versions WHERE owner_key=$1 AND skill_id=$2', [ownerKey, skillId]);
           const fixed = history.map(row => validateTeachingSkillVersion(row.body));
           if (fixed.some(item => item.source !== input.source)) throw new StorageError('identity-conflict');
           const published = fixed.find(item => item.packageVersion === input.packageVersion);
           if (published) {
             if (published.digest !== parsed.digest) throw new StorageError('identity-conflict');
-            return meta(published, 'personal', false, Boolean(prior.disabled));
+            await tx.query('UPDATE teaching_skills SET disabled=false WHERE owner_key=$1 AND skill_id=$2', [ownerKey, skillId]);
+            return meta(published, 'personal', true);
           }
         }
         if (!prior) {
-          const { rows } = await tx.query('SELECT skill_id FROM teaching_skills WHERE owner_key=$1', [key(identity)]);
+          const { rows } = await tx.query(`SELECT skill_id FROM teaching_skills WHERE ${personalOwnerFilter}`, [people]);
           if (rows.length >= teachingSkillLimits.skills) throw new StorageError('invalid');
         }
         const version = prior ? Number(prior.version) + 1 : 1;
         if (version > teachingSkillLimits.versions) throw new StorageError('invalid');
         const fixed = { ...parsed, skillId, version };
         await tx.query(`INSERT INTO teaching_skills(owner_key,skill_id,version) VALUES($1,$2,$3)
-          ON CONFLICT(owner_key,skill_id) DO UPDATE SET version=EXCLUDED.version`, [key(identity), skillId, version]);
+          ON CONFLICT(owner_key,skill_id) DO UPDATE SET version=EXCLUDED.version,disabled=false`, [ownerKey, skillId, version]);
         await tx.query('INSERT INTO teaching_skill_versions(owner_key,skill_id,version,body) VALUES($1,$2,$3,$4)',
-          [key(identity), skillId, version, JSON.stringify(fixed)]);
-        return meta(fixed, 'personal', false, Boolean(prior?.disabled));
+          [ownerKey, skillId, version, JSON.stringify(fixed)]);
+        return meta(fixed, 'personal', true);
       });
       return receipt.result as TeachingSkillCatalogEntry;
     },
@@ -234,21 +250,21 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
           ON CONFLICT(owner_key,range_key) DO UPDATE SET body=EXCLUDED.body`, [key(identity), rangeKey(input.range), JSON.stringify(input)]);
         const { rows: saved } = await tx.query('SELECT body FROM teaching_skill_selections WHERE owner_key=$1 ORDER BY range_key', [key(identity)]);
         const selections = saved.map(row => { const { range, skills } = teachingSkillSelectSchema.parse(row.body); return { range, skills }; });
+        // Legacy selection receipts remain readable, but no longer gate runtime availability.
         return { skills: versions.filter(item => item.fixed.version === item.current)
-          .map(item => meta(item.fixed, 'personal', selections.some(selection => selection.skills.some(ref =>
-            ref.skillId === item.fixed.skillId && ref.version === item.fixed.version)), item.disabled)), selections };
+          .map(item => meta(item.fixed, 'personal', !item.disabled, item.disabled)), selections };
       });
       return receipt.result as { skills: TeachingSkillCatalogEntry[]; selections: { range: TeachingSkillRange; skills: TeachingSkillReference[] }[] };
     },
     async disable(identity: SpaceIdentity, value: unknown): Promise<TeachingSkillCatalogEntry> {
       const input = teachingSkillDisableSchema.parse(value);
       const receipt = await write(identity, input.requestId, { operation: 'disable', input }, async tx => {
-        const { rows } = await tx.query('UPDATE teaching_skills SET disabled=$3 WHERE owner_key=$1 AND skill_id=$2 RETURNING version',
-          [key(identity), input.skillId, input.disabled]);
+        const { rows } = await tx.query(`UPDATE teaching_skills SET disabled=$3 WHERE ${personalOwnerFilter} AND skill_id=$2 RETURNING version`,
+          [await subjects(identity), input.skillId, input.disabled]);
         if (!rows.length) throw new StorageError('missing');
         const versions = await personal(identity, tx.query.bind(tx));
         return meta(versions.find(item => item.fixed.skillId === input.skillId && item.fixed.version === Number(rows[0]!.version))!.fixed,
-          'personal', false, input.disabled);
+          'personal', !input.disabled, input.disabled);
       });
       return receipt.result as TeachingSkillCatalogEntry;
     },
@@ -259,8 +275,7 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
       const selections = rows.map(row => { const { range, skills } = teachingSkillSelectSchema.parse(row.body); return { range, skills }; });
       if (activityId) return { skills: (await resolve({ identity, activity: await activity(identity, activityId) })).catalog, selections };
       return { skills: (await personal(identity)).filter(item => item.fixed.version === item.current)
-        .map(item => meta(item.fixed, 'personal', selections.some(selection => selection.skills.some(ref =>
-          ref.skillId === item.fixed.skillId && ref.version === item.fixed.version)), item.disabled)), selections };
+        .map(item => meta(item.fixed, 'personal', !item.disabled, item.disabled)), selections };
     },
     async freeze(identity: SpaceIdentity, references: TeachingSkillReference[]): Promise<CourseSkillPackage[]> {
       await authorize(identity);
@@ -287,7 +302,7 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
         const body = chunk(candidate, file, input.offset, input.length);
         await tx.query(`INSERT INTO teaching_skill_loads(command_id,owner_key,activity_id,run_id,step_id,fingerprint,body)
           VALUES($1,$2,$3,$4,$5,$6,$7)`, [input.commandId, key(identity), activityId, input.runId, input.stepId,
-          canonicalDigest({ activityId, input }), JSON.stringify(body)]);
+          canonicalDigest({ activityId, input }), JSON.stringify({ ...body, ...(candidate.ownerKey ? { packageOwnerKey: candidate.ownerKey } : {}) })]);
         return body;
       });
       await guard.assertDispatch?.();
@@ -297,13 +312,13 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
       await authorize(identity); z.uuid().parse(activityId); z.uuid().parse(runId);
       const { rows } = await storage.read(`SELECT body FROM teaching_skill_loads WHERE owner_key=$1 AND activity_id=$2
         AND run_id=$3 ORDER BY created_at,command_id`, [key(identity), activityId, runId]);
-      return rows.map(row => teachingSkillLoadedSchema.parse(row.body));
+      return rows.map(row => parseStoredTeachingSkillLoad(row.body).loaded);
     },
     async reconcile(identity: SpaceIdentity, activityId: string, commandId: string): Promise<TeachingSkillLoaded | null> {
       await authorize(identity); z.uuid().parse(activityId); z.uuid().parse(commandId);
       const { rows: [row] } = await storage.read('SELECT body FROM teaching_skill_loads WHERE command_id=$1 AND owner_key=$2 AND activity_id=$3',
         [commandId, key(identity), activityId]);
-      return row ? teachingSkillLoadedSchema.parse(row.body) : null;
+      return row ? parseStoredTeachingSkillLoad(row.body).loaded : null;
     },
   };
 }
@@ -318,7 +333,7 @@ export async function validateTeachingSkills(storage: OwnedStorage) {
   for (const row of selections) if (rangeKey(teachingSkillSelectSchema.parse(row.body).range) !== row.range_key) throw new StorageError('corrupt');
   const { rows: loads } = await storage.read('SELECT body FROM teaching_skill_loads');
   for (const row of loads) {
-    const body = teachingSkillLoadedSchema.parse(row.body), bytes = skillFileBytes(body);
+    const body = parseStoredTeachingSkillLoad(row.body).loaded, bytes = skillFileBytes(body);
     if (sha(bytes) !== body.digest || bytes.length !== body.byteLength || body.offset + bytes.length > body.totalByteLength
       || body.complete !== (body.offset === 0 && body.byteLength === body.totalByteLength)) throw new StorageError('corrupt');
   }

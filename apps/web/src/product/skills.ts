@@ -8,9 +8,9 @@ import { learningSubjectRequest } from './learningTransport'
 export const skillCatalogSchema = teachingSkillListSchema.extend({ selections: teachingSkillListSchema.shape.selections.optional() })
 export type SkillCatalog = z.infer<typeof skillCatalogSchema>
 export type SkillCatalogEntry = SkillCatalog['skills'][number]
-const catalogChanges = new Set<(scope: string, sender: object) => void>()
+const catalogChanges = new Set<(namespace: string, sender: object) => void>()
 
-/** Scope defaults do not gate an explicit question pin; other owner failures still do. */
+/** Question pins may use another fixed version; disabled or unavailable packages stay unavailable. */
 export function draftSkillOption(skill: SkillCatalogEntry) {
   const unavailable = skill.disabled ? '已停用'
     : skill.unavailable && skill.unavailable.reason !== 'not-selected' ? skill.unavailable.detail || '当前不可用' : undefined
@@ -27,9 +27,10 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
   const request = useCallback(async (route: string, body?: unknown) => {
     // An activity's pinned owner remains authoritative even if the member binding changes.
     const boundRoute = activityId && (route === 'skills' || route.startsWith('skills/')) ? `agent/${activityId}/${route}` : route
-    const result = await learningSubjectRequest(identity, spaceKey, namespace, boundRoute, body)
+    const result = await learningSubjectRequest(identity, spaceKey, namespace, boundRoute, body,
+      route === 'skills/import' ? teachingSkillLimits.importTimeoutMs : undefined)
     if (body !== undefined && ['skills/import', 'skills/select', 'skills/disable'].includes(route))
-      for (const changed of catalogChanges) changed(scope, client.current)
+      for (const changed of catalogChanges) changed(namespace, client.current)
     return result
   }, [scope])
   const reload = useCallback(async () => {
@@ -48,8 +49,8 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
   useEffect(() => {
     live.current = true
     setState({ scope, data: null, loading: true, error: '', epoch: 0 })
-    const changed = (changedScope: string, sender: object) => {
-      if (changedScope === scope && sender !== client.current) void reload()
+    const changed = (changedNamespace: string, sender: object) => {
+      if (changedNamespace === namespace && sender !== client.current) void reload()
     }
     catalogChanges.add(changed)
     void reload()
@@ -66,9 +67,10 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
 const textExtensions = /\.(?:md|txt|json|ya?ml|toml|csv|tsv|html?|css|[cm]?js|tsx?|jsx|py|sh|bash|sql|xml|svg)$/i
 /** A package is transported intact; directory prefixes never become server filesystem paths. */
 export async function readSkillPackage(files: readonly File[]): Promise<TeachingSkillImport['files']> {
-  if (!files.length || files.length > teachingSkillLimits.files) throw new Error('请选择一个包含 SKILL.md 的包，最多 64 个文件。')
+  if (!files.length || files.length > teachingSkillLimits.files) throw new Error(`请选择一个包含 SKILL.md 的包，最多 ${teachingSkillLimits.files} 个文件。`)
   if (files.some(file => file.size > teachingSkillLimits.fileBytes)
-    || files.reduce((total, file) => total + file.size, 0) > teachingSkillLimits.packageBytes) throw new Error('Skill 包超出大小限制：单文件 512 KB，整包 2 MB。')
+    || files.reduce((total, file) => total + file.size, 0) > teachingSkillLimits.packageBytes)
+    throw new Error(`Skill 包超出大小限制：单文件 ${teachingSkillLimits.fileBytes / 1048576} MiB，整包 ${teachingSkillLimits.packageBytes / 1048576} MiB。`)
   const paths = files.map(file => file.webkitRelativePath || file.name)
   const roots = paths.filter(path => path === 'SKILL.md' || path.endsWith('/SKILL.md'))
   if (roots.length !== 1) throw new Error('每次请选择一个真实 Skill 包，且包含唯一的 SKILL.md。')
@@ -80,6 +82,8 @@ export async function readSkillPackage(files: readonly File[]): Promise<Teaching
     return result.data
   })
   if (new Set(normalized.map(path => path.toLowerCase())).size !== normalized.length) throw new Error('包中包含重名路径。')
+  if (files[normalized.indexOf('SKILL.md')].size > teachingSkillLimits.bodyBytes)
+    throw new Error(`SKILL.md 最多 ${teachingSkillLimits.bodyBytes / 1048576} MiB。`)
   return Promise.all(files.map(async (file, index) => {
     const bytes = new Uint8Array(await file.arrayBuffer())
     const path = normalized[index]

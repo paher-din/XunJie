@@ -19,14 +19,6 @@ const expectFeedback = async (text: string, kind: 'error' | 'success') => {
 }
 const button = (label: string) => Array.from(host.querySelectorAll('button')).find(item => item.textContent === label)!
 const click = async (label: string) => act(async () => { button(label).click(); await settle() })
-const chooseRange = async (label: string) => {
-  await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="使用范围"]')!.click(); await settle() })
-  await act(async () => {
-    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(item => item.textContent === label)!
-    option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click(); await settle()
-  })
-  expect(host.querySelector('[aria-label="使用范围"]')?.textContent).toBe(label)
-}
 const response = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } })
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
@@ -34,7 +26,7 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => { toast.dismiss(); root.unmount(); await settle() }); host.remove(); vi.unstubAllGlobals() })
 const activityScopes = [undefined, crypto.randomUUID()]
-const skillsRoute = (activityId?: string) => activityId ? `/api/learning/agent/${activityId}/skills` : '/api/learning/skills'
+const skillsRoute = (_activityId?: string) => '/api/learning/skills'
 const mount = async (activityId?: string) => act(async () => {
   root.render(createElement('div', null, createElement(Toaster), createElement(PersonalSkillsSettings, { identity, spaceKey: 'personal', namespace: 'test', activityId }))); await settle()
 })
@@ -52,35 +44,34 @@ it('allows retrying a failed catalog read and restores the skills', async () => 
   expect(Array.from(host.querySelectorAll('button')).some(item => item.textContent === '重新读取')).toBe(false)
 })
 
-it.each(activityScopes)('restores configured ranges and writes selections to the original owner (activity=%s)', async activityId => {
+it.each(activityScopes)('uses the checkbox as a global enable switch without range configuration (activity=%s)', async activityId => {
   const writes: unknown[] = []
-  let selections = [{ range: { kind: 'self-study' }, skills: [{ skillId: skill.skillId, version: 1 }] }]
+  let disabled = false
   vi.stubGlobal('fetch', vi.fn(async (route: string, options: RequestInit) => {
+    expect(route).toBe(skillsRoute(activityId) + (options.method === 'POST' ? '/disable' : ''))
     if (options.method === 'POST') {
       const input = JSON.parse(options.body as string)
-      writes.push(input)
-      selections = [...selections.filter(item => JSON.stringify(item.range) !== JSON.stringify(input.range)), { range: input.range, skills: input.skills }]
+      writes.push(input); disabled = input.disabled
+      return response({ ...skill, disabled, selected: !disabled })
     }
-    expect(route).toBe(skillsRoute(activityId) + (options.method === 'POST' ? '/select' : ''))
-    return response({ skills: [skill], selections })
+    return response({ skills: [{ ...skill, disabled, selected: !disabled }], selections: [] })
   }))
   await mount(activityId)
   const checkbox = () => host.querySelector<HTMLInputElement>('.skill-check input')!
-  expect(checkbox().checked).toBe(false)
-  await act(async () => { checkbox().click(); await settle() })
-  await chooseRange('自主学习')
   expect(checkbox().checked).toBe(true)
+  expect(host.querySelector('[aria-label="使用范围"]')).toBeNull()
   await act(async () => { checkbox().click(); await settle() })
-  await chooseRange('本空间全部活动')
-  expect(host.querySelector('[aria-label="使用范围"]')?.textContent).toBe('本空间全部活动')
+  expect(checkbox().checked).toBe(false)
+  expect(checkbox().disabled).toBe(false)
+  await act(async () => { checkbox().click(); await settle() })
   expect(writes).toEqual([
-    expect.objectContaining({ range: { kind: 'all' }, skills: [{ skillId: skill.skillId, version: 1 }] }),
-    expect.objectContaining({ range: { kind: 'self-study' }, skills: [] }),
+    expect.objectContaining({ skillId: skill.skillId, disabled: true }),
+    expect.objectContaining({ skillId: skill.skillId, disabled: false }),
   ])
   expect(checkbox().checked).toBe(true)
 })
 
-it.each(activityScopes)('updates a real package and retries identical bytes at the original owner (activity=%s)', async activityId => {
+it.each(activityScopes)('updates and retries identical bytes in the global library, including from an activity (activity=%s)', async activityId => {
   const writes: Record<string, unknown>[] = []
   let lost = true
   vi.stubGlobal('fetch', vi.fn(async (route: string, options: RequestInit) => {
@@ -116,24 +107,24 @@ it.each(activityScopes)('updates a real package and retries identical bytes at t
   await expectFeedback('更新 Skill已确认', 'success')
 })
 
-it.each(activityScopes)('disables at the original owner and allows removing a disabled selection (activity=%s)', async activityId => {
+it.each(activityScopes)('restores a disabled skill directly from its checkbox (activity=%s)', async activityId => {
   const writes: { route: string; input: unknown }[] = []
-  let disabled = false, selected = true
+  let disabled = true
   vi.stubGlobal('fetch', vi.fn(async (route: string, options: RequestInit) => {
     if (options.method === 'POST') {
       writes.push({ route, input: JSON.parse(options.body as string) })
-      if (route.endsWith('/select')) { selected = false; return response({ skills: [] }) }
-      disabled = true; return response({ ...skill, disabled })
+      disabled = JSON.parse(options.body as string).disabled
+      return response({ ...skill, disabled, selected: !disabled })
     }
     expect(route).toBe(skillsRoute(activityId))
-    return response({ skills: [{ ...skill, disabled }], selections: [{ range: { kind: 'all' }, skills: selected ? [{ skillId: skill.skillId, version: 1 }] : [] }] })
+    return response({ skills: [{ ...skill, disabled, selected: !disabled }], selections: [] })
   }))
-  await mount(activityId); await click('停用')
-  expect(writes[0]).toEqual({ route: skillsRoute(activityId) + '/disable', input: expect.objectContaining({ skillId: skill.skillId, disabled: true }) })
+  await mount(activityId)
   const checkbox = host.querySelector<HTMLInputElement>('.skill-check input')!
-  expect(checkbox.checked).toBe(true); expect(checkbox.disabled).toBe(false)
+  expect(checkbox.checked).toBe(false); expect(checkbox.disabled).toBe(false)
   await act(async () => { checkbox.click(); await settle() })
-  expect(checkbox.checked).toBe(false)
+  expect(writes[0]).toEqual({ route: skillsRoute(activityId) + '/disable', input: expect.objectContaining({ skillId: skill.skillId, disabled: false }) })
+  expect(checkbox.checked).toBe(true)
 })
 
 it('filters the list without changing selections and keeps import available', async () => {
@@ -153,9 +144,10 @@ it('filters the list without changing selections and keeps import available', as
 
 it('opens the local picker and imports the selected skill', async () => {
   const writes: Record<string, unknown>[] = []
+  let imported = false
   vi.stubGlobal('fetch', vi.fn(async (_route: string, options: RequestInit) => {
-    if (options.method === 'POST') { writes.push(JSON.parse(options.body as string)); return response(skill) }
-    return response({ skills: [skill], selections: [] })
+    if (options.method === 'POST') { writes.push(JSON.parse(options.body as string)); imported = true; return response(skill) }
+    return response({ skills: imported ? [skill] : [], selections: [] })
   }))
   await mount()
   const input = host.querySelector<HTMLInputElement>('[aria-label="选择 Skill 包文件"]')!
@@ -185,6 +177,8 @@ it('opens the local picker and imports the selected skill', async () => {
     { path: 'SKILL.md', content, encoding: 'utf8' }, { path: 'references/notes.md', content: '依据', encoding: 'utf8' },
   ] })
   await expectFeedback('导入 Skill已确认', 'success')
+  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(true)
+  expect(writes).toHaveLength(1)
 })
 
 it('imports the package returned for a GitHub URL through the existing skill endpoint', async () => {
@@ -207,16 +201,17 @@ it('imports the package returned for a GitHub URL through the existing skill end
   expect(calls[1]).toMatchObject({ route: '/api/learning/skills/import', body: { source, packageVersion: 'abcdef123456', files } })
 })
 
-it('retries an unconfirmed automatic selection with the same request', async () => {
+it('retries an unconfirmed global toggle with the same request', async () => {
   const writes: Record<string, unknown>[] = []
-  let selection: unknown[] = []
+  let disabled = false
   vi.stubGlobal('fetch', vi.fn(async (_route: string, options: RequestInit) => {
     if (options.method === 'POST') {
       const input = JSON.parse(options.body as string); writes.push(input)
       if (writes.length === 1) throw new TypeError('lost receipt')
-      selection = input.skills
+      disabled = input.disabled
+      return response({ ...skill, disabled, selected: !disabled })
     }
-    return response({ skills: [skill], selections: [{ range: { kind: 'all' }, skills: selection }] })
+    return response({ skills: [{ ...skill, disabled, selected: !disabled }], selections: [] })
   }))
   await mount()
   await act(async () => { host.querySelector<HTMLInputElement>('.skill-check input')!.click(); await settle() })
@@ -224,28 +219,29 @@ it('retries an unconfirmed automatic selection with the same request', async () 
   await click('核对原操作')
   expect(writes).toHaveLength(2)
   expect(writes[1]).toEqual(writes[0])
-  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(true)
+  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(false)
 })
 
-it('keeps a rejected selection available for a fresh retry after rereading', async () => {
+it('keeps a rejected global toggle available for a fresh retry after rereading', async () => {
   const writes: Record<string, unknown>[] = []
-  let selection: unknown[] = []
+  let disabled = false
   vi.stubGlobal('fetch', vi.fn(async (_route: string, options: RequestInit) => {
     if (options.method === 'POST') {
       const input = JSON.parse(options.body as string); writes.push(input)
       if (writes.length === 1) return new Response(JSON.stringify({ error: 'conflict' }), { status: 409 })
-      selection = input.skills
+      disabled = input.disabled
+      return response({ ...skill, disabled, selected: !disabled })
     }
-    return response({ skills: [skill], selections: [{ range: { kind: 'all' }, skills: selection }] })
+    return response({ skills: [{ ...skill, disabled, selected: !disabled }], selections: [] })
   }))
   await mount()
   await act(async () => { host.querySelector<HTMLInputElement>('.skill-check input')!.click(); await settle() })
   await expectFeedback('配置发生冲突', 'error')
   await click('重新读取')
-  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(true)
+  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(false)
   await click('重试保存')
   expect(writes).toHaveLength(2)
   expect(writes[1].requestId).not.toBe(writes[0].requestId)
-  expect(writes[1].skills).toEqual(writes[0].skills)
-  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(true)
+  expect(writes[1].disabled).toEqual(writes[0].disabled)
+  expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(false)
 })

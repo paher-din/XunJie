@@ -121,6 +121,7 @@ type RequestRow = Record<string, unknown>;
 
 export interface TeachingAgentOptions {
   authorize(identity: SpaceIdentity): Promise<void>;
+  personalSkillOwners?(identity: SpaceIdentity): Promise<SpaceIdentity[]>;
   identityFor(scope: { environmentId: string; spaceId: string; principalId: string }): Promise<SpaceIdentity>;
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   models: LearningModelPort;
@@ -147,6 +148,7 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   let dispatchClosed = false;
   let ticker: ReturnType<typeof setInterval> | undefined;
   const skills = createTeachingSkills(storage, { authorize: options.authorize, activity: options.activity,
+    ...(options.personalSkillOwners ? { personalOwners: options.personalSkillOwners } : {}),
     assertWritable() { if (writesClosed || dispatchClosed) throw new StorageError('maintenance'); } });
   const skillRuntime = createTeachingSkillRuntime(skills, options.tools);
   const studentFacts = createTeachingStudentFacts(storage, { activity: options.activity, authorize: options.authorize });

@@ -55,6 +55,8 @@ test('personal package import is validated, idempotent and visible through the p
     const imported = await f.api('skills/import', input);
     assert.equal(imported.name, 'evidence-diagnosis');
     assert.equal(imported.version, 1);
+    assert.equal(imported.selected, true);
+    assert.equal(imported.disabled, false);
     assert.deepEqual(await f.api('skills/import', input), imported);
     const listed = await f.api('skills');
     assert.equal(listed.skills.length, 1);
@@ -200,7 +202,7 @@ test('a required course skill with a missing dependency pauses with a source rea
   } finally { await f.close(); }
 });
 
-test('an explicitly empty draft selection overrides personal range defaults for this question', { timeout: 180000 }, async () => {
+test('an empty question pin list retains enabled personal skills for progressive loading', { timeout: 180000 }, async () => {
   const f = await fixture();
   try {
     await f.configure(); const activity = await f.activity();
@@ -208,7 +210,8 @@ test('an explicitly empty draft selection overrides personal range defaults for 
     await f.api('skills/select', { requestId: randomUUID(), range: { kind: 'all' }, skills: [{ skillId: imported.skillId, version: 1 }] });
     const sent = await sendFixed(f, activity, []);
     await until(async () => (await f.api(`agent/${activity.activityId}/runs/${sent.runId}`)).state === 'completed', 'Explicit empty choice finishes');
-    assert.ok(!f.payloads[0].tools.some(tool => tool.function.name === 'skill_load'));
+    assert.ok(f.payloads[0].tools.some(tool => tool.function.name === 'skill_load'));
+    assert.doesNotMatch(JSON.stringify(f.payloads[0]), /先对照学生自己的预测/);
     const catalog = await f.api('skills');
     assert.equal(catalog.selections[0].skills.length, 1, 'The draft changes no saved range settings');
   } finally { await f.close(); }

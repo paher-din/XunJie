@@ -21,8 +21,7 @@ function fixture(t: TestContext, options: { directory?: string; ref?: string; fi
     const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
     const sha = hash(bytes);
     entries.push({ path, sha, type: 'blob', mode: path.endsWith('.py') ? '100755' : '100644', size: bytes.length });
-    routes.set(`/git/blobs/${sha}`, { sha, size: bytes.length, encoding: 'base64',
-      content: bytes.toString('base64').replace(/.{60}/g, '$&\n'), url: 'https://evil.example/blob' });
+    routes.set(`raw:${path}`, () => new Response(bytes));
     const parts = path.split('/');
     for (let depth = 1; depth < parts.length; depth++) directories.add(parts.slice(0, depth).join('/'));
   }
@@ -43,13 +42,21 @@ function fixture(t: TestContext, options: { directory?: string; ref?: string; fi
   routes.set(treeRoute, tree);
   t.mock.method(globalThis, 'fetch', async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
     const endpoint = new URL(String(input));
-    assert.equal(endpoint.origin, 'https://api.github.com');
     assert.equal(endpoint.username, ''); assert.equal(endpoint.password, '');
-    assert.ok(endpoint.pathname.startsWith('/repos/example/skills'));
     assert.equal(init?.redirect, 'error'); assert.equal(init?.credentials, 'omit');
     assert.equal(init?.method, 'GET'); assert.ok(init.signal instanceof AbortSignal);
     assert.equal(new Headers(init.headers).get('authorization'), null);
-    const route = endpoint.pathname.slice('/repos/example/skills'.length) + endpoint.search;
+    let route: string;
+    if (endpoint.origin === 'https://raw.githubusercontent.com') {
+      const prefix = `/example/skills/${commitSha}/${directory ? directory.split('/').map(encodeURIComponent).join('/') + '/' : ''}`;
+      assert.ok(endpoint.pathname.startsWith(prefix));
+      assert.equal(endpoint.search, '');
+      route = 'raw:' + decodeURIComponent(endpoint.pathname.slice(prefix.length));
+    } else {
+      assert.equal(endpoint.origin, 'https://api.github.com');
+      assert.ok(endpoint.pathname.startsWith('/repos/example/skills'));
+      route = endpoint.pathname.slice('/repos/example/skills'.length) + endpoint.search;
+    }
     calls.push(route);
     const reply = routes.get(route);
     if (!reply) return route.startsWith('/commits/')
@@ -78,7 +85,7 @@ test('imports the complete package, preserves bytes and paths, pins provenance t
   ]);
   assert.ok(teachingSkillImportSchema.safeParse({ requestId: '00000000-0000-4000-8000-000000000001', ...result }).success);
   assert.equal(f.calls.filter(path => path.startsWith('/commits/')).length, 1);
-  assert.equal(f.calls.filter(path => path.startsWith('/git/blobs/')).length, 5);
+  assert.equal(f.calls.filter(path => path.startsWith('raw:')).length, 5);
 });
 
 test('reads only the selected subtree from the resolved commit; never follows returned API links', async t => {
@@ -169,7 +176,7 @@ test('rejects truncated trees, mismatched tree versions and non-directory subtre
     if (kind === 'link') f.routes.set(`/git/trees/${rootSha}`, { sha: rootSha, truncated: false,
       tree: [{ path: 'demo', type: 'blob', mode: '120000', sha: 'e'.repeat(40), size: 1 }] });
     await assert.rejects(fetchGithubSkill(f.url), code(kind === 'link' ? 'not-found' : 'upstream'));
-    assert.ok(!f.calls.some(path => path.startsWith('/git/blobs/')));
+    assert.ok(!f.calls.some(path => path.startsWith('raw:')));
   });
 });
 
@@ -185,7 +192,7 @@ test('rejects unsafe package paths, aliases, symlinks, submodules and incomplete
     const f = fixture(t);
     f.entries.push({ path: 'bad', sha: 'e'.repeat(40), type: 'blob', mode: '100644', size: 1, ...change });
     await assert.rejects(fetchGithubSkill(f.url), code('invalid-package'));
-    assert.ok(!f.calls.some(path => path.startsWith('/git/blobs/')));
+    assert.ok(!f.calls.some(path => path.startsWith('raw:')));
   });
 });
 
@@ -194,45 +201,44 @@ test('requires a single SKILL.md in the selected package root', async t => {
     { 'SKILL.md': skillText, 'nested/SKILL.md': skillText }]) await t.test(Object.keys(files).join(','), async t => {
     const f = fixture(t, { files });
     await assert.rejects(fetchGithubSkill(f.url), code('invalid-package'));
-    assert.ok(!f.calls.some(path => path.startsWith('/git/blobs/')));
+    assert.ok(!f.calls.some(path => path.startsWith('raw:')));
   });
 });
 
-test('enforces file count, per-file, SKILL.md and aggregate byte limits before downloading blobs', async t => {
+test('enforces file count, per-file, SKILL.md and aggregate byte limits before downloading files', async t => {
   for (const kind of ['count', 'file', 'body', 'aggregate', 'missingSize']) await t.test(kind, async t => {
     const f = fixture(t, { files: { 'SKILL.md': skillText } });
-    if (kind === 'count') for (let i = 0; i < 64; i++) f.entries.push({ path: `${i}.txt`, sha: 'd'.repeat(40), type: 'blob', mode: '100644', size: 0 });
+    if (kind === 'count') for (let i = 0; i < teachingSkillLimits.files; i++) f.entries.push({ path: `${i}.txt`, sha: 'd'.repeat(40), type: 'blob', mode: '100644', size: 0 });
     if (kind === 'file') f.entries.push({ path: 'large.bin', sha: 'd'.repeat(40), type: 'blob', mode: '100644', size: teachingSkillLimits.fileBytes + 1 });
     if (kind === 'body') f.entries[0]!.size = teachingSkillLimits.bodyBytes + 1;
     if (kind === 'aggregate') for (let i = 0; i < 4; i++) f.entries.push({ path: `${i}.bin`, sha: 'd'.repeat(40), type: 'blob', mode: '100644', size: teachingSkillLimits.fileBytes });
     if (kind === 'missingSize') delete f.entries[0]!.size;
     await assert.rejects(fetchGithubSkill(f.url), code(kind === 'missingSize' ? 'upstream' : 'too-large'));
-    assert.ok(!f.calls.some(path => path.startsWith('/git/blobs/')));
+    assert.ok(!f.calls.some(path => path.startsWith('raw:')));
   });
 });
 
-test('accepts exactly 64 files and exactly 2 MiB without dropping empty or binary attachments', async t => {
+test('accepts the full enlarged file and byte budgets without charging an API call for each file', async t => {
   const files: Record<string, string | Buffer> = { 'SKILL.md': skillText };
-  for (let i = 0; i < 3; i++) files[`large-${i}.bin`] = Buffer.alloc(teachingSkillLimits.fileBytes, i);
-  files['remainder.bin'] = Buffer.alloc(teachingSkillLimits.fileBytes - Buffer.byteLength(skillText), 3);
-  for (let i = 0; i < 59; i++) files[`empty-${i}.txt`] = '';
+  files['assets/large.bin'] = Buffer.alloc(teachingSkillLimits.fileBytes, 255);
+  files['assets/remainder.bin'] = Buffer.alloc(teachingSkillLimits.packageBytes - teachingSkillLimits.fileBytes - Buffer.byteLength(skillText), 254);
+  for (let i = 0; i < teachingSkillLimits.files - 3; i++) files[`references/empty-${i}.txt`] = '';
   const f = fixture(t, { files });
   const result = await fetchGithubSkill(f.url);
-  assert.equal(result.files.length, 64);
+  assert.equal(result.files.length, teachingSkillLimits.files);
   assert.equal(result.files.reduce((total, file) => total + Buffer.from(file.content, file.encoding === 'utf8' ? 'utf8' : 'base64').length, 0),
     teachingSkillLimits.packageBytes);
+  assert.equal(f.calls.filter(path => !path.startsWith('raw:')).length, 3);
+  assert.ok(teachingSkillImportSchema.safeParse({ requestId: '00000000-0000-4000-8000-000000000001', ...result }).success);
 });
 
-test('checks blob content against the pinned Git object, including actual size and canonical base64', async t => {
-  for (const kind of ['size', 'sha', 'bytes', 'base64']) await t.test(kind, async t => {
+test('checks downloaded bytes against the size and Git object hash from the pinned tree', async t => {
+  for (const kind of ['size', 'sha', 'bytes']) await t.test(kind, async t => {
     const f = fixture(t, { files: { 'SKILL.md': skillText } });
     const entry = f.entries[0]!;
-    const blob = { sha: entry.sha, size: entry.size, encoding: 'base64', content: Buffer.from(skillText).toString('base64') };
-    if (kind === 'size') blob.size = 1;
-    if (kind === 'sha') blob.sha = 'f'.repeat(40);
-    if (kind === 'bytes') blob.content = Buffer.from(skillText.replace('example', 'changed')).toString('base64');
-    if (kind === 'base64') blob.content += '!';
-    f.routes.set(`/git/blobs/${entry.sha}`, blob);
+    if (kind === 'sha') entry.sha = 'f'.repeat(40);
+    const bytes = Buffer.from(kind === 'bytes' ? skillText.replace('example', 'changed') : skillText);
+    f.routes.set('raw:SKILL.md', () => new Response(kind === 'size' ? bytes.subarray(1) : bytes));
     await assert.rejects(fetchGithubSkill(f.url), code('upstream'));
   });
 });
@@ -272,6 +278,6 @@ test('the total deadline aborts a blocked request and releases its timer', async
     init.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
   }));
   const pending = fetchGithubSkill(f.url);
-  t.mock.timers.tick(60_000);
+  t.mock.timers.tick(teachingSkillLimits.githubReadTimeoutMs);
   await assert.rejects(pending, code('timeout'));
 });

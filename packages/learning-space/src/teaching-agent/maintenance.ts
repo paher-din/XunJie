@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage } from '@xunjie/storage';
-import { teachingSkillLoadedSchema } from '@xunjie/contracts/agent-skills';
 import { canonicalDigest } from './identity.js';
-import { validateTeachingSkillVersion, skillFileBytes } from './skills-package.js';
+import { validateTeachingSkillVersion, skillFileBytes, parseStoredTeachingSkillLoad } from './skills-package.js';
 
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
@@ -149,9 +148,10 @@ export async function validateTeachingSkillLoads(storage: OwnedStorage): Promise
   if (!existing?.relation) return;
   const { rows: loads } = await storage.read('SELECT owner_key,body FROM teaching_skill_loads');
   for (const row of loads) {
-    const loaded = teachingSkillLoadedSchema.parse(row.body);
+    const { loaded, packageOwnerKey } = parseStoredTeachingSkillLoad(row.body);
     const { rows: versions } = await storage.read(`SELECT body FROM teaching_skill_versions
-      WHERE owner_key=$1 AND skill_id=$2 AND version=$3`, [row.owner_key, loaded.skillId, loaded.version]);
+      WHERE owner_key=$1 AND skill_id=$2 AND version=$3`, [packageOwnerKey ?? row.owner_key, loaded.skillId, loaded.version]);
+    if (packageOwnerKey && versions.length !== 1) throw new StorageError('corrupt');
     // A course skill's fixed package lives in the course owner, not in this owner's versions table.
     if (versions.length !== 1) continue;
     const fixed = validateTeachingSkillVersion(versions[0]!.body);

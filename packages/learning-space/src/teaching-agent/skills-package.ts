@@ -1,11 +1,18 @@
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import { parseDocument } from 'yaml';
 import { StorageError } from '@xunjie/storage';
 import { teachingSkillImportSchema, teachingSkillMetadataSchema, teachingSkillVersionSchema,
-  teachingSkillLimits, type TeachingSkillImport, type TeachingSkillVersion } from '@xunjie/contracts/agent-skills';
+  teachingSkillLimits, teachingSkillLoadedSchema, type TeachingSkillImport, type TeachingSkillVersion } from '@xunjie/contracts/agent-skills';
 import { canonicalDigest } from './identity.js';
 
 const hash = (value: Uint8Array) => createHash('sha256').update(value).digest('hex');
+// Private provenance stays in the stored load, not in the model/public loaded-content wire.
+const storedLoadSchema = teachingSkillLoadedSchema.extend({ packageOwnerKey: z.string().min(1).max(2000).optional() });
+export function parseStoredTeachingSkillLoad(value: unknown) {
+  const { packageOwnerKey, ...loaded } = storedLoadSchema.parse(value);
+  return { loaded, packageOwnerKey };
+}
 export function skillFileBytes(file: TeachingSkillImport['files'][number]): Buffer {
   if (file.encoding === 'utf8') {
     // JSON can transport lone surrogates; their UTF-8 replacement would conceal a different source.

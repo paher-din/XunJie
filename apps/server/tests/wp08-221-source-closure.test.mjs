@@ -270,6 +270,16 @@ test('validateTeachingSkillLoads accepts a load that matches the original fixed 
   await validateTeachingSkillLoads(makeStorage(f.tables));
 });
 
+test('cross-space loads retain the exact package owner and reject missing or altered original bytes', async () => {
+  const f = skillFixture();
+  f.tables.teaching_skill_loads[0].owner_key = `${uuid()}/${uuid()}/${uuid()}`;
+  f.tables.teaching_skill_loads[0].body = { ...f.loaded, packageOwnerKey: f.ownerKey };
+  await validateTeachingSkillLoads(makeStorage(f.tables));
+  await assert.rejects(validateTeachingSkillLoads(makeStorage({ ...f.tables, teaching_skill_versions: [] })), { code: 'corrupt' });
+  f.tables.teaching_skill_loads[0].body.content = 'altered';
+  await assert.rejects(validateTeachingSkillLoads(makeStorage(f.tables)), { code: 'corrupt' });
+});
+
 test('validateTeachingSkillLoads rejects a load whose bytes no longer match the fixed package', async () => {
   const f = skillFixture();
   const tampered = { ...f.loaded, content: f.loaded.content.replace('node voltage', 'XXXX voltage') };

@@ -19,6 +19,7 @@ import { pdfDocumentSchema, pdfReadingSchema, pdfSearchResultSchema } from '@xun
 import { personalMaterialSchema, personalMaterialVersionContentSchema, personalMaterialReadResultSchema } from '@xunjie/contracts/personal-materials';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { teachingInteractionSettingsSchema, teachingControlReceiptSchema, teachingInputControlReceiptSchema } from '@xunjie/contracts/teaching-agent';
+import { teachingSkillLimits } from '@xunjie/contracts/agent-skills';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
@@ -128,7 +129,9 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     let response: Response;
     try {
       response = await fetch(new URL('/api/learning/' + route, connection.schoolEndpoint), {
-        method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(route.startsWith('pdf/') ? 45000 : 10000),
+        method: body === undefined ? 'GET' : 'POST', redirect: 'error', signal: AbortSignal.timeout(
+          /^(?:agent\/[0-9a-f-]{36}\/)?skills\/import(?:\?|$)/.test(route) ? teachingSkillLimits.importTimeoutMs
+            : route.startsWith('pdf/') ? 45000 : 10000),
         headers: { 'content-type': 'application/json', ...(authorized ? { authorization: `Bearer ${connection.grant!.token}` } : {}) },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
@@ -455,13 +458,13 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     requestId: connection.requestId, schoolEndpoint: connection.schoolEndpoint,
     authorizationUrl: new URL(`/?authorize=${connection.requestId}`, connection.schoolEndpoint).href,
     ...(connection.grant ? { identity: connection.grant.identity, target: connection.grant.target } : {}) });
-  async function list() {
+  async function list(options: { rememberCleanup?: boolean } = {}) {
     const files = await readdir(join(root, 'credentials'));
     const result = [];
     for (const file of files.filter(name => /^school-client-[0-9a-f-]{36}$/.test(name))) {
       const connection = await read(file.slice('school-client-'.length));
       if (connection.grant && !connection.setupPending) {
-        await rememberCleanupDestination(connection);
+        if (options.rememberCleanup !== false) await rememberCleanupDestination(connection);
         result.push({ key: `school:${connection.requestId}`, identity: connection.grant.identity, cleanupEndpoint: connection.schoolEndpoint,
           directLocalExecution: !!connection.agentBinding });
       }

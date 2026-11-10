@@ -26,7 +26,7 @@ afterEach(async () => {
   host.remove(); vi.useRealTimers(); vi.unstubAllGlobals()
 })
 
-it.each([false, true])('refreshes defaults after confirmed settings while retaining explicit original pins (explicit=%s)', async explicit => {
+it.each([false, true])('refreshes an activity after a global toggle while retaining explicit original pins (explicit=%s)', async explicit => {
   const identity: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '学生' }
   const activityId = crypto.randomUUID(), namespace = crypto.randomUUID(), key = JSON.stringify([namespace, identity.environmentId, identity.spaceId, identity.principalId, activityId])
   const sourceId = crypto.randomUUID(), extraId = crypto.randomUUID()
@@ -35,18 +35,18 @@ it.each([false, true])('refreshes defaults after confirmed settings while retain
     metadata: { name: skillId === sourceId ? 'source-skill' : 'extra-skill', description: '固定学习指导', dependencies: [], conflicts: [], 'allowed-tools': [] } })
   const sourceV1 = entry(sourceId, 1, '默认 Skill'), sourceV2 = entry(sourceId, 2, '默认 Skill'), extra = entry(extraId, 1, '补充 Skill')
   const pin = (skill: TeachingSkillCatalogEntry) => ({ skillId: skill.skillId, version: skill.version })
-  let defaultVersion = 1, holdNextRead = false, releaseActivity: (() => void) | undefined
-  const catalog = () => ({ skills: defaultVersion === 1 ? [{ ...sourceV1, selected: true }, sourceV2, extra] : [{ ...sourceV2, selected: true }, extra],
-    selections: [{ range: { kind: 'all' }, skills: [{ skillId: sourceId, version: defaultVersion }] }] })
+  let defaultVersion = 1, extraDisabled = true, holdNextRead = false, releaseActivity: (() => void) | undefined
+  const catalog = () => ({ skills: [{ ...(defaultVersion === 1 ? sourceV1 : sourceV2), selected: true },
+    { ...extra, selected: !extraDisabled, disabled: extraDisabled }], selections: [] })
   const writes: unknown[] = []
   vi.stubGlobal('fetch', vi.fn(async (route: string, options: RequestInit) => {
     const bound = `/api/learning/agent/${activityId}/skills`
     if (options.method === 'POST') {
-      expect(route).toBe(bound + '/select')
-      writes.push(JSON.parse(options.body as string)); defaultVersion = 2; holdNextRead = true
-      return response(catalog())
+      expect(route).toBe('/api/learning/skills/disable')
+      writes.push(JSON.parse(options.body as string)); defaultVersion = 2; extraDisabled = false; holdNextRead = true
+      return response({ ...extra, selected: true })
     }
-    expect(route).toBe(bound)
+    expect([bound, '/api/learning/skills']).toContain(route)
     const value = catalog()
     if (holdNextRead) {
       holdNextRead = false
@@ -73,7 +73,7 @@ it.each([false, true])('refreshes defaults after confirmed settings while retain
     const [settings, setSettings] = useState(false)
     return createElement('div', null,
       createElement('button', { onClick: () => setSettings(true) }, '打开设置'),
-      settings && createElement('div', null, createElement(PersonalSkillsSettings, { identity, spaceKey: 'personal', namespace, activityId }),
+      settings && createElement('div', null, createElement(PersonalSkillsSettings, { identity, spaceKey: 'personal', namespace }),
         createElement('button', { onClick: () => setSettings(false) }, '返回活动')),
       createElement(Activity, { visible: !settings }))
   }
@@ -85,9 +85,9 @@ it.each([false, true])('refreshes defaults after confirmed settings while retain
   const textarea = host.querySelector('textarea')!
   textarea.focus(); textarea.setSelectionRange(3, 7)
   await click('打开设置')
-  const updated = Array.from(host.querySelectorAll<HTMLElement>('.personal-skills .skill-entry')).find(item => item.textContent!.includes('版本 2'))!
+  const updated = Array.from(host.querySelectorAll<HTMLElement>('.personal-skills .skill-entry')).find(item => item.textContent!.includes('补充 Skill'))!
   await act(async () => { updated.querySelector<HTMLInputElement>('input')!.click(); await settle() })
-  expect(writes).toEqual([expect.objectContaining({ skills: [pin(sourceV2)] })])
+  expect(writes).toEqual([expect.objectContaining({ skillId: extraId, disabled: false })])
   expect(releaseActivity).toBeTypeOf('function')
   await click('返回活动')
   const extraCheckbox = () => Array.from(host.querySelectorAll<HTMLLabelElement>('.wr-skills label')).find(label => label.textContent!.includes('补充 Skill'))!.querySelector<HTMLInputElement>('input')!
@@ -99,7 +99,7 @@ it.each([false, true])('refreshes defaults after confirmed settings while retain
   expect(extraCheckbox().disabled).toBe(false)
   expect(draft.capture().skills).toEqual(explicit ? [pin(sourceV1)] : undefined)
   await act(async () => { extraCheckbox().click(); await settle() })
-  expect(draft.capture().skills).toEqual([pin(explicit ? sourceV1 : sourceV2), pin(extra)])
+  expect(draft.capture().skills).toEqual(explicit ? [pin(sourceV1), pin(extra)] : [pin(sourceV2)])
   expect(host.querySelector('textarea')).toBe(textarea)
   expect(draft.snapshot().question).toBe('保留原问题和选择位置')
 })
