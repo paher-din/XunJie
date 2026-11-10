@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PromptModelPicker, type PromptModelOption } from '@xunjie/ui/chat'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent'
 import { learningRequest, workspaceScope } from './learningTransport'
@@ -52,8 +53,10 @@ export function useAgentModelPicker(selection: ModelSelectionController, activit
     if (choice) void selection.choose(choice, onSelected)
   }
   const own = switchState.scope === scope ? switchState : null
+  useToastFeedback(own?.error || (!selection.stale ? selection.error : ''))
+  useToastFeedback(own?.notice, 'info')
   return { model, models, change, busy: selection.busy || !!own?.busy, stale: selection.stale,
-    error: own?.error || selection.error, notice: own?.notice ?? '',
+    error: own?.error || selection.error, persistentError: own?.error || (selection.stale ? selection.error : ''), notice: own?.notice ?? '',
     retry: () => { if (pending.current?.scope === scope) void switchModel(pending.current); else void selection.reload() },
     blocked: selection.busy || !!own?.busy || !!own?.error }
 }
@@ -70,7 +73,7 @@ export function AgentModelPicker({ controller, disabled = false, onSettings }: {
   </div>
 }
 export function AgentModelFeedback({ controller }: { controller: AgentModelPickerController }) {
-  return <>{controller.error ? <span className="product-model-feedback" role="alert">{controller.error}
+  return <>{controller.error ? <span className="product-model-feedback" role={controller.persistentError ? 'alert' : undefined}>{controller.persistentError}
     <button type="button" onClick={controller.retry} disabled={controller.busy}>重试</button></span>
-    : controller.notice ? <span className="product-model-feedback" role="status">{controller.notice}</span> : null}</>
+    : null}</>
 }

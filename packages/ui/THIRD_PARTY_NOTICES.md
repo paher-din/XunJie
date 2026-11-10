@@ -4,6 +4,12 @@
 https://ui.shadcn.com/docs/components/empty, inspected using `shadcn view @shadcn/empty`.
 Utility classes are replaced with XunJie tokens and scoped CSS; content and actions are supplied by the caller.
 
+`src/feedback/index.tsx` adapts the Sonner wrapper from
+https://ui.shadcn.com/docs/components/radix/sonner, inspected using
+`shadcn view @shadcn/sonner`. It uses the project's icons and theme tokens
+instead of Next.js theme integration and Tailwind. Sonner's MIT license is
+distributed with the dependency.
+
 MIT License
 
 Copyright (c) 2023 shadcn

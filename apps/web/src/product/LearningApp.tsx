@@ -18,6 +18,7 @@ import { ProductConversationHistory, conversationTitle, useConversationHistory }
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { ProductProfile } from './ProductProfile'
 import { Button, ConfirmationDialog } from '@xunjie/ui/foundation'
+import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { Icon } from '@xunjie/ui/icons'
 import { TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
@@ -89,7 +90,7 @@ function CourseSections({ content, level, busy, onMaterial, requirementsContent 
 export function LearningApp() {
   const router = useRef<ReturnType<typeof createBrowserRouter> | null>(null)
   if (!router.current) router.current = createBrowserRouter([{ path: '*', element: <LearningView /> }])
-  return <RouterProvider router={router.current} />
+  return <><RouterProvider router={router.current} /><Toaster /></>
 }
 
 function LearningView() {
@@ -140,6 +141,8 @@ function LearningView() {
   const [pendingRequest, setPendingRequest] = useState<PendingActivityRequest | null>(null)
   const [coursePending, setCoursePending] = useState<CreateCourseActivity | null>(null)
   const [notice, setNotice] = useState('')
+  useToastFeedback(error)
+  useToastFeedback(notice, 'success')
   const [reload, setReload] = useState(0)
   const epoch = useRef(0)
   const authEpoch = useRef(0)
@@ -615,6 +618,7 @@ function LearningView() {
         }
         if (await refreshContext('school:' + connectionId, generation)) {
           setPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
+          toast.success('学校已连接。')
         }
       })}>{pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
       {!pendingConnection.connectionId && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
@@ -683,7 +687,6 @@ function LearningView() {
         <label>密码<TextInput type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
         <button type="submit" className="primary" disabled={busy}>登录此学校</button></form>}
     </section>
-  const feedback = <>{error && <p className="learning-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}</>
   const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
   const visibleRelease = release?.courseId === selectedCourseId ? release : null
   const visibleActivities = activitiesFor === pendingKey ? activities : null
@@ -780,7 +783,6 @@ function LearningView() {
       initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
       busy={busy} onPersonalSpace={identity?.kind === 'school' && context?.identities.some(item => item.key === 'personal')
         ? () => void switchSpace('personal') : undefined}
-      accountFeedback={error || notice ? feedback : null}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
       modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
@@ -791,12 +793,12 @@ function LearningView() {
       {conversationOpen ? <ProductConversation activity={opened} spaceKey={key} namespace={context.clientNamespace} selection={modelSelection}
         title={conversationTitle(opened, conversationHistory.items)}
         authorized={activityAuthorized}
-        workspaceRef={workspace} onWorkspace={openWorkspace} onModels={openModels} error={error || notice ? feedback : null} /> : <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} selection={modelSelection}
+        workspaceRef={workspace} onWorkspace={openWorkspace} onModels={openModels} /> : <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} selection={modelSelection}
         requestedArtifactId={requestedArtifactId}
         nativeAvailable={context.profile === 'local'}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
         onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} onModels={openModels} account={schoolControls}
-        error={error || notice ? feedback : null} details={openCoursePdf => <>
+        details={openCoursePdf => <>
           {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
             requirementsContent={<CourseRequirementsReference course={opened.course} />}
             onMaterial={item => item.mediaType.toLowerCase().split(';')[0].trim() === 'application/pdf'
@@ -809,7 +811,6 @@ function LearningView() {
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />}
     </ActivityReferences></div> : modelsOpen ? null : !context || !identity ? <div className="content home-page product-home">
-      {feedback}
       {!context && !error && <p role="status">正在连接学习空间…</p>}
       {!context && error && <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button>}
       {schoolControls}
@@ -818,11 +819,10 @@ function LearningView() {
       try { if (draftKey) sessionStorage.setItem(draftKey, value) } catch { /* Optional draft cache. */ }
     }} onSend={() => void action(() => createActivity(question))} pending={pendingRequest}
       onRetry={() => void action(() => createActivity())} onDiscard={discardPending}
-      onSettings={openModels} selection={modelSelection} busy={busy} readOnly={!!context.readOnly} error={error} />
+      onSettings={openModels} selection={modelSelection} busy={busy} readOnly={!!context.readOnly} />
     : <>
-      {(context.readOnly || authorize || notice || error || pendingRequest || coursePending) && <div className="content product-home-alerts">
+      {(context.readOnly || authorize || pendingRequest || coursePending) && <div className="content product-home-alerts">
         {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
-        {feedback}
         {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">连接这台客户端</h2>
           <p>确认后，此客户端可以使用你在本学校的学习活动。你可以随时撤销连接。</p>
           <button type="button" className="primary" disabled={busy || !context.identities.some(item => item.key === 'school')}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { TeachingArtifactPreview } from '@xunjie/contracts/teaching-agent'
 import { ArtifactView } from './ArtifactView'
 import { staticPreviewDocument } from './partial-html'
@@ -22,9 +23,10 @@ export function ArtifactCard({ entry, controller, onOpen, center = false, onClos
   entry: ArtifactEntry; controller: TeachingArtifactsController; onOpen?: () => Promise<void>; center?: boolean; onClose?: () => Promise<void>
 }) {
   const [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  useToastFeedback(error)
   const act = async (operation: () => Promise<unknown>) => {
     if (busy) return
-    setBusy(true)
+    setBusy(true); setError('')
     try { await operation(); setError('') } catch { setError('操作尚未确认，当前输入仍保留；请按原操作继续核对。') }
     finally { setBusy(false) }
   }
@@ -37,7 +39,6 @@ export function ArtifactCard({ entry, controller, onOpen, center = false, onClos
       {!center && onOpen && <button type="button" className="ws-btn ghost" disabled={busy || !active} onClick={() => void act(onOpen)}>在工具区打开</button>}
       {center && onClose && <button type="button" className="ws-btn ghost" disabled={busy} onClick={() => void act(onClose)}>关闭页面</button>}
     </div></header>
-    {error && <p role="alert" className="learning-error">{error}</p>}
     {entry.issue && <div role="status" className="teaching-artifact-note">{entry.issue}
       {!controller.readOnly && <button type="button" className="ws-btn ghost" disabled={busy || controller.activity.status !== 'open'} onClick={() => void act(() => controller.retry(entry))}>重试页面</button>}
     </div>}

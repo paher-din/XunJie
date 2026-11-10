@@ -4,6 +4,7 @@ import { teachingSkillDisableSchema, teachingSkillSelectSchema, teachingSkillCat
   type TeachingSkillRange, type TeachingSkillReference } from '@xunjie/contracts/agent-skills'
 import { Section, SettingsActionMenu } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import { readSkillPackage, skillImportInput, useSkillCatalog, type SkillCatalogEntry } from './skills'
 import { learningSubjectRequest } from './learningTransport'
 import './skills.css'
@@ -33,6 +34,9 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
   const [localFiles, setLocalFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const [pending, setPending] = useState<Operation | null>(null)
+  useToastFeedback(catalog.error)
+  useToastFeedback(error)
+  useToastFeedback(notice, 'success')
   const [rejectedSelection, setRejectedSelection] = useState<Operation | null>(null)
   const live = useRef(false), acting = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null), directoryInput = useRef<HTMLInputElement>(null)
@@ -150,7 +154,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
   return <Section title="技能/Skills">
     <div className="personal-skills">
       {catalog.loading && <p className="detail" role="status">正在读取 Skills…</p>}
-      {catalog.error && <p role="alert" className="learning-error">{catalog.error}</p>}
+      {catalog.error && <p className="detail">{catalog.error}</p>}
       {(catalog.error || error.includes('配置发生冲突')) && <button className="outline" type="button" disabled={catalog.loading}
         onClick={() => void catalog.reload()}>重新读取</button>}
       <div className="skill-toolbar">
@@ -243,8 +247,6 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
         <p className="detail">{files.length ? `已选 ${files.length} 个文件：${files.map(file => file.webkitRelativePath || file.name).join('、')}` : '选择包含 SKILL.md 的目录或文件包；附件会保留原路径。'}</p>
       </div>
       {busy && <p role="status" className="detail">正在处理…</p>}
-      {error && <p role="alert" className="learning-error">{error}</p>}
-      {notice && <p role="status" className="detail">{notice}</p>}
     </div>
   </Section>
 }

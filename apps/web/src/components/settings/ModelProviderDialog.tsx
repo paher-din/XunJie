@@ -8,6 +8,7 @@ import { modelBaseUrlError, modelConfigurationSchema, saveModelProviderSchema, r
 import { ConnectionModelFields, Field, SettingsSelect, ModelProviderLogo } from '@xunjie/ui/settings'
 import { ProviderIdentityFields } from './ProviderIdentityFields'
 import { Icon } from '../../icons'
+import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { useModelDirectory, type ReadModelDirectory } from './useModelDirectory'
 
 type ModelInput = SaveModelProvider['models'][number]
@@ -59,7 +60,13 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   const [lookupKey, setLookupKey] = useState<string | undefined>(provider?.hasCredential ? undefined : '')
   const [credentialReady, setCredentialReady] = useState(!provider?.hasCredential), [credentialError, setCredentialError] = useState('')
   const [credentialRetry, setCredentialRetry] = useState(0), [addressTouched, setAddressTouched] = useState(false)
-  const [error, setError] = useState(''), [checking, setChecking] = useState(false), [result, setResult] = useState<ModelAttempt | null>(null)
+  const [error, storeError] = useState(''), [checking, setChecking] = useState(false), [result, setResult] = useState<ModelAttempt | null>(null)
+  const errorToast = useRef<string | number | undefined>(undefined)
+  const setError = (message: string) => {
+    storeError(message)
+    if (message) errorToast.current = toast.error(message, { id: errorToast.current, duration: 8000 })
+    else if (errorToast.current !== undefined) toast.dismiss(errorToast.current)
+  }
   const [checkId, setCheckId] = useState(draft.models[0]!.connectionId)
   const [recovery, setRecovery] = useState<'conflict' | 'unknown' | null>(null), [latest, setLatest] = useState<ModelProvider | null>(null)
   const [reading, setReading] = useState(false), [notice, setNotice] = useState('')
@@ -92,6 +99,9 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   }, [manualReadyAt])
   const directoryNotice = directory.error || [...new Set([refreshMessage(directory.data?.supplier, 'supplier'), refreshMessage(directory.data?.catalogue, 'catalogue')].filter(Boolean))].join(' ')
   const directoryFailed = Boolean(directory.error || refreshStates.some(state => state.error))
+  useToastFeedback(credentialError)
+  useToastFeedback(directoryNotice || profileNotice)
+  useToastFeedback(notice, 'info')
   const modelOptions = useMemo(() => entries.map(entry => ({ value: entry.modelId, label: entry.name || entry.modelId })), [entries])
   const pending = useRef<{ input: SaveModelProvider; generation: number } | null>(null), submitting = useRef(false)
   const returnFocus = useRef(document.activeElement as HTMLElement | null)
@@ -222,7 +232,7 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   const credential = () => apiKey.trim() ? { action: 'replace' as const, value: apiKey.trim() } : { action: 'clear' as const }
   const valid = () => {
     setAddressTouched(true)
-    if (addressIssue) return false
+    if (addressIssue) { setError(addressIssue); return false }
     if (draft.models.some(model => modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens))) {
       setError('请检查上下文窗口和最大输出的填写。'); return false
     }
@@ -251,6 +261,7 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
       const saved = await onSave(operation.input)
       if (live.current) {
         pending.current = null; baseline.current = saved; setRecovery(null); setLatest(null)
+        toast.success('供应商已保存')
         if (operation.generation === epoch.current) { setApiKey(''); onClose() }
         else {
           setDraft(previous => {
@@ -299,7 +310,11 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
     setReading(true)
     try {
       const saved = await onRead(draft.providerId)
-      if (live.current) { setLatest(saved); setError(saved ? '请核对最新版本与当前草稿；确认后才会按当前草稿保存。' : '未找到原配置，当前草稿已保留，请稍后重新读取。') }
+      if (live.current) {
+        setLatest(saved)
+        setError(saved ? '' : '未找到原配置，当前草稿已保留，请稍后重新读取。')
+        if (saved) setNotice('请核对最新版本与当前草稿；确认后才会按当前草稿保存。')
+      }
     } catch { if (live.current) { setError('无法读取最新版本，当前草稿和密钥操作已保留。请重新读取后再确认。'); setLatest(null) } }
     finally { if (live.current) setReading(false) }
   }
@@ -332,13 +347,13 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
             onChange: value => { change({ protocol: value as Draft['protocol'], models: draft.models.map(model => ({ ...model, protocol: undefined, baseUrl: undefined })) }); if (draft.baseUrl) setAddressTouched(true) } }}
           onName={name => change({ name })} onBaseUrl={baseUrl => change({ baseUrl, models: draft.models.map(model => ({ ...model, protocol: undefined, baseUrl: undefined })) })}
           onApiKey={value => { changed(); setApiKey(value); credentialDrafts.current.set(scope, value) }} onApiKeyBlur={() => setLookupKey(apiKey)} />
-        {credentialError && <div><p role="alert">{credentialError}</p><button type="button" className="outline" onClick={() => setCredentialRetry(value => value + 1)}>重新读取密钥</button></div>}
+        {credentialError && <div><p className="detail">{credentialError}</p><button type="button" className="outline" onClick={() => setCredentialRetry(value => value + 1)}>重新读取密钥</button></div>}
         <div className="st-route-list-head"><h3>模型</h3><button type="button" className="outline st-xs"
           disabled={onDirectory ? directory.busy || retryBlocked : profileBusy || Boolean(addressIssue) || !draft.models.some(model => model.modelId.trim())}
           title={retryBlocked ? `可在 ${new Date(manualReadyAt).toLocaleTimeString('zh-CN', { hour12: false })} 再次更新` : undefined}
           onClick={() => void refreshDirectory()}>{directory.visibleBusy ? '正在更新…' : retryBlocked ? directoryFailed ? '稍后重试' : '刚刚更新' : '更新模型资料'}</button></div>
         <div className="st-directory-feedback" aria-live="polite" aria-atomic="true">
-          {(directoryNotice || profileNotice || directory.visibleBusy) && <p className={directoryFailed ? 'detail st-directory-error' : 'detail'} role={directoryFailed ? 'alert' : 'status'}>
+          {(directoryNotice || profileNotice || directory.visibleBusy) && <p className="detail">
             {directoryNotice || profileNotice || '正在更新资料，当前列表可继续使用。'}
           </p>}
         </div>
@@ -360,7 +375,8 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
         })}</div>
         <button type="button" className="outline st-route-add" disabled={draft.models.length >= 64} onClick={() => change({ models: [...draft.models, newModel()] })}><Icon name="add" size={16} />添加模型</button>
         <p className="detail">一次文本检查不会验证图像、工具或 strict schema 能力。</p>
-        {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
+        {recovery && error && <p className="detail">{error}</p>}
+        {notice && <p className="detail">{notice}</p>}
         {recovery === 'unknown' && <button type="button" className="outline" disabled={saving} onClick={() => { if (pending.current) void submit(pending.current) }}>核对原提交</button>}
         {recovery === 'conflict' && <>
           <button type="button" className="outline" disabled={reading || saving} onClick={() => void readLatest()}>{reading ? '读取中…' : '读取最新版本'}</button>
@@ -379,7 +395,9 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
         {draft.models.length > 1 && <select className="st-input" aria-label="检查模型" value={checkModel.connectionId} onChange={event => setCheckId(event.target.value)}>
           {draft.models.map((model, index) => <option key={model.connectionId} value={model.connectionId}>{model.modelId || `模型 ${index + 1}`}</option>)}</select>}
         <button type="button" className="outline" disabled={checking || !credentialReady || !draft.enabled || !checkModel.enabled} onClick={() => void test()}>{checking ? '正在检查…' : '保存前检查'}</button></div>
-        {currentResult && !currentResult.physicalRequestEnded && <button type="button" className="outline" onClick={() => void onCancel(currentResult)}>停止检查</button>}
+        {currentResult && !currentResult.physicalRequestEnded && <button type="button" className="outline" onClick={() => void onCancel(currentResult).catch(() => {
+          if (live.current) setError('停止检查尚未确认，请核对原检查记录。')
+        })}>停止检查</button>}
         <div className="st-dialog-foot-right"><Dialog.Close asChild><button type="button" className="outline">取消</button></Dialog.Close>
           <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button></div></div>
     </Dialog.Content></Dialog.Portal></Dialog.Root>

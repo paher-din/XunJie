@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { TeachingToolRecord } from '@xunjie/contracts/teaching-agent'
 import { executionQuerySchema, isTerminalExecutionState } from '@xunjie/contracts/execution'
 import { teachingSkillLoadedSchema } from '@xunjie/contracts/agent-skills'
@@ -90,7 +91,6 @@ function ToolDetails({ label, value }: { label: ReactNode; value: unknown }) {
 }
 
 function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate?: TeachingToolLocator }) {
-  const [notice, setNotice] = useState('')
   const [locating, setLocating] = useState(false)
   const title = toolLabels[record.name] ?? record.name
   const skillTool = record.name === 'skill_load' || record.name === 'skill_read'
@@ -113,11 +113,11 @@ function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate
       return
     }
     if (!onLocate) return
-    setLocating(true); setNotice('')
+    setLocating(true)
     try {
       const result = await onLocate(record)
-      if (!result.ok) setNotice(result.reason)
-    } catch { setNotice('当前无法定位原来源，固定依据和结果仍保留。') }
+      if (!result.ok) toast.error(result.reason)
+    } catch { toast.error('当前无法定位原来源，固定依据和结果仍保留。') }
     finally { setLocating(false) }
   }
   return <details className="teaching-tool-record" data-outcome={record.outcome ?? record.state}
@@ -147,7 +147,6 @@ function ToolRecord({ record, onLocate }: { record: TeachingToolRecord; onLocate
           <button type="button" className="outline" disabled={locating} onClick={() => void locate()}>
             {loaded.success ? '查看固定 Skill 来源' : record.source.requestId ? '定位原结果' : '定位来源'}</button>}
       </div>}
-      {notice && <p role="status" className="teaching-tool-notice">{notice}</p>}
     </div>
   </details>
 }

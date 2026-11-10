@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
 import { componentStateName } from '@xunjie/contracts/components'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
@@ -49,7 +50,7 @@ export function LegacyAluExperimentTool({activity,binding,spaceKey,namespace,aut
         kind:'state',encoding:'json',mediaType:componentStateMediaType,value:JSON.stringify({formatVersion:1,instanceId,
           componentId:manifest.componentId,version:manifest.version,definitionDigest:binding.definition.digest,stateVersion:manifest.stateVersion,
           operationId:crypto.randomUUID(),content:{...previous.content as object,[key]:value}})}])
-    } catch(error) {setNote(error instanceof Error?error.message:'输入未能保护')}
+    } catch(error) {toast.error(error instanceof Error?error.message:'输入未能保护')}
   }
   const run=async()=>{
     if(!canWrite || !ready || running)return
@@ -58,8 +59,7 @@ export function LegacyAluExperimentTool({activity,binding,spaceKey,namespace,aut
         const action=await runtimeAction(workspace,activity,binding,execution.receiver.identity.receiverId)
         await execution.submit(action)
       })())
-      if(alive.current)setNote('')
-    } catch(error){if(alive.current)setNote(error instanceof Error?error.message:'本次未能运行')}
+    } catch(error){if(alive.current)toast.error(error instanceof Error?error.message:'本次未能运行')}
   }
   const last=executions.records.find(r=>r.action.execution.instance.instanceId===instanceId)
   const changed=last && (last.action.execution.basis.works.filter(f=>f.kind==='code').some(f=>!work.files.some(now=>now.objectId===f.objectId&&now.value===f.value&&now.name===f.name))

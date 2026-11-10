@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { ConversationHistoryItem, LearningActivity } from '@xunjie/contracts/learning-data'
 import { ProductConversationHistory, useConversationHistory } from './ProductConversationHistory'
+import { Toaster, toast } from '@xunjie/ui/feedback'
 
 const first = '00000000-0000-4000-8000-000000000001'
 const second = '00000000-0000-4000-8000-000000000002'
@@ -57,11 +58,12 @@ function serverRequest(url: string, options: RequestInit = {}) {
   return response({ archivedIds: [...saved.archives].filter(([, archived]) => archived).map(([id]) => id) })
 }
 
-async function render(scope: string) { await act(async () => { root.render(<History scope={scope} />); await settle() }) }
+async function render(scope: string) { await act(async () => { root.render(<><Toaster /><History scope={scope} /></>); await settle() }) }
 async function click(selector: string) {
   const button = host.querySelector<HTMLButtonElement>(selector)
   expect(button, selector).not.toBeNull()
   await act(async () => { button!.click(); await settle() })
+  await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
 }
 async function menuAction(id: string, action: string) {
   await click(`[data-conversation-id="${id}"] .agent-conv-more`)
@@ -77,7 +79,7 @@ beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => {
-  await act(async () => { root.unmount(); await settle() })
+  await act(async () => { toast.dismiss(); root.unmount(); await settle() })
   host.remove(); localStorage.clear(); vi.unstubAllGlobals()
 })
 
@@ -168,7 +170,9 @@ it('retains an unconfirmed rename for retry after a network failure', async () =
   field.value = '断网后继续的标题'
   await act(async () => { field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle() })
   expect(field.isConnected).toBe(true); expect(field.value).toBe('断网后继续的标题')
-  expect(host.textContent).toContain('对话操作未确认')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
+  expect(host.querySelector('[data-sonner-toast]')?.textContent).toContain('对话操作未确认')
+  expect(host.querySelector('.agent-side-empty')?.textContent).not.toContain('对话操作未确认')
   const attempts = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/update'))
   expect(attempts).toHaveLength(2)
   expect(JSON.parse(String(attempts[0][1]?.body)).requestId).toBe(JSON.parse(String(attempts[1][1]?.body)).requestId)

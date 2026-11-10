@@ -2,6 +2,7 @@ import { brandEntries } from './examples/brand'
 import { chatEntries } from './examples/chat'
 import { dashboardEntries } from './examples/dashboard'
 import { foundationEntries } from './examples/foundation'
+import { feedbackEntries } from './examples/feedback'
 import { homeEntries } from './examples/home'
 import { iconEntries } from './examples/icons'
 import { prepWorkspacePageEntries } from './examples/prep-workspace-page'
@@ -17,6 +18,7 @@ import type { CatalogEntry, CatalogGroup, CatalogState } from './types'
 /** 只登记已经有真实示例的组件。新分组可在这里追加，不需要修改路由。 */
 export const catalog: CatalogGroup[] = [
   { id: 'foundation', name: '基础组件', entries: foundationEntries },
+  { id: 'feedback', name: '通知反馈', entries: feedbackEntries },
   { id: 'icons', name: '图标', entries: iconEntries },
   { id: 'brand', name: '品牌', entries: brandEntries },
   { id: 'home', name: '首页', entries: homeEntries },

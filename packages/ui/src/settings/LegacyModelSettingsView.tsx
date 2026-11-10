@@ -1,4 +1,5 @@
 import { Icon, type IconName } from '../icons'
+import { useToastFeedback } from '../feedback'
 import { Section, RadioCard, Seg, Field } from './controls'
 import { ModelProviderCard } from './ModelProviderCard'
 import { ModelSettingsFeedback } from './ModelSettingsFeedback'
@@ -48,10 +49,11 @@ export interface LegacyModelSettingsViewProps<Provider extends LegacyModelProvid
 }
 /** Legacy presentation preserves explicit preparation/real copy; no store, model transport or persistence. */
 export function LegacyModelSettingsView<Provider extends LegacyModelProviderDisplay>({
-  preparation, inlineFeedback, remote, notice, savedRevision, providers, modelId, strengths, disabled, options,
+  preparation, inlineFeedback, remote, notice, providers, modelId, strengths, disabled, options,
   confirmingDel, setConfirmingDel, pickModel, configActions, testingId, testResults, onTest, onEffortChange, onRemoveProvider,
   onRemoveModel, onEditProvider, onEditModel, onNewProvider, dialogs,
 }: LegacyModelSettingsViewProps<Provider>) {
+  useToastFeedback(notice || (!preparation ? remote.error : ''))
   return (
     <>
       {!preparation && (
@@ -60,7 +62,7 @@ export function LegacyModelSettingsView<Provider extends LegacyModelProviderDisp
           {inlineFeedback ? (
             <>
               <div className="st-model-actions"><ModelConfigActions {...configActions} /></div>
-              <ModelSettingsFeedback {...remote} error={notice || remote.error} savedRevision={savedRevision} />
+              <ModelSettingsFeedback {...remote} error="" savedRevision={null} />
             </>
           ) : (
             <>
@@ -69,9 +71,9 @@ export function LegacyModelSettingsView<Provider extends LegacyModelProviderDisp
                 {remote.loading ? '正在读取配置…' : remote.data?.enabled ? '个人模型已启用' : '个人模型未启用'}
                 {remote.data && !remote.data.callsEnabled ? ' · 管理员已停用模型调用' : ''}
               </p>
-              {(remote.error || notice) && <p role="alert">{notice || remote.error}</p>}
             </>
           )}
+          {remote.error && <p className="detail">{remote.error}</p>}
         </Section>
       )}
 

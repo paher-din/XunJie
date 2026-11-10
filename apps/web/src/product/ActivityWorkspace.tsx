@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { ALU_REFLECTION_MEDIA_TYPE } from '@xunjie/contracts/alu-learning'
 import { componentStateMediaType } from '@xunjie/contracts/components'
@@ -17,7 +18,7 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
     const readOnly = workspace.isReadOnly()
     const state = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
     const editorNamespace = useMemo(() => scope + ':' + crypto.randomUUID(), [scope, workspace])
-    const [failure, setFailure] = useState('')
+    const [starterError, setStarterError] = useState('')
     useEffect(()=>{
       let live=true
       if(!state.ready || !authorized || readOnly || !activity.course?.starterWorks.length)return
@@ -35,8 +36,11 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
           // on the work store's global object identity (#206 identity-conflict).
           files.push({objectId:crypto.randomUUID(),contentId:crypto.randomUUID(),name:starter.title,kind:/\.(sv|v|c|py|js)$/.test(starter.title)?'code':'text',encoding:'utf8',mediaType:'text/plain',value})
         }
-        if(live && files.length)workspace.initializeStarters(files)
-      })().catch(error=>{if(live)setFailure(error instanceof Error?error.message:'无法读取起始作品。')})
+        if(live) {
+          if(files.length)workspace.initializeStarters(files)
+          setStarterError('')
+        }
+      })().catch(error=>{if(live)setStarterError(error instanceof Error?error.message:'无法读取起始作品。')})
       return()=>{live=false}
     },[activity,spaceKey,namespace,state.ready,authorized,readOnly,workspace])
     const [selected, setSelected] = useState<string | null>(null)
@@ -52,9 +56,9 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
     const basis=file&&failed?.action.execution.basis.works.find(f=>f.objectId===file.objectId&&f.name===file.name&&f.value===file.value)
     const diagnostics=basis ? {fileId:basis.objectId,originalText:basis.value,diagnostics:[...(failed?.query.reason?.detail??'').matchAll(/^\/?([^:\n]+):(\d+):\s*(.+)$/gm)]
       .filter(match=>match[1]===basis.name).map(match=>({severity:'error' as const,path:basis.name,line:Number(match[2]),message:match[3]}))}:undefined
-    const attempt = (operation: () => unknown) => { try { operation(); setFailure('') } catch { setFailure('操作未完成，请检查文件名、内容大小或重复路径。原内容仍保留。') } }
+    const attempt = (operation: () => unknown) => { try { operation() } catch { toast.error('操作未完成，请检查文件名、内容大小或重复路径。原内容仍保留。') } }
     const choose = async (files: WorkFile[]) => {
-      try { await workspace.resolve(files); setFailure('') } catch { setFailure('比较期间作品再次变化，请重新打开活动核对。双方内容仍保留。') }
+      try { await workspace.resolve(files) } catch { toast.error('比较期间作品再次变化，请重新打开活动核对。双方内容仍保留。') }
     }
     const download = () => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(state.files, null, 2)], { type: 'application/json;charset=utf-8' }))
@@ -63,7 +67,7 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
     }
     return <section className="learning-workspace" aria-label="当前作品" tabIndex={-1}
       data-work-object-id={file?.objectId} data-work-content-id={file?.contentId}>
-      {(failure || state.error) && <div role="alert" className="learning-error"><p>{failure || state.error}</p>
+      {(starterError || state.error) && <div role="alert" className="learning-error"><p>{starterError || state.error}</p>
         <button type="button" className="ws-btn ghost" onClick={download}>导出当前作品</button>
         <label>可复制的当前原文<textarea readOnly value={file?.value ?? ''} /></label></div>}
       {!state.ready ? <p>正在读取作品…</p> : <>

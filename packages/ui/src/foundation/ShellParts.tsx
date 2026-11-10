@@ -166,6 +166,4 @@ export function HomeAssistant({ open, value, onChange, onSend, onToggle, onOpen,
   </>
 }
 
-export function Toast({ children, role = 'status' }: { children: ReactNode; role?: 'status' | 'alert' }) {
-  return <div className="toast" role={role}>{children}</div>
-}
+export { Toast } from '../feedback'

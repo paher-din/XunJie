@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingInteractionSettingsSchema, type TeachingInteractionSettings } from '@xunjie/contracts/teaching-agent'
 import type { ActionInput } from '@xunjie/contracts/action-intents'
@@ -20,7 +21,7 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
   const channel = useRef<BroadcastChannel | null>(null), reads = useRef(0)
   canWrite.current = writable; current.current = scope
   const request = useCallback((route: string, body?: unknown) => learningSubjectRequest(identity, spaceKey, namespace, route, body), [scope])
-  const deliver = useCallback(async (pending: PendingAgentOperation) => {
+  const deliver = useCallback(async (pending: PendingAgentOperation, notify = false) => {
     if (!alive.current || current.current !== scope || !canWrite.current || saving.current) return
     saving.current = true; setBusy(true)
     try {
@@ -38,7 +39,10 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
     } catch (cause) {
       if (['conflict', 'identity-conflict', 'invalid'].includes((cause as { code?: string }).code ?? ''))
         await agentControlStore.change(key, saved => ({ ...saved!, rejected: saved?.pending, pending: undefined }))
-      if (alive.current && current.current === scope) setError('交互设置尚未保存，原选择已保留；请重新读取后重试。')
+      if (alive.current && current.current === scope) {
+        const failure = '交互设置尚未保存，原选择已保留；请重新读取后重试。'
+        setError(failure); if (notify) toast.error(failure)
+      }
     } finally { saving.current = false; if (alive.current && current.current === scope) setBusy(false) }
   }, [key, scope, request])
   const reload = useCallback(async () => {
@@ -69,8 +73,11 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
     const requestId = crypto.randomUUID()
     const pending: PendingAgentOperation = { requestId, route: 'agent-settings', queryRoute: 'agent-settings/receipts/' + requestId,
       input: { requestId, expectedVersion: settings.version, busyInputMode: mode } }
-    try { await protectAgentOperation(key, scope, pending); await deliver(pending) }
-    catch { if (alive.current) setError('上一设置操作尚未核实，原选择仍保留。') }
+    try { await protectAgentOperation(key, scope, pending); await deliver(pending, true) }
+    catch { if (alive.current) {
+      const failure = '上一设置操作尚未核实，原选择仍保留。'
+      setError(failure); toast.error(failure)
+    } }
   }
   const reset = useCallback(() => setOverride(null), [])
   const mode = override ?? settings?.busyInputMode ?? 'steering'

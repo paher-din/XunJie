@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
 import { ALU_REFLECTION_MEDIA_TYPE, aluCaseFromAction, aluReflectionName, isAluObservationAction, newAluCaseDraft, parseAluReflectionFile,
   type AluCaseDraft, type AluReflection } from '@xunjie/contracts/alu-learning'
@@ -86,7 +87,7 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     : capture ? `用例 ${cases.length - cases.findIndex(item => item.requestId === record.requestId)}` : '观察'} · ${new Date(record.createdAt).toLocaleTimeString('zh-CN')}` : '原仿真波形'
   const [loaded, setLoaded] = useState<{ requestId: string; artifact: ResultRecord | null; loading: boolean; error: string }>(
     { requestId: '', artifact: null, loading: false, error: '' })
-  const [notice, setNotice] = useState(''), saving = useRef(false)
+  const saving = useRef(false)
   const host = useRef<HTMLElement>(null)
   const pending = useRef<{ requestId: string; contentId: string; typeId: string; noteFile?: WorkFile; wave?: AluWaveRange;
     resolve(result: LocateResult): void } | null>(null)
@@ -186,8 +187,8 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
     { requestId: record.requestId, executionRef: record.executionRef }) : null
   const select = useSemanticSource({ source, title: 'ALU 实验观察', content, locate: reference => record ? locate(reference, record) : { ok: false, reason: '原结果暂不可定位。' } })
   const add = (typeId: string, anchor: HTMLElement, target: Record<string, unknown> = {}) => {
-    try { select(rangeOf(typeId, target), () => anchor.getBoundingClientRect()); references.ask(); setNotice('') }
-    catch (error) { setNotice(error instanceof Error ? error.message : '当前范围无法引用，请缩小范围。') }
+    try { select(rangeOf(typeId, target), () => anchor.getBoundingClientRect()); references.ask() }
+    catch (error) { toast.error(error instanceof Error ? error.message : '当前范围无法引用，请缩小范围。') }
   }
   let selection: AluWaveRange | null = null
   try { const saved = JSON.parse(state.waveSelection); if (saved.requestId === record?.requestId) selection = saved.range } catch { /* No selection yet. */ }
@@ -215,8 +216,8 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
       if (!writeState(previous => previous.reflectionDraft === original && (!previous.reflectionFor || previous.reflectionFor === requestId)
         ? { ...previous, reflectionFor: '', reflectionParent: '', reflectionDraft: '' } : previous, true, [file])) return
       await workspace.leave()
-      setNotice('解释修订已在本机保护；由原作品通道同步，原预测和观察保持不变。')
-    } catch { setNotice('解释修订仍待本机保护或同步确认，请保留页面核对原记录。') }
+      toast.success('解释修订已在本机保护；由原作品通道同步，原预测和观察保持不变。')
+    } catch { toast.error('解释修订仍待本机保护或同步确认，请保留页面核对原记录。') }
     finally { saving.current = false }
   }
   return <section ref={host} className="alu-case-results" aria-label="比较与解释" data-execution-request-id={record?.requestId} tabIndex={-1}>
@@ -291,7 +292,6 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
       && <p className="alu-hint">解释草稿仍对应另一条原观察，切换用例不会改挂到新结果。</p>}
     {state.reflectionDraft && <button type="button" className="ws-btn ghost" disabled={!canWrite || !reflectionAllowed}
       onClick={() => void saveReflection()}>保存解释修订</button>}
-    {notice && <p role="status" className="alu-hint">{notice}</p>}
   </section>
 }
 

@@ -1,11 +1,12 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest'
 import { createRequire } from 'node:module'
-import { act, createElement } from 'react'
+import { act, createElement, Fragment } from 'react'
 import type { Root } from 'react-dom/client'
 
 const { JSDOM } = createRequire(import.meta.url)('jsdom')
 let dom: ReturnType<typeof JSDOM>, root: Root
 let ui: typeof import('@xunjie/ui/settings')
+let feedback: typeof import('@xunjie/ui/feedback')
 let createRoot: typeof import('react-dom/client').createRoot
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)) }
 const model = { id: 'original', contextWindow: '1000', maxOutput: '100', inputTypes: [], reasoningLevels: [] }
@@ -15,26 +16,33 @@ function button(label: string) {
   expect(element, label).toBeDefined()
   return element!
 }
-async function click(label: string) { await act(async () => { button(label).click(); await settle() }) }
-async function draw(element: React.ReactNode) { await act(async () => { root.render(element); await settle() }) }
+async function click(label: string) {
+  await act(async () => { button(label).click(); await settle() })
+  await act(async () => { await settle() })
+}
+async function draw(element: React.ReactNode) { await act(async () => { root.render(createElement(Fragment, null, createElement(feedback.Toaster), element)); await settle() }) }
 
 beforeAll(async () => {
   dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://settings.invalid', pretendToBeVisual: true })
-  for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'HTMLInputElement', 'HTMLSelectElement', 'Node', 'NodeFilter', 'Event', 'MouseEvent', 'FocusEvent', 'CustomEvent', 'MutationObserver', 'DocumentFragment'])
+  for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'Element', 'HTMLInputElement', 'HTMLSelectElement', 'Node', 'NodeFilter', 'Event', 'MouseEvent', 'FocusEvent', 'CustomEvent', 'MutationObserver', 'DocumentFragment'])
     vi.stubGlobal(name, dom.window[name])
   vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window))
   vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window))
   vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window))
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  dom.window.matchMedia ??= vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} })
+  dom.window.HTMLElement.prototype.scrollIntoView ??= vi.fn()
   ;({ createRoot } = await import('react-dom/client'))
   ui = await import('@xunjie/ui/settings')
+  feedback = await import('@xunjie/ui/feedback')
 })
 beforeEach(() => {
   const host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
 })
-afterEach(async () => { await act(async () => root.unmount()); document.body.innerHTML = '' })
+afterEach(async () => { await act(async () => { feedback.toast.dismiss(); root.unmount() }); document.body.innerHTML = '' })
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
 it('moves radio focus and selection with arrow keys while skipping unavailable choices', async () => {
@@ -81,7 +89,7 @@ it('imports supplied capabilities, retains a failed save and closes only after c
   await act(async () => { select.value = 'imported'; select.dispatchEvent(new Event('change', { bubbles: true })); await settle() })
   await click('保存')
   expect(onClose).not.toHaveBeenCalled()
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('保存未确认')
+  expect(document.querySelector('[data-sonner-toast][data-type="error"], [role="alert"]')?.textContent).toContain('保存未确认')
   expect(onSave.mock.calls[0][0].models.map((item: { id: string }) => item.id)).toEqual(['original', 'imported'])
   await click('保存'); expect(onClose).toHaveBeenCalledTimes(1)
 })

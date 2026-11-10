@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolKey, type ToolSpec, type CenterToolAreaHandle } from '../components/workspace/CenterToolArea'
@@ -62,13 +63,13 @@ async function focusLocation(root: HTMLDivElement | null, selector: string) {
 import { RuntimeTool, type ComponentResultLocation } from './RuntimeTool'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
-export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, error, requestedArtifactId, selection }: {
+export function ActivityPage({ activity, spaceKey, namespace, authorized, nativeAvailable, workspaceRef, busy, onBack, onStatus, onRefresh, onModels, details, account, requestedArtifactId, selection }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; nativeAvailable: boolean
   workspaceRef: RefObject<ActivityWorkspaceHandle | null>; busy: boolean
   onBack: () => void; onStatus: () => void; onRefresh: () => void
   onModels?: () => void; selection: ModelSelectionController
   requestedArtifactId?: string | null
-  details: (openCoursePdf: (materialId: string) => void) => ReactNode; account: ReactNode; error: ReactNode
+  details: (openCoursePdf: (materialId: string) => void) => ReactNode; account: ReactNode
 }) {
   const [materialsOpen, setMaterialsOpen] = useState(!!activity.course)
   const [conversationActive, setConversationActive] = useState(false)
@@ -124,7 +125,6 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
     await waitForComposerComposition(scope)
     await workspace.leave(); await draft.leave(); await actions.leave()
   } }), [workspace, draft, actions, scope])
-  const [toolError, setToolError] = useState('')
   const openedRequest = useRef<string | null>(null)
   const requestedArtifactReady = artifacts.entries.some(entry => entry.artifact.artifactId === requestedArtifactId && entry.revision)
   useEffect(() => {
@@ -135,7 +135,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
       openedRequest.current = requestedArtifactId
       artifacts.setOpened(requestedArtifactId)
       center.current?.openGenTab(requestedArtifactId)
-    }).catch(() => { if (current) setToolError('当前输入尚未保护，请保留页面后继续。') })
+    }).catch(() => { if (current) toast.error('当前输入尚未保护，请保留页面后继续。') })
     return () => { current = false }
   }, [layoutReady, requestedArtifactId, requestedArtifactReady, workspace, artifacts.setOpened])
   const locateTool: TeachingToolLocator = async record => {
@@ -274,15 +274,13 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
           <button type="button" className="ws-btn ghost" disabled={busy} onClick={onRefresh}>刷新列表</button>
           {artifacts.entries.some(entry => entry.artifact.shelved) && <div className="teaching-artifact-shelf" aria-label="收纳的学习页面">
             {artifacts.entries.filter(entry => entry.artifact.shelved).map(entry => <button key={entry.artifact.artifactId}
-              type="button" className="ws-btn ghost" onClick={() => void openArtifact(entry.artifact.artifactId).catch(() => setToolError('当前输入尚未保护，请保留页面后继续。'))}>{entry.artifact.title}</button>)}
+              type="button" className="ws-btn ghost" onClick={() => void openArtifact(entry.artifact.artifactId).catch(() => toast.error('当前输入尚未保护，请保留页面后继续。'))}>{entry.artifact.title}</button>)}
           </div>}
           {account}
         </WorkspacePopover>
       </div>
     </header>
     {readOnly && <div role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</div>}
-    {error && <div className="product-workspace-notice">{error}</div>}
-    {toolError && <div role="alert" className="product-workspace-notice">{toolError}</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body">
@@ -299,8 +297,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         }}
         beforeToolChange={() => workspace.leave()}
         tool={tool} onToolChange={value => { void workspace.leave().then(() => {
-          artifacts.setOpened(value.startsWith('gen:') ? value.slice(4) : null); setTool(value); setToolError('')
-        }).catch(() => setToolError('当前输入尚未保护，请保留页面后继续。')) }} onToast={setToolError} tabsSlot={tabsSlot}
+          artifacts.setOpened(value.startsWith('gen:') ? value.slice(4) : null); setTool(value)
+        }).catch(() => toast.error('当前输入尚未保护，请保留页面后继续。')) }} onToast={message => toast(message)} tabsSlot={tabsSlot}
         designBody={<>{(activity.course?.components??[]).filter(b=>b.definition.manifest.formatVersion===3).map(binding=>
           <RuntimeTool compact key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized}/>)}
           <ActivityWorkspace activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} location={workLocation} /></>} />}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import { teachingControlReceiptSchema, isRecoverableTeachingPause } from '@xunjie/contracts/teaching-agent'
 import type { TeachingInput, TeachingRun } from '@xunjie/contracts/teaching-agent'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
@@ -44,7 +45,7 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
   const alive = useRef(false), writable = useRef(!readOnly), delivering = useRef(false)
   const onConfirmed = useRef(confirmed)
   writable.current = !readOnly; onConfirmed.current = confirmed
-  const deliver = useCallback(async (pending: PendingAgentOperation) => {
+  const deliver = useCallback(async (pending: PendingAgentOperation, notify = false) => {
     if (!alive.current || !writable.current || delivering.current) return
     delivering.current = true; setBusy(true)
     const guardedRequest: Request = (route, body) => {
@@ -66,10 +67,15 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
             expectedVersion: 'input' in receipt && receipt.input ? receipt.input.version : current.draft.expectedVersion } } : current
       })
       if (alive.current) {
-        setRecord(saved); setError(receipt.status === 'rejected' ? controlReasons[receipt.reason] ?? '操作未生效，原内容仍保留。' : '')
+        const failure = receipt.status === 'rejected' ? controlReasons[receipt.reason] ?? '操作未生效，原内容仍保留。' : ''
+        setRecord(saved); setError(failure)
+        if (notify && failure) toast.error(failure)
         await onConfirmed.current()
       }
-    } catch { if (alive.current) setError('结果尚未确认，原操作和草稿已保留。请核对原操作。') }
+    } catch { if (alive.current) {
+      const failure = '结果尚未确认，原操作和草稿已保留。请核对原操作。'
+      setError(failure); if (notify) toast.error(failure)
+    } }
     finally { delivering.current = false; if (alive.current) setBusy(false) }
   }, [key, target, request])
   useEffect(() => {
@@ -99,16 +105,19 @@ function useAgentControl(scope: string, target: string, readOnly: boolean, reque
       await workspace.protectInput(key)
       if (!alive.current || !writable.current) return
       const current = await agentControlStore.read(key)
-      if (current?.pending) { await deliver(current.pending); return }
+      if (current?.pending) { await deliver(current.pending, true); return }
       const requestId = crypto.randomUUID()
       const pending = { requestId, route, queryRoute: 'controls/' + requestId, input: { ...body, requestId } }
       const saved = await workspace.trackInput(protectAgentOperation(key, scope, pending))
       if (!alive.current) return
-      setRecord(saved); await deliver(pending)
-    } catch { if (alive.current) setError('操作尚未在本机可靠保留，原内容仍在这里。') }
+      setRecord(saved); await deliver(pending, true)
+    } catch { if (alive.current) {
+      const failure = '操作尚未在本机可靠保留，原内容仍在这里。'
+      setError(failure); toast.error(failure)
+    } }
   }
   return { record, error: error || (protection === 'failed' ? '草稿尚未在本机可靠保留，请复制后重试。' : ''), busy,
-    protectedDraft: protection === 'protected', change, submit, retry: () => record?.pending && void deliver(record.pending) }
+    protectedDraft: protection === 'protected', change, submit, retry: () => record?.pending && void deliver(record.pending, true) }
 }
 
 export function AgentInputRecord({ input, scope, readOnly, request, onConfirmed }: {
@@ -145,7 +154,8 @@ export function AgentInputRecord({ input, scope, readOnly, request, onConfirmed 
         <button type="button" className="primary" disabled={disabled || !editable || !draft.text.trim()} onClick={() => void control.submit(`inputs/${input.inputId}/control`,
           { version: 1, operation: 'revise', expectedVersion: draft.expectedVersion, text: draft.text })}>保存修改</button>
         <button type="button" className="outline" disabled={disabled} onClick={() => control.change({ draft: { ...draft, editing: false } })}>保留草稿并收起</button>
-        <button type="button" className="outline" onClick={() => void navigator.clipboard.writeText(draft.text)}>复制修改草稿</button>
+        <button type="button" className="outline" onClick={() => void navigator.clipboard.writeText(draft.text)
+          .catch(() => toast.error('暂时无法复制，请直接选中输入文字保存。'))}>复制修改草稿</button>
       </div>
       <p className="detail" role="status">{control.protectedDraft ? '修改草稿已在本机保留。' : '正在保护修改草稿…'}</p>
       {!editable && <p className="detail">这条输入已处理，当前修改没有被采用。可复制后另行补充。</p>}

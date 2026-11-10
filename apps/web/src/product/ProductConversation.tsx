@@ -17,7 +17,7 @@ import './product-agent.css'
 /** The same reliable activity session can be read as a conversation or opened as a workspace. */
 export function ProductConversation({ activity, spaceKey, namespace, authorized, workspaceRef, onWorkspace, onModels, error, title, selection }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean
-  workspaceRef: RefObject<ActivityWorkspaceHandle | null>; onWorkspace(artifactId?: string): Promise<void>; onModels(): void; error: ReactNode
+  workspaceRef: RefObject<ActivityWorkspaceHandle | null>; onWorkspace(artifactId?: string): Promise<void>; onModels(): void; error?: ReactNode
   title?: string; selection: ModelSelectionController
 }) {
   const { workspace, draft, actions, inputInteraction } = useActivitySession()

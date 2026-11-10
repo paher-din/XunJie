@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import { z } from 'zod'
 import { componentChangeSchema, componentStateName, componentReply, matchesComponentState } from '@xunjie/contracts/components'
 import { actionInputSchema } from '@xunjie/contracts/action-intents'
@@ -28,6 +29,7 @@ export function ArtifactView({ revision, controller }: { revision: TeachingArtif
   const work = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const stateFile = work.files.find(file => file.name === componentStateName(revision.binding.key))
   const [issue, setIssue] = useState('')
+  useToastFeedback(issue)
   const [ready, setReady] = useState(false)
   const selected = useSemanticSource({ source: stateFile ? componentSource(controller.activity, revision.binding, stateFile.objectId, stateFile.contentId) : null,
     title: revision.payload.title, content: revision.payload, ...(stateFile ? { basis: questionWorkBasisSchema.parse(stateFile) } : {}),
@@ -209,7 +211,6 @@ export function ArtifactView({ revision, controller }: { revision: TeachingArtif
   if (!work.ready || !stateFile || !matchesComponentState(revision.binding, revision.activityId, stateFile))
     return <p className="teaching-artifact-note" role="status">正在核对页面与原输入；确认后继续。</p>
   return <div className="teaching-artifact-view">
-    {issue && <p className="learning-error" role="alert">{issue}</p>}
     {!ready && <p className="teaching-artifact-note" role="status">正在恢复页面中的原输入…</p>}
     <iframe ref={frame} title={revision.payload.title} sandbox="allow-scripts" referrerPolicy="no-referrer"
       aria-hidden={!ready} style={ready ? undefined : { visibility: 'hidden' }}

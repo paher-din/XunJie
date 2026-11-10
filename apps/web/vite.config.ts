@@ -26,6 +26,7 @@ export default defineConfig(({ command, mode }) => ({
       '@radix-ui/react-dialog',
       'marked',
       'remend',
+      'sonner',
     ],
   },
   server: {

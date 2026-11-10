@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Icon } from '../icons'
+import { useToastFeedback } from '../feedback'
 import { Field } from './controls'
 import { ModelFields } from './ModelFields'
 import { ProviderIdentityFields } from './ProviderIdentityFields'
@@ -45,6 +46,9 @@ export interface ProviderDialogViewProps {
 export function ProviderDialogView({ open, onClose, provider, preparation, name, setName, baseUrl, setBaseUrl, apiKey,
   setApiKey, clearKey, setClearKey, saving, saveError, models, setModels, errors, testing, testResult,
   result, dirty, patchModel, runTest, submit }: ProviderDialogViewProps) {
+  useToastFeedback(open ? saveError : '')
+  useToastFeedback(open ? errors.models : '')
+  useToastFeedback(open && !testing ? result?.text : '', result?.ok ? 'success' : 'error')
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
@@ -61,7 +65,6 @@ export function ProviderDialogView({ open, onClose, provider, preparation, name,
               errors={errors} onName={setName} onBaseUrl={setBaseUrl} onApiKey={value => { setApiKey(value); setClearKey(false) }} />
 
             {provider?.hasKey && !preparation && <label><input type="checkbox" checked={clearKey} onChange={e => { setClearKey(e.target.checked); setApiKey('') }} />清除已保存密钥</label>}
-            {saveError && <p role="alert">{saveError}</p>}
             <div className="st-field">
               <span className="st-field-label">模型配置</span>
               {models.map((m, i) => (
@@ -78,15 +81,8 @@ export function ProviderDialogView({ open, onClose, provider, preparation, name,
                   <Icon name="add" size={14} />添加模型
                 </button>
               </div>
-              {errors.models && <span className="st-field-error">{errors.models}</span>}
             </div>
 
-            {result && (
-              <p className={'st-test-result' + (result.ok ? ' ok' : ' fail')} role="status">
-                <Icon name={result.ok ? 'check-circle' : 'danger-triangle'} size={15} />
-                {result.text}
-              </p>
-            )}
             {testResult?.ok && testResult.models && testResult.models.length>0 && (
               <Field label="供应商可用模型" tip="从真实模型列表选择，使用可调用 ID；供应商提供的能力字段会同步填写。">
                 <select className="st-input" aria-label="供应商可用模型" value="" onChange={e=>{

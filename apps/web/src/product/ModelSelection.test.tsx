@@ -6,6 +6,7 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ModelConnection } from '@xunjie/contracts/model-connections'
 import { useModelSelection, type ModelSelectionController, type Selection } from './ModelSelection'
 import { ProductAgent } from './ProductAgent'
+import { Toaster, toast } from '@xunjie/ui/feedback'
 
 const identity: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '个人' }
 const connection: ModelConnection = { connectionId: crypto.randomUUID(), name: '同一供应商', modelId: 'first-model',
@@ -20,13 +21,14 @@ const response = (value: unknown) => new Response(JSON.stringify(value), { heade
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
 function Harness({ subject = identity }: { subject?: SpaceIdentity }) {
   controller = useModelSelection(subject, 'personal', 'test')
-  return <ProductAgent question="原问题" onQuestion={() => {}} onSend={() => {}} pending={null} onRetry={() => {}}
-    onDiscard={() => {}} onSettings={() => {}} selection={controller} busy={false} readOnly={false} error="" />
+  return <><Toaster /><ProductAgent question="原问题" onQuestion={() => {}} onSend={() => {}} pending={null} onRetry={() => {}}
+    onDiscard={() => {}} onSettings={() => {}} selection={controller} busy={false} readOnly={false} error="" /></>
 }
 const render = async (subject = identity) => act(async () => { root.render(<Harness subject={subject} />); await settle() })
 async function choose(index: number) {
   await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="切换模型"]')!.click(); await settle() })
   await act(async () => { host.querySelectorAll<HTMLElement>('[role="menuitemradio"]')[index]!.click(); await settle() })
+  await act(async () => { await settle() })
 }
 beforeEach(async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
@@ -57,7 +59,7 @@ beforeEach(async () => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   await render()
 })
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals() })
+afterEach(async () => { await act(async () => { toast.dismiss(); root.unmount() }); host.remove(); vi.unstubAllGlobals() })
 
 it('shows specific models and selects configured self/device models without a grant request', async () => {
   await choose(0)
@@ -73,7 +75,7 @@ it('shows specific models and selects configured self/device models without a gr
 it('retries a lost selection receipt with the same request and leaves the question intact', async () => {
   loseReceipt = true
   await choose(0)
-  expect(host.querySelector('[role="alert"]')).not.toBeNull()
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')).not.toBeNull()
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 150)) })
   await choose(0)
   const writes = requests.filter(request => request.body)

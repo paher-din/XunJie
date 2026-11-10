@@ -1,6 +1,7 @@
 import { componentSource, useSemanticSource } from '../components/workspace/references/SemanticSource'
 import type { ReferenceSnapshot, LocateResult } from '../components/workspace/references/model'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import { componentBundleSchema, componentHostMessageSchema, componentStateName, componentInitializeSchema, componentPreparationMessageSchema,
   componentPreparationReplySchema, componentReply, type ComponentBinding } from '@xunjie/contracts/components'
 import { z } from 'zod'
@@ -55,6 +56,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
   const [preparation, setPreparation] = useState<PreparationSnapshot | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [retryIssue, setRetryIssue] = useState('')
+  useToastFeedback(retryIssue)
   // One identity per mounted view: a retry continues the original preparation instead of minting a second one.
   const requestId = useRef(crypto.randomUUID())
   const preparationId = useRef<string | null>(null)
@@ -262,7 +264,6 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
     })
   }
   return <section className="component-view" aria-label={binding.configuration.title}>
-    {retryIssue && <p role="alert" className="learning-error">{retryIssue}</p>}
     {error ? <p role="alert" className="learning-error">{error}</p> : <>
       {working && <p role="status" className="ws-pane-note">
         正在准备{binding.configuration.title}：{stageText[preparation.stage] ?? preparation.stage}…</p>}

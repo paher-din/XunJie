@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { IconText, type IconName } from '../icons'
+import { useToastFeedback } from '../feedback'
 
 export interface SettingsLayoutTab<Id extends string = string> {
   id: Id
@@ -25,6 +26,7 @@ export function SettingsLayout<Id extends string>({
   toast,
   children,
 }: SettingsLayoutProps<Id>) {
+  useToastFeedback(toast, 'info')
   return (
     <div className="settings student-settings">
       <aside className="st-nav">
@@ -48,11 +50,6 @@ export function SettingsLayout<Id extends string>({
           {children}
         </div>
       </div>
-      {toast && (
-        <div className="toast" role="status">
-          {toast}
-        </div>
-      )}
     </div>
   )
 }

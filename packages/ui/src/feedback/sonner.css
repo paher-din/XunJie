@@ -1,0 +1,53 @@
+.xj-toaster {
+  font-family: var(--font-sans);
+}
+
+.xj-toaster [data-sonner-toast][data-styled='true'] {
+  padding: 10px 18px;
+  gap: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: var(--shadow-tip);
+  transition-duration: 240ms;
+  transition-timing-function: cubic-bezier(0.3, 1, 0.35, 1);
+}
+
+.xj-toaster [data-sonner-toast] [data-title] {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.xj-toaster [data-sonner-toast] [data-description] {
+  color: var(--on-inverse);
+  opacity: 0.85;
+  overflow-wrap: anywhere;
+}
+
+.xj-toaster [data-sonner-toast][data-type='error'] > [data-icon] {
+  color: var(--danger);
+}
+
+.xj-toaster [data-sonner-toast] [data-close-button] {
+  background: var(--inverse);
+  color: var(--on-inverse);
+  border-color: var(--on-inverse);
+}
+
+.xj-toaster [data-sonner-toast] [data-close-button]:hover {
+  background: var(--primary-hover);
+  color: var(--on-inverse);
+  border-color: var(--on-inverse);
+}
+
+.xj-toaster [data-sonner-toast] button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xj-toaster [data-sonner-toast] {
+    transition: none;
+    animation: none;
+  }
+}

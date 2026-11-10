@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import { PDF_LIMITS, pdfDocumentSchema, pdfReadingSchema, pdfReferenceCopy, pdfReferenceSourceSchema,
   type PdfDocument, type PdfReading, type PdfRegion } from '@xunjie/contracts/pdf-materials'
 import { questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
@@ -50,7 +51,10 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
+  useToastFeedback(error)
+  useToastFeedback(notice, 'success')
   const alive = useRef(false), operation = useRef(false), readEpoch = useRef(0), listEpoch = useRef(0)
   const current = useRef({ authorized, readOnly: !!references.readOnly, reveal })
   current.current = { authorized, readOnly: !!references.readOnly, reveal }
@@ -76,8 +80,10 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
       if (!Array.isArray(value)) throw new Error('PDF 列表不完整，请重新读取。')
       const docs = value.map(item => pdfDocumentSchema.parse(item))
       if (docs.some(item => item.activityId !== activity.activityId)) throw new Error('PDF 列表不属于当前活动。')
-      if (alive.current && epoch === listEpoch.current) { setDocuments(docs); setError('') }
-    } catch (error) { if (alive.current && epoch === listEpoch.current) setError(failureText(error)) }
+      if (alive.current && epoch === listEpoch.current) { setDocuments(docs); setError(''); setLoadError('') }
+    } catch (error) {
+      if (alive.current && epoch === listEpoch.current) { const message = failureText(error); setError(message); setLoadError(message) }
+    }
     finally { if (alive.current && epoch === listEpoch.current) setLoading(false) }
   }, [scope, api, activity.activityId])
   useEffect(() => {
@@ -252,7 +258,7 @@ export function usePdfMaterials({ activity, spaceKey, namespace, authorized, rev
     }
   }, [reading])
 
-  return { documents, requests, document, reading, pendingRead, busy, loading, error, notice,
+  return { documents, requests, document, reading, pendingRead, busy, loading, error, loadError, notice,
     writable: authorized && !references.readOnly, canQuote: references.draftReady && availableReading(reading),
     refresh, upload, receive, openCourse, openDocument, locate,
     readPages: (pages: number[], region: PdfRegion | null = null, quote = false) => document
@@ -285,7 +291,7 @@ export function PdfMaterialEntries({ pdf }: { pdf: PdfMaterialsController }) {
     </div>)}
     {pdf.loading && <p className="detail" role="status">正在读取 PDF 列表…</p>}
     {pdf.busy && <p className="detail" role="status">正在保存或读取 PDF…</p>}
-    {pdf.error && <p className="pdf-error" role="alert">{pdf.error}</p>}
+    {pdf.loadError && <p className="detail">{pdf.loadError}</p>}
     <button type="button" className="ws-btn ghost" disabled={pdf.busy || pdf.loading} onClick={() => void pdf.refresh()}>刷新 PDF 列表</button>
     <button type="button" className="ws-btn ghost" onClick={() => void pdf.reveal()}>打开 PDF 阅读区</button>
   </section>
@@ -298,6 +304,7 @@ export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onB
   const [region, setRegion] = useState<PdfRegion | null>(null)
   const [query, setQuery] = useState('')
   const [localError, setLocalError] = useState('')
+  useToastFeedback(localError)
   const composing = useRef(false)
   const page = reading?.requestedPages[0] ?? pdf.pendingRead?.pages[0] ?? 1
   useEffect(() => { setPageInput(String(page)); setRegion(null); setLocalError(''); setSelectionMode('page') }, [reading?.readingId, page, doc?.documentId])
@@ -367,10 +374,8 @@ export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onB
           </article>)}
         </div>}
       </>}
-    {(pdf.error || localError) && <p className="pdf-error" role="alert">{localError || pdf.error}</p>}
     {pdf.pendingRead && !pdf.busy && <button type="button" className="ws-btn ghost" disabled={!pdf.writable} onClick={() => void pdf.retryRead()}>核对并继续本次阅读</button>}
     {pdf.busy && <p className="pdf-hint" role="status">正在保存或读取 PDF…</p>}
-    {pdf.notice && <p className="pdf-hint" role="status">{pdf.notice}</p>}
   </section>
 }
 
@@ -380,6 +385,7 @@ function PdfPageImage({ image, page, selecting, region, onRegion }: {
 }) {
   const drag = useRef<{ x: number; y: number; pointerId: number } | null>(null)
   const [imageFailed, setImageFailed] = useState(false)
+  useToastFeedback(imageFailed ? '固定页图无法在浏览器中显示，请重新定位核对原记录；不会重新渲染替换这份引用。' : '')
   const point = (event: PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
     return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)) }
@@ -391,7 +397,7 @@ function PdfPageImage({ image, page, selecting, region, onRegion }: {
     const width = Math.min(1 - x, Math.abs(end.x - start.x)), height = Math.min(1 - y, Math.abs(end.y - start.y))
     onRegion(width > 0.002 && height > 0.002 ? { x, y, width, height } : null)
   }
-  if (imageFailed) return <p className="pdf-error" role="alert">固定页图无法在浏览器中显示，请重新定位核对原记录；不会重新渲染替换这份引用。</p>
+  if (imageFailed) return <p className="pdf-muted">固定页图无法在浏览器中显示，请重新定位核对原记录；不会重新渲染替换这份引用。</p>
   return <div className={'pdf-page-image' + (selecting ? ' selecting' : '')} onPointerDown={event => {
     if (!selecting || event.button !== 0) return
     event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId)

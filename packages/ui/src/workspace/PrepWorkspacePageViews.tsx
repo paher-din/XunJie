@@ -1,4 +1,5 @@
-import type { Ref } from 'react'
+import { useMemo, type Ref } from 'react'
+import { Toast } from '../feedback'
 import { Icon, IconText } from '../icons'
 import { WorkspacePopover } from './WorkspacePopover'
 import { HdlBuildPane, type HdlBuildPaneProps } from './HdlToolArea'
@@ -167,12 +168,12 @@ export interface PrepTutoringReturnNoticeProps {
   returnNotice?: { notice: string; origin?: { fileId: string; path: string; documentVersion: number | null } } | null
 }
 export function PrepTutoringReturnNotice({ toast, returnNotice }: PrepTutoringReturnNoticeProps) {
-  if (!toast && !returnNotice) return null
-  return <div className="toast" role="status">
+  const content = useMemo(() => !toast && !returnNotice ? null : <>
     {toast}
     {returnNotice && <><p data-testid="tutor-return-notice">{returnNotice.notice}</p>
       {returnNotice.origin && <p data-testid="tutor-return-origin" data-file-id={returnNotice.origin.fileId}>
         本机保留的原引用：{returnNotice.origin.path} · {returnNotice.origin.documentVersion === null ? '本机未确认实例' : `原文件版本 ${returnNotice.origin.documentVersion}`}
       </p>}</>}
-  </div>
+  </>, [toast, returnNotice?.notice, returnNotice?.origin?.fileId, returnNotice?.origin?.path, returnNotice?.origin?.documentVersion])
+  return content ? <Toast>{content}</Toast> : null
 }

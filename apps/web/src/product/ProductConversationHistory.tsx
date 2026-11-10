@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ConversationHistoryItem, LearningActivity } from '@xunjie/contracts/learning-data'
 import { ConversationPane } from '@xunjie/ui/foundation'
 import { Icon } from '@xunjie/ui/icons'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 
 export { useConversationHistory } from './useConversationHistory'
 
@@ -38,6 +39,9 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
   onDelete: (id: string) => Promise<boolean>
   onRetry: () => void
 }) {
+  // The controller also reports background read/import failures; those stay beside Retry.
+  const operationError = error === '对话操作未确认，请检查连接后再次操作。' ? error : ''
+  useToastFeedback(visible ? operationError : '')
   const [menu, setMenu] = useState(CLOSED_MENU)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const renaming = useRef<string | null>(null)
@@ -114,7 +118,7 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
   const loadMoreArchived = useCallback(() => setArchivedShown(value => value + PAGE_SIZE), [])
 
   return <>
-    {error && <div className="agent-side-empty" role="alert">{error} <button type="button" className="agent-side-clear" onClick={onRetry}>重试</button></div>}
+    {error && <div className="agent-side-empty" role={operationError ? undefined : 'alert'}>{!operationError && error} <button type="button" className="agent-side-clear" onClick={onRetry}>重试</button></div>}
     {!ready || activities === null ? <>
       <button type="button" className="agent-newchat" onClick={onNew}><span className="navicon"><Icon name="pen-new-square" size={14} /></span>新对话</button>
       <div className="agent-side-empty" role="status">{error ? '暂时无法显示对话' : '正在读取对话…'}</div>

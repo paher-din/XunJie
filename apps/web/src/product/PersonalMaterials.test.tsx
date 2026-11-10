@@ -8,6 +8,7 @@ import type { PersonalMaterial, PersonalMaterialMediaType, PersonalMaterialSave 
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { SelectionToolbar, WorkspaceReferencesProvider, useWorkspaceReferences } from '../components/workspace/references'
 import { PersonalMaterialEntries, PersonalMaterials, usePersonalMaterials } from './PersonalMaterials'
+import { Toaster, toast } from '@xunjie/ui/feedback'
 
 vi.mock('./learningTransport', async importOriginal => {
   const actual = await importOriginal<typeof import('./learningTransport')>()
@@ -62,6 +63,7 @@ function Probe({ activity, probe, probeRange, reveal }: { activity: LearningActi
   const references = useWorkspaceReferences()
   const [located, setLocated] = useState('')
   return <div>
+    <Toaster />
     <PersonalMaterialEntries personal={personal} />
     <PersonalMaterials personal={personal} onBack={() => {}} />
     <button type="button" onClick={() => { void personal.locate(probe, probeRange).then(result => setLocated(JSON.stringify(result))) }}>probe-locate</button>
@@ -92,7 +94,7 @@ beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => {
-  await act(async () => { root.unmount(); await settle() })
+  await act(async () => { toast.dismiss(); root.unmount(); await settle() })
   host.remove(); vi.unstubAllGlobals()
 })
 
@@ -139,10 +141,16 @@ it('retains an add request and verifies the original requestId after an unknown 
   await setInput(host.querySelector<HTMLInputElement>('[aria-label="个人笔记名称"]')!, '我的笔记')
   await setInput(host.querySelector<HTMLTextAreaElement>('[aria-label="个人笔记正文"]')!, '第一条正文')
   await click('保存笔记')
-  await waitFor(() => { expect(host.textContent).toContain('尚未确认原服务结果'); expect(host.textContent).toContain('保存尚未确认') })
+  await waitFor(() => {
+    expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('尚未确认原服务结果')
+    expect(host.textContent).toContain('保存尚未确认')
+  })
   expect(posts).toHaveLength(1)
   await click('核对并继续原请求')
-  await waitFor(() => { expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1); expect(host.textContent).toContain('已保存「我的笔记」') })
+  await waitFor(() => {
+    expect(host.querySelectorAll('.personal-material-list li')).toHaveLength(1)
+    expect(host.querySelector('[data-sonner-toast][data-type="success"]')?.textContent).toContain('已保存「我的笔记」')
+  })
   expect(posts).toHaveLength(1)
   expect(posts[0].requestId).toBe([...receipts.keys()][0])
   expect(posts[0].name).toBe('我的笔记')

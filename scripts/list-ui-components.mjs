@@ -13,7 +13,7 @@ const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, packageRoot)
 const program = ts.createProgram(parsed.fileNames, parsed.options)
 const checker = program.getTypeChecker()
 const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8'))
-const groups = ['foundation', 'icons', 'brand', 'home', 'dashboard', 'chat', 'settings', 'workspace', 'teacher', 'teacher-shell', 'teacher-design', 'teacher-review']
+const groups = ['foundation', 'feedback', 'icons', 'brand', 'home', 'dashboard', 'chat', 'settings', 'workspace', 'teacher', 'teacher-shell', 'teacher-design', 'teacher-review']
 
 function hasJsx(node) {
   if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return true

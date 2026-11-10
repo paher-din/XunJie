@@ -2,6 +2,7 @@ import type { ReactNode, RefObject, UIEventHandler } from 'react'
 import { Icon } from '../icons'
 import { MascotSvg } from '../brand'
 import { SuggestionStack } from '../foundation'
+import { useToastFeedback } from '../feedback'
 import { MessageRail, type MessageRailProps } from './MessageRail'
 import { TurnAriaStatus } from './TurnAriaStatus'
 import type { TurnPhase } from './types'
@@ -15,7 +16,7 @@ export function AgentEmptyState({ title, description }: AgentEmptyStateProps) {
 }
 
 export interface ChatErrorProps { message?: string | null }
-export function ChatError({ message }: ChatErrorProps) { return message ? <p role="alert">{message}</p> : null }
+export function ChatError({ message }: ChatErrorProps) { useToastFeedback(message); return null }
 
 export interface ChatViewportProps {
   scrollerRef: RefObject<HTMLDivElement | null>

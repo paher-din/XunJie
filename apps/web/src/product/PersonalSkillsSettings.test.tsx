@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { TeachingSkillCatalogEntry } from '@xunjie/contracts/agent-skills'
 import { PersonalSkillsSettings } from './PersonalSkillsSettings'
+import { Toaster, toast } from '@xunjie/ui/feedback'
 
 let root: Root, host: HTMLDivElement
 const identity: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), name: '测试者', kind: 'personal' }
@@ -14,8 +15,7 @@ const skill: TeachingSkillCatalogEntry = { skillId: crypto.randomUUID(), version
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
 const expectFeedback = async (text: string, kind: 'error' | 'success') => {
   await act(async () => { await settle() })
-  const role = kind === 'error' ? 'alert' : 'status'
-  expect([...host.querySelectorAll(`[role="${role}"]`)].map(item => item.textContent).join('\n')).toContain(text)
+  expect([...host.querySelectorAll(`[data-sonner-toast][data-type="${kind}"]`)].map(item => item.textContent).join('\n')).toContain(text)
 }
 const button = (label: string) => Array.from(host.querySelectorAll('button')).find(item => item.textContent === label)!
 const click = async (label: string) => act(async () => { button(label).click(); await settle() })
@@ -30,11 +30,11 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
-afterEach(async () => { await act(async () => { root.unmount(); await settle() }); host.remove(); vi.unstubAllGlobals() })
+afterEach(async () => { await act(async () => { toast.dismiss(); root.unmount(); await settle() }); host.remove(); vi.unstubAllGlobals() })
 const activityScopes = [undefined, crypto.randomUUID()]
 const skillsRoute = (activityId?: string) => activityId ? `/api/learning/agent/${activityId}/skills` : '/api/learning/skills'
 const mount = async (activityId?: string) => act(async () => {
-  root.render(createElement(PersonalSkillsSettings, { identity, spaceKey: 'personal', namespace: 'test', activityId })); await settle()
+  root.render(createElement('div', null, createElement(Toaster), createElement(PersonalSkillsSettings, { identity, spaceKey: 'personal', namespace: 'test', activityId }))); await settle()
 })
 
 it('allows retrying a failed catalog read and restores the skills', async () => {

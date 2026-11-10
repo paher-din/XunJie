@@ -1,6 +1,7 @@
 import type { ModelAttempt, ModelConnection, ModelProvider, ModelCheckPolicy } from '@xunjie/contracts/model-connections'
 import { Section, ModelProviderCard, Toggle, reasoningEffortLabels } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 
 const states: Record<ModelAttempt['state'], string> = { accepted: '检查已接收，尚未开始', dispatched: '正在检查',
   completed: '检查已完成', incomplete: '检查未完整结束', failed: '检查失败', cancelled: '已停止本机检查', unknown: '检查结果待核实' }
@@ -8,20 +9,23 @@ const capabilities = { unknown: '尚未验证', declared: '服务声明', verifi
 type SchoolModel = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts, loading, error, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel, onReload }: {
+export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel, onReload }: {
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
+  recoveryError?: string
   schoolModels?: SchoolModel[]; onSchoolCheck?(choice: SchoolModel): void
   toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
   onNew(): void; onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void; onCheck(connection: ModelConnection): void
   onCancel(attempt: ModelAttempt): void; onReload(): void
 }) {
+  useToastFeedback(error)
+  useToastFeedback(recoveryError)
   return <>
     <Section title="模型供应商">
       <div className="skill-actions">
         <button type="button" className="primary" onClick={onNew}><Icon name="add" size={16} />添加供应商</button>
         <button type="button" className="outline" onClick={onReload} disabled={loading}>重新读取配置</button>
       </div>
-      {error && <p role="alert">{error}</p>}
+      {recoveryError && <p className="detail">{recoveryError}</p>}
       {loading && <p role="status">正在读取配置…</p>}
       {!loading && !error && providers.length === 0 && schoolModels.length === 0 && <p className="detail">尚未添加供应商。</p>}
       {schoolModels.length > 0 && <ModelProviderCard name="学校" address={schoolModels[0]!.connection.baseUrl}

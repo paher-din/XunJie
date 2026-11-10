@@ -4,6 +4,7 @@ import { act, useImperativeHandle, type ReactNode, type RefObject } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { LearningApp } from './LearningApp'
+import { toast } from '@xunjie/ui/feedback'
 
 vi.mock('../lib/theme', () => ({ useTheme() {} }))
 vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))
@@ -33,21 +34,27 @@ const activity = { activityId: '00000000-0000-4000-8000-000000000007', identity:
   target: { environmentId: personal.environmentId, serviceId: '00000000-0000-4000-8000-000000000008', version: 1 },
   goal: '个人学习活动', question: '', references: [], status: 'open', createdAt: '2026-01-01T00:00:00.000Z' }
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
-const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
+const settle = async () => { for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setTimeout(resolve, 0)) }
 const nextFrame = async () => act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
 const button = (text: string) => {
   const found = [...host.querySelectorAll('button')].find(item => item.textContent?.trim() === text)
   expect(found, text).toBeDefined()
   return found!
 }
-const click = async (text: string) => act(async () => { button(text).click(); await settle() })
-const clickDialog = async (text: string) => act(async () => {
+const click = async (text: string) => {
+  await act(async () => { button(text).click(); await settle() })
+  await act(async () => { await settle() })
+}
+const clickDialog = async (text: string) => {
+  await act(async () => {
   const dialog = document.querySelector<HTMLElement>('[role="dialog"]')
   expect(dialog).not.toBeNull()
   const found = [...dialog!.querySelectorAll('button')].find(item => item.textContent?.trim() === text)
   expect(found, text).toBeDefined()
   found!.click(); await settle()
-})
+  })
+  await act(async () => { await settle() })
+}
 const fill = async (selector: string, value: string) => act(async () => {
   const input = host.querySelector<HTMLInputElement>(selector)!
   expect(input).not.toBeNull()
@@ -101,6 +108,7 @@ beforeEach(() => {
   }))
 })
 afterEach(async () => {
+  toast.dismiss()
   await act(async () => { root.unmount(); await settle() })
   host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals()
 })
@@ -116,15 +124,15 @@ it('keeps the old school link on the account page and makes connection errors an
   await click('添加学校')
   await fill('input[type="url"]', 'https://school.example.edu')
   await click('连接')
-  expect(host.querySelector('[role="alert"]')?.textContent).toContain('暂时无法连接原服务')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('暂时无法连接原服务')
   await click('连接')
-  expect(host.querySelector('[role="alert"]')).toBeNull()
+  expect(toast.getToasts().some(item => 'type' in item && item.type === 'error')).toBe(false)
   expect(starts).toHaveLength(2)
   expect(starts[1]).toEqual(starts[0])
   expect(host.querySelector('a[href="https://school.example.edu/authorize"]')).not.toBeNull()
   failRefresh = true
   await click('已完成认证，连接学校')
-  expect(host.querySelector('[role="alert"]')?.textContent).toContain('暂时无法连接原服务')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('暂时无法连接原服务')
   expect(host.textContent).toContain('学校认证已完成')
   await click('重新读取连接')
   expect(completeCalls).toBe(1)
@@ -209,7 +217,8 @@ it('keeps the confirmation open when disconnection fails and allows a retry', as
   await act(async () => { root.render(<LearningApp />); await settle() })
   await click('断开连接')
   await clickDialog('确认断开')
-  expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain('暂时无法连接原服务')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('暂时无法连接原服务')
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull()
   expect(host.textContent).toContain('示例学校')
   await clickDialog('确认断开')
   expect(revoked).toHaveLength(2)

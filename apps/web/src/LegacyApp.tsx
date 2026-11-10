@@ -11,6 +11,7 @@ import './styles/fonts.css'
 import './styles/app.css'
 import './icons/icons.css'
 import { PREP_BUILD } from './workspace/mode'
+import { Toaster } from '@xunjie/ui/feedback'
 
 const AgentPage = PREP_BUILD ? lazy(() => import('./pages/AgentPage')) : null
 const IconBoardPage = lazy(() => import('./icons/IconBoard'))
@@ -60,5 +61,5 @@ function LearningAppEntry() {
 }
 
 export default function LegacyApp() {
-  return <QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>
+  return <QueryClientProvider client={queryClient}><RouterProvider router={router} /><Toaster /></QueryClientProvider>
 }

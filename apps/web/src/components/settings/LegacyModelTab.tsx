@@ -13,11 +13,12 @@ import {
 import { PREP_BUILD } from '../../workspace/mode'
 import { checkProviderForSettings } from './ProviderDialog'
 import { LegacyModelSettingsView } from '@xunjie/ui/settings'
+import { toast } from '@xunjie/ui/feedback'
 import type { TabProps } from '../../pages/SettingsPage'
 
 const EFFORTS = ['低', '高', '最高'] as const
 
-export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { inlineFeedback?: boolean }) {
+export function LegacyModelTab({ inlineFeedback = false }: TabProps & { inlineFeedback?: boolean }) {
   const local = useSettings()
   const remote = useModelSettings()
   const [prepModel, setPrepModel] = useState(() => localStorage.getItem(MODEL_KEY) ?? MODELS[0].id)
@@ -59,12 +60,13 @@ export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { i
 
   // Only an acknowledged save can produce the student page's success message.
   // Keep this presentation state local; the shared store and teacher UI are unchanged.
-  const persistSettings = async (patch: Parameters<typeof saveModelSettings>[0]) => {
+  const persistSettings = async (patch: Parameters<typeof saveModelSettings>[0], notify = true) => {
     if (inlineFeedback) {
       setNotice('')
       setSavedRevision(null)
     }
     await saveModelSettings(patch)
+    if (notify) toast.success('已保存')
     if (inlineFeedback) setSavedRevision(getModelSettings().data?.revision ?? null)
   }
 
@@ -93,7 +95,7 @@ export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { i
       ? current?.enabled ?? false
       : false
 
-    await persistSettings({ providers: next, defaultModelId, enabled })
+    await persistSettings({ providers: next, defaultModelId, enabled }, false)
   }
 
   const persistProvider = async (p: ModelProvider) => {
@@ -115,6 +117,7 @@ export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { i
       : await testProviderConnection(p)
     setResults(previous => ({ ...previous, [id]: result }))
     setTestingId(null)
+    toast[result.ok ? 'success' : 'error'](testResultText(result).text)
   }
 
 
@@ -145,11 +148,11 @@ export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { i
       if (PREP_BUILD) removeProvider(p.id)
       else await replaceProviders(providers.filter(x => x.id !== p.id))
       setConfirmingDel(null)
-      toast('供应商已移除')
+      toast.success('供应商已移除')
     })}
     onRemoveModel={(p, m) => void act(async () => {
       await persistProvider({ ...p, models: p.models.filter(x => x.id !== m.id) })
-      toast('模型已移除')
+      toast.success('模型已移除')
     })}
     onEditProvider={p => setProviderDlg({ provider: p })}
     onEditModel={(p, m) => setModelDlg({ provider: p, model: m })}
@@ -159,7 +162,7 @@ export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { i
       onCloseProvider: () => setProviderDlg(null), onCloseModel: () => setModelDlg(null),
       onSaveProvider: async p => {
         await persistProvider(p)
-        toast('供应商已保存')
+        toast.success('供应商已保存')
       },
       onSaveModel: async m => {
         if (!modelDlg) return
@@ -168,7 +171,7 @@ export function LegacyModelTab({ toast, inlineFeedback = false }: TabProps & { i
           ? provider.models.map(x => x.id === model.id ? m : x)
           : [...provider.models, m]
         await persistProvider({ ...provider, models })
-        toast('模型已保存')
+        toast.success('模型已保存')
       },
       onTestProvider: checkProviderForSettings,
     }} />

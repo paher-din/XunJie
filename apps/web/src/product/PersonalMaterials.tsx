@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
+import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { PERSONAL_MATERIAL_LIMITS, personalMaterialReferenceSourceSchema, personalMaterialSchema,
   personalMaterialVersionContentSchema, type PersonalMaterial, type PersonalMaterialMediaType,
   type PersonalMaterialReferenceSource, type PersonalMaterialVersionContent } from '@xunjie/contracts/personal-materials'
@@ -83,7 +84,10 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
+  useToastFeedback(error)
+  useToastFeedback(notice, 'success')
   const alive = useRef(false), operation = useRef(false), readEpoch = useRef(0), listEpoch = useRef(0)
   const current = useRef({ authorized, readOnly: !!references.readOnly, reveal })
   current.current = { authorized, readOnly: !!references.readOnly, reveal }
@@ -125,12 +129,14 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
       if (!Array.isArray(value)) throw new Error('个人笔记列表不完整，请重新读取。')
       const list = value.map(item => personalMaterialSchema.parse(item))
       if (list.some(item => item.activityId !== activity.activityId)) throw new Error('个人笔记列表不属于当前活动。')
-      if (alive.current && epoch === listEpoch.current) { setMaterials(list); setError('') }
-    } catch (error) { if (alive.current && epoch === listEpoch.current) setError(failureText(error)) }
+      if (alive.current && epoch === listEpoch.current) { setMaterials(list); setError(''); setLoadError('') }
+    } catch (error) {
+      if (alive.current && epoch === listEpoch.current) { const message = failureText(error); setError(message); setLoadError(message) }
+    }
     finally { if (alive.current && epoch === listEpoch.current) setLoading(false) }
   }, [scope, api, activity.activityId])
   useEffect(() => {
-    setMaterials([]); setRequests([]); setReading(null); setEditing(false); setError(''); setNotice('')
+    setMaterials([]); setRequests([]); setReading(null); setEditing(false); setError(''); setLoadError(''); setNotice('')
     setBusy(false); setLoading(false)
   }, [scope])
   useEffect(() => {
@@ -329,7 +335,7 @@ export function usePersonalMaterials({ activity, spaceKey, namespace, authorized
     return () => unregister.forEach(stop => stop())
   }, [sourceIds, shownSourceId, references.register])
 
-  return { materials, requests, reading, editing, busy, loading, error, notice,
+  return { materials, requests, reading, editing, busy, loading, error, loadError, notice,
     writable: authorized && !references.readOnly, canQuote: references.draftReady && !!reading && !reading.material.removedAt,
     refresh, save, update, remove, open, beginUpdate, beginEditing, cancelEditing, clearReading, receive: reconcileRequest, locate,
     reveal: async () => {
@@ -344,7 +350,11 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
   const [name, setName] = useState('')
   const [text, setText] = useState('')
   const [mediaType, setMediaType] = useState<PersonalMaterialMediaType>('text/plain')
-  const [localError, setLocalError] = useState('')
+  const localErrorToast = useRef<string | number | undefined>(undefined)
+  const setLocalError = (message: string) => {
+    if (message) localErrorToast.current = toast.error(message, { id: localErrorToast.current, duration: 8000 })
+    else if (localErrorToast.current !== undefined) toast.dismiss(localErrorToast.current)
+  }
   const visible = personal.materials.filter(material => !material.removedAt)
   const pending = personal.requests.filter(request => !request.material)
   const choose = async (file: File) => {
@@ -391,7 +401,6 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
         <button type="button" className="ws-btn ghost" disabled={personal.busy}
           onClick={() => { setAdding(false); setLocalError('') }}>取消</button>
       </div>
-      {(localError || personal.error) && <p className="personal-material-error" role="alert">{localError || personal.error}</p>}
     </div>}
     {visible.length > 0 ? <ul className="material-list personal-material-list" aria-label="个人笔记列表">
       {visible.map(material => <li key={material.materialId}>
@@ -414,8 +423,7 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
     </div>)}
     {personal.loading && <p className="detail" role="status">正在读取个人笔记列表…</p>}
     {personal.busy && <p className="detail" role="status">正在保存或读取个人笔记…</p>}
-    {!adding && personal.error && <p className="personal-material-error" role="alert">{personal.error}</p>}
-    {personal.notice && <p className="personal-material-notice" role="status">{personal.notice}</p>}
+    {personal.loadError && <p className="detail">{personal.loadError}</p>}
     <div className="personal-material-actions">
       <button type="button" className="ws-btn ghost" disabled={personal.busy || personal.loading}
         onClick={() => void personal.refresh()}>刷新个人笔记列表</button>
@@ -463,8 +471,6 @@ export function PersonalMaterials({ personal, onBack }: { personal: PersonalMate
         </div>
       </div>}
     </>}
-    {personal.error && <p className="personal-material-error" role="alert">{personal.error}</p>}
     {personal.busy && <p className="personal-material-muted" role="status">正在保存或读取个人笔记…</p>}
-    {personal.notice && <p className="personal-material-notice" role="status">{personal.notice}</p>}
   </section>
 }

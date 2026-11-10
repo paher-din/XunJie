@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import { componentStateName, type ComponentBinding } from '@xunjie/contracts/components'
 import { isExecutionAction, isTerminalExecutionState } from '@xunjie/contracts/execution'
 import type { ExecutionRetainedResource } from '@xunjie/contracts/execution'
@@ -166,7 +167,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       if (!quiet) setNote('')
       return true
     } catch (error) {
-      setNote(`输入或选择未能保护：${errorText(error)}`)
+      const failure = `输入或选择未能保护：${errorText(error)}`
+      if (quiet) setNote(failure)
+      else toast.error(failure)
       return false
     }
   }
@@ -196,8 +199,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           definitionDigest: binding.definition.digest, stateVersion: manifest.stateVersion,
           operationId: crypto.randomUUID(), content: contentForBinding(defaultAluState) }),
       }])
-      setNote('已重建实验输入状态；作品、运行记录和检查报告均未删除。')
-    } catch (error) { setNote(`未能重建实验输入状态：${errorText(error)}`) }
+      setNote('')
+      toast.success('已重建实验输入状态；作品、运行记录和检查报告均未删除。')
+    } catch (error) { toast.error(`未能重建实验输入状态：${errorText(error)}`) }
   }
   // Isolated history browsing changes only this view, never the restored work or a sync queue.
   const selectState = (change: (state: AluState) => AluState, quiet = false) => {
@@ -223,11 +227,11 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
   }
   const useInputs = (inputs: { A: number; B: number; M: number; S: number; Cin: number }) => {
     if (!canWrite) return
-    writeState(previous => ({ ...(manifest.stateVersion === 3 && previous.feedbackPolicy === 'hold' ? editCase(previous) : previous),
+    const saved = writeState(previous => ({ ...(manifest.stateVersion === 3 && previous.feedbackPolicy === 'hold' ? editCase(previous) : previous),
       ...inputs, inputRevision: previous.inputRevision + 1, caseRequestId: '',
       selectedCase: '',
       selectedObservation: '', selectedObservationRevision: -1 }))
-    setNote('已复制该输入；实际读数仍要等对应观察返回。')
+    if (saved) toast.success('已复制该输入；实际读数仍要等对应观察返回。')
   }
 
   const enabledCode = enabledRecord?.action.execution.basis.works ? codeOf(enabledRecord.action.execution.basis.works) : []
@@ -311,7 +315,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
           selectedObservation: preserveHistory ? previous.selectedObservation : inputStill && previous.inputRevision === clickRevision ? record.requestId : '',
           selectedObservationRevision: preserveHistory ? -1 : inputStill && previous.inputRevision === clickRevision ? previous.inputRevision : -1 }
       }, true)
-      if (saved && activation.outcome === 'activated') setNote('已启用这次运行的作品；拨动开关会观察这份作品，检查也只针对它。')
+      if (saved && activation.outcome === 'activated') setNote('')
       else if (saved && activation.outcome === 'conflict') setNote('另一标签更新了实验作品，请核对后继续；本次结果保留在历史中，不覆盖新的启用选择。')
     } else {
       const saved = writeState(previous => previous.pendingActivation === record.requestId
@@ -355,7 +359,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     } catch (error) {
       if (attemptedRequestId) writeState(previous => previous.pendingActivation === attemptedRequestId
         ? { ...previous, pendingActivation: '', pendingActivationRevision: 0, pendingActivationBase: 0 } : previous, true)
-      setNote(`本次未能运行：${errorText(error)}`)
+      toast.error(`本次未能运行：${errorText(error)}`)
     } finally { admission.busy = false; if (alive.current) setObserveTick(value => value + 1) }
   }
 
@@ -369,9 +373,9 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       await workspace.trackInput(execution.submit(action))
       writeState(previous => !previous.selectedCheck || previous.selectedCheckBasis.startsWith('follow:')
         ? { ...previous, selectedCheck: action.requestId, selectedCheckBasis: `follow:${basis.requestId}` } : previous, true)
-      setNote(codeChanged ? '已检查上次运行的作品；当前代码有修改，若要检查新代码请先运行。' : '已提交全量检查；完成前不会显示通过。')
+      toast.info(codeChanged ? '已检查上次运行的作品；当前代码有修改，若要检查新代码请先运行。' : '已提交全量检查；完成前不会显示通过。')
     } catch (error) {
-      setNote(`全量检查未提交：${errorText(error)}`)
+      toast.error(`全量检查未提交：${errorText(error)}`)
     } finally { admission.busy = false; if (alive.current) setObserveTick(value => value + 1) }
   }
   const compare = async () => {
@@ -394,8 +398,8 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
         && previous.selectedObservation === click.selectedObservation && previous.selectedObservationRevision === click.selectedObservationRevision
         ? { ...previous, caseDraft: JSON.stringify(fixed), caseRequestId: action.requestId, selectedCase: action.requestId,
           feedbackPolicy: 'hold', selectedObservation: action.requestId, selectedObservationRevision: click.inputRevision } : previous, true)
-      setNote('比较依据已在本机固定；结果归入原用例，期间的新草稿继续保留。')
-    } catch (error) { setNote(`比较尚未确认：${errorText(error)}。请核对原动作，不要重跑取回旧结果。`) }
+      toast.success('比较依据已在本机固定；结果归入原用例，期间的新草稿继续保留。')
+    } catch (error) { toast.error(`比较尚未确认：${errorText(error)}。请核对原动作，不要重跑取回旧结果。`) }
     finally { admission.busy = false; if (alive.current) setObserveTick(value => value + 1) }
   }
   const stopCheck = async (record: ExecutionRecord | undefined) => {
@@ -403,12 +407,12 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     const stopId = stopIds.current.get(record.requestId) ?? crypto.randomUUID()
     stopIds.current.set(record.requestId, stopId)
     try { await execution.stop(record.requestId, stopId) }
-    catch { setNote('停止请求没有确认。原执行记录仍保留，可再次查询，不要重复发起新检查。') }
+    catch { toast.error('停止请求没有确认。原执行记录仍保留，可再次查询，不要重复发起新检查。') }
   }
   const queryRecord = async (record: ExecutionRecord | undefined) => {
     if (!record) return
     try { await execution.query(record.requestId) }
-    catch { setNote('执行状态暂时无法核实，原记录仍保留。') }
+    catch { toast.error('执行状态暂时无法核实，原记录仍保留。') }
   }
 
   const latestCheck = enabledRecord
@@ -520,7 +524,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
       <button type="button" className="ws-btn ghost" onClick={() => {
         const requestId = alu.pendingActivation
         queried.current.delete(requestId)
-        void execution.query(requestId).catch(() => setNote('运行状态暂时无法核实；原请求仍保留，不会自动重跑。'))
+        void execution.query(requestId).catch(() => toast.error('运行状态暂时无法核实；原请求仍保留，不会自动重跑。'))
       }}>核对运行状态</button>
       <button type="button" className="ws-btn ghost" onClick={() => writeState(previous => previous.pendingActivation === alu.pendingActivation
         ? { ...previous, pendingActivation: '', pendingActivationRevision: 0, pendingActivationBase: 0 } : previous)}>清除待确认指针</button>
@@ -540,7 +544,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
     {basis && !enabledRecord && <p role="status" className="alu-hint">正在读取原启用依据；若本机与服务都没有这条记录，不会自动重跑。
       <button type="button" className="ws-btn ghost" onClick={() => {
         queried.current.delete(basis.requestId)
-        void execution.query(basis.requestId).catch(() => setNote('原启用依据暂时无法核实；不会自动重跑。'))
+        void execution.query(basis.requestId).catch(() => toast.error('原启用依据暂时无法核实；不会自动重跑。'))
       }}>核对启用依据</button>
     </p>}
     {basis && enabledRecord && !enabledUsable && <p role="alert" className="alu-alert">原启用依据当前不可用（{enabledRecord.query.reason?.detail ?? '执行未成功或状态未核实'}）。请运行当前作品后再观察。</p>}
@@ -631,7 +635,7 @@ export function AluExperimentTool({ activity, binding, spaceKey, namespace, auth
             selectCounterexample({ kind: 'semantic', formatVersion: 1, typeId: 'alu-counterexample', version: 1,
               target: { index: item.index }, start: 0, end: 1 }, () => anchor.getBoundingClientRect())
             references.ask()
-          } catch (error) { setNote(`原反例暂时无法引用：${errorText(error)}`) }
+          } catch (error) { toast.error(`原反例暂时无法引用：${errorText(error)}`) }
         } : undefined}
         onStop={() => void stopCheck(displayCheckRecord ?? activeCheck)}
         onQuery={() => void queryRecord(displayCheckRecord ?? activeCheck)} />}

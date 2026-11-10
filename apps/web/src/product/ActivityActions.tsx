@@ -1,4 +1,5 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import { isExecutionAction } from '@xunjie/contracts/execution'
 import { useActivitySession } from './ActivitySession'
 import type { ActionPhase, LocalAction } from '../reliable-workspace/action-store'
@@ -11,11 +12,10 @@ export function ActivityActions() {
   const { actions, execution, workspace } = useActivitySession()
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot)
   const runs = useSyncExternalStore(execution.subscribe, execution.snapshot).records
-  const [failure, setFailure] = useState('')
   const attempt = async (operation: () => Promise<unknown>) => {
     if (workspace.isReadOnly()) return
-    try { await operation(); setFailure('') }
-    catch { setFailure('操作尚未完成，原动作与当前草稿仍保留。请稍后重试或复制原内容。') }
+    try { await operation() }
+    catch { toast.error('操作尚未完成，原动作与当前草稿仍保留。请稍后重试或复制原内容。') }
   }
   if (!state.items.length && !state.previous.length && !state.error) return null
   const question = (item: LocalAction) => !isExecutionAction(item.input)
@@ -71,7 +71,6 @@ export function ActivityActions() {
   return <section aria-label="待发与接收记录" className="learning-action-records">
     <h3>待发与接收记录</h3>
     {state.error && <p role="alert" className="learning-error">{state.error}</p>}
-    {failure && <p role="alert" className="learning-error">{failure}</p>}
     {state.items.map(record)}
     {!!state.previous.length && <details><summary>旧环境中保留的动作（{state.previous.length}）</summary>
       <p className="detail">这些动作不会自动发送。接回前会核对原空间、接收方和原请求；不会重新运行实验。</p>

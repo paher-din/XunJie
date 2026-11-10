@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { toast, type ToastKind } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
 import { isTerminalExecutionState, type ExecutionQuery, type ExecutionCheckpoint, type SessionControlEffect } from '@xunjie/contracts/execution'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
@@ -29,7 +30,11 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
   const state = useSyncExternalStore(sessions.subscribe, sessions.snapshot)
   const works = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
   const [amount, setAmount] = useState('')
-  const [note, setNote] = useState('')
+  const noteToast = useRef<string | number | undefined>(undefined)
+  const setNote = (message: string, kind: ToastKind = 'info') => {
+    if (message) noteToast.current = toast[kind](message, { id: noteToast.current, duration: kind === 'error' ? 8000 : 5000 })
+    else if (noteToast.current !== undefined) toast.dismiss(noteToast.current)
+  }
   const [busy, setBusy] = useState(false)
   const [environment, setEnvironment] = useState<ExecutionEnvironment>()
   const [platform, setPlatform] = useState<ExecutionPlatform | null>(null)
@@ -102,7 +107,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.appliedSeq - right.appliedSeq)
   const checkpoint = checkpoints.find(item => item.checkpointId === selectedCheckpoint) ?? checkpoints.at(-1)
   const persistAmount = async (value: string) => {
-    if (value.length > 16) { setNote('输入过长，请在当前保留内容中修正为 0 到 99 的整数。'); return }
+    if (value.length > 16) { setNote('输入过长，请在当前保留内容中修正为 0 到 99 的整数。', 'error'); return }
     setAmount(value); inputLoaded.current = true
     if (!declared.checkpointVersion) return
     try {
@@ -111,12 +116,12 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
           expectedContentId: bridge.read().contentId, contentId: crypto.randomUUID(), content: { pendingInput: value } } }))
       queuedInput.current = operation
       await workspace.trackInput(operation)
-    } catch { setNote('输入尚未可靠保存，内容仍保留；请先核对作品保存状态。') }
+    } catch { setNote('输入尚未可靠保存，内容仍保留；请先核对作品保存状态。', 'error') }
   }
   const refresh = async (requestId: string) => {
     setNote('')
     try { await sessions.refresh(requestId) }
-    catch { setNote('暂时无法核实会话状态，已保留最后一次确认的观察。') }
+    catch { setNote('暂时无法核实会话状态，已保留最后一次确认的观察。', 'error') }
   }
   const start = async () => {
     if (!canStart) return
@@ -134,14 +139,14 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       if (started.statusKnowledge !== 'confirmed' || isTerminalExecutionState(started.state)) throw new Error('unavailable')
       setNote('本机会话已启动。输入会真实推进进程内部状态。')
     } catch {
-      setNote('本机会话未能启动。请核对本机准备状态后重试；作品与已有记录仍保留。')
+      setNote('本机会话未能启动。请核对本机准备状态后重试；作品与已有记录仍保留。', 'error')
     } finally { setBusy(false) }
   }
   const input = async (query: ExecutionQuery) => {
     if (!canInput) return
     const value = Number(amount)
     if (!Number.isInteger(value) || value < 0 || value > 99) {
-      setNote('请输入 0 到 99 之间的整数。')
+      setNote('请输入 0 到 99 之间的整数。', 'error')
       return
     }
     setBusy(true); setNote('')
@@ -152,7 +157,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     } catch {
       // A lost reply is reconciled by querying the original reference before the student acts again.
       try { await sessions.refresh(query.requestId) } catch { /* Keep the last confirmed fact. */ }
-      setNote('这次输入没有确认。已先核对原会话；若已推进，请从当前观察继续，不要重复输入。')
+      setNote('这次输入没有确认。已先核对原会话；若已推进，请从当前观察继续，不要重复输入。', 'error')
     } finally { setBusy(false) }
   }
   const stop = async (query: ExecutionQuery) => {
@@ -164,14 +169,14 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       await sessions.stop(query.requestId, stopId)
       setNote('停止请求已受理；只有进程实际退出才会显示已停止。')
     } catch {
-      setNote('停止请求没有确认。原会话记录与已确认观察仍保留，可再次核对。')
+      setNote('停止请求没有确认。原会话记录与已确认观察仍保留，可再次核对。', 'error')
     } finally { setBusy(false) }
   }
   const control = async (effect: Exclude<SessionControlEffect, 'input'>) => {
     if (!record || !canControl) return
     const value = Number(amount)
     if (effect === 'step' && (amount === '' || !Number.isInteger(value) || value < 0 || value > 99)) {
-      setNote('单步需要一个 0 到 99 之间的整数输入。'); return
+      setNote('单步需要一个 0 到 99 之间的整数输入。', 'error'); return
     }
     setBusy(true); setNote('')
     try {
@@ -180,7 +185,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
         : effect === 'pause' ? '原会话已暂停，内部状态不会推进。'
           : effect === 'resume' ? '原会话已恢复推进，仍是同一个进程。'
             : effect === 'reset' ? '当前会话已复位，运行身份保持不变。' : '原会话已推进一步，仍保持暂停。')
-    } catch { setNote('操作尚未确认或当前状态不允许。已核对原会话，不会自动重做。') }
+    } catch { setNote('操作尚未确认或当前状态不允许。已核对原会话，不会自动重做。', 'error') }
     finally { setBusy(false) }
   }
   const restore = async (checkpoint: ExecutionCheckpoint) => {
@@ -199,7 +204,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       const restored = await sessions.start(action)
       if (restored.statusKnowledge !== 'confirmed' || isTerminalExecutionState(restored.state)) throw new Error('unavailable')
       setNote('已从检查点建立新的恢复会话，原会话历史保留；没有重放检查点后的操作。')
-    } catch { setNote('检查点不可恢复：请核对资源、访问资格和环境兼容性。当前输入、问题及原会话历史均保留。') }
+    } catch { setNote('检查点不可恢复：请核对资源、访问资格和环境兼容性。当前输入、问题及原会话历史均保留。', 'error') }
     finally { setBusy(false) }
   }
   return <section className="execution-panel native-session" aria-label={sessionTitle}
@@ -216,11 +221,10 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
     </p>}
     {plan && !decision?.location && <button type="button" className="ws-btn ghost"
       disabled={checking || busy || !authorized || readOnly} onClick={() => setCheckAttempt(value => value + 1)}>重新检查环境</button>}
-    {note && <p role="status" className="execution-note">{note}</p>}
     {pending.length > 0 && <div className="execution-warn" role="status">
       <p>还有操作尚未确认。返回时只查询原请求；继续核对会使用原身份，不会作用于其他恢复实例。</p>
       {pending.map(request => <button key={request.id} type="button" className="ws-btn ghost" disabled={!authorized || busy}
-        onClick={() => { setBusy(true); void sessions.retryPending(request.id).catch(() => setNote('原操作仍待核实，已有输入和观察保留。')).finally(() => setBusy(false)) }}>继续核对这次{request.kind === 'start' ? '启动' : request.kind === 'stop' ? '停止' : '操作'}</button>)}
+        onClick={() => { setBusy(true); void sessions.retryPending(request.id).catch(() => setNote('原操作仍待核实，已有输入和观察保留。', 'error')).finally(() => setBusy(false)) }}>继续核对这次{request.kind === 'start' ? '启动' : request.kind === 'stop' ? '停止' : '操作'}</button>)}
     </div>}
     {!record ? <div className="native-session-empty">
       <p className="execution-hint">{plan ? '会话按课程方案启动真实的原生进程并保留内部状态。' : '会话会启动一个真实的本机进程并保留内部状态。'}每次输入只在前一次确认后推进。</p>
@@ -286,7 +290,7 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
         {state.queries.filter(query => query.session?.instanceId === instanceId && query.requestId !== record.requestId).map(query =>
           <div key={query.requestId} className="execution-actions"><span>{stateLabel(query)}</span>
             <button type="button" className="ws-btn ghost" disabled={busy || !authorized}
-              onClick={() => { setNote(''); void sessions.select(query.requestId).catch(() => setNote('会话选择尚未保存，请重试。')) }}>查看这次会话</button>
+              onClick={() => { setNote(''); void sessions.select(query.requestId).catch(() => setNote('会话选择尚未保存，请重试。', 'error')) }}>查看这次会话</button>
             <button type="button" className="ws-btn ghost" disabled={busy || !authorized} onClick={() => void refresh(query.requestId)}>核对原会话</button>
             {!isTerminalExecutionState(query.state) && <button type="button" className="ws-btn ghost" disabled={busy || !authorized || query.stopRequested}
               onClick={() => void stop(query)}>停止原会话</button>}</div>)}

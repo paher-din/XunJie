@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import { AgentEmptyState, ChatComposerDock, PromptInput } from '@xunjie/ui/chat'
 import type { ModelSelectionController } from './ModelSelection'
 import { useAgentModelPicker, AgentModelFeedback } from './AgentModelPicker'
@@ -7,11 +8,12 @@ import './product-agent.css'
 
 /** The first message starts an activity; subsequent messages use its protected workspace. */
 export function ProductAgent({ question, onQuestion, onSend, pending, onRetry, onDiscard,
-  onSettings, selection, busy, readOnly, error }: {
+  onSettings, selection, busy, readOnly, error = '' }: {
   question: string; onQuestion(value: string): void; onSend(): void
   pending: PendingActivityRequest | null; onRetry(): void; onDiscard(): void
-  onSettings(): void; selection: ModelSelectionController; busy: boolean; readOnly: boolean; error: string
+  onSettings(): void; selection: ModelSelectionController; busy: boolean; readOnly: boolean; error?: string
 }) {
+  useToastFeedback(error)
   const anchor = useRef<HTMLDivElement>(null)
   const picker = useAgentModelPicker(selection)
 
@@ -25,7 +27,6 @@ export function ProductAgent({ question, onQuestion, onSend, pending, onRetry, o
         <button type="button" className="outline" disabled={busy} onClick={onRetry}>核对并继续原请求</button>
         <button type="button" className="outline" disabled={busy} onClick={onDiscard}>放弃这次请求</button>
       </div>}
-      {error && <p className="learning-error" role="alert">{error}</p>}
       {readOnly && <p role="status">当前学习空间只读，无法开始新对话。</p>}
       {!picker.models.length && !readOnly && !selection.stale && <p>尚未配置模型。<button type="button" className="product-agent-settings-link" onClick={onSettings}>打开设置</button></p>}
     </div>

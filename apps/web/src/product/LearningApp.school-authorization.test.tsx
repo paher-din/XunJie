@@ -4,6 +4,7 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { LearningApp } from './LearningApp'
+import { toast } from '@xunjie/ui/feedback'
 
 vi.mock('../lib/theme', () => ({ useTheme() {} }))
 vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))
@@ -21,7 +22,7 @@ let start: Promise<Response>
 const requestId = '00000000-0000-4000-8000-000000000009'
 const authorizationUrl = 'https://school.example.edu/?authorize=' + requestId
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
-const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
+const settle = async () => { for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setTimeout(resolve, 0)) }
 const pending = () => response({ requestId, connectionId: requestId, schoolEndpoint: 'https://school.example.edu', authorizationUrl })
 
 beforeEach(() => {
@@ -47,6 +48,7 @@ beforeEach(() => {
   }))
 })
 afterEach(async () => {
+  toast.dismiss()
   await act(async () => { root.unmount(); await settle() })
   host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals()
 })
@@ -62,6 +64,7 @@ async function submitSchool(schoolEndpoint = 'https://school.example.edu') {
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
   await act(async () => { input.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
+  await act(async () => { await settle() })
 }
 
 it.each([
@@ -75,7 +78,7 @@ it.each([
   await submitSchool(schoolEndpoint)
   expect(window.open).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalledWith('/api/learning/client/start', expect.anything())
-  expect(host.textContent).toContain('学校入口')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('学校入口')
   expect(host.querySelector<HTMLInputElement>('input[type="url"]')?.value).toBe(schoolEndpoint)
 })
 
@@ -83,7 +86,18 @@ it('rejects this product origin as a school even when the URL has no query', asy
   await submitSchool(location.origin)
   expect(window.open).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalledWith('/api/learning/client/start', expect.anything())
-  expect(host.textContent).toContain('学校入口')
+  expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('学校入口')
+})
+
+it('shows the validation error again when the same address is submitted after dismissing it', async () => {
+  await submitSchool('https://school.example.edu/login')
+  await act(async () => { toast.dismiss(); await settle() })
+  expect(toast.getToasts()).toHaveLength(0)
+  const form = host.querySelector('form')!
+  await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
+  await act(async () => { await settle() })
+  expect(toast.getToasts().some(item => 'type' in item && item.type === 'error')).toBe(true)
+  expect(window.open).not.toHaveBeenCalled()
 })
 
 it('keeps authentication available when the start response contains a reserved connection ID', async () => {

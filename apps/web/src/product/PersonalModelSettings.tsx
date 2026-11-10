@@ -3,6 +3,7 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCredentialValueSchema, modelDirectorySchema, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelProviderDialog } from '../components/settings/ModelProviderDialog'
+import { toast } from '@xunjie/ui/feedback'
 import { z } from 'zod'
 import { type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
@@ -83,7 +84,11 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     if (!live.current) return accepted
     setAttempts(previous => [accepted, ...previous.filter(item => item.attemptId !== attemptId)])
     const result = modelAttemptSchema.parse(await request('checks/' + attemptId + '/dispatch', {}))
-    if (live.current) setAttempts(previous => [result, ...previous.filter(item => item.attemptId !== attemptId)])
+    if (live.current) {
+      setAttempts(previous => [result, ...previous.filter(item => item.attemptId !== attemptId)])
+      if (result.state === 'completed') toast.success('连接检查已完成')
+      else if (result.state === 'failed') toast.error('连接检查失败，请核对配置和检查记录。')
+    }
     return result
   }
   const act = async (key: string, label: string, task: () => Promise<unknown>) => {
@@ -142,7 +147,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     setToggleState(previous => ({ ...previous, [id]: 'saving' }))
     try {
       await save(input); togglePending.current.delete(id)
-      if (live.current) { setToggleState(previous => { const next = { ...previous }; delete next[id]; return next }); setActionError(null) }
+      if (live.current) { setToggleState(previous => { const next = { ...previous }; delete next[id]; return next }); setActionError(null); toast.success('开关已保存') }
     } catch (error) {
       const code = error instanceof Error && 'code' in error ? error.code : undefined
       if (code === 'conflict' || !wasUnknown && (code === 'invalid' || code === 'forbidden')) {
@@ -164,7 +169,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} /></div>
       <div className="product-personal-model">
-      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={[loadError, selection.error, actionError?.message].filter(Boolean).join('；')}
+      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={actionError?.message ?? ''}
+      recoveryError={[loadError, selection.error].filter(Boolean).join('；')}
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
       schoolModels={selection.selection?.options.filter(choice => choice.kind === 'school') ?? []}
       onSchoolCheck={choice => void act('school-check', '检查学校模型', () => check({ school: { connectionId: choice.connection.connectionId, version: choice.connection.version } }))}

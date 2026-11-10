@@ -4,6 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { getModelPreset, type ModelDirectory, type ModelDirectoryInput, type ModelProvider, type SaveModelProvider } from '@xunjie/contracts/model-connections'
 import { ModelProviderDialog } from './ModelProviderDialog'
+import { Toaster, toast } from '@xunjie/ui/feedback'
 
 let root: Root
 const provider = (): ModelProvider => {
@@ -26,13 +27,15 @@ async function click(label: string) {
   const button = [...document.querySelectorAll('button')].find(item => item.textContent?.trim() === label)!
   expect(button).toBeDefined()
   await act(async () => { button.click() })
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
 }
 type Props = Parameters<typeof ModelProviderDialog>[0]
 async function draw(saved = provider(), onProfiles: Props['onProfiles'] = vi.fn(async () => ({ profiles: [], stale: true })), overrides: Partial<Props> = {}) {
   const onSave = vi.fn(async (_input: SaveModelProvider) => saved), onClose = vi.fn()
-  await act(async () => root.render(<ModelProviderDialog provider={saved} attempts={[]} onSave={onSave} onClose={onClose}
+  await act(async () => root.render(<><Toaster /><ModelProviderDialog provider={saved} attempts={[]} onSave={onSave} onClose={onClose}
     onRead={vi.fn(async () => saved)} onReadCredential={vi.fn(async () => '')} onProfiles={onProfiles}
-    onCheck={vi.fn()} onCancel={vi.fn()} {...overrides} />))
+    onCheck={vi.fn()} onCancel={vi.fn()} {...overrides} /></>))
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
   return { onSave, onClose, onProfiles }
 }
 
@@ -51,6 +54,7 @@ async function selectSupplier(label: string) {
     expect(option, label).toBeDefined()
     option!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option!.click()
   })
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
 }
 const cachedDirectory = (input: ModelDirectoryInput): ModelDirectory => ({
   models: getModelPreset(input.presetId ?? 'custom', input.variantId)?.models ?? [],
@@ -151,12 +155,12 @@ it('opening the model list keeps a previous failure visible while its retry is p
   })
   await draw(provider(), undefined, { onDirectory })
   await selectSupplier('DeepSeek 官方')
-  const previous = document.querySelector('[role="alert"]')?.textContent
+  const previous = document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent
   expect(previous).toContain('当前空间无法读取模型资料')
   retry = true
   try {
     await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="展开模型 ID列表"]')!.click())
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe(previous)
+    expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toBe(previous)
   } finally {
     await act(async () => release(cachedDirectory({ presetId: 'deepseek' })))
   }
@@ -177,15 +181,16 @@ it('manual refresh bypasses the automatic interval, merges repeated clicks and e
   const retryAt = new Date(Date.now() + 150).toISOString()
   await act(async () => release({ ...cachedDirectory({ presetId: 'deepseek' }),
     catalogue: { status: 'failed', error: 'rate-limited', retryAt }, supplier: { status: 'failed', error: 'rate-limited', retryAt } }))
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('供应商暂时限流')
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('后重试')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('供应商暂时限流')
+  expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('后重试')
   expect(input('模型 ID的上下文窗口').value).toBe('512k')
   expect([...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === '稍后重试')?.disabled).toBe(true)
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
   expect([...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === '更新模型资料')?.disabled).toBe(false)
 })
 afterEach(async () => {
-  await act(async () => root.unmount())
+  await act(async () => { toast.dismiss(); root.unmount() })
   document.body.innerHTML = ''; vi.unstubAllGlobals()
 })
 
@@ -221,6 +226,12 @@ it('retains invalid text, associates inline errors and blocks saving until corre
     expect(input(name).getAttribute('aria-invalid')).toBe('true')
     expect(document.getElementById(input(name).getAttribute('aria-describedby')!)?.textContent).toContain('K / M')
   }
+  expect(input('模型 ID的上下文窗口').value).toBe('256KB')
+  expect(toast.getToasts().some(item => 'type' in item && item.type === 'error')).toBe(true)
+  await act(async () => { toast.dismiss() })
+  await click('保存')
+  expect(toast.getToasts().some(item => 'type' in item && item.type === 'error')).toBe(true)
+  expect(onSave).not.toHaveBeenCalled()
   expect(input('模型 ID的上下文窗口').value).toBe('256KB')
   await type('模型 ID的上下文窗口', '256k')
   await type('模型 ID的最大输出 token', '64K')

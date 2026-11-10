@@ -1,7 +1,8 @@
 import { componentStateName, type ComponentBinding } from '@xunjie/contracts/components'
 import { isTerminalExecutionState } from '@xunjie/contracts/execution'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import type { ExecutionRecord } from '../tool-execution/ledger'
 import { stateLabel } from '../tool-execution/ledger'
 import { observeExecutionDevice } from '../tool-execution/device'
@@ -23,7 +24,6 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
   const { workspace, execution } = useActivitySession()
   const state = useSyncExternalStore(execution.subscribe, execution.snapshot)
   const work = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
-  const [note, setNote] = useState('')
   const instanceId = `${activity.activityId}:${binding.key}`
   const currentFile = work.files.find(file => file.name === componentStateName(binding.key))
   const canRead = authorized && !workspace.accessDenied()
@@ -34,10 +34,9 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
   const running = records.some(record => !isTerminalExecutionState(record.query.state))
   const canRun = authorized && !workspace.isReadOnly() && !workspace.accessDenied() && !work.conflict && work.ready && !running
   const rerun = async () => {
-    setNote('')
     try {
       // Only a format 1 aggregate component re-runs from this panel; other families own their form.
-      if (binding.definition.manifest.formatVersion !== 1) { setNote('这类组件从它自己的实验区发起运行。'); return }
+      if (binding.definition.manifest.formatVersion !== 1) { toast.info('这类组件从它自己的实验区发起运行。'); return }
       const current = readComponentState(workspace, binding, instanceId)
       const action = await executionAction({ workspace, binding, instanceId,
         receiver: { receiverId: execution.receiver.identity.receiverId, location: 'local', kind: 'execution' },
@@ -47,9 +46,9 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
         placement: activity.course?.executionPlan ? { plan: activity.course.executionPlan,
           device: observeExecutionDevice(), remoteAvailable: false } : undefined })
       await execution.submit(action)
-      setNote('已按当前表格与参数提交一次计算。')
+      toast.success('已按当前表格与参数提交一次计算。')
     } catch (error) {
-      setNote(error instanceof Error && error.message === 'conflict'
+      toast.error(error instanceof Error && error.message === 'conflict'
         ? '表格在提交前发生了变化，本次没有提交。请核对当前表格后重试。'
         : '当前不能发起计算：请核对工作区是否可写、组件是否仍可用。')
     }
@@ -57,25 +56,22 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
   // One identity per record: pressing stop twice is the same stop, not a second one.
   const stopIds = useRef(new Map<string, string>())
   const stop = async (requestId: string) => {
-    setNote('')
     const stopId = stopIds.current.get(requestId) ?? crypto.randomUUID()
     stopIds.current.set(requestId, stopId)
     try { await execution.stop(requestId, stopId) }
-    catch { setNote('停止请求没有确认。原执行记录仍保留，可再次查询，不要重复发起新运行。') }
+    catch { toast.error('停止请求没有确认。原执行记录仍保留，可再次查询，不要重复发起新运行。') }
   }
   const query = async (requestId: string) => {
-    setNote('')
     try { await execution.query(requestId) }
-    catch { setNote('执行状态暂时无法核实，已保留原记录。') }
+    catch { toast.error('执行状态暂时无法核实，已保留原记录。') }
   }
   const download = async (requestId: string) => {
-    setNote('')
     if (!access.current) return
     let artifact
     try { artifact = await execution.artifact(requestId) }
-    catch { setNote('当前空间资格已失效，不能读取结果。'); return }
+    catch { toast.error('当前空间资格已失效，不能读取结果。'); return }
     if (!access.current) return
-    if (!artifact) { setNote('本机没有该运行的结果文件：结果只在发起计算的浏览器中保存。'); return }
+    if (!artifact) { toast.error('本机没有该运行的结果文件：结果只在发起计算的浏览器中保存。'); return }
     const url = URL.createObjectURL(new Blob([artifact.text], { type: artifact.mediaType }))
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = artifact.name; anchor.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
@@ -87,7 +83,6 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
       {supported && <button type="button" className="ws-btn ghost" disabled={!canRun}
         onClick={() => void rerun()}>用当前表格重新运行</button>}
     </header>
-    {note && <p role="status" className="execution-note">{note}</p>}
     {state.error && <p role="alert" className="execution-warn">{state.error}</p>}
     {!state.ready ? <p className="execution-hint">正在读取本机执行记录…</p>
       : records.length === 0 ? <p className="execution-hint">{supported

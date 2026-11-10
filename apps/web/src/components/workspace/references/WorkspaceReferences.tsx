@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useToastFeedback } from '@xunjie/ui/feedback'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
 import type { QuestionSkill } from '@xunjie/contracts/question-drafts'
 import { submissionReference, referenceKey, snapshotReference, type ReferenceSelection, type ReferenceSource,
@@ -256,6 +257,7 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
   const input = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
   const questionId = useId()
+  useToastFeedback(viewActive && !busy ? notice : '', 'info')
   useLayoutEffect(() => {
     if (!open || !viewActive || !input.current || !draftReady) return
     const element = input.current, saved = composerView(workspaceKey)
@@ -330,6 +332,5 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
         <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>
           {sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable ? busy ? '发送中…' : submitLabel ?? '发送问题' : '发送问题（尚未接入）'}</button></div>
     </form>
-    <p role="status" className="wr-notice">{notice}</p>
   </section>
 }

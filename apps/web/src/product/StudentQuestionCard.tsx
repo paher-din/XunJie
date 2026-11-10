@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { toast } from '@xunjie/ui/feedback'
 import { teachingStudentResponseInputSchema, teachingStudentResponseReceiptSchema } from '@xunjie/contracts/teaching-agent'
 import type { TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
 import { canonicalValue } from '@xunjie/contracts/execution'
@@ -31,7 +32,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
   writable.current = !readOnly
   const initial = useCallback((): LocalStudentResponse => ({ key, scope, presentationId: crypto.randomUUID(),
     mode: question.options.length ? 'choice' : 'text', optionId: '', text: '' }), [key, scope, question.options.length])
-  const deliver = useCallback(async (saved: LocalStudentResponse) => {
+  const deliver = useCallback(async (saved: LocalStudentResponse, notify = false) => {
     if (!saved.input || !alive.current || !writable.current) return
     setBusy(true)
     try {
@@ -51,9 +52,16 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
         if (!current || current.input?.requestId !== saved.input!.requestId) throw new Error('原回应需要重新核对。')
         return { ...current, receipt }
       })
-      if (alive.current) { setRecord(updated); setError(''); await onConfirmed() }
+      if (alive.current) {
+        setRecord(updated); setError('')
+        if (notify && receipt.status === 'rejected') toast.warning(reasons[receipt.reason] ?? '这份回应未用于当前问题，输入仍保留。')
+        await onConfirmed()
+      }
     } catch {
-      if (alive.current) setError('回应结果尚未确认，输入已保留。请核对原回应；不会另建一次提交。')
+      if (alive.current) {
+        const failure = '回应结果尚未确认，输入已保留。请核对原回应；不会另建一次提交。'
+        setError(failure); if (notify) toast.error(failure)
+      }
     } finally { if (alive.current) setBusy(false) }
   }, [key, activityId, question.questionId, request, onConfirmed])
   useEffect(() => {
@@ -117,8 +125,11 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
       })
       if (!alive.current) return
       setRecord(saved)
-      await deliver(saved)
-    } catch { if (alive.current) setError('回应尚未在本机可靠保留，输入仍在这里，请复制或重试。') }
+      await deliver(saved, true)
+    } catch { if (alive.current) {
+      const failure = '回应尚未在本机可靠保留，输入仍在这里，请复制或重试。'
+      setError(failure); toast.error(failure)
+    } }
     finally { if (alive.current) setBusy(false) }
   }
   const pending = !!record?.input && !record.receipt
@@ -148,11 +159,11 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
       {pending && !readOnly && <p className="detail">正在核对原回应，输入已保留。</p>}
     </form>}
     <p className="student-question-status" role="status">{status}</p>
-    {pending && !readOnly && <button type="button" className="outline" disabled={busy} onClick={() => void deliver(record!)}>核对原回应</button>}
+    {pending && !readOnly && <button type="button" className="outline" disabled={busy} onClick={() => void deliver(record!, true)}>核对原回应</button>}
     {record?.receipt?.status === 'rejected' && <p className="detail">{reasons[record.receipt.reason] ?? '这份回应未用于当前问题，输入仍保留。'}</p>}
     {(error || protection === 'failed') && <p className="learning-error" role="alert">{error || '输入尚未在本机可靠保留，请复制后重试。'}</p>}
     {record && (record.text || record.optionId) && <button type="button" className="student-response-copy" onClick={() => {
-      void navigator.clipboard.writeText(record.text || question.options.find(option => option.id === record.optionId)?.label || '').catch(() => setError('暂时无法复制，请直接选中输入文字保存。'))
+      void navigator.clipboard.writeText(record.text || question.options.find(option => option.id === record.optionId)?.label || '').catch(() => toast.error('暂时无法复制，请直接选中输入文字保存。'))
     }}>复制保留的回应</button>}
     {record && (record.text || record.optionId) && question.state === 'superseded' && !readOnly && <button type="button" className="outline" onClick={() => {
       const text = record.text || question.options.find(option => option.id === record.optionId)?.label || ''

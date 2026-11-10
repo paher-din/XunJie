@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react'
 import { XunjieLogo } from '../brand/XunjieLogo'
+import { useToastFeedback } from '../feedback'
 
 export type EntryRole = 'student' | 'teacher'
 export interface SessionLoginProps {
@@ -22,6 +23,7 @@ export interface SessionLoginProps {
 /** 登录界面只呈现状态并传递输入；认证和会话由宿主处理。 */
 export function SessionLogin({ entryRole, loginName, password, busy, logoutFailed, notice, accountRef, previewLink,
   onRoleChange, onLoginNameChange, onPasswordChange, onSubmit, onRetryLogout, onRestoreSession }: SessionLoginProps) {
+  useToastFeedback(notice, 'info')
   return <main className="session-entry">
     <section className="session-card" aria-labelledby="session-title">
       <XunjieLogo format="horizontal" label="循阶" />
@@ -41,7 +43,7 @@ export function SessionLogin({ entryRole, loginName, password, busy, logoutFaile
         <input id="session-password" name="password" type="password" autoComplete="current-password"
           required maxLength={1024} value={password} disabled={busy || logoutFailed}
           onChange={event => onPasswordChange(event.target.value)} />
-        <div role="status" aria-live="polite" className="session-notice">{notice || (busy ? '正在核对登录状态…' : '')}</div>
+        {busy && <div role="status" className="session-notice">正在核对登录状态…</div>}
         <button className="primary" type="submit" disabled={busy || logoutFailed}>{busy ? '请稍候…' : '登录'}</button>
       </form>
       {logoutFailed

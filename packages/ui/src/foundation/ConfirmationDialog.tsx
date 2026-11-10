@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from './Button'
 import { DestructiveButton } from './DestructiveButton'
+import { useToastFeedback } from '../feedback'
 import './confirmation-dialog.css'
 
 export interface ConfirmationDialogProps {
@@ -22,6 +23,7 @@ export function ConfirmationDialog({ open, title, description, confirmLabel, pen
   onClose, onConfirm, onReturnFocus }: ConfirmationDialogProps) {
   const cancel = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  useToastFeedback(open ? error : '')
   return <Dialog.Root open={open} onOpenChange={next => { if (!next && !busy) onClose() }}>
     <Dialog.Portal>
       <Dialog.Overlay className="xj-confirm-overlay" />
@@ -39,7 +41,6 @@ export function ConfirmationDialog({ open, title, description, confirmLabel, pen
         onPointerDownOutside={event => { if (busy) event.preventDefault() }}>
         <Dialog.Title className="xj-confirm-title">{title}</Dialog.Title>
         <Dialog.Description className="xj-confirm-description">{description}</Dialog.Description>
-        {error && <p className="xj-confirm-error" role="alert">{error}</p>}
         <div className="xj-confirm-actions">
           <Dialog.Close asChild><Button ref={cancel} type="button" variant="outline" disabled={busy}>取消</Button></Dialog.Close>
           <DestructiveButton label={busy ? pendingLabel : confirmLabel} disabled={busy} onClick={onConfirm} />

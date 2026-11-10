@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import 'fake-indexeddb/auto'
 import { createRequire } from 'node:module'
-import { act, createElement } from 'react'
+import { act, createElement, Fragment } from 'react'
 import type { Root } from 'react-dom/client'
 import type { ModelAttempt, ModelConnection, ModelProvider, SaveModelProvider } from '@xunjie/contracts/model-connections'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
@@ -13,6 +13,7 @@ const { JSDOM } = createRequire(import.meta.url)('jsdom')
 let dom: ReturnType<typeof JSDOM>, root: Root
 let PersonalModelSettings: typeof import('./PersonalModelSettings').PersonalModelSettings
 let createRoot: typeof import('react-dom/client').createRoot
+let feedback: typeof import('@xunjie/ui/feedback')
 const identity: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '测试用户' }
 const initial: ModelConnection = { connectionId: crypto.randomUUID(), name: '原配置', baseUrl: 'https://synthetic.invalid/v1',
   protocol: 'chat-completions', path: '/chat/completions', modelId: 'synthetic', dialect: 'standard', parameterMode: 'plain', enabled: true,
@@ -33,13 +34,16 @@ const selection: ModelSelectionController = { selection: { version: 0, selected:
   reload: vi.fn(async () => {}), choose: vi.fn(async () => {}) }
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
-const alerts = () => [...document.querySelectorAll('[role="alert"]')].map(element => element.textContent).join('\n')
+const alerts = () => [...document.querySelectorAll('[data-sonner-toast][data-type="error"], [role="alert"]')].map(element => element.textContent).join('\n')
 function button(label: string, scope: ParentNode = document) {
   const element = [...scope.querySelectorAll('button')].find(element => element.textContent?.trim() === label)
   expect(element, `button ${label}`).toBeDefined()
   return element!
 }
-const click = async (label: string, scope?: ParentNode) => { await act(async () => { button(label, scope).click(); await settle() }) }
+const click = async (label: string, scope?: ParentNode) => {
+  await act(async () => { button(label, scope).click(); await settle() })
+  await act(async () => { await settle() })
+}
 const field = (label: string) => document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!
 async function type(label: string, value: string) {
   await act(async () => {
@@ -47,9 +51,13 @@ async function type(label: string, value: string) {
     field(label).dispatchEvent(new dom.window.Event('input', { bubbles: true })); await settle()
   })
 }
-const poll = async () => { await act(async () => { vi.advanceTimersByTime(1000); await settle() }) }
+const poll = async () => {
+  await act(async () => { vi.advanceTimersByTime(1000); await settle() })
+  await act(async () => { await settle() })
+}
 async function mount(subject = identity) {
-  await act(async () => { root.render(createElement(PersonalModelSettings, { identity: subject, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })); await settle() })
+  await act(async () => { root.render(createElement(Fragment, null, createElement(feedback.Toaster), createElement(PersonalModelSettings, { identity: subject, spaceKey: 'personal', namespace: 'test', onBack() {}, selection }))); await settle() })
+  await act(async () => { await settle() })
 }
 
 it('lists the school as a supplier and checks its model without selecting or granting it', async () => {
@@ -64,6 +72,7 @@ it('lists the school as a supplier and checks its model without selecting or gra
     expect(card.querySelector('[role="switch"]')).toBeNull()
     expect(document.querySelector('[aria-label="当前空间模型"]')).toBeNull()
     await click('连接检查', card)
+    expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('检查学校模型：检查频次或并发已达上限')
     const check = vi.mocked(fetch).mock.calls.find(([url, init]) => String(url).endsWith('/models/checks') && init?.method === 'POST')!
     expect(JSON.parse(check[1]!.body as string).source).toEqual({ school: { connectionId: initial.connectionId, version: initial.version } })
     expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/models/grants'))).toBe(false)
@@ -99,7 +108,11 @@ beforeAll(async () => {
   vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window))
   vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window))
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  dom.window.matchMedia ??= vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} })
+  dom.window.HTMLElement.prototype.scrollIntoView ??= vi.fn()
   ;({ createRoot } = await import('react-dom/client'))
+  feedback = await import('@xunjie/ui/feedback')
   ;({ PersonalModelSettings } = await import('./PersonalModelSettings'))
 })
 beforeEach(async () => {
@@ -157,7 +170,7 @@ beforeEach(async () => {
   await mount()
 })
 afterEach(async () => {
-  await act(async () => { root.unmount(); await settle() })
+  await act(async () => { feedback.toast.dismiss(); root.unmount(); await settle() })
   document.body.innerHTML = ''; vi.useRealTimers()
 })
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
@@ -270,14 +283,19 @@ describe('personal model settings recovery through real React controls', () => {
   })
 
   it('preserves an action error through late reads, two polls and explicit reads; clears it on successful related retry', async () => {
+    const notify = vi.spyOn(feedback.toast, 'error')
     let release!: () => void; holdRead = new Promise(resolve => { release = resolve })
     await poll(); await click('连接检查')
     expect(alerts()).toContain('检查频次或并发已达上限')
     await act(async () => { release(); await settle() }); holdRead = undefined
     await poll(); await poll(); await click('重新读取配置')
     expect(alerts()).toContain('检查频次或并发已达上限')
+    expect(notify).toHaveBeenCalledTimes(1)
     rejectCheck = false; await click('连接检查')
-    expect(alerts()).not.toContain('检查频次或并发已达上限')
+    expect(notify).toHaveBeenCalledTimes(1)
+    rejectCheck = true; await click('连接检查')
+    expect(notify).toHaveBeenCalledTimes(2)
+    notify.mockRestore()
   })
 
   it('publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward', async () => {
@@ -306,7 +324,7 @@ describe('personal model settings recovery through real React controls', () => {
     await click('连接检查'); readFailure = true; await poll()
     expect(alerts()).toContain('连接或相应适配器不可用')
     readFailure = false; await poll()
-    expect(alerts()).not.toContain('连接或相应适配器不可用')
+    expect(document.querySelector('[aria-label="个人连接配置"]')?.textContent).not.toContain('连接或相应适配器不可用')
     expect(alerts()).toContain('检查频次或并发已达上限')
   })
 
@@ -316,7 +334,8 @@ describe('personal model settings recovery through real React controls', () => {
     server = { ...server, name: '新主体配置' }
     await mount({ ...identity, principalId: crypto.randomUUID() })
     await act(async () => { release(); await settle() }); holdRead = undefined
-    expect(alerts()).toBe(''); expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.querySelector('[aria-label="个人连接配置"]')?.textContent).not.toContain('检查频次或并发已达上限')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(document.body.textContent).toContain('新主体配置')
     expect(document.body.textContent).not.toContain('旧主体草稿')
   })

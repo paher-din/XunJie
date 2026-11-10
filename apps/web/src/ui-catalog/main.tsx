@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import '@xunjie/ui/styles.css'
 import { Icon, IconText } from '@xunjie/ui/icons'
+import { Toaster } from '@xunjie/ui/feedback'
 import { catalog, findSelection, selectionPath, type CatalogSelection } from './registry'
 import type { CatalogEntry } from './types'
 import './catalog.css'
@@ -37,6 +38,7 @@ function Preview({ selection }: { selection: CatalogSelection }) {
   const Component = selection.state.component
   return <div className="catalog-preview-root" data-catalog-preview={`${selection.group.id}/${selection.entry.id}/${selection.state.id}`}>
     <div className="catalog-preview-stage"><Component /></div>
+    {selection.entry.name !== 'Toaster' && <Toaster />}
   </div>
 }
 
