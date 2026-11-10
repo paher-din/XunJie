@@ -38,6 +38,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   const fileInput = useRef<HTMLInputElement>(null), directoryInput = useRef<HTMLInputElement>(null)
   const importId = useId(), sourceInput = useRef<HTMLInputElement>(null), githubInput = useRef<HTMLInputElement>(null)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
+  useEffect(() => { if (importMenuOpen && githubOpen) githubInput.current?.focus() }, [importMenuOpen, githubOpen])
   const query = search.trim().toLocaleLowerCase()
   const visibleSkills = catalog.data?.skills.filter(skill => !query || [skill.name, skill.description, skill.source]
     .some(value => value.toLocaleLowerCase().includes(query))) ?? []
@@ -152,7 +153,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
           { id: 'local', label: '本地导入', icon: <Icon name="folder-with-files" size={16} />,
             onSelect: () => { setUpdating(null); setImportOpen(false); setGithubOpen(false); fileInput.current?.click() } },
           { id: 'github', label: 'GitHub 导入', icon: <Icon name="brand-github" size={16} />, keepOpen: true,
-            onSelect: () => { setUpdating(null); setImportOpen(false); setGithubOpen(true); requestAnimationFrame(() => githubInput.current?.focus()) } },
+            onSelect: () => { setUpdating(null); setImportOpen(false); setGithubOpen(true) } },
         ]} />
       </div>
       {!githubOpen && localFiles.length > 0 && <div className="skill-local-import">

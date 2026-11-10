@@ -25,6 +25,8 @@ const render = async () => {
 afterEach(() => { toast.dismiss(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 it('retains the GitHub form through exit and can reopen before exit finishes without losing the address', async () => {
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback))
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ skills: [], selections: [] })))
   const { host, root } = await render()
   try {
@@ -34,6 +36,7 @@ it('retains the GitHub form through exit and can reopen before exit finishes wit
     expect(host.querySelector('[role="menu"]')).toBeNull()
     const input = dialog.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!
     await act(async () => {
+      input.focus()
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'https://github.com/example/skills')
       input.dispatchEvent(new Event('input', { bubbles: true })); await settle()
     })
@@ -44,6 +47,8 @@ it('retains the GitHub form through exit and can reopen before exit finishes wit
     expect(dialog.hasAttribute('inert')).toBe(true)
     const trigger = host.querySelector<HTMLButtonElement>('[aria-haspopup]')!
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(trigger)
+    await act(async () => { for (const frame of frames.splice(0)) frame(performance.now()); await settle() })
     expect(document.activeElement).toBe(trigger)
     await click(host, '导入 Skill'); await click(host, 'GitHub 导入')
     expect(host.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!.value).toBe('https://github.com/example/skills')
