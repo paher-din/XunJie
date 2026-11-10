@@ -70,6 +70,7 @@ interface StoredGrant extends ConnectionAuthorization {
   protocolVersion: number;
   generation?: number;
   installationGeneration?: number;
+  revoked?: boolean;
 }
 
 interface StoredExecution extends ProcessOwner {
@@ -287,15 +288,17 @@ export function createConnectionAuthority(options: {
     }
   }
 
-  async function authorize(input: ConnectionAuthorization): Promise<ConnectionGrant> {
+  async function authorize(input: ConnectionAuthorization, prepared?: { grantId: string; token: string }): Promise<ConnectionGrant> {
     input = structuredClone(input);
     if (!uuid.test(input.sourceEnvironmentId) || !uuid.test(input.sourceServiceId)
       || typeof input.sourceInstallationId !== 'string' || !uuid.test(input.sourceInstallationId)
       || !strings(input.capabilities) || input.capabilities.some((capability) => !handlers.has(capability))) {
       throw new RuntimeConnectionError('invalid_authorization');
     }
-    const grantId = randomUUID();
-    const token = `${grantId}.${randomBytes(32).toString('hex')}`;
+    const grantId = prepared?.grantId ?? randomUUID();
+    const token = prepared?.token ?? `${grantId}.${randomBytes(32).toString('hex')}`;
+    if (!uuid.test(grantId) || !token.startsWith(grantId+'.') || !/^[0-9a-f]{64}$/.test(token.slice(grantId.length+1)))
+      throw new RuntimeConnectionError('invalid_authorization');
     const grant: StoredGrant = {
       formatVersion: 1, grantId, tokenHash: digest(token),
       sourceEnvironmentId: input.sourceEnvironmentId,
@@ -308,7 +311,9 @@ export function createConnectionAuthority(options: {
     };
     await prepareStorage(input);
     const release = await acquireLock(options.root, sourceScope(input));
+    let releaseGrant: (() => Promise<void>) | undefined;
     try {
+      releaseGrant = await acquireLock(options.root, 'connection-grant-'+service.environmentId+'-'+service.serviceId+'-'+grantId);
       grant.generation = await generation(input);
       grant.installationGeneration = await installationGeneration(input, grant.sourceInstallationId);
       // Installation-scoped fencing retires the instance permanently. Minting a token at its
@@ -316,8 +321,13 @@ export function createConnectionAuthority(options: {
       // A successor uses a new installation ID; scope-wide credential rotation is separate.
       if (grant.installationGeneration > 0 || await isInstallationRetired(options.root, grant.sourceInstallationId))
         throw new RuntimeConnectionError('source_installation_retired');
-      await atomicJson(grantPath(grantId), grant);
-    } finally { await release(); }
+      let previous: StoredGrant | undefined;
+      try { previous = JSON.parse(await readFile(grantPath(grantId), 'utf8')) as StoredGrant; }
+      catch (error) { if (errorCode(error) !== 'ENOENT') throw error; }
+      if (previous) {
+        if (previous.revoked || JSON.stringify(previous) !== JSON.stringify(grant)) throw new RuntimeConnectionError('unauthorized');
+      } else await atomicJson(grantPath(grantId), grant);
+    } finally { await releaseGrant?.(); await release(); }
     return {
       grantId, token, sourceEnvironmentId: grant.sourceEnvironmentId,
       sourceServiceId: grant.sourceServiceId,
@@ -329,8 +339,17 @@ export function createConnectionAuthority(options: {
   async function revoke(grantId: string): Promise<boolean> {
     if (!uuid.test(grantId)) throw new RuntimeConnectionError('invalid_grant_id');
     try {
-      await unlink(grantPath(grantId));
-      return true;
+      const grant = JSON.parse(await readFile(grantPath(grantId), 'utf8')) as StoredGrant;
+      const release = await acquireLock(options.root, sourceScope(grant));
+      let releaseGrant: (() => Promise<void>) | undefined;
+      try {
+        releaseGrant = await acquireLock(options.root, 'connection-grant-'+service.environmentId+'-'+service.serviceId+'-'+grantId);
+        const current = JSON.parse(await readFile(grantPath(grantId), 'utf8')) as StoredGrant;
+        if (current.revoked) return false;
+        // Retain the tombstone so an interrupted, idempotent setup cannot recreate a revoked grant.
+        await atomicJson(grantPath(grantId), { ...current, revoked: true });
+        return true;
+      } finally { await releaseGrant?.(); await release(); }
     } catch (error) {
       if (errorCode(error) === 'ENOENT') return false;
       throw new RuntimeConnectionError('grant_storage_unavailable');
@@ -346,7 +365,7 @@ export function createConnectionAuthority(options: {
       if (errorCode(error) === 'ENOENT' || error instanceof SyntaxError) return undefined;
       throw new RuntimeConnectionError('grant_storage_unavailable');
     }
-    if (!record(value) || value.formatVersion !== 1 || value.grantId !== grantId
+    if (!record(value) || value.revoked === true || value.formatVersion !== 1 || value.grantId !== grantId
       || typeof value.tokenHash !== 'string' || !/^[0-9a-f]{64}$/.test(value.tokenHash)
       || !strings(value.capabilities) || typeof value.sourceEnvironmentId !== 'string'
       || typeof value.sourceServiceId !== 'string'

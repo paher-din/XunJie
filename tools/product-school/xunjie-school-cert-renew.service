@@ -1,0 +1,11 @@
+[Unit]
+Description=Check renewal of XunJie school IP certificate
+After=nginx.service
+Requires=nginx.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/flock -n /run/lock/xunjie-school-certbot.lock __CERTBOT59__ renew --cert-name __PUBLIC_IPV4__ --webroot --webroot-path /var/www/xunjie-school-acme --preferred-profile shortlived --no-random-sleep-on-renew --non-interactive --deploy-hook /usr/local/lib/xunjie/product-school/cert-deploy.py
+TimeoutStartSec=30min
+UMask=0077

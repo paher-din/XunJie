@@ -24,6 +24,7 @@ import type { RuntimeResources } from './postgres.js';
 import { RecoveryError } from './recovery.js';
 import type { OwnerBoundaryMaterial, RecoveryOwner } from './recovery-types.js';
 import { createSchoolClient } from './school-client.js';
+import { createSchoolDeviceSetup, authorizeSchoolDeviceGrant } from './school-device-setup.js';
 import { verifyWindowsSessionHelper } from './prerequisites.js';
 import { createNativeChannelClients } from './native-channel-clients.js';
 import { isInstallationRetired } from './retired-installations.js';
@@ -665,6 +666,7 @@ export async function createProductLearningApplication(context: {
         const guard = async () => {
           try { await source.assertAuthorized?.(); }
           catch (error) { throw new StorageError(error instanceof RuntimeConnectionError && error.code === 'unauthorized' ? 'forbidden' : 'unavailable'); }
+          await authorizeSchoolDeviceGrant(root, spaces, identity, source.grantId);
           const activityIds = [input.activityId, input.authority?.activityId,
             input.operation === 'activity' ? z.uuid().parse(input.args[0]) : undefined,
             input.operation.startsWith('tool.') ? z.object({ activity: z.object({ activityId: z.uuid() }) }).parse(input.args[0]).activity.activityId : undefined]
@@ -745,6 +747,14 @@ export async function createProductLearningApplication(context: {
       } },
     };
     if (data && dependencyService) serviceCapabilities[data.storage.owner.serviceId] = { 'teaching.dependencies': dependencyCapability };
+    const deviceSetup = environment.profile === 'school' && dataDescriptor && enabled.has('learning-data')
+      && !enabled.has('teaching-agent') && !enabled.has('model-connection') && !enabled.has('tool-execution')
+      ? createSchoolDeviceSetup({ root, spaces, bindings: agentBindings,
+        target: { ...dataDescriptor, capabilities: ['runtime.status', 'teaching.dependencies'] },
+        authority: createConnectionAuthority({ root, service: { ...dataDescriptor, capabilities: ['teaching.dependencies'] },
+          handlers: { 'teaching.dependencies': dependencyCapability } }),
+        assertWritable: async () => { if (await readOnly()) throw new StorageError('maintenance'); },
+      }) : undefined;
     return { owners, isolatedReads: true as const, ...(lifecycle ? { lifecycle } : {}),
       async authorizedSource(targetServiceId: string, source: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; grantId: string; capabilities: readonly string[] }) {
         if (!learning || targetServiceId !== dataDescriptor?.serviceId || !source.sourceInstallationId || !source.capabilities.includes('teaching.dependencies')) return;
@@ -785,6 +795,7 @@ export async function createProductLearningApplication(context: {
         if (schoolClient && models && isOpen()) await schoolClient.pollModelTasks(isOpen);
       },
       handle: createLearningEntry({ environment, spaces, ...(learning ? { learning } : {}), courses,
+        ...(deviceSetup ? { deviceSetup } : {}),
         ...(independentExecution ? { executions: independentExecution.executions } : {}),
         courseExecutionDesign,
         ...(models ? { models } : {}), ...(teaching ? { teaching } : {}), teachingFor, teachingSettingsFor, client: schoolClient, readOnly, requiresNamespace,

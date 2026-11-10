@@ -1,0 +1,11 @@
+[Unit]
+Description=Check XunJie school HTTPS and certificate
+After=nginx.service xunjie-school.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/xunjie/product-school/monitor.py --config /etc/xunjie/product-school.json
+TimeoutStartSec=90s
+UMask=0077
+LimitCORE=0

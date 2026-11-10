@@ -1,0 +1,11 @@
+[Unit]
+Description=Check XunJie school health every ten minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/10:00
+Persistent=true
+AccuracySec=30s
+Unit=xunjie-school-health.service
+
+[Install]
+WantedBy=timers.target

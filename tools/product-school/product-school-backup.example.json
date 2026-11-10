@@ -1,0 +1,10 @@
+{
+  "root": "__SCHOOL_ROOT__",
+  "node": "__NODE24_21__",
+  "cli": "__APP_DIR__/cli.js",
+  "maintenanceLock": "/var/lib/xunjie/work/deploy-artifact.lock",
+  "recoveryKeyRef": "__EXISTING_PRIVATE_RECOVERY_REF__",
+  "statusFile": "/var/lib/xunjie/maintenance/product-school-backup.json",
+  "directory": "/var/lib/xunjie/recovery/product-school/checkpoints",
+  "keep": 3
+}

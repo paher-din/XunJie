@@ -16,7 +16,7 @@ import type {
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { canonicalValue, courseExecutionPlanBasis, courseExecutionPlanSchema, isCourseExecutionPlanV2 } from '@xunjie/contracts/execution';
-import { spaceMigrations } from '../spaces/index.js';
+import { spaceMigrations, memberPermissionMigration } from '../spaces/index.js';
 import { memberAgentBindingMigration } from '../spaces/agent-bindings.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
@@ -55,7 +55,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration, memberAgentBindingMigration, courseDeploymentMigration];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration, memberAgentBindingMigration, courseDeploymentMigration, memberPermissionMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
@@ -246,6 +246,7 @@ function readImportResources(input: CourseImport): Map<string, Buffer> {
 
 /** Only this module writes course facts; learning data reaches it through the narrow authority interface. */
 export function createCourses(storage: OwnedStorage, spaces: { authorize(identity: SpaceIdentity): Promise<void>;
+  hasMemberPermission?(identity: SpaceIdentity, permission: 'course.manage'): Promise<boolean>;
   schoolSpace(): Promise<string> }, publication: CoursePublicationOptions = {}) {
   const components = createComponents(storage);
   async function accessActive(identity: SpaceIdentity, courseId: string): Promise<boolean> {
@@ -379,15 +380,16 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     return row ? courseRegistrationResultSchema.parse(row.result) : null;
   }
 
-  async function listCourses(identity: SpaceIdentity) {
+  async function listCourses(identity: SpaceIdentity, manage = false) {
     await spaces.authorize(identity);
+    if (manage && !await spaces.hasMemberPermission?.(identity, 'course.manage')) fail('forbidden');
     const { rows } = await storage.read(`SELECT c.course_id,c.name,t.task_id,t.title,t.summary,
-      r.release_id,r.content_digest,r.content,r.published_at FROM course_access a
-      JOIN courses c ON c.course_id=a.course_id AND c.space_id=a.space_id
+      r.release_id,r.content_digest,r.content,r.published_at FROM courses c
       JOIN course_tasks t ON t.course_id=c.course_id
       JOIN course_releases r ON r.task_id=t.task_id
-      WHERE a.space_id=$1 AND a.principal_id=$2 AND a.active
-      ORDER BY c.name,t.title,r.published_at DESC,r.release_id`, [identity.spaceId, identity.principalId]);
+      WHERE c.space_id=$1 AND ($3::boolean OR EXISTS (SELECT 1 FROM course_access a
+        WHERE a.course_id=c.course_id AND a.space_id=c.space_id AND a.principal_id=$2 AND a.active))
+      ORDER BY c.name,t.title,r.published_at DESC,r.release_id`, [identity.spaceId, identity.principalId, manage]);
     const courses = new Map<string, { courseId: string; name: string; tasks: Map<string, { taskId: string; title: string;
       summary: string; releases: unknown[] }> }>();
     for (const row of rows) {

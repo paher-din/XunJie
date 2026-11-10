@@ -1,0 +1,7 @@
+{
+  "publicIp": "__PUBLIC_IPV4__",
+  "fullchainFile": "/etc/letsencrypt/live/__PUBLIC_IPV4__/fullchain.pem",
+  "statusFile": "/var/lib/xunjie/maintenance/product-school-health.json",
+  "reloadFile": "/var/lib/xunjie/maintenance/product-school-cert-reload.json",
+  "monitoringFile": "/etc/xunjie/monitoring.json"
+}

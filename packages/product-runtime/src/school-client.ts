@@ -36,6 +36,8 @@ import { boundedJsonResponse, runtimeResourcePathPattern, runtimeResourceRespons
   runtimeResourceRoute } from './resource-response.js';
 import { createOutboundConnection, RuntimeConnectionError } from './connections.js';
 import type { InstalledConfiguration } from './runtime.js';
+import { openProductRuntime } from './runtime.js';
+import { schoolDeviceSetupResultSchema } from './school-device-setup.js';
 import type { RecoveryManifest } from './recovery-types.js';
 import type { RetirementProof } from './recovery.js';
 import { resolveCredential } from './postgres.js';
@@ -44,9 +46,11 @@ import { createTeachingAgentService, teachingAgentHttpCall, routeExecutionHttp, 
 import type { TeachingDependencyCall, TeachingAgentPort } from '@xunjie/learning-space';
 
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
-  target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]) });
+  target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]),
+  deviceSetup: z.object({ version: z.literal(1) }).strict().optional() });
 const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url(), verifier: z.string(),
   clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
+  setupPending: z.boolean().optional(),
   localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional(),
   modelBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional(),
   agentBinding: z.object({ dependencyConnectionId: z.uuid(), executionConnectionId: z.uuid().optional(), target: learningTargetSchema }).strict().optional() });
@@ -446,7 +450,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const result = [];
     for (const file of files.filter(name => /^school-client-[0-9a-f-]{36}$/.test(name))) {
       const connection = await read(file.slice('school-client-'.length));
-      if (connection.grant) {
+      if (connection.grant && !connection.setupPending) {
         await rememberCleanupDestination(connection);
         result.push({ key: `school:${connection.requestId}`, identity: connection.grant.identity, cleanupEndpoint: connection.schoolEndpoint,
           directLocalExecution: !!connection.agentBinding });
@@ -480,15 +484,56 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (grant.connectionId !== requestId) throw new StorageError('forbidden');
     if (connection.grant && (JSON.stringify(connection.grant.identity) !== JSON.stringify(grant.identity)
       || JSON.stringify(connection.grant.target) !== JSON.stringify(grant.target))) throw new StorageError('forbidden');
-    return update(requestId, async () => {
+    const current = await update(requestId, async () => {
       // Network exchange is outside the lock. Revocation or a new proof may have won while it was in flight.
       const current = await read(requestId);
       if (current.verifier !== connection.verifier) throw new StorageError('forbidden');
       await rememberCleanupDestination(current);
       current.grant = grant;
+      if (grant.deviceSetup && local?.teaching && !current.localBinding && !current.agentBinding) current.setupPending = true;
       await atomicJson(path(requestId), current);
-      return view(current);
+      return current;
     });
+    if (current.setupPending) {
+      const releaseSetup = await acquireLock(root, 'school-device-complete-'+requestId);
+      try {
+      if (!(await read(requestId)).setupPending) return view(await read(requestId));
+      const agent = environment.services.find(item => item.unit === 'teaching-agent');
+      const execution = environment.services.find(item => item.unit === 'tool-execution');
+      if (!agent || !execution || !local?.teaching) throw new StorageError('unavailable');
+      const configured = schoolDeviceSetupResultSchema.parse(await call(current, 'connections/device-setup', {
+        connectionId: requestId, installationId: environment.installationId,
+        deviceModules: environment.services.filter(item => item.unit !== 'client'),
+      }, true));
+      if (configured.connectionId !== requestId || subject(configured.identity) !== subject(grant.identity)
+        || configured.target.environmentId !== grant.target.environmentId || configured.target.serviceId !== grant.target.serviceId)
+        throw new StorageError('forbidden');
+      const runtime = openProductRuntime({ root });
+      const stableId = (role: string) => {
+        const bytes = createHash('sha256').update(requestId+':'+role).digest().subarray(0, 16);
+        bytes[6] = (bytes[6]! & 15) | 80; bytes[8] = (bytes[8]! & 63) | 128;
+        const hex = bytes.toString('hex'); return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+      };
+      const dependencyConnectionId = stableId('agent'), executionConnectionId = stableId('execution');
+      for (const [source, credential, role, id] of [[agent, configured.agent, 'agent', dependencyConnectionId],
+        [execution, configured.execution, 'execution', executionConnectionId]] as const) {
+        const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+        const save = config.connections.some(item => item.connectionId === id) ? runtime.reconnect : runtime.connect;
+        await save({ connectionId: id, sourceEnvironmentId: source.environmentId, sourceServiceId: source.serviceId,
+          target: configured.target, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [],
+          credentialRef: 'school-'+role+'-'+requestId }, credential.token);
+      }
+      await configureAgent({ connectionId: requestId, dependencyConnectionId, executionConnectionId,
+        target: { environmentId: agent.environmentId, serviceId: agent.serviceId, version: 1 } });
+      await update(requestId, async () => {
+        const ready = await read(requestId);
+        if (!ready.grant || ready.grant.token !== grant.token) throw new StorageError('forbidden');
+        ready.setupPending = false;
+        await atomicJson(path(requestId), ready);
+      });
+      } finally { await releaseSetup(); }
+    }
+    return view(await read(requestId));
   }
   async function authorityCall(connection: Connection, runtimeConnectionId: string, operation: string, input?: unknown) {
     const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));

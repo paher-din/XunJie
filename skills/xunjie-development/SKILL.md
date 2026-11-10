@@ -13,11 +13,13 @@ description: XunJie 成员首次上手与日常开发协作。用于准备开发
 
 ## 判断本次任务
 
+- **正式产品开发或连接开发学校**：先读 [正式产品开发环境](references/product-development.md)，成员接入进入其中的学校接入说明。使用成员自己的学校账号；就绪依据是产品环境和学校配对，该路径跳过旧演示的 GitHub 登记。
+
 - **只读咨询**：按问题核实状态并回答；不启动、登记、导入基线或写首引导标记。
 - **首次调用且尚未介绍，或用户明确要求重听**：读 [首次上手](references/onboarding.md)，复用配置、依赖与本人身份，按 GitHub 接入流程补齐缺项并主动介绍一次；本人只需在 GitHub 网页确认。
 - **已经介绍**：直接执行目标；单独调用 Skill 时检查状态并续缺失步骤，跳过功能介绍。环境停止、连接过期或换工作树只修复对应状态。
 
-先核对真实 registration/env；再运行 `node skills/xunjie-development/scripts/intro-state.mjs status --worktree <项目根>` 判断跨会话是否已介绍。`introShown` 只证明说明已展示，就绪以实时工具结果为准。仅实际交付介绍后 `mark-shown`，失败只续缺项；时机与受限 home 边界见 [首引导状态](../../docs/development-tooling.md#首引导状态)。
+先核对对应路径的真实产品环境或 registration；再运行 `node skills/xunjie-development/scripts/intro-state.mjs status --worktree <项目根>` 判断跨会话是否已介绍。`introShown` 只证明说明已展示，就绪以实时工具结果为准。仅实际交付介绍后 `mark-shown`，失败只续缺项；时机与受限 home 边界见 [首引导状态](../../docs/development-tooling.md#首引导状态)。
 
 ## 按需操作
 
