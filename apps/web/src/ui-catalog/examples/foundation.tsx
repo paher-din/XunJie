@@ -261,7 +261,7 @@ function StatusLevels() {
 function ShellDemo({ initialCollapsed = false, initialImmersive = false }: { initialCollapsed?: boolean; initialImmersive?: boolean }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [immersive, setImmersive] = useState(initialImmersive)
-  return <ShellFrame collapsed={collapsed} immersive={immersive}
+  return <ShellFrame collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={immersive}
     navigation={<div className="demo-shell-navigation"><IconText name="home-2">首页</IconText><IconText name="chat-round-dots">对话</IconText></div>}
     bottom={<div className="demo-shell-footer">示例学习空间</div>}
     rail={<button type="button" className="railbtn r-home" aria-label="首页"><Icon name="home-2" size={18} /></button>}
@@ -304,7 +304,7 @@ function BottomTheme() { return <SidebarBottomDemo initialThemeOpen /> }
 
 function SidebarToggleDemo({ initiallyCollapsed }: { initiallyCollapsed: boolean }) {
   const [collapsed, setCollapsed] = useState(initiallyCollapsed)
-  return <ShellFrame collapsed={collapsed} immersive={false} navigation={<div className="demo-shell-navigation">示例导航</div>}
+  return <ShellFrame collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={false} navigation={<div className="demo-shell-navigation">示例导航</div>}
     bottom={null} rail={<span className="railbtn r-home"><Icon name="home-2" size={18} /></span>}
     toggle={<SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} />}>
     <div className="demo-shell-content"><h1>学习空间</h1><p>当前侧栏：{collapsed ? '收起' : '展开'}</p></div>
@@ -321,7 +321,7 @@ function SidebarRailDemo({ initialAgent = false, initialAccountOpen = false }: {
   const [accountOpen, setAccountOpen] = useState(initialAccountOpen)
   const [message, setMessage] = useState('')
   const action = (text: string) => { setMessage(text); setAccountOpen(false) }
-  return <ShellFrame collapsed={collapsed} immersive={false} navigation={<div className="demo-shell-navigation">示例导航</div>} bottom={null}
+  return <ShellFrame collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={false} navigation={<div className="demo-shell-navigation">示例导航</div>} bottom={null}
     toggle={<SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} />}
     rail={<SidebarRail onHome={!onAgent} onAgent={onAgent} panel={panel} archivedCount={1} archiveOpen={archiveOpen}
       account={demoAccount} accountOpen={accountOpen} railVisible={collapsed}
@@ -431,7 +431,7 @@ export const foundationEntries: CatalogEntry[] = [
   { id: 'context-ring', name: 'ContextRing', description: '上下文用量与悬浮说明。', importPath: foundation, source: 'packages/ui/src/foundation/ContextRing.tsx', exampleSource: source, props: ['tokens: number', 'limit: number（显式提供）'], dependencies: ['悬浮信息通过 body Portal 渲染'], states: [{ id: 'levels', name: '空 / 使用中 / 已满', component: ContextLevels }] },
   { id: 'fluid-highlight', name: 'FluidHighlight', description: '在一组目标之间移动的共享高亮。', importPath: foundation, source: 'packages/ui/src/foundation/FluidHighlight.tsx', exampleSource: source, props: ['activeIndex: number | null', 'rects: readonly ItemRect[]', 'className?: string'], dependencies: ['调用方提供目标矩形及高亮样式'], states: [{ id: 'interactive', name: '悬停与键盘聚焦', component: FluidDemo }] },
   { id: 'progress-bar', name: 'ProgressBar', description: '任务进度轨道。', importPath: foundation, source: 'packages/ui/src/foundation/ProgressBar.tsx', exampleSource: source, props: ['percent: number', 'done?: boolean'], dependencies: [], states: [{ id: 'levels', name: '未开始 / 进行中 / 完成', component: ProgressLevels }] },
-  { id: 'shell-frame', name: 'ShellFrame', description: '由调用方提供导航、侧栏和内容的界面外壳。', importPath: foundation, source: 'packages/ui/src/foundation/ShellFrame.tsx', exampleSource: source, props: ['collapsed, immersive', 'navigation, bottom, rail, toggle, children', 'mainRef?, overlays?, className?'], dependencies: ['预览使用独立视口以保留固定定位'], states: [
+  { id: 'shell-frame', name: 'ShellFrame', description: '由调用方提供导航、侧栏和内容的界面外壳，支持拖拽调宽与吸附收起。', importPath: foundation, source: 'packages/ui/src/foundation/ShellFrame.tsx', exampleSource: source, props: ['collapsed, immersive, onCollapsedChange?（启用拖拽调宽）', 'navigation, bottom, rail, toggle, children', 'mainRef?, overlays?, className?'], dependencies: ['预览使用独立视口以保留固定定位；短竖条支持拖拽、双击和键盘调宽'], states: [
     { id: 'expanded', name: '展开', component: ShellExpanded }, { id: 'collapsed', name: '收起', component: ShellCollapsed }, { id: 'immersive', name: '沉浸', component: ShellImmersive },
   ] },
   { id: 'sidebar-navigation', name: 'SidebarNavigation', description: '展开侧栏的首页、对话导航与历史区域。', importPath: foundation, source: 'packages/ui/src/foundation/ShellParts.tsx', exampleSource: source, props: ['onHome, onAgent, history', 'openHome, openAgent'], dependencies: ['历史内容由调用方传入'], states: [

@@ -102,7 +102,7 @@ export default function AppShell() {
   const inWorkspace = location.pathname.startsWith('/task')
 
   const [composerOpen, setComposerOpen] = useState(false)
-  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useShellNavigation()
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar, setCollapsed: setSidebarCollapsed } = useShellNavigation()
   const sidebarToggleRef = useRef<HTMLButtonElement>(null)
   const [accountMenu, setAccountMenu] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -487,6 +487,7 @@ export default function AppShell() {
   return (
     <ShellFrame
       collapsed={sidebarCollapsed}
+      onCollapsedChange={setSidebarCollapsed}
       immersive={inWorkspace}
       mainRef={mainRef}
       navigation={<SidebarNavigation onHome={onHome} onAgent={onAgent} history={convPane(undefined, () => {})}

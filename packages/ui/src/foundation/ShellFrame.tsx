@@ -1,5 +1,6 @@
-import { useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
+import { useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { XunjieLogo } from '../brand/XunjieLogo'
+import { useSidebarResize } from './useSidebarResize'
 
 const NARROW_NAV_QUERY = '(width < 1024px)'
 function subscribeNarrowNavigation(notify: () => void) {
@@ -15,12 +16,13 @@ export function useShellNavigation() {
   const narrow = useSyncExternalStore(subscribeNarrowNavigation, narrowNavigation, serverNavigation)
   const [override, setOverride] = useState<boolean | null>(null)
   const collapsed = override ?? narrow
-  return { collapsed, toggle: () => setOverride(!collapsed) }
+  return { collapsed, toggle: () => setOverride(!collapsed), setCollapsed: setOverride }
 }
 
 export interface ShellFrameProps {
   children: ReactNode
   collapsed: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
   immersive: boolean
   navigation: ReactNode
   bottom: ReactNode
@@ -33,13 +35,20 @@ export interface ShellFrameProps {
 
 /** Shared presentation only: callers own navigation, identity and page behavior. */
 export function ShellFrame({
-  children, collapsed, immersive, navigation, bottom, rail, toggle,
+  children, collapsed, onCollapsedChange, immersive, navigation, bottom, rail, toggle,
   mainRef, overlays, className = '',
 }: ShellFrameProps) {
   const sidebarHidden = collapsed || immersive
   const railVisible = collapsed && !immersive
+  const shellRef = useRef<HTMLDivElement>(null)
+  const resize = useSidebarResize(shellRef, collapsed, immersive, onCollapsedChange)
   return (
-    <div className={('shell' + (immersive ? ' immersive' : '') + (collapsed ? ' collapsed' : '') + ' ' + className).trim()}>
+    <div ref={shellRef} style={{ '--sidebar-width': `${resize.width}px`, '--sidebar-edge': `${resize.edge}px`,
+      '--sidebar-openness': resize.openness, '--sidebar-min-width': `${resize.minWidth}px` } as CSSProperties}
+      data-sidebar-resizable={!!onCollapsedChange || undefined}
+      data-sidebar-resizing={resize.resizing || undefined}
+      data-sidebar-snapping={resize.snapping || undefined} onTransitionEnd={resize.onTransitionEnd}
+      className={('shell' + (immersive ? ' immersive' : '') + (collapsed ? ' collapsed' : '') + ' ' + className).trim()}>
       <aside className="sidebar" inert={sidebarHidden} aria-hidden={sidebarHidden ? true : undefined}>
         <div className="brand xunjie-brand">
           <XunjieLogo format="horizontal" label="循阶" />
@@ -51,6 +60,7 @@ export function ShellFrame({
         {children}
       </main>
       {!immersive && toggle}
+      {resize.handle}
       <div className={'rail' + (railVisible ? ' on' : '')} inert={!railVisible} aria-hidden={!railVisible ? true : undefined}>
         {rail}
       </div>

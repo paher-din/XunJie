@@ -118,7 +118,7 @@ function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings }: 
 /** Product presentation consumes real data and callbacks; it owns no business services or routing. */
 export function ProductShell({ children, immersive, identityName, avatar, onHome, onAgent, onSettings, onProfile, active,
   agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange }: ProductShellProps) {
-  const { collapsed, toggle } = useShellNavigation()
+  const { collapsed, toggle, setCollapsed } = useShellNavigation()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const railPanelRef = useRef<HTMLDivElement>(null)
@@ -152,7 +152,7 @@ export function ProductShell({ children, immersive, identityName, avatar, onHome
     return () => document.removeEventListener('keydown', escape)
   }, [railPanelVisible, railPanel, archiveOpen, closeRailPanel])
 
-  return <ShellFrame className="product-shell" collapsed={collapsed} immersive={immersive} mainRef={mainRef}
+  return <ShellFrame className="product-shell" collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={immersive} mainRef={mainRef}
     navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} />}
     bottom={<div className="side-bottom">
       <ProductAccount name={identityName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} />

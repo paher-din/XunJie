@@ -36,6 +36,10 @@ import { Button } from '@xunjie/ui/foundation'
 
 `SettingsEmptyState` 采用 shadcn/ui Empty 的图标、标题、说明和操作分层，已适配循阶 token，无 Tailwind 运行依赖；来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。实屏目录提供空态示例。
 
+`ShellFrame` 提供 `onCollapsedChange` 时启用调宽：采用 Astryx 短竖条与指针捕获交互，使用循阶 token 和现有 60px 图标轨道。默认宽 248px，展开最小 152px，最大为 360px 与容器宽度 40% 中较小者（不低于 152px）。拖到 96px 时即用 240ms 平滑收至 60px 图标轨道，反向拖到 112px 时直接接续展开，无须松手。两个阈值之间维持当前吸附状态；动画中可反向打断，过渡区同步交接导航透明度。双击或 Enter 切换收起，方向键调宽，Home 收起，End 调至上限；展开宽度只在本次外壳挂载期间保留。来源与许可同见第三方说明。
+
+拖动时即应用展开宽度约束，松手不再改写已经显示的位置。失去指针捕获、系统取消或离开拖动模式都保留最后选择，仅 `Escape` 主动撤销；发生位移的拖动及其后紧接的一次点击不触发双击折叠，真正的双击仍可切换侧栏。
+
 ## 实屏目录与检查
 
 从仓库根目录启动 `npm run dev:prep -w @xunjie/web`，访问 `http://127.0.0.1:5601/ui-catalog.html`。目录使用正式包的真实组件和隔离示例数据；每个示例的稳定入口与覆盖情况以目录注册表为准。目录用于开发验收，不是学生或教师的产品入口。

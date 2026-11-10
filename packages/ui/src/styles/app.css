@@ -85,8 +85,9 @@ h3 {
 
 /* ---------- 外壳：inset 布局——透明侧栏 + 主区白卡片 ---------- */
 .shell {
+  position: relative;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 248px) minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
   background: var(--shell-bg);
@@ -140,7 +141,7 @@ h3 {
 .sidebar-toggle {
   position: fixed;
   top: 22px;
-  left: 204px;
+  left: calc(var(--sidebar-width, 248px) - 44px);
   z-index: 76;
   width: 32px;
   height: 32px;

@@ -1,0 +1,89 @@
+@property --sidebar-edge {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 248px;
+}
+@property --sidebar-openness {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+/* One animated edge drives the main surface, grip and toggle together. */
+.shell[data-sidebar-resizable]:not(.immersive) {
+  --sidebar-track-inset: 0px;
+  grid-template-columns: max(0px, calc(var(--sidebar-edge) - var(--sidebar-track-inset))) minmax(0, 1fr);
+  transition: --sidebar-edge 350ms cubic-bezier(0.3, 1, 0.35, 1), --sidebar-openness 350ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.shell[data-sidebar-resizable].collapsed:not(.immersive) {
+  --sidebar-track-inset: 60px;
+  transition-duration: 240ms;
+}
+.shell[data-sidebar-resizable]:not(.immersive) > .main {
+  margin-left: var(--sidebar-track-inset);
+  transition: none;
+}
+.shell[data-sidebar-resizable]:not(.immersive) > .sidebar {
+  width: var(--sidebar-edge);
+  opacity: var(--sidebar-openness);
+  transform: none;
+  transition: none;
+}
+.shell[data-sidebar-resizable]:not(.immersive) > .sidebar > * { min-width: calc(var(--sidebar-min-width) - 20px); }
+.shell[data-sidebar-resizable]:not(.immersive) > .sidebar-toggle {
+  left: max(15px, calc(var(--sidebar-edge) - 44px));
+  transition-property: background-color, color, transform;
+}
+.shell[data-sidebar-resizable]:not(.immersive) > .rail { opacity: calc(1 - var(--sidebar-openness)); }
+.shell[data-sidebar-resizable]:not(.immersive) .railbtn:not(.off) {
+  opacity: 1;
+  transform: none;
+  transition: background-color 150ms cubic-bezier(0.3, 1, 0.35, 1), color 150ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.sidebar-resize-handle {
+  position: absolute;
+  z-index: 77;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--sidebar-edge) - 8px);
+  display: grid;
+  place-items: center;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.sidebar-resize-pill {
+  width: 3px;
+  height: 32px;
+  border-radius: 4px;
+  background: var(--muted);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 150ms cubic-bezier(0.3, 1, 0.35, 1), background-color 150ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.sidebar-resize-handle:hover { background: transparent; filter: none; }
+.sidebar-resize-handle:hover .sidebar-resize-pill { opacity: 1; }
+.sidebar-resize-handle:focus-visible { outline: none; }
+.sidebar-resize-handle:focus-visible .sidebar-resize-pill {
+  background: var(--accent);
+  opacity: 1;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.shell[data-sidebar-resizing] .sidebar-resize-pill { background: var(--accent); opacity: 1; }
+/* Track directly between snap points; magnetic transitions remain interruptible. */
+.shell[data-sidebar-resizable][data-sidebar-resizing]:not(.immersive),
+.shell[data-sidebar-resizing] > :is(.sidebar, .main, .sidebar-toggle, .sidebar-resize-handle) { transition: none; }
+.shell[data-sidebar-resizable][data-sidebar-resizing][data-sidebar-snapping]:not(.immersive) {
+  transition: --sidebar-edge 240ms cubic-bezier(0.3, 1, 0.35, 1), --sidebar-openness 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+html.xj-sidebar-resizing, html.xj-sidebar-resizing * { cursor: col-resize !important; user-select: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .shell[data-sidebar-resizable]:not(.immersive),
+  .shell[data-sidebar-resizable][data-sidebar-resizing][data-sidebar-snapping]:not(.immersive) { transition: none; }
+  .sidebar-resize-handle, .sidebar-resize-pill { transition: none; }
+}
