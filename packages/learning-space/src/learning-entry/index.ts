@@ -10,6 +10,7 @@ import { agentBrowserClaimInputSchema, agentBrowserAcceptanceInputSchema,
 import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
+import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
 import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema } from '@xunjie/contracts/agent-skills';
 import type { createSpaces } from '../spaces/index.js';
@@ -74,6 +75,7 @@ export function createLearningEntry(options: {
   bindAgent?(input: unknown): Promise<unknown>;
   bindModelDevice?(input: unknown): Promise<unknown>;
   courseExecutionDesign?(operation: 'compile' | 'prepare' | 'read', input: unknown): Promise<unknown>;
+  deviceSetup?(identity: SpaceIdentity, input: unknown): Promise<unknown>;
   restoredInstallation?(): Promise<boolean>;
   administratorToken: string;
   readOnly?: () => Promise<boolean>;
@@ -258,10 +260,26 @@ export function createLearningEntry(options: {
         response.setHeader('set-cookie', `${cookieName}=${cookieFlags}; Max-Age=0`);
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
-        if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
+        const admin = request.headers.authorization === `Bearer ${options.administratorToken}`;
+        let actor: SpaceIdentity | undefined;
+        if (!admin) {
+          const allowed = ['manage/course-execution-compile', 'manage/course-deployment-prepare', 'manage/course-deployment-read',
+            'manage/course-import', 'manage/course-result', 'manage/course-access', 'manage/course-catalog',
+            'manage/component-import', 'manage/component-status', 'manage/component-read'];
+          if (!spaces || !allowed.includes(route)) throw new StorageError('forbidden');
+          actor = await current(request);
+          if (actor.kind !== 'school' || !await spaces.hasMemberPermission(actor, 'course.manage')) throw new StorageError('forbidden');
+        }
         if (['manage/course-execution-compile', 'manage/course-deployment-prepare', 'manage/course-deployment-read'].includes(route)) {
           if (!options.courseExecutionDesign) throw new StorageError('unavailable');
-          result = await options.courseExecutionDesign(route.endsWith('-compile') ? 'compile' : route.endsWith('-prepare') ? 'prepare' : 'read', await readLearningBody(request, 8000000));
+          let body = await readLearningBody(request, 8000000);
+          if (actor) {
+            const input = z.object({ identity: spaceIdentitySchema.optional(), input: z.unknown().optional(), requestId: z.uuid().optional() }).strict().parse(body);
+            if (input.identity && (input.identity.environmentId !== actor.environmentId || input.identity.spaceId !== actor.spaceId
+              || input.identity.principalId !== actor.principalId || input.identity.kind !== actor.kind || input.identity.name !== actor.name)) throw new StorageError('forbidden');
+            body = { ...input, identity: actor };
+          }
+          result = await options.courseExecutionDesign(route.endsWith('-compile') ? 'compile' : route.endsWith('-prepare') ? 'prepare' : 'read', body);
         } else if (route === 'manage/model-device-binding') {
           if (!options.bindModelDevice) throw new StorageError('unavailable');
           result = await options.bindModelDevice(await readLearningBody(request));
@@ -296,6 +314,10 @@ export function createLearningEntry(options: {
         } else if (route === 'manage/course-access') {
           if (!options.courses) throw new StorageError('forbidden');
           result = await options.courses.setAccess(await readLearningBody(request) as never);
+        } else if (route === 'manage/course-catalog') {
+          if (!options.courses || !actor) throw new StorageError('forbidden');
+          z.object({}).strict().parse(await readLearningBody(request));
+          result = await options.courses.listCourses(actor, true);
         } else {
           const body = await readLearningBody(request);
           if (route === 'manage/members') {
@@ -307,6 +329,8 @@ export function createLearningEntry(options: {
           } else if (route === 'manage/membership') {
             const input = z.object({ requestId: z.uuid(), principalId: z.uuid(), active: z.boolean() }).strict().parse(body);
             await spaces.setMembership(input); result = { updated: true };
+          } else if (route === 'manage/member-permissions') {
+            result = await spaces.setMemberPermission(body);
           } else if (route === 'manage/connection') {
             const input = z.object({ connectionId: z.uuid() }).strict().parse(body);
             await spaces.adminRevokeConnection(input.connectionId); result = { revoked: true };
@@ -325,7 +349,17 @@ export function createLearningEntry(options: {
       } else if (route === 'connections/exchange' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), verifier: z.string() }).strict().parse(await readLearningBody(request));
         const grant = await spaces.exchangeConnection(input.requestId, input.verifier);
-        result = { ...grant, target: await spaces.resolveBinding(grant.identity) };
+        const target = await spaces.resolveBinding(grant.identity);
+        const localTarget = options.target && target.environmentId === options.target.environmentId
+          && target.serviceId === options.target.serviceId && target.version === options.target.version;
+        result = { ...grant, target, ...(environment.profile === 'school' && options.deviceSetup && localTarget ? { deviceSetup: { version: 1 } } : {}) };
+      } else if (route === 'connections/device-setup' && method === 'POST' && environment.profile === 'school' && options.deviceSetup) {
+        const authorization = request.headers.authorization;
+        if (!authorization?.startsWith('Bearer ')) throw new StorageError('forbidden');
+        const body = await readLearningBody(request);
+        const { connectionId } = z.object({ connectionId: z.uuid() }).passthrough().parse(body);
+        const identity = await spaces.authenticateConnection(authorization.slice(7), connectionId);
+        result = await options.deviceSetup(identity, body);
       } else if (route === 'connections/revoke' && method === 'POST') {
         const input = z.object({ connectionId: z.uuid() }).strict().parse(await readLearningBody(request));
         await spaces.revokeConnection(await current(request), input.connectionId); result = { revoked: true };

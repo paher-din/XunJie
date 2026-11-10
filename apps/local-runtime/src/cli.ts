@@ -46,6 +46,7 @@ const commands: Record<string, readonly string[]> = {
   'maintenance-resume': ['resources'],
   'school-member': ['file', 'resources'],
   'school-membership': ['file', 'resources'],
+  'school-permissions': ['file', 'resources'],
   'school-connection': ['file', 'resources'],
   'school-model': ['file', 'resources'],
   'model-task': ['file', 'resources'],
@@ -422,6 +423,7 @@ async function main(): Promise<void> {
     case 'start': output(await run(() => runtime.start())); break;
     case 'school-member':
     case 'school-membership':
+    case 'school-permissions':
     case 'school-connection':
     case 'learning-binding':
     case 'agent-binding':
@@ -433,7 +435,7 @@ async function main(): Promise<void> {
       const status = await run(() => runtime.status());
       if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本产品环境');
       const action = command === 'school-member' ? 'members' : command === 'school-membership' ? 'membership'
-        : command === 'learning-binding' ? 'local-binding' : command === 'school-connection' ? 'connection' : command;
+        : command === 'school-permissions' ? 'member-permissions' : command === 'learning-binding' ? 'local-binding' : command === 'school-connection' ? 'connection' : command;
       const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
         method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
         headers: { 'content-type': 'application/json', authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` },

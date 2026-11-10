@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import { StorageError } from '@xunjie/storage';
 import { z } from 'zod';
-import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
+import { spaceIdentitySchema, learningTargetSchema, memberPermissionInputSchema, memberPermissionSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity, LearningTarget } from '@xunjie/contracts/spaces';
 export type { SpaceIdentity } from '@xunjie/contracts/spaces';
 
@@ -28,6 +28,14 @@ export const spaceMigrations: readonly Migration[] = [{ version: 1, name: 'space
   CREATE TABLE authorizations (id uuid PRIMARY KEY,client_id uuid NOT NULL,challenge text NOT NULL,
     principal_id uuid REFERENCES principals(id),expires_at timestamptz NOT NULL);
 ` }];
+
+// This owner is shared with courses, whose existing migrations occupy versions 5–11.
+export const memberPermissionMigration: Migration = { version: 12, name: 'member-permissions', sql: `
+  CREATE TABLE member_permissions (space_id uuid NOT NULL, principal_id uuid NOT NULL,
+    permission text NOT NULL CHECK(permission IN ('course.manage')), enabled boolean NOT NULL,
+    PRIMARY KEY(space_id,principal_id,permission),
+    FOREIGN KEY(space_id,principal_id) REFERENCES memberships(space_id,principal_id));
+` };
 
 const derive = promisify(scrypt);
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -109,6 +117,28 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
       if (!input.active) await tx.query('UPDATE sessions SET revoked=true WHERE principal_id=$1', [input.principalId]);
       return { principalId: input.principalId, active: input.active };
     });
+  }
+  async function setMemberPermission(value: unknown) {
+    const input = memberPermissionInputSchema.parse(value);
+    const receipt = await storage.request({ requestId: input.requestId, fingerprint: digest(input) }, async tx => {
+      const { rows: [member] } = await tx.query(`SELECT m.space_id FROM memberships m
+        JOIN spaces s ON s.id=m.space_id JOIN accounts a ON a.principal_id=m.principal_id
+        WHERE m.principal_id=$1 AND s.kind='school'`, [input.principalId]);
+      if (!member) return fail('missing');
+      await tx.query(`INSERT INTO member_permissions(space_id,principal_id,permission,enabled) VALUES ($1,$2,$3,$4)
+        ON CONFLICT(space_id,principal_id,permission) DO UPDATE SET enabled=EXCLUDED.enabled`,
+        [member.space_id, input.principalId, input.permission, input.enabled]);
+      return { principalId: input.principalId, permission: input.permission, enabled: input.enabled };
+    });
+    return receipt.result;
+  }
+  async function hasMemberPermission(member: SpaceIdentity, permission: 'course.manage'): Promise<boolean> {
+    memberPermissionSchema.parse(permission);
+    await authorize(member);
+    if (member.kind !== 'school') return false;
+    const { rows } = await storage.read(`SELECT 1 FROM member_permissions WHERE space_id=$1 AND principal_id=$2
+      AND permission=$3 AND enabled`, [member.spaceId, member.principalId, permission]);
+    return rows.length > 0;
   }
   async function authenticate(token: string, kind?: 'session' | 'connection'): Promise<SpaceIdentity> {
     if (typeof token !== 'string' || token.length > 200 || !token) fail('forbidden');
@@ -246,6 +276,6 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
-  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, login, authenticate, authorize, lookup, bindMember, resolveBinding,
+  return { personal, readPersonal, verifyPassword, schoolSpace, createMember, setMembership, setMemberPermission, hasMemberPermission, login, authenticate, authorize, lookup, bindMember, resolveBinding,
     logout, authenticateConnection, authorizeConnection, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

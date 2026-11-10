@@ -12,12 +12,12 @@
 | --- | --- |
 | `http://127.0.0.1:57417/` | 正式产品开发预览，源码取启动时的当前 checkout；分支以 `git status` 核对 |
 | `~/Library/Application Support/XunJie/environments/default` | 本机既有环境：PostgreSQL、个人数据、Agent Run、个人模型凭据、执行记录和学校连接；保留原环境身份 |
-| `http://127.0.0.1:3445/` | 当前负责人电脑的 SSH 转发，进入学校回环 `3444`；不是本机学校副本 |
+| `https://101.201.141.133/` | 团队开发学校公网入口；Nginx 转发学校回环 `3444`，由 systemd 管理学校服务与证书续签 |
 | 远端 `~/xunjie-school-dev.NK1GQlUI/school-v2` | 开发学校的 PostgreSQL 与学校业务资源；应用快照在同级 `app/` |
 | 远端 `~/wp04-211/product-linux-x64/` | 学校仍引用的 Node 与 PostgreSQL 运行资源；正在使用，继续保留。当前 Web 快照在学校同级 `web/`，PDF 资源随同级 `app/` 保留 |
 | `http://127.0.0.1:5601/#/` | 旧版 UI 对照页，不能拿它证明正式产品链路 |
 
-上述端口与目录是当前开发环境事实，换电脑先从真实安装／连接元数据核实。公共产品部署不要求 SSH；正式跨机入口使用部署者提供的可达地址与认证配置。开发学校连接经现有私有 SSH 通道，不关闭全局网络保护或向学校暴露本机 loopback。
+上述端口与目录是当前开发环境事实，换电脑先从真实安装／连接元数据核实。公共产品部署不要求 SSH；正式跨机入口使用部署者提供的可达地址与认证配置。成员通过公网 HTTPS 连接开发学校；负责人 SSH 只用于维护。成员本机保持回环监听，学校不访问其 loopback。
 
 ## 日常启动与停止
 
@@ -28,7 +28,7 @@
 
 本机没有把源码构建升级为新的分发包。当前环境的原 Node／PostgreSQL 资源仍可复用；维护时先读 `installation.json.resources`，不要把该资源目录当旧包清掉。
 
-远端维护使用本机 `~/.config/xunjie-cloud/ssh.conf` 中的 `xunjie-cloud`；浏览器转发使用 `xunjie-cloud-browser`。先确认既有转发和远端学校进程；已有入口可用时直接复用。学校应用维护命令由安装中固定 Node 执行同级 `app/cli.js`，带 `--root <学校目录>`。`start`／`stop`／`status` 只管理这个环境，不操作其他云服务。
+远端维护使用本机 `~/.config/xunjie-cloud/ssh.conf` 中的 `xunjie-cloud`。学校启停由 `sudo systemctl start|stop|restart|status xunjie-school.service` 管理；成员浏览器直接访问公网 HTTPS。固定 Node 执行同级 `app/cli.js`，带 `--root <学校目录>`，用于产品状态、成员权限和备份等维护操作。该服务只管理现有学校环境。
 
 ## 部署与设备接入
 
@@ -36,14 +36,14 @@
 
 学校应用由当前源码的 `scripts/package-product.mjs#buildApplication` 构建后更新既有 `app/` 快照，复用原运行资源。源码版本／构建摘要记录在学校同级 `school-v2-source-info.json`；以该文件和实际运行结果核实，不能从本机分支名推断云端版本。
 
-设备配对与本机 Agent／执行上传连接按 [连接步骤](../../../docs/deployment.md#连接本机-agent-与学校数据)完成。当前有效学校连接继续使用，不清空配对数据。学校只授权本机向外调用：Agent 依赖授权与执行证据上传授权分开，不部署反向隧道。
+成员首次接入按 [开发学校成员接入](school-access.md)完成，学校批准后的客户端自动登记本机 Agent 与执行上传连接。显式其他部署仍按 [连接步骤](../../../docs/deployment.md#连接本机-agent-与学校数据)操作。当前有效学校连接继续使用，不清空配对数据。学校只授权本机向外调用：Agent 依赖授权与执行证据上传授权分开，不部署反向隧道。
 
 学校测试账号从负责人本机 `~/Library/Application Support/XunJie/school-test/student-account.json` 在授权操作内读取，密码只用于该学校的登录；不在聊天或日志输出。通用成员接入账号仍按 [操作路由](operations.md#手动登录与查看测试账号)取得，勿将负责人测试账号当作团队共享配置。
 
 ## 排障与清理
 
 - Agent／模型位置：检查本机活动 Run 和模型调用记录、学校启用模块及学校模型任务数量。新对话成功且学校没有新模型任务，才能证明本机直连链路；能力元数据不是实测结果。
-- 学校暂时不可达：先检查已有 SSH 转发与远端学校状态。保留当前 owner、requestId 和本机未同步执行事实，恢复原连接后继续；不要回退为学校 Agent 或再发一次付费模型请求。
+- 学校暂时不可达：先检查公网 HTTPS、证书与远端学校服务状态。保留当前 owner、requestId 和本机未同步执行事实，恢复原连接后继续；不要回退为学校 Agent 或再发一次付费模型请求。
 - DeepSeek Messages：Base URL 为 `https://api.deepseek.com/anthropic`，path 为 `/v1/messages`；当前凭据保留在本机。目标地址改变需通过原保存流程重新绑定凭据，密钥不进入学校或公开输出。
 - 连接可用但 Agent 提示容量不足：检查个人连接的 `maxOutputTokens`。本次已设为 `4096`；保留 `contextWindow=500000`。未填输出上限时不能把容量暂停误判为网络或学校代理问题。
 - 执行证据未同步：核对执行服务独立 grant、deviceModules、installationId 和原 requestId。学校只核验已收到的事实，不主动查询本机。

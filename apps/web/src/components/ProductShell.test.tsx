@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ProductShell } from './ProductShell'
 
 vi.mock('../lib/theme', () => ({
@@ -10,6 +10,7 @@ vi.mock('../lib/theme', () => ({
   setThemePreference: vi.fn(),
 }))
 
+beforeEach(() => vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} }))
 afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals() })
 
 it('supports account menu keyboard navigation in both sidebar states', async () => {

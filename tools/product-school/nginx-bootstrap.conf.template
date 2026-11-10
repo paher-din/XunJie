@@ -1,0 +1,10 @@
+server {
+    listen 80;
+    server_name __PUBLIC_IPV4__;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/xunjie-school-acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+    location / { return 301 https://__PUBLIC_IPV4__$request_uri; }
+}

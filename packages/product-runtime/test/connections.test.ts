@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer, request as httpRequest } from 'node:http';
@@ -213,6 +213,55 @@ test('grants survive reopening, persist only hashed credentials, and revocation 
   assert.equal((await client.check()).reason, 'http_401');
   await assert.rejects(client.request('echo', 'revoked'), hasCode('http_401'));
   assert.equal(await receiver.authority.revoke(grant.grantId), false);
+});
+
+test('prepared grants are idempotent across reopen, reject changed authority and remain revoked', async t => {
+  const receiver = await host(t, { echo: payload => payload, other: payload => payload });
+  const identity = source();
+  const request = { ...identity, ...installation(), capabilities: ['echo'] };
+  const grantId = randomUUID();
+  const prepared = { grantId, token: `${grantId}.${randomBytes(32).toString('hex')}` };
+  const first = await receiver.authority.authorize(request, prepared);
+  const client = outbound(descriptor(receiver.target, identity), first.token);
+  assert.equal(await client.request('echo', 'first'), 'first');
+  receiver.reopen();
+  const retried = await receiver.authority.authorize(request, prepared);
+  assert.equal(retried.grantId, first.grantId);
+  assert.equal(retried.token === first.token, true, 'retry retains the original credential');
+  assert.equal(await client.request('echo', 'after-reopen'), 'after-reopen');
+  for (const changed of [
+    { ...request, sourceEnvironmentId: randomUUID() },
+    { ...request, sourceServiceId: randomUUID() },
+    { ...request, sourceInstallationId: randomUUID() },
+    { ...request, capabilities: ['echo', 'other'] },
+  ]) await assert.rejects(receiver.authority.authorize(changed, prepared), hasCode('unauthorized'));
+  await assert.rejects(receiver.authority.authorize(request,
+    { grantId, token: `${grantId}.${randomBytes(32).toString('hex')}` }), hasCode('unauthorized'));
+  assert.equal(await receiver.authority.revoke(grantId), true);
+  assert.equal((await client.check()).reason, 'http_401');
+  await assert.rejects(receiver.authority.authorize(request, prepared), hasCode('unauthorized'));
+  receiver.reopen();
+  assert.equal((await client.check()).reason, 'http_401');
+  await assert.rejects(receiver.authority.authorize(request, prepared), hasCode('unauthorized'));
+  assert.equal(await receiver.authority.revoke(grantId), false);
+});
+
+test('concurrent prepared authorizations cannot bind one grant to different sources', async t => {
+  const receiver = await host(t);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const grantId = randomUUID();
+    const prepared = { grantId, token: `${grantId}.${randomBytes(32).toString('hex')}` };
+    const first = { ...source(), ...installation(), capabilities: ['echo'] };
+    const second = { ...source(), ...installation(), capabilities: ['echo'] };
+    const results = await Promise.allSettled([
+      receiver.authority.authorize(first, prepared),
+      receiver.authority.authorize(second, prepared),
+    ]);
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1,
+      'exactly one source may claim a prepared grant');
+    const rejected = results.find(result => result.status === 'rejected');
+    assert.ok(rejected && rejected.status === 'rejected' && hasCode('unauthorized')(rejected.reason));
+  }
 });
 
 test('disconnect and reconnect retain the original target, source and revoked grant without fallback', async (t) => {

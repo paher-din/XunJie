@@ -1,0 +1,13 @@
+[Unit]
+Description=Check XunJie school certificate every six hours
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00
+Persistent=true
+RandomizedDelaySec=10min
+FixedRandomDelay=true
+AccuracySec=1s
+Unit=xunjie-school-cert-renew.service
+
+[Install]
+WantedBy=timers.target

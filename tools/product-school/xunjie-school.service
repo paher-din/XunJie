@@ -1,0 +1,22 @@
+[Unit]
+Description=XunJie product development school daemon
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__SCHOOL_USER__
+Group=__SCHOOL_USER__
+WorkingDirectory=__SCHOOL_ROOT__
+ExecStart=__NODE24_21__ __APP_DIR__/daemon.js --root __SCHOOL_ROOT__
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=120s
+KillSignal=SIGTERM
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=true
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

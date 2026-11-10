@@ -70,24 +70,27 @@ for (const dataAtDevice of [false, true]) test(`device Agent uses ${dataAtDevice
     const agent = deviceState.environment.services.find(item => item.unit === 'teaching-agent');
     const source = dataAtDevice ? data : agent, destination = dataAtDevice ? schoolState.environment.services[0] : data;
     const capability = dataAtDevice ? 'learning.authority' : 'teaching.dependencies';
-    const grant = await school.authorize({ sourceEnvironmentId: source.environmentId, sourceServiceId: source.serviceId,
+    let grant;
+    if (dataAtDevice) {
+    grant = await school.authorize({ sourceEnvironmentId: source.environmentId, sourceServiceId: source.serviceId,
       sourceInstallationId: deviceState.environment.installationId, capabilities: [capability] }, destination.serviceId);
     const dependencyConnectionId = randomUUID();
     await device.connect({ connectionId: dependencyConnectionId, sourceEnvironmentId: source.environmentId, sourceServiceId: source.serviceId,
       target: destination, requiredCapabilities: [capability], optionalCapabilities: [], credentialRef: 'school-data' }, grant.token);
-    if (dataAtDevice) await deviceApi('manage/local-binding', { connectionId, runtimeConnectionId: dependencyConnectionId, target: dataTarget }, deviceAdmin);
-    else {
-      const executor = deviceState.environment.services.find(item => item.unit === 'tool-execution');
-      const publication = await school.authorize({ sourceEnvironmentId: executor.environmentId, sourceServiceId: executor.serviceId,
-        sourceInstallationId: deviceState.environment.installationId, capabilities: ['teaching.dependencies'] }, data.serviceId);
-      const executionConnectionId = randomUUID();
-      await device.connect({ connectionId: executionConnectionId, sourceEnvironmentId: executor.environmentId, sourceServiceId: executor.serviceId,
-        target: data, requiredCapabilities: ['teaching.dependencies'], optionalCapabilities: [], credentialRef: 'school-records' }, publication.token);
-      await schoolApi('manage/agent-binding', { requestId: randomUUID(), identity, delivery: 'client', connectionId,
-        grantId: grant.grantId, executionGrantId: publication.grantId, target: agent, installationId: deviceState.environment.installationId,
-        deviceModules: deviceState.environment.services.filter(item => item.unit !== 'client') }, admin);
-      await deviceApi('manage/client-agent-binding', { connectionId, dependencyConnectionId, executionConnectionId,
-        target: { environmentId: agent.environmentId, serviceId: agent.serviceId, version: 1 } }, deviceAdmin);
+    await deviceApi('manage/local-binding', { connectionId, runtimeConnectionId: dependencyConnectionId, target: dataTarget }, deviceAdmin);
+    } else {
+      const setup = JSON.parse(await resolveCredential(schoolRoot, 'school-device-setup-'+connectionId));
+      grant = setup.result.agent;
+      const first = JSON.parse(await resolveCredential(deviceRoot, 'school-client-'+connectionId));
+      assert.ok(first.agentBinding.dependencyConnectionId, 'completion connects the local Agent automatically');
+      assert.ok(first.agentBinding.executionConnectionId, 'completion connects local execution separately');
+      assert.equal(first.setupPending, false);
+      await school.stop(); await school.start();
+      await deviceApi('client/complete', { requestId: connectionId });
+      const again = JSON.parse(await resolveCredential(deviceRoot, 'school-client-'+connectionId));
+      assert.deepEqual(again.agentBinding, first.agentBinding, 'retry after school restart retains the original connections');
+      assert.equal(JSON.parse(await resolveCredential(schoolRoot, 'school-device-setup-'+connectionId)).result.agent.grantId,
+        grant.grantId, 'retry does not issue a second Agent grant');
     }
     assert.equal((await school.status()).environment.services[0].capabilities.includes('learning.authority'), true);
     const personal = { 'x-xj-space': 'personal' }, connected = { 'x-xj-space': 'school:'+connectionId };
