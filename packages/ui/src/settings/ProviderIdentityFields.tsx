@@ -1,18 +1,34 @@
-import { Field, TextInput } from './controls'
+import { useId, useState } from 'react'
+import { Icon } from '../icons'
+import { Field, Seg, TextInput } from './controls'
 
 /** Shared supplier presentation: both controllers supply values and persistence; no Session/store/API. */
-export function ProviderIdentityFields({ name, baseUrl, apiKey, hasKey, errors = {}, onName, onBaseUrl, onApiKey }: {
+export function ProviderIdentityFields({ name, baseUrl, apiKey, hasKey, errors = {}, protocol, snapshotCredential = false,
+  apiKeyDisabled = false, onBaseUrlBlur, onName, onBaseUrl, onApiKey }: {
   name: string; baseUrl: string; apiKey: string; hasKey?: boolean | undefined
   errors?: { name?: string | undefined; baseUrl?: string | undefined }
+  protocol?: { value: string; options: Array<{ value: string; label: string }>; placeholder: string; onChange(value: string): void }
+  snapshotCredential?: boolean; apiKeyDisabled?: boolean
+  onBaseUrlBlur?(): void
   onName(value: string): void; onBaseUrl(value: string): void; onApiKey(value: string): void
 }) {
+  const [visible, setVisible] = useState(false)
+  const baseUrlErrorId = useId()
   return <>
     <Field label="名称" error={errors.name}><TextInput aria-label="连接名称" value={name} placeholder="例如：DeepSeek 官方" onChange={event => onName(event.target.value)} /></Field>
-    <Field label="Base URL" tip="SDK 的基础地址；协议路径单独显示" error={errors.baseUrl}>
-      <TextInput aria-label="Base URL" value={baseUrl} placeholder="https://api.example.com/v1" className="st-mono-input" onChange={event => onBaseUrl(event.target.value)} />
+    <Field label="Base URL" tip="填写基础地址，系统按协议追加接口路径" error={errors.baseUrl} errorId={baseUrlErrorId}>
+      {protocol && <div className="st-provider-protocol"><Seg ariaLabel="协议" options={protocol.options} value={protocol.value} onChange={protocol.onChange} /></div>}
+      <TextInput aria-label="Base URL" aria-invalid={Boolean(errors.baseUrl)} aria-describedby={errors.baseUrl ? baseUrlErrorId : undefined}
+        value={baseUrl} placeholder={protocol?.placeholder ?? 'https://api.example.com/v1'} className="st-mono-input"
+        onBlur={onBaseUrlBlur} onChange={event => onBaseUrl(event.target.value)} />
     </Field>
-    <Field label="API Key" tip={hasKey ? '已加密保存；留空保留，填写后替换' : '仅由所属服务保管，读取不返回密钥'}>
-      <TextInput aria-label="API Key" type="password" autoComplete="off" value={apiKey} placeholder="sk-…" className="st-mono-input" onChange={event => onApiKey(event.target.value)} />
+    <Field label="API Key" tip={snapshotCredential ? '保存输入框中的当前密钥；清空后保存即可移除密钥' : hasKey ? '已加密保存；留空保留，填写后替换' : '仅由所属服务保管，读取不返回密钥'}>
+      <div className="st-secret-input">
+        <TextInput aria-label="API Key" type={visible ? 'text' : 'password'} autoComplete="off" spellCheck={false} disabled={apiKeyDisabled}
+          value={apiKey} placeholder={apiKeyDisabled ? '正在读取已保存的密钥…' : 'sk-…'} className="st-mono-input" onChange={event => onApiKey(event.target.value)} />
+        <button type="button" className="st-secret-reveal" aria-label={visible ? '隐藏 API Key' : '显示 API Key'} aria-pressed={visible}
+          disabled={apiKeyDisabled} onMouseDown={event => event.preventDefault()} onClick={() => setVisible(value => !value)}><Icon name="eye" size={18} /></button>
+      </div>
     </Field>
   </>
 }

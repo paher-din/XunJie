@@ -22,6 +22,8 @@
 
 ## 项目专属图形
 
+`eye-linear.svg` 为密钥显隐按钮补绘的项目图形，沿用 24px 画布、1.5px 线宽及圆润端点，归属与许可同本节其他项目图形。
+
 `learning-space`、`assistant-mark`、`virtual-board`、`digital-waveform`、`load-board`、`insert-prompt`、`unpin` 是本项目确认的自绘图形；归属学习空间项目，未另行指定公共开源许可。`file-presentation` 单独遵循上述 Solar 衍生许可。
 
 `analogy` 为个人资料复核时新增的项目自绘图形，用圆形与菱形的对应关系表达类比解释；沿用 24px 画布、1.5px 线宽及圆润端点与转角，归属与许可同上述项目专属图形。

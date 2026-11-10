@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
-import { modelAttemptSchema, modelConnectionSchema, type ModelAttempt, type ModelConnection, type ModelCheckInput, type SaveModelConnection } from '@xunjie/contracts/model-connections'
+import { modelAttemptSchema, modelConnectionSchema, modelCredentialValueSchema, type ModelAttempt, type ModelConnection, type ModelCheckInput, type SaveModelConnection } from '@xunjie/contracts/model-connections'
 import { teachingModelSwitchSchema } from '@xunjie/contracts/teaching-agent'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelConnectionDialog } from '../components/settings/ModelConnectionDialog'
@@ -107,6 +107,11 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     }
     return saved
   }
+  const readCredential = useCallback(async (connectionId: string, version: number) => {
+    const saved = modelCredentialValueSchema.parse(await request('connections/' + connectionId + '/credential', { version }))
+    if (saved.connectionId !== connectionId || saved.version !== version) throw new Error('配置已更新，请重新打开。')
+    return saved.value
+  }, [request])
   const switchConversation = async (selectionVersion: number) => {
     if (!activityId) return
     setSwitchFailed(false)
@@ -141,6 +146,6 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       onReload={() => void reload(true)} onNew={() => setDialog({ connection: null })} onEdit={connection => setDialog({ connection })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}
       onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div></div>
-    {dialog && <ModelConnectionDialog connection={dialog.connection} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readConnection} onCheck={check} onCancel={cancel} />}
+    {dialog && <ModelConnectionDialog connection={dialog.connection} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readConnection} onReadCredential={readCredential} onCheck={check} onCancel={cancel} />}
   </div>
 }

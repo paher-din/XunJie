@@ -167,21 +167,19 @@ export function HelpTip({ tip }: { tip: string }) {
 
 /** 表单字段：标签 + ? 说明 + 输入，错误时显示错误文案。 */
 export function Field({
-  label, tip, error, children,
+  label, tip, error, errorId, children,
 }: {
   label: string
   tip?: string
   error?: string
+  errorId?: string
   children: ReactNode
 }) {
   return (
     <div className={'st-field' + (error ? ' invalid' : '')}>
-      <span className="st-field-label">
-        {label}
-        {tip && <HelpTip tip={tip} />}
-      </span>
+      <span className="st-field-label">{label}{tip && <HelpTip tip={tip} />}</span>
       {children}
-      {error && <span className="st-field-error">{error}</span>}
+      {error && <span id={errorId} className="st-field-error" role="alert">{error}</span>}
     </div>
   )
 }

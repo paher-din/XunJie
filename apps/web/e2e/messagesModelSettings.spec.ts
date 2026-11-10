@@ -1,7 +1,7 @@
 import { evidenceDirectory } from './evidence'
 import { test, expect } from '@playwright/test'
 import { createServer } from 'node:http'
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir, release } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,6 +17,7 @@ type Runtime = Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' |
 const output = evidenceDirectory('167')
 let school: Runtime, device: Runtime, schoolEndpoint = '', deviceEndpoint = '', schoolCookie = '', connectionKey = '', baseUrl = '', browserVersion = ''
 const cases: { title: string; status?: string; duration: number }[] = []
+const runtimeRoots: string[] = []
 const upstream = createServer(async (request, response) => {
   const parts = []; for await (const chunk of request) parts.push(chunk)
   const input = JSON.parse(Buffer.concat(parts).toString('utf8'))
@@ -45,8 +46,10 @@ test.beforeAll(async ({ browser }) => {
     return { install: input => run('install', ['--profile', input?.profile ?? 'local']), start: () => run('start'), stop: () => run('stop') }
   }
   const schoolRoot = await mkdtemp(join(tmpdir(), 'xj-messages-ui-school-'))
+  runtimeRoots.push(schoolRoot)
   school = await open(schoolRoot); await school.install({ profile: 'school' }); schoolEndpoint = (await school.start()).endpoint!
-  device = await open(await mkdtemp(join(tmpdir(), 'xj-messages-ui-device-'))); await device.install({ profile: 'local' }); deviceEndpoint = (await device.start()).endpoint!
+  const deviceRoot = await mkdtemp(join(tmpdir(), 'xj-messages-ui-device-')); runtimeRoots.push(deviceRoot)
+  device = await open(deviceRoot); await device.install({ profile: 'local' }); deviceEndpoint = (await device.start()).endpoint!
   const call = async (endpoint: string, route: string, body: unknown, headers = {}) => {
     const response = await fetch(endpoint + '/api/learning/' + route, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) })
     expect(response.status).toBe(200); return { value: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] }
@@ -65,6 +68,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async ({}, info) => { cases.push({ title: info.title, ...(info.status ? { status: info.status } : {}), duration: info.duration }) })
 test.afterAll(async ({}, info) => {
   await device?.stop(); await school?.stop(); upstream.closeAllConnections(); await new Promise<void>(done => upstream.close(() => done()))
+  await Promise.all(runtimeRoots.map(root => rm(root, { recursive: true, force: true })))
   if (output) await writeFile(join(output, 'messages-chrome-' + process.platform + '.json'), JSON.stringify({ platform: process.platform, os: release(), browser: 'installed Chrome', browserVersion,
     headless: info.project.use.headless !== false, measuredAt: new Date().toISOString(), cases }, null, 2))
 })
@@ -75,7 +79,8 @@ test('Messages formal draft check save reopen and cancel use the production owne
   await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl)
   await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('deepseek-flash')
   await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-messages-ui-key')
-  await dialog.getByLabel('协议', { exact: true }).selectOption('messages')
+  await dialog.getByRole('radio', { name: 'Anthropic 兼容', exact: true }).click()
+  await dialog.getByText('高级配置', { exact: true }).click()
   await dialog.getByLabel('方言', { exact: true }).selectOption('deepseek')
   const check = dialog.getByRole('button', { name: '保存前检查', exact: true })
   if (process.env.XUNJIE_CAPTURE_BEFORE === '1' && output) await page.screenshot({ path: join(output, 'messages-settings-before-win.png'), fullPage: true })
@@ -85,8 +90,9 @@ test('Messages formal draft check save reopen and cancel use the production owne
   await dialog.getByRole('button', { name: '保存', exact: true }).click(); await expect(dialog).toBeHidden(); await page.reload()
   const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: 'Messages 正式连接' })
   await card.getByRole('button', { name: '连接检查', exact: true }).click(); await expect(page.getByText('Messages 检查正常', { exact: true })).toHaveCount(2)
+  await page.getByText(/^连接检查记录（/).click()
   await card.getByRole('button', { name: '编辑', exact: true }).click()
-  await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('messages'); await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('')
+  await expect(dialog.getByRole('radio', { name: 'Anthropic 兼容', exact: true })).toBeChecked(); await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-messages-ui-key')
   await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('fixture-messages-cancel')
   await dialog.getByRole('button', { name: '保存', exact: true }).click(); await card.getByRole('button', { name: '连接检查', exact: true }).click()
   await expect(page.getByText('正在检查', { exact: true })).toBeVisible(); await page.getByRole('button', { name: '停止检查', exact: true }).click()
@@ -117,7 +123,8 @@ test('unsupported Command Code Messages remains configurable but cannot send a m
   await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill('https://api.commandcode.ai/provider')
   await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('deepseek/deepseek-v4.1-flash')
   await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-no-network-key')
-  await dialog.getByLabel('协议', { exact: true }).selectOption('messages'); await dialog.getByLabel('方言', { exact: true }).selectOption('command-code')
+  await dialog.getByRole('radio', { name: 'Anthropic 兼容', exact: true }).click(); await dialog.getByText('高级配置', { exact: true }).click()
+  await dialog.getByLabel('方言', { exact: true }).selectOption('command-code')
   await dialog.getByRole('button', { name: '保存前检查', exact: true }).click(); await expect(dialog.getByRole('alert')).toBeVisible()
   await dialog.getByRole('button', { name: '保存', exact: true }).click(); await expect(dialog).toBeHidden()
   const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '不支持的 Messages 路线' })

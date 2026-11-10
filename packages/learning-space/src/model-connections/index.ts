@@ -4,7 +4,7 @@ import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema, schoolModelInputSchema, schoolModelSchema } from '@xunjie/contracts/model-connections';
 import type { ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
 import { learningAdmissionMigration, type LearningAdmissionPolicy } from './learning-admission.js';
@@ -317,7 +317,21 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await validatePairedLearning(storage);
     await origins.validate();
   }
-  return { list, save, school, selection, images, segments, routing, results, deviceTasks, origins, validate, checks,
+  async function readCredential(identity: SpaceIdentity, connectionId: string, version: number) {
+    await options.authorize(identity);
+    z.uuid().parse(connectionId); z.number().int().positive().parse(version);
+    const current = await stored(identity, connectionId);
+    if (current.version !== version) throw new StorageError('conflict');
+    let value = '';
+    if (current.credentialRef) {
+      const { rows: [row] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1 AND scope=$2 AND temporary=false',
+        [current.credentialRef, scopeOf(identity)]);
+      if (!row) throw new StorageError('forbidden');
+      value = openCredential(key, row.binding as string, row.sealed as ReturnType<typeof sealCredential>);
+    }
+    return { connectionId, version: current.version, value };
+  }
+  return { list, save, readCredential, school, selection, images, segments, routing, results, deviceTasks, origins, validate, checks,
     closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
     resume() { writesClosed = false; checks.resume(); } };
 }

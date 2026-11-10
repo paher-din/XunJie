@@ -1,7 +1,7 @@
 import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { createServer } from 'node:http'
-import { mkdtemp, mkdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +16,7 @@ const reviewScreenshots = evidenceDirectory('pr177')
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
 let runtime: Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>, endpoint: string, baseUrl: string
+let runtimeRoot: string
 let calls = 0
 const upstream = createServer(async (request, response) => {
   calls++
@@ -38,7 +39,7 @@ test.beforeAll(async () => {
   if (reviewScreenshots) await mkdir(reviewScreenshots, { recursive: true })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
   baseUrl = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/v1`
-  const root = await mkdtemp(join(tmpdir(), 'xj-models-chrome-'))
+  const root = runtimeRoot = await mkdtemp(join(tmpdir(), 'xj-models-chrome-'))
   if (process.env.XUNJIE_PRODUCT_TEST_PACKAGE) {
     const product = resolve(process.env.XUNJIE_PRODUCT_TEST_PACKAGE)
     const resources = JSON.parse(await readFile(join(product, 'resources.json'), 'utf8'))
@@ -52,14 +53,11 @@ test.beforeAll(async () => {
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
   await runtime.install({ profile: 'local' }); endpoint = (await runtime.start()).endpoint!
 })
-test.afterAll(async () => { await runtime?.stop(); upstream.closeAllConnections(); await new Promise<void>(resolve => upstream.close(() => resolve())) })
+test.afterAll(async () => { await runtime?.stop(); upstream.closeAllConnections(); await new Promise<void>(resolve => upstream.close(() => resolve())); if (runtimeRoot) await rm(runtimeRoot, { recursive: true, force: true }) })
 
 test('formal model settings save and reopen a personal connection without a legacy session', async ({ page }) => {
-  await page.goto(endpoint)
-  if (await page.getByRole('button', { name: '模型设置', exact: true }).count() === 0)
-    if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/before-model-settings.png'), fullPage: true })
-  await page.getByRole('button', { name: '模型设置', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeVisible()
+  await page.goto(endpoint + '/?settings=models')
+  await expect(page.getByRole('region', { name: '个人连接配置', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '添加供应商', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('本人的测试服务')
@@ -75,11 +73,13 @@ test('formal model settings save and reopen a personal connection without a lega
   await expect(page.getByRole('region', { name: '个人连接配置', exact: true }).getByText('本人的测试服务', { exact: true })).toBeVisible()
   expect(calls).toBe(0)
   await page.getByRole('button', { name: '连接检查', exact: true }).click()
+  await page.getByText(/^连接检查记录（/).click()
   await expect(page.getByText('检查已完成', { exact: true })).toBeVisible()
   expect(calls).toBe(1)
   await expect(page.getByText('用量未知', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '编辑', exact: true }).click()
-  await expect(page.getByLabel('API Key', { exact: true })).toHaveValue('')
+  await expect(page.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-private-ui-key')
+  await expect(page.getByLabel('API Key', { exact: true })).toHaveAttribute('type', 'password')
   await page.getByRole('button', { name: '取消', exact: true }).click()
   if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/after-model-settings-light.png'), fullPage: true })
   await page.emulateMedia({ colorScheme: 'dark' }); await page.setViewportSize({ width: 720, height: 900 })
@@ -116,7 +116,51 @@ test('a delayed save confirmation preserves later form input and its next versio
   } finally { release(); await page.unroute('**/api/learning/models/connections') }
 })
 
-test('dialog keyboard focus, Chinese composition, blank-key reuse and ordinary navigation remain usable', async ({ page }) => {
+test('protocol examples, inline address errors and masked saved-key replacement follow the current form value', async ({ page }) => {
+  await page.goto(endpoint + '/?settings=models')
+  await page.getByRole('button', { name: '添加供应商', exact: true }).click()
+  const dialog = page.getByRole('dialog'), key = dialog.getByLabel('API Key', { exact: true })
+  const address = dialog.getByRole('textbox', { name: 'Base URL', exact: true })
+  await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('密钥编辑验收')
+  await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('synthetic-editor-model')
+  await expect(address).toHaveAttribute('placeholder', 'https://api.example.com/v1')
+  await address.fill(baseUrl + '/chat/completions')
+  await address.blur()
+  await expect(dialog.getByRole('alert')).toContainText('请去掉末尾 /chat/completions')
+  await dialog.getByRole('radio', { name: 'Anthropic 兼容', exact: true }).click()
+  await expect(address).toHaveAttribute('placeholder', 'https://api.example.com')
+  await address.fill(baseUrl)
+  await expect(dialog.getByRole('alert')).toContainText('不带末尾 /v1')
+  await dialog.getByRole('radio', { name: 'OpenAI Responses', exact: true }).click()
+  await expect(address).toHaveAttribute('placeholder', 'https://api.example.com/v1')
+  await expect(address).toHaveAttribute('aria-invalid', 'false')
+  await key.fill('synthetic-editor-first')
+  await expect(key).toHaveAttribute('type', 'password')
+  await dialog.getByRole('button', { name: '显示 API Key', exact: true }).click()
+  await expect(key).toHaveAttribute('type', 'text')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '密钥编辑验收' })
+  await card.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(key).toHaveValue('synthetic-editor-first')
+  await expect(key).toHaveAttribute('type', 'password')
+  await dialog.getByRole('button', { name: '显示 API Key', exact: true }).click()
+  await expect(key).toHaveAttribute('type', 'text')
+  await key.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await key.press('Backspace')
+  await key.fill('synthetic-editor-second')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await card.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(key).toHaveValue('synthetic-editor-second')
+  await expect(key).toHaveAttribute('type', 'password')
+  await key.fill('')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(card.getByText('尚未保存密钥', { exact: true })).toBeVisible()
+  await card.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(key).toHaveValue('')
+  await dialog.getByRole('button', { name: '取消', exact: true }).click()
+})
+
+test('dialog keyboard focus, Chinese composition, saved-key checks and ordinary navigation remain usable', async ({ page }) => {
   await page.goto(endpoint + '/?settings=models')
   const add = page.getByRole('button', { name: '添加供应商', exact: true })
   await add.click()
@@ -135,9 +179,9 @@ test('dialog keyboard focus, Chinese composition, blank-key reuse and ordinary n
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
   await expect(add).toBeFocused()
-  const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '本人的测试服务' })
+  const card = await createRecoveryConnection(page, '键盘测试连接')
   await card.getByRole('button', { name: '编辑', exact: true }).click()
-  await dialog.getByLabel('API Key', { exact: true }).fill('   ')
+  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-recovery-key')
   await dialog.getByRole('button', { name: '保存前检查', exact: true }).click()
   await expect(dialog.getByRole('status')).toContainText('检查已完成')
   await page.keyboard.press('Escape')
@@ -153,7 +197,7 @@ test('Responses settings check drafts, save, reopen and cancel through the forma
   await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl)
   await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('fixture-responses')
   await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-responses-ui-key')
-  await dialog.getByLabel('协议', { exact: true }).selectOption('responses')
+  await dialog.getByRole('radio', { name: 'OpenAI Responses', exact: true }).click()
   const check = dialog.getByRole('button', { name: '保存前检查', exact: true })
   await expect(check).toBeEnabled()
   await check.click()
@@ -162,12 +206,14 @@ test('Responses settings check drafts, save, reopen and cancel through the forma
   await expect(dialog).toBeHidden()
   await page.reload()
   const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: 'Responses 正式连接' })
+  await card.getByText('SDK 与能力', { exact: true }).click()
   await expect(card.getByText('responses · 版本 1', { exact: true })).toBeVisible()
   await card.getByRole('button', { name: '连接检查', exact: true }).click()
+  await page.getByText(/^连接检查记录（/).click()
   await expect(page.getByText('Responses 检查正常', { exact: true })).toHaveCount(2)
   await card.getByRole('button', { name: '编辑', exact: true }).click()
-  await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('responses')
-  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('')
+  await expect(dialog.getByRole('radio', { name: 'OpenAI Responses', exact: true })).toBeChecked()
+  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-responses-ui-key')
   await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('fixture-responses-cancel')
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   await expect(dialog).toBeHidden()
@@ -216,12 +262,13 @@ test('rejected connection actions remain visible across successful polls until t
     denied = false
     await card.getByRole('button', { name: '连接检查', exact: true }).click()
     await expect(failure).toBeHidden()
+    await page.getByText(/^连接检查记录（/).click()
     await expect(page.getByText('轮询错误回归 · synthetic-recovery-model', { exact: true })).toBeVisible()
     if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'action-retry-confirmed.png'), fullPage: true })
   } finally { await page.unroute('**/api/learning/models/checks') }
 })
 
-for (const credential of ['keep', 'replace', 'clear'] as const) {
+for (const credential of ['unchanged', 'replace', 'clear'] as const) {
   test(`two tabs explicitly reconcile CAS while preserving the draft and ${credential} credential intent`, async ({ page, context }) => {
     const title = '双标签冲突-' + credential
     const card = await createRecoveryConnection(page, title)
@@ -229,7 +276,7 @@ for (const credential of ['keep', 'replace', 'clear'] as const) {
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill(title + '-本人草稿')
     if (credential === 'replace') await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-replacement-key')
-    if (credential === 'clear') await dialog.getByLabel('清除已保存密钥', { exact: true }).check()
+    if (credential === 'clear') await dialog.getByLabel('API Key', { exact: true }).fill('')
     const other = await context.newPage()
     const submissions: { requestId: string; expectedVersion: number; credential: { action: string } }[] = []
     await page.route('**/api/learning/models/connections', async route => {
@@ -256,16 +303,16 @@ for (const credential of ['keep', 'replace', 'clear'] as const) {
       await expect(comparison).toContainText('已保存版本 2')
       await expect(comparison).toContainText('other-tab-model')
       await expect(dialog.getByRole('textbox', { name: '连接名称', exact: true })).toHaveValue(title + '-本人草稿')
-      await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue(credential === 'replace' ? 'synthetic-replacement-key' : '')
-      if (credential === 'clear') await expect(dialog.getByLabel('清除已保存密钥', { exact: true })).toBeChecked()
+      await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue(credential === 'replace' ? 'synthetic-replacement-key' : credential === 'clear' ? '' : 'synthetic-recovery-key')
       if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-compare.png`), fullPage: true })
       expect(submissions).toHaveLength(1)
       await dialog.getByRole('button', { name: '确认按当前草稿重试', exact: true }).click()
       await expect(dialog).toBeHidden()
       expect(submissions.map(input => input.expectedVersion)).toEqual([1, 2])
       expect(submissions[1].requestId).not.toBe(submissions[0].requestId)
-      expect(submissions[1].credential.action).toBe(credential)
+      expect(submissions[1].credential.action).toBe(credential === 'clear' ? 'clear' : 'replace')
       const saved = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: title + '-本人草稿' })
+      await saved.getByText('SDK 与能力', { exact: true }).click()
       await expect(saved.getByText('chat-completions · 版本 3', { exact: true })).toBeVisible()
       await expect(saved.getByText(credential === 'clear' ? '尚未保存密钥' : '密钥已保存', { exact: true })).toBeVisible()
       if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, `cas-${credential}-recovered.png`), fullPage: true })
@@ -304,6 +351,7 @@ test('a lost save ACK is reconciled by the identical POST before submitting late
     await expect(dialog).toBeHidden()
     expect(submissions.map(input => JSON.parse(input).expectedVersion)).toEqual([1, 1, 2])
     const saved = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: '未知保存-后续草稿' })
+    await saved.getByText('SDK 与能力', { exact: true }).click()
     await expect(saved.getByText('chat-completions · 版本 3', { exact: true })).toBeVisible()
     if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'unknown-ack-recovered.png'), fullPage: true })
   } finally { await page.unroute('**/api/learning/models/connections') }

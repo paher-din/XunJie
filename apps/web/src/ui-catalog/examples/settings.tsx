@@ -86,8 +86,13 @@ function ModelFieldsDemo() {
 }
 function ProviderCardDemo() { const [notice, setNotice] = useState(''); return <Frame><ModelProviderCard name="示例供应商" address="https://example.invalid/v1" credentialLabel="示例状态" actions={<button type="button" className="outline" onClick={() => setNotice('已触发示例编辑')}>编辑</button>}><p>示例模型</p></ModelProviderCard><output>{notice}</output></Frame> }
 function IdentityDemo({ error = false }: { error?: boolean }) {
-  const [name, setName] = useState('示例供应商'), [url, setUrl] = useState('https://example.invalid/v1'), [key, setKey] = useState('')
-  return <Frame><ProviderIdentityFields name={name} baseUrl={url} apiKey={key} hasKey={false} errors={error ? { name: '示例错误' } : {}} onName={setName} onBaseUrl={setUrl} onApiKey={setKey} /></Frame>
+  const [name, setName] = useState('示例供应商'), [url, setUrl] = useState('https://example.invalid/v1'), [key, setKey] = useState('synthetic-example-key')
+  const [protocol, setProtocol] = useState('chat-completions')
+  return <Frame><ProviderIdentityFields name={name} baseUrl={url} apiKey={key} snapshotCredential
+    errors={error ? { baseUrl: '请去掉末尾 /chat/completions，系统会自动追加接口路径。' } : {}}
+    protocol={{ value: protocol, onChange: setProtocol, placeholder: protocol === 'messages' ? 'https://api.example.com' : 'https://api.example.com/v1',
+      options: [{ value: 'chat-completions', label: 'OpenAI 兼容' }, { value: 'responses', label: 'OpenAI Responses' }, { value: 'messages', label: 'Anthropic 兼容' }] }}
+    onName={setName} onBaseUrl={setUrl} onApiKey={setKey} /></Frame>
 }
 function IdentityNormal() { return <IdentityDemo /> }
 function IdentityError() { return <IdentityDemo error /> }

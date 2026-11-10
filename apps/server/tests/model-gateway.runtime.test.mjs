@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID, randomBytes } from 'node:crypto';
-import { mkdtemp, readFile, writeFile, rename, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rename, unlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,7 +28,7 @@ async function product(run) {
       return { status: response.status, value: await response.json() };
     };
     await run({ api, runtime, endpoint, root });
-  } finally { await runtime.stop(); }
+  } finally { await runtime.stop(); await rm(root, { recursive: true, force: true }); }
 }
 const connection = () => ({ connectionId: randomUUID(), expectedVersion: 0, name: '本人测试连接',
   protocol: 'chat-completions', baseUrl: 'https://api.deepseek.com/v1', path: '/chat/completions',
@@ -43,6 +43,11 @@ test('the formal owner commits versioned personal connections and never projects
     assert.equal(saved.value.version, 1);
     assert.equal(saved.value.hasCredential, true);
     assert.equal(JSON.stringify(saved.value).includes(input.credential.value), false);
+    const editor = await api(`connections/${input.connectionId}/credential`, { version: 1 });
+    assert.equal(editor.status, 200);
+    assert.equal(editor.value.value, input.credential.value);
+    assert.equal((await api(`connections/${input.connectionId}/credential`, { version: 2 })).status, 409);
+    assert.equal((await api(`connections/${input.connectionId}/credential`, { version: 1 }, { 'x-xj-expected-subject': 'foreign.subject' })).status, 403);
     assert.equal(saved.value.adapterState, 'ready');
     assert.equal(saved.value.capabilities.images, 'unknown');
     const listed = await api('connections');
@@ -57,6 +62,7 @@ test('the formal owner commits versioned personal connections and never projects
     assert.equal(moved.status, 409, 'a changed authentication target must not silently receive the original key');
     const cleared = await api('connections', { requestId: randomUUID(), ...input, expectedVersion: 2, credential: { action: 'clear' } });
     assert.equal(cleared.value.version, 3); assert.equal(cleared.value.hasCredential, false);
+    assert.equal((await api(`connections/${input.connectionId}/credential`, { version: 3 })).value.value, '');
     await runtime.stop(); await runtime.start();
     assert.equal((await api('connections')).value[0].version, 3);
     assert.equal((await api('connections', undefined, { 'x-xj-expected-subject': 'foreign.subject' })).status, 403);

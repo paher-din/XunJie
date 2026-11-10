@@ -1,6 +1,6 @@
 import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelGrantInputSchema, modelCheckInputSchema, modelChatInputSchema } from '@xunjie/contracts/model-connections';
+import { modelGrantInputSchema, modelCheckInputSchema, modelChatInputSchema, readModelCredentialSchema } from '@xunjie/contracts/model-connections';
 import type { createModelGateway } from './index.js';
 
 /** The same owner wire is consumed by school HTTP and an authenticated installed client. */
@@ -14,6 +14,8 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   }
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
   if (route === 'models/connections') return body === undefined ? models.list(identity) : models.save(identity, body);
+  const credential = /^models\/connections\/([^/]+)\/credential$/.exec(route);
+  if (credential && body !== undefined) return models.readCredential(identity, credential[1]!, readModelCredentialSchema.parse(body).version);
   if (route === 'models/capabilities' && body !== undefined) return models.segments.decideCapabilities(identity, body);
   if (route === 'models/images' && body !== undefined) return models.images.upload(identity, body);
   if (/^models\/results\/[^/]+$/.test(route) && body === undefined) return models.results.read(identity, route.split('/')[2]!);

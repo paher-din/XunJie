@@ -4,9 +4,26 @@ import { storageOwnerSchema } from './storage.js';
 
 /** Model owner wire. SDK objects, credentials and native reasoning never enter public projections. */
 export const modelProtocolSchema = z.enum(['chat-completions', 'responses', 'messages']);
+const modelBaseUrlSchema = z.url().max(2000).regex(/^(?:https:\/\/[^\/?#@]+|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)(?:\/[^?#]*)?$/);
+/** Deterministic input errors only; reachability and provider support require a connection check. */
+export function modelBaseUrlError(baseUrl: string, protocol: z.infer<typeof modelProtocolSchema>): string | undefined {
+  if (!baseUrl.trim()) return '请填写 Base URL。';
+  if (baseUrl.length > 2000) return 'Base URL 不能超过 2000 个字符。';
+  if (!z.url().safeParse(baseUrl).success) return '请输入完整地址，例如 https://api.example.com/v1。';
+  const authority = /^[a-z][a-z\d+.-]*:\/\/([^/?#]*)/i.exec(baseUrl)?.[1];
+  if (authority?.includes('@')) return '地址中不能包含账号或密码，请把密钥填入 API Key。';
+  if (/[?#]/.test(baseUrl)) return 'Base URL 不能包含 ? 查询参数或 # 片段。';
+  if (!baseUrl.startsWith('https://') && !/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/.test(baseUrl))
+    return '请使用 HTTPS 地址；只有本机 localhost、127.0.0.1 或 [::1] 可以使用 HTTP。';
+  if (/\s/.test(baseUrl) || !modelBaseUrlSchema.safeParse(baseUrl).success) return '请输入不含空格的完整 Base URL。';
+  const path = baseUrl.replace(/^https?:\/\/[^/]+/, '').replace(/\/+$/, '');
+  const suffix = { 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' }[protocol];
+  if (path.endsWith(suffix)) return `请去掉末尾 ${suffix}，系统会自动追加接口路径。`;
+  if (protocol === 'messages' && path.endsWith('/v1')) return 'Anthropic 兼容地址不带末尾 /v1，系统会自动追加 /v1/messages。';
+}
 export const modelConfigurationSchema = z.object({
   connectionId: z.uuid(), name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema,
-  baseUrl: z.url().max(2000).regex(/^(?:https:\/\/[^\/?#@]+|http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)(?:\/[^?#]*)?$/),
+  baseUrl: modelBaseUrlSchema,
   path: z.enum(['/chat/completions', '/responses', '/v1/messages']),
   modelId: z.string().trim().min(1).max(200), dialect: z.enum(['standard', 'deepseek', 'command-code']),
   parameterMode: z.enum(['plain', 'thinking']), enabled: z.boolean(),
@@ -19,7 +36,11 @@ export const modelCredentialChangeSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('replace'), value: z.string().trim().min(1).max(8192) }).strict(),
 ]);
 export const saveModelConnectionSchema = modelConfigurationSchema.safeExtend({ requestId: z.uuid(),
-  expectedVersion: z.number().int().nonnegative(), credential: modelCredentialChangeSchema });
+  expectedVersion: z.number().int().nonnegative(), credential: modelCredentialChangeSchema })
+  .refine(value => !modelBaseUrlError(value.baseUrl, value.protocol), { path: ['baseUrl'], message: 'Invalid base URL for this protocol' });
+export const readModelCredentialSchema = z.object({ version: z.number().int().positive() }).strict();
+/** Explicit owner editor response; never included in connection lists, selections or attempt projections. */
+export const modelCredentialValueSchema = z.object({ connectionId: z.uuid(), version: z.number().int().positive(), value: z.string().max(8192) }).strict();
 export const capabilityStateSchema = z.enum(['unknown', 'declared', 'verified', 'unsupported']);
 export const modelConnectionSchema = modelConfigurationSchema.safeExtend({ version: z.number().int().positive(), routeId: z.uuid(),
   hasCredential: z.boolean(), adapterState: z.enum(['ready', 'not-integrated']),

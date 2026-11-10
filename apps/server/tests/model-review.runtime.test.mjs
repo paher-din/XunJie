@@ -75,6 +75,30 @@ async function product(profile, handler, run) {
 const input = (segmentId, text = 'continue') => ({ attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 0,
   input: { text, images: [], toolResults: [] }, limits: { maxOutputTokens: 64, timeoutMs: 10000 } });
 
+test('connection editor credentials belong to the exact original subject and version', { timeout: 180000 }, async () => {
+  await product('school', () => assert.fail('editing configuration must not call a model'), async ({ api, root }) => {
+    const admin = { authorization: 'Bearer ' + await resolveCredential(root, 'control') };
+    const members = [];
+    for (const loginName of ['editor-owner', 'editor-other']) {
+      const password = randomUUID();
+      assert.equal((await api('manage/members', { requestId: randomUUID(), loginName, password }, admin)).status, 200);
+      const login = await api('login', { loginName, password }); members.push({ cookie: login.cookie });
+    }
+    const saved = config('https://1.1.1.1/v1');
+    assert.equal((await api('models/connections', saved, members[0])).status, 200);
+    const route = `models/connections/${saved.connectionId}/credential`;
+    assert.equal((await api(route, { version: 1 }, members[0])).value.value, key);
+    assert.equal((await api(route, { version: 1 }, members[1])).status, 404);
+    assert.equal((await api(route, { version: 2 }, members[0])).status, 409);
+    assert.equal((await api(route, undefined, members[0])).status, 404);
+    assert.equal(JSON.stringify((await api('models/connections', undefined, members[0])).value).includes(key), false);
+    assert.equal((await api('models/connections', { ...saved, requestId: randomUUID(), expectedVersion: 1,
+      credential: { action: 'replace', value: 'synthetic-replacement-key' } }, members[0])).status, 200);
+    assert.equal((await api(route, { version: 1 }, members[0])).status, 409);
+    assert.equal((await api(route, { version: 2 }, members[0])).value.value, 'synthetic-replacement-key');
+  });
+});
+
 test('school HTTP identity cannot save or check host-local targets; approved school default can dispatch', { timeout: 180000 }, async () => {
   await product('school', (_request, response) => { response.writeHead(200, { 'content-type': 'text/event-stream' });
     send(response, chat({ content: 'approved-school-endpoint' }, 'stop')); response.end('data: [DONE]\n\n');

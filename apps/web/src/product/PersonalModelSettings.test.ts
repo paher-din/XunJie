@@ -22,6 +22,8 @@ let server: ModelConnection, saves: SaveModelConnection[], checks: ModelAttempt[
 let rejectSave: '' | 'before' | 'after' | 'invalid' | 'forbidden' | 'identity-conflict'
 let holdRead: Promise<void> | undefined, holdSave: Promise<void> | undefined
 let readFailure: boolean
+const originalKey = 'synthetic-saved-key'
+let serverKey: string, credentialFailure: boolean
 let receipts: Map<string, { input: string; result: ModelConnection }>
 const selection: ModelSelectionController = { selection: { version: 0, selected: null, options: [] }, error: '', busy: false, stale: false,
   reload: vi.fn(async () => {}), choose: vi.fn(async () => {}), revoke: vi.fn(async () => {}) }
@@ -61,7 +63,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   server = structuredClone(initial); saves = []; checks = []; receipts = new Map(); rejectCheck = true
-  rejectSave = ''; holdRead = undefined; holdSave = undefined; readFailure = false
+  rejectSave = ''; holdRead = undefined; holdSave = undefined; readFailure = false; serverKey = originalKey; credentialFailure = false
   vi.mocked(selection.reload).mockReset().mockResolvedValue(undefined)
   vi.stubGlobal('fetch', vi.fn(async (input: string, options: RequestInit = {}) => {
     const path = input.split('/models/')[1], method = options.method ?? 'GET'
@@ -73,6 +75,9 @@ beforeEach(async () => {
       return readFailure ? response({ error: 'unavailable' }, 503) : response(value)
     }
     const body = JSON.parse(options.body as string)
+    if (path.endsWith('/credential')) return credentialFailure ? response({ error: 'unavailable' }, 503)
+      : body.version !== server.version ? response({ error: 'conflict' }, 409)
+        : response({ connectionId: server.connectionId, version: server.version, value: serverKey })
     if (path === 'connections') {
       saves.push(structuredClone(body)); const failure = rejectSave; rejectSave = ''
       if (failure === 'before') throw new TypeError('synthetic transport loss')
@@ -83,6 +88,7 @@ beforeEach(async () => {
       const { requestId: _id, expectedVersion: _version, credential, ...configuration } = body
       server = { ...server, ...configuration, version: server.version + 1,
         hasCredential: credential.action === 'keep' ? server.hasCredential : credential.action === 'replace' }
+      if (credential.action !== 'keep') serverKey = credential.action === 'replace' ? credential.value : ''
       receipts.set(body.requestId, { input: JSON.stringify(body), result: structuredClone(server) })
       await holdSave
       if (failure === 'after') throw new TypeError('synthetic ACK loss')
@@ -108,6 +114,45 @@ afterEach(async () => {
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
 describe('personal model settings recovery through real React controls', () => {
+  it('loads the saved key masked, reveals it, and saves replacement or empty input exactly as edited', async () => {
+    await click('编辑')
+    expect(field('API Key').value).toBe(originalKey)
+    expect(field('API Key').type).toBe('password')
+    const reveal = () => document.querySelector<HTMLButtonElement>('button[aria-label="显示 API Key"]')!
+    await act(async () => { reveal().click(); await settle() })
+    expect(field('API Key').type).toBe('text')
+    expect(field('API Key').value).toBe(originalKey)
+    await type('API Key', 'synthetic-new-key'); await click('保存'); await click('编辑')
+    expect(field('API Key').type).toBe('password')
+    expect(field('API Key').value).toBe('synthetic-new-key')
+    await type('API Key', ''); await click('保存'); await click('编辑')
+    expect(field('API Key').value).toBe('')
+    expect(server.hasCredential).toBe(false)
+    expect(serverKey).toBe('')
+  })
+
+  it('blocks save and check after a credential read failure until an explicit retry succeeds', async () => {
+    credentialFailure = true; await click('编辑')
+    expect(button('保存').disabled).toBe(true)
+    expect(button('保存前检查').disabled).toBe(true)
+    expect(field('API Key').disabled).toBe(true)
+    expect(alerts()).toContain('未能读取已保存的密钥')
+    expect(saves).toHaveLength(0)
+    credentialFailure = false; await click('重新读取密钥')
+    expect(field('API Key').value).toBe(originalKey)
+    expect(button('保存').disabled).toBe(false)
+  })
+
+  it('shows deterministic URL errors inline without sending a save, and accepts corrected input', async () => {
+    await click('编辑'); await type('Base URL', 'https://synthetic.invalid/v1/chat/completions'); await click('保存')
+    expect(field('Base URL').getAttribute('aria-invalid')).toBe('true')
+    expect(alerts()).toContain('请去掉末尾 /chat/completions')
+    expect(saves).toHaveLength(0)
+    await type('Base URL', 'https://synthetic.invalid/custom')
+    expect(field('Base URL').getAttribute('aria-invalid')).toBe('false')
+    await click('保存'); expect(saves).toHaveLength(1)
+  })
+
   it('checks the acknowledged version immediately and ignores pre-save reads without pinning future restored data', async () => {
     await click('编辑'); await type('连接名称', '已确认配置')
     let releaseOld!: () => void, releaseFresh!: () => void
@@ -191,10 +236,10 @@ describe('personal model settings recovery through real React controls', () => {
     expect(document.body.textContent).not.toContain('旧主体草稿')
   })
 
-  it.each(['keep', 'replace', 'clear'] as const)('refreshes and confirms CAS without closing or losing %s credential intent', async action => {
+  it.each(['unchanged', 'replace', 'clear'] as const)('refreshes and confirms CAS without closing or losing the %s input value', async action => {
     await click('编辑'); await type('连接名称', '本地草稿')
     if (action === 'replace') await type('API Key', 'synthetic-replacement')
-    if (action === 'clear') await act(async () => { document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(); await settle() })
+    if (action === 'clear') await type('API Key', '')
     server = { ...server, name: '另一标签配置', modelId: 'other-model', version: 2 }; await poll()
     await click('保存'); expect(saves[0].expectedVersion).toBe(1)
     expect(alerts()).toContain('版本冲突')
@@ -204,10 +249,10 @@ describe('personal model settings recovery through real React controls', () => {
     expect(field('连接名称').value).toBe('本地草稿')
     expect(document.querySelector('[role="dialog"]')!.textContent).toContain('另一标签配置')
     expect(document.querySelector('[role="dialog"]')!.textContent).toContain('other-model')
-    expect(field('API Key').value).toBe(action === 'replace' ? 'synthetic-replacement' : '')
+    expect(field('API Key').value).toBe(action === 'replace' ? 'synthetic-replacement' : action === 'clear' ? '' : originalKey)
     await click('确认按当前草稿重试')
     expect(saves[1].expectedVersion).toBe(2)
-    expect(saves[1].credential).toEqual(action === 'replace' ? { action, value: 'synthetic-replacement' } : { action })
+    expect(saves[1].credential).toEqual(action === 'clear' ? { action: 'clear' } : { action: 'replace', value: action === 'replace' ? 'synthetic-replacement' : originalKey })
     expect(saves[1].requestId).not.toBe(saves[0].requestId)
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(server.name).toBe('本地草稿')
@@ -250,14 +295,14 @@ describe('personal model settings recovery through real React controls', () => {
     expect(saves[2].expectedVersion).toBe(3); expect(server.name).toBe('保留的草稿')
   })
 
-  it.each(['keep', 'clear'] as const)('confirms a lost ACK without an extra version or losing %s intent', async action => {
+  it.each(['unchanged', 'clear'] as const)('confirms a lost ACK without an extra version or losing the %s input value', async action => {
     await click('编辑')
-    if (action === 'clear') await act(async () => { document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(); await settle() })
+    if (action === 'clear') await type('API Key', '')
     rejectSave = 'after'; await click('保存'); await poll(); await poll()
     expect(alerts()).toContain('保存结果尚未确认')
     expect(saves).toHaveLength(1)
     await click('核对原提交')
-    expect(saves[1]).toEqual(saves[0]); expect(saves[1].credential).toEqual({ action })
+    expect(saves[1]).toEqual(saves[0]); expect(saves[1].credential).toEqual(action === 'clear' ? { action: 'clear' } : { action: 'replace', value: originalKey })
     expect(server.version).toBe(2); expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { modelConfigurationSchema, type ModelConfiguration, type ModelConnection, type ModelAttempt, type ModelCheckInput, type SaveModelConnection } from '@xunjie/contracts/model-connections'
+import { modelBaseUrlError, modelConfigurationSchema, type ModelConfiguration, type ModelConnection, type ModelAttempt, type ModelCheckInput, type SaveModelConnection } from '@xunjie/contracts/model-connections'
 import { ProviderIdentityFields } from './ProviderIdentityFields'
 import { Field, TextInput } from './controls'
 import { Icon } from '../../icons'
@@ -9,16 +9,19 @@ const fields = { name: '名称', baseUrl: 'Base URL', protocol: '协议', path: 
   parameterMode: '参数模式', enabled: '启用连接', contextWindow: '上下文窗口', maxOutputTokens: '最大输出 token' } as const
 const display = (value: unknown) => typeof value === 'boolean' ? value ? '启用' : '停用' : value === undefined ? '未填写' : String(value)
 
-export function ModelConnectionDialog({ connection, attempts, onClose, onSave, onRead, onCheck, onCancel }: {
+export function ModelConnectionDialog({ connection, attempts, onClose, onSave, onRead, onReadCredential, onCheck, onCancel }: {
   connection: ModelConnection | null; attempts: ModelAttempt[]; onClose(): void
   onSave(input: SaveModelConnection): Promise<ModelConnection>
   onRead(connectionId: string): Promise<ModelConnection | null>
+  onReadCredential(connectionId: string, version: number): Promise<string>
   onCheck(source: ModelCheckInput['source']): Promise<ModelAttempt>
   onCancel(attempt: ModelAttempt): Promise<void>
 }) {
   const [configuration, setConfiguration] = useState<ModelConfiguration>(() => connection ? modelConfigurationSchema.strip().parse(connection)
     : { connectionId: crypto.randomUUID(), name: '', baseUrl: '', modelId: '', protocol: 'chat-completions', path: '/chat/completions', dialect: 'standard', parameterMode: 'plain', enabled: true })
-  const [apiKey, setApiKey] = useState(''), [clear, setClear] = useState(false), [saving, setSaving] = useState(false)
+  const [apiKey, setApiKey] = useState(''), [saving, setSaving] = useState(false)
+  const [credentialReady, setCredentialReady] = useState(!connection?.hasCredential), [credentialError, setCredentialError] = useState('')
+  const [credentialRetry, setCredentialRetry] = useState(0), [addressTouched, setAddressTouched] = useState(false)
   const [error, setError] = useState(''), [checking, setChecking] = useState(false), [result, setResult] = useState<ModelAttempt | null>(null)
   const [recovery, setRecovery] = useState<'conflict' | 'unknown' | null>(null), [latest, setLatest] = useState<ModelConnection | null>(null)
   const [reading, setReading] = useState(false), [notice, setNotice] = useState('')
@@ -31,16 +34,30 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
   const returnFocus = useRef(document.activeElement as HTMLElement | null)
   const currentResult = attempts.find(item => item.attemptId === result?.attemptId) ?? result
   useEffect(() => { live.current = true; return () => { live.current = false; epoch.current++ } }, [])
+  useEffect(() => {
+    if (!connection?.hasCredential) return
+    let active = true
+    setCredentialReady(false); setCredentialError('')
+    void onReadCredential(connection.connectionId, connection.version).then(value => {
+      if (active) { setApiKey(value); setCredentialReady(true) }
+    }).catch(() => {
+      if (active) setCredentialError('未能读取已保存的密钥。请重试；若配置已更新，请关闭后重新打开。')
+    })
+    return () => { active = false }
+  }, [connection, onReadCredential, credentialRetry])
   const changed = () => { epoch.current++; setResult(null); setNotice(''); if (!recovery) setError('') }
   const change = (patch: Partial<ModelConfiguration>) => { changed(); setConfiguration(previous => ({ ...previous, ...patch })) }
-  const credential = () => clear ? { action: 'clear' as const } : apiKey.trim() ? { action: 'replace' as const, value: apiKey.trim() } : { action: 'keep' as const }
+  // The editor always saves the current value, including an explicitly emptied field.
+  const credential = () => apiKey.trim() ? { action: 'replace' as const, value: apiKey.trim() } : { action: 'clear' as const }
+  const addressIssue = modelBaseUrlError(configuration.baseUrl, configuration.protocol)
+  const validAddress = () => { setAddressTouched(true); return !addressIssue }
   const test = async () => {
+    if (!credentialReady || !validAddress()) return
     const generation = epoch.current
     setChecking(true); if (!recovery) setError('')
     try {
       const draft = modelConfigurationSchema.parse(configuration)
-      const checked = await onCheck({ draft, credential: credential(),
-        ...(baseline.current && !apiKey.trim() && !clear ? { savedCredential: { connectionId: baseline.current.connectionId, version: baseline.current.version } } : {}) })
+      const checked = await onCheck({ draft, credential: credential() })
       if (live.current && generation === epoch.current) setResult(checked)
     } catch { if (live.current && generation === epoch.current) setError('检查未确认，请核对输入、凭据和原检查记录。') }
     finally { if (live.current) setChecking(false) }
@@ -78,7 +95,7 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
     } finally { submitting.current = false; if (live.current) setSaving(false) }
   }
   const save = async (confirmed?: ModelConnection) => {
-    if (submitting.current || pending.current || recovery && !confirmed) return
+    if (submitting.current || pending.current || recovery && !confirmed || !credentialReady || !validAddress()) return
     try {
       const input = { ...modelConfigurationSchema.parse(configuration), requestId: crypto.randomUUID(),
         expectedVersion: (confirmed ?? baseline.current)?.version ?? 0, credential: credential() }
@@ -103,13 +120,18 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
       <div className="st-dialog-head"><Dialog.Title className="st-dialog-title">{connection ? '编辑供应商' : '添加供应商'}</Dialog.Title>
         <Dialog.Close asChild><button type="button" className="pc-x" aria-label="关闭"><Icon name="close" size={18} /></button></Dialog.Close></div>
       <div className="st-dialog-body">
-        <ProviderIdentityFields name={configuration.name} baseUrl={configuration.baseUrl} apiKey={apiKey} hasKey={baseline.current?.hasCredential}
-          onName={name => change({ name })} onBaseUrl={baseUrl => change({ baseUrl })} onApiKey={value => { changed(); setApiKey(value); setClear(false) }} />
-        {(baseline.current?.hasCredential || latest?.hasCredential) && <label><input type="checkbox" checked={clear} onChange={event => { changed(); setClear(event.target.checked); setApiKey('') }} />清除已保存密钥</label>}
-        <Field label="协议"><select className="st-input" aria-label="协议" value={configuration.protocol} onChange={event => {
-          const protocol = event.target.value as ModelConfiguration['protocol']
-          change({ protocol, path: ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[protocol] })
-        }}><option value="chat-completions">Chat Completions</option><option value="responses">Responses</option><option value="messages">Anthropic Messages</option></select></Field>
+        <ProviderIdentityFields name={configuration.name} baseUrl={configuration.baseUrl} apiKey={apiKey} snapshotCredential apiKeyDisabled={!credentialReady}
+          errors={{ baseUrl: addressTouched ? addressIssue : undefined }} onBaseUrlBlur={() => setAddressTouched(true)}
+          protocol={{ value: configuration.protocol,
+            options: [{ value: 'chat-completions', label: 'OpenAI 兼容' }, { value: 'responses', label: 'OpenAI Responses' }, { value: 'messages', label: 'Anthropic 兼容' }],
+            placeholder: configuration.protocol === 'messages' ? 'https://api.example.com' : 'https://api.example.com/v1',
+            onChange: value => {
+              const protocol = value as ModelConfiguration['protocol']
+              change({ protocol, path: ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[protocol] })
+              if (configuration.baseUrl) setAddressTouched(true)
+            } }}
+          onName={name => change({ name })} onBaseUrl={baseUrl => change({ baseUrl })} onApiKey={value => { changed(); setApiKey(value) }} />
+        {credentialError && <div><p role="alert">{credentialError}</p><button type="button" className="outline" onClick={() => setCredentialRetry(value => value + 1)}>重新读取密钥</button></div>}
         <Field label="模型 ID" tip="目录不可用时可直接填写已知型号"><TextInput aria-label="模型 ID" className="st-mono-input" value={configuration.modelId} onChange={event => change({ modelId: event.target.value })} /></Field>
         <details className="product-connection-advanced"><summary>高级配置</summary>
         <p className="detail">最终路径：{configuration.baseUrl.replace(/\/$/, '')}{configuration.path}</p>
@@ -136,15 +158,15 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
             <p>已保存版本 {latest.version} · {latest.hasCredential ? '密钥已保存' : '尚未保存密钥'}</p>
             {(Object.keys(fields) as (keyof typeof fields)[]).filter(key => latest[key] !== configuration[key]).map(key =>
               <p key={key}>{fields[key]}：已保存「{display(latest[key])}」；当前草稿「{display(configuration[key])}」</p>)}
-            <p>密钥操作：{clear ? '清除已保存密钥' : apiKey.trim() ? '使用当前填写的新密钥' : '保留最新版本的已保存密钥'}</p>
+            <p>{apiKey.trim() ? '保存后使用输入框中的当前密钥。' : '输入框已清空，保存后移除密钥。'}</p>
             <button type="button" className="outline" disabled={saving || reading} onClick={() => void save(latest)}>确认按当前草稿重试</button>
           </div>}
         </>}
         {currentResult && <p role="status">{currentResult.state === 'completed' ? '检查已完成' : currentResult.state === 'cancelled' ? '已停止本机检查' : '检查结果待核实'} · {currentResult.usage.state === 'unknown' ? '用量未知' : '已记录用量'}</p>}
       </div>
-      <div className="st-dialog-foot"><button type="button" className="outline" disabled={checking || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek'} onClick={() => void test()}>{checking ? '正在检查…' : '保存前检查'}</button>
+      <div className="st-dialog-foot"><button type="button" className="outline" disabled={checking || !credentialReady || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek'} onClick={() => void test()}>{checking ? '正在检查…' : '保存前检查'}</button>
         {currentResult && !currentResult.physicalRequestEnded && <button type="button" className="outline" onClick={() => void onCancel(currentResult)}>停止检查</button>}
         <div className="st-dialog-foot-right"><Dialog.Close asChild><button type="button" className="outline">取消</button></Dialog.Close>
-          <button type="button" className="primary" disabled={saving || recovery !== null} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button></div></div>
+          <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button></div></div>
     </Dialog.Content></Dialog.Portal></Dialog.Root>
 }

@@ -34,6 +34,7 @@
 | `GET agent/:activityId/runs/:runId` / `POST .../stop` / `POST .../continue` | 读取原 Run、持久停止或建立关联后继 Run |
 | `GET agent/:activityId/requests/:requestId` / `snapshots/:snapshotId` | 原请求回执与不可变上下文快照的只读重建 |
 | `GET/POST models/connections` | 当前主体的模型配置投影与期望版本保存；凭据不会读回 |
+| `POST models/connections/:id/credential` | 编辑原主体自己的配置时，以 `version` 读取完整密钥；校验归属与版本，响应不缓存；授权使用模型不授予读密钥能力 |
 | `GET/POST models/checks` / `GET models/checks/:id` | 列表、固定接收及结果查询；只读不生成模型请求 |
 | `POST models/checks/:id/dispatch` / `cancel` | 同一有限检查最多一次 Chat 外发或持久协调取消 |
 

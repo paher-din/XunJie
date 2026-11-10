@@ -49,6 +49,7 @@
     "emoji-light-bulb-native.svg": "e5c6dc3bd5d70ef7661a17c0775329589c448d8816c8b7e21a0a6efcfb10bd9b",
     "emoji-puzzle-piece-native.svg": "fa660d5d40dac6e60629071dc7be54e5946316145802978879de3f3bdaff0637",
     "emoji-speech-balloon-native.svg": "a4ce7f688a45be0bd9482e6babc3d57d5e14f2a0d85398731c6a5f2e50bea152",
+    "eye-linear.svg": "6fac737b7eb121efbdc621bad918617ac1c307a98ba8f71972559762d3e4b0ba",
     "file-code-bold-duotone.svg": "b6bb7aff2d217cbc72c972d2dacc402db977b99b20abd70e69ac0b3d780c52bd",
     "file-code-linear.svg": "bb9a3223b543075c02a0e976ae799374f87e5b67a138ac6a745c37665346be45",
     "file-image-bold-duotone.svg": "4a4136a8743b02a23ae87f3339e61da286d6fcb1bf89f246a2c6e21a8e4d5f93",
@@ -100,6 +101,7 @@
     "stop-linear.svg": "4a0f3a9bb8370c5f3d114a1ad7a997c337982ba0ca48ebc72f1a34593dd270ce",
     "structure-bold-duotone.svg": "d1fdc2146781bc4bdbfb9cd97dc38f05a924f078da80b678c304205d5e5a86e8",
     "structure-linear.svg": "d605f27ba97fa8340c1a4aaf478523d6ad6dbc81643809e02bf4f012ce058b0a",
+    "sun-linear.svg": "0b5717416b64346146b03a6e200843a538574886201cfe41f332c16d7596d447",
     "text-square-linear.svg": "3bf95f071e76eff39c066957dcd39bf509eff02b271353eab706c867209d18ee",
     "traffic-linear.svg": "da9d9ed96b99a4a4f5d9892fd0d7e3a137ef6a4307a00cd66c0fde596f7c166b",
     "trash-bin-trash-linear.svg": "5d090508f1f6b3a9068acaa80e5e6d046f08e2ac4d360b82c9c15fb29ee081b8",
@@ -109,7 +111,6 @@
     "user-rounded-linear.svg": "31c3a17bd90527b4cf4802526d1935aacb770b4f790ee46b5449c56e60ecc2c6",
     "virtual-board-linear.svg": "a4464de7b04642cc7626d4b425bd35642b8aed19d28ed9446521ae0171cfdd12",
     "volume-loud-linear.svg": "bb7600509ec8cb107e6d825a383e83e75cbb73eae8a0b729fec11f0c0a611951",
-    "wallet-linear.svg": "f8c66253d72736d65f50d14108afb8ba4d08d64b7efb9ab45db5e49425b0a2a6",
-    "sun-linear.svg": "0b5717416b64346146b03a6e200843a538574886201cfe41f332c16d7596d447"
+    "wallet-linear.svg": "f8c66253d72736d65f50d14108afb8ba4d08d64b7efb9ab45db5e49425b0a2a6"
   }
 }
