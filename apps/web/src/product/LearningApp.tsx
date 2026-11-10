@@ -581,12 +581,13 @@ function LearningView() {
           setPendingConnection(pending)
         }) }}><label>学校入口<input type="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
           <button type="submit" className="primary" disabled={busy}>前往学校认证</button></form>
-        {pendingConnection && <div><p><a href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a></p>
-          <button type="button" disabled={busy} onClick={() => void action(async generation => {
+        {pendingConnection && <div>
+          <button type="button" className="primary" disabled={busy} onClick={() => void action(async generation => {
             const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
             if (generation !== epoch.current) return
             setPendingConnection(null); await refreshContext('school:' + connection.connectionId, generation)
-          })}>已在学校批准，完成连接</button></div>}
+          })}>已在学校批准，完成连接</button>
+          <a className="outline" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a></div>}
       </details>}
       {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async generation => {
         await protectActivity()
