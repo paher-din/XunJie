@@ -49,13 +49,15 @@ function privateOssRequest(value, sensitive) {
 // Free-form material is opt-in; reject recognizable credentials rather than silently changing evidence.
 export function assertShareable(bytes, label = '选中内容') {
   const value = Buffer.isBuffer(bytes) ? bytes.toString('utf8') : String(bytes);
-  const assignments = [...value.matchAll(/["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|signing[_-]?secret|private[_-]?key|invitation[_-]?secret|(?:x-oss-)?security[_-]?token|x-oss-signature)["']?\s*[:=]\s*["']([^"'\n]{8,})["']/gi)];
+  const assignments = [...value.matchAll(/(?<![\w$-])(["']?)[\w$-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|signing[_-]?secret|private[_-]?key|invitation[_-]?secret|(?:x-oss-)?security[_-]?token|x-oss-signature)\1\s*([:=])\s*["']([^"'\n]{8,})["']/gi)];
+  // A quoted field name after ? or : is a conditional value, not an object key.
+  const assignment = match => match[2] !== ':' || !/[?:]\s*$/.test(value.slice(0, match.index));
   // Explicitly invalid fixtures are public test inputs, not credentials. Everything else stays checked.
   const fixture = text => /^(?:synthetic(?:[-_ ]|$)|test(?:[-_ ]|$)|invalid(?:[-_ ]|$)|unconfigured$|placeholder$|changeme$)/i.test(text)
     || text === 'offline-test-key' || /(?:^|[-_ ])not[-_ ]a[-_ ]real[-_ ](?:credential|key|secret)/i.test(text);
   const sensitive = text => typeof text === 'string' && text.length >= 8 && !fixture(text);
   if (/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{24,}|gh[pousr]_[A-Za-z0-9]{25,})\b/.test(value)
-    || assignments.some(match => sensitive(match[1])) || privateInvitation(value, sensitive) || privateOssRequest(value, sensitive)) {
+    || assignments.some(match => assignment(match) && sensitive(match[3])) || privateInvitation(value, sensitive) || privateOssRequest(value, sensitive)) {
     throw reproError('SECRET_DETECTED', `${label} 包含疑似凭据；请缩小范围或先清理后重新采集。`);
   }
 }

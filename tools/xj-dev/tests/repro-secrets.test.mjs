@@ -54,6 +54,25 @@ test('named invitation secrets are rejected in JSON, proof bodies and source ass
   ]) rejectsSecret(value);
 });
 
+test('conditional credential field names remain shareable while literal credentials are rejected', () => {
+  const secret = opaque();
+  for (const field of ['api-key', 'x-api-key', 'personal_api_key', 'accountPassword', 'password', 'invitationSecret']) {
+    for (const quote of ["'", '"']) {
+      const name = quote + field + quote;
+      for (const value of [
+        `const header = condition ? ${name} : 'authorization';`,
+        `const header = outer ? inner ? ${name} : ${name} : 'authorization';`,
+        `const header = condition ?\n  ${name}\n  : 'authorization';`,
+      ]) assert.doesNotThrow(() => assertShareable(value));
+      for (const value of [
+        `{ ${name}: ${JSON.stringify(secret)} }`,
+        `const headers = condition ? { ${name}: ${JSON.stringify(secret)} } : {};`,
+      ]) rejectsSecret(value);
+    }
+  }
+  assert.doesNotThrow(() => assertShareable("const header = source.auth === 'api-key' ? 'api-key' : source.auth === 'x-api-key' ? 'x-api-key' : 'authorization';"));
+});
+
 test('OSS V4 signed URLs reject decoded, reordered and repeated signature parameters', () => {
   const signature = randomBytes(32).toString('hex');
   for (const value of [
