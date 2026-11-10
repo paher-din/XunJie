@@ -3,7 +3,7 @@ import type { OwnedStorage, Migration, OwnedTransaction } from '@xunjie/storage'
 import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema, schoolModelInputSchema, schoolModelSchema,
-  modelBaseUrlError, getModelPreset, resolvePresetModelRoute } from '@xunjie/contracts/model-connections';
+  modelBaseUrlError, getModelPreset, resolvePresetModelRoute, modelProviderPresets } from '@xunjie/contracts/model-connections';
 import type { ModelConfiguration, ModelConnection, ModelCheckPolicy, SaveModelConnection } from '@xunjie/contracts/model-connections';
 import { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
@@ -174,7 +174,16 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       const protocol = input.protocol ?? 'chat-completions';
       if (modelBaseUrlError(input.baseUrl, protocol)) throw new StorageError('invalid');
       const baseUrl = input.baseUrl.replace(/\/+$/, '');
-      return { baseUrl, protocol, modelsUrl: baseUrl + (protocol === 'messages' ? '/v1/models' : '/models'), catalogues: [], models: [] };
+      // Legacy/custom connections retain their identity and protocol. Reuse a known list
+      // endpoint only when all exact matching channels agree and its origin is unchanged.
+      const normalized = (url: string) => new URL(url).href.replace(/\/+$/, '');
+      const known = modelProviderPresets.flatMap(preset => preset.variants).filter(variant => {
+        const address = variant.baseUrls[protocol];
+        return address && normalized(address) === normalized(baseUrl) && new URL(variant.modelsUrl).origin === new URL(baseUrl).origin;
+      });
+      const candidates = [...new Set(known.map(variant => variant.modelsUrl))];
+      const modelsUrl = candidates.length === 1 ? candidates[0]! : baseUrl + (protocol === 'messages' ? '/v1/models' : '/models');
+      return { baseUrl, protocol, modelsUrl, catalogues: [], models: [] };
     },
     async credential(identity, input, source) {
       if (input.credential?.action === 'replace') return input.credential.value;

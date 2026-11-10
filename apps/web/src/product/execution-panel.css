@@ -15,7 +15,7 @@
 .runtime-tool-compact { flex: none; max-height: none; overflow: visible; }
 .runtime-tool .execution-panel { max-height: none; margin-top: 16px; }
 .runtime-tool label { display: grid; gap: 4px; color: var(--ink-soft); font-size: 13px; }
-.runtime-tool select { height: 32px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; padding: 0 8px; }
+.runtime-tool .ui-select-trigger { height: 32px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; padding: 0 8px; }
 .runtime-tool .execution-actions { align-items: end; }
 .runtime-tool table { border-collapse: collapse; margin: 12px 0; font-size: 13px; color: var(--ink); }
 .runtime-tool td, .runtime-tool th { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left; }
@@ -35,6 +35,6 @@
 .native-session-history li span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
 .native-session-recovery { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .native-session-recovery label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-.native-session-recovery select { max-width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line-strong);
+.native-session-recovery .ui-select-trigger { max-width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line-strong);
   border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
 .native-session details { margin-top: 12px; font-size: 12px; }

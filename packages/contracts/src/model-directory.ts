@@ -18,7 +18,8 @@ export const modelDirectoryRefreshSchema = z.object({
   status: z.enum(['idle', 'refreshing', 'ready', 'cooldown', 'failed', 'needs-credential']),
   lastAttemptAt: z.iso.datetime().optional(), updatedAt: z.iso.datetime().optional(),
   nextRefreshAt: z.iso.datetime().optional(), retryAt: z.iso.datetime().optional(),
-  error: z.enum(['offline', 'unauthorized', 'rate-limited', 'unavailable', 'invalid-response']).optional(),
+  error: z.enum(['offline', 'timeout', 'unauthorized', 'rate-limited', 'unavailable', 'invalid-response']).optional(),
+  httpStatus: z.number().int().min(100).max(599).optional(),
 }).strict();
 export const modelDirectoryEntrySchema = z.object({
   modelId: z.string().trim().min(1).max(200), name: z.string().max(200).optional(),

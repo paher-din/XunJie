@@ -49,6 +49,7 @@ export function WorkspacePopover({ label, icon, children, closeOnAction = false,
       if (!panel.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) setOpen(false)
     }
     const escape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || panel.current?.querySelector('[data-ui-select-trigger][aria-expanded="true"]')) return
       if (event.key === 'Escape') { event.preventDefault(); setOpen(false); trigger.current?.focus() }
     }
     const focusOutside = (event: FocusEvent) => {
@@ -70,9 +71,10 @@ export function WorkspacePopover({ label, icon, children, closeOnAction = false,
       aria-label={accessibleLabel} aria-expanded={open} aria-controls={id} onClick={() => setOpen(value => !value)}>
       {icon && <Icon name={icon} size={16} />}<span>{label}</span><Icon name="alt-arrow-down" size={12} />
     </button>
-    {open && createPortal(<div id={id} ref={panel} className="ws-control-popover" role="region" aria-label={label}
+    {open && createPortal(<div id={id} ref={panel} className="ws-control-popover" role="region" aria-label={label} data-ui-popup-scope=""
       style={position} onKeyDown={event => {
-        if (event.key !== 'Tab' || !panel.current || !trigger.current) return
+        if (event.key !== 'Tab' || !panel.current || !trigger.current || event.defaultPrevented
+          || panel.current.querySelector('[data-ui-select-trigger][aria-expanded="true"]')) return
         const controls = Array.from(panel.current.querySelectorAll<HTMLElement>('button:not(:disabled), select:not(:disabled), input:not(:disabled)'))
         if (event.shiftKey && event.target === controls[0]) {
           event.preventDefault(); setOpen(false); trigger.current.focus()
@@ -83,6 +85,7 @@ export function WorkspacePopover({ label, icon, children, closeOnAction = false,
           event.preventDefault(); setOpen(false); next.focus()
         }
       }} onClick={event => {
+        if ((event.target as HTMLElement).closest('[data-ui-select-trigger], [data-ui-select-popup]')) return
         if (closeOnAction && (event.target as HTMLElement).closest('button:not(:disabled)')) {
           trigger.current?.focus()
           setOpen(false)

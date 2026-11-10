@@ -20,10 +20,12 @@ const expectFeedback = async (text: string, kind: 'error' | 'success') => {
 const button = (label: string) => Array.from(host.querySelectorAll('button')).find(item => item.textContent === label)!
 const click = async (label: string) => act(async () => { button(label).click(); await settle() })
 const chooseRange = async (label: string) => {
-  const select = host.querySelector<HTMLSelectElement>('[aria-label="使用范围"]')!
-  const option = Array.from(select.options).find(item => item.textContent === label)!
-  await act(async () => { select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true })); await settle() })
-  expect(select.selectedOptions[0]?.textContent).toBe(label)
+  await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="使用范围"]')!.click(); await settle() })
+  await act(async () => {
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(item => item.textContent === label)!
+    option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click(); await settle()
+  })
+  expect(host.querySelector('[aria-label="使用范围"]')?.textContent).toBe(label)
 }
 const response = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } })
 beforeEach(() => {
@@ -70,7 +72,7 @@ it.each(activityScopes)('restores configured ranges and writes selections to the
   expect(checkbox().checked).toBe(true)
   await act(async () => { checkbox().click(); await settle() })
   await chooseRange('本空间全部活动')
-  expect(host.querySelector<HTMLSelectElement>('[aria-label="使用范围"]')?.selectedOptions[0]?.textContent).toBe('本空间全部活动')
+  expect(host.querySelector('[aria-label="使用范围"]')?.textContent).toBe('本空间全部活动')
   expect(writes).toEqual([
     expect.objectContaining({ range: { kind: 'all' }, skills: [{ skillId: skill.skillId, version: 1 }] }),
     expect.objectContaining({ range: { kind: 'self-study' }, skills: [] }),

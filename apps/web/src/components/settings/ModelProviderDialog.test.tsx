@@ -23,6 +23,17 @@ async function type(name: string, value: string) {
     input(name).dispatchEvent(new Event('input', { bubbles: true }))
   })
 }
+const card = (id: string) => [...document.querySelectorAll<HTMLElement>('.st-model-choice')].find(item => item.getAttribute('aria-label') === id)!
+async function chooseModel(id: string) {
+  const item = card(id)
+  if (!item) {
+    await type('搜索或输入模型 ID', id); await click('添加模型'); return
+  }
+  const selection = item.querySelector<HTMLButtonElement>('[role="checkbox"]')
+  if (selection?.getAttribute('aria-checked') === 'false') await act(async () => selection.click())
+  else if (item.querySelector('[aria-expanded]')?.getAttribute('aria-expanded') === 'false')
+    await act(async () => item.querySelector<HTMLButtonElement>('.st-model-choice-title')!.click())
+}
 async function click(label: string) {
   const button = [...document.querySelectorAll('button')].find(item => item.textContent?.trim() === label)!
   expect(button).toBeDefined()
@@ -47,8 +58,8 @@ beforeEach(() => {
   const host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 
-async function selectSupplier(label: string) {
-  await act(async () => { document.querySelector<HTMLButtonElement>('button[aria-label="供应商"]')!.click() })
+async function selectChoice(field: string, label: string) {
+  await act(async () => { document.querySelector<HTMLButtonElement>(`button[aria-label="${field}"]`)!.click() })
   await act(async () => {
     const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === label)
     expect(option, label).toBeDefined()
@@ -56,6 +67,7 @@ async function selectSupplier(label: string) {
   })
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
 }
+const selectSupplier = (label: string) => selectChoice('供应商', label)
 const cachedDirectory = (input: ModelDirectoryInput): ModelDirectory => ({
   models: getModelPreset(input.presetId ?? 'custom', input.variantId)?.models ?? [],
   catalogue: { status: 'ready', updatedAt: '2026-01-01T00:00:00.000Z' },
@@ -78,13 +90,19 @@ it('lists custom first and all six providers with their real access methods', as
 
 it('autofills Kimi official output and MiMo toggle without inventing strength levels', async () => {
   const { onSave } = await draw()
-  await selectSupplier('Kimi'); await type('模型 ID', 'kimi-k3.1-pro')
+  await selectSupplier('Kimi'); await chooseModel('kimi-k3.1-pro')
   expect(input('模型 ID的最大输出 token').value).toBe('1M')
-  expect(document.querySelector<HTMLSelectElement>('[aria-label="模型 ID的思考强度"]')!.value).toBe('max')
-  await selectSupplier('小米 MiMo'); await type('模型 ID', 'mimo-v2.6-pro')
-  const reasoning = document.querySelector<HTMLSelectElement>('[aria-label="模型 ID的思考强度"]')!
-  expect([...reasoning.options].map(option => option.value)).toEqual(['auto', 'none', 'enabled'])
-  expect(reasoning.value).toBe('enabled')
+  expect(document.querySelector('[aria-label="模型 ID的默认思考强度"]')!.textContent).toContain('最高 · max')
+  await selectSupplier('小米 MiMo'); await chooseModel('mimo-v2.6-pro')
+  const reasoning = document.querySelector<HTMLButtonElement>('[aria-label="模型 ID的默认思考强度"]')!
+  expect(reasoning.textContent).toContain('开启思考')
+  await act(async () => reasoning.click())
+  const list = document.getElementById(reasoning.getAttribute('aria-controls')!)!
+  expect([...list.querySelectorAll('[role="option"]')].map(option => option.textContent?.trim())).toEqual(['模型默认', '关闭思考', '开启思考'])
+  await act(async () => {
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === '开启思考')!
+    option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click()
+  })
   expect(input('模型 ID的最大输出 token').value).toBe('128K')
   await type('模型 ID的上下文窗口', '512k'); await click('保存')
   expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ maxOutputTokens: 131072, contextWindow: 524288, reasoningEffort: 'enabled' })
@@ -92,12 +110,97 @@ it('autofills Kimi official output and MiMo toggle without inventing strength le
 
 it('saves the per-model route for a provider whose Claude model uses Messages', async () => {
   const { onSave } = await draw()
-  await selectSupplier('Command Code'); await type('模型 ID', 'claude-sonnet-4-6'); await click('保存')
+  await selectSupplier('Command Code'); await chooseModel('claude-sonnet-4-6'); await click('保存')
   expect(onSave.mock.calls[0][0]).toMatchObject({ presetId: 'command-code', protocol: 'chat-completions', baseUrl: 'https://api.commandcode.ai/provider/v1' })
   expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ protocol: 'messages', baseUrl: 'https://api.commandcode.ai/provider' })
 })
 
-it('Escape closes only the open supplier or model menu and retains the edited draft', async () => {
+it('selects multiple preset models and retains their independent edits across collapse, deselection and search', async () => {
+  const { onSave } = await draw(provider(), undefined, { provider: null })
+  await selectSupplier('DeepSeek 官方')
+  await click('保存')
+  expect(onSave).not.toHaveBeenCalled()
+  await chooseModel('deepseek-flash'); await type('模型 ID的上下文窗口', '512k')
+  const identity = card('deepseek-flash').querySelector('[aria-controls]')!.getAttribute('aria-controls')
+  await act(async () => card('deepseek-flash').querySelector<HTMLButtonElement>('.st-model-choice-title')!.click())
+  expect(input('模型 ID的上下文窗口')).toBeNull()
+  await chooseModel('deepseek-flash')
+  expect(input('模型 ID的上下文窗口').value).toBe('512k')
+  expect(card('deepseek-flash').querySelector('[aria-controls]')!.getAttribute('aria-controls')).toBe(identity)
+  await act(async () => card('deepseek-flash').querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
+  expect(card('deepseek-flash').getAttribute('data-selected')).toBeNull()
+  await chooseModel('deepseek-v4-pro'); await type('模型 ID的最大输出 token', '128k')
+  await chooseModel('deepseek-flash')
+  expect(input('模型 ID 2的上下文窗口').value).toBe('512k')
+  await type('搜索或输入模型 ID', 'v4-pro')
+  expect(card('deepseek-flash')).toBeUndefined()
+  await click('保存')
+  const models = onSave.mock.calls[0][0].models
+  expect(models.map(model => model.modelId)).toEqual(['deepseek-v4-pro', 'deepseek-flash'])
+  expect(models[0].maxOutputTokens).toBe(131072)
+  expect(models[1].contextWindow).toBe(524288)
+  expect(new Set(models.map(model => model.connectionId)).size).toBe(2)
+})
+
+it('adds model IDs from the search field with Enter or the adjacent button without duplicating a selected model', async () => {
+  const { onSave } = await draw(provider(), undefined, { provider: null, onDirectory: vi.fn(async query => cachedDirectory(query)) })
+  await selectSupplier('DeepSeek 官方')
+  await type('搜索或输入模型 ID', '  private-model  ')
+  await act(async () => input('搜索或输入模型 ID').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })))
+  expect(input('搜索或输入模型 ID').value).toBe('')
+  expect(card('private-model').getAttribute('data-selected')).toBe('true')
+  await type('模型 ID的上下文窗口', '512K')
+  await type('搜索或输入模型 ID', 'private-model'); await click('添加模型')
+  expect(input('模型 ID的上下文窗口').value).toBe('512K')
+  await type('搜索或输入模型 ID', 'second-private-model'); await click('添加模型')
+  await click('保存')
+  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['private-model', 'second-private-model'])
+  expect(onSave.mock.calls[0][0].models[0].contextWindow).toBe(524288)
+})
+
+it('uses the same search/add row for custom models and saves filtered-out drafts with their own capacities', async () => {
+  const { onSave } = await draw(provider(), undefined, { provider: null })
+  await type('连接名称', '自定义供应商'); await type('Base URL', 'https://example.invalid/v1')
+  await type('模型 ID的上下文窗口', '512K')
+  await type('搜索或输入模型 ID', 'custom-alpha'); await click('保存')
+  expect(onSave).not.toHaveBeenCalled()
+  expect(input('模型 ID').value).toBe('')
+  await type('搜索或输入模型 ID', 'custom-alpha'); await click('添加模型')
+  expect(input('模型 ID').value).toBe('custom-alpha')
+  expect(input('模型 ID的上下文窗口').value).toBe('512K')
+  await type('搜索或输入模型 ID', 'custom-beta'); await click('添加模型')
+  expect(input('模型 ID 2').value).toBe('custom-beta')
+  await type('模型 ID 2的最大输出 token', '128K')
+  await type('搜索或输入模型 ID', 'custom-alpha')
+  expect(input('模型 ID 2')).toBeNull()
+  await click('保存')
+  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['custom-alpha', 'custom-beta'])
+  expect(onSave.mock.calls[0][0].models[0].contextWindow).toBe(524288)
+  expect(onSave.mock.calls[0][0].models[1].maxOutputTokens).toBe(131072)
+});
+
+it('reopens saved preset models collapsed, retains disabled state and reveals an invalid field before saving', async () => {
+  const saved = provider()
+  saved.presetId = 'deepseek'; saved.variantId = 'api'; saved.baseUrl = 'https://api.deepseek.com/v1'
+  saved.models[0] = { ...saved.models[0], modelId: 'deepseek-flash', baseUrl: saved.baseUrl, enabled: false, modelEnabled: false,
+    contextWindow: 524288, maxOutputTokens: 65536 }
+  const { onSave } = await draw(saved)
+  expect(card('deepseek-flash').getAttribute('data-selected')).toBe('true')
+  expect(input('模型 ID的上下文窗口')).toBeNull()
+  await chooseModel('deepseek-flash')
+  expect(input('模型 ID的上下文窗口').value).toBe('512K')
+  await type('模型 ID的上下文窗口', '0.1K')
+  await act(async () => card('deepseek-flash').querySelector<HTMLButtonElement>('.st-model-choice-title')!.click())
+  await type('搜索或输入模型 ID', 'no-match')
+  await click('保存')
+  expect(onSave).not.toHaveBeenCalled()
+  expect(input('模型 ID的上下文窗口').value).toBe('0.1K')
+  await type('模型 ID的上下文窗口', '768k'); await click('保存')
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ connectionId: saved.models[0].connectionId,
+    expectedVersion: 1, enabled: false, contextWindow: 786432, maxOutputTokens: 65536 })
+})
+
+it('Escape closes only the supplier menu and model cards retain their collapsed configuration', async () => {
   const { onClose } = await draw()
   await type('连接名称', '未保存的供应商名称')
   await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="供应商"]')!.click())
@@ -105,15 +208,20 @@ it('Escape closes only the open supplier or model menu and retains the edited dr
   expect(onClose).not.toHaveBeenCalled()
   expect(document.querySelector('[role="combobox"][aria-expanded="true"]')).toBeNull()
   await selectSupplier('DeepSeek 官方')
-  await type('模型 ID', 'my-private-model')
-  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="展开模型 ID列表"]')!.click())
-  expect(input('模型 ID').getAttribute('aria-expanded')).toBe('true')
-  await act(async () => input('模型 ID').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  await chooseModel('my-private-model'); await type('模型 ID的上下文窗口', '512k')
+  await act(async () => card('my-private-model').querySelector<HTMLButtonElement>('.st-model-choice-title')!.click())
+  expect(input('模型 ID的上下文窗口')).toBeNull()
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="供应商"]')!.click())
+  await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
   expect(onClose).not.toHaveBeenCalled()
-  expect(input('模型 ID').getAttribute('aria-expanded')).toBe('false')
-  expect(input('模型 ID').value).toBe('my-private-model')
+  await chooseModel('my-private-model')
+  expect(input('模型 ID的上下文窗口').value).toBe('512k')
   expect(input('连接名称').value).toBe('未保存的供应商名称')
-  await act(async () => input('模型 ID').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="模型 ID的默认思考强度"]')!.click())
+  await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(onClose).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="combobox"][aria-expanded="true"]')).toBeNull()
+  await act(async () => input('模型 ID的上下文窗口').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
   expect(onClose).toHaveBeenCalledOnce()
 })
 
@@ -121,14 +229,14 @@ it('retains custom ids, per-model edits, and separate secret drafts when switchi
   const onDirectory = vi.fn(async (query: ModelDirectoryInput) => cachedDirectory(query))
   await draw(provider(), undefined, { onDirectory })
   await selectSupplier('DeepSeek 官方'); await type('API Key', 'synthetic-deepseek-only')
-  await type('模型 ID', 'private-alias'); await type('模型 ID的上下文窗口', '512k')
+  await chooseModel('private-alias'); await type('模型 ID的上下文窗口', '512k')
   await selectSupplier('Kimi')
   expect(input('API Key').value).toBe('')
   expect(onDirectory.mock.calls.filter(([query]) => query.presetId === 'kimi').every(([query]) => query.credential?.action !== 'replace')).toBe(true)
   await type('API Key', 'synthetic-kimi-only')
   await selectSupplier('DeepSeek 官方')
   expect(input('API Key').value).toBe('synthetic-deepseek-only')
-  expect(input('模型 ID').value).toBe('private-alias')
+  expect(card('private-alias').getAttribute('data-selected')).toBe('true')
   expect(input('模型 ID的上下文窗口').value).toBe('512k')
 })
 
@@ -138,11 +246,11 @@ it('ignores late refresh responses after changing provider and keeps manually ed
   const onDirectory = vi.fn(async (query: ModelDirectoryInput) => query.presetId === 'deepseek' && query.refresh ? delayed : cachedDirectory(query))
   await draw(provider(), undefined, { onDirectory })
   await selectSupplier('DeepSeek 官方')
-  await selectSupplier('小米 MiMo'); await type('模型 ID', 'mimo-v2.6-pro'); await type('模型 ID的上下文窗口', '512k')
+  await selectSupplier('小米 MiMo'); await chooseModel('mimo-v2.6-pro'); await type('模型 ID的上下文窗口', '512k')
   await act(async () => { release(cachedDirectory({ presetId: 'deepseek' })); await Promise.resolve() })
-  expect(input('模型 ID').value).toBe('mimo-v2.6-pro')
+  expect(card('mimo-v2.6-pro').getAttribute('data-selected')).toBe('true')
   expect(input('模型 ID的上下文窗口').value).toBe('512k')
-  expect(document.querySelector<HTMLSelectElement>('[aria-label="模型 ID的思考强度"]')!.value).toBe('enabled')
+  expect(document.querySelector('[aria-label="模型 ID的默认思考强度"]')!.textContent).toContain('开启思考')
 })
 
 it('opening the model list keeps a previous failure visible while its retry is pending', async () => {
@@ -159,19 +267,38 @@ it('opening the model list keeps a previous failure visible while its retry is p
   expect(previous).toContain('当前空间无法读取模型资料')
   retry = true
   try {
-    await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="展开模型 ID列表"]')!.click())
+    await act(async () => input('搜索或输入模型 ID').focus())
     expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toBe(previous)
   } finally {
     await act(async () => release(cachedDirectory({ presetId: 'deepseek' })))
   }
 })
 
+it('explains a supplier model-list 404 on add-model entry while allowing the draft to be saved', async () => {
+  const onDirectory = vi.fn(async (query: ModelDirectoryInput) => ({ ...cachedDirectory(query),
+    supplier: { status: 'failed' as const, error: 'unavailable' as const, httpStatus: 404,
+      retryAt: new Date(Date.now() + 60000).toISOString() } }));
+  const { onSave } = await draw(provider(), undefined, { addModel: true, onDirectory });
+  const message = document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent;
+  expect(message).toContain('供应商模型列表接口不存在（HTTP 404）');
+  expect(message).toContain('手动填写模型 ID');
+  await type('模型 ID 2', 'manually-added-model'); await click('保存');
+  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['custom-model', 'manually-added-model']);
+});
+
+it('identifies the public catalogue timeout separately from the supplier model list', async () => {
+  const onDirectory = vi.fn(async (query: ModelDirectoryInput) => ({ ...cachedDirectory(query),
+    catalogue: { status: 'failed' as const, error: 'timeout' as const } }));
+  await draw(provider(), undefined, { onDirectory });
+  expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('公共模型资料（models.dev）请求超时');
+});
+
 it('manual refresh bypasses the automatic interval, merges repeated clicks and explains a retryable failure', async () => {
   let release!: (value: ModelDirectory) => void
   const pending = new Promise<ModelDirectory>(resolve => { release = resolve })
   const onDirectory = vi.fn(async (query: ModelDirectoryInput) => query.manual ? pending : cachedDirectory(query))
   await draw(provider(), undefined, { onDirectory })
-  await selectSupplier('DeepSeek 官方'); await type('模型 ID', 'deepseek-flash')
+  await selectSupplier('DeepSeek 官方'); await chooseModel('deepseek-flash')
   await type('模型 ID的上下文窗口', '512k')
   await click('更新模型资料')
   expect(onDirectory.mock.calls.filter(([query]) => query.manual)).toHaveLength(1)

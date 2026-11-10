@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { evidenceDirectory, evidencePath } from './evidence'
 import { test, expect, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
@@ -24,7 +25,7 @@ async function openHistory(page: Page) {
 }
 const side = (page: Page, index: 'A' | 'B') => page.getByRole('region', { name: `运行 ${index}`, exact: true })
 async function choose(page: Page, index: 'A' | 'B', runId: string) {
-  await page.getByRole('combobox', { name: `运行 ${index}`, exact: true }).selectOption(runId)
+  await selectFieldOption(page, `运行 ${index}`, new RegExp(`${runId}$`))
   await expect(side(page, index).locator('[data-run-id]')).toHaveAttribute('data-run-id', runId)
   await expect(side(page, index)).toHaveAttribute('aria-busy', 'false')
 }
@@ -46,7 +47,7 @@ test('比较两次已回执关联运行，各保留旧快照与本机参数，�
   const second = head.snapshots.find(s => s.workspaceRevision === 2)!
   await setRunScript(page, 'compile_failed')
   await selectRun(page, second.snapshotId, second.files.find(f => f.path === 'main.c')!.fileId, '')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('find')
+  await selectFieldOption(page, 'Core 操作', 'find · 查找')
   await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
   await expect(page.locator('.core-run-result')).toContainText('编译失败')
@@ -181,7 +182,7 @@ test('切换比较来源后迟到的完整文件不能绑定另一次运行或�
     arrived(); await held
     await route.fulfill({ response })
   })
-  await page.getByRole('combobox', { name: '运行 A', exact: true }).selectOption(complete.runId)
+  await selectFieldOption(page, '运行 A', new RegExp(`${complete.runId}$`))
   await ready
   await choose(page, 'A', missing.runId)
   await expect(side(page, 'A')).toContainText('文件缺失')

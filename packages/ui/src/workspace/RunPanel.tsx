@@ -1,17 +1,6 @@
 import './RunPanel.css'
-import type { KeyboardEvent } from 'react'
+import { SelectField } from '../foundation/SelectField'
 import type { RunHelpTarget } from './runPresentation'
-
-/** Native select boundary keys differ across desktop platforms; keep the same explicit choice. */
-function selectBoundary(event: KeyboardEvent<HTMLSelectElement>, choose: (value: string) => void) {
-  if (event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing ||
-    (event.key !== 'Home' && event.key !== 'End')) return
-  const options = Array.from(event.currentTarget.options).filter(option => !option.disabled)
-  const option = event.key === 'Home' ? options[0] : options.at(-1)
-  if (!option) return
-  event.preventDefault()
-  if (option.value !== event.currentTarget.value) choose(option.value)
-}
 
 export interface CoreSelection {
   snapshotId: string
@@ -78,27 +67,19 @@ export function RunPanel({ snapshots, selection, result, busy, canRun, notice, s
     <p className="core-run-note">{synthetic ? '合成准备运行 · 不编译或执行真实 C 程序。' : '运行已确认的固定快照。'} 后续编辑不会改变这次运行。</p>
     <form className="core-run-form" onSubmit={event => { event.preventDefault(); if (canRun && !busy) onRun() }}>
       <label>确认快照
-        <select aria-label="确认快照" value={selection.snapshotId}
-          onKeyDown={event => selectBoundary(event, snapshotId => change({ snapshotId, entryFileId: '', fileIds: [] }))}
-          onChange={e => change({ snapshotId: e.target.value, entryFileId: '', fileIds: [] })}>
-          <option value="">请选择已冻结快照</option>
-          {snapshots.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-        </select>
+        <SelectField label="确认快照" value={selection.snapshotId}
+          onChange={snapshotId => change({ snapshotId, entryFileId: '', fileIds: [] })}
+          options={[{ value: '', label: '请选择已冻结快照' }, ...snapshots.map(s => ({ value: s.id, label: s.label }))]} />
       </label>
       <label>C 入口文件
-        <select aria-label="C 入口文件" value={selection.entryFileId}
-          onKeyDown={event => selectBoundary(event, entryFileId => change({ entryFileId }))}
-          onChange={e => change({ entryFileId: e.target.value })}>
-          <option value="">请选择入口</option>
-          {fixed?.files.filter(f => f.path.endsWith('.c')).map(f => <option key={f.id} value={f.id}>{f.path}</option>)}
-        </select>
+        <SelectField label="C 入口文件" value={selection.entryFileId} onChange={entryFileId => change({ entryFileId })}
+          options={[{ value: '', label: '请选择入口' }, ...(fixed?.files.filter(f => f.path.endsWith('.c'))
+            .map(f => ({ value: f.id, label: f.path })) ?? [])]} />
       </label>
       <label>Core 操作
-        <select aria-label="Core 操作" value={selection.operation}
-          onKeyDown={event => selectBoundary(event, operation => change({ operation: operation as CoreSelection['operation'] }))}
-          onChange={e => change({ operation: e.target.value as CoreSelection['operation'] })}>
-          <option value="stats">stats · 统计</option><option value="find">find · 查找</option><option value="top">top · 词频</option>
-        </select>
+        <SelectField label="Core 操作" value={selection.operation}
+          onChange={operation => change({ operation: operation as CoreSelection['operation'] })}
+          options={[{ value: 'stats', label: 'stats · 统计' }, { value: 'find', label: 'find · 查找' }, { value: 'top', label: 'top · 词频' }]} />
       </label>
       {selection.operation === 'find' && <label>查找词
         <input aria-label="查找词" value={selection.word} onChange={e => change({ word: e.target.value })} autoComplete="off" />

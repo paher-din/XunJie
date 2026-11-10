@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SelectField } from '../foundation/SelectField'
 import type { SubmissionFeedbackDisplay, SubmissionSnapshotDisplay } from './submissionPresentation'
 import './SubmissionFeedbackPanel.css'
 export interface SubmissionFeedbackPanelProps {
@@ -50,11 +51,10 @@ export function SubmissionFeedbackPanel({ state, snapshots, unconfirmedCount, re
       <h3>提交固定作品</h3>
       <p>选择你已冻结的确认快照。提交不会替你保存草稿、运行程序或进行课程检查。</p>
       {unconfirmedCount > 0 && <p className="ws-submission-notice">本机还有 {unconfirmedCount} 项未确认改动，不会包含在这次提交中。需要提交这些改动时，先返回作品自主保存并冻结新快照。</p>}
-      <label>提交快照<select aria-label="提交快照" value={snapshotId} disabled={!canSubmit || confirming}
-        onChange={event => { setSnapshotId(event.target.value); setChecks([]) }}>
-        <option value="">请明确选择确认快照</option>
-        {snapshots.map(item => <option key={item.snapshotId} value={item.snapshotId}>确认作品 v{item.workspaceRevision} · {dateLabel(item.createdAt)}</option>)}
-      </select></label>
+      <label>提交快照<SelectField label="提交快照" value={snapshotId} disabled={!canSubmit || confirming}
+        onChange={value => { setSnapshotId(value); setChecks([]) }}
+        options={[{ value: '', label: '请明确选择确认快照' }, ...snapshots.map(item => ({ value: item.snapshotId,
+          label: `确认作品 v${item.workspaceRevision} · ${dateLabel(item.createdAt)}` }))]} /></label>
       {snapshot && <div className="ws-submission-manifest">
         <p>固定作品 v{snapshot.workspaceRevision} · {snapshot.files.length} 个文件</p>
         <ul>{snapshot.files.map(file => <li key={file.fileId}><span>{file.path}</span><small>文件版本 {file.documentVersion}</small></li>)}</ul>

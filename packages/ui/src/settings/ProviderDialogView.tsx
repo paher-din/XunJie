@@ -1,3 +1,4 @@
+import { SelectField } from '../foundation/SelectField'
 import type { Dispatch, SetStateAction } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Icon } from '../icons'
@@ -85,16 +86,14 @@ export function ProviderDialogView({ open, onClose, provider, preparation, name,
 
             {testResult?.ok && testResult.models && testResult.models.length>0 && (
               <Field label="供应商可用模型" tip="从真实模型列表选择，使用可调用 ID；供应商提供的能力字段会同步填写。">
-                <select className="st-input" aria-label="供应商可用模型" value="" onChange={e=>{
-                  const found=testResult.models?.find(m=>m.id===e.target.value);if(!found)return;
+                <SelectField label="供应商可用模型" value="" onChange={value=>{
+                  const found=testResult.models?.find(m=>m.id===value);if(!found)return;
                   const next={id:found.id,contextWindow:String(found.contextWindow??''),maxOutput:String(found.maxOutputTokens??''),
                     inputTypes:found.inputTypes??[],reasoningLevels:found.reasoningLevels??[]};
                   setModels(current=>current.length===1&&!current[0]?.id?[next]:current.some(m=>m.id===next.id)
                     ?current.map(m=>m.id===next.id?next:m):[...current,next]);
-                }}>
-                  <option value="">选择并导入模型能力…</option>
-                  {testResult.models.map(m=><option key={m.id} value={m.id}>{m.name??m.id} · {m.id}</option>)}
-                </select>
+                }} options={[{ value: '', label: '选择并导入模型能力…', disabled: true },
+                  ...testResult.models.map(m=>({ value: m.id, label: `${m.name??m.id} · ${m.id}` }))]} />
               </Field>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { VERSION_READ_ONLY_REASON, CompareDiff, CompareReadOnly } from './CompareText'
 import type { VersionComparison, VersionFile, VersionRow } from './comparisonPresentation'
+import { SelectField } from '../foundation/SelectField'
 
 /**
  * 05：只读版本比较视图（快照×快照、本机草稿×最近确认作品）。
@@ -26,28 +27,21 @@ export interface VersionCompareProps {
 export function VersionCompare({ comparison, options, leftId, rightId, onSelect, onReturn }: VersionCompareProps) {
   return (
     <div className="ws-compare" data-source={comparison.source}>
-      {/* 每侧一个原生 select（直接选版本）加一个「换一版」按钮（一个 Tab 停靠点循环切换）：
-          原生下拉在部分环境里不能只靠键盘改值，按钮保证纯键盘也能切换，切换只上报选择。 */}
+      {/* 每侧保留直接选择与「换一版」两种操作，切换只上报选择。 */}
       <div className="ws-compare-sources">
         <span className="ws-compare-side">
           <span className="ws-compare-side-label">左侧</span>
           <button type="button" className="ws-compare-cycle" aria-label="切换左侧来源"
             onClick={() => onSelect('left', cycleOption(options, leftId))}>换一版</button>
-          <select aria-label="左侧来源" value={leftId} onChange={(event) => onSelect('left', event.target.value)}>
-            {options.map((option) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
+          <SelectField label="左侧来源" value={leftId} onChange={id => onSelect('left', id)}
+            options={options.map(option => ({ value: option.id, label: option.label }))} />
         </span>
         <span className="ws-compare-side">
           <span className="ws-compare-side-label">右侧</span>
           <button type="button" className="ws-compare-cycle" aria-label="切换右侧来源"
             onClick={() => onSelect('right', cycleOption(options, rightId))}>换一版</button>
-          <select aria-label="右侧来源" value={rightId} onChange={(event) => onSelect('right', event.target.value)}>
-            {options.map((option) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
+          <SelectField label="右侧来源" value={rightId} onChange={id => onSelect('right', id)}
+            options={options.map(option => ({ value: option.id, label: option.label }))} />
         </span>
       </div>
       <p className="ws-compare-note">只读比较：这里对照两个版本的正文差异，不会修改你的作品。</p>

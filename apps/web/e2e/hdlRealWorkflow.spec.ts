@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { evidenceDirectory, evidencePath } from './evidence'
 import { clickWorkspaceAction, openWorkspaceMenu } from './workspaceControls'
 import { expect, test, type Locator, type Page } from '@playwright/test'
@@ -54,7 +55,7 @@ async function snapshot(page: Page, protocol: Protocol, text: string, revision: 
   const source = protocol.head!.snapshots.at(-1)!
   expect(source.files[0]!.text).toBe(text)
   await openWorkspaceMenu(page, '构建设置')
-  await page.getByRole('combobox', { name: 'HDL 确认快照', exact: true }).selectOption(source.snapshotId)
+  await selectFieldOption(page, 'HDL 确认快照', `确认作品 v${source.workspaceRevision}`)
   await page.keyboard.press('Escape')
   return source
 }
@@ -478,7 +479,7 @@ test('工作区操作整合：常用入口不溢出、配置与求助按需展�
     await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: '检查并构建', exact: true })).toBeVisible()
     await openWorkspaceMenu(page, '构建设置')
-    await expect(page.getByRole('combobox', { name: 'HDL 确认快照', exact: true })).toHaveValue(protocol.head!.snapshots[0]!.snapshotId)
+    await expect(page.getByRole('combobox', { name: 'HDL 确认快照', exact: true })).toContainText(`确认作品 v${protocol.head!.snapshots[0]!.workspaceRevision}`)
     const bounds = await page.getByRole('region', { name: '构建设置', exact: true }).boundingBox()
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
@@ -488,7 +489,7 @@ test('工作区操作整合：常用入口不溢出、配置与求助按需展�
   }
   await page.setViewportSize({ width: 1280, height: 900 })
   await openWorkspaceMenu(page, '执行电脑设置')
-  await page.getByRole('combobox', { name: '执行电脑', exact: true }).selectOption('ui-preview')
+  await selectFieldOption(page, '执行电脑', '预览执行电脑')
   await page.keyboard.press('Escape')
   await openWorkspaceMenu(page, '求助')
   await expect(page.getByRole('button', { name: '就项目求助', exact: true })).toBeFocused()

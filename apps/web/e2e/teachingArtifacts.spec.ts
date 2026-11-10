@@ -428,7 +428,9 @@ test('automatic and ordinary input responses do not consume a Wait, while omitte
   await page.getByRole('button', { name: '打开对话', exact: true }).click()
   await expect.poll(async () => (await api(page, `agent/${id}/conversation`)).questions.filter((question: { state: string }) => question.state === 'pending').length).toBe(1)
   const question = (await api(page, `agent/${id}/conversation`)).questions[0]
-  await page.getByRole('combobox', { name: '本次发送方式', exact: true }).selectOption('queue')
+  await page.getByRole('combobox', { name: '本次发送方式', exact: true }).click()
+  await page.getByRole('option', { name: '本轮结束后处理', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: '本次发送方式', exact: true })).toHaveText('本轮结束后处理')
   const autoId = randomUUID(), inputId = randomUUID(), queuedId = randomUUID(), answerId = randomUUID()
   await publish(page, id, { payload: { ...payload('明确回应卡'),
     html: '<label>我的解释<textarea aria-label="我的解释"></textarea></label><output id="automatic"></output><output id="effect"></output><button id="follow">稍后讨论另一问题</button><button id="answer">明确回答原问题</button>',

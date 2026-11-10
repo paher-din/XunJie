@@ -1,3 +1,4 @@
+import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { toast } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
@@ -46,11 +47,10 @@ export function AluCaseEditor({ activity, binding, state, stateFile, records, en
     </div></header>
     {!draft ? <p className="alu-hint">可先记录一条进位或边界用例，再选一条能区分操作的用例；预测也可留空。</p> : <>
       <div className="alu-case-fields">
-        <label>用例目的<select aria-label="用例目的" value={draft.purpose} disabled={!canWrite}
-          onChange={event => change({ purpose: event.target.value as AluCaseDraft['purpose'] })}>
-          <option value="unspecified">自由选择</option><option value="boundary">进位 / 边界</option>
-          <option value="operation">操作区别</option><option value="custom">其他</option>
-        </select></label>
+        <label>用例目的<SelectField label="用例目的" value={draft.purpose} disabled={!canWrite}
+          onChange={purpose => change({ purpose: purpose as AluCaseDraft['purpose'] })}
+          options={[{ value: 'unspecified', label: '自由选择' }, { value: 'boundary', label: '进位 / 边界' },
+            { value: 'operation', label: '操作区别' }, { value: 'custom', label: '其他' }]} /></label>
         <label>预测 F<input aria-label="预测 F" placeholder="4 位二进制，可留空" value={draft.predictedF} maxLength={32}
           disabled={!canWrite} onChange={event => change({ predictedF: event.target.value })} /></label>
         <label>预测 Cout<input aria-label="预测 Cout" placeholder="0 或 1，可留空" value={draft.predictedCout} maxLength={32}
@@ -231,13 +231,11 @@ export function AluCaseResults({ activity, binding, state, records, fallbackReco
         locate={reference => locate(reference, original, item.file)} />
     })}
     <header className="alu-section-head"><h2>比较与解释</h2>
-      {cases.length > 0 && <label>用例记录<select aria-label="用例记录" value={suppressed ? '' : state.selectedCase}
-        onChange={event => selectState(previous => ({ ...previous, selectedCase: event.target.value, caseRequestId: '',
-          selectedObservation: event.target.value, selectedObservationRevision: -1, feedbackPolicy: 'live' }))}>
-        <option value="">当前观察</option>{cases.map((item, index) => <option key={item.requestId} value={item.requestId}>
-          {cases.length - index} · {new Date(item.createdAt).toLocaleTimeString('zh-CN')} · {stateLabel(item.query)}
-        </option>)}
-      </select></label>}
+      {cases.length > 0 && <label>用例记录<SelectField label="用例记录" value={suppressed ? '' : state.selectedCase}
+        onChange={value => selectState(previous => ({ ...previous, selectedCase: value, caseRequestId: '',
+          selectedObservation: value, selectedObservationRevision: -1, feedbackPolicy: 'live' }))}
+        options={[{ value: '', label: '当前观察' }, ...cases.map((item, index) => ({ value: item.requestId,
+          label: `${cases.length - index} · ${new Date(item.createdAt).toLocaleTimeString('zh-CN')} · ${stateLabel(item.query)}` }))]} /></label>}
     </header>
     {suppressed ? <p className="alu-hint">候选编辑中，实际值、旧比较和波形暂不展示。</p> : <>
       {record && <p className="alu-hint">{recordLabel} · {describeInputs(record.action.execution.parameters)}

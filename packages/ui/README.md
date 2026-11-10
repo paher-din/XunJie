@@ -8,7 +8,7 @@
 
 | 子路径 | 范围 |
 | --- | --- |
-| `@xunjie/ui/foundation` | 按钮、进度、账户、外壳、会话历史和通用交互 |
+| `@xunjie/ui/foundation` | 按钮、通用选择菜单、进度、账户、外壳、会话历史和通用交互 |
 | `@xunjie/ui/feedback` | Sonner 通知入口、通知宿主和操作反馈 |
 | `@xunjie/ui/icons` / `@xunjie/ui/brand` | 图标、Logo、角色及其资源 |
 | `@xunjie/ui/home` / `@xunjie/ui/dashboard` | 课程任务与学习看板 |

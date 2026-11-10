@@ -160,3 +160,25 @@ test('malformed/oversized responses preserve last good values; errors never incl
   await assert.rejects(readCatalogueJson(new Response('12345'), Date.now, 4), /invalid-response/);
   await assert.rejects(readCatalogueJson(new Response('secret text', { status: 401 })), error => error.kind === 'unauthorized' && !error.message.includes('secret'));
 });
+
+test('HTTP status and timeout categories persist without upstream error bodies, then clear on success', async () => {
+  let now = 1000000;
+  const saved = new Map();
+  const persistence = { async load() { return structuredClone(saved); }, async save(key, state) { saved.set(key, structuredClone(state)); } };
+  let cache = createCatalogueCache(() => now, persistence); await cache.initialize();
+  await cache.refresh('supplier', async () => readCatalogueJson(new Response('private upstream details', { status: 404 })));
+  assert.equal(cache.read('supplier').httpStatus, 404);
+  assert.equal(cache.read('supplier').error, 'unavailable');
+  assert.equal(JSON.stringify([...saved]).includes('private upstream details'), false);
+  cache = createCatalogueCache(() => now, persistence); await cache.initialize();
+  assert.equal(cache.read('supplier').httpStatus, 404);
+  now += 600000;
+  await cache.refresh('supplier', async () => { throw new DOMException('private timeout details', 'TimeoutError'); });
+  assert.equal(cache.read('supplier').error, 'timeout');
+  assert.equal(cache.read('supplier').httpStatus, undefined);
+  now += 600000;
+  await cache.refresh('supplier', async () => []);
+  assert.equal(cache.read('supplier').status, 'ready');
+  assert.equal(cache.read('supplier').httpStatus, undefined);
+  assert.equal(cache.read('supplier').error, undefined);
+});

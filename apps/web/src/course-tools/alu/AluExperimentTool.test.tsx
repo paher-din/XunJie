@@ -147,9 +147,15 @@ describe('ALU view coordination and result ownership', () => {
     }
     const first = env.submitted[0]!.requestId, saved = JSON.stringify(env.files()), state = { ...env.read() }
     await act(async () => env.isolate())
-    const select = container.querySelector<HTMLSelectElement>('[aria-label="用例记录"]')!
-    await act(async () => { select.value = first; select.dispatchEvent(new Event('change', { bubbles: true })) })
-    expect(select.value).toBe(first)
+    const select = container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="用例记录"]')!
+    await act(async () => select.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })))
+    const list = document.getElementById(select.getAttribute('aria-controls')!)
+    expect(list).not.toBeNull()
+    const option = Array.from(list!.querySelectorAll<HTMLElement>('[role="option"]')).find(node => node.textContent?.startsWith('1 ·'))!
+    const optionLabel = option.textContent
+    await act(async () => { option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click() })
+    expect(select.textContent).toBe(optionLabel)
+    expect(container.querySelector('.alu-case-results')?.getAttribute('data-execution-request-id')).toBe(first)
     expect(JSON.stringify(env.files())).toBe(saved)
     expect(env.read()).toEqual(state)
     expect(env.submitted).toHaveLength(2)

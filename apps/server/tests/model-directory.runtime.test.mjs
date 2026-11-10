@@ -9,7 +9,7 @@ import { routeModels } from '../../../packages/learning-space/dist/model-connect
 
 test('directory storage, owning-account credentials and lifecycle use native PostgreSQL', { timeout: 90000 }, async t => {
   const fixture = await nativeFixture();
-  let storage, gateway, publicCalls = 0, supplierCalls = 0, presetCalls = 0, time = Date.UTC(2026, 10, 10), denied = false, hang = false, started;
+  let storage, gateway, publicCalls = 0, supplierCalls = 0, presetCalls = 0, legacyCalls = 0, time = Date.UTC(2026, 10, 10), denied = false, hang = false, started;
   const secret = 'directory-synthetic-credential-value';
   const server = createServer((request, response) => {
     supplierCalls++;
@@ -30,6 +30,12 @@ test('directory storage, owning-account credentials and lifecycle use native Pos
     const options = { holder: 'device', catalogueNow: () => time, authorize: async () => { if (denied) throw new StorageError('forbidden'); },
       supplierFetch: async (url, init) => {
         if (String(url).startsWith(baseUrl)) return fetch(url, init);
+        if (new URL(url).hostname === 'api.deepseek.com') {
+          legacyCalls++;
+          assert.equal(url, 'https://api.deepseek.com/models');
+          assert.equal(init.headers.authorization, 'Bearer ' + secret);
+          return new Response(JSON.stringify({ data: [{ id: 'deepseek-flash' }, { id: 'deepseek-v4-pro' }] }));
+        }
         presetCalls++;
         assert.equal(url, 'https://opencode.ai/inference/go/v1/models');
         assert.equal(init.headers.authorization, 'Bearer ' + secret);
@@ -97,6 +103,19 @@ test('directory storage, owning-account credentials and lifecycle use native Pos
       const cleared = await gateway.directory.read(identity, { ...saved, credential: { action: 'clear' } });
       assert.equal(cleared.supplier.status, 'needs-credential'); assert.deepEqual(cleared.models, []);
       assert.equal(publicCalls, 2); assert.equal(supplierCalls, 2);
+    });
+
+    await t.test('adding to a legacy custom DeepSeek Messages provider uses its official model list with the saved credential', async () => {
+      const legacy = await gateway.save(identity, { connectionId: randomUUID(), requestId: randomUUID(), expectedVersion: 0,
+        name: '旧版 DeepSeek', protocol: 'messages', baseUrl: 'https://api.deepseek.com/anthropic', path: '/v1/messages',
+        modelId: 'deepseek-flash', dialect: 'deepseek', parameterMode: 'plain', enabled: true,
+        credential: { action: 'replace', value: secret } });
+      const listed = await gateway.directory.read(identity, { presetId: 'custom', baseUrl: legacy.baseUrl, protocol: legacy.protocol,
+        credential: { action: 'keep' }, savedCredential: { connectionId: legacy.connectionId, version: legacy.version }, refresh: true });
+      assert.equal(listed.supplier.status, 'ready');
+      assert.deepEqual(listed.models.map(model => model.modelId), ['deepseek-flash', 'deepseek-v4-pro']);
+      assert.equal(legacyCalls, 1);
+      assert.equal(JSON.stringify(listed).includes(secret), false);
     });
 
     await t.test('preset keep reuses a canonical sibling protocol and save consumes actual account metadata without network', async () => {

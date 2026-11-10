@@ -6,14 +6,14 @@ export const modelCatalogueMigration: Migration = { version: 21, name: 'model-di
   CREATE TABLE model_directory_cache(cache_key text PRIMARY KEY,body jsonb NOT NULL);
 ` };
 export type CatalogueState = { data?: unknown; lastAttemptAt?: number; successAt?: number; retryAt?: number;
-  failures: number; error?: NonNullable<ModelDirectoryRefresh['error']> };
+  failures: number; error?: NonNullable<ModelDirectoryRefresh['error']>; httpStatus?: number };
 export type CataloguePersistence = { load(): Promise<Map<string, CatalogueState>>; save(key: string, state: CatalogueState): Promise<void> };
 const ordinaryInterval = 10 * 60_000, manualDebounce = 3000;
 const delays = [5000, 15000, 30000, 60000, 120000, 240000, 300000];
 const iso = (value: number) => new Date(value).toISOString();
 
 export class CatalogueFailure extends Error {
-  constructor(readonly kind: NonNullable<ModelDirectoryRefresh['error']>, readonly retryAfter?: number) { super(kind); }
+  constructor(readonly kind: NonNullable<ModelDirectoryRefresh['error']>, readonly retryAfter?: number, readonly httpStatus?: number) { super(kind); }
 }
 function validState(value: unknown): value is CatalogueState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -21,7 +21,8 @@ function validState(value: unknown): value is CatalogueState {
   return Number.isSafeInteger(state.failures) && state.failures >= 0
     && ['lastAttemptAt', 'successAt', 'retryAt'].every(key => {
       const time = state[key as 'lastAttemptAt']; return time === undefined || Number.isSafeInteger(time) && time >= 0 && time < 8.64e15;
-    }) && modelDirectoryRefreshSchema.safeParse({ status: 'idle', ...(state.error ? { error: state.error } : {}) }).success;
+    }) && modelDirectoryRefreshSchema.safeParse({ status: 'idle', ...(state.error ? { error: state.error } : {}),
+      ...(state.httpStatus !== undefined ? { httpStatus: state.httpStatus } : {}) }).success;
 }
 export function cataloguePersistence(storage: OwnedStorage): CataloguePersistence {
   return {
@@ -55,7 +56,8 @@ export function createCatalogueCache(now = Date.now, persistence?: CataloguePers
     return { status: loading.has(key) ? 'refreshing' : value?.error ? 'failed' : value?.successAt !== undefined ? 'ready' : 'idle',
       ...(value?.lastAttemptAt !== undefined ? { lastAttemptAt: iso(value.lastAttemptAt), nextRefreshAt: iso(value.lastAttemptAt + ordinaryInterval) } : {}),
       ...(value?.successAt !== undefined ? { updatedAt: iso(value.successAt) } : {}),
-      ...(value?.retryAt !== undefined ? { retryAt: iso(value.retryAt) } : {}), ...(value?.error ? { error: value.error } : {}) };
+      ...(value?.retryAt !== undefined ? { retryAt: iso(value.retryAt) } : {}), ...(value?.error ? { error: value.error } : {}),
+      ...(value?.httpStatus !== undefined ? { httpStatus: value.httpStatus } : {}) };
   }
   function refresh(key: string, fetcher: (signal: AbortSignal) => Promise<unknown>, manual = false): Promise<ModelDirectoryRefresh> {
     const current = loading.get(key); if (current) return current.promise;
@@ -81,10 +83,13 @@ export function createCatalogueCache(now = Date.now, persistence?: CataloguePers
         const next: CatalogueState = { data, failures: 0, lastAttemptAt: time, successAt: now() };
         await persistence?.save(key, next); states.set(key, next);
       } catch (error) {
-        const failure = error instanceof CatalogueFailure ? error : new CatalogueFailure(error instanceof StorageError ? 'unavailable' : 'offline');
+        const failure = error instanceof CatalogueFailure ? error : new CatalogueFailure(error instanceof StorageError ? 'unavailable'
+          : error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'offline');
         const failures = Math.min(value.failures + 1, 1000);
         const next: CatalogueState = { ...value, failures, error: failure.kind,
           retryAt: Math.max(now() + delays[Math.min(failures - 1, delays.length - 1)]!, failure.retryAfter ?? 0) };
+        if (failure.httpStatus !== undefined) next.httpStatus = failure.httpStatus;
+        else delete next.httpStatus;
         await persistence?.save(key, next); states.set(key, next);
       }
       return read(key);
@@ -112,7 +117,7 @@ export async function readCatalogueJson(response: Response, now = Date.now, maxB
     await response.body?.cancel().catch(() => {});
     throw new CatalogueFailure(response.status === 401 || response.status === 403 ? 'unauthorized'
       : response.status === 429 ? 'rate-limited' : 'unavailable',
-    retryAfter !== undefined && Number.isFinite(retryAfter) ? Math.min(retryAfter, now() + 365 * 86400_000) : undefined);
+    retryAfter !== undefined && Number.isFinite(retryAfter) ? Math.min(retryAfter, now() + 365 * 86400_000) : undefined, response.status);
   }
   if (!response.body) throw new CatalogueFailure('invalid-response');
   const reader = response.body.getReader(), chunks: Uint8Array[] = []; let size = 0;

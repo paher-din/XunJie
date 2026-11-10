@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { evidenceDirectory, evidencePath } from './evidence'
 import { expect, test } from '@playwright/test'
 import { edit } from './helpers'
@@ -43,8 +44,8 @@ test('实际 Core 固定快照 stats/find/top：原命令先落盘、原消费�
     expect((await runLocal(page)).drafts.some(d => d.text === 'newer draft during the original run\n')).toBe(true)
     expect((await actualHead(page, host, head.attempt.attemptId)).files.find(f => f.path === 'sample.txt')!.text).toBe('one two one\n')
     await host.control({ kind: 'runner', action: 'configure', outcome: 'success' })
-    for (const operation of ['find', 'top']) {
-      await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption(operation)
+    for (const operation of ['find', 'top'] as const) {
+      await selectFieldOption(page, 'Core 操作', { stats: 'stats · 统计', find: 'find · 查找', top: 'top · 词频' }[operation])
       if (operation === 'find') await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
       else await page.getByRole('textbox', { name: '数量', exact: true }).fill('2')
       const receipt = await acceptedRun(page)

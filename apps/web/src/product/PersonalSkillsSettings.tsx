@@ -1,3 +1,4 @@
+import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingSkillDisableSchema, teachingSkillSelectSchema, teachingSkillCatalogEntrySchema, teachingSkillImportSchema,
@@ -160,10 +161,9 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, activityId, courseI
       <div className="skill-toolbar">
         <input className="st-input skill-search" type="search" aria-label="搜索技能" placeholder="搜索技能" value={search}
           onChange={event => setSearch(event.target.value)} />
-        <select className="st-input skill-range" aria-label="使用范围" value={currentRange}
-          onChange={event => setRange(ranges.find(item => rangeKey(item.value) === event.target.value)!.value)}>
-          {ranges.map(item => <option key={rangeKey(item.value)} value={rangeKey(item.value)}>{item.label}</option>)}
-        </select>
+        <SelectField className="skill-range" label="使用范围" value={currentRange}
+          onChange={value => setRange(ranges.find(item => rangeKey(item.value) === value)!.value)}
+          options={ranges.map(item => ({ value: rangeKey(item.value), label: item.label }))} />
         <SettingsActionMenu label="导入 Skill" icon={<Icon name="add" size={16} />} disabled={disabled}
           open={importMenuOpen} onOpenChange={open => { setImportMenuOpen(open); if (!open) setGithubOpen(false) }}
           panelLabel="GitHub 导入" panel={githubOpen ? <form className="skill-github" onSubmit={event => { event.preventDefault(); importGithub() }}>

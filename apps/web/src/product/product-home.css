@@ -48,7 +48,7 @@
   font-size: 13px;
 }
 
-.product-home-space-select select {
+.product-home-space-select .ui-select-trigger {
   max-width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--line-strong);

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SelectField } from '@xunjie/ui/foundation'
 import { describeAluVcdRange, normalizeAluWaveRange, parseAluVcd, type AluVcd, type AluVcdChange, type AluVcdSignal,
   type AluWaveRange } from '@xunjie/contracts/alu-waveform'
 import './waveform.css'
@@ -91,9 +92,8 @@ function ParsedWaveform(props: AluWaveformProps & { vcdText: string }) {
       <label>结束 tick<input type="text" inputMode="numeric" aria-label="结束 tick" value={current.toTick}
         onChange={event => edit('toTick', event.currentTarget.value)} /></label>
       <button type="submit" disabled={!props.selection?.signalIds.length}>查看范围</button>
-      <label>缩放<select aria-label="显示缩放" value={zoom} onChange={event => setZoom(Number(event.currentTarget.value))}>
-        {[1, 2, 4, 8].map(value => <option key={value} value={value}>{value}×</option>)}
-      </select></label>
+      <label>缩放<SelectField label="显示缩放" value={String(zoom)} onChange={value => setZoom(Number(value))}
+        options={[1, 2, 4, 8].map(value => ({ value: String(value), label: `${value}×` }))} /></label>
       {props.selection && <button type="button" onClick={() => { props.onChange(null); setDraft(null) }}>清除选择</button>}
       {props.onReference && <button type="button" disabled={!view.copy} onClick={event => {
         if (view.copy) props.onReference?.(normalizeAluWaveRange(parsed, view.copy.range), event.currentTarget)

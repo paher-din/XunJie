@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { clickWorkspaceAction } from './workspaceControls'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
@@ -96,8 +97,8 @@ async function lifecycleProject(page: Page, service: Host, attemptId: string) {
 async function selectRun(page: Page, before: WorkspaceHead) {
   const snapshot = before.snapshots.find(row => row.workspaceRevision === 2)!
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
-  await page.getByRole('combobox', { name: '确认快照', exact: true }).selectOption(snapshot.snapshotId)
-  await page.getByRole('combobox', { name: 'C 入口文件', exact: true }).selectOption(snapshot.files.find(file => file.path === 'main.c')!.fileId)
+  await selectFieldOption(page, '确认快照', new RegExp(`^确认作品 v${snapshot.workspaceRevision} ·`))
+  await selectFieldOption(page, 'C 入口文件', 'main.c')
   await page.getByRole('checkbox', { name: 'sample.txt', exact: true }).check()
 }
 
@@ -132,7 +133,8 @@ test('实际暂停：既有 active 文件 update 可保存，新建、回收、�
     await page.keyboard.press('Escape')
     await selectRun(page, active)
     await expect(page.getByRole('button', { name: '运行此快照', exact: true })).toBeDisabled()
-    await page.getByRole('combobox', { name: 'C 入口文件', exact: true }).focus()
+    await selectFieldOption(page, 'Core 操作', 'find · 查找')
+    await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
     await page.keyboard.press('Enter')
     await page.getByRole('button', { name: '返回编辑', exact: true }).click()
     expect(writes).toEqual([])
@@ -192,7 +194,8 @@ test('实际 submitted/reviewed：正文只读，保存、冻结、新建、回�
       await page.keyboard.press('Escape')
       await selectRun(page, active)
       await expect(page.getByRole('button', { name: '运行此快照', exact: true })).toBeDisabled()
-      await page.getByRole('combobox', { name: 'C 入口文件', exact: true }).focus()
+      await selectFieldOption(page, 'Core 操作', 'find · 查找')
+      await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
       await page.keyboard.press('Enter')
       await page.getByRole('button', { name: '返回编辑', exact: true }).click()
       expect(writes).toEqual([])

@@ -7835,17 +7835,12 @@ button.outline.danger {
   gap: 12px;
 }
 .st-route-list-head { justify-content: space-between; }
-.st-route-list-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .st-route-list { display: flex; flex-direction: column; }
 .st-route-editor { display: flex; flex-direction: column; gap: 16px; }
 .st-route-editor + .st-route-editor { border-top: 1px solid var(--line); padding-top: 24px; margin-top: 24px; }
 .st-route-editor-head { justify-content: space-between; font-size: 13px; color: var(--muted); }
-.st-route-options { color: var(--ink-soft); font-size: 13px; }
-.st-route-options > summary { cursor: pointer; padding: 4px 0; }
-.st-route-options[open] > :not(summary) { margin-top: 16px; }
-.st-route-manual { display: flex; align-items: center; gap: 8px; }
 .st-route-check { min-width: 0; gap: 8px; }
-.st-route-check select { max-width: 140px; min-width: 0; font-size: 12px; }
+.st-route-check .ui-select-trigger { max-width: 140px; min-width: 0; font-size: 12px; }
 .st-configured-models { margin-top: 16px; }
 .st-configured-model { border-top: 1px solid var(--line); padding: 16px 0; }
 .st-configured-model-head .st-model-chip { overflow-wrap: anywhere; min-width: 0; }
@@ -7855,10 +7850,9 @@ button.outline.danger {
 .st-configured-model .detail, .st-provider-bottom .detail { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
 .st-provider-bottom { flex-wrap: wrap; }
 .st-toggle:disabled { opacity: 0.45; cursor: wait; }
-.st-route-add { align-self: flex-start; }
 @media (max-width: 600px) {
   .st-route-check { flex-wrap: wrap; }
-  .st-route-check select { max-width: 120px; }
+  .st-route-check .ui-select-trigger { max-width: 120px; }
   .st-configured-model-head { flex-wrap: wrap; }
 }
 .st-provider-models {
@@ -10075,7 +10069,7 @@ button.st-check.checked:hover {
   border-color: var(--accent);
   box-shadow: var(--focus-glow);
 }
-.ws-compare-sources select {
+.ws-compare-sources .ui-select-trigger {
   height: 28px;
   max-width: 240px;
   padding: 0 8px;
@@ -10085,7 +10079,7 @@ button.st-check.checked:hover {
   color: var(--ink);
   font-size: 12px;
 }
-.ws-compare-sources select:focus-visible {
+.ws-compare-sources .ui-select-trigger:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--focus-glow);

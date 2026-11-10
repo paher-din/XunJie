@@ -67,7 +67,7 @@ test('personal interaction settings persist and the busy composer freezes the ch
     await until(() => f.payloads.length === 1, 'The actual model request is in flight.')
     await page.goto(f.endpoint + '/?activity=' + activity.activityId)
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
-    await expect(page.getByLabel('本次发送方式', { exact: true })).toHaveValue('queue')
+    await expect(page.getByRole('combobox', { name: '本次发送方式', exact: true })).toHaveText('本轮结束后处理')
     await page.getByLabel('你的问题', { exact: true }).fill('界面排队：只在完整轮结束后处理。')
     await page.getByRole('button', { name: '排队发送', exact: true }).click()
     await expect.poll(async () => {

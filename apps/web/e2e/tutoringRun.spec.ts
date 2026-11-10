@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { confirmSave, edit, localState, serverHead } from './helpers'
@@ -14,7 +15,7 @@ test('原运行求助后继续编辑并启动另一Run，旧回答仍保留原Ru
   const result = page.getByRole('region', { name: '固定快照结果', exact: true })
   await expect(result).toContainText('运行完成')
   const runId = await result.getAttribute('data-run-id')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('find')
+  await selectFieldOption(page, 'Core 操作', 'find · 查找')
   await page.getByRole('textbox', { name: '查找词', exact: true }).fill('different-controls')
   const before = await localState(page), writes: string[] = []
   const helpBodies:Array<{objectRef:unknown}>=[]
@@ -58,7 +59,7 @@ test('原运行求助后继续编辑并启动另一Run，旧回答仍保留原Ru
   const nextSnapshot = updated.snapshots.find(item => item.workspaceRevision === 2)!
   expect(nextSnapshot.snapshotId).not.toBe(snapshot.snapshotId)
   await selectRun(page, nextSnapshot.snapshotId, nextSnapshot.files.find(f => f.path === 'main.c')!.fileId, '')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('stats')
+  await selectFieldOption(page, 'Core 操作', 'stats · 统计')
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
   await expect.poll(async () => {
     const id = await result.getAttribute('data-run-id')

@@ -3,7 +3,7 @@
 .run-history-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin-top: 20px; }
 .run-history-side, .run-history-result, .run-history-files, .run-history-file { min-width: 0; }
 .run-history-select { display: flex; flex-direction: column; gap: 6px; }
-.run-history-select select { width: 100%; min-width: 0; min-height: 32px; box-sizing: border-box; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
+.run-history-select .ui-select-trigger { width: 100%; min-width: 0; min-height: 32px; box-sizing: border-box; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
 .run-history .ws-btn { max-width: 100%; min-height: 32px; height: auto; padding-block: 4px; white-space: normal; overflow-wrap: anywhere; }
 .run-history-fields { display: grid; gap: 4px; margin: 12px 0; }
 .run-history-fields dt { color: var(--muted); }

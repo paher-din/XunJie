@@ -85,8 +85,11 @@ it('imports supplied capabilities, retains a failed save and closes only after c
   await draw(createElement(ui.ProviderSettingsDialog, { open: true, provider, preparation: false, onClose, onSave, onTest }))
   await click('连接测试')
   expect(onTest).toHaveBeenCalledWith({ id: 'p1', baseUrl: provider.baseUrl, apiKey: '' })
-  const select = document.querySelector<HTMLSelectElement>('[aria-label="供应商可用模型"]')!
-  await act(async () => { select.value = 'imported'; select.dispatchEvent(new Event('change', { bubbles: true })); await settle() })
+  await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="供应商可用模型"]')!.click(); await settle() })
+  await act(async () => {
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.includes('新模型'))!
+    option.dispatchEvent(new dom.window.MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click(); await settle()
+  })
   await click('保存')
   expect(onClose).not.toHaveBeenCalled()
   expect(document.querySelector('[data-sonner-toast][data-type="error"], [role="alert"]')?.textContent).toContain('保存未确认')

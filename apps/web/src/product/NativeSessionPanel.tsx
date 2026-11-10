@@ -1,3 +1,4 @@
+import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { toast, type ToastKind } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
@@ -275,10 +276,9 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       </div>
       {declared.checkpointVersion && <div className="native-session-recovery">
         {checkpoints.length ? <>
-          <label>恢复检查点 <select aria-label="恢复检查点" value={checkpoint?.checkpointId ?? ''}
-            onChange={event => setSelectedCheckpoint(event.target.value)}>
-            {checkpoints.map(item => <option key={item.checkpointId} value={item.checkpointId}>第 {item.appliedSeq} 次操作 · {new Date(item.createdAt).toLocaleTimeString()}</option>)}
-          </select></label>
+          <label>恢复检查点 <SelectField label="恢复检查点" value={checkpoint?.checkpointId ?? ''}
+            onChange={setSelectedCheckpoint} options={checkpoints.map(item => ({ value: item.checkpointId,
+              label: `第 ${item.appliedSeq} 次操作 · ${new Date(item.createdAt).toLocaleTimeString()}` }))} /></label>
           <button type="button" className="ws-btn ghost" disabled={!authorized || readOnly || busy || !canPlace || !checkpoint}
             onClick={() => checkpoint && void restore(checkpoint)}>从检查点建立恢复会话</button>
         </> : <p className="execution-hint">{state.checkpointsReady

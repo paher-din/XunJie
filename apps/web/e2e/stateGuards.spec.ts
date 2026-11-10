@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { confirmSave, create, edit, localState, openFileMenu, serverHead, setAttemptState, start, trackBusinessWrites, typeIn } from './helpers'
@@ -32,13 +33,14 @@ test('暂停时新建文件与 Core 运行都被挡住，已有 active 文件仍
 
   // 运行闸：重新选齐快照/入口/输入后仍然禁用，且没有运行 POST 离开浏览器。
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
-  await page.getByRole('combobox', { name: '确认快照', exact: true }).selectOption(snapshot.snapshotId)
-  await page.getByRole('combobox', { name: 'C 入口文件', exact: true }).selectOption(entry)
+  await selectFieldOption(page, '确认快照', new RegExp(`^确认作品 v${snapshot.workspaceRevision} ·`))
+  await selectFieldOption(page, 'C 入口文件', snapshot.files.find(file => file.fileId === entry)!.path)
   await page.getByRole('checkbox', { name: 'sample.txt', exact: true }).check()
   const runButton = page.getByRole('button', { name: '运行此快照', exact: true })
   await expect(runButton).toBeDisabled()
   // 表单提交路径也要挡住：回车不能绕过 disabled 的提交按钮。
-  await page.getByRole('combobox', { name: 'C 入口文件', exact: true }).focus()
+  await selectFieldOption(page, 'Core 操作', 'find · 查找')
+  await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
   await page.keyboard.press('Enter')
   expect(writes.filter(w => w.endsWith('/runs'))).toEqual([])
 

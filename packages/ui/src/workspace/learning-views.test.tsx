@@ -19,8 +19,13 @@ beforeEach(() => {
 })
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals() })
 function click(node: Element) { act(() => node.dispatchEvent(new MouseEvent('click', { bubbles: true }))) }
-function choose(node: HTMLSelectElement, value: string) {
-  act(() => { node.value = value; node.dispatchEvent(new Event('change', { bubbles: true })) })
+async function choose(node: Element, optionIndex: number) {
+  await act(async () => { node.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })) })
+  const list = document.getElementById(node.getAttribute('aria-controls')!)
+  expect(list).not.toBeNull()
+  const option = list!.querySelectorAll<HTMLElement>('[role="option"]')[optionIndex]!
+  expect(option).toBeDefined()
+  await act(async () => { option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click() })
 }
 function button(label: string) {
   const node = Array.from(host.querySelectorAll('button')).find(item => item.textContent === label)
@@ -40,7 +45,7 @@ it('shows exact material availability without inventing unreadable titles or rep
   expect(renderToStaticMarkup(<TextScopeRunCluster init={null} mode={mode} />)).toContain('初始化读取中')
 })
 
-it('execution selection remains caller-owned and does not make an unready computer ready', () => {
+it('execution selection remains caller-owned and does not make an unready computer ready', async () => {
   const onSelect = vi.fn(), onRefresh = vi.fn()
   const props = { state: { status: 'ready' as const, selectedNodeId: 'n1', notice: null,
     nodes: [{ nodeId: 'n1', label: '电脑一', cReady: false, hdlReady: true }, { nodeId: 'n2', label: '电脑二', cReady: true, hdlReady: false }] },
@@ -49,7 +54,7 @@ it('execution selection remains caller-owned and does not make an unready comput
   click(host.querySelector('button')!)
   const panel = document.body.querySelector('.ws-control-popover')!
   expect(panel.textContent).toContain('执行电脑未就绪；仍可编辑和保存')
-  choose(panel.querySelector('select')!, 'n2')
+  await choose(panel.querySelector('[role="combobox"]')!, 2)
   expect(onSelect.mock.calls).toEqual([['n2']])
   expect(props.state.selectedNodeId).toBe('n1')
   click(Array.from(panel.querySelectorAll('button')).find(item => item.textContent === '刷新')!)
@@ -58,7 +63,7 @@ it('execution selection remains caller-owned and does not make an unready comput
   expect(host.textContent).toBe('')
 })
 
-it('submits only the explicitly selected snapshot and its matching check; an identity change clears the selection', () => {
+it('submits only the explicitly selected snapshot and its matching check; an identity change clears the selection', async () => {
   const snapshot = (id: string): SubmissionSnapshotDisplay => ({ snapshotId: id, workspaceRevision: 2, hash: id,
     createdAt: '2026-10-10T00:00:00Z', files: [{ fileId: 'f', path: 'main.c', documentVersion: 1 }] })
   const state: SubmissionFeedbackDisplay = { phase: 'ready', pending: null, assignment: { active: true }, notice: null, feedbackNotice: null, feedback: null,
@@ -68,7 +73,7 @@ it('submits only the explicitly selected snapshot and its matching check; an ide
   const props = { state, snapshots: [snapshot('a'), snapshot('b')], unconfirmedCount: 1, resetKey: 1,
     onReturn: vi.fn(), onRefresh: vi.fn(), onReconcile: vi.fn(), onResume: vi.fn(), onSubmit }
   act(() => root.render(<SubmissionFeedbackPanel {...props} />))
-  choose(host.querySelector('select')!, 'b')
+  await choose(host.querySelector('[role="combobox"]')!, 2)
   expect(host.textContent).toContain('不会包含在这次提交中')
   expect(host.querySelector('fieldset')?.textContent).toContain('matching')
   expect(host.querySelector('fieldset')?.textContent).not.toContain('other')
@@ -78,7 +83,7 @@ it('submits only the explicitly selected snapshot and its matching check; an ide
   click(button('确认提交所选快照'))
   expect(onSubmit.mock.calls).toEqual([['b', '', ['matching']]])
   act(() => root.render(<SubmissionFeedbackPanel {...props} resetKey={2} />))
-  expect(host.querySelector('select')?.value).toBe('')
+  expect(host.querySelector('[role="combobox"]')?.textContent).toContain('请明确选择确认快照')
   expect(button('提交所选作品').disabled).toBe(true)
 })
 

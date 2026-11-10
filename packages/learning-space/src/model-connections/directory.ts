@@ -93,7 +93,7 @@ export function createModelDirectory(profiles: ReturnType<typeof createModelProf
       const supplierRefresh = source && key ? profiles.cache.refresh(key, async signal => {
         const bounded = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
         const requestFetch = await new Promise<typeof fetch>((resolve, reject) => {
-          const aborted = () => reject(new CatalogueFailure('offline'));
+          const aborted = () => reject(new CatalogueFailure(bounded.reason instanceof Error && bounded.reason.name === 'TimeoutError' ? 'timeout' : 'offline'));
           if (bounded.aborted) { aborted(); return; }
           bounded.addEventListener('abort', aborted, { once: true });
           hooks.requestFetch(source).then(resolve, reject).finally(() => bounded.removeEventListener('abort', aborted));

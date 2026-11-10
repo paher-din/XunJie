@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { evidenceDirectory, evidencePath } from './evidence'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
@@ -70,7 +71,7 @@ async function openHistory(page: Page) {
   await expect(page.getByRole('region', { name: '历史运行与产物', exact: true })).toBeVisible()
 }
 async function choose(page: Page, index: 'A' | 'B', runId: string) {
-  await page.getByRole('combobox', { name: `运行 ${index}`, exact: true }).selectOption(runId)
+  await selectFieldOption(page, `运行 ${index}`, new RegExp(`${runId}$`))
   await expect(side(page, index).locator('[data-run-id]')).toHaveAttribute('data-run-id', runId)
   await expect(side(page, index)).toHaveAttribute('aria-busy', 'false')
 }
@@ -92,7 +93,7 @@ async function facts(page: Page) {
 }
 async function runCore(page: Page, snapshot: WorkspaceHead['snapshots'][number], operation: 'stats' | 'find') {
   await selectRun(page, snapshot.snapshotId, snapshot.files.find(file => file.path === 'main.c')!.fileId, '')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption(operation)
+  await selectFieldOption(page, 'Core 操作', { stats: 'stats · 统计', find: 'find · 查找', top: 'top · 词频' }[operation])
   if (operation === 'find') await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
   const accepted = page.waitForResponse(response => response.request().method() === 'POST' && /\/api\/attempts\/[^/]+\/runs$/.test(new URL(response.url()).pathname))
   await expect(page.getByRole('button', { name: '运行此快照', exact: true })).toBeEnabled()
@@ -295,7 +296,7 @@ test('HTTPS 选择逆序：实际完整产物迟到不能绑定另一运行或�
       await route.fulfill({ response }).catch(() => {})
       delivered = true
     })
-    await page.getByRole('combobox', { name: '运行 A', exact: true }).selectOption(complete.runId)
+    await selectFieldOption(page, '运行 A', new RegExp(`${complete.runId}$`))
     await expect.poll(() => arrived).toBe(true)
     await choose(page, 'A', missing.runId)
     await expect(side(page, 'A')).toContainText('文件缺失')

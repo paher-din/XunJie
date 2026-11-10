@@ -1,6 +1,7 @@
 import './RunPanel.css'
 import './RunHistoryPanel.css'
 import type { RunHelpTarget } from './runPresentation'
+import { SelectField } from '../foundation/SelectField'
 
 export interface HistoryFileDisplay {
   id: string
@@ -71,11 +72,9 @@ export function RunHistoryPanel({ options, sides, busy, notice, synthetic,
         const label = index === 0 ? '运行 A' : '运行 B'
         return <section key={index} className="run-history-side" aria-label={label} aria-busy={side.busy}>
           <label className="run-history-select">{label}
-            <select aria-label={label} value={side.runId} disabled={busy || options.length === 0}
-              onChange={event => onSelect(index, event.target.value)}>
-              <option value="">请选择已有运行</option>
-              {options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
-            </select>
+            <SelectField label={label} value={side.runId} disabled={busy || options.length === 0}
+              onChange={runId => onSelect(index, runId)}
+              options={[{ value: '', label: '请选择已有运行' }, ...options.map(option => ({ value: option.id, label: option.label }))]} />
           </label>
           {side.busy && <p role="status">正在读取{label}。</p>}
           {side.notice && <p className="core-run-notice" role="status">{side.notice}</p>}

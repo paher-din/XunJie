@@ -5,7 +5,7 @@ import {
   ModelFields, ModelProviderCard, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
   RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
-  SettingsSelect, SettingsActionMenu, ModelIdInput, ModelProviderLogo,
+  SettingsSelect, SettingsActionMenu, ModelIdInput, ModelProviderLogo, ModelChoiceCard,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
 } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
@@ -115,6 +115,19 @@ function ModelIdInputDemo() {
   return <Frame><Field label="模型 ID"><ModelIdInput label="示例模型 ID" value={value} onChange={setValue}
     options={[{ value: 'sample-text', label: '示例文本模型' }, { value: 'sample-thinking', label: '示例思考模型' }]} /></Field></Frame>
 }
+function ModelChoiceDemo({ chosen = false, open = false }: { chosen?: boolean; open?: boolean }) {
+  const [selected, setSelected] = useState(chosen), [expanded, setExpanded] = useState(open), [effort, setEffort] = useState('auto')
+  const [manual, setManual] = useState<string[] | undefined>()
+  const [capacity, setCapacity] = useState<{ contextWindow?: string | undefined; maxOutputTokens?: string | undefined }>({})
+  return <Frame><ModelChoiceCard modelId="sample-reasoning" name="示例推理模型" selected={selected} expanded={expanded}
+    onSelect={value => { setSelected(value); setExpanded(value) }} onExpand={setExpanded}>
+    <ConnectionModelFields modelId="sample-reasoning" showModelId={false} effort={effort} efforts={['auto', ...(manual ?? ['low', 'high'])]}
+      source={manual ? 'manual' : 'catalogue'} manualLevels={manual} {...capacity} referenceContext={262144} referenceOutput={65536}
+      onId={() => {}} onEffort={setEffort} onLevels={setManual} onCapacity={patch => setCapacity(current => ({ ...current, ...patch }))} />
+  </ModelChoiceCard></Frame>
+}
+function ModelChoiceSelected() { return <ModelChoiceDemo chosen /> }
+function ModelChoiceExpanded() { return <ModelChoiceDemo chosen open /> }
 function ProviderCardDemo() { const [notice, setNotice] = useState(''); return <Frame><ModelProviderCard name="示例供应商" address="https://example.invalid/v1" credentialLabel="示例状态" actions={<button type="button" className="outline" onClick={() => setNotice('已触发示例编辑')}>编辑</button>}><p>示例模型</p></ModelProviderCard><output>{notice}</output></Frame> }
 function IdentityDemo({ error = false }: { error?: boolean }) {
   const [name, setName] = useState('示例供应商'), [url, setUrl] = useState('https://example.invalid/v1'), [key, setKey] = useState('synthetic-example-key')
@@ -204,6 +217,10 @@ export const settingsEntries: CatalogEntry[] = [
   { id: 'model-id-input', name: 'ModelIdInput', description: '可搜索并自由填写的模型 ID，列表由调用方提供。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, loading?'],
     dependencies: ['Base UI Combobox；本地合成列表'], states: [{ id: 'default', name: '搜索或手填', component: ModelIdInputDemo }] },
+  { id: 'model-choice-card', name: 'ModelChoiceCard', description: '虚线框模型选择，参数在对应型号内展开。', importPath: settings,
+    source: 'packages/ui/src/settings/ModelChoiceCard.tsx', exampleSource, props: ['modelId, name?, selected, expanded, onExpand', 'onSelect?, children?, invalid?, showSelection?, action?'],
+    dependencies: ['包内图标与循阶 token；状态由调用方提供'], states: [{ id: 'default', name: '未选中', component: ModelChoiceDemo },
+      { id: 'selected', name: '已选中', component: ModelChoiceSelected }, { id: 'expanded', name: '展开配置', component: ModelChoiceExpanded }] },
   { id: 'model-provider-logo', name: 'ModelProviderLogo', description: '本地供应商品牌图形与自定义连接图标。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['providerId'], dependencies: ['包内品牌资产'],
     states: [{ id: 'default', name: '品牌图形', component: () => <Frame><div className="st-checks">{['custom', 'deepseek', 'opencode-go', 'command-code', 'zhipu', 'kimi', 'mimo'].map(id => <span key={id} className="st-choice-icon"><ModelProviderLogo providerId={id} /></span>)}</div></Frame> }] },

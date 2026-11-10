@@ -1,3 +1,4 @@
+import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { toast } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
@@ -66,9 +67,8 @@ export function LegacyAluExperimentTool({activity,binding,spaceKey,namespace,aut
     ||work.files.filter(f=>f.kind==='code').some(f=>!last.action.execution.basis.works.some(previous=>previous.objectId===f.objectId)))
   const inputChanged=last && Object.keys(values).some(key=>(last.action.execution.parameters as Record<string,number>)[key]!==values[key])
   return <section className={`execution-panel runtime-tool ${compact?'runtime-tool-compact':'runtime-tool-full'}`} aria-label="ALU 单次实验">
-    <div className="execution-actions">{Object.entries({A:4,B:4,M:1,S:2,Cin:1}).map(([key,width])=><label key={key}>{key}（{width} 位） <select disabled={!canWrite} value={values[key]??0} onChange={e=>change(key,Number(e.target.value))}>
-      {Array.from({length:2**width},(_,value)=><option key={value} value={value}>{value.toString(2).padStart(width,'0')}</option>)}
-    </select></label>)}
+    <div className="execution-actions">{Object.entries({A:4,B:4,M:1,S:2,Cin:1}).map(([key,width])=><label key={key}>{key}（{width} 位） <SelectField label={`${key}（${width} 位）`} disabled={!canWrite} value={String(values[key]??0)} onChange={value=>change(key,Number(value))}
+      options={Array.from({length:2**width},(_,value)=>({value:String(value),label:value.toString(2).padStart(width,'0')}))} /></label>)}
     <button className="ws-btn solid" type="button" disabled={!canWrite||!ready||running} onClick={()=>void run()}>{running?'运行中…':'运行'}</button>
     {!ready && canWrite && <button className="ws-btn ghost" onClick={()=>setAttempt(a=>a+1)}>重试准备</button>}</div>
     {changed&&<p role="status">修改尚未运行，原观察对应上次运行的代码。</p>}

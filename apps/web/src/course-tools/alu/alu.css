@@ -20,11 +20,11 @@
 .alu-cases label, .alu-case-results label { font-size: 13px; color: var(--ink-soft); }
 .alu-case-fields label, .alu-case-reason { display: grid; gap: 6px; }
 .alu-case-fields input { width: 180px; }
-.alu-cases input:not([type='checkbox']), .alu-cases select, .alu-case-results select,
+.alu-cases input:not([type='checkbox']), .alu-cases .ui-select-trigger, .alu-case-results .ui-select-trigger,
 .alu-cases textarea, .alu-case-results textarea { border: 1px solid var(--line-strong); border-radius: 8px;
   padding: 6px 10px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; box-sizing: border-box; }
 .alu-cases textarea, .alu-case-results textarea { width: 100%; resize: vertical; min-height: 64px; }
-.alu-cases input:focus-visible, .alu-cases select:focus-visible, .alu-case-results select:focus-visible,
+.alu-cases input:focus-visible, .alu-cases .ui-select-trigger:focus-visible, .alu-case-results .ui-select-trigger:focus-visible,
 .alu-cases textarea:focus-visible, .alu-case-results textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .alu-case-help { display: flex; gap: 6px; align-items: center; }
 .alu-case-original, .alu-reflection > p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }

@@ -1,4 +1,5 @@
 import { WorkspacePopover } from './WorkspacePopover'
+import { SelectField } from '../foundation/SelectField'
 export interface ExecutionNodesDisplay {
   status: 'idle' | 'loading' | 'ready' | 'unsupported' | 'unavailable'
   selectedNodeId: string
@@ -18,11 +19,8 @@ export function ExecutionNodeSelect({ state, identityCurrent, kind, busy, onSele
   return <WorkspacePopover label={selected ? `${selected.label}${suffix}` : '选择执行电脑'} accessibleLabel="执行电脑设置" icon="laptop" attention={!ready || !!state.notice}>
     <p role="status">{notice}</p>
     <div className="ws-execution-node">
-    <select className="st-input" aria-label="执行电脑" value={state.selectedNodeId} disabled={busy || state.status !== 'ready'}
-      onChange={event => { onSelect(event.target.value) }}>
-      <option value="">选择执行电脑</option>
-      {state.nodes.map(node => <option key={node.nodeId} value={node.nodeId}>{node.label}</option>)}
-    </select>
+    <SelectField className="st-input" label="执行电脑" value={state.selectedNodeId} disabled={busy || state.status !== 'ready'}
+      onChange={onSelect} options={[{ value: '', label: '选择执行电脑' }, ...state.nodes.map(node => ({ value: node.nodeId, label: node.label }))]} />
     <button className="textbtn" disabled={busy || state.status === 'loading'} onClick={() => { onRefresh() }}>刷新</button>
     </div>
   </WorkspacePopover>

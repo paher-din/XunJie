@@ -1,5 +1,6 @@
 import { useMemo, type Ref } from 'react'
 import { Toast } from '../feedback'
+import { SelectField } from '../foundation/SelectField'
 import { Icon, IconText } from '../icons'
 import { WorkspacePopover } from './WorkspacePopover'
 import { HdlBuildPane, type HdlBuildPaneProps } from './HdlToolArea'
@@ -45,10 +46,9 @@ export function PrepHelpMenu({ onProjectHelp, boardHelp, codeHelp }: PrepHelpMen
     <button type="button" className="ws-btn ghost" onClick={onProjectHelp}>就项目求助</button>
     {boardHelp && <button type="button" className="ws-btn ghost" disabled={boardHelp.disabled} onClick={boardHelp.onHelp}>引用当前板卡求助</button>}
     {codeHelp && <>
-      <label className="ws-control-field">引用的确认版本<select aria-label="代码求助快照" value={codeHelp.snapshotId} onChange={event => codeHelp.onSnapshotChange(event.target.value)}>
-        {!codeHelp.snapshots.length && <option value="">尚无确认快照</option>}
-        {codeHelp.snapshots.map(snapshot => <option key={snapshot.id} value={snapshot.id}>{snapshot.label}</option>)}
-      </select></label>
+      <label className="ws-control-field">引用的确认版本<SelectField label="代码求助快照" value={codeHelp.snapshotId} onChange={codeHelp.onSnapshotChange}
+        options={codeHelp.snapshots.length ? codeHelp.snapshots.map(snapshot => ({ value: snapshot.id, label: snapshot.label }))
+          : [{ value: '', label: '尚无确认快照' }]} /></label>
       <button type="button" className="ws-btn ghost" onClick={codeHelp.onFileHelp}>就这个文件求助</button>
       <button type="button" className="ws-btn ghost" onClick={codeHelp.onSelectionHelp}>就所选代码求助</button>
     </>}
@@ -123,10 +123,8 @@ export interface PrepHdlBuildSettingsProps {
 export function PrepHdlBuildSettings({ snapshotId, snapshots, onSelect, busy, showRead, readBusy, onRead }: PrepHdlBuildSettingsProps) {
   return <WorkspacePopover label="构建设置" icon="settings">
     <p>构建使用所选确认快照；草稿不会自动保存或装载。</p>
-    <label className="ws-control-field">构建版本<select aria-label="HDL 确认快照" value={snapshotId} onChange={event => onSelect(event.target.value)} disabled={busy}>
-      <option value="">选择确认快照</option>
-      {snapshots.map(snapshot => <option key={snapshot.id} value={snapshot.id}>{snapshot.label}</option>)}
-    </select></label>
+    <label className="ws-control-field">构建版本<SelectField label="HDL 确认快照" value={snapshotId} onChange={onSelect} disabled={busy}
+      options={[{ value: '', label: '选择确认快照' }, ...snapshots.map(snapshot => ({ value: snapshot.id, label: snapshot.label }))]} /></label>
     {showRead && <button type="button" className="ws-btn ghost" disabled={readBusy} onClick={onRead}>核对 HDL 状态</button>}
   </WorkspacePopover>
 }

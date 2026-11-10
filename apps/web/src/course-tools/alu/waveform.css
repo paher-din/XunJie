@@ -45,7 +45,7 @@
 .alu-waveform__controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin: 12px 0; }
 .alu-waveform__controls label { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; }
 .alu-waveform__controls input,
-.alu-waveform__controls select,
+.alu-waveform__controls .ui-select-trigger,
 .alu-waveform__controls button {
   box-sizing: border-box;
   height: 32px;
@@ -56,8 +56,8 @@
   font: 13px/1.5 var(--font-sans);
 }
 .alu-waveform__controls input { width: 184px; max-width: 100%; padding: 4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.alu-waveform__controls select { padding: 4px 8px; }
-.alu-waveform__controls button { padding: 4px 16px; cursor: pointer; }
+.alu-waveform__controls .ui-select-trigger { padding: 4px 8px; }
+.alu-waveform__controls button:not(.ui-select-trigger) { padding: 4px 16px; cursor: pointer; }
 .alu-waveform__controls button:hover:enabled { background: var(--hover-bg); }
 .alu-waveform__controls button:disabled { color: var(--muted); cursor: default; }
 

@@ -31,6 +31,17 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 
+async function chooseInput(label: string, binaryValue: string) {
+  const trigger = container.querySelector<HTMLButtonElement>(`[role="combobox"][aria-label="${label}"]`)!
+  expect(trigger).not.toBeNull()
+  await act(async () => trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })))
+  const list = document.getElementById(trigger.getAttribute('aria-controls')!)
+  expect(list).not.toBeNull()
+  const option = Array.from(list!.querySelectorAll<HTMLElement>('[role="option"]')).find(node => node.textContent === binaryValue)!
+  expect(option).toBeDefined()
+  await act(async () => { option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click() })
+}
+
 async function oldActivity() {
   const controls = { A: 0, B: 0, M: 0, S: 0, Cin: 0 }
   const ports = { type: 'object' as const, properties: Object.fromEntries(Object.keys(controls).map(key => [key, { type: 'number' as const }])) }
@@ -83,12 +94,7 @@ async function oldActivity() {
 describe('existing format 3 ALU activities retain their single-run state contract', () => {
   it('changes the five-port state without adding activation fields or automatically running', async () => {
     const { workspace, binding, instanceId, submitted } = await oldActivity()
-    const select = container.querySelector('select')
-    expect(select, 'the original activity keeps its original single-input form').not.toBeNull()
-    await act(async () => {
-      select!.value = '9'
-      select!.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await chooseInput('A（4 位）', '1001')
     const current = readComponentState(workspace, binding, instanceId)
     expect(current.content).toEqual({ A: 9, B: 0, M: 0, S: 0, Cin: 0 })
     expect(acceptsState(binding.definition.manifest.stateShape, current.content)).toBe(true)
@@ -97,11 +103,9 @@ describe('existing format 3 ALU activities retain their single-run state contrac
 
   it('runs the original code and input basis without a pending-activation state migration', async () => {
     const { workspace, binding, instanceId, submitted, code } = await oldActivity()
-    const selects = container.querySelectorAll('select')
+    const selects = container.querySelectorAll('[role="combobox"]')
     expect(selects).toHaveLength(5)
-    await act(async () => {
-      selects[0]!.value = '15'; selects[0]!.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    await chooseInput('A（4 位）', '1111')
     const originalState = workspace.snapshot().files.find(file => file.name === componentStateName('alu'))!
     const run = [...container.querySelectorAll('button')].find(button => button.textContent === '运行')!
     expect(run.disabled).toBe(false)

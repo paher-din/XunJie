@@ -3,7 +3,7 @@ import {
   AccountAvatar, AccountMenu, ArchivedConversationRow, Button, ConfirmationDialog, DestructiveButton, Composer, ContextRing,
   ConversationGroup, ConversationPane, ConversationPaneSwap, ConversationRow, ConversationSentinel,
   FluidHighlight, HomeAssistant, ProfileCard, ProgressBar, RailHistoryPanel, SessionLogin, ShellFrame,
-  SidebarBottom, SidebarNavigation, SidebarRail, SidebarToggle, StatusChip, SuggestionStack, ThemeMenu, Toast,
+  SidebarBottom, SidebarNavigation, SidebarRail, SidebarToggle, StatusChip, SuggestionStack, ThemeMenu, Toast, SelectField,
   type ConversationItem, type EntryRole, type ThemePreference,
 } from '@xunjie/ui/foundation'
 import { Icon, IconText } from '@xunjie/ui/icons'
@@ -20,6 +20,18 @@ function ButtonVariants() {
 function DisabledButtons() {
   return <div className="demo-row"><Button type="button" disabled>主要操作</Button><Button type="button" variant="outline" disabled>次要操作</Button></div>
 }
+function SelectFieldDemo({ disabled = false, empty = false, invalid = false }: { disabled?: boolean; empty?: boolean; invalid?: boolean }) {
+  const [value, setValue] = useState('')
+  return <div className="demo-stack"><label>选择档位<SelectField label="示例选择" value={value} onChange={setValue} disabled={disabled}
+    aria-invalid={invalid} options={empty ? [] : [
+      { value: '', label: '请选择档位', disabled: true }, { value: 'low', label: '低', description: '更快返回结果' },
+      { value: 'medium', label: '中', disabled: true }, { value: 'high', label: '高', description: '用于需要更多推理的问题' },
+      { value: 'long', label: '一个较长的选项名称，用来核对窄容器下的省略和展开后的完整显示' },
+    ]} /></label><output>{value ? `已选择：${value}` : '尚未选择'}</output></div>
+}
+function DisabledSelectField() { return <SelectFieldDemo disabled /> }
+function EmptySelectField() { return <SelectFieldDemo empty /> }
+function InvalidSelectField() { return <SelectFieldDemo invalid /> }
 function DestructiveButtons() {
   return <div className="demo-row"><DestructiveButton label="断开连接" /><DestructiveButton label="断开连接" disabled /></div>
 }
@@ -400,6 +412,12 @@ function SuggestionsFour() { return <Suggestions count={4} /> }
 const source = 'apps/web/src/ui-catalog/examples/foundation.tsx'
 const foundation = '@xunjie/ui/foundation'
 export const foundationEntries: CatalogEntry[] = [
+  { id: 'select-field', name: 'SelectField', description: '通用选择菜单，统一学生端的选项、焦点、禁用与空状态。', importPath: foundation,
+    source: 'packages/ui/src/foundation/SelectField.tsx', exampleSource: source, props: ['label, value, options, onChange', 'disabled?, placeholder?, onOpen?, className?, id?, name?', 'options: value, label, description?, icon?, disabled?, dividerBefore?'],
+    dependencies: ['Base UI Select；循阶 token；状态与业务回调由使用方提供'], states: [
+      { id: 'default', name: '选项与键盘', component: SelectFieldDemo }, { id: 'disabled', name: '禁用', component: DisabledSelectField },
+      { id: 'empty', name: '空列表', component: EmptySelectField }, { id: 'invalid', name: '填写错误', component: InvalidSelectField },
+    ] },
   { id: 'button', name: 'Button', description: '主操作与次操作按钮。', importPath: foundation, source: 'packages/ui/src/foundation/Button.tsx', exampleSource: source, props: ['variant: primary | outline', '原生 button 属性与 ref'], dependencies: [], states: [
     { id: 'variants', name: '主 / 次操作', component: ButtonVariants }, { id: 'disabled', name: '禁用', component: DisabledButtons },
   ] },

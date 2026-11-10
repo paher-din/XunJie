@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { evidenceDirectory, evidencePath } from './evidence'
 import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
@@ -139,7 +140,7 @@ test('运行 ACK 丢失后刷新不换键重跑，保存核对不误处理运行
   await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   await expect(page.getByRole('button', { name: '重试上次保存', exact: true })).toHaveCount(0)
   await selectRun(page, snapshot.snapshotId, snapshot.files.find(f => f.path === 'main.c')!.fileId, '')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('find')
+  await selectFieldOption(page, 'Core 操作', 'find · 查找')
   await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one')
   await page.getByRole('button', { name: '重新读取结果', exact: true }).click()
   await expect(page.locator('.core-run-notice')).toContainText('还没有核对完成')
@@ -312,7 +313,7 @@ test('find/top 输入拒绝不发送，参数修正后每次学生新操作用�
   const posts: Array<{ key: string; body: string }> = []
   page.on('request', r => { if (r.method() === 'POST' && /\/runs$/.test(r.url())) posts.push({ key: r.headers()['idempotency-key']!, body: r.postData()! }) })
   await selectRun(page, snapshot.snapshotId, snapshot.files.find(f => f.path === 'main.c')!.fileId, '')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('find')
+  await selectFieldOption(page, 'Core 操作', 'find · 查找')
   await page.getByRole('textbox', { name: '查找词', exact: true }).fill('one; /tmp/host')
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
   await expect(page.locator('.core-run-notice')).toContainText('ASCII')
@@ -322,7 +323,7 @@ test('find/top 输入拒绝不发送，参数修正后每次学生新操作用�
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
   await expect(page.locator('.core-run-result')).toContainText('运行完成')
   expect(JSON.parse(posts[0]!.body).input).toEqual({ operation: 'find', fileIds: [snapshot.files.find(f => f.path === 'sample.txt')!.fileId], word: 'one' })
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('top')
+  await selectFieldOption(page, 'Core 操作', 'top · 词频')
   await page.getByRole('textbox', { name: '数量', exact: true }).fill('2147483648')
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
   await expect(page.locator('.core-run-notice')).toContainText('2147483647')

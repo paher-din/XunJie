@@ -1,3 +1,4 @@
+import { SelectField } from '@xunjie/ui/foundation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@xunjie/ui/feedback'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
@@ -103,10 +104,9 @@ export function AgentInteractionSettings({ controller }: { controller: AgentInte
 export function AgentInputMode({ active }: { active: boolean }) {
   const { inputInteraction: controller } = useActivitySession()
   return <div className="agent-input-mode">
-    <label>本次发送方式<select aria-label="本次发送方式" value={controller.mode} disabled={!controller.ready || !controller.writable}
-      onChange={event => controller.choose(event.target.value as Mode)}>
-      <option value="steering">引导当前任务</option><option value="queue">本轮结束后处理</option>
-    </select></label>
+    <label>本次发送方式<SelectField label="本次发送方式" value={controller.mode} disabled={!controller.ready || !controller.writable}
+      onChange={value => controller.choose(value as Mode)}
+      options={[{ value: 'steering', label: '引导当前任务' }, { value: 'queue', label: '本轮结束后处理' }]} /></label>
     <p className="detail">{active ? controller.mode === 'queue' ? '完整一轮结束后处理；等待结果期间继续排队。'
       : '收到后会在下一步纳入；已开始的操作保留实际状态。' : '当前可以开始新的学习请求。'}</p>
     {controller.error && <p role="alert" className="learning-error">{controller.error}</p>}

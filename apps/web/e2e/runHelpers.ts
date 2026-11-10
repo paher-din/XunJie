@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { expect, type Page } from '@playwright/test'
 import { start, create, edit, openFileMenu, confirmSave, serverHead } from './helpers'
 
@@ -17,8 +18,9 @@ export async function fixedProject(page: Page, name: string) {
 export async function selectRun(page: Page, snapshotId: string, entry: string, input: string) {
   await expect(page.getByRole('button', { name: 'Core 运行', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
-  await page.getByRole('combobox', { name: '确认快照', exact: true }).selectOption(snapshotId)
-  await page.getByRole('combobox', { name: 'C 入口文件', exact: true }).selectOption(entry)
+  const snapshot = (await serverHead(page)).snapshots.find(item => item.snapshotId === snapshotId)!
+  await selectFieldOption(page, '确认快照', new RegExp(`^确认作品 v${snapshot.workspaceRevision} ·`))
+  await selectFieldOption(page, 'C 入口文件', snapshot.files.find(file => file.fileId === entry)!.path)
   await page.getByRole('checkbox', { name: 'sample.txt', exact: true }).check()
   expect(await page.getByRole('checkbox', { name: 'sample.txt', exact: true }).isChecked()).toBe(true)
   return input

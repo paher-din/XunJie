@@ -1,0 +1,7 @@
+.st-reasoning-levels { gap: 10px; }
+.st-reasoning-levels .detail { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.st-reasoning-manual { display: inline-flex; flex: none; align-self: flex-start; align-items: center; gap: 8px; padding: 2px 4px; margin-left: -4px; border-radius: 6px; color: var(--ink-soft); font-size: 12px; transition: background-color 150ms cubic-bezier(0.3, 1, 0.35, 1); }
+.st-reasoning-manual:hover { background: var(--hover-bg); }
+.st-reasoning-manual label { cursor: pointer; padding: 4px 0; }
+.st-reasoning-manual .st-toggle { flex: none; }
+.st-reasoning-manual .st-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }

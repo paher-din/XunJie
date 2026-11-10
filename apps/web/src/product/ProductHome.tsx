@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SelectField } from '@xunjie/ui/foundation'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { Course } from '@xunjie/contracts/courses'
 import { DASHBOARD_WIDGETS, DashboardSection, defaultDashboardLayout, type DashboardLayout } from '@xunjie/ui/dashboard'
@@ -84,11 +85,11 @@ export function ProductHome({ identityName, activities, courses, spaceKind, avai
         <button type="button" className={category === 'personal' ? 'active' : ''} aria-pressed={category === 'personal'} onClick={() => selectCategory('personal')}>个人</button>
       </div>
       {category === 'school' && categorySpaces.length > 1 && <label className="product-home-space-select">学校
-        <select aria-label="选择学校" value={selectedSpace?.key ?? ''} disabled={busy}
-          onChange={event => onSpaceChange(event.target.value)}>
-          {!selectedSpace && <option value="" disabled>选择学校</option>}
-          {categorySpaces.map(space => <option key={space.key} value={space.key}>{space.label}</option>)}
-        </select>
+        <SelectField label="选择学校" value={selectedSpace?.key ?? ''} disabled={busy}
+          onChange={onSpaceChange} options={[
+            ...(!selectedSpace ? [{ value: '', label: '选择学校', disabled: true }] : []),
+            ...categorySpaces.map(space => ({ value: space.key, label: space.label })),
+          ]} />
       </label>}
       {categorySpaces.length === 0 ? <div className="empty product-home-empty">{category === 'school' ? '暂无学校身份，连接学校后可在这里查看课程。' : '暂无个人空间。'}
         {category === 'school' && onConnectSchool && <button type="button" className="outline" disabled={busy} onClick={onConnectSchool}>连接学校</button>}</div>

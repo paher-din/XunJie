@@ -21,8 +21,11 @@ it('requests real spaces and never shows the previous space data under another c
     expect(host.textContent).toContain('暂无学习时长统计')
     await act(async () => host.querySelector<HTMLButtonElement>('[data-course-id="course-1"]')!.click())
     expect(onOpenCourse).toHaveBeenCalledWith('course-1')
-    const select = host.querySelector<HTMLSelectElement>('select')!
-    await act(async () => { select.value = 's2'; select.dispatchEvent(new Event('change', { bubbles: true })) })
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="选择学校"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })))
+    await act(async () => {
+      const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(option => option.textContent === '学校二')!
+      option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click()
+    })
     expect(onSpaceChange).toHaveBeenCalledWith('s2')
     const personal = Array.from(host.querySelectorAll('button')).find(button => button.textContent === '个人')!
     await act(async () => personal.click())

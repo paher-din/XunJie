@@ -72,16 +72,20 @@ describe('a waveform only presents retained VCD facts', () => {
   it('changes original tick/signal selection only through callbacks and keeps display zoom local', async () => {
     const onChange = vi.fn(), onReference = vi.fn()
     await mount({ onChange, onReference })
-    const zoom = container.querySelector<HTMLSelectElement>('select[aria-label="显示缩放"]')!
-    await act(async () => { zoom.value = '2'; zoom.dispatchEvent(new Event('change', { bubbles: true })) })
-    expect(container.querySelector('svg')?.getAttribute('width')).toBe('1600')
+    const zoom = container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="显示缩放"]')!
+    await act(async () => zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })))
+    const list = document.getElementById(zoom.getAttribute('aria-controls')!)
+    expect(list).not.toBeNull()
+    const option = Array.from(list!.querySelectorAll<HTMLElement>('[role="option"]')).find(node => node.textContent === '2×')!
+    await act(async () => { option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click() })
+    expect(container.querySelector('svg[role="img"]')?.getAttribute('width')).toBe('1600')
     expect(onChange).not.toHaveBeenCalled()
     await input('起始 tick', '9007199254740993')
     await input('结束 tick', '9007199254740994')
     await act(async () => container.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
     const updated = { ...range, fromTick: '9007199254740993', toTick: '9007199254740994' }
     expect(onChange).toHaveBeenLastCalledWith(updated)
-    expect(container.querySelector('svg')?.getAttribute('aria-label')).toContain('9007199254740992 至 9007199254740996')
+    expect(container.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toContain('9007199254740992 至 9007199254740996')
     await mount({ selection: updated, onChange, onReference })
     const reference = Array.from(container.querySelectorAll('button')).find(button => button.textContent === '引用波形')!
     await act(async () => reference.click())
@@ -101,7 +105,7 @@ describe('a waveform only presents retained VCD facts', () => {
     expect(container.textContent).not.toContain('10 ps')
     await mount({ vcdText: vcd + 'damaged' })
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('VCD 无法解析')
-    expect(container.querySelector('svg')).toBeNull()
+    expect(container.querySelector('svg[role="img"]')).toBeNull()
     expect(container.textContent).not.toContain('XX01')
     await mount({ loading: true })
     expect(container.textContent).toBe('正在读取波形…')
@@ -129,7 +133,7 @@ describe('a waveform only presents retained VCD facts', () => {
   it('keeps a point selection exact and exposes a known Icarus recording limit', async () => {
     const selection = { ...range, fromTick: '9007199254740994', toTick: '9007199254740994' }
     await mount({ selection, vcdText: vcd + '$comment Dump file limit (1024 bytes) exceeded. $end\n' })
-    expect(container.querySelector('svg')).toBeNull()
+    expect(container.querySelector('svg[role="img"]')).toBeNull()
     expect(container.textContent).toContain('9007199254740994 tick：ZZ10')
     expect(container.textContent).toContain('9007199254740994 tick：1')
     expect(container.textContent).toContain('波形记录不完整')
@@ -141,7 +145,7 @@ describe('a waveform only presents retained VCD facts', () => {
     const onReference = vi.fn()
     await mount({ vcdText: text, selection: { signalIds: ['tb.clock'], fromTick: '0', toTick: '4999' }, onReference })
     expect(container.querySelector('[role="alert"]')?.textContent).toMatch(/变化过多.*缩小/)
-    expect(container.querySelector('svg')).toBeNull()
+    expect(container.querySelector('svg[role="img"]')).toBeNull()
     const reference = Array.from(container.querySelectorAll('button')).find(button => button.textContent === '引用波形')!
     expect(reference.disabled).toBe(true)
     await act(async () => reference.click())

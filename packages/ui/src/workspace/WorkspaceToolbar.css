@@ -25,8 +25,8 @@
 .ws-control-popover > .ws-btn:hover { background: var(--hover-bg); }
 .ws-control-popover p { margin: 4px 4px 10px; font-size: 12px; line-height: 1.7; color: var(--muted); }
 .ws-control-field { display: flex; flex-direction: column; gap: 6px; margin: 10px 4px; color: var(--muted); font-size: 12px; }
-.ws-control-field select, .ws-control-popover .ws-execution-node select { width: 100%; min-width: 0; height: 36px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 0 10px; font: inherit; font-size: 13px; }
-.ws-control-popover .ws-execution-node select.st-input:focus { border-color: var(--accent); }
+.ws-control-field .ui-select-trigger, .ws-control-popover .ws-execution-node .ui-select-trigger { width: 100%; min-width: 0; height: 36px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 0 10px; font: inherit; font-size: 13px; }
+.ws-control-popover .ws-execution-node .ui-select-trigger:focus-visible { border-color: var(--accent); }
 .ws-control-popover .ws-execution-node { flex-wrap: wrap; padding: 4px; }
 .ws-control-popover .ws-execution-status { white-space: normal; max-width: none; flex: 1; }
 .ws-control-popover .ws-popover-divider { border-top: 1px solid var(--line); margin: 10px 0; }

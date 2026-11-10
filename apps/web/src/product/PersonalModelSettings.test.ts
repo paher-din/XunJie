@@ -191,8 +191,11 @@ describe('personal model settings recovery through real React controls', () => {
   it('adds a second model with its own effort and retains the existing model in one save', async () => {
     await click('添加模型'); await type('模型 ID 2', 'gpt-5.2')
     await act(async () => {
-      const select = document.querySelector<HTMLSelectElement>('[aria-label="模型 ID 2的思考强度"]')!
-      select.value = 'high'; select.dispatchEvent(new dom.window.Event('change', { bubbles: true })); await settle()
+      document.querySelector<HTMLButtonElement>('[aria-label="模型 ID 2的默认思考强度"]')!.click(); await settle()
+    })
+    await act(async () => {
+      const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === '高 · high')!
+      option.dispatchEvent(new dom.window.MouseEvent('pointerdown', { bubbles: true, button: 0 })); option.click(); await settle()
     })
     expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('方言')
     expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('参数模式')

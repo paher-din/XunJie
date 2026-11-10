@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { fixedProject, selectRun, setRunScript, recoverRunContext } from './runHelpers'
@@ -329,7 +330,7 @@ test('创建 ACK 丢失后核对冻结原请求，当前控件修改不进入重
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
   await expect(page.locator('.core-run-result')).toContainText('运行中')
   const originalId = await page.locator('.core-run-result').getAttribute('data-run-id')
-  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('find')
+  await selectFieldOption(page, 'Core 操作', 'find · 查找')
   await page.getByRole('textbox', { name: '查找词', exact: true }).fill('changed')
   expect(runs).toHaveLength(1)
   await page.getByRole('button', { name: '核对原运行请求', exact: true }).click()

@@ -9,8 +9,8 @@
 .core-run-note { color: var(--muted); font-size: 13px; line-height: 1.5; }
 .core-run-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; max-width: 960px; }
 .core-run-form > label { display: flex; flex-direction: column; gap: 6px; }
-.core-run-form select, .core-run-form input:not([type="checkbox"]) { width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
-.core-run input:focus-visible, .core-run select:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.core-run-form .ui-select-trigger, .core-run-form input:not([type="checkbox"]) { width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
+.core-run input:focus-visible, .core-run .ui-select-trigger:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
 .core-run-inputs { grid-column: 1 / -1; margin: 0; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 .core-run-inputs label { display: flex; align-items: center; gap: 8px; min-height: 32px; overflow-wrap: anywhere; }
 .core-run-inputs input { accent-color: var(--accent-deep); }

@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { clickWorkspaceAction, openWorkspaceMenu } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import {
@@ -245,11 +246,11 @@ test('只读版本比较：快照×快照与草稿×确认作品，打开/切换
   await expect(page.locator('.ws-compare-file-versions')).toContainText('左侧 v2')
 
   // 切到「快照 × 本机草稿」：比较族变成 draft-confirmed，右侧是学生当前写的东西
-  await compare.getByLabel('右侧来源', { exact: true }).selectOption({ label: '本机草稿（当前）' })
+  await selectFieldOption(page, '右侧来源', '本机草稿（当前）')
   await expect(page.locator(".ws-compare[data-source='draft-confirmed']")).toBeVisible()
   await expect(page.locator('.ws-compare-diff .view-lines').last()).toContainText('second')
 
-  // 原生下拉也要能被键盘聚焦（直接选版本交给原生控件，不在测试里模拟平台行为）
+  // 选择组件也保留直接键盘聚焦的入口
   const current = page.locator('.ws-compare')
   await current.getByLabel('右侧来源', { exact: true }).focus()
   await expect(current.getByLabel('右侧来源', { exact: true })).toBeFocused()
@@ -286,7 +287,7 @@ test('同名重建在比较里是两行而不是按路径合并，且单侧状�
   await clickWorkspaceAction(page, '比较版本')
   const compare = page.locator(".ws-compare[data-source='draft-confirmed']")
   await expect(compare).toBeVisible()
-  await compare.getByLabel('右侧来源', { exact: true }).selectOption({ label: '当前确认作品 v3' })
+  await selectFieldOption(page, '右侧来源', '当前确认作品 v3')
 
   // 回收状态看得见：旧实例在两侧都有（回收不是删除），右侧当前确认作品标它已回收
   await expect(compare.locator('.ws-compare-file-lifecycle')).toHaveCount(1)

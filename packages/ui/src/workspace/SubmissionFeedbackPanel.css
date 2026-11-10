@@ -8,7 +8,7 @@
 .ws-submission-card, .ws-submission > p, .ws-submission > .ws-submission-notice { max-width: 880px; margin: 0 auto 16px; }
 .ws-submission-card { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .ws-submission-card > label { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
-.ws-submission select, .ws-submission textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font: inherit; color: var(--ink); background: var(--paper); }
+.ws-submission .ui-select-trigger, .ws-submission textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font: inherit; color: var(--ink); background: var(--paper); }
 .ws-submission textarea { resize: vertical; min-height: 90px; }
 .ws-submission-notice, .ws-submission-confirm { padding: 12px 14px; border-radius: 8px; background: var(--hover); border: 1px solid var(--line); }
 .ws-submission-manifest { padding: 0 12px 8px; border-left: 2px solid var(--line); }
