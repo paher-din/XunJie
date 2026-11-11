@@ -1,5 +1,5 @@
-import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { SelectField } from '@xunjie/ui/foundation'
 import { toast, type ToastKind } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
 import { isTerminalExecutionState, type ExecutionQuery, type ExecutionCheckpoint, type SessionControlEffect } from '@xunjie/contracts/execution'

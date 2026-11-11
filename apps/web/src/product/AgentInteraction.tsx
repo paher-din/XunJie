@@ -1,5 +1,5 @@
-import { SelectField } from '@xunjie/ui/foundation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { SelectField } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingInteractionSettingsSchema, type TeachingInteractionSettings } from '@xunjie/contracts/teaching-agent'

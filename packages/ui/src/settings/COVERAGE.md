@@ -24,6 +24,7 @@
 | 供应商与接入方式选择、品牌图形 | `SettingsSelect`、`ModelProviderLogo` | Base UI 交互与循阶 token；资源随组件包分发，业务选项由调用方提供 |
 | 设置操作菜单 | `SettingsActionMenu` | 复用循阶按钮和弹层样式，操作及图标由调用方提供 |
 | 预设模型搜索与手填 ID | `ModelIdInput` | Base UI Combobox；列表、加载状态和刷新操作由调用方接入，保留自由输入 |
+| 预设模型选择与逐项展开配置 | `ModelChoiceCard` | 虚线框、选择态和可展开的参数区；选择、配置值与保存由调用方提供 |
 | `ModelSettingsFeedback` 已确认保存 / 错误状态槽 | `ModelSettingsFeedback` | 已迁入，使用公开反馈数据类型 |
 | `PrivacyTab.ConfirmAction` 就地二次确认 | `ConfirmAction` | 已迁入 |
 | `AccountTab` 资料表单、文件选择入口、空间信息、安全表单 | `AccountSettingsView` | 视觉已迁入，仍保留原演示文案；表单值、上传及密码回调由适配层提供 |
@@ -48,4 +49,3 @@
 保留在旧适配层、尚未迁至正式调用层的职责（未完成，不冒充整页迁移）：账户会话选择、图片处理 / 密码 / 持久化；Agent 设置更新；画像纠正与路由；隐私导出 / 清理；关于页演示计时；模型配置读取、保存、测试及通知；连接弹窗的请求身份、凭据处理与冲突 / 未知结果恢复。它们应继续按业务计划迁移，不能通过包装或 re-export 关闭。
 
 上述正式视图本身无需旧应用；`SettingsLayout.children`、`ModelProviderCard.actions/children` 等一般组合入口不自动扩大覆盖，本批新增结构均有具体实现而非整块旧 JSX 注入。密码、更新检查、学校接入等原演示语义不得升级为真实服务承诺。
-| 预设模型选择与逐项展开配置 | `ModelChoiceCard` | 虚线框、选择态和可展开的参数区；选择、配置值与保存由调用方提供 |

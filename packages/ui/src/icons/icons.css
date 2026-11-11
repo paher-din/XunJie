@@ -8,6 +8,7 @@
 .icon-tone-amber { color: var(--icon-amber, #a87519); }
 /* 单色操作图标跟随控件；emoji 与品牌保留资产内的颜色。 */
 .icon-tone-neutral, .icon-tone-emoji { color: inherit; }
+.ui-icon[data-icon='brand-github'] { fill: currentColor; }
 /* 与控件现有几何保持对齐；彩色只表达内容类型。 */
 .navicon, .ask-symbol { display: inline-flex; align-items: center; justify-content: center; }
 .brand > span { display: inline-flex; align-items: center; justify-content: center; }

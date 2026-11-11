@@ -316,13 +316,13 @@ describe('personal model settings recovery through real React controls', () => {
     }
   })
 
-  it('preserves an action error through late reads, two polls and explicit reads; clears it on successful related retry', async () => {
+  it('preserves an action error through late reads and polls; clears it on successful related retry', async () => {
     const notify = vi.spyOn(feedback.toast, 'error')
     let release!: () => void; holdRead = new Promise(resolve => { release = resolve })
     await poll(); await click('连接检查')
     expect(alerts()).toContain('检查频次或并发已达上限')
     await act(async () => { release(); await settle() }); holdRead = undefined
-    await poll(); await poll(); await click('重新读取配置')
+    await poll(); await poll()
     expect(alerts()).toContain('检查频次或并发已达上限')
     expect(notify).toHaveBeenCalledTimes(1)
     rejectCheck = false; await click('连接检查')

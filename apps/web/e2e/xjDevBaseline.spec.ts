@@ -1,3 +1,4 @@
+import { selectFieldOption } from './selectField'
 import { expect, test, request as playwrightRequest, type Page } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
@@ -117,16 +118,8 @@ test('学生经 HTTPS 网关完成登录→课程→保存→提交，教师写�
   await page.getByRole('button', { name: '提交与反馈', exact: true }).click()
   const panel = page.getByTestId('submission-feedback-panel')
   await expect(panel).toBeVisible()
-  const snapshotSelect = panel.getByRole('combobox', { name: '提交快照', exact: true })
-  // 面板异步刷新快照列表，等刚冻结的版本出现后再选。
-  let snapshotValue = ''
-  await expect(async () => {
-    snapshotValue = await snapshotSelect.locator('option').evaluateAll(
-      (options, revision) => options.find(option => option.textContent?.includes(`确认作品 v${revision} ·`))?.getAttribute('value') ?? '',
-      workspaceRevision + 1)
-    expect(snapshotValue, `冻结快照 v${workspaceRevision + 1} 出现在提交选项中`).not.toBe('')
-  }).toPass()
-  await snapshotSelect.selectOption(snapshotValue)
+  // 面板异步刷新快照列表，通过列表中的刚冻结版本进行选择。
+  await selectFieldOption(page, '提交快照', new RegExp(`^确认作品 v${workspaceRevision + 1} ·`))
   await panel.getByRole('button', { name: '提交所选作品', exact: true }).click()
   await page.getByRole('button', { name: '确认提交所选快照', exact: true }).click()
   await expect(panel).toContainText('等待教师审阅')

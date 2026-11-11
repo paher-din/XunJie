@@ -1,5 +1,5 @@
-import { SelectField } from '@xunjie/ui/foundation'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { SelectField } from '@xunjie/ui/foundation'
 import { toast } from '@xunjie/ui/feedback'
 import type { ComponentBinding } from '@xunjie/contracts/components'
 import { componentStateName } from '@xunjie/contracts/components'

@@ -186,7 +186,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
       schoolModels={selection.selection?.options.filter(choice => choice.kind === 'school') ?? []}
       onSchoolCheck={choice => void act('school-check', '检查学校模型', () => check({ school: { connectionId: choice.connection.connectionId, version: choice.connection.version } }))}
-      onReload={() => { void reload(true); void selection.reload() }} onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
+      onRetrySelection={selection.stale && selection.error ? () => void selection.reload() : undefined}
+      onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
       onCheck={connection => void act('check:' + connection.connectionId, '检查「' + connection.name + '」', () => check({ connectionId: connection.connectionId, version: connection.version }))}
       onCancel={attempt => void act('cancel:' + attempt.attemptId, '停止「' + attempt.connection.name + '」检查', () => cancel(attempt))} /></div></div></div>
     {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onDirectory={readDirectory} onCheck={check} onCancel={cancel} />}

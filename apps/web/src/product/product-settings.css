@@ -46,9 +46,10 @@
 .product-settings-school .product-school-icon { background: var(--accent-soft); color: var(--accent-deep); }
 .product-settings-school .product-school-status { justify-self: start; padding: 2px 8px; border-radius: 6px; background: var(--status-done-bg); color: var(--status-done-fg); font-size: 12px; line-height: 1.5; }
 .product-settings-school .product-school-status.is-current { background: var(--accent-soft); color: var(--accent-deep); }
-.product-school .product-school-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 160px; padding: 24px; border: 1px dashed var(--line-strong); border-radius: 12px; background: var(--raised); color: var(--ink-soft); font-size: 13px; font-weight: 500; transition: border-color 150ms, background-color 150ms; }
-.product-school .product-school-add:not(:disabled):hover { border-color: var(--accent-deep); background: var(--hover-bg); filter: none; }
-.product-school-add-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-deep); }
+.product-school .product-school-add, .product-settings .product-provider-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 160px; padding: 24px; border: 1px dashed var(--line-strong); border-radius: 12px; background: var(--raised); color: var(--ink-soft); font-size: 13px; font-weight: 500; transition: border-color 150ms, background-color 150ms; }
+.product-school .product-school-add:not(:disabled):hover, .product-settings .product-provider-add:hover { border-color: var(--accent-deep); background: var(--hover-bg); filter: none; }
+.product-school-add-icon, .product-provider-add-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-deep); }
+.product-provider-add + .st-provider { margin-top: 16px; }
 .product-school-add:disabled { opacity: .5; }
 .product-school-pending p { color: var(--muted); font-size: 13px; line-height: 1.7; margin: 0 0 16px; }
 .product-school-form { display: grid; gap: 16px; max-width: 480px; margin: 0; }
@@ -108,7 +109,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .product-settings-heading, .product-profile { animation: none; }
-  .product-settings .st-nav-item, .product-profile .pc-x, .product-school .product-school-add { transition: none; }
+  .product-settings .st-nav-item, .product-profile .pc-x, .product-school .product-school-add, .product-settings .product-provider-add { transition: none; }
 }
 
 .product-profile-title {

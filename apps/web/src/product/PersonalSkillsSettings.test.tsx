@@ -13,7 +13,7 @@ const skill: TeachingSkillCatalogEntry = { skillId: crypto.randomUUID(), version
   metadata: { name: 'evidence-analysis', description: '核对依据后再解释', dependencies: [], conflicts: [], 'allowed-tools': [] },
   source: 'local-package', packageVersion: '1.0', digest: 'a'.repeat(64), attachments: [], origin: 'personal', selected: true, disabled: false, required: false }
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0)) }
-const expectFeedback = async (text: string, kind: 'error' | 'success') => {
+const expectToast = async (text: string, kind: 'error' | 'success') => {
   await act(async () => { await settle() })
   expect([...host.querySelectorAll(`[data-sonner-toast][data-type="${kind}"]`)].map(item => item.textContent).join('\n')).toContain(text)
 }
@@ -38,7 +38,7 @@ it('allows retrying a failed catalog read and restores the skills', async () => 
     return response({ skills: [skill], selections: [] })
   }))
   await mount()
-  await expectFeedback('Skills 暂时无法读取', 'error')
+  await expectToast('Skills 暂时无法读取', 'error')
   await click('重新读取')
   expect(host.textContent).toContain(skill.name)
   expect(Array.from(host.querySelectorAll('button')).some(item => item.textContent === '重新读取')).toBe(false)
@@ -104,7 +104,7 @@ it.each(activityScopes)('updates and retries identical bytes in the global libra
   })
   await click('核对原操作')
   expect(writes[1]).toEqual(writes[0]); expect(version.value).toBe('later')
-  await expectFeedback('更新 Skill已确认', 'success')
+  await expectToast('更新 Skill已确认', 'success')
 })
 
 it.each(activityScopes)('restores a disabled skill directly from its checkbox (activity=%s)', async activityId => {
@@ -176,7 +176,7 @@ it('opens the local picker and imports the selected skill', async () => {
   expect(writes[0]).toMatchObject({ source: '本地文件', files: [
     { path: 'SKILL.md', content, encoding: 'utf8' }, { path: 'references/notes.md', content: '依据', encoding: 'utf8' },
   ] })
-  await expectFeedback('导入 Skill已确认', 'success')
+  await expectToast('导入 Skill已确认', 'success')
   expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(true)
   expect(writes).toHaveLength(1)
 })
@@ -215,7 +215,7 @@ it('retries an unconfirmed global toggle with the same request', async () => {
   }))
   await mount()
   await act(async () => { host.querySelector<HTMLInputElement>('.skill-check input')!.click(); await settle() })
-  await expectFeedback('操作结果尚未确认', 'error')
+  await expectToast('操作结果尚未确认', 'error')
   await click('核对原操作')
   expect(writes).toHaveLength(2)
   expect(writes[1]).toEqual(writes[0])
@@ -236,7 +236,7 @@ it('keeps a rejected global toggle available for a fresh retry after rereading',
   }))
   await mount()
   await act(async () => { host.querySelector<HTMLInputElement>('.skill-check input')!.click(); await settle() })
-  await expectFeedback('配置发生冲突', 'error')
+  await expectToast('配置发生冲突', 'error')
   await click('重新读取')
   expect(host.querySelector<HTMLInputElement>('.skill-check input')!.checked).toBe(false)
   await click('重试保存')

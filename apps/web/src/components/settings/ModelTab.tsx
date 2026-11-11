@@ -1,5 +1,5 @@
 import type { ModelAttempt, ModelConnection, ModelProvider, ModelCheckPolicy } from '@xunjie/contracts/model-connections'
-import { Section, ModelProviderCard, Toggle, reasoningEffortLabels } from '@xunjie/ui/settings'
+import { ModelProviderCard, Toggle, reasoningEffortLabels } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 
@@ -9,25 +9,26 @@ const capabilities = { unknown: '尚未验证', declared: '服务声明', verifi
 type SchoolModel = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel, onReload }: {
+export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetrySelection, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, onCancel }: {
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
   recoveryError?: string
+  onRetrySelection?: () => void
   schoolModels?: SchoolModel[]; onSchoolCheck?(choice: SchoolModel): void
   toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
   onNew(): void; onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void; onCheck(connection: ModelConnection): void
-  onCancel(attempt: ModelAttempt): void; onReload(): void
+  onCancel(attempt: ModelAttempt): void
 }) {
   useToastFeedback(error)
   useToastFeedback(recoveryError)
   return <>
-    <Section title="模型供应商">
-      <div className="skill-actions">
-        <button type="button" className="primary" onClick={onNew}><Icon name="add" size={16} />添加供应商</button>
-        <button type="button" className="outline" onClick={onReload} disabled={loading}>重新读取配置</button>
-      </div>
+    <div className="st-section">
       {recoveryError && <p className="detail">{recoveryError}</p>}
+      {onRetrySelection && <button type="button" className="outline" onClick={onRetrySelection}>重试</button>}
       {loading && <p role="status">正在读取配置…</p>}
-      {!loading && !error && providers.length === 0 && schoolModels.length === 0 && <p className="detail">尚未添加供应商。</p>}
+      <button type="button" className="product-provider-add" onClick={onNew}>
+        <span className="product-provider-add-icon"><Icon name="add" size={22} /></span>
+        <span>添加供应商</span>
+      </button>
       {schoolModels.length > 0 && <ModelProviderCard name="学校" address={schoolModels[0]!.connection.baseUrl}
         credentialLabel="学校提供" actions={null}>
         <div className="st-configured-models" aria-label="学校的模型">
@@ -71,7 +72,7 @@ export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts
           {toggleState[provider.providerId] === 'unknown' && <button type="button" className="outline st-xs" onClick={() => onToggle(provider)}>核对开关提交</button>}
         </div>
       </ModelProviderCard>)}
-    </Section>
+    </div>
     {attempts.length > 0 && <details>
       <summary>连接检查记录（{attempts.length}）</summary>
       <p className="detail">检查仅使用有限合成文本，不读取作品，也不会触发学习对话。</p>
