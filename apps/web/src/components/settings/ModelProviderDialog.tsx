@@ -84,12 +84,12 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   const savedScope = useRef(scopeOf(fromProvider(provider)))
   const providerDrafts = useRef(new Map<string, Draft>()), modelDrafts = useRef(new Map<string, ModelDraft>())
   const presetModelDrafts = useRef(new Map<string, ModelDraft>())
+  const removedModelDrafts = useRef(new Map<string, ModelDraft>())
   const [modelQuery, setModelQuery] = useState('')
-  const [expandedModels, setExpandedModels] = useState(() => new Set(!draft.presetId || draft.presetId === 'custom'
-    ? draft.models.map(model => `${scope}:${model.connectionId}`) : []))
+  const [expandedModels, setExpandedModels] = useState(() => new Set<string>())
   const preset = useMemo(() => modelProviderPresets.find(item => item.id === draft.presetId), [draft.presetId])
   const variant = useMemo(() => getModelPreset(draft.presetId ?? 'custom', draft.variantId), [draft.presetId, draft.variantId])
-  const savedKey = provider?.models.find(model => model.hasCredential)
+  const savedKey = provider?.models.find(model => model.hasCredential) ?? provider?.credentialConnection
   const tests = useModelConfigurationTests(onCheck)
   const supplier = useSupplierChecks({ presetId: draft.presetId ?? 'custom', ...(draft.variantId ? { variantId: draft.variantId } : {}),
     baseUrl: draft.baseUrl, protocol: draft.protocol, credential: apiKey.trim() ? { action: 'replace', value: apiKey.trim() } : { action: 'clear' } }, onConnectionTest, onDirectory)
@@ -128,13 +128,15 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     const choices = new Map<string, ModelChoice>((preset ? entries : supplier.fetched?.models ?? []).map(entry => [entry.modelId, entry]))
     for (const [key, model] of presetModelDrafts.current) if (key.startsWith(choiceScope + ':') && !choices.has(model.modelId))
       choices.set(model.modelId, { modelId: model.modelId, connectionId: model.connectionId })
+    for (const [key, model] of removedModelDrafts.current) if (key.startsWith(scope + ':') && !choices.has(model.modelId))
+      choices.set(model.modelId, { modelId: model.modelId, connectionId: model.connectionId })
     for (const model of draft.models) if (model.modelId.trim() && !choices.has(model.modelId)) choices.set(model.modelId, { modelId: model.modelId })
     if (preset) return [...choices.values()]
     return [...choices.values()].flatMap(entry => {
       const selected = draft.models.filter(model => model.modelId === entry.modelId)
       return selected.length ? selected.map(model => ({ ...entry, connectionId: model.connectionId })) : [entry]
     })
-  }, [entries, draft.models, choiceScope, preset, supplier.fetched?.models])
+  }, [entries, draft.models, choiceScope, scope, preset, supplier.fetched?.models])
   const configuredModels = draft.models.filter(model => !preset || model.expectedVersion > 0 || model.modelId.trim())
   const matchesModelQuery = (modelId: string, name = '') => `${modelId} ${name}`.toLowerCase().includes(modelQuery.trim().toLowerCase())
   const pending = useRef<{ input: SaveModelProvider; generation: number } | null>(null), submitting = useRef(false)
@@ -153,7 +155,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   const profileKey = JSON.stringify(draft.models.map(model => ({ ...modelRoute(model), modelId: model.modelId.trim() })))
   useEffect(() => { live.current = true; return () => { live.current = false; epoch.current++ } }, [])
   useEffect(() => {
-    const model = provider?.models.find(model => model.hasCredential)
+    const model = provider?.models.find(model => model.hasCredential) ?? provider?.credentialConnection
     if (!model) return
     let active = true
     if (scopeRef.current === savedScope.current) { setCredentialReady(false); setCredentialError('') }
@@ -198,15 +200,18 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   const selectModel = (modelId: string, selected: boolean, manual = false) => {
     const key = `${choiceScope}:${modelId}`, existing = draft.models.find(model => model.modelId === modelId)
     if (!selected) {
-      if (!existing || existing.expectedVersion > 0) return false
+      if (!existing) return false
       presetModelDrafts.current.set(key, existing)
+      if (existing.expectedVersion > 0) removedModelDrafts.current.set(`${scope}:${existing.connectionId}`, existing)
+      tests.invalidate(existing.connectionId)
       const remaining = draft.models.filter(model => model.connectionId !== existing.connectionId)
       change({ models: remaining }); expandModel(preset ? `${scope}:${modelId}` : `${scope}:${existing.connectionId}`, false)
       return true
     }
     let selectedModel = existing
     if (!selectedModel) {
-      const remembered = presetModelDrafts.current.get(key)
+      const remembered = presetModelDrafts.current.get(key) ?? [...removedModelDrafts.current]
+        .find(([key, model]) => key.startsWith(scope + ':') && model.modelId === modelId)?.[1]
       const empty = draft.models.find(model => !model.modelId.trim())
       const model: ModelDraft = remembered ?? { ...(empty ?? newModel()), modelId, ...(preset ? { protocol: undefined, baseUrl: undefined,
         contextWindow: undefined, maxOutputTokens: undefined, reasoningEffort: undefined, reasoningLevels: undefined } : {}) }
@@ -215,6 +220,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       change({ models: [...others, model] })
       selectedModel = model
     }
+    removedModelDrafts.current.delete(`${scope}:${selectedModel.connectionId}`)
     if (manual) editableModelIds.current.add(selectedModel.connectionId)
     expandModel(preset ? `${scope}:${modelId}` : `${scope}:${selectedModel.connectionId}`, true); void directory.ensureFresh(); return true
   }
@@ -315,7 +321,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   const valid = () => {
     setAddressTouched(true)
     if (addressIssue) { setError(addressIssue); return false }
-    if (!configuredModels.length || preset && configuredModels.some(model => !model.modelId.trim())) {
+    if (!configuredModels.length && !provider || preset && configuredModels.some(model => !model.modelId.trim())) {
       setError(configuredModels.length ? '原配置中还有模型未匹配，请继续选择型号。' : '请至少选择一个模型，或手动添加模型 ID。'); return false
     }
     const missingModelId = !preset && configuredModels.find(model => !model.modelId.trim())
@@ -363,9 +369,13 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         if (operation.generation === epoch.current) { setApiKey(''); onClose() }
         else {
           setDraft(previous => {
-            const models = previous.models.map(model => ({ ...model,
-              expectedVersion: saved.models.find(saved => saved.connectionId === model.connectionId)?.version ?? model.expectedVersion }))
-            for (const item of fromProvider(saved).models) if (!models.some(model => model.connectionId === item.connectionId)) models.push(item)
+            const models = previous.models.map(model => {
+              const removed = operation.input.removedModels?.find(removed => removed.connectionId === model.connectionId)
+              return { ...model, expectedVersion: saved.models.find(saved => saved.connectionId === model.connectionId)?.version
+                ?? (removed ? removed.expectedVersion + 1 : model.expectedVersion) }
+            })
+            for (const item of fromProvider(saved).models) if (!models.some(model => model.connectionId === item.connectionId)
+              && !removedModelDrafts.current.has(`${scopeOf(previous)}:${item.connectionId}`)) models.push(item)
             return { ...previous, models }
           })
           setNotice('原提交已确认，后续输入尚未保存。')
@@ -392,14 +402,18 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     if (submitting.current || pending.current || recovery && !confirmed || !credentialReady || !valid()) return
     try {
       const base = confirmed ?? baseline.current
+      const removedModels = (base?.models ?? []).filter(model => removedModelDrafts.current.has(`${scope}:${model.connectionId}`))
+        .map(model => ({ connectionId: model.connectionId, expectedVersion: model.version }))
+      const removedIds = new Set(removedModels.map(model => model.connectionId))
       const models: ModelInput[] = configuredModels.map(model => {
         const saved = base?.models.find(saved => saved.connectionId === model.connectionId)
         return { ...inputOf(model), enabled: saved ? saved.modelEnabled ?? saved.enabled : model.enabled, expectedVersion: saved?.version ?? model.expectedVersion }
       })
       // Preserve models added by another editor while applying this editor's explicit changes.
-      for (const saved of base?.models ?? []) if (!models.some(model => model.connectionId === saved.connectionId))
+      for (const saved of base?.models ?? []) if (!models.some(model => model.connectionId === saved.connectionId) && !removedIds.has(saved.connectionId))
         models.push(inputOf(fromProvider({ ...base!, models: [saved] }).models[0]!))
-      const input = saveModelProviderSchema.parse({ ...draft, models, enabled: base?.enabled ?? draft.enabled, requestId: crypto.randomUUID(), expectedVersion: base?.version ?? 0, credential: credential() })
+      const input = saveModelProviderSchema.parse({ ...draft, models, ...(removedModels.length ? { removedModels } : {}), enabled: base?.enabled ?? draft.enabled,
+        requestId: crypto.randomUUID(), expectedVersion: base?.version ?? 0, credential: credential() })
       await submit({ input, generation: epoch.current })
     } catch { setError('请检查地址、协议、模型及密钥填写，当前输入已保留。') }
   }
@@ -510,7 +524,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
               const index = model ? configuredModels.findIndex(item => item.connectionId === model.connectionId) : -1
               return <ModelChoiceCard key={editableId ? connectionId : entry.modelId} modelId={entry.modelId} name={entry.name}
                 selected={Boolean(model)} expanded={expandedModels.has(key)}
-                onSelect={model && model.expectedVersion > 0 ? undefined : selected => selectModel(entry.modelId, selected)}
+                onSelect={selected => selectModel(entry.modelId, selected)}
                 onExpand={expanded => expandModel(key, expanded)} invalid={Boolean(model && (modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens)))}
                 action={editableId && model?.expectedVersion === 0 ? <button type="button" className="st-iconbtn" aria-label={`移除模型 ${index + 1}`}
                   onClick={() => {

@@ -41,12 +41,15 @@ async function click(label: string) {
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
 }
 type Props = Parameters<typeof ModelProviderDialog>[0]
-async function draw(saved = provider(), onProfiles: Props['onProfiles'] = vi.fn(async () => ({ profiles: [], stale: true })), overrides: Partial<Props> = {}) {
+async function draw(saved = provider(), onProfiles: Props['onProfiles'] = vi.fn(async () => ({ profiles: [], stale: true })), overrides: Partial<Props> = {}, openSaved = true) {
   const onSave = vi.fn(async (_input: SaveModelProvider) => saved), onClose = vi.fn()
   await act(async () => root.render(<><Toaster /><ModelProviderDialog provider={saved} attempts={[]} onSave={onSave} onClose={onClose}
     onRead={vi.fn(async () => saved)} onReadCredential={vi.fn(async () => '')} onProfiles={onProfiles}
     onCheck={vi.fn()} onCancel={vi.fn()} {...overrides} /></>))
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  if (openSaved) await act(async () => {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[aria-label="自定义模型"] .st-model-choice[data-selected] .st-model-choice-title[aria-expanded="false"]')) button.click()
+  })
   return { onSave, onClose, onProfiles }
 }
 
@@ -180,12 +183,12 @@ it('uses the same search/add row for custom models and saves filtered-out drafts
   expect(onSave.mock.calls[0][0].models[1].maxOutputTokens).toBe(131072)
 });
 
-it('reopens saved preset models collapsed, retains disabled state and reveals an invalid field before saving', async () => {
+it.each(['custom', 'deepseek'] as const)('reopens saved %s models collapsed, retains disabled state and reveals an invalid field before saving', async preset => {
   const saved = provider()
-  saved.presetId = 'deepseek'; saved.variantId = 'api'; saved.baseUrl = 'https://api.deepseek.com/v1'
+  if (preset === 'deepseek') { saved.presetId = 'deepseek'; saved.variantId = 'api'; saved.baseUrl = 'https://api.deepseek.com/v1' }
   saved.models[0] = { ...saved.models[0], modelId: 'deepseek-flash', baseUrl: saved.baseUrl, enabled: false, modelEnabled: false,
     contextWindow: 524288, maxOutputTokens: 65536 }
-  const { onSave } = await draw(saved)
+  const { onSave } = await draw(saved, undefined, {}, false)
   expect(card('deepseek-flash').getAttribute('data-selected')).toBe('true')
   expect(input('模型 ID的上下文窗口')).toBeNull()
   await chooseModel('deepseek-flash')
@@ -224,6 +227,56 @@ it('Escape closes only the supplier menu and model cards retain their collapsed 
   expect(document.querySelector('[role="combobox"][aria-expanded="true"]')).toBeNull()
   await act(async () => input('模型 ID的上下文窗口').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
   expect(onClose).toHaveBeenCalledOnce()
+})
+
+it.each(['custom', 'deepseek'] as const)('removes a saved %s model explicitly without changing the retained model enable switch', async preset => {
+  const saved = provider()
+  saved.enabled = false
+  saved.models[0] = { ...saved.models[0], modelId: 'deepseek-flash', enabled: false, modelEnabled: true }
+  saved.models.push({ ...saved.models[0], connectionId: crypto.randomUUID(), modelId: 'deepseek-v4-pro', modelEnabled: false })
+  if (preset === 'deepseek') {
+    saved.presetId = 'deepseek'; saved.variantId = 'api'; saved.baseUrl = 'https://api.deepseek.com/v1'
+    saved.models = saved.models.map(model => ({ ...model, baseUrl: saved.baseUrl }))
+  }
+  const { onSave } = await draw(saved, undefined, {}, false)
+  const checkbox = () => card('deepseek-flash').querySelector<HTMLButtonElement>('[role="checkbox"]')!
+  expect(checkbox().getAttribute('aria-checked')).toBe('true')
+  expect(card('deepseek-v4-pro').querySelector('[role="checkbox"]')!.getAttribute('aria-checked')).toBe('true')
+  expect(document.querySelectorAll('.st-model-choice-title[aria-expanded="true"]')).toHaveLength(0)
+  await act(async () => checkbox().click())
+  expect(checkbox().getAttribute('aria-checked')).toBe('false')
+  expect(onSave).not.toHaveBeenCalled()
+  await click('保存')
+  const input = onSave.mock.calls[0][0]
+  expect(input.removedModels).toEqual([{ connectionId: saved.models[0].connectionId, expectedVersion: saved.models[0].version }])
+  expect(input.models.map(model => [model.modelId, model.enabled])).toEqual([['deepseek-v4-pro', false]])
+  expect(input.enabled).toBe(false)
+})
+
+it('restores a deselected saved model draft and preserves its independent disabled state', async () => {
+  const saved = provider()
+  saved.models[0] = { ...saved.models[0], enabled: false, modelEnabled: false }
+  const { onSave } = await draw(saved)
+  await type('模型 ID的上下文窗口', '512K')
+  const checkbox = () => card('custom-model').querySelector<HTMLButtonElement>('[role="checkbox"]')!
+  await act(async () => checkbox().click())
+  await type('API Key', 'synthetic-new-key')
+  expect(checkbox().getAttribute('aria-checked')).toBe('false')
+  await act(async () => checkbox().click())
+  expect(input('模型 ID的上下文窗口').value).toBe('512K')
+  await click('保存')
+  expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ connectionId: saved.models[0].connectionId,
+    expectedVersion: saved.models[0].version, enabled: false, contextWindow: 524288 })
+  expect(onSave.mock.calls[0][0].removedModels).toBeUndefined()
+})
+
+it('allows an existing supplier to remove its last model without disabling the supplier', async () => {
+  const saved = provider()
+  const { onSave } = await draw(saved, undefined, {}, false)
+  await act(async () => card('custom-model').querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
+  await click('保存')
+  expect(onSave.mock.calls[0][0]).toMatchObject({ models: [], enabled: true,
+    removedModels: [{ connectionId: saved.models[0].connectionId, expectedVersion: saved.models[0].version }] })
 })
 
 it('retains custom ids, per-model edits, and separate secret drafts when switching providers', async () => {

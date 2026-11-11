@@ -59,7 +59,7 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
 ` }, modelOriginAuthorizationMigration, modelOriginSuccessionMigration, learningAdmissionMigration, modelProviderMigration, modelCatalogueMigration, { version: 22, name: 'direct-personal-model-routes', sql: `
   ALTER TABLE model_paired_grants ALTER COLUMN grant_id DROP NOT NULL;
 ` }];
-type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
+type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy; retired?: true };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
@@ -106,7 +106,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     ...measuredCapabilities(stored.configuration) });
   async function list(identity: SpaceIdentity) {
     await options.authorize(identity);
-    const { rows } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 ORDER BY id', [scopeOf(identity)]);
+    const { rows } = await storage.read(`SELECT body FROM model_connections WHERE scope=$1 AND NOT (body @> '{"retired":true}') ORDER BY id`, [scopeOf(identity)]);
     return rows.map(row => projection(row.body as StoredConnection));
   }
   async function save(identity: SpaceIdentity, value: unknown) {
@@ -114,7 +114,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await options.authorize(identity);
     return persist(scopeOf(identity), value);
   }
-  async function writeConnection(tx: OwnedTransaction, scope: string, value: SaveModelConnection, policy?: ModelCheckPolicy, providerWrite = false) {
+  async function writeConnection(tx: OwnedTransaction, scope: string, value: SaveModelConnection, policy?: ModelCheckPolicy, providerWrite = false, retired?: true) {
     const input = saveModelConnectionSchema.parse(value);
     const configuration = modelConfigurationSchema.parse(Object.fromEntries(Object.entries(input).filter(([name]) =>
       !['requestId', 'expectedVersion', 'credential'].includes(name))));
@@ -138,7 +138,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       await tx.query('INSERT INTO model_credentials(id,scope,binding,sealed) VALUES($1,$2,$3,$4)', [credentialRef, scope, binding, sealed]);
     }
     const saved: StoredConnection = { configuration, version: input.expectedVersion + 1,
-      routeId: previous?.routeId ?? randomUUID(), credentialRef, ...(policy ? { policy } : {}) };
+      routeId: previous?.routeId ?? randomUUID(), credentialRef, ...(policy ? { policy } : {}), ...(retired ? { retired } : {}) };
     await tx.query(`INSERT INTO model_connections VALUES($1,$2,$3,$4) ON CONFLICT(scope,id)
       DO UPDATE SET version=EXCLUDED.version,body=EXCLUDED.body`, [scope, input.connectionId, saved.version, saved]);
     await tx.query('INSERT INTO model_versions VALUES($1,$2,$3,$4)', [scope, input.connectionId, saved.version, saved]);
@@ -210,7 +210,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   });
   const providers = createModelProviders(storage, { authorize: options.authorize, project: projection, readCredential,
     prepare: async (input, identity) => {
-      if (!input.presetId || input.presetId === 'custom') return;
+      if (!input.models.length || !input.presetId || input.presetId === 'custom') return;
       const saved = input.credential.action === 'keep' ? input.models.find(model => model.expectedVersion > 0) : undefined;
       const data = await directory.read(identity, { presetId: input.presetId, ...(input.variantId ? { variantId: input.variantId } : {}),
         baseUrl: input.baseUrl, protocol: input.protocol, credential: input.credential, refresh: false,
@@ -219,7 +219,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     },
     profile: catalogue.resolve,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); },
-    write: (tx, scope, input) => writeConnection(tx, scope, input, undefined, true) });
+    write: (tx, scope, input, retired) => writeConnection(tx, scope, input, undefined, true, retired) });
   const schoolScope = (spaceId: string) => 'school:' + storage.owner.environmentId + ':' + spaceId;
   async function schoolDefault(identity: SpaceIdentity) {
     if (identity.kind !== 'school') return null;
@@ -380,6 +380,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       projection(stored);
       if (stored.version !== row.version || stored.configuration.connectionId !== row.id)
         throw new StorageError('corrupt');
+      if (stored.retired !== undefined && (stored.retired !== true || !stored.configuration.providerId
+        || stored.configuration.enabled || stored.configuration.modelEnabled !== false)) throw new StorageError('corrupt');
       if (stored.credentialRef) {
         const { rows: [credential] } = await storage.read(`SELECT binding,sealed FROM model_credentials
           WHERE id=$1 AND scope=$2 AND temporary=false`, [stored.credentialRef, row.scope]);

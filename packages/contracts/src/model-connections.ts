@@ -84,7 +84,11 @@ export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
 export const modelProviderSchema = z.object({ providerId: z.uuid(), version: z.number().int().nonnegative(),
   name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema, baseUrl: modelBaseUrlSchema,
   presetId: modelPresetIdSchema.optional(), variantId: z.string().min(1).max(80).optional(),
-  enabled: z.boolean(), hasCredential: z.boolean(), models: z.array(modelConnectionSchema).min(1).max(64) }).strict();
+  /** Empty providers retain a real, hidden connection solely for owner credential reads. */
+  credentialConnection: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional(),
+  enabled: z.boolean(), hasCredential: z.boolean(), models: z.array(modelConnectionSchema).max(64) }).strict()
+  .refine(value => value.models.length === 0 ? !!value.credentialConnection : !value.credentialConnection,
+    'Only empty providers have a credential connection');
 export const providerModelInputSchema = z.object({ connectionId: z.uuid(), expectedVersion: z.number().int().nonnegative(),
   modelId: z.string().trim().min(1).max(200), enabled: z.boolean(), reasoningEffort: z.enum(modelReasoningEfforts).optional(),
   protocol: modelProtocolSchema.optional(), baseUrl: modelBaseUrlSchema.optional(),
@@ -96,10 +100,15 @@ export const providerModelInputSchema = z.object({ connectionId: z.uuid(), expec
 export const saveModelProviderSchema = z.object({ requestId: z.uuid(), providerId: z.uuid(), expectedVersion: z.number().int().nonnegative(),
   name: z.string().trim().min(1).max(120), protocol: modelProtocolSchema, baseUrl: modelBaseUrlSchema, enabled: z.boolean(),
   presetId: modelPresetIdSchema.optional(), variantId: z.string().min(1).max(80).optional(),
-  credential: modelCredentialChangeSchema, models: z.array(providerModelInputSchema).min(1).max(64) }).strict()
+  credential: modelCredentialChangeSchema, models: z.array(providerModelInputSchema).max(64),
+  /** Membership removal is explicit and versioned; omitting a member never deletes it. */
+  removedModels: z.array(z.object({ connectionId: z.uuid(), expectedVersion: z.number().int().positive() }).strict()).max(64).optional() }).strict()
   .refine(value => !modelBaseUrlError(value.baseUrl, value.protocol), { path: ['baseUrl'], message: 'Invalid base URL for this protocol' })
   .refine(value => new Set(value.models.map(model => model.connectionId)).size === value.models.length &&
-    new Set(value.models.map(model => model.modelId)).size === value.models.length, { path: ['models'], message: 'Duplicate model' });
+    new Set(value.models.map(model => model.modelId)).size === value.models.length, { path: ['models'], message: 'Duplicate model' })
+  .refine(value => new Set(value.removedModels?.map(model => model.connectionId)).size === (value.removedModels?.length ?? 0)
+    && !value.removedModels?.some(removed => value.models.some(model => model.connectionId === removed.connectionId)),
+    { path: ['removedModels'], message: 'Duplicate or conflicting model removal' });
 export type ModelProvider = z.infer<typeof modelProviderSchema>;
 export type SaveModelProvider = z.infer<typeof saveModelProviderSchema>;
 export const modelProfilesInputSchema = z.object({ baseUrl: modelBaseUrlSchema, protocol: modelProtocolSchema,

@@ -80,7 +80,7 @@ async function select(label: string, choice: string) {
   })
   await settle()
 }
-async function draw(overrides: Partial<Props> = {}) {
+async function draw(overrides: Partial<Props> = {}, openSaved = true) {
   const provider = savedProvider()
   const callbacks = {
     onClose: vi.fn(), onSave: vi.fn<Props['onSave']>(async () => provider), onRead: vi.fn<Props['onRead']>(async () => provider),
@@ -93,6 +93,9 @@ async function draw(overrides: Partial<Props> = {}) {
   }
   await act(async () => root.render(<><Toaster /><ModelProviderDialog provider={provider} attempts={[]} {...callbacks} {...overrides} /></>))
   await settle()
+  if (openSaved) await act(async () => {
+    for (const button of form().querySelectorAll<HTMLButtonElement>('[aria-label="自定义模型"] .st-model-choice[data-selected] .st-model-choice-title[aria-expanded="false"]')) button.click()
+  })
   return callbacks
 }
 
@@ -377,6 +380,29 @@ async function pickFetched(id: string) {
   await settle()
 }
 
+it('keeps a model reselected while its removal save is pending and uses the acknowledged retired version on the next save', async () => {
+  const provider = savedProvider(), pending = deferred<ModelProvider>()
+  const retained = { ...provider.models[0]!, connectionId: crypto.randomUUID(), modelId: 'retained-sibling',
+    reasoningEffort: 'auto' as const, parameterMode: 'plain' as const }
+  provider.models.push(retained)
+  const saved = { ...provider, version: provider.version + 1, models: [{ ...retained, version: retained.version + 1 }] }
+  const onSave = vi.fn<Props['onSave']>().mockImplementationOnce(() => pending.promise).mockResolvedValue(saved)
+  const { onClose } = await draw({ provider, onSave }, false)
+  await pickFetched('gpt-5.2')
+  await click('保存')
+  expect(onSave.mock.calls[0]![0].removedModels).toEqual([{ connectionId: provider.models[0]!.connectionId, expectedVersion: 2 }])
+  await pickFetched('gpt-5.2')
+  await act(async () => pending.resolve(saved))
+  await settle()
+  expect(onClose).not.toHaveBeenCalled()
+  expect(card('gpt-5.2').getAttribute('data-selected')).toBe('true')
+  await click('保存')
+  expect(onSave.mock.calls[1]![0]).toMatchObject({ expectedVersion: provider.version + 1 })
+  expect(onSave.mock.calls[1]![0].models.find(model => model.connectionId === provider.models[0]!.connectionId))
+    .toMatchObject({ expectedVersion: 3, enabled: true })
+  expect(onSave.mock.calls[1]![0].removedModels).toBeUndefined()
+})
+
 it('keeps a new custom list empty, separates catalogue data, and offers retry and manual entry after a failed or empty fetch', async () => {
   let count = 0
   const onDirectory = vi.fn<NonNullable<Props['onDirectory']>>(async query => query.source === 'supplier'
@@ -457,7 +483,7 @@ it('lists fetched supplier models as unselected cards and saves only checked mod
     { modelId: 'fetched-alpha', name: 'Fetched Alpha' },
   ], catalogue: { status: 'idle' }, supplier: { status: 'ready' } }) })
   await settle()
-  expect(card('gpt-5.2').querySelector('[aria-label="已配置"]')).not.toBeNull()
+  expect(card('gpt-5.2').querySelector('[role="checkbox"]')!.getAttribute('aria-checked')).toBe('true')
   expect(form().querySelectorAll('.st-model-choice')).toHaveLength(3)
   expect(card('fetched-alpha').getAttribute('data-selected')).toBeNull()
   expect(card('fetched-alpha').querySelector('[aria-expanded]')!.getAttribute('aria-expanded')).toBe('false')

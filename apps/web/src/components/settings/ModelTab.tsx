@@ -52,7 +52,7 @@ export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts
           {toggleState[provider.providerId] === 'saving' && <span role="status" className="detail">正在保存…</span>}
           {toggleState[provider.providerId] === 'unknown' && <button type="button" className="st-provider-text-action" onClick={() => onToggle(provider)}>核对开关提交</button>}
         </>}>
-        <div className="st-configured-models" aria-label={`${provider.name}的模型`}>
+        {provider.models.length > 0 && <div className="st-configured-models" aria-label={`${provider.name}的模型`}>
         {provider.models.map(connection => <ModelProviderModelRow key={connection.connectionId} modelId={connection.modelId}
           effort={connection.reasoningEffort && connection.reasoningEffort !== 'auto' ? reasoningEffortLabels[connection.reasoningEffort] : undefined}
           actions={<><ModelTestButton kind="model" iconOnly running={tests[connection.connectionId]?.status === 'running'}
@@ -63,7 +63,7 @@ export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts
           {connection.adapterState !== 'ready' && <p className="detail">{connection.capabilities.text === 'unsupported' ? '该目标路线不支持所选协议' : '当前协议、地址或型号组合不可用，请核对配置'}</p>}
         {tests[connection.connectionId] && <ModelTestFeedback {...tests[connection.connectionId]!}
           onRetry={!checkDisabled(connection) ? () => onCheck(connection) : undefined} />}
-        </ModelProviderModelRow>)}</div>
+        </ModelProviderModelRow>)}</div>}
       </ModelProviderCard>)}
     </div>
   </>

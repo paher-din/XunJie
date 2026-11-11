@@ -26,6 +26,7 @@ const revision = (saved, changes = {}) => ({ requestId: randomUUID(), providerId
     modelId: model.modelId, enabled: model.modelEnabled, reasoningEffort: 'auto' })), ...changes });
 const check = model => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: model.connectionId, version: model.version },
   limits: { maxOutputTokens: 32, timeoutMs: 5000 } });
+const removal = model => ({ connectionId: model.connectionId, expectedVersion: model.version });
 function masked(value) {
   const serialized = JSON.stringify(value);
   assert.equal(serialized.includes(key), false, 'credentials must never enter public model projections');
@@ -193,6 +194,169 @@ test('provider lifecycle uses real native storage and SDK dispatch', { timeout: 
       assert.ok(saved.models.every(model => !model.hasCredential));
     });
 
+    await t.test('removing a member hides it, blocks execution, retains disabled siblings and history, and can restore its identity', async () => {
+      let saved = await save(provider(baseUrl));
+      const [a, b] = saved.models;
+      const completed = await send(check(a));
+      const grant = await api('grants', { requestId: randomUUID(), grantId: randomUUID(), connectionId: a.connectionId, owner: 'self' });
+      assert.equal(grant.status, 200);
+      const current = await api('selection');
+      const source = { kind: 'personal', connectionId: a.connectionId, grantId: grant.value.grantId };
+      const selected = await api('selection', { requestId: randomUUID(), expectedVersion: current.value.version, source });
+      assert.equal(selected.status, 200);
+      const pending = check(a);
+      assert.equal((await api('checks', pending)).status, 200);
+      const input = revision(saved);
+      input.models.shift();
+      input.removedModels = [removal(a)];
+      saved = await save(input);
+      assert.equal(saved.credentialConnection, undefined);
+      assert.deepEqual(saved.models.map(model => [model.connectionId, model.enabled, model.modelEnabled]), [[b.connectionId, false, false]]);
+      assert.equal((await api(`connections/${b.connectionId}/credential`, { version: saved.models[0].version })).value.value, key);
+      const listed = await api('connections');
+      assert.equal(listed.value.some(model => model.connectionId === a.connectionId), false);
+      assert.equal((await api('checks', check({ ...a, version: a.version + 1 }))).status, 503);
+      assert.equal((await api('checks', { ...check(a), source: { selected: true, selectionVersion: selected.value.version } })).status, 503);
+      assert.equal((await api(`checks/${pending.attemptId}/dispatch`, {})).status, 403);
+      const selectionAgain = await api('selection', { requestId: randomUUID(), expectedVersion: selected.value.version, source });
+      assert.equal(selectionAgain.status, 503);
+      await restart(); // validate must retain grants, selection pointers, historical versions and calls.
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+      assert.deepEqual((await api(`checks/${completed.attemptId}`)).value, completed);
+      const restored = revision(saved);
+      restored.models.unshift({ ...input.removedModels[0], expectedVersion: a.version + 1, modelId: a.modelId, enabled: true });
+      saved = await save(restored);
+      assert.equal(saved.models[0].version, a.version + 2);
+      assert.equal(saved.models[0].routeId, a.routeId);
+      assert.equal(saved.models[0].connectionId, a.connectionId);
+      assert.equal(saved.models[1].modelEnabled, false);
+      assert.equal((await api(`connections/${a.connectionId}/credential`, { version: saved.models[0].version })).value.value, key);
+      await send(check(saved.models[0]));
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+    });
+
+    for (const action of ['keep', 'replace', 'clear']) await t.test(`empty provider retains metadata and applies credential.${action}, then new models inherit the current key`, async () => {
+      let saved = await save(provider(baseUrl));
+      const original = saved.models;
+      const credential = action === 'replace' ? { action, value: key + '-replacement' } : { action };
+      const input = revision(saved, { models: [], removedModels: original.map(removal), credential, enabled: false, name: '空供应商' });
+      saved = await save(input);
+      const expectedKey = action === 'clear' ? '' : action === 'replace' ? credential.value : key;
+      assert.deepEqual(saved.models, []);
+      assert.equal(saved.name, '空供应商');
+      assert.equal(saved.enabled, false);
+      assert.equal(saved.hasCredential, !!expectedKey);
+      assert.deepEqual(saved.credentialConnection, { connectionId: original[1].connectionId, version: original[1].version + 1 });
+      assert.deepEqual(await save(input), saved, 'removal requestId replay must not retire twice');
+      const connections = (await api('connections')).value;
+      for (const model of original) {
+        assert.equal(connections.some(item => item.connectionId === model.connectionId), false);
+        assert.equal((await api('checks', check({ ...model, version: model.version + 1 }))).status, 503);
+      }
+      assert.equal((await api(`connections/${saved.credentialConnection.connectionId}/credential`, { version: saved.credentialConnection.version })).value.value, expectedKey);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+      // The outer provider switch sends an empty selected set with credential.keep.
+      const toggle = revision(saved, { enabled: true });
+      saved = await save(toggle);
+      assert.equal(saved.enabled, true);
+      assert.deepEqual(saved.models, []);
+      assert.equal((await api(`connections/${saved.credentialConnection.connectionId}/credential`, { version: saved.credentialConnection.version })).value.value, expectedKey);
+      const emptyEdit = revision(saved, { name: '空供应商改名', protocol: 'responses', baseUrl: baseUrl + '/new' });
+      saved = await save(emptyEdit);
+      assert.equal(saved.protocol, 'responses');
+      assert.equal(saved.baseUrl, emptyEdit.baseUrl);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+      // Use the original primary route for the synthetic upstream.
+      const add = revision(saved, { protocol: 'chat-completions', baseUrl, models: [child('new-after-empty')] });
+      saved = await save(add);
+      assert.equal(saved.credentialConnection, undefined);
+      assert.equal(saved.models[0].version, 1);
+      assert.equal(saved.hasCredential, !!expectedKey);
+      assert.equal((await api(`connections/${saved.models[0].connectionId}/credential`, { version: saved.models[0].version })).value.value, expectedKey);
+      assert.equal(JSON.stringify(saved).includes(key + '-replacement'), false);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+    });
+
+    await t.test('editing an already empty provider can replace and clear its anchor key and restore that same connection with CAS', async () => {
+      let saved = await save(provider(baseUrl));
+      const first = saved.models[0];
+      const last = saved.models[1];
+      saved = await save(revision(saved, { models: [], removedModels: saved.models.map(removal) }));
+      saved = await save(revision(saved, { credential: { action: 'replace', value: key + '-new' }, enabled: false }));
+      assert.equal((await api(`connections/${last.connectionId}/credential`, { version: saved.credentialConnection.version })).value.value, key + '-new');
+      saved = await save(revision(saved, { credential: { action: 'clear' } }));
+      assert.equal(saved.hasCredential, false);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+      const restore = revision(saved, { enabled: true, models: [{ connectionId: last.connectionId,
+        expectedVersion: saved.credentialConnection.version, modelId: last.modelId, enabled: false }] });
+      saved = await save(restore);
+      assert.equal(saved.models[0].routeId, last.routeId);
+      assert.equal(saved.models[0].modelEnabled, false);
+      assert.equal(saved.models[0].hasCredential, false);
+      const restoreOlder = revision(saved);
+      restoreOlder.models.push({ connectionId: first.connectionId, expectedVersion: first.version + 1, modelId: first.modelId, enabled: true });
+      saved = await save(restoreOlder);
+      assert.equal(saved.models[1].hasCredential, false, 'restoring an older retired head must not resurrect a key cleared on the provider');
+      await restart();
+    });
+
+    await t.test('explicit removal rejects omitted members, duplicates, overlap, wrong ownership and stale versions without partial writes', async () => {
+      const saved = await save(provider(baseUrl));
+      const other = await save(provider(baseUrl));
+      const [a, b] = saved.models;
+      const broken = revision(saved, { models: [], removedModels: saved.models.map(removal), name: '不能部分提交', credential: { action: 'clear' } });
+      const cases = [
+        [revision(saved, { models: [] }), 400],
+        [revision(saved, { models: [revision(saved).models[0]], removedModels: [] }), 400],
+        [{ ...broken, removedModels: [removal(a), removal(a)] }, 400],
+        [{ ...broken, models: revision(saved).models }, 400],
+        [{ ...broken, removedModels: [removal(a), removal(other.models[0])] }, 409],
+        [{ ...broken, removedModels: [removal(a), { connectionId: randomUUID(), expectedVersion: 1 }] }, 409],
+        [{ ...broken, removedModels: [removal(a), { ...removal(b), expectedVersion: b.version + 1 }] }, 409],
+        [{ ...broken, expectedVersion: saved.version - 1 }, 409],
+        [revision(saved, { models: [{ ...revision(saved).models[0], expectedVersion: 0 }], removedModels: [removal(b)], credential: { action: 'clear' } }), 409],
+        [{ ...provider(baseUrl), models: [] }, 400],
+      ];
+      for (const [input, status] of cases) {
+        assert.equal((await api('providers', input)).status, status);
+        assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+        for (const model of saved.models)
+          assert.equal((await api(`connections/${model.connectionId}/credential`, { version: model.version })).value.value, key);
+      }
+      const removed = await save(broken); // Failed requestId remains retryable.
+      assert.equal(removed.version, saved.version + 1);
+      const repeatRemoval = revision(removed, { removedModels: [removal(a)] });
+      assert.equal((await api('providers', repeatRemoval)).status, 409);
+      const staleRestore = revision(removed, { models: [{ connectionId: a.connectionId, expectedVersion: a.version, modelId: a.modelId, enabled: true }] });
+      assert.equal((await api('providers', staleRestore)).status, 409);
+      const foreignRestore = revision(removed, { models: [{ connectionId: other.models[0].connectionId,
+        expectedVersion: other.models[0].version, modelId: 'foreign', enabled: true }] });
+      assert.equal((await api('providers', foreignRestore)).status, 409);
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), removed);
+      await restart();
+    });
+
+    await t.test('legacy ungrouped connections can be explicitly removed into an empty provider without inventing a model', async () => {
+      const old = { requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '旧版待取消',
+        protocol: 'chat-completions', baseUrl, path: '/chat/completions', modelId: 'legacy-remove',
+        dialect: 'standard', parameterMode: 'plain', enabled: true, credential: { action: 'replace', value: key } };
+      assert.equal((await api('connections', old)).status, 200);
+      const legacy = (await api('providers')).value.find(item => item.providerId === old.connectionId);
+      const input = revision(legacy, { models: [], removedModels: legacy.models.map(removal) });
+      const saved = await save(input);
+      assert.deepEqual(saved.models, []);
+      assert.equal(saved.credentialConnection.connectionId, old.connectionId);
+      assert.equal(saved.credentialConnection.version, 2);
+      assert.equal((await api('connections', { ...old, requestId: randomUUID(), expectedVersion: 2 })).status, 409);
+      await restart();
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === saved.providerId), saved);
+    });
+
     await t.test('legacy lazy upgrade preserves connection/route/grant identity and keep inherits the key for new siblings', async () => {
       const old = { requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '旧连接',
         protocol: 'chat-completions', baseUrl, path: '/chat/completions', modelId: 'legacy-orbit',
@@ -203,7 +367,8 @@ test('provider lifecycle uses real native storage and SDK dispatch', { timeout: 
       const grant = await api('grants', grantInput);
       assert.equal(grant.status, 200);
       const source = { kind: 'personal', connectionId: old.connectionId, grantId: grantInput.grantId };
-      const selected = await api('selection', { requestId: randomUUID(), expectedVersion: 0, source });
+      const selectionBefore = await api('selection');
+      const selected = await api('selection', { requestId: randomUUID(), expectedVersion: selectionBefore.value.version, source });
       assert.equal(selected.status, 200);
       const lazy = (await api('providers')).value.find(item => item.providerId === old.connectionId);
       assert.equal(lazy.version, 0);
@@ -315,9 +480,34 @@ test('lost PostgreSQL provider COMMIT ACK replays the original receipt without a
           (SELECT count(*)::int FROM _storage_requests WHERE request_id=$1) AS receipts`, [input.requestId]);
         assert.deepEqual(counts, { versions: 4, credentials: 2, receipts: 1 });
       } finally { await client.end(); }
+      const remove = revision(next, { models: [], removedModels: next.models.map(removal) });
+      relay.arm('INSERT INTO model_providers');
+      const removalUnknown = await api('providers', remove);
+      assert.equal(relay.cuts(), 2);
+      assert.equal(removalUnknown.status, 409, JSON.stringify(removalUnknown.value));
+      assert.equal(removalUnknown.value.error, 'commit-unknown');
+      const empty = (await api('providers')).value.find(item => item.providerId === input.providerId);
+      assert.deepEqual(empty.models, []);
+      assert.equal(empty.version, next.version + 1);
+      assert.deepEqual(await save(remove), empty);
+      const toggled = await save(revision(empty, { enabled: false }));
+      assert.equal(toggled.enabled, false);
+      assert.deepEqual(await save(remove), empty, 'removal replay returns its original anchor version after a later edit');
+      const audit = new pg.Client(binding.connection);
+      await audit.connect();
+      try {
+        await audit.query('SET search_path TO ' + '"' + binding.schema.replaceAll('"', '""') + '"');
+        const { rows: [counts] } = await audit.query(`SELECT
+          (SELECT count(*)::int FROM model_versions) AS versions,
+          (SELECT count(*)::int FROM model_credentials) AS credentials,
+          (SELECT count(*)::int FROM model_connections WHERE body @> '{"retired":true}') AS retired,
+          (SELECT count(*)::int FROM _storage_requests WHERE request_id=$1) AS receipts`, [remove.requestId]);
+        assert.deepEqual(counts, { versions: 7, credentials: 2, retired: 2, receipts: 1 });
+      } finally { await audit.end(); }
       await restart();
       assert.deepEqual(await save(input), replay);
-      assert.deepEqual((await api('providers')).value.find(item => item.providerId === input.providerId), next);
+      assert.deepEqual(await save(remove), empty);
+      assert.deepEqual((await api('providers')).value.find(item => item.providerId === input.providerId), toggled);
     });
   } finally { await relay?.close(); }
 });

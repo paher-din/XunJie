@@ -43,6 +43,10 @@ function button(label: string, scope: ParentNode = document) {
 const click = async (label: string, scope?: ParentNode) => {
   await act(async () => { button(label, scope).click(); await settle() })
   await act(async () => { await settle() })
+  if (label === '编辑') await act(async () => {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[role="dialog"] .st-model-choice[data-selected] .st-model-choice-title[aria-expanded="false"]')) button.click()
+    await settle()
+  })
 }
 const field = (label: string) => document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!
 async function type(label: string, value: string) {
