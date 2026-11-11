@@ -7953,17 +7953,24 @@ button.outline.danger {
 
 /* ---------- 弹窗（供应商 / 添加模型） ---------- */
 .st-dialog {
+  --st-dialog-radius: 20px;
+  --st-dialog-control-radius: 8px;
+  --st-dialog-control-inset: calc(var(--st-dialog-radius) - var(--st-dialog-control-radius));
+  --st-dialog-inset: 24px;
+  --st-dialog-fade: 20px;
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 520px;
   max-width: calc(100vw - 48px);
-  max-height: calc(100vh - 96px);
+  max-height: calc(100dvh - 96px);
   display: flex;
   flex-direction: column;
+  isolation: isolate;
+  overflow: hidden;
   background: var(--raised);
-  border-radius: 16px;
+  border-radius: var(--st-dialog-radius);
   box-shadow: var(--shadow-tray);
   z-index: 90;
   animation: st-dialog-in 0.24s cubic-bezier(0.3, 1, 0.35, 1);
@@ -7975,27 +7982,76 @@ button.outline.danger {
   }
 }
 .st-dialog-head {
+  position: relative;
+  z-index: 1;
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px 10px;
+  gap: 16px;
+  padding: var(--st-dialog-control-inset);
+  background: var(--raised);
 }
 .st-dialog-title {
-  font-size: 15px;
+  min-width: 0;
+  font-size: 17px;
   font-weight: 600;
+  line-height: 1.5;
   color: var(--ink);
   margin: 0;
+  margin-inline-start: calc(var(--st-dialog-inset) - var(--st-dialog-control-inset));
+  overflow-wrap: anywhere;
+}
+.st-dialog-head .pc-x {
+  flex: none;
+  border-radius: var(--st-dialog-control-radius);
 }
 .st-dialog-body {
-  padding: 4px 20px 12px;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: var(--st-dialog-fade) var(--st-dialog-inset);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--st-dialog-fade);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 .st-dialog-foot {
+  position: relative;
+  z-index: 1;
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px 16px;
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  padding: var(--st-dialog-control-inset);
+  background: var(--raised);
+}
+.st-dialog-foot > :is(p, span) {
+  margin-inline-start: calc(var(--st-dialog-inset) - var(--st-dialog-control-inset));
+}
+.st-dialog-head::after,
+.st-dialog-foot::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  height: var(--st-dialog-fade);
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.st-dialog-head::after {
+  top: 100%;
+  background: linear-gradient(to bottom, var(--raised), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+  mask-image: linear-gradient(to bottom, black, transparent);
+}
+.st-dialog-foot::before {
+  bottom: 100%;
+  background: linear-gradient(to top, var(--raised), transparent);
+  -webkit-mask-image: linear-gradient(to top, black, transparent);
+  mask-image: linear-gradient(to top, black, transparent);
 }
 .st-dialog-foot-right {
   display: flex;
@@ -8006,8 +8062,15 @@ button.outline.danger {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  height: 32px;
+  border-radius: var(--st-dialog-control-radius);
+  padding: 0 16px;
   font-size: 13px;
+}
+@media (max-width: 540px) {
+  .st-dialog {
+    --st-dialog-inset: 20px;
+  }
 }
 .st-smart-row {
   display: flex;

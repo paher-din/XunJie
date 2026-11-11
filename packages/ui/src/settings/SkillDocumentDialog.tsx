@@ -52,7 +52,7 @@ export function SkillDocumentDialog({ open, name, content, loading, error, foote
             <Markdown text={documentMarkdown(content)} />
           </article>}
         </div>
-        {footer && <div className="st-skill-document-footer">{footer}</div>}
+        {footer && <div className="st-dialog-foot st-skill-document-footer">{footer}</div>}
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>
