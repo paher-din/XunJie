@@ -299,6 +299,11 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
       ? message.content.reduce((total, part) => total + (part.type === 'image' ? 1 : part.type === 'tool_result' && Array.isArray(part.content)
         ? part.content.filter(item => item.type === 'image').length : 0), 0) : 0), 0) : countImages(payload);
     if (imageCount > 8) throw new StorageError('invalid');
+    if (imageCount && segment.snapshot.connection.imageInput === false) {
+      const decision = decideModelCapabilities(segment.snapshot.connection, { ...segment.prefix,
+        options: { ...options, requiredCapabilities: [...new Set([...(options?.requiredCapabilities ?? []), 'images' as const])] } });
+      throw new ModelCapabilityError(decision);
+    }
     if (Buffer.byteLength(JSON.stringify(payload)) > 1000000) throw new StorageError('invalid');
     return { ...segment.snapshot, payload, tools: segment.prefix.tools, ...(options?.applicationSchema ? { applicationSchema: options.applicationSchema } : {}), segment: { segmentId: input.segmentId, sequence: input.expectedSequence },
       async retain(tx) {

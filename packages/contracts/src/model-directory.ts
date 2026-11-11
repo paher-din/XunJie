@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { modelReasoningEfforts } from './model-reasoning.js';
+import { modelDiagnosticFactsSchema, modelDiagnosticSchema } from './model-diagnostics.js';
 
 export const modelPresetIdSchema = z.enum(['custom', 'deepseek', 'opencode-go', 'command-code', 'zhipu', 'kimi', 'mimo']);
 const protocol = z.enum(['chat-completions', 'responses', 'messages']);
@@ -13,6 +14,8 @@ export const modelDirectoryInputSchema = z.object({
   savedCredential: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional(),
   /** Automatic refresh observes the ten-minute cooldown; explicit manual refresh may bypass it. */
   refresh: z.boolean().optional(), manual: z.boolean().optional(),
+  /** Supplier discovery and public reference metadata have independent lifecycles. */
+  source: z.enum(['combined', 'supplier', 'catalogue']).optional(),
 }).strict();
 export const modelDirectoryRefreshSchema = z.object({
   status: z.enum(['idle', 'refreshing', 'ready', 'cooldown', 'failed', 'needs-credential']),
@@ -20,6 +23,7 @@ export const modelDirectoryRefreshSchema = z.object({
   nextRefreshAt: z.iso.datetime().optional(), retryAt: z.iso.datetime().optional(),
   error: z.enum(['offline', 'timeout', 'unauthorized', 'rate-limited', 'unavailable', 'invalid-response']).optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
+  diagnostic: modelDiagnosticSchema.optional(), upstream: modelDiagnosticFactsSchema.optional(),
 }).strict();
 export const modelDirectoryEntrySchema = z.object({
   modelId: z.string().trim().min(1).max(200), name: z.string().max(200).optional(),
@@ -38,3 +42,14 @@ export type ModelDirectoryInput = z.infer<typeof modelDirectoryInputSchema>;
 export type ModelDirectoryRefresh = z.infer<typeof modelDirectoryRefreshSchema>;
 export type ModelDirectoryEntry = z.infer<typeof modelDirectoryEntrySchema>;
 export type ModelDirectory = z.infer<typeof modelDirectorySchema>;
+
+export const modelConnectionTestInputSchema = modelDirectoryInputSchema.pick({ presetId: true, variantId: true,
+  baseUrl: true, protocol: true, credential: true, savedCredential: true });
+export const modelConnectionTestResultSchema = z.object({
+  status: z.enum(['passed', 'failed', 'unverified', 'cancelled']),
+  baseUrl: z.string().max(2000), protocol, endpoint: z.string().max(2100), elapsedMs: z.number().nonnegative(),
+  modelCount: z.number().int().nonnegative().optional(), diagnostic: modelDiagnosticSchema.optional(),
+  upstream: modelDiagnosticFactsSchema.optional(),
+}).strict();
+export type ModelConnectionTestInput = z.infer<typeof modelConnectionTestInputSchema>;
+export type ModelConnectionTestResult = z.infer<typeof modelConnectionTestResultSchema>;

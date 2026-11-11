@@ -122,6 +122,8 @@ export function createModelProviders(storage: OwnedStorage, owner: {
           modelId: model.modelId, dialect, parameterMode: effort === undefined && sameRoute ? old.configuration.parameterMode
             : effort && !['auto', 'none'].includes(effort) ? 'thinking' : 'plain',
           ...capacity,
+          ...(model.imageInput !== undefined ? { imageInput: model.imageInput }
+            : sameRoute && old?.configuration.imageInput !== undefined ? { imageInput: old.configuration.imageInput } : {}),
           reasoningLevels: levels, reasoningSource: profile.source,
           ...(effort === undefined ? {} : { reasoningEffort: effort }), credential,
         }));

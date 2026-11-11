@@ -6,14 +6,16 @@ export const modelCatalogueMigration: Migration = { version: 21, name: 'model-di
   CREATE TABLE model_directory_cache(cache_key text PRIMARY KEY,body jsonb NOT NULL);
 ` };
 export type CatalogueState = { data?: unknown; lastAttemptAt?: number; successAt?: number; retryAt?: number;
-  failures: number; error?: NonNullable<ModelDirectoryRefresh['error']>; httpStatus?: number };
+  failures: number; error?: NonNullable<ModelDirectoryRefresh['error']>; httpStatus?: number;
+  diagnostic?: ModelDirectoryRefresh['diagnostic']; upstream?: ModelDirectoryRefresh['upstream'] };
 export type CataloguePersistence = { load(): Promise<Map<string, CatalogueState>>; save(key: string, state: CatalogueState): Promise<void> };
 const ordinaryInterval = 10 * 60_000, manualDebounce = 3000;
 const delays = [5000, 15000, 30000, 60000, 120000, 240000, 300000];
 const iso = (value: number) => new Date(value).toISOString();
 
 export class CatalogueFailure extends Error {
-  constructor(readonly kind: NonNullable<ModelDirectoryRefresh['error']>, readonly retryAfter?: number, readonly httpStatus?: number) { super(kind); }
+  constructor(readonly kind: NonNullable<ModelDirectoryRefresh['error']>, readonly retryAfter?: number, readonly httpStatus?: number,
+    readonly diagnostic?: ModelDirectoryRefresh['diagnostic'], readonly upstream?: ModelDirectoryRefresh['upstream']) { super(kind); }
 }
 function validState(value: unknown): value is CatalogueState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -22,7 +24,8 @@ function validState(value: unknown): value is CatalogueState {
     && ['lastAttemptAt', 'successAt', 'retryAt'].every(key => {
       const time = state[key as 'lastAttemptAt']; return time === undefined || Number.isSafeInteger(time) && time >= 0 && time < 8.64e15;
     }) && modelDirectoryRefreshSchema.safeParse({ status: 'idle', ...(state.error ? { error: state.error } : {}),
-      ...(state.httpStatus !== undefined ? { httpStatus: state.httpStatus } : {}) }).success;
+      ...(state.httpStatus !== undefined ? { httpStatus: state.httpStatus } : {}),
+      ...(state.diagnostic ? { diagnostic: state.diagnostic } : {}), ...(state.upstream ? { upstream: state.upstream } : {}) }).success;
 }
 export function cataloguePersistence(storage: OwnedStorage): CataloguePersistence {
   return {
@@ -49,6 +52,7 @@ export function cataloguePersistence(storage: OwnedStorage): CataloguePersistenc
 export function createCatalogueCache(now = Date.now, persistence?: CataloguePersistence) {
   let states = new Map<string, CatalogueState>(), closed = false;
   const loading = new Map<string, { promise: Promise<ModelDirectoryRefresh>; controller: AbortController }>();
+  const active = new Set<{ promise: Promise<ModelDirectoryRefresh>; controller: AbortController }>();
   async function initialize() { if (persistence) states = await persistence.load(); }
   const state = (key: string) => states.get(key);
   function read(key: string): ModelDirectoryRefresh {
@@ -57,10 +61,12 @@ export function createCatalogueCache(now = Date.now, persistence?: CataloguePers
       ...(value?.lastAttemptAt !== undefined ? { lastAttemptAt: iso(value.lastAttemptAt), nextRefreshAt: iso(value.lastAttemptAt + ordinaryInterval) } : {}),
       ...(value?.successAt !== undefined ? { updatedAt: iso(value.successAt) } : {}),
       ...(value?.retryAt !== undefined ? { retryAt: iso(value.retryAt) } : {}), ...(value?.error ? { error: value.error } : {}),
-      ...(value?.httpStatus !== undefined ? { httpStatus: value.httpStatus } : {}) };
+      ...(value?.httpStatus !== undefined ? { httpStatus: value.httpStatus } : {}),
+      ...(value?.diagnostic ? { diagnostic: value.diagnostic } : {}), ...(value?.upstream ? { upstream: value.upstream } : {}) };
   }
-  function refresh(key: string, fetcher: (signal: AbortSignal) => Promise<unknown>, manual = false): Promise<ModelDirectoryRefresh> {
-    const current = loading.get(key); if (current) return current.promise;
+  function refresh(key: string, fetcher: (signal: AbortSignal) => Promise<unknown>, manual = false,
+    options: { signal?: AbortSignal; fresh?: boolean } = {}): Promise<ModelDirectoryRefresh> {
+    const current = loading.get(key); if (current && !options.fresh) return current.promise;
     if (closed) return Promise.reject(new StorageError('maintenance'));
     const previous = states.get(key), time = now();
     const intervalGate = previous?.lastAttemptAt !== undefined ? previous.lastAttemptAt + ordinaryInterval : 0;
@@ -69,20 +75,32 @@ export function createCatalogueCache(now = Date.now, persistence?: CataloguePers
     const waitUntil = manual ? previous?.error ? previous.retryAt ?? 0 : previous?.lastAttemptAt !== undefined
       ? Math.max(previous.lastAttemptAt, previous.successAt ?? 0) + manualDebounce : 0
       : Math.max(intervalGate, previous?.retryAt ?? 0);
-    if (time < waitUntil) return Promise.resolve({ ...read(key), status: 'cooldown' });
+    if (!options.fresh && time < waitUntil) return Promise.resolve({ ...read(key), status: 'cooldown' });
     const controller = new AbortController();
+    const abort = () => controller.abort(options.signal?.reason);
+    if (options.signal?.aborted) abort();
+    else options.signal?.addEventListener('abort', abort, { once: true });
+    const ownsState = () => loading.get(key)?.controller === controller;
     const value: CatalogueState = { ...previous, failures: previous?.failures ?? 0, lastAttemptAt: time };
     states.set(key, value);
-    const promise = (async () => {
+    const promise = (async (): Promise<ModelDirectoryRefresh> => {
       // Persist attempt-start before leaving the machine, including failed/offline attempts.
-      await persistence?.save(key, value);
+      if (!options.fresh) await persistence?.save(key, value);
       try {
         controller.signal.throwIfAborted();
         const data = await fetcher(controller.signal);
         controller.signal.throwIfAborted();
         const next: CatalogueState = { data, failures: 0, lastAttemptAt: time, successAt: now() };
-        await persistence?.save(key, next); states.set(key, next);
+        if (ownsState()) { await persistence?.save(key, next); states.set(key, next); }
       } catch (error) {
+        if (options.signal?.aborted) {
+          if (ownsState()) {
+            if (previous) { await persistence?.save(key, previous); states.set(key, previous); }
+            else states.delete(key);
+          }
+          return { ...read(key), status: 'failed', error: 'offline',
+            diagnostic: { code: 'cancelled', message: '已停止拉取供应商模型。', suggestion: '需要时可重新拉取。' } };
+        }
         const failure = error instanceof CatalogueFailure ? error : new CatalogueFailure(error instanceof StorageError ? 'unavailable'
           : error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'offline');
         const failures = Math.min(value.failures + 1, 1000);
@@ -90,18 +108,25 @@ export function createCatalogueCache(now = Date.now, persistence?: CataloguePers
           retryAt: Math.max(now() + delays[Math.min(failures - 1, delays.length - 1)]!, failure.retryAfter ?? 0) };
         if (failure.httpStatus !== undefined) next.httpStatus = failure.httpStatus;
         else delete next.httpStatus;
-        await persistence?.save(key, next); states.set(key, next);
+        if (failure.diagnostic) next.diagnostic = failure.diagnostic; else delete next.diagnostic;
+        if (failure.upstream) next.upstream = failure.upstream; else delete next.upstream;
+        if (ownsState()) { await persistence?.save(key, next); states.set(key, next); }
       }
       return read(key);
-    })().finally(() => { loading.delete(key); }).then(() => read(key));
-    loading.set(key, { promise, controller });
+    })().finally(() => {
+      if (ownsState()) loading.delete(key);
+      options.signal?.removeEventListener('abort', abort);
+      active.delete(entry);
+    }).then(result => result.diagnostic?.code === 'cancelled' ? result : read(key));
+    const entry = { promise, controller };
+    loading.set(key, entry); active.add(entry);
     return promise;
   }
   return { initialize, read, state, refresh,
     entries: () => [...states.entries()],
-    close() { closed = true; for (const active of loading.values()) active.controller.abort(); },
+    close() { closed = true; for (const entry of active) entry.controller.abort(); },
     resume() { closed = false; },
-    async drain() { await Promise.all([...loading.values()].map(active => active.promise)); },
+    async drain() { await Promise.all([...active].map(entry => entry.promise)); },
     async validate() {
       const persisted = persistence ? await persistence.load() : states;
       for (const value of persisted.values()) if (!validState(value)) throw new StorageError('corrupt');

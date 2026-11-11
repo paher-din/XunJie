@@ -2,10 +2,11 @@ import { useRef, useState, type ReactNode } from 'react'
 import {
   AboutSettingsView, AccountSettingsView, AgentSettingsView, ConfirmAction, ConnectionModelFields, Field, HelpTip,
   LegacyModelDialogs, LegacyModelSettingsView, ModelConfigActions, ModelConnectionTestRow, ModelDialogView,
-  ModelFields, ModelProviderCard, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
+  ModelFields, ModelProviderCard, ModelProviderModelRow, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
   RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
   SettingsSelect, SettingsActionMenu, ModelIdInput, ModelProviderLogo, ModelChoiceCard,
+  ModelTestFeedback, ModelTestButton,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
 } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
@@ -88,9 +89,31 @@ function ModelFieldsDemo() {
 function ConnectionFieldsDemo() {
   const [id, setId] = useState('sample-model'), [effort, setEffort] = useState('auto'), [manual, setManual] = useState<string[] | undefined>()
   const [capacity, setCapacity] = useState<{ contextWindow?: string | undefined; maxOutputTokens?: string | undefined }>({})
+  const [imageInput, setImageInput] = useState(false)
   return <Frame><ConnectionModelFields modelId={id} effort={effort} efforts={['auto', ...(manual ?? ['low', 'medium', 'high'])]}
     source={manual ? 'manual' : 'catalogue'} manualLevels={manual} {...capacity} referenceContext={128000} referenceOutput={8192}
+    imageInput={imageInput} onImageInput={setImageInput}
     onId={setId} onEffort={setEffort} onLevels={setManual} onCapacity={patch => setCapacity(current => ({ ...current, ...patch }))} /></Frame>
+}
+function ModelTestButtonDemo({ state = 'idle' }: { state?: 'idle' | 'running' | 'disabled' | 'compact' | 'icon' }) {
+  const [connectionRunning, setConnectionRunning] = useState(state === 'running')
+  const [modelRunning, setModelRunning] = useState(state === 'running')
+  return <Frame><div className="demo-row">
+    <ModelTestButton kind="connection" running={connectionRunning} compact={state === 'compact'} iconOnly={state === 'icon'} disabled={state === 'disabled'}
+      onTest={() => setConnectionRunning(true)} onStop={() => setConnectionRunning(false)} />
+    <ModelTestButton kind="model" running={modelRunning} compact={state === 'compact'} iconOnly={state === 'icon'} disabled={state === 'disabled'}
+      onTest={() => setModelRunning(true)} onStop={() => setModelRunning(false)} />
+  </div></Frame>
+}
+function ModelTestFeedbackDemo({ state = 'failed' }: { state?: 'running' | 'passed' | 'failed' | 'unverified' | 'cancelled' }) {
+  const [status, setStatus] = useState(state)
+  const problem = status === 'failed' || status === 'unverified'
+  return <Frame><ModelTestFeedback status={status} title={status === 'running' ? '正在测试图片理解…' : status === 'passed' ? '模型测试通过'
+    : status === 'cancelled' ? '模型测试已停止' : status === 'unverified' ? '文本通过，图片测试未完成' : '模型测试未通过'}
+    message={problem ? '示例供应商拒绝了当前模型请求（HTTP 403）。' : undefined}
+    suggestion={problem ? '请核对当前套餐的模型权限和接入地址。' : undefined}
+    details={'地址：https://example.invalid/v1/chat/completions\n模型：sample-model\nHTTP：403\n请求 ID：synthetic-request'}
+    onRetry={problem ? () => setStatus('passed') : undefined} onStop={status === 'running' ? () => setStatus('cancelled') : undefined} /></Frame>
 }
 function SettingsSelectDemo() {
   const [value, setValue] = useState('custom')
@@ -129,6 +152,33 @@ function ModelChoiceDemo({ chosen = false, open = false }: { chosen?: boolean; o
 function ModelChoiceSelected() { return <ModelChoiceDemo chosen /> }
 function ModelChoiceExpanded() { return <ModelChoiceDemo chosen open /> }
 function ProviderCardDemo() { const [notice, setNotice] = useState(''); return <Frame><ModelProviderCard name="示例供应商" address="https://example.invalid/v1" credentialLabel="示例状态" actions={<button type="button" className="outline" onClick={() => setNotice('已触发示例编辑')}>编辑</button>}><p>示例模型</p></ModelProviderCard><output>{notice}</output></Frame> }
+function ProviderRowsDemo({ state = 'default' }: { state?: 'default' | 'running' | 'failed' | 'disabled' | 'long' }) {
+  const [enabled, setEnabled] = useState(state !== 'disabled')
+  const [models, setModels] = useState([true, true, true, false, true, true])
+  const [runs, setRuns] = useState<Record<number, 'running' | 'failed' | 'cancelled'>>(state === 'running' ? { 1: 'running' } : state === 'failed' ? { 2: 'failed' } : {})
+  const [notice, setNotice] = useState('')
+  const modelIds = ['deepseek-flash', 'deepseek-v4-pro', state === 'long' ? 'sample-model-with-a-very-long-name-for-ellipsis-and-narrow-layout-verification' : 'sample-long-context', 'sample-reasoning',
+    ...(state === 'long' ? ['sample-code', 'sample-vision'] : [])]
+  return <Frame><ModelProviderCard compact name={state === 'long' ? '示例供应商的较长自定义名称用于核对窄窗口' : '示例供应商'}
+    logo={<ModelProviderLogo providerId="deepseek" />}
+    actions={<><button type="button" className="st-provider-text-action" onClick={() => setNotice('已触发示例编辑')}>编辑</button>
+      <Toggle checked={enabled} label="启用示例供应商" onChange={setEnabled} /></>}
+    footer={<><button type="button" className="st-provider-text-action" onClick={() => setNotice('已触发示例添加模型')}><Icon name="add" size={14} />添加模型</button>
+      {!enabled && <span className="detail">供应商已停用</span>}</>}>
+    <div className="st-configured-models">
+      {modelIds.map((modelId, index) => <ModelProviderModelRow key={modelId} modelId={modelId} effort={index === 1 ? '高' : undefined}
+        actions={<><ModelTestButton kind="model" iconOnly running={runs[index] === 'running'} disabled={!enabled || !models[index]}
+          onTest={() => setRuns(current => ({ ...current, [index]: 'running' }))} onStop={() => setRuns(current => ({ ...current, [index]: 'cancelled' }))} />
+          <Toggle checked={models[index]!} label={`启用模型 ${modelId}`} onChange={next => setModels(current => current.map((value, item) => item === index ? next : value))} /></>}>
+        {runs[index] && <ModelTestFeedback status={runs[index]!}
+          title={runs[index] === 'running' ? '模型测试中…' : runs[index] === 'failed' ? '模型测试未通过' : '模型测试已停止'}
+          message={runs[index] === 'failed' ? '示例服务拒绝了请求（HTTP 403）。' : undefined}
+          suggestion={runs[index] === 'failed' ? '请核对密钥的模型访问权限。' : undefined}
+          details={runs[index] === 'failed' ? 'HTTP 403\n模型：sample-long-context\n示例诊断，不发起网络请求。' : undefined} />}
+      </ModelProviderModelRow>)}
+    </div>
+  </ModelProviderCard><output>{notice}</output></Frame>
+}
 function IdentityDemo({ error = false }: { error?: boolean }) {
   const [name, setName] = useState('示例供应商'), [url, setUrl] = useState('https://example.invalid/v1'), [key, setKey] = useState('synthetic-example-key')
   const [protocol, setProtocol] = useState('chat-completions')
@@ -208,6 +258,22 @@ function LegacyModelPopulated() { return <LegacyModelDemo /> }
 function LegacyModelEmpty() { return <LegacyModelDemo empty /> }
 
 export const settingsEntries: CatalogEntry[] = [
+  { id: 'model-test-button', name: 'ModelTestButton', description: '带语义图标的连接／模型测试，原按钮可直接停止测试。', importPath: settings,
+    source: 'packages/ui/src/settings/ModelTestButton.tsx', exampleSource, props: ['kind: connection | model', 'running?, disabled?, compact?, iconOnly?, onTest, onStop?'],
+    dependencies: ['循阶 Button、Base UI Tooltip 和 Solar Linear 图标；本地状态示例'], states: [
+      { id: 'idle', name: '开始测试', component: ModelTestButtonDemo },
+      { id: 'running', name: '测试中与停止', component: () => <ModelTestButtonDemo state="running" /> },
+      { id: 'disabled', name: '不可用', component: () => <ModelTestButtonDemo state="disabled" /> },
+      { id: 'compact', name: '列表紧凑样式', component: () => <ModelTestButtonDemo state="compact" /> },
+      { id: 'icon', name: '单图标与停止', component: () => <ModelTestButtonDemo state="icon" /> }] },
+  { id: 'model-test-feedback', name: 'ModelTestFeedback', description: '模型测试结果、处理建议和可复制诊断。', importPath: settings,
+    source: 'packages/ui/src/settings/ModelTestFeedback.tsx', exampleSource, props: ['status, title, message?, suggestion?, details?', 'onRetry?, onStop?, children?'],
+    dependencies: ['Astryx Banner；示例不调用模型'], states: [
+      { id: 'failed', name: '失败与诊断', component: ModelTestFeedbackDemo },
+      { id: 'running', name: '测试中', component: () => <ModelTestFeedbackDemo state="running" /> },
+      { id: 'passed', name: '通过', component: () => <ModelTestFeedbackDemo state="passed" /> },
+      { id: 'unverified', name: '部分完成', component: () => <ModelTestFeedbackDemo state="unverified" /> },
+      { id: 'cancelled', name: '停止', component: () => <ModelTestFeedbackDemo state="cancelled" /> }] },
   { id: 'settings-select', name: 'SettingsSelect', description: '沿用循阶字段样式的品牌下拉，支持键盘选择与分隔。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, disabled?'],
     dependencies: ['Base UI Select；图标由调用方提供'], states: [{ id: 'default', name: '供应商选择', component: SettingsSelectDemo }] },
@@ -242,7 +308,14 @@ export const settingsEntries: CatalogEntry[] = [
   { id: 'model-connection-test-row', name: 'ModelConnectionTestRow', description: '连接测试操作及结果。', importPath: settings, source: 'packages/ui/src/settings/ModelConnectionTestRow.tsx', exampleSource, props: ['testing, disabled, result, onTest'], dependencies: ['结果为本地示例'], states: [{ id: 'default', name: '交互示例', component: TestRowDemo }] },
   { id: 'model-dialog-view', name: 'ModelDialogView', description: '受控模型表单弹窗。', importPath: settings, source: 'packages/ui/src/settings/ModelDialogView.tsx', exampleSource, props: ['open, providerName, model, draft, setDraft, idError, saving, submit'], dependencies: ['Radix Portal'], states: [{ id: 'default', name: '默认', component: ModelViewNormal, height: 700 }, { id: 'error', name: '错误', component: ModelViewError, height: 700 }] },
   { id: 'model-fields', name: 'ModelFields', description: '模型参数和能力字段。', importPath: settings, source: 'packages/ui/src/settings/ModelFields.tsx', exampleSource, props: ['model, onPatch, onRemove?, idError?'], dependencies: ['合成配置'], states: [{ id: 'default', name: '交互示例', component: ModelFieldsDemo, height: 700 }] },
-  { id: 'model-provider-card', name: 'ModelProviderCard', description: '供应商卡片容器。', importPath: settings, source: 'packages/ui/src/settings/ModelProviderCard.tsx', exampleSource, props: ['name, address, credentialLabel?, actions, children'], dependencies: [], states: [{ id: 'default', name: '示例', component: ProviderCardDemo }] },
+  { id: 'model-provider-card', name: 'ModelProviderCard', description: '供应商卡片与紧凑模型列表。', importPath: settings, source: 'packages/ui/src/settings/ModelProviderCard.tsx', exampleSource, props: ['name, address?, credentialLabel?, logo?, compact?', 'actions, footer?, children'], dependencies: [], states: [
+    { id: 'default', name: '示例', component: ProviderCardDemo }, { id: 'compact', name: '多模型列表', component: ProviderRowsDemo },
+    { id: 'disabled', name: '供应商停用', component: () => <ProviderRowsDemo state="disabled" /> },
+    { id: 'long', name: '长名称', component: () => <ProviderRowsDemo state="long" /> }] },
+  { id: 'model-provider-model-row', name: 'ModelProviderModelRow', description: '模型名称、次级测试、独立开关及就近反馈。', importPath: settings,
+    source: 'packages/ui/src/settings/ModelProviderCard.tsx', exampleSource, props: ['modelId, effort?, actions, children?'], dependencies: ['仅展示，模型与测试状态由调用方提供'], states: [
+      { id: 'default', name: '模型行', component: ProviderRowsDemo }, { id: 'running', name: '测试中', component: () => <ProviderRowsDemo state="running" /> },
+      { id: 'failed', name: '失败与诊断', component: () => <ProviderRowsDemo state="failed" /> }] },
   { id: 'model-settings-dialog', name: 'ModelSettingsDialog', description: '模型表单及本地校验。', importPath: settings, source: 'packages/ui/src/settings/ModelSettingsDialog.tsx', exampleSource, props: ['open, onClose, providerName, model, siblings, onSave'], dependencies: ['Radix Portal；保存回调仅在内存生效'], states: [{ id: 'edit', name: '编辑', component: ModelSettingsDemo, height: 700 }] },
   { id: 'model-settings-feedback', name: 'ModelSettingsFeedback', description: '配置保存与失败状态。', importPath: settings, source: 'packages/ui/src/settings/ModelSettingsFeedback.tsx', exampleSource, props: ['data, loading, saving, error, savedRevision'], dependencies: [], states: [{ id: 'saved', name: '已保存', component: FeedbackSaved }, { id: 'error', name: '错误', component: FeedbackError }] },
   { id: 'portrait-settings-view', name: 'PortraitSettingsView', description: '画像与校准。', importPath: settings, source: 'packages/ui/src/settings/PortraitSettingsView.tsx', exampleSource, props: ['portrait, confirming, setConfirming, correct, formatDay, agentLink'], dependencies: ['画像数据为合成示例'], states: [{ id: 'sample', name: '示例画像', component: PortraitPopulated, height: 700 }, { id: 'empty', name: '空画像', component: PortraitEmpty, height: 700 }] },

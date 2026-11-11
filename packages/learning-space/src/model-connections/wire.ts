@@ -5,7 +5,7 @@ import type { createModelGateway } from './index.js';
 
 /** The same owner wire is consumed by school HTTP and an authenticated installed client. */
 export async function routeModels(models: Awaited<ReturnType<typeof createModelGateway>>, identity: SpaceIdentity,
-  route: string, body?: unknown, deviceOwner?: SpaceIdentity) {
+  route: string, body?: unknown, deviceOwner?: SpaceIdentity, signal?: AbortSignal) {
   if (route === 'models/selection') return body === undefined ? models.selection.read(identity, deviceOwner) : models.selection.save(identity, body);
   if (route === 'models/grants' && body !== undefined) {
     const input = modelGrantInputSchema.parse(body);
@@ -15,8 +15,9 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
   if (route === 'models/connections') return body === undefined ? models.list(identity) : models.save(identity, body);
   if (route === 'models/providers') return body === undefined ? models.providers.list(identity) : models.providers.save(identity, body);
+  if (route === 'models/providers/test-connection' && body !== undefined) return models.directory.testConnection(identity, body, signal);
   if (route === 'models/profiles' && body !== undefined) return models.profiles.read(identity, body);
-  if (route === 'models/directory' && body !== undefined) return models.directory.read(identity, body);
+  if (route === 'models/directory' && body !== undefined) return models.directory.read(identity, body, signal);
   const credential = /^models\/connections\/([^/]+)\/credential$/.exec(route);
   if (credential && body !== undefined) return models.readCredential(identity, credential[1]!, readModelCredentialSchema.parse(body).version);
   if (route === 'models/capabilities' && body !== undefined) return models.segments.decideCapabilities(identity, body);

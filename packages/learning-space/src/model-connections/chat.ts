@@ -6,7 +6,7 @@ import type { ModelConfiguration, ModelUsage, ModelTool, ModelUpstream } from '@
 import { modelUsageSchema, modelReasoningParameters, resolveModelProfile } from '@xunjie/contracts/model-connections';
 import { createChatAssembler, compileOutputSchema, chatSensitiveValues } from './chat-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
-import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
+import { responseFacts, contextCapacityFailure, errorFacts, networkFailureReason } from './upstream-facts.js';
 
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
 export const sdkVersion = 'openai@7.42.0';
@@ -89,6 +89,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
     const status = (error instanceof OpenAI.APIError ? error.status : undefined)
       ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
     if (!upstream && status && error instanceof OpenAI.APIError) upstream = responseFacts(status, error.headers ?? new Headers(), apiKey);
+    upstream = { ...upstream, ...errorFacts(error, apiKey) };
     const malformed = error instanceof MalformedResponse || error instanceof SyntaxError;
     const explicitError = error instanceof OpenAI.APIError && !(error instanceof OpenAI.APIConnectionError)
       && !(error instanceof OpenAI.APIUserAbortError);
@@ -98,7 +99,8 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
     reason = malformed ? 'malformed-response' : status === 401 || status === 403 ? 'authentication'
       : status === 429 ? 'rate-limited' : contextCapacityFailure(upstreamError, status) ? 'context-capacity-exceeded'
       : unsupported ? 'upstream-unsupported' : status ? 'upstream-http' : explicitError ? 'upstream-stream-error'
-      : signal.aborted ? 'client-abort' : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
+      : signal.aborted ? 'client-abort' : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout'
+      : networkFailureReason(upstream) ?? 'upstream-stream';
     state = malformed || status || explicitError ? 'failed' : signal.aborted ? 'cancelled' : chunks.length ? 'incomplete' : 'unknown';
   }
   // Only transport loss/abort may yield to an already received protocol terminal.
@@ -133,7 +135,8 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
   let native: { formatVersion: number; sdk: string; adapter: string; chunks: unknown[]; finishReason: string | null;
     upstreamError: unknown; assistant: typeof assembled.assistant | null; choices: typeof assembled.choices; redacted?: boolean; upstream?: ModelUpstream }
     = { formatVersion: 1, sdk: sdkVersion, adapter: nativeTools ? nativeAdapterVersion : chatAdapterVersion,
-      chunks, finishReason, upstreamError, assistant: assembled.assistant, choices: assembled.choices, ...(upstream ? { upstream } : {}) };
+      chunks, finishReason, upstreamError: upstreamError ? errorFacts(upstreamError, apiKey) : null,
+      assistant: assembled.assistant, choices: assembled.choices, ...(upstream ? { upstream } : {}) };
   const sensitiveTools = sensitive.contains(assembled.decodedArguments);
   const structured = !!(applicationSchema || payload.response_format && payload.response_format.type !== 'text');
   const sensitiveStructured = structured && sensitive.contains(protocolJsonStrings(text));

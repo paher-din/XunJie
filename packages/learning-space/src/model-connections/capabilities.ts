@@ -31,7 +31,11 @@ export function decideModelCapabilities(connection: ModelConnection, prefix: Mod
   const items = modelCapabilityRequirementSchema.options.map(capability => {
     let state: ModelConnection['capabilities']['text'];
     let source: ModelCapabilityDecision['items'][number]['evidence']['source'] = evidence ? 'measured-route' : 'unmeasured-route';
-    if (capability === 'applicationSchema') { state = 'verified'; source = 'application-validator'; }
+    if (capability === 'images' && connection.imageInput !== undefined) {
+      state = connection.imageInput ? 'declared' : 'unsupported'; source = 'user-configuration';
+      if (!connection.imageInput && !limitations.includes('image-input-disabled')) limitations.push('image-input-disabled');
+    }
+    else if (capability === 'applicationSchema') { state = 'verified'; source = 'application-validator'; }
     else if (capability === 'forcedTool') state = limitations.includes('thinking-forced-tool-unsupported') ? 'unsupported'
       : evidence?.testedToolChoice === 'named' ? 'verified' : 'unknown';
     else state = changedReasoning ? 'unknown' : connection.capabilities[capability === 'nativeStrict' ? 'strictSchema' : capability] ?? 'unknown';
@@ -39,7 +43,7 @@ export function decideModelCapabilities(connection: ModelConnection, prefix: Mod
       state = 'unsupported'; source = 'adapter-constraint';
       if (!limitations.includes('messages-json-object-not-supported')) limitations.push('messages-json-object-not-supported');
     }
-    return { capability, status: state === 'verified' ? 'available' as const : state === 'unsupported' ? 'unsupported' as const : 'unknown' as const,
+    return { capability, status: state === 'verified' || capability === 'images' && connection.imageInput === true ? 'available' as const : state === 'unsupported' ? 'unsupported' as const : 'unknown' as const,
       evidence: { state, source } };
   });
   const missing = items.filter(item => required.has(item.capability) && item.status !== 'available');

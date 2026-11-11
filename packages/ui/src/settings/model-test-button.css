@@ -1,0 +1,35 @@
+.st-model-test-button.outline {
+  flex: none;
+  min-inline-size: 108px;
+  transition: background-color 150ms cubic-bezier(0.3, 1, 0.35, 1), border-color 150ms cubic-bezier(0.3, 1, 0.35, 1), color 150ms cubic-bezier(0.3, 1, 0.35, 1);
+}
+.st-model-test-button.outline.st-xs { min-inline-size: 92px; }
+.st-model-test-button > .ui-icon { flex: none; }
+.st-model-test-button.outline:hover:not(:disabled) { background: var(--hover-bg); border-color: var(--line-faint); color: var(--ink); }
+.st-model-test-button.outline:active:not(:disabled) { background: var(--chip-active); }
+.st-model-test-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.st-model-test-button.outline[data-running] { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-deep); }
+.st-model-test-button.outline[data-running]:hover:not(:disabled) { background: var(--accent-soft-hover); }
+.st-model-test-button.outline[data-running]:active:not(:disabled) { background: var(--accent-soft-hover); border-color: var(--accent-deep); }
+.st-model-test-button.outline[data-running]:disabled { opacity: 1; cursor: progress; }
+.st-model-test-button.outline.st-model-test-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 32px;
+  min-inline-size: 32px;
+  block-size: 32px;
+  min-block-size: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.st-model-test-button.outline.st-model-test-icon[data-running] { color: var(--accent-deep); background: var(--accent-soft); }
+.st-model-test-button.outline.st-model-test-icon:hover:not(:disabled) { filter: none; }
+.st-model-test-button-spinner { animation: st-model-test-button-spin 1s linear infinite; }
+.st-model-test-tooltip { max-width: min(320px, calc(100vw - 24px)); padding: 8px 12px; border-radius: 8px; background: var(--inverse); color: var(--on-inverse); box-shadow: var(--shadow-tip); font: 500 12px/1.5 var(--font-sans); text-wrap: pretty; }
+@keyframes st-model-test-button-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .st-model-test-button { transition: none; }
+  .st-model-test-button-spinner { animation: none; }
+}

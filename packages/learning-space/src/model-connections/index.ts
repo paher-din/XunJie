@@ -166,7 +166,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         const protocol = input.protocol ?? (variant.baseUrls['chat-completions'] ? 'chat-completions' : variant.baseUrls.responses ? 'responses' : 'messages');
         const baseUrl = variant.baseUrls[protocol];
         if (!baseUrl || input.baseUrl && input.baseUrl.replace(/\/+$/, '') !== baseUrl.replace(/\/+$/, '')) throw new StorageError('invalid');
-        return { baseUrl, protocol, modelsUrl: variant.modelsUrl, catalogues: modelPresetCatalogues(input.presetId, variant.id),
+        return { baseUrl, protocol, auth: 'bearer', modelsUrl: variant.modelsUrl, catalogues: modelPresetCatalogues(input.presetId, variant.id),
           route: (modelId, supported) => resolvePresetModelRoute(input.presetId!, input.variantId, modelId, supported),
           models: variant.models.map(model => ({ ...model, ...resolvePresetModelRoute(input.presetId!, input.variantId, model.modelId, model.protocols) })) };
       }
@@ -183,7 +183,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       });
       const candidates = [...new Set(known.map(variant => variant.modelsUrl))];
       const modelsUrl = candidates.length === 1 ? candidates[0]! : baseUrl + (protocol === 'messages' ? '/v1/models' : '/models');
-      return { baseUrl, protocol, modelsUrl, catalogues: [], models: [] };
+      return { baseUrl, protocol, modelsUrl, auth: candidates.length === 1 ? 'bearer' : protocol === 'messages' ? 'x-api-key' : 'bearer', catalogues: [], models: [] };
     },
     async credential(identity, input, source) {
       if (input.credential?.action === 'replace') return input.credential.value;
@@ -200,7 +200,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         || saved.protocol !== source.protocol) throw new StorageError('conflict');
       return (await readCredential(identity, input.savedCredential.connectionId, input.savedCredential.version)).value;
     },
-    async requestFetch(source: DirectorySource) {
+    async requestFetch(source: DirectorySource, signal?: AbortSignal) {
+      signal?.throwIfAborted();
       const endpoint = new URL(source.modelsUrl);
       const target = { baseUrl: endpoint.origin, path: endpoint.pathname + endpoint.search + endpoint.hash } as ModelConfiguration;
       if (options.supplierFetch) { await validateModelTarget(target, targetClass()); return options.supplierFetch; }

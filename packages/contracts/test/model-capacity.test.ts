@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { parseModelTokenCount, modelTokenCountError, formatModelTokenCount, resolveModelCapacity,
-  modelConfigurationSchema, providerModelInputSchema } from '@xunjie/contracts/model-connections';
+  modelConfigurationSchema, providerModelInputSchema, modelCheckPolicySchema } from '@xunjie/contracts/model-connections';
 
 test('token counts accept literal integers and binary K/M suffixes without case sensitivity', () => {
   for (const [input, expected] of [
@@ -45,4 +45,12 @@ test('saved model contracts accept 1M output while keeping the wire strictly num
     name: 'Fixture', protocol: 'chat-completions', baseUrl: 'https://example.invalid/v1', path: '/chat/completions',
     dialect: 'standard', parameterMode: 'plain' }).success, true);
   assert.equal(providerModelInputSchema.safeParse({ ...model, maxOutputTokens: '1M' }).success, false);
+});
+
+test('test policies can authorize actual configured output and 120 seconds while retaining explicit smaller policies', () => {
+  const policy = { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 1048576, timeoutMs: 120000 };
+  assert.deepEqual(modelCheckPolicySchema.parse(policy), policy);
+  assert.equal(modelCheckPolicySchema.parse({ ...policy, maxOutputTokens: 128, timeoutMs: 20000 }).maxOutputTokens, 128);
+  assert.equal(modelCheckPolicySchema.safeParse({ ...policy, maxOutputTokens: 10000001 }).success, false);
+  assert.equal(modelCheckPolicySchema.safeParse({ ...policy, timeoutMs: 120001 }).success, false);
 });

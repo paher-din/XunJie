@@ -36,7 +36,7 @@ const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 const alerts = () => [...document.querySelectorAll('[data-sonner-toast][data-type="error"], [role="alert"]')].map(element => element.textContent).join('\n')
 function button(label: string, scope: ParentNode = document) {
-  const element = [...scope.querySelectorAll('button')].find(element => element.textContent?.trim() === label)
+  const element = [...scope.querySelectorAll('button')].find(element => (element.getAttribute('aria-label') ?? element.textContent?.trim()) === label)
   expect(element, `button ${label}`).toBeDefined()
   return element!
 }
@@ -68,11 +68,11 @@ it('lists the school as a supplier and checks its model without selecting or gra
     await mount()
     const card = [...document.querySelectorAll('.st-provider')].find(item => item.querySelector('.st-provider-name')?.textContent === '学校')!
     expect(card).toBeDefined()
-    expect(card.textContent).toContain('学校提供')
+    expect(card.querySelector('.st-provider-url')).toBeNull()
     expect(card.querySelector('[role="switch"]')).toBeNull()
     expect(document.querySelector('[aria-label="当前空间模型"]')).toBeNull()
-    await click('连接检查', card)
-    expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('检查学校模型：检查频次或并发已达上限')
+    await click('模型测试', card)
+    expect(document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('模型测试未完成：检查频次或并发已达上限')
     const check = vi.mocked(fetch).mock.calls.find(([url, init]) => String(url).endsWith('/models/checks') && init?.method === 'POST')!
     expect(JSON.parse(check[1]!.body as string).source).toEqual({ school: { connectionId: initial.connectionId, version: initial.version } })
     expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/models/grants'))).toBe(false)
@@ -212,7 +212,7 @@ describe('personal model settings recovery through real React controls', () => {
     await toggle('启用供应商 原配置')
     expect(server.enabled).toBe(false); expect(server.providerEnabled).toBe(false); expect(server.modelEnabled).toBe(true)
     expect(document.querySelector('[aria-label="启用模型 synthetic"]')!.getAttribute('aria-checked')).toBe('true')
-    expect(button('连接检查').disabled).toBe(true)
+    expect(button('模型测试').disabled).toBe(true)
     await toggle('启用模型 synthetic'); await toggle('启用供应商 原配置')
     expect(server.providerEnabled).toBe(true); expect(server.modelEnabled).toBe(false); expect(server.enabled).toBe(false)
     expect(saves.every(input => input.credential.action === 'keep')).toBe(true)
@@ -220,7 +220,10 @@ describe('personal model settings recovery through real React controls', () => {
   })
 
   it('adds a second model with its own effort and retains the existing model in one save', async () => {
-    await click('添加模型'); await type('模型 ID 2', 'gpt-5.2')
+    await click('添加模型'); await type('搜索或输入模型 ID', 'gpt-5.2')
+    await act(async () => {
+      document.querySelector('input[aria-label="搜索或输入模型 ID"]')!.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await settle()
+    })
     await act(async () => {
       document.querySelector<HTMLButtonElement>('[aria-label="模型 ID 2的默认思考强度"]')!.click(); await settle()
     })
@@ -266,7 +269,7 @@ describe('personal model settings recovery through real React controls', () => {
   it('blocks save and check after a credential read failure until an explicit retry succeeds', async () => {
     credentialFailure = true; await click('编辑')
     expect(button('保存').disabled).toBe(true)
-    expect(button('保存前检查').disabled).toBe(true)
+    expect(button('模型测试', document.querySelector('[role="dialog"]')!).disabled).toBe(true)
     expect(field('API Key').disabled).toBe(true)
     expect(alerts()).toContain('未能读取已保存的密钥')
     expect(saves).toHaveLength(0)
@@ -295,20 +298,18 @@ describe('personal model settings recovery through real React controls', () => {
       await click('保存')
       expect(document.querySelector('[role="dialog"]')).toBeNull()
       const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
-      expect(card.textContent).toContain('chat-completions · 版本 2')
       expect(card.textContent).toContain('已确认配置')
       rejectCheck = false
-      await click('连接检查', card)
+      await click('模型测试', card)
       const submittedSource = () => JSON.parse(vi.mocked(fetch).mock.calls.filter(([path, options]) =>
         String(path).endsWith('/models/checks') && options?.method === 'POST').at(-1)![1]!.body as string).source
       expect(submittedSource()).toEqual({ connectionId: initial.connectionId, version: 2 })
       await act(async () => { releaseOld(); await settle() })
-      expect(card.textContent).toContain('chat-completions · 版本 2')
-      await click('连接检查', card)
+      expect(card.textContent).toContain('已确认配置')
+      await click('模型测试', card)
       expect(submittedSource()).toEqual({ connectionId: initial.connectionId, version: 2 })
       await act(async () => { releaseFresh(); await settle() }); holdRead = undefined
       server = { ...initial, name: '恢复的配置' }; await poll()
-      expect(card.textContent).toContain('chat-completions · 版本 1')
       expect(card.textContent).toContain('恢复的配置')
       expect(card.textContent).not.toContain('已确认配置')
     } finally {
@@ -319,17 +320,30 @@ describe('personal model settings recovery through real React controls', () => {
   it('preserves an action error through late reads and polls; clears it on successful related retry', async () => {
     const notify = vi.spyOn(feedback.toast, 'error')
     let release!: () => void; holdRead = new Promise(resolve => { release = resolve })
-    await poll(); await click('连接检查')
+    await poll(); await click('模型测试')
     expect(alerts()).toContain('检查频次或并发已达上限')
     await act(async () => { release(); await settle() }); holdRead = undefined
     await poll(); await poll()
     expect(alerts()).toContain('检查频次或并发已达上限')
     expect(notify).toHaveBeenCalledTimes(1)
-    rejectCheck = false; await click('连接检查')
+    rejectCheck = false; await click('模型测试')
     expect(notify).toHaveBeenCalledTimes(1)
-    rejectCheck = true; await click('连接检查')
+    rejectCheck = true; await click('模型测试')
     expect(notify).toHaveBeenCalledTimes(2)
     notify.mockRestore()
+  })
+
+  it('invalidates an old test result when polling discovers a changed model configuration', async () => {
+    rejectCheck = false
+    await click('模型测试')
+    const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
+    expect(card.textContent).toContain('模型测试通过')
+    await poll()
+    expect(card.textContent).toContain('模型测试通过')
+    server = { ...server, version: 2, maxOutputTokens: 32768 }
+    await poll()
+    expect(card.textContent).not.toContain('模型测试通过')
+    expect(checks).toHaveLength(1)
   })
 
   it('publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward', async () => {
@@ -355,7 +369,7 @@ describe('personal model settings recovery through real React controls', () => {
   })
 
   it('clears recovered read errors without erasing an action failure', async () => {
-    await click('连接检查'); readFailure = true; await poll()
+    await click('模型测试'); readFailure = true; await poll()
     expect(alerts()).toContain('连接或相应适配器不可用')
     readFailure = false; await poll()
     expect(document.querySelector('[aria-label="个人连接配置"]')?.textContent).not.toContain('连接或相应适配器不可用')
@@ -363,7 +377,7 @@ describe('personal model settings recovery through real React controls', () => {
   })
 
   it('drops old subject errors, drafts and late responses after an identity change', async () => {
-    await click('连接检查'); await click('编辑'); await type('连接名称', '旧主体草稿')
+    await click('模型测试'); await click('编辑'); await type('连接名称', '旧主体草稿')
     let release!: () => void; holdRead = new Promise(resolve => { release = resolve }); await poll()
     server = { ...server, name: '新主体配置' }
     await mount({ ...identity, principalId: crypto.randomUUID() })

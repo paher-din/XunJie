@@ -230,6 +230,18 @@ export function modelReasoningError(route: ReasoningRoute, maxOutputTokens?: num
     return '此模型的思考预算至少为 1024 token；输出上限必须大于 1024，才能保留最终回答空间。';
 }
 
+/** Check the whole declaration locally; only the selected default is sent to a provider. */
+export function modelReasoningConfigurationError(route: ReasoningRoute, maxOutputTokens?: number): string | undefined {
+  const levels = route.reasoningLevels;
+  if (levels && new Set(levels).size !== levels.length) return '思考档位不能重复。';
+  const current = modelReasoningError(route, maxOutputTokens);
+  if (current) return current;
+  for (const level of levels ?? []) {
+    const error = modelReasoningError({ ...route, reasoningEffort: level }, maxOutputTokens);
+    if (error) return `思考档位 ${level}：${error}`;
+  }
+}
+
 function enabledThinking(route: ReasoningRoute): Record<string, unknown> {
   return { thinking: { type: 'enabled', ...(route.protocol === 'messages' ? { budget_tokens: 1024 } : {}) } };
 }

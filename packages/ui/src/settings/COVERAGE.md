@@ -18,13 +18,17 @@
 | `controls.ModelFields` 模型细项、智能参考值与推理等级编辑 | `ModelFields` | 已迁入，使用公开 `ProviderModel`；参考值不代表实际能力验证 |
 | `SettingsLayout` 外壳、导航、版本、toast 与 keyed 内容容器 | `SettingsLayout` | 已迁入；`children` 内的分区不随外壳计入覆盖 |
 | `RadarChart` 能力雷达图 | `RadarChart` | 已迁入 |
-| `ModelProviderCard` 供应商卡头与框架 | `ModelProviderCard` | 已迁入；`actions` / `children` 内的内容另计 |
+| `ModelProviderCard` 供应商卡头与框架 | `ModelProviderCard` | 已迁入；可选紧凑模式、品牌图形与底部操作；`actions` / `children` 内的内容另计 |
+| 正式供应商的紧凑模型列表行 | `ModelProviderModelRow` | 名称、思考强度、操作列与就近反馈；窄容器换行，启停与测试状态由调用方提供 |
 | `ProviderIdentityFields` 名称、地址、密钥字段 | `ProviderIdentityFields` | 已迁入 |
 | 正式供应商模型 ID、思考强度、容量与手动档位 | `ConnectionModelFields` | 纯表单已迁入；模型资料、档位适配和保存由正式控制器接入；目录与人工声明不代表实际能力验证 |
 | 供应商与接入方式选择、品牌图形 | `SettingsSelect`、`ModelProviderLogo` | Base UI 交互与循阶 token；资源随组件包分发，业务选项由调用方提供 |
 | 设置操作菜单 | `SettingsActionMenu` | 复用循阶按钮和弹层样式，操作及图标由调用方提供 |
 | 预设模型搜索与手填 ID | `ModelIdInput` | Base UI Combobox；列表、加载状态和刷新操作由调用方接入，保留自由输入 |
 | 预设模型选择与逐项展开配置 | `ModelChoiceCard` | 虚线框、选择态和可展开的参数区；选择、配置值与保存由调用方提供 |
+| 模型测试结果与诊断 | `ModelTestFeedback` | Astryx Banner 适配；原因、建议、停止／重试和可复制详情，测试及通知由调用方负责 |
+| 连接／模型测试按钮 | `ModelTestButton` | 复用 Button；文字与单图标两种展示、稳定尺寸、悬停提示、浅深主题及同一按钮停止；测试生命周期由调用方接入 |
+| 拉取模型后的列表、勾选与展开 | `ModelChoiceCard` | 与预设型号复用卡片；搜索、拉取、容量限制及失败／空态由业务接入 |
 | `ModelSettingsFeedback` 已确认保存 / 错误状态槽 | `ModelSettingsFeedback` | 已迁入，使用公开反馈数据类型 |
 | `PrivacyTab.ConfirmAction` 就地二次确认 | `ConfirmAction` | 已迁入 |
 | `AccountTab` 资料表单、文件选择入口、空间信息、安全表单 | `AccountSettingsView` | 视觉已迁入，仍保留原演示文案；表单值、上传及密码回调由适配层提供 |

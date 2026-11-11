@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 // The package's public re-export is connected separately; exercise emitted JS,
 // just as package imports do after the contracts build.
-import { isReasoningEffortSupported, modelReasoningEfforts, modelReasoningError,
+import { isReasoningEffortSupported, modelReasoningEfforts, modelReasoningError, modelReasoningConfigurationError,
   modelReasoningParameters, resolveModelProfile } from '../dist/model-reasoning.js';
 import type { ReasoningEffort, ReasoningRoute } from '../src/model-reasoning.ts';
 
@@ -12,6 +12,17 @@ const route = (modelId: string, changes: Partial<ReasoningRoute> = {}): Reasonin
 });
 const parameters = (modelId: string, effort: ReasoningEffort, changes: Partial<ReasoningRoute> = {}, output = 8192) =>
   modelReasoningParameters(route(modelId, { reasoningEffort: effort, ...changes }), output);
+
+test('whole declaration checks every level without sending or changing the selected default', () => {
+  const configured = route('custom-alias', { protocol: 'messages', reasoningEffort: 'auto', reasoningLevels: ['low', 'minimal', 'high'] });
+  const copy = structuredClone(configured);
+  assert.match(modelReasoningConfigurationError(configured, 8192) ?? '', /minimal/);
+  assert.deepEqual(configured, copy);
+  assert.match(modelReasoningConfigurationError({ ...configured, reasoningLevels: ['low', 'low'] }) ?? '', /重复/);
+  assert.match(modelReasoningConfigurationError({ ...configured, reasoningLevels: ['enabled', 'high'] }) ?? '', /不能.*混合/);
+  assert.match(modelReasoningConfigurationError({ ...configured, reasoningEffort: 'high', reasoningLevels: ['low'] }) ?? '', /high/);
+  assert.equal(modelReasoningConfigurationError({ ...configured, reasoningLevels: ['low', 'high'] }, 8192), undefined);
+});
 
 test('OpenAI effort ladders are model specific, including Pro and Codex restrictions', () => {
   const cases: [string, ReasoningEffort[]][] = [

@@ -4,11 +4,12 @@ import type { WorkFile } from '@xunjie/contracts/learning-data';
 import type { LearningModelPort } from '../model-connections/service.js';
 import type { TeachingToolScope } from './tool-types.js';
 import type { PdfReading } from '@xunjie/contracts/pdf-materials';
+import { modelAllowsImages } from '@xunjie/contracts/model-connections';
 export type TeachingImageModels = Pick<LearningModelPort, 'images' | 'segments'>;
 export async function imageRoute(scope: TeachingToolScope, models?: TeachingImageModels) {
   if (!models || !scope.segmentId) return { available: false as const, reason: 'fixed-model-segment-required' };
   const segment = await models.segments.read(scope.identity, scope.segmentId);
-  return { available: segment.connection.capabilities.images === 'verified', segmentId: segment.segmentId,
+  return { available: modelAllowsImages(segment.connection), segmentId: segment.segmentId,
     connection: segment.connection };
 }
 function imageIdentity(kind: string, commandId: string, contentId: string) {

@@ -102,6 +102,11 @@ SOFTWARE.
 
 # Astryx
 
+`src/settings/ModelTestFeedback.tsx` wraps the installed Astryx `Banner` for
+persistent test failures and partial results. XunJie tokens, typography and
+scoped CSS adapt its presentation; status, actions and diagnostic text are
+provided by the caller. Astryx's license is distributed with the dependency.
+
 `src/foundation/DestructiveButton.tsx` wraps Astryx `Button` from
 `@astryxdesign/core@0.7.12`; its colors, sizing and focus follow XunJie tokens.
 

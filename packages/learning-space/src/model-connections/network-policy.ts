@@ -52,7 +52,14 @@ export async function resolveModelTarget(configuration: ModelConfiguration, targ
   const { url, hostname, literal } = checkUrl(configuration, target);
   let addresses: Address[];
   try { addresses = literal ? [{ address: hostname, family: literal }] : await resolve(hostname); }
-  catch { throw new StorageError('unavailable'); }
+  catch (cause) {
+    const error = new StorageError('unavailable');
+    const code = cause && typeof cause === 'object' && 'code' in cause ? cause.code : undefined;
+    const networkCode = typeof code === 'string' && ['ENOTFOUND', 'EAI_AGAIN', 'EAI_NONAME', 'ETIMEDOUT'].includes(code) ? code : undefined;
+    // Preserve the storage code; only the allowlisted native network code survives.
+    if (networkCode) error.cause = { code: networkCode };
+    throw error;
+  }
   if (!addresses.length || addresses.some(item => !modelAddressAllowed(item.address, target))) throw new StorageError('forbidden');
   return { url, hostname, addresses };
 }

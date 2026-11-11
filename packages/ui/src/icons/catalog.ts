@@ -1,5 +1,11 @@
 // 2026-10-10 图标评审定稿。SVG 是唯一图形来源；页面与看板共用此清单。
 export const iconCatalog = {
+  "minus-circle": {
+    "label": "已停用", "tone": "neutral", "variant": "linear",
+    "usages": [{ "label": "技能停用通知", "group": "设置页", "scope": "现有", "reviewId": "" }],
+    "files": { "linear": "minus-circle-linear.svg" }, "source": "Project", "author": "学习空间项目",
+    "license": "Project", "sourceUrl": "", "modified": false
+  },
   "provider-custom": {
     "label": "自定义供应商", "tone": "neutral", "variant": "linear",
     "usages": [{ "label": "自定义供应商接入", "group": "设置页", "scope": "现有", "reviewId": "" }],

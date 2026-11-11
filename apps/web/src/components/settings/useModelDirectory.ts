@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ModelDirectory, ModelDirectoryInput } from '@xunjie/contracts/model-connections'
 
-export type ReadModelDirectory = (input: ModelDirectoryInput) => Promise<ModelDirectory>
+export type ReadModelDirectory = (input: ModelDirectoryInput, signal?: AbortSignal) => Promise<ModelDirectory>
 
 /** Cached reads are local; only ensure/refresh can initiate an upstream request. */
 export function useModelDirectory(read: ReadModelDirectory | undefined, input: ModelDirectoryInput, enabled = true) {
@@ -9,7 +9,7 @@ export function useModelDirectory(read: ReadModelDirectory | undefined, input: M
   const value = input.credential?.action === 'replace' ? input.credential.value : input.credential?.action ?? ''
   if (credentialIdentity.current.value !== value) credentialIdentity.current = { value, revision: credentialIdentity.current.revision + 1 }
   // Keep credentials out of cache keys and status text.
-  const key = JSON.stringify([input.presetId, input.variantId, input.baseUrl, input.protocol,
+  const key = JSON.stringify([input.presetId, input.variantId, input.baseUrl, input.protocol, input.source,
     input.savedCredential, credentialIdentity.current.revision])
   const current = useRef({ input, key, read, enabled }); current.current = { input, key, read, enabled }
   const generation = useRef(0), active = useRef(true)

@@ -161,13 +161,14 @@ it('adds model IDs from the search field with Enter or the adjacent button witho
 it('uses the same search/add row for custom models and saves filtered-out drafts with their own capacities', async () => {
   const { onSave } = await draw(provider(), undefined, { provider: null })
   await type('连接名称', '自定义供应商'); await type('Base URL', 'https://example.invalid/v1')
-  await type('模型 ID的上下文窗口', '512K')
+  expect(document.querySelectorAll('.st-model-choice')).toHaveLength(0)
+  expect(document.querySelector('[aria-label="自定义模型"]')!.textContent).toBe('')
   await type('搜索或输入模型 ID', 'custom-alpha'); await click('保存')
   expect(onSave).not.toHaveBeenCalled()
-  expect(input('模型 ID').value).toBe('')
+  expect(input('模型 ID')).toBeNull()
   await type('搜索或输入模型 ID', 'custom-alpha'); await click('添加模型')
   expect(input('模型 ID').value).toBe('custom-alpha')
-  expect(input('模型 ID的上下文窗口').value).toBe('512K')
+  await type('模型 ID的上下文窗口', '512K')
   await type('搜索或输入模型 ID', 'custom-beta'); await click('添加模型')
   expect(input('模型 ID 2').value).toBe('custom-beta')
   await type('模型 ID 2的最大输出 token', '128K')
@@ -282,7 +283,8 @@ it('explains a supplier model-list 404 on add-model entry while allowing the dra
   const message = document.querySelector('[data-sonner-toast][data-type="error"]')?.textContent;
   expect(message).toContain('供应商模型列表接口不存在（HTTP 404）');
   expect(message).toContain('手动填写模型 ID');
-  await type('模型 ID 2', 'manually-added-model'); await click('保存');
+  expect(document.activeElement).toBe(input('搜索或输入模型 ID'));
+  await chooseModel('manually-added-model'); await click('保存');
   expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['custom-model', 'manually-added-model']);
 });
 

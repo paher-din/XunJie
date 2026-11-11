@@ -443,10 +443,16 @@ export function createLearningEntry(options: {
         if (!options.models && route === 'models/school-default' && method === 'GET') { sendLearning(response, 200, null); return true; }
         if (!options.models) throw new StorageError('unavailable');
         if (method !== 'GET' && method !== 'POST') throw new StorageError('missing');
-        result = route === 'models/school-default' && method === 'GET' ? await options.models.school.read(identity)
-          : await routeModels(options.models, identity, route, method === 'POST'
-          ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
-          personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined);
+        const modelRequest = new AbortController();
+        const disconnect = () => { if (!response.writableEnded) modelRequest.abort(); };
+        response.on('close', disconnect);
+        if (request.aborted || response.destroyed) disconnect();
+        try {
+          result = route === 'models/school-default' && method === 'GET' ? await options.models.school.read(identity)
+            : await routeModels(options.models, identity, route, method === 'POST'
+            ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
+            personalProfile ? await (readOnly ? spaces.readPersonal() : spaces.personal()) : undefined, modelRequest.signal);
+        } finally { response.off('close', disconnect); }
       } else if (!learning) throw new StorageError('forbidden');
       else if (route === 'study-transfer' && method === 'GET') {
         const identity = await current(request);

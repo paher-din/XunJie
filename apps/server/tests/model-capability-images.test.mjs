@@ -20,9 +20,10 @@ await build({ stdin: { contents: `
   export { routeModels } from './packages/learning-space/src/model-connections/wire.ts';
   export { learningFailure } from './packages/learning-space/src/learning-entry/index.ts';
   export { runChat } from './packages/learning-space/src/model-connections/chat.ts';
+  export { imageRoute } from './packages/learning-space/src/teaching-agent/tools-images.ts';
 `, resolveDir: repository }, outfile: join(temporary, 'source.mjs'), bundle: true, platform: 'node',
   format: 'esm', packages: 'external', alias: { '@xunjie/contracts': join(repository, 'packages/contracts/src') } });
-const { capabilities, contracts, createChatWork, routeModels, learningFailure, runChat } = await import(pathToFileURL(join(temporary, 'source.mjs')));
+const { capabilities, contracts, createChatWork, routeModels, learningFailure, runChat, imageRoute } = await import(pathToFileURL(join(temporary, 'source.mjs')));
 const identity = { kind: 'personal', environmentId: randomUUID(), spaceId: randomUUID(), principalId: randomUUID() };
 const tool = { name: 'read_marker', description: '', inputSchema: { type: 'object', properties: {}, additionalProperties: false } };
 function connection(overrides = {}) {
@@ -53,6 +54,34 @@ function fixture(fixed = connection()) {
     work: createChatWork(storage, images, owner), counts: () => ({ snapshots, writes, dispatches }) };
 }
 const prefix = options => ({ system: 'fixed', tools: [tool], options });
+test('explicit image permission enables an unmeasured route without upgrading measured evidence', async () => {
+  const fixed = connection({ imageInput: true }), before = structuredClone(fixed.capabilities);
+  const decision = capabilities.decideModelCapabilities(fixed, prefix({ requiredCapabilities: ['images'] }));
+  assert.equal(decision.available, true);
+  assert.deepEqual(decision.items.find(item => item.capability === 'images').evidence, { state: 'declared', source: 'user-configuration' });
+  assert.deepEqual(fixed.capabilities, before);
+  assert.equal((await imageRoute({ identity, segmentId: 'fixed' }, { segments: { read: async () => ({ connection: fixed }) } })).available, true);
+  fixed.imageInput = false; fixed.capabilities.images = 'verified';
+  assert.equal(capabilities.decideModelCapabilities(fixed, prefix({ requiredCapabilities: ['images'] })).available, false);
+  assert.equal((await imageRoute({ identity, segmentId: 'fixed' }, { segments: { read: async () => ({ connection: fixed }) } })).available, false);
+  delete fixed.imageInput;
+  assert.equal((await imageRoute({ identity, segmentId: 'fixed' }, { segments: { read: async () => ({ connection: fixed }) } })).available, true);
+});
+for (const protocol of ['chat-completions', 'responses', 'messages']) test(`${protocol}: explicit image disable blocks native image dispatch`, async () => {
+  const f = fixture(connection({ protocol, imageInput: false,
+    path: { 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' }[protocol] }));
+  const segmentId = randomUUID(), image = { imageId: randomUUID(), version: 1 };
+  f.imageBytes.set(image.imageId, 'aGVsbG8=');
+  f.segments.set(segmentId, { segmentId, sequence: 0, snapshot: f.snapshot, prefix: { system: 'fixed', tools: [] }, portable: [],
+    headAttemptId: null, pendingAttemptId: null, closed: false });
+  const input = { attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 0,
+    input: { text: 'image', images: [image], toolResults: [], observations: [] }, limits: { maxOutputTokens: 128, timeoutMs: 1000 } };
+  await assert.rejects(f.work.prepare(identity, input), error => error instanceof capabilities.ModelCapabilityError
+    && error.decision.limitations.includes('image-input-disabled'));
+  f.fixed.imageInput = true;
+  const prepared = await f.work.prepare(identity, input);
+  assert.ok(JSON.stringify(prepared.payload).includes('data:image/png;base64,') || JSON.stringify(prepared.payload).includes('"media_type":"image/png"'));
+});
 test('SPC-03 public preflight and create share every missing capability and a safe fixed-route DTO', async () => {
   const f = fixture();
   const input = { source: { connectionId: f.fixed.connectionId, version: 3 }, prefix: prefix({ requiredCapabilities: ['images', 'nativeReplay'] }) };

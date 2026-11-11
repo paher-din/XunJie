@@ -1,11 +1,13 @@
 import { createHmac } from 'node:crypto';
 import { StorageError } from '@xunjie/storage';
-import { modelDirectoryInputSchema, modelDirectorySchema, modelDirectoryEntrySchema, modelReasoningEfforts,
+import { modelDirectoryInputSchema, modelConnectionTestInputSchema, modelConnectionTestResultSchema, modelDirectorySchema, modelDirectoryEntrySchema, modelReasoningEfforts,
   maximumModelTokenCount, getModelPreset, type ModelDirectory, type ModelDirectoryEntry, type ModelDirectoryInput,
-  type ModelConfiguration, type ReasoningEffort } from '@xunjie/contracts/model-connections';
+  type ModelConnectionTestResult, type ModelConfiguration, type ReasoningEffort } from '@xunjie/contracts/model-connections';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { CatalogueFailure, readCatalogueJson } from './catalogue-cache.js';
+import { CatalogueFailure } from './catalogue-cache.js';
 import type { createModelProfiles } from './profiles.js';
+import { errorFacts } from './upstream-facts.js';
+import { supplierBounded, supplierCancelled, supplierFailure, supplierMissingCredential, supplierPassed, supplierTestStatus, readSupplierJson } from './supplier-diagnostics.js';
 
 type Protocol = ModelConfiguration['protocol'];
 export type DirectorySource = { baseUrl: string; protocol: Protocol; modelsUrl: string; catalogues: readonly string[];
@@ -15,7 +17,7 @@ export type DirectoryHooks = {
   authorize(identity: SpaceIdentity): Promise<void>;
   credential(identity: SpaceIdentity, input: ModelDirectoryInput, source: DirectorySource): Promise<string>;
   source(input: ModelDirectoryInput): DirectorySource | undefined;
-  requestFetch(source: DirectorySource): Promise<typeof fetch>;
+  requestFetch(source: DirectorySource, signal?: AbortSignal): Promise<typeof fetch>;
   key: Uint8Array; now?: () => number;
 };
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -81,33 +83,86 @@ export function createModelDirectory(profiles: ReturnType<typeof createModelProf
       source.modelsUrl, source.protocol, credential,
     ])).digest('hex');
   }
-  async function read(identity: SpaceIdentity, value: unknown): Promise<ModelDirectory> {
+  const tests = new Set<{ controller: AbortController; promise: Promise<ModelConnectionTestResult> }>();
+  let closed = false;
+  async function supplierGet(source: DirectorySource, credential: string, signal?: AbortSignal) {
+    const bounded = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(10000)]);
+    try {
+      bounded.throwIfAborted();
+      const requestFetch = await supplierBounded(hooks.requestFetch(source, bounded), bounded);
+      bounded.throwIfAborted();
+      const header = source.auth === 'api-key' ? 'api-key' : source.auth === 'x-api-key' || !source.auth && source.protocol === 'messages' ? 'x-api-key' : 'authorization';
+      const response = await supplierBounded(requestFetch(source.modelsUrl, { method: 'GET', redirect: 'error',
+        headers: { [header]: header === 'authorization' ? 'Bearer ' + credential : credential,
+          ...(source.protocol === 'messages' ? { 'anthropic-version': '2023-06-01' } : {}) }, signal: bounded }), bounded);
+      const { value, upstream } = await supplierBounded(readSupplierJson(response, credential, now), bounded);
+      try { return { models: parseSupplierModels(value, credential), upstream }; }
+      catch {
+        throw new CatalogueFailure('invalid-response', undefined, response.status, undefined, upstream);
+      }
+    } catch (error) { throw supplierFailure(error, credential, bounded); }
+  }
+  async function testConnection(identity: SpaceIdentity, value: unknown, signal?: AbortSignal): Promise<ModelConnectionTestResult> {
     await hooks.authorize(identity);
-    const input = modelDirectoryInputSchema.parse(value), source = hooks.source(input);
-    const credential = source ? await hooks.credential(identity, input, source) : '';
-    const key = source && credential ? supplierKey(identity, input, source, credential) : undefined;
-    let catalogue = profiles.refreshState(), supplier = source ? key ? profiles.cache.read(key) : { status: 'needs-credential' as const } : undefined;
-    if (input.refresh || input.manual) {
-      // Independent writes make a fast supplier visible to read-only polling while the public feed is slow.
-      const publicRefresh = profiles.update(input.manual === true);
-      const supplierRefresh = source && key ? profiles.cache.refresh(key, async signal => {
-        const bounded = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
-        const requestFetch = await new Promise<typeof fetch>((resolve, reject) => {
-          const aborted = () => reject(new CatalogueFailure(bounded.reason instanceof Error && bounded.reason.name === 'TimeoutError' ? 'timeout' : 'offline'));
-          if (bounded.aborted) { aborted(); return; }
-          bounded.addEventListener('abort', aborted, { once: true });
-          hooks.requestFetch(source).then(resolve, reject).finally(() => bounded.removeEventListener('abort', aborted));
-        });
+    const input = modelConnectionTestInputSchema.parse(value);
+    if (closed) throw new StorageError('maintenance');
+    const started = performance.now(), controller = new AbortController();
+    const bounded = AbortSignal.any([controller.signal, ...(signal ? [signal] : []), AbortSignal.timeout(10000)]);
+    const promise = (async (): Promise<ModelConnectionTestResult> => {
+      let source: DirectorySource | undefined, credential = input.credential?.action === 'replace' ? input.credential.value : '';
+      // Invalid URLs must never echo embedded authentication or query-string secrets.
+      const safeUrl = (value: string) => {
+        try {
+          const url = new URL(value);
+          return url.username || url.password || url.search || url.hash ? '' : errorFacts({ message: url.href }, credential).message ?? '';
+        } catch { return ''; }
+      };
+      let baseUrl = safeUrl(input.baseUrl ?? ''), endpoint = '', protocol = input.protocol ?? 'chat-completions';
+      const result = (status: ModelConnectionTestResult['status'], details: Partial<ModelConnectionTestResult> = {}) =>
+        modelConnectionTestResultSchema.parse({ status, baseUrl: safeUrl(baseUrl), protocol, endpoint: safeUrl(endpoint), elapsedMs: Math.max(0, performance.now() - started), ...details });
+      try {
         bounded.throwIfAborted();
-        const header = source.auth === 'api-key' ? 'api-key' : source.auth === 'x-api-key' ? 'x-api-key' : 'authorization';
-        const response = await requestFetch(source.modelsUrl, { method: 'GET', redirect: 'error',
-          headers: { [header]: header === 'authorization' ? 'Bearer ' + credential : credential,
-            ...(source.protocol === 'messages' ? { 'anthropic-version': '2023-06-01' } : {}) },
-          signal: bounded });
-        return parseSupplierModels(await readCatalogueJson(response, now), credential);
-      }, input.manual === true) : Promise.resolve(supplier);
+        source = hooks.source(input);
+        if (!source) throw new StorageError('invalid');
+        baseUrl = source.baseUrl; endpoint = source.modelsUrl; protocol = source.protocol;
+        credential = await supplierBounded(hooks.credential(identity, input, source), bounded);
+        if (!credential) return result('failed', { diagnostic: supplierMissingCredential() });
+        const read = await supplierBounded(supplierGet(source, credential, bounded), bounded);
+        return result('passed', { modelCount: read.models.length, diagnostic: supplierPassed(), upstream: read.upstream });
+      } catch (error) {
+        if (signal?.aborted || controller.signal.aborted) return result('cancelled', { diagnostic: supplierCancelled() });
+        const failure = supplierFailure(error, credential, bounded);
+        return result(supplierTestStatus(failure), { diagnostic: failure.diagnostic, ...(failure.upstream ? { upstream: failure.upstream } : {}) });
+      }
+    })();
+    const entry = { controller, promise }; tests.add(entry);
+    try { return await promise; } finally { tests.delete(entry); }
+  }
+  async function read(identity: SpaceIdentity, value: unknown, signal?: AbortSignal): Promise<ModelDirectory> {
+    await hooks.authorize(identity);
+    const input = modelDirectoryInputSchema.parse(value);
+    const supplierOnly = input.source === 'supplier', catalogueOnly = input.source === 'catalogue';
+    let source: DirectorySource | undefined, credential = '', supplierError: ReturnType<typeof supplierFailure> | undefined;
+    const bounded = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(10000)]);
+    try {
+      source = hooks.source(input);
+      if (supplierOnly && !source) throw new StorageError('invalid');
+      credential = source && !catalogueOnly ? await supplierBounded(hooks.credential(identity, input, source), bounded) : '';
+    }
+    catch (error) { if (!supplierOnly) throw error; supplierError = supplierFailure(error, credential, bounded); }
+    const key = source && credential ? supplierKey(identity, input, source, credential) : undefined;
+    let catalogue = profiles.refreshState(), supplier = (source || supplierError) && !catalogueOnly
+      ? supplierError ? { status: 'failed' as const, error: supplierError.kind, diagnostic: supplierError.diagnostic }
+        : key ? profiles.cache.read(key) : { status: 'needs-credential' as const, diagnostic: supplierMissingCredential() } : undefined;
+    if (input.refresh || input.manual) {
+      const publicRefresh = supplierOnly ? Promise.resolve(catalogue) : profiles.update(input.manual === true);
+      const supplierRefresh = !catalogueOnly && source && key ? profiles.cache.refresh(key, async cacheSignal => {
+        const requestSignal = AbortSignal.any([cacheSignal, bounded]);
+        return (await supplierGet(source, credential, requestSignal)).models;
+      }, input.manual === true, { ...(signal ? { signal } : {}), fresh: supplierOnly }) : Promise.resolve(supplier);
       [catalogue, supplier] = await Promise.all([publicRefresh, supplierRefresh]);
     }
+    if (signal?.aborted && !catalogueOnly) supplier = { status: 'failed', error: 'offline', diagnostic: supplierCancelled() };
     const seed = source?.models ?? [], publicEntries = profiles.directoryEntries(source?.catalogues ?? [], source?.baseUrl,
       input.presetId && input.presetId !== 'custom' && source ? { presetId: input.presetId, ...(input.variantId ? { variantId: input.variantId } : {}),
         baseUrl: source.baseUrl, protocol: source.protocol } : undefined);
@@ -115,7 +170,7 @@ export function createModelDirectory(profiles: ReturnType<typeof createModelProf
     const merged = new Map<string, ModelDirectoryEntry>();
     for (const entry of [...seed, ...publicEntries]) merged.set(entry.modelId, { ...merged.get(entry.modelId), ...entry });
     // Once the account's own list is available, it determines available IDs; seed/catalogue only fill missing fields.
-    const models = (actual !== undefined ? actual.map(entry => ({ ...merged.get(entry.modelId), ...entry })) : [...merged.values()])
+    const models = (actual !== undefined ? actual.map(entry => ({ ...merged.get(entry.modelId), ...entry })) : supplierOnly ? [] : [...merged.values()])
       .map(entry => {
         const model = { ...entry, ...source?.route?.(entry.modelId, entry.protocols ?? (entry.protocol ? [entry.protocol] : undefined)) };
         if (model.defaultEffort && model.efforts && !model.efforts.includes(model.defaultEffort)) delete model.defaultEffort;
@@ -123,8 +178,10 @@ export function createModelDirectory(profiles: ReturnType<typeof createModelProf
       });
     return modelDirectorySchema.parse({ models, catalogue, ...(supplier ? { supplier } : {}) });
   }
-  return { read,
-    close: () => profiles.cache.close(), resume: () => profiles.cache.resume(), drain: () => profiles.cache.drain(),
+  return { read, testConnection,
+    close() { closed = true; for (const test of tests) test.controller.abort(); profiles.cache.close(); },
+    resume() { closed = false; profiles.cache.resume(); },
+    async drain() { await Promise.all([profiles.cache.drain(), ...[...tests].map(test => test.promise)]); },
     async validate() {
       await profiles.cache.validate(); profiles.validate();
       for (const [key, state] of profiles.cache.entries()) if (key.startsWith('supplier:') && state.data !== undefined

@@ -4,12 +4,14 @@ import { storageOwnerSchema } from './storage.js';
 import { modelReasoningEfforts } from './model-reasoning.js';
 import { maximumModelTokenCount } from './model-capacity.js';
 import { modelPresetIdSchema } from './model-directory.js';
+import { modelDiagnosticFactsSchema, modelDiagnosticSchema } from './model-diagnostics.js';
 export * from './model-directory.js';
+export * from './model-diagnostics.js';
 export { modelProviderPresets, getModelPreset, resolvePresetModelRoute } from './model-presets.js';
 export type { ModelProviderPreset, ModelPresetVariant, PresetModel, ModelPresetProtocol } from './model-presets.js';
 export { modelCapacityDefaults, maximumModelTokenCount, resolveModelCapacity, parseModelTokenCount,
   modelTokenCountError, formatModelTokenCount } from './model-capacity.js';
-export { modelReasoningEfforts, resolveModelProfile, modelReasoningParameters, modelReasoningError } from './model-reasoning.js';
+export { modelReasoningEfforts, resolveModelProfile, modelReasoningParameters, modelReasoningError, modelReasoningConfigurationError } from './model-reasoning.js';
 export type { ReasoningEffort, ReasoningRoute } from './model-reasoning.js';
 
 const reasoningLevelsSchema = z.array(z.enum(['none', 'enabled', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])).max(8)
@@ -43,6 +45,8 @@ export const modelConfigurationSchema = z.object({
   /** Learning calls use the values saved with the connection, never probe limits. */
   contextWindow: z.number().int().min(1).max(maximumModelTokenCount).optional(),
   maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount).optional(),
+  /** Explicit permission to send images; missing retains the existing measured-route behavior. */
+  imageInput: z.boolean().optional(),
   reasoningEffort: z.enum(modelReasoningEfforts).optional(),
   reasoningLevels: reasoningLevelsSchema.optional(),
   reasoningSource: z.enum(['catalogue', 'manual', 'profile', 'unknown']).optional(),
@@ -72,6 +76,9 @@ export const modelConnectionSchema = modelConfigurationSchema.safeExtend({ versi
     toolImageStrategy: z.enum(['paired-text-adjacent-user-image', 'native-function-output-image', 'native-tool-result-image', 'not-applicable']), limitations: z.array(z.string()) }).strict().optional() });
 export type ModelConfiguration = z.infer<typeof modelConfigurationSchema>;
 export type ModelConnection = z.infer<typeof modelConnectionSchema>;
+export function modelAllowsImages(connection: Pick<ModelConnection, 'imageInput' | 'capabilities'>): boolean {
+  return connection.imageInput ?? connection.capabilities.images === 'verified';
+}
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
 
 export const modelProviderSchema = z.object({ providerId: z.uuid(), version: z.number().int().nonnegative(),
@@ -82,6 +89,7 @@ export const providerModelInputSchema = z.object({ connectionId: z.uuid(), expec
   modelId: z.string().trim().min(1).max(200), enabled: z.boolean(), reasoningEffort: z.enum(modelReasoningEfforts).optional(),
   protocol: modelProtocolSchema.optional(), baseUrl: modelBaseUrlSchema.optional(),
   reasoningLevels: reasoningLevelsSchema.optional(),
+  imageInput: z.boolean().optional(),
   contextWindow: z.number().int().min(1).max(maximumModelTokenCount).optional(), maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount).optional() }).strict()
   .refine(value => (value.protocol === undefined) === (value.baseUrl === undefined), 'Model route requires both protocol and baseUrl')
   .refine(value => !value.baseUrl || !modelBaseUrlError(value.baseUrl, value.protocol!), { path: ['baseUrl'], message: 'Invalid model base URL' });
@@ -104,7 +112,7 @@ export const modelProfilesSchema = z.object({ profiles: z.array(modelProfileSche
 export type ModelProfile = z.infer<typeof modelProfileSchema>;
 
 export const modelCheckPolicySchema = z.object({ checksAllowed: z.boolean(), maxChecksPerHour: z.number().int().min(1).max(60),
-  maxOutputTokens: z.number().int().min(1).max(2048), timeoutMs: z.number().int().min(250).max(30000) }).strict();
+  maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount), timeoutMs: z.number().int().min(250).max(120000) }).strict();
 export const schoolModelInputSchema = saveModelConnectionSchema.safeExtend({ policy: modelCheckPolicySchema });
 export const schoolModelSchema = z.object({ kind: z.literal('school'), connection: modelConnectionSchema,
   policy: modelCheckPolicySchema }).strict();
@@ -125,22 +133,22 @@ export const modelGrantSchema = z.object({ grantId: z.uuid(), connectionId: z.uu
 export const revokeModelGrantSchema = z.object({ requestId: z.uuid(), expectedVersion: z.number().int().positive() }).strict();
 export type ModelCheckPolicy = z.infer<typeof modelCheckPolicySchema>;
 
+export const modelCheckItemSchema = z.object({ runId: z.uuid(), item: z.enum(['text', 'images']) }).strict();
 export const modelCheckInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
+  test: modelCheckItemSchema.optional(),
   source: z.union([
     z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
     z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative(), pinId: z.uuid().optional() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
     z.object({ draft: modelConfigurationSchema, credential: modelCredentialChangeSchema,
       savedCredential: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional() }).strict(),
-  ]), limits: z.object({ maxOutputTokens: z.number().int().min(1).max(128), timeoutMs: z.number().int().min(250).max(30000) }).strict(),
+  ]), limits: z.object({ maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount), timeoutMs: z.number().int().min(250).max(120000) }).strict(),
 }).strict();
 export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'unknown']),
   inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
   reasoningTokens: z.number().nonnegative().optional() }).strict();
-export const modelUpstreamSchema = z.object({ httpStatus: z.number().int().min(100).max(599).optional(),
-  requestId: z.string().regex(/^[A-Za-z0-9._:-]{1,200}$/).optional(),
-  retryAfterSeconds: z.number().nonnegative().max(31536000).optional(), retryAt: z.iso.datetime().optional() }).strict();
+export const modelUpstreamSchema = modelDiagnosticFactsSchema;
 export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.literal(1) }).strict();
 export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
   dataBase64: z.string().min(1).max(350000), source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
@@ -185,7 +193,7 @@ export const modelCapabilityRequirementSchema = z.enum([
 export const modelCapabilityItemSchema = z.object({
   capability: modelCapabilityRequirementSchema, status: z.enum(['available', 'unknown', 'unsupported']),
   evidence: z.object({ state: capabilityStateSchema,
-    source: z.enum(['measured-route', 'unmeasured-route', 'application-validator', 'adapter-constraint']) }).strict(),
+    source: z.enum(['measured-route', 'unmeasured-route', 'application-validator', 'adapter-constraint', 'user-configuration']) }).strict(),
 }).strict();
 /** Only fixed route identity and reviewed capability facts, never endpoint, scopes or credential references. */
 export const modelCapabilityDecisionSchema = z.object({
@@ -231,9 +239,10 @@ export const modelLearningInputSchema = z.object({ attemptId: z.uuid(), purpose:
     timeoutMs: z.number().int().min(250).max(2_147_483_647).optional() }).strict() }).strict();
 export const modelAttemptInputSchema = z.union([modelCheckInputSchema, modelChatInputSchema, modelLearningInputSchema]);
 export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.enum(['connection-check', 'chat-probe', 'learning']),
+  test: modelCheckItemSchema.optional(), diagnostic: modelDiagnosticSchema.optional(),
   source: z.object({ kind: z.enum(['school', 'personal']), ownerScope: z.string().min(1).max(500),
     feeSource: z.string().min(1).max(500), grantId: z.uuid().optional(), grantVersion: z.number().int().positive().optional() }).strict().optional(),
-  connection: modelConnectionSchema, limits: modelLearningInputSchema.shape.limits,
+  connection: modelConnectionSchema, limits: modelLearningInputSchema.shape.limits.extend({ maxOutputTokens: z.number().int().min(1).max(maximumModelTokenCount) }),
   segment: z.object({ segmentId: z.uuid(), sequence: z.number().int().nonnegative() }).strict().optional(),
   toolIntents: z.array(modelToolIntentSchema).max(8).optional(),
   state: z.enum(['accepted', 'dispatched', 'completed', 'incomplete', 'failed', 'cancelled', 'unknown']),

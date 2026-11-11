@@ -7830,7 +7830,7 @@ button.outline.danger {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.st-route-list-head, .st-route-editor-head, .st-configured-model-head, .st-provider-bottom, .st-route-check {
+.st-route-list-head, .st-route-editor-head, .st-provider-bottom {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -7840,22 +7840,12 @@ button.outline.danger {
 .st-route-editor { display: flex; flex-direction: column; gap: 16px; }
 .st-route-editor + .st-route-editor { border-top: 1px solid var(--line); padding-top: 24px; margin-top: 24px; }
 .st-route-editor-head { justify-content: space-between; font-size: 13px; color: var(--muted); }
-.st-route-check { min-width: 0; gap: 8px; }
-.st-route-check .ui-select-trigger { max-width: 140px; min-width: 0; font-size: 12px; }
 .st-configured-models { margin-top: 16px; }
 .st-configured-model { border-top: 1px solid var(--line); padding: 16px 0; }
-.st-configured-model-head .st-model-chip { overflow-wrap: anywhere; min-width: 0; }
-.st-configured-model-head .st-toggle { margin-left: auto; flex: none; }
 .st-configured-model-effort { font-size: 12px; color: var(--muted); }
-.st-configured-model details { margin-top: 12px; font-size: 12px; color: var(--muted); }
 .st-configured-model .detail, .st-provider-bottom .detail { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
 .st-provider-bottom { flex-wrap: wrap; }
 .st-toggle:disabled { opacity: 0.45; cursor: wait; }
-@media (max-width: 600px) {
-  .st-route-check { flex-wrap: wrap; }
-  .st-route-check .ui-select-trigger { max-width: 120px; }
-  .st-configured-model-head { flex-wrap: wrap; }
-}
 .st-provider-models {
   display: flex;
   flex-wrap: wrap;

@@ -7,7 +7,7 @@ import { modelReasoningParameters } from '@xunjie/contracts/model-connections';
 import { createMessagesAssembler, messagesUsage, messagesOutput, validateMessagesNative, messagesEventSensitiveValues } from './messages-native.js';
 import { compileOutputSchema } from './chat-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
-import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
+import { responseFacts, contextCapacityFailure, errorFacts, networkFailureReason } from './upstream-facts.js';
 export { validateMessagesNative } from './messages-native.js';
 
 export const messagesSdkVersion = '@anthropic-ai/sdk@1.1.0';
@@ -63,19 +63,20 @@ export async function runMessages(configuration: ModelConfiguration, apiKey: str
     const status = (error instanceof Anthropic.APIError ? error.status : undefined)
       ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
     if (!upstream && status && error instanceof Anthropic.APIError) upstream = responseFacts(status, error.headers ?? new Headers(), apiKey);
+    upstream = { ...upstream, ...errorFacts(error, apiKey) };
     const malformed = error instanceof StorageError || error instanceof SyntaxError;
     const confirmedStreamError = error instanceof Anthropic.APIError && !(error instanceof Anthropic.APIConnectionError)
       && !(error instanceof Anthropic.APIUserAbortError);
-    const type = error instanceof Anthropic.APIError && error.error && typeof error.error === 'object'
-      ? JSON.stringify(error.error) : '';
-    const unsupported = /unsupported_model|model_not_supported|model_not_found|unsupported_parameter|unsupported_value/.test(type);
+    const unsupported = ['unsupported_model', 'model_not_supported', 'model_not_found', 'unsupported_parameter', 'unsupported_value']
+      .includes(upstream.errorCode ?? '');
     state = malformed || status || confirmedStreamError ? 'failed'
       : signal.aborted ? 'cancelled' : events.length ? 'incomplete' : 'unknown';
     reason = malformed ? 'malformed-response' : status === 401 || status === 403 ? 'authentication'
       : status === 429 ? 'rate-limited' : contextCapacityFailure(error instanceof Anthropic.APIError ? error.error : null, status)
         ? 'context-capacity-exceeded' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
       : confirmedStreamError ? 'upstream-stream-error' : signal.aborted ? 'client-abort'
-      : deadline.aborted || error instanceof Anthropic.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
+      : deadline.aborted || error instanceof Anthropic.APIConnectionTimeoutError ? 'upstream-timeout'
+      : networkFailureReason(upstream) ?? 'upstream-stream';
   }
   const message = assembler.message;
   const counters = configuration.dialect === 'deepseek' && assembler.finalUsage ? assembler.finalUsage : message?.usage ?? {};

@@ -4,6 +4,7 @@ import { modelReasoningError } from '@xunjie/contracts/model-connections';
 import { checkPayload, runChat, type ChatPayload } from './chat.js';
 import { responsesCheckPayload, runResponses, type ResponsesPayload } from './responses.js';
 import { messagesCheckPayload, runMessages, unsupportedMessagesRoute, type MessagesPayload } from './messages.js';
+import { withTestPayload } from './test-payload.js';
 
 export type NativePayload = ChatPayload | ResponsesPayload | MessagesPayload;
 function isKimiCode(configuration: ModelConfiguration) {
@@ -24,10 +25,11 @@ export function adapterReady(configuration: ModelConfiguration) {
     && (configuration.protocol !== 'messages' || !unsupportedMessagesRoute(configuration) && !configuration.baseUrl.replace(/\/+$/, '').endsWith('/v1'))
     && !modelReasoningError(configuration);
 }
-export function connectionCheckPayload(configuration: ModelConfiguration, tokens: number): NativePayload {
-  if (configuration.protocol === 'messages') return messagesCheckPayload(configuration, tokens);
-  if (configuration.protocol === 'responses') return responsesCheckPayload(configuration, tokens);
-  if (configuration.protocol === 'chat-completions') return checkPayload(configuration, tokens);
+export function connectionCheckPayload(configuration: ModelConfiguration, tokens: number, item?: 'text' | 'images'): NativePayload {
+  const payload = configuration.protocol === 'messages' ? messagesCheckPayload(configuration, tokens)
+    : configuration.protocol === 'responses' ? responsesCheckPayload(configuration, tokens)
+    : configuration.protocol === 'chat-completions' ? checkPayload(configuration, tokens) : undefined;
+  if (payload) return item ? withTestPayload(payload, item, configuration.protocol) : payload;
   throw new StorageError('unavailable');
 }
 export function limitPayload(configuration: ModelConfiguration, payload: NativePayload, tokens: number): NativePayload {

@@ -6,7 +6,7 @@ import './model-choice-card.css'
 export function ModelChoiceCard({ modelId, name, selected, expanded, onSelect, onExpand, children, invalid = false,
   showSelection = true, action }: {
   modelId: string; name?: string | undefined; selected: boolean; expanded: boolean
-  onSelect?(selected: boolean): void; onExpand(expanded: boolean): void
+  onSelect?(selected: boolean): boolean | void; onExpand(expanded: boolean): void
   children?: ReactNode; invalid?: boolean; showSelection?: boolean; action?: ReactNode
 }) {
   const regionId = useId(), title = name || modelId || '自定义模型'
@@ -21,7 +21,7 @@ export function ModelChoiceCard({ modelId, name, selected, expanded, onSelect, o
       </span> : null)}
       <button type="button" className="st-model-choice-title" aria-label={`${expanded ? '收起' : '展开'} ${modelId || title} 的配置`}
         aria-expanded={expanded} aria-controls={regionId} onClick={() => {
-          if (!selected && onSelect) onSelect(true)
+          if (!selected && onSelect?.(true) === false) return
           onExpand(!expanded)
         }}>
         <span className="st-model-choice-name"><span>{title}</span>{modelId && title !== modelId && <small>{modelId}</small>}</span>

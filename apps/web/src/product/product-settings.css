@@ -82,7 +82,7 @@
 .product-settings-model[data-settings-section='models'] .product-personal-agent { display: none; }
 .product-settings .st-card { box-shadow: none; min-height: 88px; padding: 16px; border-radius: 12px; }
 .product-settings .st-card-desc { color: var(--muted); font-size: 13px; line-height: 1.7; }
-.product-settings .st-provider { box-shadow: none; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.product-settings .st-provider { box-shadow: none; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 .product-settings .st-provider p { margin: 12px 0; }
 .product-settings .st-provider-url { overflow-wrap: anywhere; }
 .product-settings .skill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -140,5 +140,6 @@
 .product-connection-dialog .detail { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
 .product-connection-dialog :focus-visible:where(:not(.st-input)) { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .product-connection-dialog .st-field { margin-bottom: 0; }
+.product-connection-dialog .st-dialog-foot { justify-content: flex-end; }
 
 .product-school-list + .product-school-connect-form, .product-school-list + .product-school-pending { margin-top: 16px; }

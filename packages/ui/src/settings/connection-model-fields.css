@@ -5,3 +5,6 @@
 .st-reasoning-manual label { cursor: pointer; padding: 4px 0; }
 .st-reasoning-manual .st-toggle { flex: none; }
 .st-reasoning-manual .st-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.st-connection-test, .st-model-test { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.st-connection-test > .st-model-test-feedback, .st-model-test > .st-model-test-feedback { align-self: stretch; }
+.st-model-test { margin-top: 4px; }

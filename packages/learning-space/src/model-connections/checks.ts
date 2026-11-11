@@ -2,12 +2,14 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelAttemptSchema, modelAttemptInputSchema, modelProgressSchema } from '@xunjie/contracts/model-connections';
+import { modelAttemptSchema, modelAttemptInputSchema, modelProgressSchema, resolveModelCapacity } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelLearningInput, ModelTool, ModelProgress, ModelToolProgress } from '@xunjie/contracts/model-connections';
 import { connectionCheckPayload, limitPayload, modelSessionPayload, runModel, type NativePayload } from './transport.js';
 import { validateResponsesNative } from './responses.js';
 import { createLearningAdmission, learningReservationUnits, lockLearningAdmission, type LearningAdmissionPolicy } from './learning-admission.js';
 import { validateMessagesNative, type MessagesPayload } from './messages.js';
+import { testPreflight, testVerdict } from './test-payload.js';
+import { errorFacts, networkFailureReason } from './upstream-facts.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -217,22 +219,28 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (prior) return read(identity, input.attemptId);
     const learning = input.purpose === 'learning';
     const snapshot = input.purpose === 'connection-check' ? await owner.snapshot(identity, input.source) : await owner.prepareChat(identity, input);
-      const limits = learning ? input.limits : snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
+    const personalCheck = input.purpose === 'connection-check' && snapshot.source?.kind === 'personal';
+      const test = input.purpose === 'connection-check' ? input.test : undefined;
+      const limits = test ? { maxOutputTokens: resolveModelCapacity(snapshot.connection).maxOutputTokens, timeoutMs: input.limits.timeoutMs! }
+        : learning ? input.limits : snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
         timeoutMs: Math.min(input.limits.timeoutMs!, snapshot.policy.timeoutMs) } : input.limits;
-      const basePayload = snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
-        : connectionCheckPayload(snapshot.connection, limits.maxOutputTokens);
-      const payload = modelSessionPayload(snapshot.connection, basePayload,
+      const diagnostic = test ? testPreflight(snapshot.connection, test.item, limits, snapshot.policy) : undefined;
+      const payload = diagnostic ? {} : modelSessionPayload(snapshot.connection,
+        test ? connectionCheckPayload(snapshot.connection, limits.maxOutputTokens, test.item)
+          : snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
+          : connectionCheckPayload(snapshot.connection, limits.maxOutputTokens),
         sessionOf(identity, input.attemptId, snapshot.segment?.segmentId));
       const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
         bytes: Buffer.from(JSON.stringify(payload)), mediaType: 'application/json', contentVersion: 1 });
       const body: ModelAttempt = { attemptId: input.attemptId, purpose: input.purpose, connection: snapshot.connection,
+        ...(test ? { test } : {}), ...(diagnostic ? { diagnostic } : {}),
         limits, ...(snapshot.source ? { source: snapshot.source } : {}), ...(snapshot.segment ? { segment: snapshot.segment } : {}),
-        state: 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
-        upstreamStopped: 'unknown', text: '', usage: { state: 'unknown' }, reason: '', requestRef: request.resourceId, resultRef: null,
+        state: diagnostic ? 'failed' : 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
+        upstreamStopped: 'unknown', text: '', usage: { state: 'unknown' }, reason: diagnostic?.code ?? '', requestRef: request.resourceId, resultRef: null,
         createdAt: new Date().toISOString() };
       await storage.request({ requestId: 'model-check:' + input.attemptId, fingerprint }, async tx => {
         if (learning) await lockLearningAdmission(tx);
-        if (!learning) {
+        if (!learning && !personalCheck) {
           await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-admission:' + scope]);
           if (snapshot.source) {
             await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-budget:' + snapshot.source.feeSource]);
@@ -244,9 +252,10 @@ export function createChecks(storage: OwnedStorage, owner: {
         }
         await snapshot.retain?.(tx);
         await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended,input_metadata) VALUES($1,$2,$3,$4,$5,$6,true,$7)',
-          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted', input.purpose !== 'connection-check'
+          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, body.state, input.purpose !== 'connection-check'
             ? { input: input.input, ...(snapshot.tools ? { tools: snapshot.tools } : {}), ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
         await learningAdmission.enqueue(tx, identity, body, payload);
+        if (diagnostic) await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [snapshot.credentialRef]);
         await tx.reference('model-request:' + input.attemptId, request.resourceId);
         return { attemptId: input.attemptId };
       });
@@ -472,6 +481,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         result.reason = interruption === 'maintenance' ? 'maintenance-interrupted' : 'timeout';
         result.toolIntents = [];
       }
+      const verdict = testVerdict(attempt.test, result);
       const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-result:' + attempt.attemptId,
         bytes: Buffer.from(JSON.stringify(result.native)), mediaType: 'application/json', contentVersion: 1 });
       await storage.request({ requestId: randomUUID(), fingerprint: 'model-result:' + attempt.attemptId }, async tx => {
@@ -481,7 +491,8 @@ export function createChecks(storage: OwnedStorage, owner: {
         if (body.resultRef) return { resultRef: body.resultRef };
         const pending = revocations.get(attempt.attemptId);
         const revoked = pending !== undefined || body.cancelRequested && ['authorization-lost', 'authorization-unconfirmed'].includes(body.reason);
-        const next = { ...body, state: revoked ? 'cancelled' as const : result.state, reason: revoked ? pending?.reason ?? body.reason : result.reason,
+        const next = { ...body, ...(!revoked && verdict.diagnostic ? { diagnostic: verdict.diagnostic } : {}),
+          state: revoked ? 'cancelled' as const : verdict.state, reason: revoked ? pending?.reason ?? body.reason : verdict.reason,
           cancelRequested: body.cancelRequested || revoked, dispatched: body.dispatched && openedUpstream, text: result.text, usage: result.usage,
           ...('upstream' in result && result.upstream ? { upstream: result.upstream } : {}),
           ...(attempt.segment ? { toolIntents: revoked ? [] : result.toolIntents } : {}),
@@ -493,12 +504,20 @@ export function createChecks(storage: OwnedStorage, owner: {
         if (next.segment && next.physicalRequestEnded) await owner.publishChat(tx, next);
         return { resultRef: resource.resourceId };
       });
-    } catch {
+    } catch (error) {
       await finishProgress().catch(() => {});
       // No success without the resource and result transaction. Never replay a dispatched attempt.
-      await update(identity, attempt.attemptId, body => body.resultRef || body.physicalRequestEnded ? body
-        : { ...body, state: 'unknown', reason: body.cancelRequested ? body.reason : 'result-unconfirmed', physicalRequestEnded: true,
-          ...(!openedUpstream ? { dispatched: false } : {}) }, { notSent: !openedUpstream, upstreamEnded }).catch(() => {});
+      // Pre-dispatch DNS errors carry only allowlisted network codes. Credential
+      // lookup/storage failures remain unconfirmed and never export their prose.
+      const facts = errorFacts(error, ''), networkReason = networkFailureReason(facts);
+      await update(identity, attempt.attemptId, body => {
+        if (body.resultRef || body.physicalRequestEnded) return body;
+        const reason = body.cancelRequested ? body.reason : networkReason ?? 'result-unconfirmed';
+        const verdict = testVerdict(body.test, { state: body.cancelRequested ? 'cancelled' : networkReason && !openedUpstream ? 'failed' : 'unknown', reason, text: '' });
+        return { ...body, ...verdict, physicalRequestEnded: true,
+          ...(facts.networkCode ? { upstream: { networkCode: facts.networkCode } } : {}),
+          ...(!openedUpstream ? { dispatched: false } : {}) };
+      }, { notSent: !openedUpstream, upstreamEnded }).catch(() => {});
     } finally { stopWatch(); clearTimeout(timeout); }
   }
   async function cancel(identity: SpaceIdentity, attemptId: string) {

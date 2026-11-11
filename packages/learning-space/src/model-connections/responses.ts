@@ -7,7 +7,7 @@ import { modelReasoningParameters } from '@xunjie/contracts/model-connections';
 import { compileOutputSchema } from './chat-native.js';
 import { createResponsesAssembler, object, responsesOutput, responsesUsage, responsesSensitiveValues, responsesEventSensitiveValues, validateResponsesNative } from './responses-native.js';
 import { createProgressPublisher, createSensitiveOutput, protocolJsonStrings, protocolTokenSequences } from './sensitive-output.js';
-import { responseFacts, contextCapacityFailure } from './upstream-facts.js';
+import { responseFacts, contextCapacityFailure, errorFacts, networkFailureReason } from './upstream-facts.js';
 export { validateResponsesNative } from './responses-native.js';
 
 export const responsesAdapterVersion = 'xunjie-responses-native-v1';
@@ -89,6 +89,7 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     const status = (error instanceof OpenAI.APIError ? error.status : undefined)
       ?? (upstream?.httpStatus && upstream.httpStatus >= 400 ? upstream.httpStatus : undefined);
     if (!upstream && status && error instanceof OpenAI.APIError) upstream = responseFacts(status, error.headers ?? new Headers(), apiKey);
+    upstream = { ...upstream, ...errorFacts(error, apiKey) };
     const unsupported = error instanceof OpenAI.APIError && ['unsupported_model', 'model_not_supported', 'model_not_found',
       'unsupported_parameter', 'unsupported_value'].includes(error.code ?? '');
     if (error instanceof OpenAI.APIError && error.error) upstreamError = error.error;
@@ -96,7 +97,8 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     reason = malformed ? 'malformed-response' : signal.aborted ? 'client-abort' : status === 401 || status === 403 ? 'authentication'
       : status === 429 ? 'rate-limited' : contextCapacityFailure(upstreamError, status) ? 'context-capacity-exceeded'
       : unsupported ? 'upstream-unsupported' : status ? 'upstream-http'
-      : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout' : 'upstream-stream';
+      : deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError ? 'upstream-timeout'
+      : networkFailureReason(upstream) ?? 'upstream-stream';
     state = malformed ? 'failed' : signal.aborted ? 'cancelled' : status || upstreamError ? 'failed' : events.length ? 'incomplete' : 'unknown';
     if (responseLimited) { state = 'incomplete'; reason = 'response-limit'; }
   }
@@ -142,8 +144,13 @@ export async function runResponses(configuration: ModelConfiguration, apiKey: st
     } catch { state = 'failed'; reason = 'invalid-structured-output'; }
   }
   const response = assembler.response;
+  if (state === 'failed' && response?.error) upstream = { ...upstream, ...errorFacts(response, apiKey) };
+  if (state === 'failed') for (const event of events) {
+    if (event && typeof event === 'object' && 'type' in event && event.type === 'error') upstream = { ...upstream, ...errorFacts(event, apiKey) };
+  }
   const originalNative = { formatVersion: 1, sdk: 'openai@7.42.0', adapter: responsesAdapterVersion,
-    events, response, output: Array.isArray(response?.output) ? response.output : [], upstreamError, ...(upstream ? { upstream } : {}) };
+    events, response, output: Array.isArray(response?.output) ? response.output : [],
+    upstreamError: upstreamError ? errorFacts(upstreamError, apiKey) : null, ...(upstream ? { upstream } : {}) };
   let native: typeof originalNative & { redacted?: boolean } = originalNative;
   const structured = !!(applicationSchema || format && format.type !== 'text');
   const eventValues = responsesEventSensitiveValues(events, structured);

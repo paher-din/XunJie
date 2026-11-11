@@ -168,13 +168,13 @@ for (const protocol of ['chat-completions', 'responses']) {
   });
 
   for (const [status, headers, expected] of [
-    [429, { 'x-request-id': 'fixture-request', 'retry-after': '17' }, { httpStatus: 429, requestId: 'fixture-request', retryAfterSeconds: 17 }],
-    [503, { 'request-id': 'fixture-date', 'retry-after': 'Wed, 21 Oct 2015 07:28:00 GMT' }, { httpStatus: 503, requestId: 'fixture-date', retryAt: '2015-10-21T07:28:00.000Z' }],
-    [503, {}, { httpStatus: 503 }],
-    [429, { 'x-request-id': 'synthetic-review-key', 'retry-after': '-1' }, { httpStatus: 429 }],
-    [503, { 'x-request-id': 'invalid id', 'retry-after': 'Infinity' }, { httpStatus: 503 }],
-    [503, { 'x-request-id': 'x'.repeat(201), 'retry-after': '31536001' }, { httpStatus: 503 }],
-    [429, { 'retry-after-ms': '1500' }, { httpStatus: 429, retryAfterSeconds: 1.5 }],
+    [429, { 'x-request-id': 'fixture-request', 'retry-after': '17' }, { httpStatus: 429, requestId: 'fixture-request', retryAfterSeconds: 17, message: 'fixture' }],
+    [503, { 'request-id': 'fixture-date', 'retry-after': 'Wed, 21 Oct 2015 07:28:00 GMT' }, { httpStatus: 503, requestId: 'fixture-date', retryAt: '2015-10-21T07:28:00.000Z', message: 'fixture' }],
+    [503, {}, { httpStatus: 503, message: 'fixture' }],
+    [429, { 'x-request-id': 'synthetic-review-key', 'retry-after': '-1' }, { httpStatus: 429, message: 'fixture' }],
+    [503, { 'x-request-id': 'invalid id', 'retry-after': 'Infinity' }, { httpStatus: 503, message: 'fixture' }],
+    [503, { 'x-request-id': 'x'.repeat(201), 'retry-after': '31536001' }, { httpStatus: 503, message: 'fixture' }],
+    [429, { 'retry-after-ms': '1500' }, { httpStatus: 429, retryAfterSeconds: 1.5, message: 'fixture' }],
   ]) test(`${protocol} preserves bounded HTTP facts: ${status}/${JSON.stringify(headers)}`, async () => {
     const result = await fixture(protocol, response => response.end('{"error":{"message":"fixture"}}'),
       { status, headers: { 'content-type': 'application/json', ...headers }, checkFetch: true });

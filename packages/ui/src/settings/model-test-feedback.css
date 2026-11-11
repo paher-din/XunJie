@@ -1,0 +1,36 @@
+.st-model-test-feedback { min-width: 0; color: var(--ink); font: 400 13px/1.5 var(--font-sans); overflow-wrap: anywhere; }
+.st-model-test-feedback.astryx-banner-frame { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); box-shadow: none; }
+.st-model-test-feedback > .astryx-banner { display: grid; grid-template-columns: 16px minmax(0, 1fr); grid-template-rows: auto; align-items: center; column-gap: 8px; row-gap: 0; padding: 10px 12px; border: 0; border-radius: 0; background: transparent; color: var(--ink); }
+.st-model-test-feedback > .astryx-banner:has(> :nth-child(3)) { grid-template-columns: 16px minmax(0, 1fr) auto; }
+.st-model-test-feedback > .astryx-banner:has(.astryx-banner-description) { grid-template-rows: auto auto; row-gap: 4px; }
+.st-model-test-feedback > .astryx-banner > .astryx-banner-icon { display: flex; grid-column: 1; grid-row: 1; align-items: center; padding: 0; color: var(--danger-deep); }
+.st-model-test-feedback[data-status='unverified'] > .astryx-banner > .astryx-banner-icon { color: var(--status-pending-fg); }
+.st-model-test-feedback > .astryx-banner > :nth-child(2) { display: grid; grid-column: 2; grid-row: 1 / -1; grid-template-rows: subgrid; min-width: 0; row-gap: inherit; }
+.st-model-test-feedback > .astryx-banner > :nth-child(2) > div { color: var(--ink-soft); font: inherit; }
+.st-model-test-feedback > .astryx-banner > :nth-child(2) > div:first-child { align-self: center; }
+.st-model-test-feedback > .astryx-banner > :last-child:not(:nth-child(2)) { display: flex; grid-column: 3; grid-row: 1; align-items: center; margin: 0; }
+.st-model-test-feedback .astryx-banner-description { margin: 0; color: var(--ink-soft); font: inherit; }
+.st-model-test-feedback > .astryx-banner-content { margin: 0; padding: 0 12px 10px; border: 0; border-radius: 0; background: transparent; }
+.st-model-test-title { font-weight: 500; color: var(--ink); }
+.st-model-test-feedback[data-status] :is(.st-model-test-message, .st-model-test-suggestion) { margin: 0; }
+.st-model-test-message { color: var(--ink-soft); }
+.st-model-test-suggestion { color: var(--ink-soft); }
+.st-model-test-feedback[data-status] .st-model-test-message + .st-model-test-suggestion { margin-top: 4px; }
+.st-model-test-line, .st-model-test-result { display: flex; align-items: center; gap: 8px; }
+.st-model-test-line { justify-content: space-between; }
+.st-model-test-result { flex-wrap: wrap; min-width: 0; }
+.st-model-test-result > .ui-icon { flex: none; color: var(--muted); }
+.st-model-test-plain[data-status='passed'] .st-model-test-result > .ui-icon { color: var(--dot-ok); }
+.st-model-test-plain > .st-model-test-suggestion { margin-top: 4px; }
+.st-model-test-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--raised); color: var(--ink-soft); font: inherit; white-space: nowrap; cursor: pointer; }
+.st-model-test-action:hover { background: var(--hover-bg); color: var(--ink); }
+.st-model-test-action:focus-visible, .st-model-test-diagnostic summary:focus-visible, .st-model-test-diagnostic pre:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.st-model-test-diagnostic { margin-top: 8px; }
+.st-model-test-feedback .st-model-test-diagnostic summary { width: fit-content; min-height: 0; margin: 0; padding: 0; color: var(--muted); cursor: pointer; border-radius: 4px; font: inherit; }
+.st-model-test-feedback .st-model-test-diagnostic[open] > summary { margin-bottom: 0; }
+.st-model-test-copy-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; color: var(--muted); }
+.st-model-test-diagnostic pre { max-height: 180px; margin: 8px 0 0; padding: 10px; overflow: auto; border-radius: 6px; background: var(--raised); color: var(--ink-soft); font: 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-color: var(--scroll-thumb) transparent; scrollbar-width: thin; }
+.st-model-test-spinning { animation: st-model-test-spin 1s linear infinite; }
+.st-model-test-feedback ::selection { background: var(--accent-soft); color: var(--ink); }
+@keyframes st-model-test-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .st-model-test-spinning { animation: none; } }

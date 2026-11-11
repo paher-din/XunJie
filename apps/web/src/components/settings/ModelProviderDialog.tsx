@@ -1,31 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { modelBaseUrlError, modelConfigurationSchema, saveModelProviderSchema, resolveModelProfile, modelReasoningError,
+import { modelBaseUrlError, modelConfigurationSchema, saveModelProviderSchema, resolveModelProfile, modelReasoningConfigurationError, modelAllowsImages,
   formatModelTokenCount, parseModelTokenCount, modelTokenCountError, resolveModelCapacity,
   modelProviderPresets, getModelPreset, resolvePresetModelRoute,
   type ModelPresetId, type ModelDirectoryEntry, type ModelDirectoryRefresh,
-  type ModelConfiguration, type ModelProvider, type ModelProfile, type ModelAttempt, type ModelCheckInput, type SaveModelProvider, type ReasoningEffort } from '@xunjie/contracts/model-connections'
-import { ConnectionModelFields, Field, TextInput, SettingsSelect, ModelProviderLogo, ModelChoiceCard } from '@xunjie/ui/settings'
+  type ModelConfiguration, type ModelProvider, type ModelProfile, type ModelAttempt, type SaveModelProvider, type ReasoningEffort } from '@xunjie/contracts/model-connections'
+import { ConnectionModelFields, Field, TextInput, SettingsSelect, ModelProviderLogo, ModelChoiceCard, ModelTestFeedback, ModelTestButton } from '@xunjie/ui/settings'
 import { ProviderIdentityFields } from './ProviderIdentityFields'
 import { Icon } from '../../icons'
 import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { useModelDirectory, type ReadModelDirectory } from './useModelDirectory'
+import { useModelConfigurationTests, type CheckModelConfiguration } from './useModelConfigurationTests'
+import { useSupplierChecks, type TestSupplierConnection } from './useSupplierChecks'
 
 type ModelInput = SaveModelProvider['models'][number]
 type ModelDraft = Omit<ModelInput, 'contextWindow' | 'maxOutputTokens'> & { contextWindow?: string | undefined; maxOutputTokens?: string | undefined }
+type ModelChoice = ModelDirectoryEntry & { connectionId?: string }
 type Draft = Omit<SaveModelProvider, 'requestId' | 'expectedVersion' | 'credential' | 'models'> & { models: ModelDraft[] }
 const paths = { 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const
-const newModel = (): ModelDraft => ({ connectionId: crypto.randomUUID(), expectedVersion: 0, modelId: '', enabled: true })
+const newModel = (): ModelDraft => ({ connectionId: crypto.randomUUID(), expectedVersion: 0, modelId: '', enabled: true, imageInput: false })
 const fromProvider = (provider: ModelProvider | null): Draft => provider ? {
   providerId: provider.providerId, name: provider.name, baseUrl: provider.baseUrl, protocol: provider.protocol, enabled: provider.enabled,
   ...(provider.presetId ? { presetId: provider.presetId } : {}), ...(provider.variantId ? { variantId: provider.variantId } : {}),
   models: provider.models.map(model => ({ connectionId: model.connectionId, expectedVersion: model.version, modelId: model.modelId,
     protocol: model.protocol, baseUrl: model.baseUrl,
     enabled: model.modelEnabled ?? model.enabled, ...(model.reasoningEffort ? { reasoningEffort: model.reasoningEffort } : {}),
+    ...(model.imageInput === undefined ? {} : { imageInput: model.imageInput }),
     ...(model.reasoningSource === 'manual' ? { reasoningLevels: model.reasoningLevels ?? [] } : {}),
     ...(model.contextWindow === undefined ? {} : { contextWindow: formatModelTokenCount(model.contextWindow) }),
     ...(model.maxOutputTokens === undefined ? {} : { maxOutputTokens: formatModelTokenCount(model.maxOutputTokens) }) })),
-} : { providerId: crypto.randomUUID(), name: '', baseUrl: '', protocol: 'chat-completions', enabled: true, models: [newModel()] }
+} : { providerId: crypto.randomUUID(), name: '', baseUrl: '', protocol: 'chat-completions', enabled: true, models: [] }
 
 const scopeOf = (draft: Pick<Draft, 'presetId' | 'variantId'>) => `${draft.presetId ?? 'custom'}:${draft.variantId ?? ''}`
 const profileRouteKey = (route: { protocol: string; baseUrl: string; modelId: string }) => JSON.stringify([route.protocol, route.baseUrl, route.modelId.trim()])
@@ -48,33 +52,30 @@ function refreshMessage(state: ModelDirectoryRefresh | undefined, source: 'suppl
   return `${subject}${state.httpStatus && state.httpStatus >= 500 ? '服务暂时异常' : '请求未成功'}${status}。${retained}${retry}`
 }
 
-export function ModelProviderDialog({ provider, attempts, addModel = false, onClose, onSave, onRead, onReadCredential, onProfiles, onDirectory, onCheck, onCancel }: {
+export function ModelProviderDialog({ provider, addModel = false, onClose, onSave, onRead, onReadCredential, onProfiles, onDirectory, onCheck, onConnectionTest }: {
   provider: ModelProvider | null; attempts: ModelAttempt[]; addModel?: boolean; onClose(): void
   onSave(input: SaveModelProvider): Promise<ModelProvider>; onRead(providerId: string): Promise<ModelProvider | null>
   onReadCredential(connectionId: string, version: number): Promise<string>
   onProfiles(input: { baseUrl: string; protocol: ModelConfiguration['protocol']; modelIds: string[]; refresh?: boolean }): Promise<{ profiles: ModelProfile[]; stale: boolean }>
   onDirectory?: ReadModelDirectory | undefined
-  onCheck(source: ModelCheckInput['source']): Promise<ModelAttempt>; onCancel(attempt: ModelAttempt): Promise<void>
+  onCheck: CheckModelConfiguration; onCancel(attempt: ModelAttempt): Promise<void>
+  onConnectionTest?: TestSupplierConnection
 }) {
-  const [draft, setDraft] = useState<Draft>(() => {
-    const value = fromProvider(provider)
-    if (addModel) value.models.push(newModel())
-    return value
-  })
+  const [draft, setDraft] = useState<Draft>(() => fromProvider(provider))
+  const editableModelIds = useRef(new Set(draft.models.map(model => model.connectionId)))
   const [profiles, setProfiles] = useState<Map<string, ModelProfile>>(() => new Map()), [refresh, setRefresh] = useState(0), [profileBusy, setProfileBusy] = useState(false)
   const [profileNotice, setProfileNotice] = useState('')
   const [apiKey, setApiKey] = useState(''), [saving, setSaving] = useState(false)
   const [lookupKey, setLookupKey] = useState<string | undefined>(provider?.hasCredential ? undefined : '')
   const [credentialReady, setCredentialReady] = useState(!provider?.hasCredential), [credentialError, setCredentialError] = useState('')
   const [credentialRetry, setCredentialRetry] = useState(0), [addressTouched, setAddressTouched] = useState(false)
-  const [error, storeError] = useState(''), [checking, setChecking] = useState(false), [result, setResult] = useState<ModelAttempt | null>(null)
+  const [error, storeError] = useState('')
   const errorToast = useRef<string | number | undefined>(undefined)
   const setError = (message: string) => {
     storeError(message)
     if (message) errorToast.current = toast.error(message, { id: errorToast.current, duration: 8000 })
     else if (errorToast.current !== undefined) toast.dismiss(errorToast.current)
   }
-  const [checkId, setCheckId] = useState(draft.models[0]!.connectionId)
   const [recovery, setRecovery] = useState<'conflict' | 'unknown' | null>(null), [latest, setLatest] = useState<ModelProvider | null>(null)
   const [reading, setReading] = useState(false), [notice, setNotice] = useState('')
   const dialogContent = useRef<HTMLDivElement>(null)
@@ -89,13 +90,23 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   const preset = useMemo(() => modelProviderPresets.find(item => item.id === draft.presetId), [draft.presetId])
   const variant = useMemo(() => getModelPreset(draft.presetId ?? 'custom', draft.variantId), [draft.presetId, draft.variantId])
   const savedKey = provider?.models.find(model => model.hasCredential)
+  const tests = useModelConfigurationTests(onCheck)
+  const supplier = useSupplierChecks({ presetId: draft.presetId ?? 'custom', ...(draft.variantId ? { variantId: draft.variantId } : {}),
+    baseUrl: draft.baseUrl, protocol: draft.protocol, credential: apiKey.trim() ? { action: 'replace', value: apiKey.trim() } : { action: 'clear' } }, onConnectionTest, onDirectory)
+  useEffect(() => { tests.invalidate() }, [supplier.key])
+  const choiceScope = preset ? scope : supplier.key
   const directory = useModelDirectory(onDirectory, {
     presetId: draft.presetId ?? 'custom', ...(draft.variantId ? { variantId: draft.variantId } : {}),
     ...(!modelBaseUrlError(draft.baseUrl, draft.protocol) ? { baseUrl: draft.baseUrl, protocol: draft.protocol } : {}),
     credential: lookupKey === undefined ? { action: 'keep' } : lookupKey.trim() ? { action: 'replace', value: lookupKey.trim() } : { action: 'clear' },
     ...(scope === savedScope.current && savedKey ? { savedCredential: { connectionId: savedKey.connectionId, version: savedKey.version } } : {}),
+    ...(!preset ? { source: 'catalogue' as const } : {}),
   })
-  const entries: readonly ModelDirectoryEntry[] = directory.data?.models ?? variant?.models ?? []
+  const entries: readonly ModelDirectoryEntry[] = useMemo(() => {
+    const all = new Map((directory.data?.models ?? variant?.models ?? []).map(model => [model.modelId, model]))
+    for (const model of supplier.fetched?.models ?? []) all.set(model.modelId, { ...all.get(model.modelId), ...model })
+    return [...all.values()]
+  }, [directory.data?.models, variant, supplier.fetched?.models])
   const directoryStamp = [directory.data?.catalogue.updatedAt, directory.data?.supplier?.updatedAt].join('|')
   const [retryNow, setRetryNow] = useState(Date.now)
   const refreshStates = [directory.data?.supplier, directory.data?.catalogue].filter((state): state is ModelDirectoryRefresh => Boolean(state))
@@ -114,18 +125,20 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   useToastFeedback(directoryNotice || profileNotice)
   useToastFeedback(notice, 'info')
   const modelChoices = useMemo(() => {
-    const choices = new Map(entries.map(entry => [entry.modelId, entry]))
-    for (const [key, model] of presetModelDrafts.current) if (key.startsWith(scope + ':') && !choices.has(model.modelId))
-      choices.set(model.modelId, { modelId: model.modelId })
+    const choices = new Map<string, ModelChoice>((preset ? entries : supplier.fetched?.models ?? []).map(entry => [entry.modelId, entry]))
+    for (const [key, model] of presetModelDrafts.current) if (key.startsWith(choiceScope + ':') && !choices.has(model.modelId))
+      choices.set(model.modelId, { modelId: model.modelId, connectionId: model.connectionId })
     for (const model of draft.models) if (model.modelId.trim() && !choices.has(model.modelId)) choices.set(model.modelId, { modelId: model.modelId })
-    return [...choices.values()]
-  }, [entries, draft.models, scope])
+    if (preset) return [...choices.values()]
+    return [...choices.values()].flatMap(entry => {
+      const selected = draft.models.filter(model => model.modelId === entry.modelId)
+      return selected.length ? selected.map(model => ({ ...entry, connectionId: model.connectionId })) : [entry]
+    })
+  }, [entries, draft.models, choiceScope, preset, supplier.fetched?.models])
   const configuredModels = draft.models.filter(model => !preset || model.expectedVersion > 0 || model.modelId.trim())
   const matchesModelQuery = (modelId: string, name = '') => `${modelId} ${name}`.toLowerCase().includes(modelQuery.trim().toLowerCase())
-  const customModels = draft.models.map((model, index) => ({ model, index })).filter(({ model }) => matchesModelQuery(model.modelId))
   const pending = useRef<{ input: SaveModelProvider; generation: number } | null>(null), submitting = useRef(false)
   const returnFocus = useRef(document.activeElement as HTMLElement | null)
-  const currentResult = attempts.find(item => item.attemptId === result?.attemptId) ?? result
   const addressIssue = modelBaseUrlError(draft.baseUrl, draft.protocol)
   const modelRoute = (model: ModelDraft) => {
     if (model.protocol && model.baseUrl) return { protocol: model.protocol, baseUrl: model.baseUrl }
@@ -176,37 +189,43 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
     }, 400)
     return () => { active = false; clearTimeout(timer) }
   }, [profileKey, refresh, onProfiles, directoryStamp])
-  const changed = () => { epoch.current++; setResult(null); setNotice(''); if (!recovery) setError('') }
+  const changed = () => { epoch.current++; setNotice(''); if (!recovery) setError('') }
   const change = (patch: Partial<Draft>) => { changed(); setDraft(previous => ({ ...previous, ...patch })) }
-  const changeModel = (id: string, patch: Partial<ModelDraft>) => change({ models: draft.models.map(model => model.connectionId === id ? { ...model, ...patch } : model) })
+  const changeModel = (id: string, patch: Partial<ModelDraft>) => { tests.invalidate(id); change({ models: draft.models.map(model => model.connectionId === id ? { ...model, ...patch } : model) }) }
   const expandModel = (key: string, expanded: boolean) => setExpandedModels(previous => {
     const next = new Set(previous); if (expanded) next.add(key); else next.delete(key); return next
   })
-  const selectModel = (modelId: string, selected: boolean) => {
-    const key = `${scope}:${modelId}`, existing = draft.models.find(model => model.modelId === modelId)
+  const selectModel = (modelId: string, selected: boolean, manual = false) => {
+    const key = `${choiceScope}:${modelId}`, existing = draft.models.find(model => model.modelId === modelId)
     if (!selected) {
       if (!existing || existing.expectedVersion > 0) return false
       presetModelDrafts.current.set(key, existing)
       const remaining = draft.models.filter(model => model.connectionId !== existing.connectionId)
-      change({ models: remaining.length ? remaining : [newModel()] }); expandModel(key, false)
+      change({ models: remaining }); expandModel(preset ? `${scope}:${modelId}` : `${scope}:${existing.connectionId}`, false)
       return true
     }
     let selectedModel = existing
     if (!selectedModel) {
-      const remembered = preset ? presetModelDrafts.current.get(key) : undefined
+      const remembered = presetModelDrafts.current.get(key)
       const empty = draft.models.find(model => !model.modelId.trim())
       const model: ModelDraft = remembered ?? { ...(empty ?? newModel()), modelId, ...(preset ? { protocol: undefined, baseUrl: undefined,
         contextWindow: undefined, maxOutputTokens: undefined, reasoningEffort: undefined, reasoningLevels: undefined } : {}) }
       const others = draft.models.filter(item => item.connectionId !== model.connectionId && (item.modelId.trim() || item.expectedVersion > 0))
       if (others.length >= 64) { setError('每个供应商最多配置 64 个模型。'); return false }
-      change({ models: [...others, model] }); setCheckId(model.connectionId)
+      change({ models: [...others, model] })
       selectedModel = model
     }
-    expandModel(preset ? key : `${scope}:${selectedModel.connectionId}`, true); void directory.ensureFresh(); return true
+    if (manual) editableModelIds.current.add(selectedModel.connectionId)
+    expandModel(preset ? `${scope}:${modelId}` : `${scope}:${selectedModel.connectionId}`, true); void directory.ensureFresh(); return true
   }
   const profileOf = (model: ModelDraft): ModelProfile => {
     const route = { ...modelRoute(model), modelId: model.modelId, presetId: draft.presetId, variantId: draft.variantId }
-    const fallback = resolveModelProfile({ ...route, ...(model.reasoningLevels ? { reasoningLevels: model.reasoningLevels } : {}) })
+    // Keep invalid manual declarations editable; validation below explains the
+    // problem without letting profile resolution unmount the entire form.
+    let fallback = resolveModelProfile(route)
+    if (model.reasoningLevels !== undefined) {
+      try { fallback = resolveModelProfile({ ...route, reasoningLevels: model.reasoningLevels }) } catch { /* retain the reference profile */ }
+    }
     const found = profiles.get(profileRouteKey(route)), entry = entries.find(item => item.modelId === model.modelId.trim())
     const saved = provider?.models.find(saved => saved.connectionId === model.connectionId && saved.modelId === model.modelId
       && saved.baseUrl === route.baseUrl && saved.protocol === route.protocol)
@@ -217,7 +236,7 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
       ...(entry?.maxOutputTokens ? { maxOutputTokens: entry.maxOutputTokens } : {}),
       ...(entry?.defaultEffort ?? found?.defaultEffort ?? fallback.defaultEffort ? { defaultEffort: entry?.defaultEffort ?? found?.defaultEffort ?? fallback.defaultEffort } : {}),
       reasoningKind: entry?.reasoningKind ?? found?.reasoningKind ?? fallback.reasoningKind }
-    if (model.reasoningLevels !== undefined) return { ...base, efforts: fallback.efforts, source: 'manual',
+    if (model.reasoningLevels !== undefined) return { ...base, efforts: ['auto', ...new Set(model.reasoningLevels)], source: 'manual',
       reasoningKind: model.reasoningLevels.some(value => !['none', 'enabled'].includes(value)) ? 'effort' : 'toggle' }
     if (base.defaultEffort && !base.efforts.includes(base.defaultEffort)) delete base.defaultEffort
     return base
@@ -233,6 +252,13 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
     contextWindow: parseModelTokenCount(model.contextWindow) ?? undefined,
     maxOutputTokens: parseModelTokenCount(model.maxOutputTokens) ?? undefined,
   }, profileOf(model))
+  const imageOf = (model: ModelDraft) => {
+    if (model.imageInput !== undefined) return model.imageInput
+    const route = modelRoute(model)
+    const saved = provider?.models.find(saved => saved.connectionId === model.connectionId && saved.modelId === model.modelId
+      && saved.baseUrl === route.baseUrl && saved.protocol === route.protocol)
+    return saved ? modelAllowsImages(saved) : false
+  }
   const inputOf = (model: ModelDraft): ModelInput => ({ ...model, ...modelRoute(model), ...capacityOf(model),
     ...(effortOf(model) ? { reasoningEffort: effortOf(model) } : {}) })
   const chooseModel = (model: ModelDraft, modelId: string) => {
@@ -241,6 +267,7 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
     const remembered = modelDrafts.current.get(`${scope}:${model.connectionId}:${modelId.trim()}`)
     changeModel(model.connectionId, remembered ? { ...remembered, modelId, expectedVersion: model.expectedVersion } : {
       modelId, contextWindow: undefined, maxOutputTokens: undefined, reasoningEffort: undefined, reasoningLevels: undefined,
+      imageInput: false,
       protocol: undefined, baseUrl: undefined,
     })
   }
@@ -267,18 +294,28 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   const routeOf = (model: ModelDraft): ModelConfiguration => {
     const profile = profileOf(model), old = provider?.models.find(saved => saved.connectionId === model.connectionId)
     const route = modelRoute(model), effort = effortOf(model)
-    return { connectionId: model.connectionId, name: draft.name, ...route, path: paths[route.protocol],
+    return { connectionId: model.connectionId, name: draft.name.trim() || model.modelId.trim() || '模型测试', ...route, path: paths[route.protocol],
       ...(draft.presetId ? { presetId: draft.presetId } : {}), ...(draft.variantId ? { variantId: draft.variantId } : {}),
       modelId: model.modelId, enabled: draft.enabled && model.enabled, dialect: effort === undefined && old ? old.dialect : profile.dialect,
       parameterMode: effort === undefined ? old?.parameterMode ?? 'plain' : !['auto', 'none'].includes(effort) ? 'thinking' : 'plain',
-      ...(effort ? { reasoningEffort: effort } : {}), reasoningLevels: profile.efforts.filter(level => level !== 'auto'),
-      ...capacityOf(model) }
+      ...(effort ? { reasoningEffort: effort } : {}), reasoningLevels: model.reasoningLevels ?? profile.efforts.filter(level => level !== 'auto'),
+      ...capacityOf(model), imageInput: imageOf(model) }
   }
+  const testedRoutes = useRef(new Map<string, string>())
+  const routeSignatures = JSON.stringify(draft.models.map(model => {
+    const { name: _name, ...configuration } = routeOf(model)
+    return [model.connectionId, JSON.stringify(configuration)]
+  }))
+  useEffect(() => {
+    const next = new Map<string, string>(JSON.parse(routeSignatures))
+    for (const [id, signature] of testedRoutes.current) if (next.get(id) !== signature) tests.expire(id)
+    testedRoutes.current = next
+  }, [routeSignatures])
   const credential = () => apiKey.trim() ? { action: 'replace' as const, value: apiKey.trim() } : { action: 'clear' as const }
   const valid = () => {
     setAddressTouched(true)
     if (addressIssue) { setError(addressIssue); return false }
-    if (preset && (!configuredModels.length || configuredModels.some(model => !model.modelId.trim()))) {
+    if (!configuredModels.length || preset && configuredModels.some(model => !model.modelId.trim())) {
       setError(configuredModels.length ? '原配置中还有模型未匹配，请继续选择型号。' : '请至少选择一个模型，或手动添加模型 ID。'); return false
     }
     const missingModelId = !preset && configuredModels.find(model => !model.modelId.trim())
@@ -296,21 +333,24 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
     const unsupported = configuredModels.find(model => { const entry = entries.find(item => item.modelId === model.modelId.trim());
       return entry?.protocols && !entry.protocols.includes(modelRoute(model).protocol) })
     if (unsupported) { setError(`当前接入方式尚未提供 ${unsupported.modelId} 的兼容协议，请选择其他型号或使用自定义连接。`); return false }
-    const invalidReasoning = configuredModels.find(model => modelReasoningError(routeOf(model), capacityOf(model).maxOutputTokens))
-    const reasoning = invalidReasoning && modelReasoningError(routeOf(invalidReasoning), capacityOf(invalidReasoning).maxOutputTokens)
+    const invalidReasoning = configuredModels.find(model => modelReasoningConfigurationError(routeOf(model), capacityOf(model).maxOutputTokens))
+    const reasoning = invalidReasoning && modelReasoningConfigurationError(routeOf(invalidReasoning), capacityOf(invalidReasoning).maxOutputTokens)
     if (invalidReasoning) { setModelQuery(''); expandModel(`${scope}:${preset ? invalidReasoning.modelId : invalidReasoning.connectionId}`, true) }
     if (duplicate || reasoning) { setError(duplicate ? '同一供应商内的模型 ID 不能重复。' : reasoning!); return false }
     return true
   }
-  const checkModel = configuredModels.find(model => model.connectionId === checkId) ?? configuredModels[0] ?? draft.models[0]!
-  const test = async () => {
-    if (!credentialReady || !valid()) return
-    const generation = epoch.current; setChecking(true); if (!recovery) setError('')
+  const test = async (model: ModelDraft) => {
+    if (!credentialReady) return
+    const route = modelRoute(model)
+    const issue = modelBaseUrlError(route.baseUrl, route.protocol) ?? (!apiKey.trim() ? '请填写 API Key。' : undefined)
+      ?? (!model.modelId.trim() ? '请填写模型 ID。' : undefined)
+      ?? modelTokenCountError(model.contextWindow) ?? modelTokenCountError(model.maxOutputTokens)
+      ?? modelReasoningConfigurationError(routeOf(model), capacityOf(model).maxOutputTokens)
+    if (issue) { tests.fail(model.connectionId, issue); return }
     try {
-      const checked = await onCheck({ draft: modelConfigurationSchema.parse(routeOf(checkModel)), credential: credential() })
-      if (live.current && generation === epoch.current) setResult(checked)
-    } catch { if (live.current && generation === epoch.current) setError('检查未确认，请核对输入、凭据和原检查记录。') }
-    finally { if (live.current) setChecking(false) }
+      const configuration = modelConfigurationSchema.parse(routeOf(model))
+      await tests.run(configuration, { draft: configuration, credential: credential() })
+    } catch { tests.fail(model.connectionId, '请核对当前模型的地址、协议和参数。') }
   }
   const submit = async (operation: NonNullable<typeof pending.current>) => {
     if (submitting.current) return
@@ -382,26 +422,37 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
   }
   const renderModelFields = (model: ModelDraft, index: number, showModelId = true) => {
     const profile = profileOf(model)
-    return <ConnectionModelFields modelId={model.modelId} idLabel={index === 0 ? '模型 ID' : `模型 ID ${index + 1}`} showModelId={showModelId}
+    const run = tests.runs[model.connectionId]
+    return <><ConnectionModelFields modelId={model.modelId} idLabel={index === 0 ? '模型 ID' : `模型 ID ${index + 1}`} showModelId={showModelId}
       effort={effortOf(model) ?? 'auto'} efforts={profile.efforts} source={profile.source} manualLevels={model.reasoningLevels}
       contextWindow={model.contextWindow} maxOutputTokens={model.maxOutputTokens}
-      referenceContext={profile.contextWindow} referenceOutput={profile.maxOutputTokens} error={modelReasoningError(routeOf(model), capacityOf(model).maxOutputTokens)}
+      referenceContext={profile.contextWindow} referenceOutput={profile.maxOutputTokens} error={modelReasoningConfigurationError(routeOf(model), capacityOf(model).maxOutputTokens)}
+      imageInput={imageOf(model)} onImageInput={imageInput => changeModel(model.connectionId, { imageInput })}
       onId={modelId => chooseModel(model, modelId)} onEffort={value => changeModel(model.connectionId, { reasoningEffort: value as ReasoningEffort })}
       onLevels={value => changeModel(model.connectionId, { reasoningLevels: value as ModelInput['reasoningLevels'] })}
       onCapacity={patch => changeModel(model.connectionId, patch)} />
+      <div className="st-model-test" aria-label={`${model.modelId || '当前模型'}的模型测试`}>
+        <ModelTestButton kind="model" running={run?.status === 'running'} disabled={!credentialReady}
+          onTest={() => void test(model)} onStop={() => tests.stop(model.connectionId)} />
+        {run && <ModelTestFeedback {...run} onRetry={run.status === 'failed' || run.status === 'unverified' ? () => void test(model) : undefined} />}
+      </div></>
   }
   const addManualModel = () => {
     const modelId = modelQuery.trim()
     if (!modelId || modelId.length > 200) { setError('模型 ID 需为 1–200 个字符。'); return }
-    if (!selectModel(modelId, true)) return
+    if (!selectModel(modelId, true, true)) return
     setModelQuery('')
     dialogContent.current?.querySelector<HTMLInputElement>('.st-model-list-search input')?.focus({ preventScroll: true })
   }
   return <Dialog.Root open onOpenChange={open => { if (!open) onClose() }}><Dialog.Portal>
     <Dialog.Overlay className="overlay pc-overlay" /><Dialog.Content ref={dialogContent} className="st-dialog product-connection-dialog" aria-describedby={undefined}
+      onOpenAutoFocus={event => {
+        if (!addModel) return
+        event.preventDefault(); dialogContent.current?.querySelector<HTMLInputElement>('.st-model-list-search input')?.focus()
+      }}
       onEscapeKeyDown={event => {
         // Radix handles Escape on document capture, before the nested Base UI menu.
-        if (event.isComposing || dialogContent.current?.querySelector('[role="combobox"][aria-expanded="true"]')) event.preventDefault()
+        if (event.isComposing || dialogContent.current?.querySelector('[role="combobox"][aria-expanded="true"], [role="tooltip"][data-open]')) event.preventDefault()
       }}
       onCloseAutoFocus={event => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus() }}>
       <div className="st-dialog-head"><Dialog.Title className="st-dialog-title">{provider ? '编辑供应商' : '添加供应商'}</Dialog.Title>
@@ -423,6 +474,12 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
           onName={name => change({ name })} onBaseUrl={baseUrl => change({ baseUrl, models: draft.models.map(model => ({ ...model, protocol: undefined, baseUrl: undefined })) })}
           onApiKey={value => { changed(); setApiKey(value); credentialDrafts.current.set(scope, value) }} onApiKeyBlur={() => setLookupKey(apiKey)} />
         {credentialError && <div><p className="detail">{credentialError}</p><button type="button" className="outline" onClick={() => setCredentialRetry(value => value + 1)}>重新读取密钥</button></div>}
+        <div className="st-connection-test">
+          <ModelTestButton kind="connection" running={supplier.connection?.status === 'running'} disabled={!credentialReady || !onConnectionTest}
+            onTest={() => void supplier.runConnection()} onStop={supplier.stopConnection} />
+          {supplier.connection && <ModelTestFeedback {...supplier.connection}
+            onRetry={['failed', 'unverified'].includes(supplier.connection.status) ? () => void supplier.runConnection() : undefined} />}
+        </div>
         <div className="st-route-list-head"><span className="st-field-label">模型</span><button type="button" className="st-model-directory-refresh" aria-busy={directory.visibleBusy}
           disabled={onDirectory ? directory.busy || retryBlocked : profileBusy || Boolean(addressIssue) || !draft.models.some(model => model.modelId.trim())}
           title={retryBlocked ? `可在 ${new Date(manualReadyAt).toLocaleTimeString('zh-CN', { hour12: false })} 再次更新` : undefined}
@@ -437,30 +494,37 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
             value={modelQuery} onChange={event => setModelQuery(event.target.value)} onFocus={() => { setLookupKey(apiKey); void directory.ensureFresh() }}
             onKeyDown={event => {
               if (event.key === 'Enter' && !event.nativeEvent.isComposing && modelQuery.trim()) { event.preventDefault(); addManualModel() }
-            }} /></div><button type="button" className="outline st-model-list-add" disabled={!modelQuery.trim()} onClick={addManualModel}><Icon name="add" size={16} />添加模型</button></div>
-          {preset ? <div className="st-model-choice-list" role="group" aria-label="预设模型">
+            }} /></div><button type="button" className="outline st-model-list-add" disabled={!modelQuery.trim()} onClick={addManualModel}><Icon name="add" size={16} />添加模型</button>
+          {!preset && <button type="button" className="outline st-model-list-add st-model-list-fetch" aria-busy={supplier.fetched?.busy ?? false}
+            disabled={!credentialReady || !onDirectory || supplier.fetched?.busy}
+            title={!credentialReady ? '正在读取密钥' : !onDirectory ? '模型列表服务暂不可用' : undefined}
+            onClick={() => void supplier.fetchModels()}><Icon name="download-minimalistic" size={16} />{supplier.fetched?.busy ? '拉取中…' : '拉取模型'}</button>}</div>
+          {!preset && supplier.fetched?.error && <ModelTestFeedback status="failed" title="拉取模型未完成" {...supplier.fetched.error}
+            onRetry={() => void supplier.fetchModels()} />}
+          <div className="st-model-choice-list" role="group" aria-label={preset ? '预设模型' : '自定义模型'}>
             {modelChoices.filter(entry => matchesModelQuery(entry.modelId, entry.name)).map(entry => {
-              const model = draft.models.find(model => model.modelId === entry.modelId), key = `${scope}:${entry.modelId}`
-              return <ModelChoiceCard key={entry.modelId} modelId={entry.modelId} name={entry.name} selected={Boolean(model)} expanded={expandedModels.has(key)}
+              const model = draft.models.find(model => entry.connectionId ? model.connectionId === entry.connectionId : model.modelId === entry.modelId)
+              const connectionId = model?.connectionId ?? entry.connectionId
+              const editableId = !preset && Boolean(connectionId && editableModelIds.current.has(connectionId))
+              const key = `${scope}:${preset ? entry.modelId : connectionId ?? `available:${entry.modelId}`}`
+              const index = model ? configuredModels.findIndex(item => item.connectionId === model.connectionId) : -1
+              return <ModelChoiceCard key={editableId ? connectionId : entry.modelId} modelId={entry.modelId} name={entry.name}
+                selected={Boolean(model)} expanded={expandedModels.has(key)}
                 onSelect={model && model.expectedVersion > 0 ? undefined : selected => selectModel(entry.modelId, selected)}
-                onExpand={expanded => expandModel(key, expanded)} invalid={Boolean(model && (modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens)))}>
-                {model && renderModelFields(model, configuredModels.findIndex(item => item.connectionId === model.connectionId), false)}
+                onExpand={expanded => expandModel(key, expanded)} invalid={Boolean(model && (modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens)))}
+                action={editableId && model?.expectedVersion === 0 ? <button type="button" className="st-iconbtn" aria-label={`移除模型 ${index + 1}`}
+                  onClick={() => {
+                    change({ models: draft.models.filter(item => item.connectionId !== model.connectionId) })
+                    dialogContent.current?.querySelector<HTMLInputElement>('.st-model-list-search input')?.focus({ preventScroll: true })
+                  }}><Icon name="close" size={14} /></button> : undefined}>
+                {model && renderModelFields(model, index, editableId)}
               </ModelChoiceCard>
             })}
             {!modelChoices.some(entry => matchesModelQuery(entry.modelId, entry.name))
-              && <p className="st-model-list-empty" role="status">{modelQuery.trim() ? '没有匹配的型号' : '暂无模型列表'}</p>}
-          </div> : <div className="st-model-choice-list" role="group" aria-label="自定义模型">{customModels.map(({ model, index }) => <ModelChoiceCard key={model.connectionId}
-            modelId={model.modelId} name={model.modelId || `自定义模型${draft.models.length > 1 ? ` ${index + 1}` : ''}`} selected showSelection={false}
-            expanded={expandedModels.has(`${scope}:${model.connectionId}`)} onExpand={expanded => expandModel(`${scope}:${model.connectionId}`, expanded)}
-            invalid={Boolean(modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens))}
-            action={draft.models.length > 1 && model.expectedVersion === 0 ? <button type="button" className="st-iconbtn" aria-label={`移除模型 ${index + 1}`}
-              onClick={() => change({ models: draft.models.filter(item => item.connectionId !== model.connectionId) })}><Icon name="close" size={14} /></button> : undefined}>
-            {renderModelFields(model, index)}
-          </ModelChoiceCard>)}
-            {!customModels.length && <p className="st-model-list-empty" role="status">没有匹配的型号</p>}
-          </div>}
+              && (modelQuery.trim() || preset || supplier.fetched && !supplier.fetched.busy && !supplier.fetched.error)
+              && <p className="st-model-list-empty" role="status">{modelQuery.trim() ? '没有匹配的型号' : preset ? '暂无模型列表' : '供应商未返回模型，可手动输入模型 ID 添加'}</p>}
+          </div>
         </div>
-        <p className="detail">一次文本检查不会验证图像、工具或 strict schema 能力。</p>
         {recovery && error && <p className="detail">{error}</p>}
         {notice && <p className="detail">{notice}</p>}
         {recovery === 'unknown' && <button type="button" className="outline" disabled={saving} onClick={() => { if (pending.current) void submit(pending.current) }}>核对原提交</button>}
@@ -475,16 +539,9 @@ export function ModelProviderDialog({ provider, attempts, addModel = false, onCl
             <button type="button" className="outline" disabled={saving || reading} onClick={() => void save(latest)}>确认按当前草稿重试</button>
           </div>}
         </>}
-        {currentResult && <p role="status">{currentResult.state === 'completed' ? '检查已完成' : currentResult.state === 'cancelled' ? '已停止本机检查' : '检查结果待核实'} · {currentResult.usage.state === 'unknown' ? '用量未知' : '已记录用量'}</p>}
       </div>
-      <div className="st-dialog-foot"><div className="st-route-check">
-        {configuredModels.length > 1 && <SettingsSelect label="检查模型" value={checkModel.connectionId} onChange={setCheckId}
-          options={configuredModels.map((model, index) => ({ value: model.connectionId, label: model.modelId || `模型 ${index + 1}` }))} />}
-        <button type="button" className="outline" disabled={checking || !credentialReady || !draft.enabled || !checkModel.enabled || !checkModel.modelId.trim()} onClick={() => void test()}>{checking ? '正在检查…' : '保存前检查'}</button></div>
-        {currentResult && !currentResult.physicalRequestEnded && <button type="button" className="outline" onClick={() => void onCancel(currentResult).catch(() => {
-          if (live.current) setError('停止检查尚未确认，请核对原检查记录。')
-        })}>停止检查</button>}
-        <div className="st-dialog-foot-right"><Dialog.Close asChild><button type="button" className="outline">取消</button></Dialog.Close>
+      <div className="st-dialog-foot">
+        <div className="st-dialog-foot-right">
           <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button></div></div>
     </Dialog.Content></Dialog.Portal></Dialog.Root>
 }
