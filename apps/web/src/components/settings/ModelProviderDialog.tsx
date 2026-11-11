@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { modelBaseUrlError, modelConfigurationSchema, saveModelProviderSchema, resolveModelProfile, modelReasoningConfigurationError, modelAllowsImages,
   formatModelTokenCount, parseModelTokenCount, modelTokenCountError, resolveModelCapacity,
@@ -12,6 +12,7 @@ import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { useModelDirectory, type ReadModelDirectory } from './useModelDirectory'
 import { useModelConfigurationTests, type CheckModelConfiguration } from './useModelConfigurationTests'
 import { useSupplierChecks, type TestSupplierConnection } from './useSupplierChecks'
+import { inIdOrder, reconcileModelChoices, type ModelChoicePosition } from './modelOrdering'
 
 type ModelInput = SaveModelProvider['models'][number]
 type ModelDraft = Omit<ModelInput, 'contextWindow' | 'maxOutputTokens'> & { contextWindow?: string | undefined; maxOutputTokens?: string | undefined }
@@ -62,6 +63,8 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   onConnectionTest?: TestSupplierConnection
 }) {
   const [draft, setDraft] = useState<Draft>(() => fromProvider(provider))
+  const currentDraft = useRef(draft)
+  useLayoutEffect(() => { currentDraft.current = draft }, [draft])
   const editableModelIds = useRef(new Set(draft.models.map(model => model.connectionId)))
   const [profiles, setProfiles] = useState<Map<string, ModelProfile>>(() => new Map()), [refresh, setRefresh] = useState(0), [profileBusy, setProfileBusy] = useState(false)
   const [profileNotice, setProfileNotice] = useState('')
@@ -85,6 +88,11 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   const providerDrafts = useRef(new Map<string, Draft>()), modelDrafts = useRef(new Map<string, ModelDraft>())
   const presetModelDrafts = useRef(new Map<string, ModelDraft>())
   const removedModelDrafts = useRef(new Map<string, ModelDraft>())
+  // Persist join order independently of positions frozen for this editing session.
+  const memberOrders = useRef(new Map([[scope, draft.models.map(model => model.connectionId)]]))
+  const choiceOrders = useRef(new Map<string, ModelChoicePosition[]>())
+  const [manualPriorities, setManualPriorities] = useState<Record<string, string[]>>({})
+  const [revealModel, setRevealModel] = useState<{ scope: string; key: string } | null>(null)
   const [modelQuery, setModelQuery] = useState('')
   const [expandedModels, setExpandedModels] = useState(() => new Set<string>())
   const preset = useMemo(() => modelProviderPresets.find(item => item.id === draft.presetId), [draft.presetId])
@@ -130,7 +138,8 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       choices.set(model.modelId, { modelId: model.modelId, connectionId: model.connectionId })
     for (const [key, model] of removedModelDrafts.current) if (key.startsWith(scope + ':') && !choices.has(model.modelId))
       choices.set(model.modelId, { modelId: model.modelId, connectionId: model.connectionId })
-    for (const model of draft.models) if (model.modelId.trim() && !choices.has(model.modelId)) choices.set(model.modelId, { modelId: model.modelId })
+    for (const model of draft.models) if ((model.modelId.trim() || !preset && editableModelIds.current.has(model.connectionId)) && !choices.has(model.modelId))
+      choices.set(model.modelId, { modelId: model.modelId })
     if (preset) return [...choices.values()]
     return [...choices.values()].flatMap(entry => {
       const selected = draft.models.filter(model => model.modelId === entry.modelId)
@@ -138,6 +147,33 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     })
   }, [entries, draft.models, choiceScope, scope, preset, supplier.fetched?.models])
   const configuredModels = draft.models.filter(model => !preset || model.expectedVersion > 0 || model.modelId.trim())
+  const rowKeyOf = (modelId: string, connectionId?: string) => !preset && connectionId && editableModelIds.current.has(connectionId)
+    ? `custom:${connectionId}` : `model:${modelId}`
+  const expansionKeyOf = (model: ModelDraft) => `${scope}:${rowKeyOf(model.modelId, model.connectionId)}`
+  const choiceRows = modelChoices.map(entry => {
+    const model = draft.models.find(model => entry.connectionId ? model.connectionId === entry.connectionId : model.modelId === entry.modelId)
+    const connectionId = model?.connectionId ?? entry.connectionId
+    return { entry, model, key: rowKeyOf(entry.modelId, connectionId), modelId: entry.modelId, candidate: !model,
+      editableId: !preset && Boolean(connectionId && editableModelIds.current.has(connectionId)) }
+  })
+  const initialKeys = configuredModels.flatMap(model => choiceRows.filter(row => row.model?.connectionId === model.connectionId).map(row => row.key))
+  const nextChoiceOrder = reconcileModelChoices(choiceOrders.current.get(scope), inIdOrder(choiceRows, initialKeys, row => row.key)
+    .map(({ key, modelId, candidate }) => ({ key, modelId, candidate })))
+  const priorities = manualPriorities[scope] ?? []
+  const choiceOrder = inIdOrder(nextChoiceOrder, priorities, row => row.key).map(row => priorities.includes(row.key) ? { ...row, candidate: false } : row)
+  const orderedChoices = inIdOrder(choiceRows, choiceOrder.map(row => row.key), row => row.key)
+  // Field labels follow the unfiltered on-screen order, never the saved join order.
+  const fieldIndexes = new Map(orderedChoices.filter(row => row.model).map((row, index) => [row.model!.connectionId, index]))
+  useLayoutEffect(() => {
+    choiceOrders.current.set(scope, choiceOrder)
+    if (!memberOrders.current.has(scope)) memberOrders.current.set(scope, draft.models.map(model => model.connectionId))
+  })
+  useLayoutEffect(() => {
+    if (!revealModel || revealModel.scope !== scope) return
+    const card = [...(dialogContent.current?.querySelectorAll<HTMLElement>('[data-model-choice-key]') ?? [])]
+      .find(card => card.dataset.modelChoiceKey === revealModel.key)
+    card?.querySelector('.st-model-choice-head')?.scrollIntoView({ block: 'nearest' })
+  }, [revealModel, scope])
   const matchesModelQuery = (modelId: string, name = '') => `${modelId} ${name}`.toLowerCase().includes(modelQuery.trim().toLowerCase())
   const pending = useRef<{ input: SaveModelProvider; generation: number } | null>(null), submitting = useRef(false)
   const returnFocus = useRef(document.activeElement as HTMLElement | null)
@@ -205,7 +241,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       if (existing.expectedVersion > 0) removedModelDrafts.current.set(`${scope}:${existing.connectionId}`, existing)
       tests.invalidate(existing.connectionId)
       const remaining = draft.models.filter(model => model.connectionId !== existing.connectionId)
-      change({ models: remaining }); expandModel(preset ? `${scope}:${modelId}` : `${scope}:${existing.connectionId}`, false)
+      change({ models: remaining }); expandModel(expansionKeyOf(existing), false)
       return true
     }
     let selectedModel = existing
@@ -217,12 +253,24 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         contextWindow: undefined, maxOutputTokens: undefined, reasoningEffort: undefined, reasoningLevels: undefined } : {}) }
       const others = draft.models.filter(item => item.connectionId !== model.connectionId && (item.modelId.trim() || item.expectedVersion > 0))
       if (others.length >= 64) { setError('每个供应商最多配置 64 个模型。'); return false }
-      change({ models: [...others, model] })
+      const order = memberOrders.current.get(scope) ?? draft.models.map(model => model.connectionId)
+      const restore = model.expectedVersion > 0 && order.includes(model.connectionId)
+      const nextOrder = restore ? order : [model.connectionId, ...order.filter(id => id !== model.connectionId)]
+      memberOrders.current.set(scope, nextOrder)
+      if (manual && !preset) editableModelIds.current.add(model.connectionId)
+      if (manual && !restore) {
+        const rowKey = rowKeyOf(modelId, model.connectionId)
+        setManualPriorities(previous => ({ ...previous, [scope]: [rowKey, ...(previous[scope] ?? []).filter(key => key !== rowKey)] }))
+      }
+      change({ models: inIdOrder([...others, model], nextOrder, model => model.connectionId) })
       selectedModel = model
     }
     removedModelDrafts.current.delete(`${scope}:${selectedModel.connectionId}`)
-    if (manual) editableModelIds.current.add(selectedModel.connectionId)
-    expandModel(preset ? `${scope}:${modelId}` : `${scope}:${selectedModel.connectionId}`, true); void directory.ensureFresh(); return true
+    if (manual) {
+      expandModel(expansionKeyOf(selectedModel), true)
+      setRevealModel({ scope, key: rowKeyOf(modelId, selectedModel.connectionId) })
+    }
+    void directory.ensureFresh(); return true
   }
   const profileOf = (model: ModelDraft): ModelProfile => {
     const route = { ...modelRoute(model), modelId: model.modelId, presetId: draft.presetId, variantId: draft.variantId }
@@ -326,13 +374,13 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     }
     const missingModelId = !preset && configuredModels.find(model => !model.modelId.trim())
     if (missingModelId) {
-      setModelQuery(''); expandModel(`${scope}:${missingModelId.connectionId}`, true)
+      setModelQuery(''); expandModel(expansionKeyOf(missingModelId), true)
       setError('请填写模型 ID。'); return false
     }
     const invalidCapacity = configuredModels.find(model => modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens))
     if (invalidCapacity) {
       setModelQuery('')
-      expandModel(`${scope}:${preset ? invalidCapacity.modelId : invalidCapacity.connectionId}`, true)
+      expandModel(expansionKeyOf(invalidCapacity), true)
       setError('请检查上下文窗口和最大输出的填写。'); return false
     }
     const duplicate = new Set(configuredModels.map(model => model.modelId.trim())).size !== configuredModels.length
@@ -341,7 +389,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     if (unsupported) { setError(`当前接入方式尚未提供 ${unsupported.modelId} 的兼容协议，请选择其他型号或使用自定义连接。`); return false }
     const invalidReasoning = configuredModels.find(model => modelReasoningConfigurationError(routeOf(model), capacityOf(model).maxOutputTokens))
     const reasoning = invalidReasoning && modelReasoningConfigurationError(routeOf(invalidReasoning), capacityOf(invalidReasoning).maxOutputTokens)
-    if (invalidReasoning) { setModelQuery(''); expandModel(`${scope}:${preset ? invalidReasoning.modelId : invalidReasoning.connectionId}`, true) }
+    if (invalidReasoning) { setModelQuery(''); expandModel(expansionKeyOf(invalidReasoning), true) }
     if (duplicate || reasoning) { setError(duplicate ? '同一供应商内的模型 ID 不能重复。' : reasoning!); return false }
     return true
   }
@@ -365,6 +413,16 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       const saved = await onSave(operation.input)
       if (live.current) {
         pending.current = null; baseline.current = saved; setRecovery(null); setLatest(null)
+        const savedScope = scopeOf(operation.input)
+        for (const removed of operation.input.removedModels ?? []) {
+          const key = `${savedScope}:${removed.connectionId}`
+          const remembered = removedModelDrafts.current.get(key)
+          if (remembered) removedModelDrafts.current.set(key, { ...remembered, expectedVersion: removed.expectedVersion + 1 })
+          for (const [key, remembered] of presetModelDrafts.current) if (remembered.connectionId === removed.connectionId)
+            presetModelDrafts.current.set(key, { ...remembered, expectedVersion: removed.expectedVersion + 1 })
+          if (!currentDraft.current.models.some(model => model.connectionId === removed.connectionId))
+            memberOrders.current.set(savedScope, (memberOrders.current.get(savedScope) ?? []).filter(id => id !== removed.connectionId))
+        }
         toast.success('供应商已保存')
         if (operation.generation === epoch.current) { setApiKey(''); onClose() }
         else {
@@ -516,16 +574,12 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
           {!preset && supplier.fetched?.error && <ModelTestFeedback status="failed" title="拉取模型未完成" {...supplier.fetched.error}
             onRetry={() => void supplier.fetchModels()} />}
           <div className="st-model-choice-list" role="group" aria-label={preset ? '预设模型' : '自定义模型'}>
-            {modelChoices.filter(entry => matchesModelQuery(entry.modelId, entry.name)).map(entry => {
-              const model = draft.models.find(model => entry.connectionId ? model.connectionId === entry.connectionId : model.modelId === entry.modelId)
-              const connectionId = model?.connectionId ?? entry.connectionId
-              const editableId = !preset && Boolean(connectionId && editableModelIds.current.has(connectionId))
-              const key = `${scope}:${preset ? entry.modelId : connectionId ?? `available:${entry.modelId}`}`
-              const index = model ? configuredModels.findIndex(item => item.connectionId === model.connectionId) : -1
-              return <ModelChoiceCard key={editableId ? connectionId : entry.modelId} modelId={entry.modelId} name={entry.name}
-                selected={Boolean(model)} expanded={expandedModels.has(key)}
+            {orderedChoices.filter(({ entry }) => matchesModelQuery(entry.modelId, entry.name)).map(({ entry, model, key, editableId }) => {
+              const index = model ? fieldIndexes.get(model.connectionId)! : -1
+              return <ModelChoiceCard key={key} modelId={entry.modelId} name={entry.name} choiceKey={key}
+                selected={Boolean(model)} expanded={expandedModels.has(`${scope}:${key}`)}
                 onSelect={selected => selectModel(entry.modelId, selected)}
-                onExpand={expanded => expandModel(key, expanded)} invalid={Boolean(model && (modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens)))}
+                onExpand={expanded => expandModel(`${scope}:${key}`, expanded)} invalid={Boolean(model && (modelTokenCountError(model.contextWindow) || modelTokenCountError(model.maxOutputTokens)))}
                 action={editableId && model?.expectedVersion === 0 ? <button type="button" className="st-iconbtn" aria-label={`移除模型 ${index + 1}`}
                   onClick={() => {
                     change({ models: draft.models.filter(item => item.connectionId !== model.connectionId) })

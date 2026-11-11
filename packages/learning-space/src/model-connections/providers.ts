@@ -11,6 +11,7 @@ export const modelProviderMigration: Migration = { version: 20, name: 'model-pro
 ` };
 const groupSchema = z.object({ version: z.number().int().positive(), connectionIds: z.array(z.uuid()).max(64),
   name: z.string().trim().min(1).max(120).optional(), enabled: z.boolean().optional(),
+  addedOrder: z.number().int().positive().optional(), disabledOrder: z.number().int().positive().optional(),
   credentialConnection: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional(),
   protocol: modelProtocolSchema.optional(), baseUrl: z.url().optional(),
   presetId: modelPresetIdSchema.optional(), variantId: z.string().min(1).max(80).optional() }).strict();
@@ -71,6 +72,12 @@ export function createModelProviders(storage: OwnedStorage, owner: {
         baseUrl: group?.baseUrl ?? first.baseUrl, ...(group?.presetId ? { presetId: group.presetId } : {}),
         ...(group?.variantId ? { variantId: group.variantId } : {}),
         enabled: group?.enabled ?? first.providerEnabled ?? true, hasCredential: children.every(model => model.hasCredential), models: children });
+    }).sort((a, b) => {
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+      const field = a.enabled ? 'addedOrder' : 'disabledOrder';
+      // Missing ordinals are the historical UUID baseline, ahead of later events.
+      return (groups.get(a.providerId)?.group[field] ?? 0) - (groups.get(b.providerId)?.group[field] ?? 0)
+        || a.providerId.localeCompare(b.providerId);
     });
   }
 
@@ -101,6 +108,17 @@ export function createModelProviders(storage: OwnedStorage, owner: {
       if (previous?.connectionIds.some(id => !ids.has(id) && !removed.has(id))
         || siblings.some(head => !ids.has(head.configuration.connectionId) && !removed.has(head.configuration.connectionId)))
         throw new StorageError(previous || input.models.length === 0 ? 'invalid' : 'conflict');
+      const isNew = !previous && !siblings.length;
+      const wasEnabled = previous?.enabled ?? siblings[0]?.configuration.providerEnabled ?? true;
+      const disabling = !input.enabled && (isNew || wasEnabled);
+      let addedOrder = previous?.addedOrder, disabledOrder = previous?.disabledOrder;
+      if (isNew || disabling) {
+        // The scope lock also covers these counters; receipts never allocate a second event.
+        const { rows: [maximum] } = await tx.query(`SELECT max((body->>'addedOrder')::bigint) AS added,
+          max((body->>'disabledOrder')::bigint) AS disabled FROM model_providers WHERE scope=$1`, [scope]);
+        if (isNew) addedOrder = Number(maximum!.added ?? 0) + 1;
+        if (disabling) disabledOrder = Number(maximum!.disabled ?? 0) + 1;
+      }
       const presetId = input.presetId ?? previous?.presetId;
       const variantId = presetId === 'custom' ? undefined : input.variantId ?? previous?.variantId;
       const origin = { ...(presetId ? { presetId } : {}), ...(variantId ? { variantId } : {}) };
@@ -176,6 +194,7 @@ export function createModelProviders(storage: OwnedStorage, owner: {
       }
       const group = { version: input.expectedVersion + 1, connectionIds: input.models.map(model => model.connectionId),
         name: input.name, enabled: input.enabled, protocol: input.protocol, baseUrl: input.baseUrl, ...origin,
+        ...(addedOrder === undefined ? {} : { addedOrder }), ...(disabledOrder === undefined ? {} : { disabledOrder }),
         ...(!models.length ? { credentialConnection } : {}) };
       await tx.query(`INSERT INTO model_providers VALUES($1,$2,$3) ON CONFLICT(scope,id) DO UPDATE SET body=EXCLUDED.body`, [scope, input.providerId, group]);
       return modelProviderSchema.parse({ providerId: input.providerId, version: group.version, name: input.name, protocol: input.protocol,

@@ -4,6 +4,7 @@ import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCred
   modelConnectionTestResultSchema, modelDiagnosticSchema, resolveModelCapacity, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelProviderDialog } from '../components/settings/ModelProviderDialog'
+import { captureModelSettingsOrder, reconcileModelSettingsOrder } from '../components/settings/modelOrdering'
 import { toast } from '@xunjie/ui/feedback'
 import { z } from 'zod'
 import { type ModelSelectionController } from './ModelSelection'
@@ -25,7 +26,19 @@ export function PersonalModelSettings(props: PersonalModelSettingsProps) {
   return <PersonalModelSettingsBody key={JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])} {...props} />
 }
 function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId, courseId, readOnly = false }: PersonalModelSettingsProps) {
-  const [providers, setProviders] = useState<ModelProvider[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
+  const displayVisit = useRef(0)
+  const [view, setView] = useState(() => ({ providers: [] as ModelProvider[], order: captureModelSettingsOrder([]), visit: -1 }))
+  const providers = view.providers
+  const setProviders = useCallback((update: ModelProvider[] | ((previous: ModelProvider[]) => ModelProvider[]), freshList = false) => {
+    const visit = displayVisit.current
+    setView(previous => {
+      const providers = typeof update === 'function' ? update(previous.providers) : update
+      const capture = freshList && previous.visit !== visit
+      return { providers, visit: capture ? visit : previous.visit,
+        order: capture ? captureModelSettingsOrder(providers) : reconcileModelSettingsOrder(previous.order, providers) }
+    })
+  }, [])
+  const [attempts, setAttempts] = useState<ModelAttempt[]>([])
   const [dialog, setDialog] = useState<{ provider: ModelProvider | null; addModel?: boolean } | null>(null)
   const [toggleState, setToggleState] = useState<Record<string, 'saving' | 'unknown'>>({})
   const togglePending = useRef(new Map<string, SaveModelProvider>())
@@ -75,7 +88,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       const [configurations, checks] = await Promise.all([request('providers'), request('checks')])
       if (!live.current || generation < appliedRead.current) return
       appliedRead.current = generation
-      setProviders(z.array(modelProviderSchema).parse(configurations)); setAttempts(z.array(modelAttemptSchema).parse(checks)); setLoadError('')
+      setProviders(z.array(modelProviderSchema).parse(configurations), true); setAttempts(z.array(modelAttemptSchema).parse(checks)); setLoadError('')
     } catch (error) {
       if (live.current && generation >= appliedRead.current) {
         appliedRead.current = generation
@@ -83,9 +96,10 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       }
     }
     finally { if (live.current && visible) setLoading(false) }
-  }, [request])
+  }, [request, setProviders])
   useEffect(() => {
     if (!modelsVisible) return
+    displayVisit.current++
     void reload(true)
     const timer = setInterval(() => { void reload() }, 1000)
     return () => {
@@ -156,7 +170,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     const configurations = z.array(modelProviderSchema).parse(await request('providers'))
     if (live.current && generation >= appliedRead.current) {
       appliedRead.current = generation
-      setProviders(configurations)
+      setProviders(configurations, true)
     }
     return configurations.find(item => item.providerId === providerId) ?? null
   }
@@ -219,7 +233,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} /></div>
       <div className="product-personal-model">
-      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
+      <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} order={view.order} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
       tests={savedTests.runs} onStopTest={savedTests.stop}
       recoveryError={modelsVisible ? [loadError, selection.error].filter(Boolean).join('；') : ''}
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}

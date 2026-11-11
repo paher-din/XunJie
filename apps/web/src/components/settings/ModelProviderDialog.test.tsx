@@ -31,7 +31,7 @@ async function chooseModel(id: string) {
   }
   const selection = item.querySelector<HTMLButtonElement>('[role="checkbox"]')
   if (selection?.getAttribute('aria-checked') === 'false') await act(async () => selection.click())
-  else if (item.querySelector('[aria-expanded]')?.getAttribute('aria-expanded') === 'false')
+  if (item.querySelector('[aria-expanded]')?.getAttribute('aria-expanded') === 'false')
     await act(async () => item.querySelector<HTMLButtonElement>('.st-model-choice-title')!.click())
 }
 async function click(label: string) {
@@ -134,14 +134,14 @@ it('selects multiple preset models and retains their independent edits across co
   expect(card('deepseek-flash').getAttribute('data-selected')).toBeNull()
   await chooseModel('deepseek-v4-pro'); await type('模型 ID的最大输出 token', '128k')
   await chooseModel('deepseek-flash')
-  expect(input('模型 ID 2的上下文窗口').value).toBe('512k')
+  expect(input('模型 ID的上下文窗口').value).toBe('512k')
   await type('搜索或输入模型 ID', 'v4-pro')
   expect(card('deepseek-flash')).toBeUndefined()
   await click('保存')
   const models = onSave.mock.calls[0][0].models
-  expect(models.map(model => model.modelId)).toEqual(['deepseek-v4-pro', 'deepseek-flash'])
-  expect(models[0].maxOutputTokens).toBe(131072)
-  expect(models[1].contextWindow).toBe(524288)
+  expect(models.map(model => model.modelId)).toEqual(['deepseek-flash', 'deepseek-v4-pro'])
+  expect(models[1].maxOutputTokens).toBe(131072)
+  expect(models[0].contextWindow).toBe(524288)
   expect(new Set(models.map(model => model.connectionId)).size).toBe(2)
 })
 
@@ -157,8 +157,8 @@ it('adds model IDs from the search field with Enter or the adjacent button witho
   expect(input('模型 ID的上下文窗口').value).toBe('512K')
   await type('搜索或输入模型 ID', 'second-private-model'); await click('添加模型')
   await click('保存')
-  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['private-model', 'second-private-model'])
-  expect(onSave.mock.calls[0][0].models[0].contextWindow).toBe(524288)
+  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['second-private-model', 'private-model'])
+  expect(onSave.mock.calls[0][0].models[1].contextWindow).toBe(524288)
 })
 
 it('uses the same search/add row for custom models and saves filtered-out drafts with their own capacities', async () => {
@@ -173,14 +173,14 @@ it('uses the same search/add row for custom models and saves filtered-out drafts
   expect(input('模型 ID').value).toBe('custom-alpha')
   await type('模型 ID的上下文窗口', '512K')
   await type('搜索或输入模型 ID', 'custom-beta'); await click('添加模型')
-  expect(input('模型 ID 2').value).toBe('custom-beta')
-  await type('模型 ID 2的最大输出 token', '128K')
+  expect(input('模型 ID').value).toBe('custom-beta')
+  await type('模型 ID的最大输出 token', '128K')
   await type('搜索或输入模型 ID', 'custom-alpha')
-  expect(input('模型 ID 2')).toBeNull()
+  expect(input('模型 ID')).toBeNull()
   await click('保存')
-  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['custom-alpha', 'custom-beta'])
-  expect(onSave.mock.calls[0][0].models[0].contextWindow).toBe(524288)
-  expect(onSave.mock.calls[0][0].models[1].maxOutputTokens).toBe(131072)
+  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['custom-beta', 'custom-alpha'])
+  expect(onSave.mock.calls[0][0].models[1].contextWindow).toBe(524288)
+  expect(onSave.mock.calls[0][0].models[0].maxOutputTokens).toBe(131072)
 });
 
 it.each(['custom', 'deepseek'] as const)('reopens saved %s models collapsed, retains disabled state and reveals an invalid field before saving', async preset => {
@@ -263,6 +263,8 @@ it('restores a deselected saved model draft and preserves its independent disabl
   await type('API Key', 'synthetic-new-key')
   expect(checkbox().getAttribute('aria-checked')).toBe('false')
   await act(async () => checkbox().click())
+  expect(input('模型 ID的上下文窗口')).toBeNull()
+  await chooseModel('custom-model')
   expect(input('模型 ID的上下文窗口').value).toBe('512K')
   await click('保存')
   expect(onSave.mock.calls[0][0].models[0]).toMatchObject({ connectionId: saved.models[0].connectionId,
@@ -338,7 +340,7 @@ it('explains a supplier model-list 404 on add-model entry while allowing the dra
   expect(message).toContain('手动填写模型 ID');
   expect(document.activeElement).toBe(input('搜索或输入模型 ID'));
   await chooseModel('manually-added-model'); await click('保存');
-  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['custom-model', 'manually-added-model']);
+  expect(onSave.mock.calls[0][0].models.map(model => model.modelId)).toEqual(['manually-added-model', 'custom-model']);
 });
 
 it('identifies the public catalogue timeout separately from the supplier model list', async () => {

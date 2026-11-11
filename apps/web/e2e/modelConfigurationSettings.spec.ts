@@ -19,6 +19,9 @@ const supplier = createServer(async (request, response) => {
       response.end(JSON.stringify({ error: { code: 'invalid_api_key', message: 'Rejected synthetic-bad-key' } })); return
     }
     response.writeHead(200, { 'content-type': 'application/json' })
+    if (request.url?.startsWith('/sorting/')) {
+      response.end(JSON.stringify({ data: ['model-d', 'candidate-10', 'model-c', 'candidate-2'].map(id => ({ id })) })); return
+    }
     response.end(JSON.stringify({ data: [{ id: 'gpt-5.2', name: '示例推理模型', context_window: 131072, max_output_tokens: 32768,
       supported_reasoning_levels: ['none', 'low', 'medium', 'high', 'xhigh'] }, { id: 'fixture-no-images' }, { id: 'fixture-wait' }] })); return
   }
@@ -87,6 +90,9 @@ test('custom supplier reads lists without generation, adds selected models, and 
   await expect(dialog.getByRole('button', { name: '展开 gpt-5.2 的配置', exact: true })).toBeVisible()
   await choice.press('Space')
   await expect(choice).toBeChecked()
+  await expect(choice).toBeFocused()
+  await expect(dialog.getByRole('region', { name: 'gpt-5.2的配置', exact: true })).toBeHidden()
+  await dialog.getByRole('button', { name: '展开 gpt-5.2 的配置', exact: true }).click()
   expect(lists).toBeGreaterThanOrEqual(listBefore + 2)
   expect(generated).toHaveLength(before)
   const model = dialog.getByRole('region', { name: 'gpt-5.2的配置', exact: true })
@@ -202,4 +208,112 @@ test('saved model membership is independent of switches, opens collapsed, and ca
   await dialog.getByRole('button', { name: '添加模型', exact: true }).click()
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   await expect(provider.getByRole('switch', { name: '启用模型 member-readded', exact: true })).toBeChecked()
+})
+
+test('configuration cards keep checkbox positions, reveal manual additions, and reopen in persisted join order', async ({ page }) => {
+  await page.setViewportSize({ width: 913, height: 742 })
+  const dialog = await openEditor(page)
+  await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('配置排序')
+  await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl.replace('/v1', '/sorting/v1'))
+  const add = async (id: string) => {
+    await dialog.getByRole('textbox', { name: '搜索或输入模型 ID', exact: true }).fill(id)
+    await dialog.getByRole('button', { name: '添加模型', exact: true }).click()
+  }
+  await add('saved-B'); await add('saved-A')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  const provider = page.locator('.st-provider').filter({ hasText: '配置排序' })
+  await provider.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(dialog.locator('.st-model-choice-title[aria-expanded="true"]')).toHaveCount(0)
+  await dialog.getByRole('button', { name: '拉取模型', exact: true }).click()
+  const rows = dialog.locator('.st-model-choice')
+  const ids = () => rows.evaluateAll(rows => rows.map(row => row.getAttribute('aria-label')))
+  const original = ['saved-A', 'saved-B', 'candidate-2', 'candidate-10', 'model-c', 'model-d']
+  await expect.poll(ids).toEqual(original)
+  const checkbox = (id: string) => dialog.getByRole('checkbox', { name: `选择模型 ${id}`, exact: true })
+  for (const id of ['model-c', 'model-d']) {
+    await checkbox(id).focus()
+    const before = await checkbox(id).boundingBox()
+    await checkbox(id).press('Space')
+    await expect(checkbox(id)).toBeChecked()
+    await expect(checkbox(id)).toBeFocused()
+    expect(await checkbox(id).boundingBox()).toEqual(before)
+    await expect(dialog.locator('.st-model-choice-title[aria-expanded="true"]')).toHaveCount(0)
+    expect(await ids()).toEqual(original)
+  }
+  await checkbox('saved-A').press('Space'); await checkbox('saved-A').press('Space')
+  expect(await ids()).toEqual(original)
+  await dialog.getByRole('button', { name: '拉取模型', exact: true }).click()
+  await expect.poll(ids).toEqual(original)
+  await add('manual-z')
+  await expect(rows.first()).toHaveAttribute('aria-label', 'manual-z')
+  await expect(rows.first().getByRole('button', { name: '收起 manual-z 的配置', exact: true })).toBeInViewport()
+  await expect(dialog.getByRole('textbox', { name: '搜索或输入模型 ID', exact: true })).toBeFocused()
+  await add('saved-A')
+  expect(await ids()).toEqual(['manual-z', ...original])
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await provider.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect.poll(ids).toEqual(['manual-z', 'model-d', 'model-c', 'saved-A', 'saved-B'])
+  await expect(dialog.locator('.st-model-choice-title[aria-expanded="true"]')).toHaveCount(0)
+  await page.setViewportSize({ width: 1466, height: 742 })
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect(dialog).toBeVisible()
+})
+
+test('settings apply provider chronology and model switch groups only on the next page visit', async ({ page }) => {
+  test.setTimeout(90000)
+  await page.setViewportSize({ width: 1466, height: 742 })
+  await page.goto(endpoint + '/?settings=models')
+  const dialog = page.getByRole('dialog')
+  for (const name of ['先加入', '后加入', '最后加入']) {
+    await page.getByRole('button', { name: '添加供应商', exact: true }).click()
+    await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill(name)
+    await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl)
+    for (const id of name === '先加入' ? ['model-10', 'model-2', 'model-1'] : ['model-1']) {
+      await dialog.getByRole('textbox', { name: '搜索或输入模型 ID', exact: true }).fill(id)
+      await dialog.getByRole('button', { name: '添加模型', exact: true }).click()
+    }
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(dialog).toBeHidden()
+  }
+  const providers = page.locator('.product-personal-model .st-provider').filter({
+    has: page.locator('.st-provider-name').filter({ hasText: /^(先加入|后加入|最后加入)$/ }),
+  })
+  const names = () => providers.locator('.st-provider-name').allTextContents()
+  const first = providers.filter({ hasText: '先加入' })
+  const modelIds = () => first.locator('.st-provider-model-name').allTextContents()
+  const toggle = async (name: string) => {
+    const control = (name.startsWith('启用模型') ? first : page).getByRole('switch', { name, exact: true })
+    await control.click(); await expect(control).toBeEnabled()
+  }
+  const nextVisit = async () => {
+    await page.getByRole('navigation', { name: '设置导航' }).getByRole('button', { name: '账户', exact: true }).click()
+    await page.getByRole('navigation', { name: '设置导航' }).getByRole('button', { name: '模型', exact: true }).click()
+    await expect(page.getByText('正在读取配置…', { exact: true })).toBeHidden()
+  }
+  const poll = () => page.waitForResponse(response => response.url().endsWith('/models/providers') && response.request().method() === 'GET')
+  await expect.poll(names).toEqual(['先加入', '后加入', '最后加入'])
+  await expect.poll(modelIds).toEqual(['model-1', 'model-2', 'model-10'])
+  await toggle('启用模型 model-1')
+  await toggle('启用供应商 后加入'); await toggle('启用供应商 先加入')
+  await poll()
+  expect(await names()).toEqual(['先加入', '后加入', '最后加入'])
+  expect(await modelIds()).toEqual(['model-1', 'model-2', 'model-10'])
+  await first.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(dialog.locator('.st-model-choice-title[aria-expanded="true"]')).toHaveCount(0)
+  await expect.poll(() => dialog.locator('.st-model-choice').evaluateAll(rows => rows.map(row => row.getAttribute('aria-label'))))
+    .toEqual(['model-1', 'model-2', 'model-10'])
+  await dialog.getByRole('button', { name: '关闭', exact: true }).click()
+  expect(await modelIds()).toEqual(['model-1', 'model-2', 'model-10'])
+  await nextVisit()
+  await expect.poll(names).toEqual(['最后加入', '后加入', '先加入'])
+  await expect.poll(modelIds).toEqual(['model-2', 'model-10', 'model-1'])
+  await toggle('启用供应商 先加入'); await poll()
+  expect(await names()).toEqual(['最后加入', '后加入', '先加入'])
+  await nextVisit()
+  await expect.poll(names).toEqual(['先加入', '最后加入', '后加入'])
+  await toggle('启用供应商 先加入'); await poll()
+  await nextVisit()
+  await expect.poll(names).toEqual(['最后加入', '后加入', '先加入'])
+  await page.reload()
+  await expect.poll(names).toEqual(['最后加入', '后加入', '先加入'])
 })

@@ -3,12 +3,14 @@ import { ModelProviderCard, ModelProviderModelRow, ModelProviderLogo, Toggle, re
 import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { ModelTestRun } from './useModelConfigurationTests'
+import { captureModelSettingsOrder, inIdOrder, type ModelSettingsOrder } from './modelOrdering'
 
 type SchoolModel = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetrySelection, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, tests = {}, onStopTest }: {
+export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetrySelection, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, tests = {}, onStopTest }: {
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
+  order?: ModelSettingsOrder
   recoveryError?: string
   onRetrySelection?: () => void
   schoolModels?: SchoolModel[]; onSchoolCheck?(choice: SchoolModel): void
@@ -18,6 +20,7 @@ export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts
 }) {
   useToastFeedback(error)
   useToastFeedback(recoveryError)
+  const positions = order ?? captureModelSettingsOrder(providers)
   const checkDisabled = (connection: ModelConnection, allowed = true) => loading || !allowed || !connection.enabled || !connection.hasCredential
     || connection.adapterState !== 'ready' || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId
       && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))
@@ -43,7 +46,7 @@ export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts
           </ModelProviderModelRow>)}
         </div>
       </ModelProviderCard>}
-      {providers.map(provider => <ModelProviderCard key={provider.providerId} name={provider.name} compact
+      {inIdOrder(providers, positions.providers.map(provider => provider.id), provider => provider.providerId).map(provider => <ModelProviderCard key={provider.providerId} name={provider.name} compact
         logo={provider.presetId ? <ModelProviderLogo providerId={provider.presetId} /> : undefined}
         actions={<><button type="button" className="st-provider-text-action" disabled={Boolean(toggleState[provider.providerId])} onClick={() => onEdit(provider)}>编辑</button>
           <Toggle checked={provider.enabled} label={`启用供应商 ${provider.name}`} disabled={Boolean(toggleState[provider.providerId])} onChange={() => onToggle(provider)} /></>}
@@ -53,7 +56,7 @@ export function ModelTab({ providers, schoolModels = [], onSchoolCheck, attempts
           {toggleState[provider.providerId] === 'unknown' && <button type="button" className="st-provider-text-action" onClick={() => onToggle(provider)}>核对开关提交</button>}
         </>}>
         {provider.models.length > 0 && <div className="st-configured-models" aria-label={`${provider.name}的模型`}>
-        {provider.models.map(connection => <ModelProviderModelRow key={connection.connectionId} modelId={connection.modelId}
+        {inIdOrder(provider.models, (positions.models[provider.providerId] ?? []).map(model => model.id), model => model.connectionId).map(connection => <ModelProviderModelRow key={connection.connectionId} modelId={connection.modelId}
           effort={connection.reasoningEffort && connection.reasoningEffort !== 'auto' ? reasoningEffortLabels[connection.reasoningEffort] : undefined}
           actions={<><ModelTestButton kind="model" iconOnly running={tests[connection.connectionId]?.status === 'running'}
           disabled={checkDisabled(connection)}

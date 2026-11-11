@@ -210,6 +210,93 @@ afterEach(async () => {
 })
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
+async function mountModelPane() {
+  await act(async () => { root.render(null); await settle() })
+  await act(async () => {
+    root.render(createElement('section', { 'data-settings-section': 'models' },
+      createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })))
+    await settle()
+  })
+  await act(async () => { await settle() })
+  return document.querySelector<HTMLElement>('section[data-settings-section]')!
+}
+async function revisit(pane: HTMLElement) {
+  await act(async () => { pane.dataset.settingsSection = 'account'; await settle() })
+  await act(async () => { pane.dataset.settingsSection = 'models'; await settle() })
+  await act(async () => { await settle() })
+}
+const modelRows = () => [...document.querySelectorAll('.st-provider-model-row')].map(row => row.getAttribute('aria-label'))
+
+it('delays model regrouping until the next visit, preserves individual switch groups and keeps canonical dialog order', async () => {
+  server.modelId = 'model-10'
+  extraModels = [
+    { ...server, connectionId: crypto.randomUUID(), modelId: 'model-2', modelEnabled: true },
+    { ...server, connectionId: crypto.randomUUID(), modelId: 'model-1', modelEnabled: false, enabled: false },
+  ]
+  const pane = await mountModelPane()
+  expect(modelRows()).toEqual(['model-2', 'model-10', 'model-1'])
+  await click('启用模型 model-2')
+  await click('启用模型 model-1')
+  expect(modelRows()).toEqual(['model-2', 'model-10', 'model-1'])
+  await poll()
+  expect(modelRows()).toEqual(['model-2', 'model-10', 'model-1'])
+  expect(saves[0]!.models.map(model => model.modelId)).toEqual(['model-10', 'model-2', 'model-1'])
+  await click('编辑')
+  expect([...document.querySelectorAll('[role="dialog"] .st-model-choice')].map(row => row.getAttribute('aria-label')))
+    .toEqual(['model-10', 'model-2', 'model-1'])
+  await click('关闭')
+  expect(modelRows()).toEqual(['model-2', 'model-10', 'model-1'])
+  await click('启用供应商 原配置')
+  await poll()
+  expect(modelRows()).toEqual(['model-2', 'model-10', 'model-1'])
+  await revisit(pane)
+  expect(modelRows()).toEqual(['model-1', 'model-10', 'model-2'])
+  expect(document.querySelector('[aria-label="启用模型 model-1"]')!.getAttribute('aria-checked')).toBe('true')
+})
+
+it('holds provider positions across toggle receipts and polls, then applies canonical order on each new visit', async () => {
+  const createProvider = (name: string): ModelProvider => ({ ...providerOf(initial), providerId: crypto.randomUUID(), name,
+    models: [{ ...initial, connectionId: crypto.randomUUID(), name, modelEnabled: true }] })
+  let data = ['first', 'second', 'third'].map(createProvider)
+  const joinOrder = data.map(provider => provider.providerId), disabled = new Map<string, number>()
+  let closes = 0
+  const originalFetch = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation(async (url, options = {}) => {
+    if (!String(url).endsWith('/models/providers')) return originalFetch(url, options)
+    if (options.method === 'POST') {
+      const input = JSON.parse(options.body as string) as SaveModelProvider
+      const previous = data.find(provider => provider.providerId === input.providerId)!
+      if (previous.enabled && !input.enabled) disabled.set(input.providerId, ++closes)
+      const saved: ModelProvider = { ...previous, enabled: input.enabled, version: previous.version + 1,
+        models: input.models.map(model => ({ ...previous.models.find(saved => saved.connectionId === model.connectionId)!,
+          modelEnabled: model.enabled, enabled: input.enabled && model.enabled, version: model.expectedVersion + 1 })) }
+      data = data.map(provider => provider.providerId === saved.providerId ? saved : provider).sort((left, right) =>
+        Number(right.enabled) - Number(left.enabled) || (left.enabled
+          ? joinOrder.indexOf(left.providerId) - joinOrder.indexOf(right.providerId)
+          : disabled.get(left.providerId)! - disabled.get(right.providerId)!))
+      return response(saved)
+    }
+    await holdRead
+    return response(data)
+  })
+  const pane = await mountModelPane()
+  const names = () => [...document.querySelectorAll('.st-provider-name')].map(row => row.textContent)
+  expect(names()).toEqual(['first', 'second', 'third'])
+  await click('启用供应商 second'); await click('启用供应商 first')
+  await poll()
+  expect(names()).toEqual(['first', 'second', 'third'])
+  await revisit(pane)
+  expect(names()).toEqual(['third', 'second', 'first'])
+  await click('启用供应商 first'); await poll()
+  expect(names()).toEqual(['third', 'second', 'first'])
+  await revisit(pane)
+  expect(names()).toEqual(['first', 'third', 'second'])
+  await click('启用供应商 first'); await poll()
+  expect(names()).toEqual(['first', 'third', 'second'])
+  await revisit(pane)
+  expect(names()).toEqual(['third', 'second', 'first'])
+})
+
 describe('personal model settings recovery through real React controls', () => {
   it('keeps provider and model switches independent without reading or resending the key', async () => {
     const toggle = async (label: string) => { await act(async () => { document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!.click(); await settle() }) }
@@ -229,7 +316,7 @@ describe('personal model settings recovery through real React controls', () => {
       document.querySelector('input[aria-label="搜索或输入模型 ID"]')!.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await settle()
     })
     await act(async () => {
-      document.querySelector<HTMLButtonElement>('[aria-label="模型 ID 2的默认思考强度"]')!.click(); await settle()
+      document.querySelector<HTMLButtonElement>('[aria-label="模型 ID的默认思考强度"]')!.click(); await settle()
     })
     await act(async () => {
       const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.trim() === '高 · high')!
@@ -238,7 +325,7 @@ describe('personal model settings recovery through real React controls', () => {
     expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('方言')
     expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('参数模式')
     await click('保存')
-    expect(saves[0].models.map(model => [model.modelId, model.reasoningEffort])).toEqual([['synthetic', undefined], ['gpt-5.2', 'high']])
+    expect(saves[0].models.map(model => [model.modelId, model.reasoningEffort])).toEqual([['gpt-5.2', 'high'], ['synthetic', undefined]])
     expect(saves[0].credential).toEqual({ action: 'replace', value: originalKey })
     expect(document.querySelector('[aria-label="启用模型 gpt-5.2"]')).not.toBeNull()
     expect(document.querySelectorAll('[aria-label="个人连接配置"] .st-provider')).toHaveLength(1)

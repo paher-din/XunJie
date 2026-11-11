@@ -95,6 +95,163 @@ async function product(run) {
   }
 }
 
+async function modelStorage(root, run) {
+  const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
+  const owner = environment.services.find(service => service.unit === 'model-connection');
+  const binding = JSON.parse(await resolveCredential(root, 'storage-' + owner.serviceId));
+  const client = new pg.Client(binding.connection);
+  await client.connect();
+  try {
+    await client.query('SET search_path TO ' + '"' + binding.schema.replaceAll('"', '""') + '"');
+    return await run(client);
+  } finally { await client.end(); }
+}
+
+test('provider order follows joins and disable events through model edits, empty membership, re-enabling and receipt replay', { timeout: 120000 }, async () => {
+  await product(async ({ api, save, restart, root, baseUrl }) => {
+    const inputs = ['ffffffff', '88888888', '11111111'].map((prefix, index) => ({ ...provider(baseUrl),
+      providerId: prefix + '-0000-4000-8000-000000000001', name: ['Zulu', 'Middle', 'Alpha'][index] }));
+    let a = await save(inputs[0]), b = await save(inputs[1]), c = await save(inputs[2]);
+    const createdA = structuredClone(a);
+    const expectOrder = async expected => {
+      const result = await api('providers');
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.value.map(item => item.providerId), expected.map(item => item.providerId));
+      assert.equal(JSON.stringify(result.value).includes('addedOrder'), false);
+      assert.equal(JSON.stringify(result.value).includes('disabledOrder'), false);
+      return result.value;
+    };
+    await expectOrder([a, b, c]);
+    const modelEdit = revision(a, { name: 'A renamed to sort first' });
+    modelEdit.models.forEach(model => { model.enabled = false; });
+    a = await save(modelEdit);
+    await expectOrder([a, b, c]);
+    const disableC = revision(c, { enabled: false });
+    c = await save(disableC);
+    a = await save(revision(a, { enabled: false }));
+    await expectOrder([b, c, a]);
+    c = await save(revision(c, { name: '重复保存关闭状态' }));
+    await expectOrder([b, c, a]);
+    a = await save(revision(a, { enabled: true }));
+    await expectOrder([a, b, c]);
+    c = await save(revision(c, { enabled: true }));
+    await expectOrder([a, b, c]);
+    c = await save(revision(c, { enabled: false }));
+    b = await save(revision(b, { enabled: false }));
+    a = await save(revision(a, { enabled: false }));
+    await expectOrder([c, b, a]);
+    await modelStorage(root, async client => {
+      const { rows } = await client.query('SELECT id,body FROM model_providers');
+      const groups = new Map(rows.map(row => [row.id, row.body]));
+      assert.deepEqual([a, b, c].map(item => groups.get(item.providerId).addedOrder), [1, 2, 3]);
+      assert.deepEqual([c, b, a].map(item => groups.get(item.providerId).disabledOrder), [3, 4, 5]);
+    });
+    c = await save(revision(c, { enabled: true }));
+    a = await save(revision(a, { enabled: true }));
+    await expectOrder([a, c, b]);
+    c = await save(revision(c, { models: [], removedModels: c.models.map(removal) }));
+    await expectOrder([a, c, b]);
+    c = await save(revision(c, { enabled: false }));
+    await expectOrder([a, b, c]);
+    c = await save(revision(c));
+    await expectOrder([a, b, c]);
+    c = await save(revision(c, { enabled: true }));
+    const beforeReplay = await expectOrder([a, c, b]);
+    assert.equal((await save(disableC)).enabled, false, 'receipt returns the old response without replaying its disable event');
+    assert.deepEqual(await expectOrder([a, c, b]), beforeReplay);
+    assert.deepEqual(await save(inputs[0]), createdA);
+    await restart();
+    assert.deepEqual(await expectOrder([a, c, b]), beforeReplay);
+    await save(disableC);
+    assert.deepEqual(await expectOrder([a, c, b]), beforeReplay);
+  });
+});
+
+test('old groups and legacy upgrades keep the UUID baseline ahead of later additions and disable events', { timeout: 120000 }, async () => {
+  await product(async ({ api, save, restart, root, baseUrl }) => {
+    let old = await save({ ...provider(baseUrl), providerId: '88888888-0000-4000-8000-000000000001', name: '旧组' });
+    let disabled = await save({ ...provider(baseUrl), providerId: '33333333-0000-4000-8000-000000000001', enabled: false });
+    disabled = await save(revision(disabled, { models: [], removedModels: disabled.models.map(removal) }));
+    const legacyId = '55555555-0000-4000-8000-000000000001';
+    const legacyInput = { requestId: randomUUID(), connectionId: legacyId, expectedVersion: 0, name: 'Legacy',
+      protocol: 'chat-completions', baseUrl, path: '/chat/completions', modelId: 'legacy-order',
+      dialect: 'standard', parameterMode: 'plain', enabled: false, credential: { action: 'replace', value: key } };
+    assert.equal((await api('connections', legacyInput)).status, 200);
+    await modelStorage(root, async client => {
+      // Simulate pre-order groups, including the original group shape without parent metadata.
+      await client.query("UPDATE model_providers SET body=body-'addedOrder'-'disabledOrder'");
+      await client.query("UPDATE model_providers SET body=body-'name'-'enabled' WHERE id=$1", [old.providerId]);
+    });
+    const freshInput = { ...provider(baseUrl), providerId: '11111111-0000-4000-8000-000000000001', name: '最新但UUID最小' };
+    let fresh = await save(freshInput);
+    const expectIds = async ids => {
+      const result = await api('providers');
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.value.map(item => item.providerId), ids);
+      return result.value;
+    };
+    const baseline = [legacyId, old.providerId, fresh.providerId, disabled.providerId];
+    await expectIds(baseline);
+    await restart();
+    let legacy = (await expectIds(baseline)).find(item => item.providerId === legacyId);
+    const upgrade = revision(legacy);
+    upgrade.models[0].enabled = false;
+    legacy = await save(upgrade);
+    disabled = await save(revision(disabled, { name: '旧关闭组重复保存' }));
+    old = await save(revision(old, { name: '旧开启组重复保存' }));
+    await expectIds(baseline);
+    await modelStorage(root, async client => {
+      const { rows } = await client.query('SELECT id,body FROM model_providers');
+      for (const row of rows.filter(row => row.id !== fresh.providerId)) {
+        assert.equal(row.body.addedOrder, undefined, 'legacy upgrade must not become a new join');
+        assert.equal(row.body.disabledOrder, undefined, 'saving an already disabled old provider is not a new event');
+      }
+    });
+    old = await save(revision(old, { enabled: false }));
+    await expectIds([legacyId, fresh.providerId, disabled.providerId, old.providerId]);
+    old = await save(revision(old, { enabled: true }));
+    await expectIds(baseline);
+    legacy = await save(revision(legacy, { enabled: false }));
+    fresh = await save(revision(fresh, { enabled: false }));
+    const closed = [old.providerId, disabled.providerId, legacyId, fresh.providerId];
+    await expectIds(closed);
+    await restart();
+    await expectIds(closed);
+  });
+});
+
+test('concurrent provider additions and disable events allocate distinct orders under the scope lock', { timeout: 120000 }, async () => {
+  await product(async ({ api, save, restart, root, baseUrl }) => {
+    const inputs = Array.from({ length: 4 }, () => provider(baseUrl));
+    const saved = await Promise.all(inputs.map(save));
+    const readOrder = async field => modelStorage(root, async client => {
+      const { rows } = await client.query('SELECT id,body FROM model_providers');
+      const ordered = rows.sort((a, b) => a.body[field] - b.body[field]);
+      assert.deepEqual(ordered.map(row => row.body[field]), [1, 2, 3, 4]);
+      return ordered.map(row => row.id);
+    });
+    const joins = await readOrder('addedOrder');
+    assert.deepEqual((await api('providers')).value.map(item => item.providerId), joins);
+    const closes = saved.map(item => revision(item, { enabled: false }));
+    await Promise.all(closes.map(save));
+    const disabled = await readOrder('disabledOrder');
+    await Promise.all(closes.map(save));
+    assert.deepEqual((await api('providers')).value.map(item => item.providerId), disabled);
+    assert.deepEqual(await readOrder('disabledOrder'), disabled);
+    await restart();
+    assert.deepEqual((await api('providers')).value.map(item => item.providerId), disabled);
+    assert.deepEqual(await readOrder('addedOrder'), joins);
+    const bornDisabled = await save({ ...provider(baseUrl), providerId: '00000000-0000-4000-8000-000000000001', enabled: false });
+    await save(revision(bornDisabled));
+    assert.deepEqual((await api('providers')).value.map(item => item.providerId), [...disabled, bornDisabled.providerId]);
+    await modelStorage(root, async client => {
+      const { rows: [row] } = await client.query('SELECT body FROM model_providers WHERE id=$1', [bornDisabled.providerId]);
+      assert.equal(row.body.addedOrder, 5);
+      assert.equal(row.body.disabledOrder, 5, 'a disabled creation counts as one disable event');
+    });
+  });
+});
+
 test('provider lifecycle uses real native storage and SDK dispatch', { timeout: 240000 }, async t => {
   await product(async ({ api, save, send, restart, received, baseUrl }) => {
     await t.test('mixed native routes share one provider and retain their primary address, identities and credentials after restart', async () => {

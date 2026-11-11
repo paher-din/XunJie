@@ -4,14 +4,15 @@ import './model-choice-card.css'
 
 /** Select a model, then inspect its own settings without leaving the list. */
 export function ModelChoiceCard({ modelId, name, selected, expanded, onSelect, onExpand, children, invalid = false,
-  showSelection = true, action }: {
+  showSelection = true, action, choiceKey }: {
   modelId: string; name?: string | undefined; selected: boolean; expanded: boolean
   onSelect?(selected: boolean): boolean | void; onExpand(expanded: boolean): void
   children?: ReactNode; invalid?: boolean; showSelection?: boolean; action?: ReactNode
+  choiceKey?: string
 }) {
   const regionId = useId(), title = name || modelId || '自定义模型'
   return <section className={'st-model-choice' + (selected ? ' selected' : '') + (invalid ? ' invalid' : '')}
-    aria-label={modelId || title} data-selected={selected || undefined}>
+    aria-label={modelId || title} data-selected={selected || undefined} data-model-choice-key={choiceKey}>
     <div className="st-model-choice-head">
       {showSelection && (onSelect ? <button type="button" className="st-model-choice-select" role="checkbox"
         aria-label={`选择模型 ${modelId}`} aria-checked={selected} onClick={() => onSelect(!selected)}>

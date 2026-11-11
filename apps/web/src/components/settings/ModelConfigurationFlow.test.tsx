@@ -190,8 +190,8 @@ it('tests the current card despite an invalid sibling draft, using its actual ou
   await type('模型 ID的最大输出 token', '96k')
   await select('模型 ID的默认思考强度', '高 · high')
   await type('搜索或输入模型 ID', 'unfinished-model'); await click('添加模型')
-  await type('模型 ID 2的上下文窗口', '0.1K')
-  expect(field('模型 ID 2的上下文窗口').getAttribute('aria-invalid')).toBe('true')
+  await type('模型 ID的上下文窗口', '0.1K')
+  expect(field('模型 ID的上下文窗口').getAttribute('aria-invalid')).toBe('true')
   await click('模型测试', testArea())
   expect(onCheck).toHaveBeenCalledOnce()
   const [source, options] = onCheck.mock.calls[0]!
@@ -206,7 +206,7 @@ it('tests the current card despite an invalid sibling draft, using its actual ou
   expect(testArea().querySelector('.st-test-stages, .st-model-test-diagnostic')).toBeNull()
   expect(testArea().textContent).not.toContain('图片：')
   expect(testArea('unfinished-model').querySelector('.st-model-test-feedback')).toBeNull()
-  expect(field('模型 ID 2的上下文窗口').value).toBe('0.1K')
+  expect(field('模型 ID的上下文窗口').value).toBe('0.1K')
   expect(onConnectionTest).not.toHaveBeenCalled()
   expect(onSave).not.toHaveBeenCalled()
   expect(document.querySelectorAll('[data-sonner-toast][data-type="success"]')).toHaveLength(1)
@@ -378,7 +378,85 @@ async function pickFetched(id: string) {
   expect(checkbox, id).toBeDefined()
   await act(async () => { checkbox!.click() })
   await settle()
+  if (checkbox!.getAttribute('aria-checked') === 'true' && card(id).querySelector('[aria-expanded]')!.getAttribute('aria-expanded') === 'false')
+    await click(`展开 ${id} 的配置`)
 }
+
+it('keeps checkbox positions and focus during editing, then reopens newest members first and candidates in natural order', async () => {
+  const provider = savedProvider({ modelId: 'saved-A', reasoningEffort: 'auto', parameterMode: 'plain' })
+  provider.models.push({ ...provider.models[0]!, connectionId: crypto.randomUUID(), modelId: 'saved-B', modelEnabled: false, enabled: false })
+  const onDirectory = vi.fn<NonNullable<Props['onDirectory']>>(async input => input.source === 'supplier'
+    ? { models: ['model-d', 'candidate-10', 'model-c', 'candidate-2'].map(modelId => ({ modelId })), catalogue: { status: 'idle' }, supplier: { status: 'ready' } }
+    : catalogue(input))
+  const { onSave } = await draw({ provider, onDirectory }, false)
+  await click('拉取模型')
+  const ids = () => [...form().querySelectorAll('.st-model-choice')].map(row => row.getAttribute('aria-label'))
+  const initial = ['saved-A', 'saved-B', 'candidate-2', 'candidate-10', 'model-c', 'model-d']
+  expect(ids()).toEqual(initial)
+  expect(form().querySelectorAll('.st-model-choice-title[aria-expanded="true"]')).toHaveLength(0)
+  const toggle = async (id: string) => { await act(async () => {
+    const checkbox = card(id).querySelector<HTMLButtonElement>('[role="checkbox"]')!
+    checkbox.focus(); checkbox.click()
+  }) }
+  const scrolling = vi.spyOn(Element.prototype, 'scrollIntoView').mockClear()
+  await toggle('model-c'); await toggle('model-d')
+  expect(ids()).toEqual(initial)
+  expect(form().querySelectorAll('.st-model-choice-title[aria-expanded="true"]')).toHaveLength(0)
+  expect(document.activeElement).toBe(card('model-d').querySelector('[role="checkbox"]'))
+  expect(scrolling).not.toHaveBeenCalled()
+  await click('展开 saved-A 的配置'); await type('模型 ID的上下文窗口', '768K')
+  await toggle('saved-A'); await toggle('saved-A')
+  expect(ids()).toEqual(initial)
+  expect(card('saved-A').querySelector('[aria-expanded]')!.getAttribute('aria-expanded')).toBe('false')
+  await click('展开 saved-A 的配置')
+  expect(field('模型 ID的上下文窗口').value).toBe('768K')
+  await type('搜索或输入模型 ID', 'model-')
+  expect(ids()).toEqual(['model-c', 'model-d'])
+  await type('搜索或输入模型 ID', '')
+  expect(ids()).toEqual(initial)
+  await click('保存')
+  expect(onSave, JSON.stringify(activeToasts().map(toast => 'title' in toast ? toast.title : ''))).toHaveBeenCalledOnce()
+  const submitted = onSave.mock.calls[0]![0]
+  expect(submitted.models.map(model => model.modelId)).toEqual(['model-d', 'model-c', 'saved-A', 'saved-B'])
+  expect(submitted.models[2]!.contextWindow).toBe(786432)
+  expect(submitted.models[3]!.enabled).toBe(false)
+  await act(async () => root.render(null))
+  const saved: ModelProvider = { ...provider, version: provider.version + 1, models: submitted.models.map(model => ({
+    ...provider.models[0]!, ...model, version: model.expectedVersion + 1,
+  })) }
+  await draw({ provider: saved, onDirectory }, false)
+  await click('拉取模型')
+  expect(ids()).toEqual(['model-d', 'model-c', 'saved-A', 'saved-B', 'candidate-2', 'candidate-10'])
+  expect(form().querySelectorAll('.st-model-choice-title[aria-expanded="true"]')).toHaveLength(0)
+})
+
+it('puts manual additions first, locates duplicates without moving them, and keeps fetched card expansion stable', async () => {
+  const onDirectory = vi.fn<NonNullable<Props['onDirectory']>>(async input => input.source === 'supplier'
+    ? { models: [{ modelId: 'model-10' }, { modelId: 'model-2' }], catalogue: { status: 'idle' }, supplier: { status: 'ready' } }
+    : catalogue(input))
+  await draw({ onDirectory }, false)
+  await click('拉取模型')
+  await click('展开 model-2 的配置')
+  expect(card('model-2').getAttribute('data-selected')).toBe('true')
+  expect(card('model-2').querySelector('[aria-expanded]')!.getAttribute('aria-expanded')).toBe('true')
+  await type('搜索或输入模型 ID', 'manual-A'); await click('添加模型')
+  await type('模型 ID的上下文窗口', '768K')
+  const originalKey = card('manual-A').querySelector('[aria-controls]')!.getAttribute('aria-controls')
+  const stableKey = card('manual-A').dataset.modelChoiceKey
+  await type('模型 ID', '')
+  expect(field('模型 ID').value).toBe('')
+  await type('模型 ID', 'manual-A')
+  expect(card('manual-A').querySelector('[aria-controls]')!.getAttribute('aria-controls')).toBe(originalKey)
+  await type('搜索或输入模型 ID', 'manual-B'); await click('添加模型')
+  const ids = () => [...form().querySelectorAll('.st-model-choice')].map(row => row.getAttribute('aria-label'))
+  expect(ids()).toEqual(['manual-B', 'manual-A', 'gpt-5.2', 'model-2', 'model-10'])
+  expect(card('manual-B').querySelector('[aria-expanded]')!.getAttribute('aria-expanded')).toBe('true')
+  expect(document.activeElement).toBe(field('搜索或输入模型 ID'))
+  await type('搜索或输入模型 ID', 'manual-A'); await click('添加模型')
+  expect(ids()).toEqual(['manual-B', 'manual-A', 'gpt-5.2', 'model-2', 'model-10'])
+  expect(card('manual-A').dataset.modelChoiceKey).toBe(stableKey)
+  expect(field('模型 ID 2的上下文窗口').value).toBe('768K')
+})
 
 it('keeps a model reselected while its removal save is pending and uses the acknowledged retired version on the next save', async () => {
   const provider = savedProvider(), pending = deferred<ModelProvider>()
@@ -401,6 +479,27 @@ it('keeps a model reselected while its removal save is pending and uses the ackn
   expect(onSave.mock.calls[1]![0].models.find(model => model.connectionId === provider.models[0]!.connectionId))
     .toMatchObject({ expectedVersion: 3, enabled: true })
   expect(onSave.mock.calls[1]![0].removedModels).toBeUndefined()
+})
+
+it('counts re-adding an acknowledged removal as a new join while preserving edits made during the save', async () => {
+  const provider = savedProvider({ modelId: 'saved-A', reasoningEffort: 'auto', parameterMode: 'plain' })
+  provider.models.push({ ...provider.models[0]!, connectionId: crypto.randomUUID(), modelId: 'saved-B' })
+  const pending = deferred<ModelProvider>()
+  const saved = { ...provider, version: provider.version + 1, models: [{ ...provider.models[0]!, version: 3 }] }
+  const onSave = vi.fn<Props['onSave']>().mockImplementationOnce(() => pending.promise).mockResolvedValue(saved)
+  const { onClose } = await draw({ provider, onSave }, false)
+  await act(async () => card('saved-B').querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
+  await click('保存')
+  await type('连接名称', '等待回执时继续编辑')
+  await act(async () => pending.resolve(saved))
+  await settle()
+  expect(onClose).not.toHaveBeenCalled()
+  await act(async () => card('saved-B').querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
+  expect([...form().querySelectorAll('.st-model-choice')].map(row => row.getAttribute('aria-label'))).toEqual(['saved-A', 'saved-B'])
+  await click('保存')
+  expect(onSave.mock.calls[1]![0].models.map(model => model.modelId)).toEqual(['saved-B', 'saved-A'])
+  expect(onSave.mock.calls[1]![0].models[0]!.expectedVersion).toBe(3)
+  expect(onSave.mock.calls[1]![0].name).toBe('等待回执时继续编辑')
 })
 
 it('keeps a new custom list empty, separates catalogue data, and offers retry and manual entry after a failed or empty fetch', async () => {
@@ -515,8 +614,8 @@ it('lists fetched supplier models as unselected cards and saves only checked mod
   const saved = onSave.mock.calls[0]![0]
   expect(saved).toMatchObject({ providerId: provider.providerId, expectedVersion: 3, name: provider.name,
     baseUrl, protocol: 'responses', credential: { action: 'replace', value: currentKey } })
-  expect(saved.models.map(model => model.modelId)).toEqual(['gpt-5.2', 'fetched-alpha'])
-  expect(saved.models[0]).toMatchObject({ connectionId: provider.models[0]!.connectionId, expectedVersion: 2, enabled: false,
+  expect(saved.models.map(model => model.modelId)).toEqual(['fetched-alpha', 'gpt-5.2'])
+  expect(saved.models[1]).toMatchObject({ connectionId: provider.models[0]!.connectionId, expectedVersion: 2, enabled: false,
     protocol: 'responses', baseUrl, contextWindow: 786432, maxOutputTokens: 98304, reasoningEffort: 'high', imageInput: true })
   expect(onCheck).not.toHaveBeenCalled()
   expect(onConnectionTest).not.toHaveBeenCalled()
