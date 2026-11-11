@@ -3,10 +3,15 @@ import { z } from 'zod';
 import { parseDocument } from 'yaml';
 import { StorageError } from '@xunjie/storage';
 import { teachingSkillImportSchema, teachingSkillMetadataSchema, teachingSkillVersionSchema,
-  teachingSkillLimits, teachingSkillLoadedSchema, type TeachingSkillImport, type TeachingSkillVersion } from '@xunjie/contracts/agent-skills';
+  teachingSkillLimits, teachingSkillLoadedSchema, type TeachingSkillImport, type TeachingSkillImportFailure, type TeachingSkillVersion } from '@xunjie/contracts/agent-skills';
 import { canonicalDigest } from './identity.js';
 
 const hash = (value: Uint8Array) => createHash('sha256').update(value).digest('hex');
+export class TeachingSkillImportError extends StorageError {
+  constructor(readonly reason: TeachingSkillImportFailure['reason']) {
+    super('invalid'); this.name = 'TeachingSkillImportError';
+  }
+}
 // Private provenance stays in the stored load, not in the model/public loaded-content wire.
 const storedLoadSchema = teachingSkillLoadedSchema.extend({ packageOwnerKey: z.string().min(1).max(2000).optional() });
 export function parseStoredTeachingSkillLoad(value: unknown) {
@@ -43,18 +48,25 @@ export function parseTeachingSkillPackage(value: TeachingSkillImport) {
   });
   const skill = files.find(file => file.path === 'SKILL.md');
   if (!skill || skill.encoding !== 'utf8' || Buffer.byteLength(skill.content) > teachingSkillLimits.bodyBytes) throw new StorageError('invalid');
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(skill.content);
-  if (!frontmatter || !frontmatter[1] || frontmatter[1].length > 32768) throw new StorageError('invalid');
+  const frontmatter = /^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(skill.content);
+  if (!frontmatter || !frontmatter[1] || frontmatter[1].length > 32768) throw new TeachingSkillImportError('frontmatter');
   let raw: unknown;
   try {
     const doc = parseDocument(frontmatter[1], { uniqueKeys: true, strict: true });
-    if (doc.errors.length || doc.warnings.length) throw new StorageError('invalid');
+    if (doc.errors.length || doc.warnings.length) throw new TeachingSkillImportError('frontmatter');
     raw = doc.toJS({ maxAliasCount: 0 });
-  } catch { throw new StorageError('invalid'); }
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new StorageError('invalid');
+  } catch { throw new TeachingSkillImportError('frontmatter'); }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TeachingSkillImportError('frontmatter');
   const normalized = { ...raw as Record<string, unknown> };
   if (typeof normalized['allowed-tools'] === 'string') normalized['allowed-tools'] = normalized['allowed-tools'].trim().split(/\s+/).filter(Boolean);
-  const metadata = teachingSkillMetadataSchema.parse(normalized);
+  // External skills may carry extra authoring fields. Keep them in the original file;
+  // only the supported fields become application metadata or capability declarations.
+  const result = teachingSkillMetadataSchema.strip().safeParse(normalized);
+  if (!result.success) {
+    const field = result.error.issues.find(issue => issue.path[0] === 'name' || issue.path[0] === 'description')?.path[0];
+    throw new TeachingSkillImportError(field === 'name' || field === 'description' ? field : 'metadata');
+  }
+  const metadata = result.data;
   const basis = { source: input.source, packageVersion: input.packageVersion, metadata, files, attachments };
   return { ...basis, digest: canonicalDigest(basis) };
 }

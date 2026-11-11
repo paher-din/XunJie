@@ -9,6 +9,8 @@ import { createTeachingAgent, teachingAgentMigrations } from '@xunjie/learning-s
 import { createMaintenanceCoordinator, createRecoveryManager, restoreRecoverySet,
   createStorageRecoveryOwner, createStorageRecoveryTarget } from '@xunjie/product-runtime';
 import { nativeFixture } from '../../../packages/storage/test/native-fixture.mjs';
+import { parseTeachingSkillPackage } from '../../../packages/learning-space/dist/teaching-agent/skills-package.js';
+import { canonicalDigest, operationId } from '../../../packages/learning-space/dist/teaching-agent/identity.js';
 
 const digest = item => createHash('sha256').update(`${item.version}\n${item.name}\n${item.sql}`).digest('hex');
 // Frozen from cb104e33604cbfcb8c5c4f294dd5c745e723834c, not derived from the current implementation.
@@ -48,6 +50,39 @@ function agent(storage) {
 }
 const skillInput = () => ({ requestId: randomUUID(), source: 'acceptance:parallel-migrations', packageVersion: '1.0.0',
   files: [{ path: 'SKILL.md', encoding: 'utf8', content: '---\nname: migration-check\ndescription: 保留迁移前的学习依据\n---\n先记录原观察。' }] });
+async function seedLegacySkill(storage, user, input) {
+  // Write the published v11 tables and receipt directly: today's owner requires v15.
+  assert.equal((await journal(storage)).at(-1).version, 11);
+  const { rows: columns } = await storage.read(`SELECT column_name FROM information_schema.columns
+    WHERE table_schema=current_schema() AND table_name='teaching_skills' AND column_name='removed'`);
+  assert.deepEqual(columns, [], 'The source really is the pre-removal schema.');
+  const ownerKey = [user.environmentId, user.spaceId, user.principalId].join('/');
+  const skillId = operationId('teaching-skill:' + user.environmentId + '/' + user.principalId + ':' + input.requestId);
+  const fixed = { ...parseTeachingSkillPackage(input), skillId, version: 1 };
+  const { files: _files, ...metadata } = fixed;
+  const imported = { ...metadata, name: fixed.metadata.name, description: fixed.metadata.description,
+    origin: 'personal', selected: true, disabled: false, required: false };
+  const receipt = await storage.request({ requestId: 'skills:' + input.requestId,
+    fingerprint: canonicalDigest({ owner: ownerKey, input: { operation: 'import', input } }) }, async tx => {
+    await tx.query('INSERT INTO teaching_skills(owner_key,skill_id,version) VALUES($1,$2,1)', [ownerKey, skillId]);
+    await tx.query('INSERT INTO teaching_skill_versions(owner_key,skill_id,version,body) VALUES($1,$2,1,$3)',
+      [ownerKey, skillId, JSON.stringify(fixed)]);
+    return imported;
+  });
+  assert.deepEqual(receipt.result, imported);
+  return imported;
+}
+async function checkImportedSkill(storage, user, imported) {
+  const service = agent(storage);
+  assert.deepEqual((await service.skills.list(user)).skills, [imported]);
+  const { rows: [version] } = await storage.read('SELECT body FROM teaching_skill_versions WHERE skill_id=$1 AND version=$2',
+    [imported.skillId, imported.version]);
+  assert.deepEqual(await service.skills.document(user, { skillId: imported.skillId, version: imported.version }),
+    { skillId: imported.skillId, version: imported.version, content: skillInput().files[0].content });
+  assert.equal(version.body.digest, imported.digest);
+  assert.deepEqual(version.body.files, skillInput().files);
+  assert.deepEqual((await storage.read('SELECT removed FROM teaching_skills WHERE skill_id=$1', [imported.skillId])).rows, [{ removed: false }]);
+}
 async function closeGates(storage) {
   await storage.participant().closeWrites(); await storage.participant().closeDispatch(); await storage.participant().drain();
 }
@@ -94,7 +129,7 @@ for (const kind of ['baseline', 'skills', 'compaction']) {
       const original = await openStorage({ binding, backend, migrations }); handles.push(original);
       const user = identity(owner.environmentId);
       let imported;
-      if (kind === 'skills') imported = await agent(original).skills.import(user, skillInput());
+      if (kind === 'skills') imported = await seedLegacySkill(original, user, skillInput());
       const resource = await original.stageResource({ uploadId: randomUUID(), scope: 'migration-history',
         bytes: Buffer.from('原始教学材料\0'), mediaType: 'application/octet-stream', contentVersion: 1 });
       const receipt = await original.request({ requestId: 'original-evidence', fingerprint: 'fixed-history' }, async tx => {
@@ -140,7 +175,7 @@ for (const kind of ['baseline', 'skills', 'compaction']) {
           handles.push(storage); await checkFinal(storage, before);
           assert.deepEqual(await storage.receipt('original-evidence'), receipt);
           assert.deepEqual(Buffer.from(await storage.readResource(resource.resourceId)), Buffer.from('原始教学材料\0'));
-          if (imported) assert.equal((await agent(storage).skills.list(user)).skills[0].skillId, imported.skillId);
+          if (imported) await checkImportedSkill(storage, user, imported);
           await assert.rejects(storage.request({ requestId: 'closed-restore', fingerprint: 'closed' }, async () => ({})), { code: 'maintenance' });
         } });
       await destination.restore({ targetRoot: target.root, directory, recovery, signal });
@@ -155,7 +190,7 @@ for (const kind of ['baseline', 'skills', 'compaction']) {
       await assert.rejects(original.participant().resume(), { code: 'stale-generation' });
       await current.participant().resume();
       const service = agent(current);
-      if (imported) assert.equal((await service.skills.list(user)).skills[0].skillId, imported.skillId);
+      if (imported) await checkImportedSkill(current, user, imported);
       else assert.ok((await service.skills.import(user, skillInput())).skillId);
       const after = await journal(current);
       await provisionStorage({ admin: source.admin, owner, password, migrations: teachingAgentMigrations });
@@ -176,7 +211,7 @@ for (const kind of ['skills', 'compaction']) {
       const original = await openStorage({ binding, backend, migrations }); handles.push(original);
       const peer = await openStorage({ binding, backend, migrations }); handles.push(peer);
       const user = identity(owner.environmentId), oldInput = skillInput();
-      const imported = kind === 'skills' ? await agent(original).skills.import(user, oldInput) : undefined;
+      const imported = kind === 'skills' ? await seedLegacySkill(original, user, oldInput) : undefined;
       const receipt = await original.request({ requestId: 'takeover-original', fingerprint: 'fixed-identity' }, async () => ({ original: true }));
       const before = await journal(original);
       const root = join(source.root, 'installation'); await mkdir(root);
@@ -223,7 +258,7 @@ for (const kind of ['skills', 'compaction']) {
       await assert.rejects(reopened.request({ requestId: 'retired-reopened', fingerprint: 'retired' }, async () => ({})), { code: 'maintenance' });
       const service = agent(restoredStorage);
       if (imported) {
-        assert.equal((await service.skills.list(user)).skills[0].skillId, imported.skillId);
+        await checkImportedSkill(restoredStorage, user, imported);
         assert.deepEqual(await service.skills.import(user, oldInput), imported, 'An accepted Skills request keeps its original receipt.');
       } else assert.ok((await service.skills.import(user, skillInput())).skillId);
       await restoredStorage.request({ requestId: 'successor-write', fingerprint: 'new-authority' }, async () => ({ active: true }));

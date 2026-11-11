@@ -40,7 +40,7 @@ import type { LearningModelPort } from '../model-connections/service.js';
 import { createTeachingSegments, teachingSegmentMigration, validateTeachingSegmentTransitions } from './segments.js';
 import { loadedTools } from './tool-discovery.js';
 import { assembleTeachingAgent, teachingAssemblyMigration, learningAgentDefinition, validateTeachingAssemblyData } from './assembly.js';
-import { createTeachingSkills, teachingSkillsMigration, validateTeachingSkills } from './skills.js';
+import { createTeachingSkills, teachingSkillsMigration, teachingSkillsRemovalMigration, validateTeachingSkills } from './skills.js';
 import { createTeachingSkillRuntime } from './skill-runtime.js';
 import { abandonTeachingCompactions, createTeachingCompaction, teachingCompactionMigration } from './compaction.js';
 import { validateTeachingCompactions } from './compaction-validation.js';
@@ -111,7 +111,8 @@ export const teachingAgentMigrations: readonly Migration[] = [{ version: 1, name
   UPDATE teaching_steps SET input_reserved=COALESCE((plan->'model'->>'contextWindow')::bigint,1048576);
   ALTER TABLE teaching_steps ALTER COLUMN input_reserved SET NOT NULL;
 ` }, teachingInputMigration, teachingSegmentMigration, teachingAssemblyMigration, teachingSkillsMigration,
-  { ...teachingCompactionMigration, version: 12, formerVersion: 11 }, studentFactsMigration, studentFactsGoalMigration];
+  { ...teachingCompactionMigration, version: 12, formerVersion: 11 }, studentFactsMigration, studentFactsGoalMigration,
+  teachingSkillsRemovalMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal = (state: TeachingRun['state']) => ['completed', 'failed', 'stopped', 'paused'].includes(state);
@@ -1176,7 +1177,8 @@ export function createTeachingAgent(storage: OwnedStorage, options: TeachingAgen
   if (options.start !== false) startTicker();
   return {
     receiver, migrations: teachingAgentMigrations, accept, query, cancel,
-    skills: { list: skills.list, import: skills.import, select: skills.select.bind(skills), disable: skills.disable, read: skills.read },
+    skills: { list: skills.list, import: skills.import, select: skills.select.bind(skills), disable: skills.disable, read: skills.read,
+      document: skills.document, remove: skills.remove },
     studentFacts: { read: studentFacts.read },
     run, conversation, events, snapshot, request, stop, continueRun, switchModel, capabilities, assertCommandDispatch, assertModelDispatch, validate,
     respond, response: studentQuestions.response, presentQuestion,

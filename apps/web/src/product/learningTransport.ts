@@ -1,5 +1,6 @@
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
+import { teachingSkillImportFailureSchema } from '@xunjie/contracts/agent-skills'
 
 export function workspaceScope(namespace: string, activity: LearningActivity) {
   const { environmentId, spaceId, principalId } = activity.identity
@@ -23,7 +24,9 @@ export async function learningSubjectRequest(identity: SpaceIdentity, spaceKey: 
   catch { throw Object.assign(new Error('原服务返回了不完整响应。'), { code: response.ok ? 'corrupt' : 'unavailable' }) }
   if (!response.ok) {
     const failure = value as { error?: string }
-    throw Object.assign(new Error(failure?.error ?? 'unavailable'), { code: failure?.error ?? 'unavailable' })
+    const skillFailure = teachingSkillImportFailureSchema.safeParse(value)
+    throw Object.assign(new Error(failure?.error ?? 'unavailable'), { code: failure?.error ?? 'unavailable',
+      ...(skillFailure.success ? { reason: skillFailure.data.reason } : {}) })
   }
   return value
 }

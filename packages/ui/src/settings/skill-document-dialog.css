@@ -1,0 +1,30 @@
+.st-dialog.st-skill-document { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: min(800px, calc(100dvh - 48px)); }
+.st-skill-document .st-dialog-head { flex: none; gap: 16px; }
+.st-skill-document-heading { min-width: 0; }
+.st-skill-document-heading .st-dialog-title { font-size: 17px; overflow-wrap: anywhere; }
+.st-skill-document .pc-x { flex: none; }
+.st-skill-document-body { min-height: 0; min-width: 0; flex: 1 1 auto; overscroll-behavior: contain; }
+.st-skill-document-content { min-width: 0; padding: 12px 0; color: var(--ink-soft); font: 400 15px/1.9 var(--font-sans); overflow-wrap: anywhere; }
+.st-skill-document-content .turn-body { max-width: 72ch; min-width: 0; margin-inline: auto; }
+.st-skill-document-content .turn-body > * { margin-block: 0 16px; }
+.st-skill-document-content .turn-body > :last-child { margin-bottom: 0; }
+.st-skill-document-content .turn-body .md-h { margin-block: 24px 8px; color: var(--ink); }
+.st-skill-document-content .turn-body h3.md-h { font-size: 20px; }
+.st-skill-document-content .turn-body h4.md-h { font-size: 17px; }
+.st-skill-document-content .turn-body > .md-h:first-child { margin-top: 0; }
+.st-skill-document-content .md-pre,
+.st-skill-document-content .md-tablecard { min-width: 0; max-width: 100%; }
+.st-skill-document-content .turn-body .md-pre pre { white-space: pre; overflow-wrap: normal; }
+.st-skill-document-content .turn-body .md-pre-lang { color: var(--muted); }
+.st-skill-document-content .md-tablebox { max-width: 100%; }
+.st-skill-document-content .md-table { overflow-wrap: normal; }
+.st-skill-document-content .turn-body .md-quote { margin-inline: 0; border-left-width: 1px; }
+.st-skill-document-content .md-link { text-decoration-color: currentColor; }
+.st-skill-document-content ::selection { background: var(--accent-soft-hover); }
+.st-skill-document-content :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.st-skill-document-status { margin: 0; padding-block: 12px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.st-skill-document-footer { display: flex; align-items: center; justify-content: flex-end; flex: none; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--line); }
+.st-skill-document-footer .outline { min-height: 32px; font-size: 13px; }
+@media (max-width: 540px) {
+  .st-dialog.st-skill-document { width: calc(100vw - 24px); max-height: calc(100dvh - 32px); }
+}

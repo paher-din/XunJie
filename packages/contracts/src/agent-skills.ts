@@ -3,7 +3,8 @@ import { z } from 'zod';
 /** Transported files are inert values, never filesystem entries or executable capabilities. */
 export const teachingSkillLimits = { skills: 32, versions: 16, files: 4096,
   fileBytes: 32 * 1024 * 1024, packageBytes: 64 * 1024 * 1024,
-  bodyBytes: 4 * 1024 * 1024, selections: 32, importTimeoutMs: 300000, githubReadTimeoutMs: 300000 } as const;
+  bodyBytes: 4 * 1024 * 1024, nameChars: 64, descriptionChars: 4096,
+  selections: 32, importTimeoutMs: 300000, githubReadTimeoutMs: 300000 } as const;
 // A UTF-8 byte may become a six-character JSON escape. Reserve file metadata as well,
 // so a valid package is not rejected by an unrelated HTTP or Base64 string ceiling.
 export const teachingSkillTransportBytes = teachingSkillLimits.packageBytes * 6 + teachingSkillLimits.files * 4096 + 65536;
@@ -20,6 +21,8 @@ export const teachingSkillFileSchema = z.object({ path: teachingSkillPathSchema,
 }).strict();
 export const teachingSkillReferenceSchema = z.object({ skillId: z.uuid(), version: z.number().int().positive() }).strict();
 export type TeachingSkillReference = z.infer<typeof teachingSkillReferenceSchema>;
+export const teachingSkillDocumentSchema = teachingSkillReferenceSchema.extend({ content: z.string() }).strict();
+export type TeachingSkillDocument = z.infer<typeof teachingSkillDocumentSchema>;
 export const teachingSkillReferencesSchema = z.array(teachingSkillReferenceSchema).max(teachingSkillLimits.selections)
   .refine(items => new Set(items.map(item => item.skillId)).size === items.length, 'Duplicate skill selection');
 export const teachingSkillImportSchema = z.object({ requestId: z.uuid(), skillId: z.uuid().optional(),
@@ -28,9 +31,13 @@ export const teachingSkillImportSchema = z.object({ requestId: z.uuid(), skillId
 }).strict().refine(input => new Set(input.files.map(file => file.path.toLowerCase())).size === input.files.length,
   'Duplicate package path');
 export type TeachingSkillImport = z.infer<typeof teachingSkillImportSchema>;
-export const teachingSkillMetadataSchema = z.object({ name: z.string().min(1).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  description: z.string().min(1).max(1024), compatibility: z.string().max(500).optional(),
-  license: z.string().max(1000).optional(), metadata: z.record(z.string().max(100), z.string().max(2000)).optional(),
+export const teachingSkillImportFailureSchema = z.object({ error: z.literal('invalid-skill'),
+  reason: z.enum(['frontmatter', 'name', 'description', 'metadata', 'skill-limit']) }).strict();
+export type TeachingSkillImportFailure = z.infer<typeof teachingSkillImportFailureSchema>;
+export const teachingSkillMetadataSchema = z.object({ name: z.string().min(1).max(teachingSkillLimits.nameChars).regex(/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u),
+  description: z.string().min(1).max(teachingSkillLimits.descriptionChars), compatibility: z.string().max(500).optional(),
+  // Author metadata is opaque JSON; dependencies and tools use their explicit fields below.
+  license: z.string().max(1000).optional(), metadata: z.record(z.string().max(100), z.json()).optional(),
   dependencies: z.array(z.string().min(1).max(200)).max(32).default([]),
   conflicts: z.array(z.string().min(1).max(200)).max(32).default([]),
   'allowed-tools': z.array(z.string().min(1).max(200)).max(64).default([]),
@@ -63,6 +70,7 @@ export type TeachingSkillRange = z.infer<typeof teachingSkillRangeSchema>;
 export const teachingSkillSelectSchema = z.object({ requestId: z.uuid(), range: teachingSkillRangeSchema,
   skills: teachingSkillReferencesSchema }).strict();
 export const teachingSkillDisableSchema = z.object({ requestId: z.uuid(), skillId: z.uuid(), disabled: z.boolean() }).strict();
+export const teachingSkillRemoveSchema = z.object({ requestId: z.uuid(), skillId: z.uuid() }).strict();
 export const teachingSkillUnavailableSchema = z.object({ reason: z.enum(['disabled', 'not-selected', 'skill-missing',
   'version-missing', 'dependency-missing', 'dependency-unavailable', 'conflict', 'compatibility-unsupported',
   'tool-unavailable', 'owner-unavailable', 'invalid-package']), detail: z.string().max(4000) }).strict();

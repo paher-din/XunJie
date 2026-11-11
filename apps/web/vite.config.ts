@@ -24,6 +24,7 @@ export default defineConfig(({ command, mode }) => ({
       'react-router-dom',
       '@tanstack/react-query',
       '@radix-ui/react-dialog',
+      '@base-ui/react/menu',
       'marked',
       'remend',
       'sonner',

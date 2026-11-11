@@ -4,12 +4,13 @@ import { StorageError, type OwnedStorage, type OwnedTransaction, type Migration 
 import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillReferencesSchema,
+  teachingSkillReferenceSchema, teachingSkillRemoveSchema, type TeachingSkillDocument,
   teachingSkillPathSchema, teachingSkillLoadSchema, teachingSkillLoadedSchema, courseSkillPackagesSchema, teachingSkillLimits,
   type TeachingSkillImport, type TeachingSkillReference, type TeachingSkillVersion, type TeachingSkillCatalogEntry,
   type TeachingSkillState, type TeachingSkillLoaded, type TeachingSkillLoad, type CourseSkillPackage,
   type TeachingSkillUnavailable, type TeachingSkillRange } from '@xunjie/contracts/agent-skills';
 import { canonicalDigest, operationId } from './identity.js';
-import { parseTeachingSkillPackage, validateTeachingSkillVersion, skillFileBytes, parseStoredTeachingSkillLoad } from './skills-package.js';
+import { parseTeachingSkillPackage, validateTeachingSkillVersion, skillFileBytes, parseStoredTeachingSkillLoad, TeachingSkillImportError } from './skills-package.js';
 
 export const teachingSkillsMigration: Migration = { version: 11, name: 'independent-fixed-skill-packages', sql: `
   CREATE TABLE teaching_skills(owner_key text NOT NULL,skill_id uuid NOT NULL,version integer NOT NULL CHECK(version>0),
@@ -22,6 +23,10 @@ export const teachingSkillsMigration: Migration = { version: 11, name: 'independ
   CREATE TABLE teaching_skill_loads(command_id uuid PRIMARY KEY,owner_key text NOT NULL,activity_id uuid NOT NULL,
     run_id uuid NOT NULL,step_id uuid NOT NULL,fingerprint text NOT NULL,body jsonb NOT NULL,
     created_at timestamptz NOT NULL DEFAULT clock_timestamp());
+` };
+
+export const teachingSkillsRemovalMigration: Migration = { version: 15, name: 'personal-skill-library-removal', sql: `
+  ALTER TABLE teaching_skills ADD COLUMN removed boolean NOT NULL DEFAULT false;
 ` };
 
 export class TeachingSkillError extends Error {
@@ -96,7 +101,7 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
   }
   async function personal(identity: SpaceIdentity, query: Query = storage.read.bind(storage)) {
     const { rows } = await query(`SELECT v.owner_key,v.body,s.disabled,s.version AS current_version FROM teaching_skill_versions v
-      JOIN teaching_skills s USING(owner_key,skill_id) WHERE ${personalOwnerFilter} ORDER BY v.skill_id,v.version`, [await subjects(identity)]);
+      JOIN teaching_skills s USING(owner_key,skill_id) WHERE ${personalOwnerFilter} AND NOT s.removed ORDER BY v.skill_id,v.version`, [await subjects(identity)]);
     return rows.map(row => ({ ownerKey: String(row.owner_key), fixed: validateTeachingSkillVersion(row.body),
       disabled: Boolean(row.disabled), current: Number(row.current_version) }));
   }
@@ -202,13 +207,48 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
   }
   return {
     resolve,
+    async document(identity: SpaceIdentity, value: unknown): Promise<TeachingSkillDocument> {
+      await authorize(identity);
+      const ref = teachingSkillReferenceSchema.parse(value);
+      const { rows: [row] } = await storage.read(`SELECT v.body FROM teaching_skill_versions v
+        JOIN teaching_skills s USING(owner_key,skill_id) WHERE ${personalOwnerFilter}
+        AND NOT s.removed AND v.skill_id=$2 AND v.version=$3`, [await subjects(identity), ref.skillId, ref.version]);
+      if (!row) throw new StorageError('missing');
+      const fixed = validateTeachingSkillVersion(row.body);
+      return { ...ref, content: fixed.files.find(file => file.path === 'SKILL.md')!.content };
+    },
+    async remove(identity: SpaceIdentity, value: unknown): Promise<{ skillId: string }> {
+      const input = teachingSkillRemoveSchema.parse(value);
+      const receipt = await write(identity, input.requestId, { operation: 'remove', input }, async tx => {
+        // Keep package versions, load provenance and frozen run snapshots intact. A new request
+        // can repeat removal, but cannot remove another person's or a course-only package.
+        const { rows } = await tx.query(`UPDATE teaching_skills SET removed=true WHERE ${personalOwnerFilter}
+          AND skill_id=$2 RETURNING skill_id`, [await subjects(identity), input.skillId]);
+        if (!rows.length) throw new StorageError('missing');
+        return { skillId: input.skillId };
+      });
+      return receipt.result as { skillId: string };
+    },
     async import(identity: SpaceIdentity, value: unknown): Promise<TeachingSkillCatalogEntry> {
       const input = teachingSkillImportSchema.parse(value), parsed = parseTeachingSkillPackage(input);
       const primary = (await owners(identity))[0]!;
       const skillId = input.skillId ?? operationId('teaching-skill:' + person(primary) + ':' + input.requestId);
       const receipt = await write(identity, input.requestId, { operation: 'import', input }, async tx => {
         const people = await subjects(identity);
-        const { rows: [prior] } = await tx.query(`SELECT owner_key,version,disabled FROM teaching_skills WHERE ${personalOwnerFilter} AND skill_id=$2`, [people, skillId]);
+        if (!input.skillId) {
+          // Package digests also include the publication version. Compare original file
+          // paths/bytes inside the write lock, returning only the matching package body.
+          const files = Object.fromEntries(parsed.attachments.map(file => [file.path, file.digest]));
+          const { rows: [duplicate] } = await tx.query(`SELECT v.body,s.disabled FROM teaching_skill_versions v
+            JOIN teaching_skills s USING(owner_key,skill_id) WHERE ${personalOwnerFilter}
+            AND NOT s.removed AND v.version=s.version AND v.body->>'source'=$2
+            AND (SELECT jsonb_object_agg(file->>'path',file->'digest')
+              FROM jsonb_array_elements(v.body->'attachments') AS file)=$3::jsonb
+            ORDER BY v.owner_key,v.skill_id LIMIT 1`, [people, input.source, JSON.stringify(files)]);
+          if (duplicate) return meta(validateTeachingSkillVersion(duplicate.body), 'personal', !duplicate.disabled, Boolean(duplicate.disabled));
+        }
+        const { rows: [prior] } = await tx.query(`SELECT owner_key,version,disabled,removed FROM teaching_skills WHERE ${personalOwnerFilter} AND skill_id=$2`, [people, skillId]);
+        if (prior?.removed) throw new StorageError('missing');
         const ownerKey = prior ? String(prior.owner_key) : key(primary);
         if (input.skillId && !prior) throw new StorageError('missing');
         if (prior) {
@@ -218,22 +258,25 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
           const published = fixed.find(item => item.packageVersion === input.packageVersion);
           if (published) {
             if (published.digest !== parsed.digest) throw new StorageError('identity-conflict');
-            await tx.query('UPDATE teaching_skills SET disabled=false WHERE owner_key=$1 AND skill_id=$2', [ownerKey, skillId]);
-            return meta(published, 'personal', true);
+            const current = fixed.find(item => item.version === Number(prior.version))!;
+            if (current.packageVersion === input.packageVersion)
+              return meta(current, 'personal', !prior.disabled, Boolean(prior.disabled));
+            // A historical match must become current too. Publish a new internal
+            // version so future updates stay monotonic and fixed references survive.
           }
         }
         if (!prior) {
-          const { rows } = await tx.query(`SELECT skill_id FROM teaching_skills WHERE ${personalOwnerFilter}`, [people]);
-          if (rows.length >= teachingSkillLimits.skills) throw new StorageError('invalid');
+          const { rows } = await tx.query(`SELECT skill_id FROM teaching_skills WHERE ${personalOwnerFilter} AND NOT removed`, [people]);
+          if (rows.length >= teachingSkillLimits.skills) throw new TeachingSkillImportError('skill-limit');
         }
         const version = prior ? Number(prior.version) + 1 : 1;
         if (version > teachingSkillLimits.versions) throw new StorageError('invalid');
         const fixed = { ...parsed, skillId, version };
         await tx.query(`INSERT INTO teaching_skills(owner_key,skill_id,version) VALUES($1,$2,$3)
-          ON CONFLICT(owner_key,skill_id) DO UPDATE SET version=EXCLUDED.version,disabled=false`, [ownerKey, skillId, version]);
+          ON CONFLICT(owner_key,skill_id) DO UPDATE SET version=EXCLUDED.version`, [ownerKey, skillId, version]);
         await tx.query('INSERT INTO teaching_skill_versions(owner_key,skill_id,version,body) VALUES($1,$2,$3,$4)',
           [ownerKey, skillId, version, JSON.stringify(fixed)]);
-        return meta(fixed, 'personal', true);
+        return meta(fixed, 'personal', !prior?.disabled, Boolean(prior?.disabled));
       });
       return receipt.result as TeachingSkillCatalogEntry;
     },
@@ -259,7 +302,7 @@ export function createTeachingSkills(storage: OwnedStorage, options: {
     async disable(identity: SpaceIdentity, value: unknown): Promise<TeachingSkillCatalogEntry> {
       const input = teachingSkillDisableSchema.parse(value);
       const receipt = await write(identity, input.requestId, { operation: 'disable', input }, async tx => {
-        const { rows } = await tx.query(`UPDATE teaching_skills SET disabled=$3 WHERE ${personalOwnerFilter} AND skill_id=$2 RETURNING version`,
+        const { rows } = await tx.query(`UPDATE teaching_skills SET disabled=$3 WHERE ${personalOwnerFilter} AND skill_id=$2 AND NOT removed RETURNING version`,
           [await subjects(identity), input.skillId, input.disabled]);
         if (!rows.length) throw new StorageError('missing');
         const versions = await personal(identity, tx.query.bind(tx));

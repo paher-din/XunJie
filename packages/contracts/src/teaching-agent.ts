@@ -195,7 +195,7 @@ export const teachingAgentBindingInputSchema = teachingAgentBindingSchema.omit({
 export const teachingAgentOperationSchema = z.enum(['accept', 'query', 'cancel', 'conversation', 'events', 'switchModel',
   'capabilities', 'run', 'stop', 'continueRun', 'request', 'snapshot', 'assertCommandDispatch', 'assertModelDispatch',
   'respond', 'response', 'presentQuestion', 'controlInput', 'inputControlReceipt', 'facts.read',
-  'skills.list', 'skills.import', 'skills.select', 'skills.disable', 'skills.read']);
+  'skills.list', 'skills.import', 'skills.select', 'skills.disable', 'skills.read', 'skills.document', 'skills.remove']);
 export const teachingAgentCallSchema = z.object({ version: z.literal(1), operation: teachingAgentOperationSchema,
   identity: spaceIdentitySchema, activityId: z.uuid().optional(), args: z.array(z.unknown()).max(4) }).strict()
   .refine(call => call.activityId !== undefined || call.operation.startsWith('skills.'),

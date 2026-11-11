@@ -107,6 +107,52 @@ test('supports branches with slashes, tags and full commit URLs', async t => {
   });
 });
 
+test('latest follows the default branch while preserving the saved SHA source directory', async t => {
+  for (const directory of ['', 'skills/示例']) await t.test(directory || 'root', async t => {
+    const oldSha = 'e'.repeat(40), f = fixture(t, { ref: oldSha, directory });
+    f.routes.set('', { private: false, full_name: 'example/skills', default_branch: 'release/current' });
+    f.routes.delete(`/commits/${oldSha}?per_page=1`);
+    f.routes.set('/commits/release%2Fcurrent?per_page=1', { sha: commitSha, commit: { tree: { sha: rootSha } } });
+    const result = await fetchGithubSkill(f.url, { latest: true });
+    assert.equal(result.packageVersion, commitSha);
+    assert.equal(result.source, `https://github.com/example/skills/tree/${commitSha}${directory ? '/' + directory.split('/').map(encodeURIComponent).join('/') : ''}`);
+    assert.equal(result.files.length, 5, 'Updates download the complete package, including attachments');
+    assert.deepEqual(f.calls.filter(route => route.startsWith('/commits/')), ['/commits/release%2Fcurrent?per_page=1'],
+      'Saved SHAs need not remain available to update their directory');
+  });
+});
+
+test('latest resolves slash refs before switching to the default branch', async t => {
+  const f = fixture(t, { ref: 'feature/skill-import', directory: 'skills/demo' });
+  f.routes.set('', { private: false, full_name: 'example/skills', default_branch: 'main' });
+  f.routes.set('/commits/feature%2Fskill-import?per_page=1', { sha: 'e'.repeat(40), commit: { tree: { sha: 'f'.repeat(40) } } });
+  f.routes.set('/commits/main?per_page=1', { sha: commitSha, commit: { tree: { sha: rootSha } } });
+  const result = await fetchGithubSkill(f.url, { latest: true });
+  assert.equal(result.packageVersion, commitSha);
+  assert.equal(result.source, `https://github.com/example/skills/tree/${commitSha}/skills/demo`);
+});
+
+test('latest reports a missing directory, allows retry, and still verifies downloaded object hashes', async t => {
+  const f = fixture(t, { directory: 'demo' }), source = `https://github.com/example/skills/tree/${'e'.repeat(40)}/demo`;
+  const parentRoute = `/git/trees/${rootSha}`, parent = f.routes.get(parentRoute)!;
+  f.routes.delete(parentRoute);
+  await assert.rejects(fetchGithubSkill(source, { latest: true }), code('not-found'));
+  assert.ok(!f.calls.some(route => route.startsWith('raw:')));
+  f.routes.set(parentRoute, parent);
+  assert.equal((await fetchGithubSkill(source, { latest: true })).packageVersion, commitSha);
+  f.entries[0]!.sha = 'f'.repeat(40);
+  await assert.rejects(fetchGithubSkill(source, { latest: true }), code('upstream'));
+});
+
+test('latest false keeps fixed-commit imports pinned and root latest uses one default-branch lookup', async t => {
+  for (const latest of [false, true]) await t.test(String(latest), async t => {
+    const f = fixture(t, latest ? {} : { ref: commitSha });
+    assert.equal((await fetchGithubSkill(f.url, { latest })).packageVersion, commitSha);
+    assert.deepEqual(f.calls.filter(route => route.startsWith('/commits/')),
+      [`/commits/${latest ? 'main' : commitSha}?per_page=1`]);
+  });
+});
+
 test('chooses the longest existing ref rather than interpreting a slash branch as a directory', async t => {
   const f = fixture(t, { ref: 'main/skill', directory: 'demo' });
   f.routes.set('/commits/main?per_page=1', () => { throw new Error('wrong branch chosen'); });

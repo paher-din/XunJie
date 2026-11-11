@@ -14,7 +14,8 @@ import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import { spaceIdentitySchema } from '@xunjie/contracts/spaces';
 import { modelSelectionSchema } from '@xunjie/contracts/model-connections';
 import { schoolAcquisitionInputSchema, schoolSubmissionInputSchema } from '@xunjie/contracts/school-deliveries';
-import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillTransportBytes } from '@xunjie/contracts/agent-skills';
+import { teachingSkillImportSchema, teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillTransportBytes,
+  teachingSkillReferenceSchema, teachingSkillRemoveSchema } from '@xunjie/contracts/agent-skills';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
@@ -24,6 +25,7 @@ import type { createTeachingAgent } from '../teaching-agent/index.js';
 import type { TeachingAgentPort } from '../teaching-agent/service.js';
 import { routeModels } from '../model-connections/wire.js';
 import { ModelCapabilityError } from '../model-connections/capabilities.js';
+import { TeachingSkillImportError } from '../teaching-agent/skills-package.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -51,6 +53,10 @@ export function sendLearning(response: ServerResponse, code: number, value: unkn
   response.end(JSON.stringify(value));
 }
 export function learningFailure(response: ServerResponse, error: unknown) {
+  if (error instanceof TeachingSkillImportError) {
+    sendLearning(response, 400, { error: 'invalid-skill', reason: error.reason });
+    return;
+  }
   if (error instanceof GithubSkillImportError) {
     const status = error.code === 'invalid-url' || error.code === 'invalid-package' || error.code === 'too-large' ? 400
       : error.code === 'not-found' ? 404 : error.code === 'rate-limit' ? 429 : 503;
@@ -216,8 +222,8 @@ export function createLearningEntry(options: {
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         if (route === 'skills/github-package' && method === 'POST') {
           await options.client.forward(remote.slice(7), 'skills', undefined, expected);
-          const { url } = z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(await readLearningBody(request));
-          result = await fetchGithubSkill(url);
+          const { url, latest } = z.object({ url: z.string().trim().min(1).max(2000), latest: z.boolean().default(false) }).strict().parse(await readLearningBody(request));
+          result = await fetchGithubSkill(url, { latest });
         } else result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
           route === 'skills/import' || /^agent\/[0-9a-f-]{36}\/skills\/import$/.test(route) ? teachingSkillTransportBytes
             : route.startsWith('submissions/') ? 32*1024*1024
@@ -498,12 +504,14 @@ export function createLearningEntry(options: {
         if (!teaching) throw new StorageError('unavailable');
         if (route === 'skills' && method === 'GET') result = await teaching.skills.list(identity, activityId);
         else if (route === 'skills/github-package' && method === 'POST') {
-          const { url } = z.object({ url: z.string().trim().min(1).max(2000) }).strict().parse(await readLearningBody(request));
-          result = await fetchGithubSkill(url);
+          const { url, latest } = z.object({ url: z.string().trim().min(1).max(2000), latest: z.boolean().default(false) }).strict().parse(await readLearningBody(request));
+          result = await fetchGithubSkill(url, { latest });
         }
         else if (route === 'skills/import' && method === 'POST') result = await teaching.skills.import(identity, teachingSkillImportSchema.parse(await readLearningBody(request, teachingSkillTransportBytes)));
         else if (route === 'skills/select' && method === 'POST') result = await teaching.skills.select(identity, teachingSkillSelectSchema.parse(await readLearningBody(request)));
         else if (route === 'skills/disable' && method === 'POST') result = await teaching.skills.disable(identity, teachingSkillDisableSchema.parse(await readLearningBody(request)));
+        else if (route === 'skills/document' && method === 'POST') result = await teaching.skills.document(identity, teachingSkillReferenceSchema.parse(await readLearningBody(request)));
+        else if (route === 'skills/remove' && method === 'POST') result = await teaching.skills.remove(identity, teachingSkillRemoveSchema.parse(await readLearningBody(request)));
         else throw new StorageError('missing');
       } else if (route === 'agent-settings' || route.startsWith('agent-settings/')) {
         const identity = await current(request);

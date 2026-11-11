@@ -88,9 +88,7 @@
 .product-settings .skill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .product-settings .skill-import { border: 0; background: transparent; padding: 0; margin: 20px 0; }
 .product-settings .skill-import h3 { font-size: 15px; font-weight: 500; }
-.product-settings .skill-fields { gap: 16px; }
 .product-settings .skill-range { margin: 20px 0; }
-.product-settings .skill-entry { box-shadow: none; }
 .product-settings .personal-skills > details { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 0; margin: 20px 0; }
 .product-settings .st-brand { padding: 40px 0; }
 @keyframes settings-arrive { from { opacity: .6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -108,7 +106,7 @@
   .product-settings .st-body-in { padding: 24px 20px 40px; }
   .product-settings-heading { margin-bottom: 24px; }
   .product-settings-identity { align-items: flex-start; flex-direction: column; }
-  .product-settings .st-cards, .product-settings .skill-fields { grid-template-columns: minmax(0, 1fr); }
+  .product-settings .st-cards { grid-template-columns: minmax(0, 1fr); }
   .product-settings .st-provider { padding: 16px; }
   .product-school-row, .product-school-session { align-items: flex-start; flex-direction: column; }
   .product-settings-facts > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }

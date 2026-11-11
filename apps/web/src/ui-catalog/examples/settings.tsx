@@ -5,7 +5,7 @@ import {
   ModelFields, ModelProviderCard, ModelProviderModelRow, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
   RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
-  SettingsSelect, SettingsActionMenu, ModelIdInput, ModelProviderLogo, ModelChoiceCard,
+  SettingsSelect, SettingsActionMenu, SkillListItem, SkillDocumentDialog, SkillImportFeedback, ModelIdInput, ModelProviderLogo, ModelChoiceCard,
   ModelTestFeedback, ModelTestButton,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
 } from '@xunjie/ui/settings'
@@ -25,6 +25,33 @@ function Frame({ children }: { children: ReactNode }) {
 function SectionDemo() { return <Frame><Section title="示例分区" desc="分区说明"><div className="st-panel">示例内容</div></Section></Frame> }
 function RowDemo() { return <Frame><div className="st-panel"><Row label="示例设置" hint="说明文字"><span>当前值</span></Row><Row label="纵向布局" stack><TextInput aria-label="纵向字段" defaultValue="示例" /></Row></div></Frame> }
 function ToggleDemo() { const [value, setValue] = useState(true); return <Frame><Toggle checked={value} onChange={setValue} label="示例开关" /></Frame> }
+function SkillListDemo() {
+  const [checked, setChecked] = useState(true), [event, setEvent] = useState('')
+  return <Frame><div style={{ minWidth: 0, padding: '0 20px', border: '1px solid var(--line)', borderRadius: 16 }}>
+    <SkillListItem name="evidence-analysis" description="先核对原始依据，再解释观察与预测之间的差异。" checked={checked}
+      onCheckedChange={setChecked} onOpen={() => setEvent('打开示例 SKILL.md')} onRemove={() => setEvent('删除示例技能')} />
+    <SkillListItem name="a-skill-with-a-long-name-for-layout-checks" description="This deliberately long description checks that the row preserves room for the menu and switch, while keeping the full document available through Open."
+      checked={false} onCheckedChange={() => {}} onOpen={() => setEvent('打开示例 SKILL.md')} onRemove={() => setEvent('删除示例技能')} />
+    <SkillListItem name="course-skill" description="课程提供的只读技能。" checked readOnly onCheckedChange={() => {}} onOpen={() => setEvent('打开课程示例')} />
+  </div><output>{event}</output></Frame>
+}
+function SkillDocumentDemo({ loading = false, error = false }: { loading?: boolean; error?: boolean }) {
+  const [open, setOpen] = useState(true)
+  return <Frame><button type="button" className="outline" onClick={() => setOpen(true)}>打开示例 SKILL.md</button>
+    <SkillDocumentDialog open={open} name="evidence-analysis" loading={loading} error={error ? '暂时无法打开 SKILL.md，请重试。' : ''}
+      content={loading || error ? null : '---\nname: evidence-analysis\ndescription: 按证据核对问题\n---\n\n# 核对依据\n\n先阅读学生的**预测**，再比较实际观察。\n\n## 工作方式\n\n- 阅读原始记录\n- 核对差异\n\n```text\n预测 → 观察 → 修改\n```\n\n| 阶段 | 依据 |\n| --- | --- |\n| 复核 | 学生自己的记录 |\n'}
+      onClose={() => setOpen(false)} onRetry={() => {}} />
+  </Frame>
+}
+function SkillImportFeedbackDemo({ uncertain = false, busy = false }: { uncertain?: boolean; busy?: boolean }) {
+  const [visible, setVisible] = useState(true), [event, setEvent] = useState('')
+  return <Frame>{visible && <SkillImportFeedback summary="已导入 2 个技能，1 个未完成"
+    failures={[{ path: 'collection/review-skill', message: uncertain ? '暂时无法确认导入结果，请重试。' : 'SKILL.md 缺少 description（技能说明）。' }]}
+    retryLabel={busy ? '导入中…' : uncertain ? '继续导入' : '重试未完成'} disabled={busy}
+    onRetry={() => setEvent('已请求重试示例')}
+    {...(!uncertain ? { onChooseFolder: () => setEvent('已请求重选文件夹'), onDismiss: () => setVisible(false) } : {})} />}
+    <output>{event}</output></Frame>
+}
 function SegDemo() { const [value, setValue] = useState('auto'); return <Frame><Seg ariaLabel="示例分段" options={[{ value: 'auto', label: '自动' }, { value: 'manual', label: '手动' }]} value={value} onChange={setValue} /></Frame> }
 function SliderDemo() { const [value, setValue] = useState(50); return <Frame><Slider value={value} onChange={setValue} minLabel="启发" maxLabel="解析" ariaLabel="示例强度" /><output>{value}</output></Frame> }
 function HelpDemo() { return <Frame><p>示例说明 <HelpTip tip="这是本地示例提示。" /></p></Frame> }
@@ -274,6 +301,19 @@ export const settingsEntries: CatalogEntry[] = [
       { id: 'passed', name: '通过', component: () => <ModelTestFeedbackDemo state="passed" /> },
       { id: 'unverified', name: '部分完成', component: () => <ModelTestFeedbackDemo state="unverified" /> },
       { id: 'cancelled', name: '停止', component: () => <ModelTestFeedbackDemo state="cancelled" /> }] },
+  { id: 'skill-list-item', name: 'SkillListItem', description: '技能名称、简介、更多菜单和即时开关；业务操作由调用方接入。', importPath: settings,
+    source: 'packages/ui/src/settings/SkillListItem.tsx', exampleSource, props: ['name, description, checked, onCheckedChange', 'disabled?, readOnly?, busy?, onOpen, onRemove?'],
+    dependencies: ['Base UI Menu、Toggle 与包内图标'], states: [{ id: 'default', name: '启用、停用与只读', component: SkillListDemo }] },
+  { id: 'skill-document-dialog', name: 'SkillDocumentDialog', description: '完整显示元信息与 Markdown 正文的技能阅读窗口。', importPath: settings,
+    source: 'packages/ui/src/settings/SkillDocumentDialog.tsx', exampleSource, props: ['open, name, content, loading, error?, footer?', 'onClose, onRetry, onReturnFocus?'],
+    dependencies: ['Radix Dialog、受控 Markdown；正文由调用方读取'], states: [{ id: 'default', name: '正文', component: SkillDocumentDemo },
+      { id: 'loading', name: '读取中', component: () => <SkillDocumentDemo loading /> }, { id: 'error', name: '重试', component: () => <SkillDocumentDemo error /> }] },
+  { id: 'skill-import-feedback', name: 'SkillImportFeedback', description: '批量导入的未完成项、继续与重选操作。', importPath: settings,
+    source: 'packages/ui/src/settings/SkillImportFeedback.tsx', exampleSource, props: ['summary, failures, retryLabel, onRetry', 'disabled?, onChooseFolder?, onDismiss?'],
+    dependencies: ['Astryx Banner 与包内图标；导入进度和重试由调用方维护'], states: [
+      { id: 'partial', name: '部分完成', component: SkillImportFeedbackDemo },
+      { id: 'uncertain', name: '等待确认', component: () => <SkillImportFeedbackDemo uncertain /> },
+      { id: 'busy', name: '继续导入中', component: () => <SkillImportFeedbackDemo busy /> }] },
   { id: 'settings-select', name: 'SettingsSelect', description: '沿用循阶字段样式的品牌下拉，支持键盘选择与分隔。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsSelect.tsx', exampleSource, props: ['label, value, options, onChange, onOpen?, disabled?'],
     dependencies: ['Base UI Select；图标由调用方提供'], states: [{ id: 'default', name: '供应商选择', component: SettingsSelectDemo }] },

@@ -1,0 +1,18 @@
+.st-skill-import-feedback { min-width: 0; color: var(--ink); font: 400 13px/1.5 var(--font-sans); overflow-wrap: anywhere; }
+.st-skill-import-feedback.astryx-banner-frame { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); box-shadow: none; overflow: hidden; }
+.st-skill-import-feedback > .astryx-banner { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 8px; padding: 10px 12px; border: 0; border-radius: 0; background: transparent; color: var(--ink); }
+.st-skill-import-feedback > .astryx-banner:has(> :nth-child(3)) { grid-template-columns: 18px minmax(0, 1fr) 28px; }
+.st-skill-import-feedback .astryx-banner-icon { display: flex; align-items: center; padding: 0; color: var(--muted); }
+.st-skill-import-feedback > .astryx-banner > :nth-child(2) { min-width: 0; }
+.st-skill-import-feedback > .astryx-banner > :last-child:not(:nth-child(2)) { margin: 0; }
+.st-skill-import-summary { color: var(--ink); font-weight: 500; }
+.st-skill-import-feedback > .astryx-banner-content { margin: 0; padding: 0 12px 12px; border: 0; background: transparent; }
+.st-skill-import-problems { display: grid; gap: 10px; max-height: 240px; margin: 0 0 12px; padding: 0; overflow: auto; list-style: none; scrollbar-color: var(--scroll-thumb) transparent; scrollbar-width: thin; }
+.st-skill-import-problems strong { font-weight: 500; }
+.st-skill-import-problems p { margin: 2px 0 0; color: var(--muted); }
+.st-skill-import-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-skill-import-dismiss { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; transition: background 150ms var(--ease-s), color 150ms var(--ease-s); }
+.st-skill-import-dismiss:hover { background: var(--hover-bg); color: var(--ink); }
+.st-skill-import-dismiss:focus-visible, .st-skill-import-problems:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.st-skill-import-feedback ::selection { background: var(--accent-soft); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .st-skill-import-dismiss { transition: none; } }

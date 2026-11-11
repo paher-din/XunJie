@@ -34,6 +34,15 @@ SOFTWARE.
 
 # Model selectors and provider marks
 
+`src/settings/SkillListItem.tsx` uses Base UI Menu with the item/action
+composition reviewed in shadcn/ui Dropdown Menu and Item, and Astryx Item.
+Its icons, spacing, colors and motion use the XunJie design system. The menu
+uses Base UI's portal, collision handling and keyboard navigation.
+Documentation: https://ui.shadcn.com/docs/components/base/dropdown-menu,
+https://ui.shadcn.com/docs/components/base/item,
+https://astryx.atmeta.com/components/Item and
+https://base-ui.com/react/components/menu.
+
 `src/settings/SettingsSelect.tsx` composes Base UI Select and Combobox
 (`@base-ui/react@1.9.0`) using the form and searchable-list patterns reviewed in
 shadcn/ui and Astryx Selector/Typeahead. All styling uses XunJie tokens.

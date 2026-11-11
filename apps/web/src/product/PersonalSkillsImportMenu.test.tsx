@@ -30,11 +30,11 @@ it('retains the GitHub form through exit and can reopen before exit finishes wit
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ skills: [], selections: [] })))
   const { host, root } = await render()
   try {
-    await click(host, '导入 Skill'); await click(host, 'GitHub 导入')
-    const dialog = host.querySelector('[role="dialog"][aria-label="GitHub 导入"]')!
+    await click(host, '导入技能'); await click(host, '从 GitHub 导入')
+    const dialog = host.querySelector('[role="dialog"][aria-label="从 GitHub 导入"]')!
     expect(dialog).not.toBeNull()
     expect(host.querySelector('[role="menu"]')).toBeNull()
-    const input = dialog.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!
+    const input = dialog.querySelector<HTMLInputElement>('input')!
     await act(async () => {
       input.focus()
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'https://github.com/example/skills')
@@ -50,8 +50,8 @@ it('retains the GitHub form through exit and can reopen before exit finishes wit
     expect(document.activeElement).toBe(trigger)
     await act(async () => { for (const frame of frames.splice(0)) frame(performance.now()); await settle() })
     expect(document.activeElement).toBe(trigger)
-    await click(host, '导入 Skill'); await click(host, 'GitHub 导入')
-    expect(host.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!.value).toBe('https://github.com/example/skills')
+    await click(host, '导入技能'); await click(host, '从 GitHub 导入')
+    expect(host.querySelector<HTMLInputElement>('.skill-github input')!.value).toBe('https://github.com/example/skills')
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 160)) })
     expect(host.querySelector('[role="dialog"]')?.hasAttribute('inert')).toBe(false)
     await act(async () => { document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })); await settle() })
@@ -68,16 +68,16 @@ it('keeps the popup and address available when GitHub import fails', async () =>
     : Response.json({ skills: [], selections: [] })))
   const { host, root } = await render()
   try {
-    await click(host, '导入 Skill'); await click(host, 'GitHub 导入')
-    const input = host.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!
+    await click(host, '导入技能'); await click(host, '从 GitHub 导入')
+    const input = host.querySelector<HTMLInputElement>('.skill-github input')!
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'https://github.com/example/missing')
       input.dispatchEvent(new Event('input', { bubbles: true })); await settle()
     })
     await act(async () => { input.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
     await act(async () => { await settle() })
-    expect(feedback).toHaveBeenCalledWith(expect.stringContaining('未找到公开仓库'), expect.any(Object))
-    expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('未找到公开仓库')
-    expect(host.querySelector<HTMLInputElement>('[aria-label="GitHub 地址"]')!.value).toBe('https://github.com/example/missing')
+    expect(feedback).toHaveBeenCalledWith(expect.stringContaining('未找到这个仓库或技能'), expect.any(Object))
+    expect(host.querySelector('[data-sonner-toast][data-type="error"]')?.textContent).toContain('未找到这个仓库或技能')
+    expect(host.querySelector<HTMLInputElement>('.skill-github input')!.value).toBe('https://github.com/example/missing')
   } finally { await act(async () => { root.unmount(); await settle() }); host.remove() }
 })

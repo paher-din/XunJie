@@ -36,14 +36,14 @@ test('GitHub package reads use the current identity and stay local for paired sc
   entry = createLearningEntry({ environment: { environmentId: identity.environmentId, profile: 'local', clientNamespace: 'test', services: [{ endpoint }] },
     target: {}, spaces: { personal: async () => identity, bindMember: async () => {} }, learning: {}, teaching: {}, administratorToken: 'unused',
     client: { forward: async (...args) => { calls.push(args); if (args[3] !== expected) throw new StorageError('forbidden'); return { skills: [] }; } } });
-  const post = (space, subject, url) => new Promise((resolve, reject) => {
+  const post = (space, subject, url, options = {}) => new Promise((resolve, reject) => {
     const req = request(endpoint + '/api/learning/skills/github-package', { method: 'POST', headers: {
       'content-type': 'application/json', 'x-xj-space': space, 'x-xj-namespace': 'test', 'x-xj-expected-subject': subject,
     } }, res => {
       const chunks = []; res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString()) }));
     });
-    req.on('error', reject); req.end(JSON.stringify({ url }));
+    req.on('error', reject); req.end(JSON.stringify({ url, ...options }));
   });
   const url = 'https://github.com/example/skills', school = `school:${randomUUID()}`;
   const personal = await post('personal', expected, url);
@@ -54,6 +54,12 @@ test('GitHub package reads use the current identity and stay local for paired sc
   assert.equal(paired.status, 200);
   assert.deepEqual(paired.body, personal.body);
   assert.equal(calls[0][1], 'skills');
+  const savedSource = url + '/tree/' + 'c'.repeat(40);
+  for (const space of ['personal', school]) {
+    assert.deepEqual(await post(space, expected, savedSource, { latest: true }), personal,
+      'Both entry points resolve a saved commit source against the latest default branch');
+    assert.equal((await post(space, expected, savedSource, { latest: 'true' })).status, 400);
+  }
   assert.equal((await post(school, 'wrong-subject', url)).status, 403);
   const invalid = await post('personal', expected, 'https://example.com/not-github');
   assert.deepEqual(invalid, { status: 400, body: { error: 'github-invalid-url' } });

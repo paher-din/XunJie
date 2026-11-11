@@ -50,12 +50,13 @@ function packagePath(path: string) {
 
 /** Server only. No token, arbitrary URL, returned API link, download_url or redirect is ever followed.
  * Root URLs use the default branch; tree URLs resolve the longest existing ref prefix (including slash refs).
+ * latest keeps the selected directory but reads it at the default branch's latest commit.
  * The chosen directory itself must contain the sole SKILL.md. No ancestor/sibling package is inferred.
  * API requests only resolve metadata. Files use commit-pinned raw URLs, bounded concurrency,
  * and Git object hashes, so larger packages do not require one API quota entry per file.
  * YAML metadata validation remains with the existing skills.import operation.
  */
-export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage> {
+export async function fetchGithubSkill(url: string, options: { latest?: boolean } = {}): Promise<GithubSkillPackage> {
   const { owner, repo, tail } = parseUrl(url);
   const base = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   const controller = new AbortController();
@@ -122,7 +123,10 @@ export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage>
     const refs = tail.length ? tail : [repository.default_branch];
     // Longest prefix prevents silently selecting main when main/skill is itself a branch.
     const fixedCommit = /^[a-f0-9]{40}$/i.test(refs[0]!);
-    for (let count = fixedCommit ? 1 : refs.length; count >= 1; count--) {
+    // Saved sources already delimit the directory with a full SHA. Updating must
+    // still work when that historical commit is no longer available upstream.
+    if (options.latest && (fixedCommit || !tail.length)) directory = tail.slice(1);
+    else for (let count = fixedCommit ? 1 : refs.length; count >= 1; count--) {
       const ref = refs.slice(0, count).join('/');
       if (!validRef(ref)) continue;
       commit = await request(`/commits/${encodeURIComponent(ref)}?per_page=1`, commitSchema, 256 * 1024, true);
@@ -130,6 +134,11 @@ export async function fetchGithubSkill(url: string): Promise<GithubSkillPackage>
       if (/^[a-f0-9]{40}$/i.test(ref) && commit.sha !== ref.toLowerCase()) fail('upstream', 'GitHub commit 与固定版本不符。');
       directory = tail.length ? tail.slice(count) : [];
       break;
+    }
+    if (options.latest) {
+      if (tail.length && !fixedCommit && !commit) fail('not-found', '未找到 GitHub 分支、标签或 commit。');
+      if (!validRef(repository.default_branch)) fail('upstream', 'GitHub 默认分支无效。');
+      commit = await request(`/commits/${encodeURIComponent(repository.default_branch)}?per_page=1`, commitSchema, 256 * 1024);
     }
     if (!commit) fail('not-found', '未找到 GitHub 分支、标签或 commit。');
     if (directory.length) packagePath(directory.join('/'));

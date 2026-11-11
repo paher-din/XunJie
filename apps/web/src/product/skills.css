@@ -1,23 +1,17 @@
 .personal-skills { display: grid; gap: 16px; }
 .skill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.skill-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 12px 0; }
-.skill-fields label { display: grid; gap: 8px; color: var(--ink-soft); font-size: 13px; }
 .skill-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.skill-toolbar .skill-search { flex: 1 1 120px; width: 0; min-width: 96px; }
+.skill-search-field { position: relative; flex: 1 1 160px; min-width: 120px; }
+.skill-search-field > .ui-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.skill-toolbar .skill-search { box-sizing: border-box; width: 100%; padding-left: 36px; }
 .skill-github { display: grid; gap: 8px; padding: 6px; }
+.skill-github label { display: grid; gap: 8px; color: var(--ink-soft); font-size: 13px; }
 .skill-github .st-input { width: 100%; min-width: 0; }
 .skill-github > button { justify-self: end; min-width: 68px; }
-.skill-local-import { display: grid; gap: 8px; }
-.skill-local-import .detail { margin: 0; }
-.skill-import[hidden] { display: none; }
-.skill-entry { padding: 16px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
-.skill-entry p { margin: 8px 0; }
-.skill-entry details { margin-top: 12px; color: var(--muted); font-size: 13px; }
-.skill-entry summary { cursor: pointer; }
-.skill-check { display: flex; align-items: start; gap: 8px; font-size: 15px; }
-.skill-check input { margin-top: 4px; accent-color: var(--accent); }
-.skill-check strong { font-weight: 500; }
-.skill-check small { display: block; }
-.skill-version { margin-left: 8px; color: var(--muted); font-size: 13px; }
-.skill-import h3 { margin: 0; font-size: 17px; font-weight: 600; }
-.skill-import .detail { overflow-wrap: anywhere; }
+.skill-list { min-width: 0; padding: 0 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.skill-update-error { flex: 1; min-width: 0; margin: 0; color: var(--danger-deep); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.skill-update-button { display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 8px; min-width: 112px; }
+.skill-update-spinning { animation: skill-update-spin 1s linear infinite; }
+@keyframes skill-update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .skill-update-spinning { animation: none; } }
+@media (max-width: 540px) { .skill-list { padding-inline: 12px; } }

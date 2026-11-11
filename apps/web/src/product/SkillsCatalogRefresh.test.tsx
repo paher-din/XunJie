@@ -85,8 +85,8 @@ it.each([false, true])('refreshes an activity after a global toggle while retain
   const textarea = host.querySelector('textarea')!
   textarea.focus(); textarea.setSelectionRange(3, 7)
   await click('打开设置')
-  const updated = Array.from(host.querySelectorAll<HTMLElement>('.personal-skills .skill-entry')).find(item => item.textContent!.includes('补充 Skill'))!
-  await act(async () => { updated.querySelector<HTMLInputElement>('input')!.click(); await settle() })
+  const updated = Array.from(host.querySelectorAll<HTMLElement>('.personal-skills .st-skill-item')).find(item => item.textContent!.includes('补充 Skill'))!
+  await act(async () => { updated.querySelector<HTMLButtonElement>('[role="switch"]')!.click(); await settle() })
   expect(writes).toEqual([expect.objectContaining({ skillId: extraId, disabled: false })])
   expect(releaseActivity).toBeTypeOf('function')
   await click('返回活动')
@@ -102,4 +102,32 @@ it.each([false, true])('refreshes an activity after a global toggle while retain
   expect(draft.capture().skills).toEqual(explicit ? [pin(sourceV1), pin(extra)] : [pin(extra)])
   expect(host.querySelector('textarea')).toBe(textarea)
   expect(draft.snapshot().question).toBe('保留原问题和选择位置')
+})
+
+it('refreshes an already mounted activity catalog after removing a personal skill', async () => {
+  const identity: SpaceIdentity = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '学生' }
+  const activityId = crypto.randomUUID(), namespace = crypto.randomUUID(), skillId = crypto.randomUUID()
+  const entry: TeachingSkillCatalogEntry = { skillId, version: 1, name: '待移除技能', description: '原有描述', source: 'local', packageVersion: '1',
+    digest: 'a'.repeat(64), attachments: [], origin: 'personal', selected: true, disabled: false, required: false,
+    metadata: { name: 'remove-example', description: '原有描述', dependencies: [], conflicts: [], 'allowed-tools': [] } }
+  let removed = false
+  vi.stubGlobal('fetch', vi.fn(async (route: string, options: RequestInit) => {
+    if (options.method === 'POST') {
+      expect(route).toBe('/api/learning/skills/remove'); removed = true
+      return response({ skillId })
+    }
+    return response({ skills: removed ? [] : [entry], selections: [] })
+  }))
+  function Library() {
+    const catalog = useSkillCatalog(identity, 'personal', namespace)
+    return createElement('button', { onClick: () => void catalog.request('skills/remove', { requestId: crypto.randomUUID(), skillId }) }, '删除')
+  }
+  function Activity() {
+    const catalog = useSkillCatalog(identity, 'personal', namespace, activityId)
+    return createElement('output', null, catalog.data?.skills.map(item => item.name).join('、'))
+  }
+  await act(async () => { root.render(createElement('div', null, createElement(Library), createElement(Activity))); await settle() })
+  expect(host.querySelector('output')!.textContent).toBe('待移除技能')
+  await act(async () => { host.querySelector('button')!.click(); await settle() })
+  expect(host.querySelector('output')!.textContent).toBe('')
 })

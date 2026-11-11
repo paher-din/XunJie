@@ -6,6 +6,12 @@ export const iconCatalog = {
     "files": { "linear": "minus-circle-linear.svg" }, "source": "Project", "author": "学习空间项目",
     "license": "Project", "sourceUrl": "", "modified": false
   },
+  "skill": {
+    "label": "技能", "tone": "neutral", "variant": "linear",
+    "usages": [{ "label": "技能列表", "group": "设置页", "scope": "现有", "reviewId": "" }],
+    "files": { "linear": "skill-linear.svg" }, "source": "Project", "author": "学习空间项目",
+    "license": "Project", "sourceUrl": "", "modified": false
+  },
   "provider-custom": {
     "label": "自定义供应商", "tone": "neutral", "variant": "linear",
     "usages": [{ "label": "自定义供应商接入", "group": "设置页", "scope": "现有", "reviewId": "" }],

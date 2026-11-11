@@ -11,9 +11,11 @@ import { teachingAgentCallSchema, teachingAgentReceiverId, teachingConversationS
 import type { createTeachingAgent } from './index.js';
 import { teachingSkillCatalogEntrySchema, teachingSkillLoadedSchema, teachingSkillImportSchema,
   teachingSkillSelectSchema, teachingSkillDisableSchema, teachingSkillReferenceSchema, teachingSkillReferencesSchema,
+  teachingSkillDocumentSchema, teachingSkillRemoveSchema, teachingSkillImportFailureSchema,
   teachingSkillPathSchema, teachingSkillListSchema } from '@xunjie/contracts/agent-skills';
 import { studentFactsReadInputSchema, studentFactsReadResultSchema } from '@xunjie/contracts/student-facts';
 import { teachingArtifactAdoptionAuthoritySchema } from './remote-state.js';
+import { TeachingSkillImportError } from './skills-package.js';
 
 export type TeachingAgentPort = Pick<ReturnType<typeof createTeachingAgent>, 'receiver' | 'conversation' | 'events' | 'capabilities'
   | 'run' | 'stop' | 'continueRun' | 'request' | 'snapshot' | 'assertCommandDispatch' | 'assertModelDispatch'
@@ -28,9 +30,17 @@ export function createTeachingAgentService(agent: TeachingAgentPort,
     const call = teachingAgentCallSchema.parse(value), { identity, args } = call;
     await authorize(identity, call.activityId);
     if (call.operation === 'skills.list') return agent.skills.list(identity, call.activityId);
-    if (call.operation === 'skills.import') return agent.skills.import(identity, teachingSkillImportSchema.parse(args[0]));
+    if (call.operation === 'skills.import') {
+      try { return await agent.skills.import(identity, teachingSkillImportSchema.parse(args[0])); }
+      catch (error) {
+        if (error instanceof TeachingSkillImportError) return { error: 'invalid-skill', reason: error.reason };
+        throw error;
+      }
+    }
     if (call.operation === 'skills.select') return agent.skills.select(identity, teachingSkillSelectSchema.parse(args[0]));
     if (call.operation === 'skills.disable') return agent.skills.disable(identity, teachingSkillDisableSchema.parse(args[0]));
+    if (call.operation === 'skills.document') return agent.skills.document(identity, teachingSkillReferenceSchema.parse(args[0]));
+    if (call.operation === 'skills.remove') return agent.skills.remove(identity, teachingSkillRemoveSchema.parse(args[0]));
     if (call.operation === 'skills.read') {
       const ref = teachingSkillReferenceSchema.extend({ path: teachingSkillPathSchema }).strict().parse(args[0]);
       // The caller may supply the original step's selected references. The owner re-resolves them
@@ -97,9 +107,17 @@ export function createTeachingAgentClient(serviceId: string, identity: SpaceIden
   return {
     skills: {
       list: async (_identity, activity) => teachingSkillListSchema.parse(await invoke('skills.list', [], activity)),
-      import: async (_identity, input) => teachingSkillCatalogEntrySchema.parse(await invoke('skills.import', [input])),
+      import: async (_identity, input) => {
+        const result = await invoke('skills.import', [input]);
+        const failure = teachingSkillImportFailureSchema.safeParse(result);
+        if (failure.success) throw new TeachingSkillImportError(failure.data.reason);
+        return teachingSkillCatalogEntrySchema.parse(result);
+      },
       select: async (_identity, input) => teachingSkillListSchema.parse(await invoke('skills.select', [input])),
       disable: async (_identity, input) => teachingSkillCatalogEntrySchema.parse(await invoke('skills.disable', [input])),
+      document: async (_identity, input) => teachingSkillDocumentSchema.parse(await invoke('skills.document', [teachingSkillReferenceSchema.parse(input)])),
+      remove: async (_identity, input) => teachingSkillRemoveSchema.omit({ requestId: true }).parse(
+        await invoke('skills.remove', [teachingSkillRemoveSchema.parse(input)])),
       read: async (_identity, activity, skillId, version, path, guard) => teachingSkillLoadedSchema.parse(
         await invoke('skills.read', [{ skillId, version, path }, ...(guard?.references ? [guard.references] : [])], activity)),
     },

@@ -14,7 +14,7 @@ export function teachingAgentHttpCall(identity: SpaceIdentity, route: string, me
     teachingAgentCallSchema.parse({ version: 1, operation, identity, ...(activityId ? { activityId } : {}), args });
   if (tail[0] === 'skills') {
     if (tail.length === 1 && method === 'GET') return call('skills.list');
-    if (tail.length === 2 && method === 'POST' && ['import', 'select', 'disable'].includes(tail[1]!))
+    if (tail.length === 2 && method === 'POST' && ['import', 'select', 'disable', 'document', 'remove'].includes(tail[1]!))
       return call(`skills.${tail[1]}` as 'skills.import', [body]);
   }
   if (!activityId) throw new StorageError('missing');
