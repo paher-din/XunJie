@@ -10,6 +10,7 @@ export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | '
 export interface ProductSettingsProps {
   accountName: string
   schoolName?: string
+  isLocal?: boolean
   onBack: () => void
   schoolControls: ReactNode
   accountFeedback?: ReactNode
@@ -29,7 +30,7 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
   { id: 'about', label: '关于', icon: 'info-circle' },
 ]
 /** Business operations and identity changes remain owned by the caller. */
-export function ProductSettings({ accountName, schoolName, onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
+export function ProductSettings({ accountName, schoolName, isLocal = false, onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
@@ -76,7 +77,9 @@ export function ProductSettings({ accountName, schoolName, onBack, schoolControl
           <div className="product-settings-identity">
             <div className="product-settings-current">
               <AccountAvatar name={accountName} />
-              <dl><div><dt>账户</dt><dd>{accountName}</dd></div>{schoolName && <div><dt>学校</dt><dd>{schoolName}</dd></div>}</dl>
+              <div className="product-settings-account">
+                {isLocal ? <><span>本地</span><strong>个人学习空间</strong></> : <><strong>{accountName}</strong>{schoolName && <span>{schoolName}</span>}</>}
+              </div>
             </div>
           </div>
           <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">

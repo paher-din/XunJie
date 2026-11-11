@@ -757,20 +757,23 @@ function LearningView() {
         {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
           <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
             <div><strong>{context.account?.schoolName ?? item.identity.name}</strong><span className="product-school-status">已绑定</span></div></div>
+          <div className="product-school-row-actions">
+          {!schoolFormOpen && !pendingConnection && <button type="button" className="product-school-rebind" disabled={busy}
+            onClick={event => {
+              disconnectTrigger.current = event.currentTarget
+              disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
+              setDisconnectError(''); setDisconnectTarget({ key: item.key, name: context.account?.schoolName ?? item.identity.name, replace: true })
+            }}>换绑学校</button>}
           {item.key.startsWith('school:') && <button type="button" className="product-school-disconnect" aria-label={`断开${item.identity.name}的连接`} disabled={busy}
             onClick={event => {
               disconnectTrigger.current = event.currentTarget
               disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
               setDisconnectError(''); setDisconnectTarget({ key: item.key, name: item.identity.name })
             }}>断开连接</button>}
+          </div>
         </div>)}
       </div> : schoolConnectionForm)}
-      {context.profile !== 'school' && schoolIdentities.length > 0 && (schoolFormOpen || pendingConnection ? schoolConnectionForm : <Button type="button" variant="outline" className="product-school-rebind" disabled={busy}
-        onClick={event => {
-          disconnectTrigger.current = event.currentTarget
-          disconnectSection.current = event.currentTarget.closest<HTMLElement>('.product-school')
-          setDisconnectError(''); setDisconnectTarget({ key: schoolIdentities[0].key, name: context.account?.schoolName ?? schoolIdentities[0].identity.name, replace: true })
-        }}>换绑学校</Button>)}
+      {context.profile !== 'school' && schoolIdentities.length > 0 && (schoolFormOpen || pendingConnection) && schoolConnectionForm}
       {context.identities.some(item => item.key === 'school') ? <div className="product-school-session"><span className="product-school-status">已登录此学校</span><button type="button" className="outline" disabled={busy} onClick={() => void action(async () => {
         const authentication = ++authEpoch.current
         await protectActivity()
@@ -909,7 +912,7 @@ function LearningView() {
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
     {modelsOpen && <ProductSettings accountName={accountName} onBack={closeModels}
       initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
-      schoolName={context?.account?.schoolName}
+      schoolName={context?.account?.schoolName} isLocal={!!context && !context.account}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
       modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
