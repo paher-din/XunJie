@@ -5,7 +5,7 @@ import { Icon, IconText, type IconName } from '@xunjie/ui/icons'
 import { Section, SettingsEmptyState } from '@xunjie/ui/settings'
 import './product-settings.css'
 
-export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | 'privacy' | 'about'
+export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | 'about'
 
 export interface ProductSettingsProps {
   accountName: string
@@ -26,7 +26,6 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
   { id: 'portrait', label: '学生画像', icon: 'user-id' },
   { id: 'agent', label: 'Agent 个性化', icon: 'assistant-mark' },
   { id: 'models', label: '模型', icon: 'model' },
-  { id: 'privacy', label: '数据与隐私', icon: 'shield-check' },
   { id: 'about', label: '关于', icon: 'info-circle' },
 ]
 /** Business operations and identity changes remain owned by the caller. */
@@ -95,14 +94,20 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
           data-settings-section={active} className="product-settings-pane product-settings-model">
           {modelSettings ?? <p className="product-settings-empty" role="status">个人设置暂不可用。</p>}
         </section>
-        <section id={`${id}-privacy`} aria-labelledby={`${id}-privacy-nav`} hidden={active !== 'privacy'} inert={active !== 'privacy'}>
-          <Section title="对话整理"><dl className="product-settings-facts">
-            <div><dt>归档</dt><dd>从对话列表收起，可在归档箱恢复。</dd></div>
-            <div><dt>删除对话入口</dt><dd>移除侧栏中的对话入口，学习活动和作品仍保留。</dd></div>
-          </dl></Section>
-        </section>
         <section id={`${id}-about`} aria-labelledby={`${id}-about-nav`} hidden={active !== 'about'} inert={active !== 'about'}>
           <div className="st-brand"><XunjieLogo format="stacked" className="st-brand-logo" label="循阶" /></div>
+          <Section title="数据与隐私">
+            <h3 className="product-settings-subheading">对话整理</h3>
+            <dl className="product-settings-facts">
+              <div><dt>归档</dt><dd>从对话列表收起，可在归档箱恢复。</dd></div>
+              <div><dt>删除对话入口</dt><dd>移除侧栏中的对话入口，学习活动和作品仍保留。</dd></div>
+            </dl>
+          </Section>
+          <Section title="项目仓库">
+            <a className="product-settings-repository" href="https://github.com/paher-din/XunJie" target="_blank" rel="noreferrer">
+              <IconText name="brand-github" size={16}>https://github.com/paher-din/XunJie</IconText>
+            </a>
+          </Section>
         </section>
       </div>
     </div>

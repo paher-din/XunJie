@@ -1948,7 +1948,7 @@ export const iconCatalog = {
     "license": "GitHub 品牌标识；Octicons 源码 MIT",
     "sourceUrl": "https://github.com/primer/octicons/blob/68ec2de8d0ddfcbb7497da01d0b7d98eb5593020/icons/mark-github-16.svg",
     "modified": false,
-    "usages": [{ "label": "GitHub 导入", "group": "设置页", "scope": "现有", "reviewId": "" }],
+    "usages": [{ "label": "GitHub 导入", "group": "设置页", "scope": "现有", "reviewId": "" }, { "label": "项目仓库", "group": "设置页", "scope": "现有", "reviewId": "" }],
     "files": { "native": "brand-github-native.svg" }
   },
   "brand-deepseek": {

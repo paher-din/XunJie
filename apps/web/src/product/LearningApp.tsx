@@ -845,8 +845,9 @@ function LearningView() {
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
   }
-  const settingsTab: ProductSettingsTab = settingsPage === 'models' || settingsPage === 'agent'
-    || settingsPage === 'portrait' || settingsPage === 'privacy' || settingsPage === 'about' ? settingsPage : 'account'
+  const settingsTab: ProductSettingsTab = settingsPage === 'privacy' ? 'about'
+    : settingsPage === 'models' || settingsPage === 'agent'
+      || settingsPage === 'portrait' || settingsPage === 'about' ? settingsPage : 'account'
   const conversationOpen = !!opened && agentOpen && identity?.kind === 'personal' && !opened.course
   const archivedCount = visibleActivities?.filter(activity => !activity.course && conversationHistory.archivedIds.includes(activity.activityId)).length ?? 0
   async function changeConversationVisibility(id: string, remove: boolean) {
