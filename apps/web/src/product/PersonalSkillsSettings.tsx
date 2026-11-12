@@ -45,6 +45,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   const viewActive = useRef(active)
   viewActive.current = active
   const returnFocus = useRef<HTMLButtonElement | null>(null), searchInput = useRef<HTMLInputElement>(null)
+  const rootElement = useRef<HTMLDivElement>(null), previousSkillCount = useRef(0)
   useToastFeedback(active ? error : '')
   const [rejectedToggle, setRejectedToggle] = useState<Operation | null>(null)
   const live = useRef(false), acting = useRef(false)
@@ -55,6 +56,12 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   useEffect(() => { if (importMenuOpen && githubOpen) githubInput.current?.focus() }, [importMenuOpen, githubOpen])
   useEffect(() => { if (!active) { setOpened(null); setRemoving(null); toast.dismiss(feedbackId) } }, [active, feedbackId])
   useEffect(() => () => { toast.dismiss(feedbackId) }, [feedbackId])
+  useEffect(() => {
+    const count = catalog.data?.skills.length
+    if (active && count === 0 && previousSkillCount.current > 0 && document.activeElement === document.body)
+      rootElement.current?.querySelector<HTMLButtonElement>('.st-empty .st-action-menu-trigger')?.focus()
+    if (count !== undefined) previousSkillCount.current = count
+  }, [active, catalog.data?.skills.length])
   useEffect(() => {
     if (!opened || !active) return
     let cancelled = false
@@ -260,8 +267,20 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
     if (operation.update) runUpdate((operation.input as { skillId: string }).skillId, () => deliver(operation))
     else void act(() => deliver(operation))
   }
+  const importMenu = (empty = false) => <SettingsActionMenu label={empty ? '导入第一个技能' : '导入技能'}
+    icon={empty ? undefined : <Icon name="add" size={16} />} buttonClassName={empty ? 'primary' : undefined}
+    disabled={disabled} open={importMenuOpen} onOpenChange={open => { setImportMenuOpen(open); if (!open) setGithubOpen(false) }}
+    panelLabel="从 GitHub 导入" panel={githubOpen ? <form className="skill-github" onSubmit={event => { event.preventDefault(); importGithub() }}>
+      <label>GitHub 链接<input ref={githubInput} className="st-input" type="url" required placeholder="https://github.com/…"
+        value={githubUrl} onChange={event => setGithubUrl(event.target.value)} /></label>
+      <button className="primary" type="submit" disabled={disabled || !githubUrl.trim()}>导入</button>
+    </form> : undefined} items={[
+      { id: 'local', label: '本地导入', icon: <Icon name="folder-with-files" size={16} />, onSelect: chooseLocalFolder },
+      { id: 'github', label: '从 GitHub 导入', icon: <Icon name="brand-github" size={16} />, keepOpen: true,
+        onSelect: () => setGithubOpen(true) },
+    ]} />
   return <Section title="技能" desc="技能让 Agent 按固定方法完成一类工作；个人技能只在当前学习空间生效。">
-    <div className="personal-skills">
+    <div ref={rootElement} className="personal-skills" aria-busy={catalog.loading || busy || undefined}>
       {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
         description="可以查看已有技能；当前副本不能导入、更新或启停技能。" />}
       {catalog.loading && !catalog.data && <SettingsStatus tone="loading" title="正在读取技能"
@@ -269,27 +288,22 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
       {catalog.error && !catalog.data && <SettingsStatus tone="error" title="技能暂时无法读取"
         description={`${catalog.error}列表没有改变；检查连接或学习服务状态后重新读取。`}
         action={<button className="outline" type="button" disabled={catalog.loading}
-          onClick={() => { setNeedsReload(false); void catalog.reload() }}>刷新列表</button>} />}
+          aria-busy={catalog.loading || undefined} onClick={() => { setNeedsReload(false); void catalog.reload() }}>
+          {catalog.loading ? '正在刷新…' : '刷新列表'}
+        </button>} />}
       {catalog.data && (catalog.error || needsReload) && <SettingsStatus tone="error" title="技能列表可能不是最新"
         description="当前列表仍可使用。重新读取后再修改，避免覆盖其他位置的更新。"
         action={<button className="outline" type="button" disabled={catalog.loading}
-          onClick={() => { setNeedsReload(false); void catalog.reload() }}>刷新列表</button>} />}
-      {catalog.data && <div className="skill-toolbar">
+          aria-busy={catalog.loading || undefined} onClick={() => { setNeedsReload(false); void catalog.reload() }}>
+          {catalog.loading ? '正在刷新…' : '刷新列表'}
+        </button>} />}
+      {catalog.data && catalog.loading && !busy && !catalog.error && !needsReload && <p className="settings-inline-status" role="status">
+        正在刷新技能列表…</p>}
+      {catalog.data && catalog.data.skills.length > 0 && <div className="skill-toolbar">
         <div className="skill-search-field"><Icon name="minimalistic-magnifier" size={16} />
           <input ref={searchInput} className="st-input skill-search" type="search" aria-label="搜索技能" placeholder="搜索技能" value={search}
             onChange={event => setSearch(event.target.value)} /></div>
-        <SettingsActionMenu label="导入技能" icon={<Icon name="add" size={16} />} disabled={disabled}
-          open={importMenuOpen} onOpenChange={open => { setImportMenuOpen(open); if (!open) setGithubOpen(false) }}
-          panelLabel="从 GitHub 导入" panel={githubOpen ? <form className="skill-github" onSubmit={event => { event.preventDefault(); importGithub() }}>
-            <label>GitHub 链接<input ref={githubInput} className="st-input" type="url" required placeholder="https://github.com/…"
-              value={githubUrl} onChange={event => setGithubUrl(event.target.value)} /></label>
-            <button className="primary" type="submit" disabled={disabled || !githubUrl.trim()}>导入</button>
-          </form> : undefined} items={[
-          { id: 'local', label: '本地导入', icon: <Icon name="folder-with-files" size={16} />,
-            onSelect: chooseLocalFolder },
-          { id: 'github', label: '从 GitHub 导入', icon: <Icon name="brand-github" size={16} />, keepOpen: true,
-            onSelect: () => setGithubOpen(true) },
-        ]} />
+        {importMenu()}
       </div>}
       {localImportProgress && localImportProgress.remaining > 0 && (localImportProgress.failures.length > 0 || localImportProgress.pauseReason) && <SkillImportFeedback
         summary={localImportSummary(localImportProgress)} failures={localImportProgress.failures}
@@ -301,8 +315,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
         } } : {})} />}
       {catalog.data?.skills.length === 0 && <SettingsEmptyState icon={<Icon name="skill" size={24} />} title="还没有技能"
         description={readOnly ? '当前学习空间还没有可查看的技能。' : '导入本机技能文件夹或 GitHub 仓库后，Agent 就能按其中的说明工作。'}>
-        {!readOnly && <button type="button" className="primary" disabled={disabled}
-          onClick={() => setImportMenuOpen(true)}>导入第一个技能</button>}
+        {!readOnly && importMenu(true)}
       </SettingsEmptyState>}
       {catalog.data && catalog.data.skills.length > 0 && !visibleSkills.length && <SettingsEmptyState
         icon={<Icon name="minimalistic-magnifier" size={24} />} title="没有找到匹配的技能"
@@ -325,7 +338,8 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
             disabled={readOnly || busy || documentRead.loading || !!localImportProgress?.uncertain || !!pending && !pendingUpdate}
             onClick={() => pendingUpdate ? retry(pendingUpdate) : updateSkill(opened)}>
             <Icon name="restart" variant="linear" tone="neutral" size={16} className={updateBusy ? 'skill-update-spinning' : undefined} />
-            {pendingUpdate || updateMessage && fromGithub(opened.source) ? '重试更新' : updateMessage ? '重新选择文件夹' : '更新技能'}
+            {updateBusy ? '正在更新…' : pendingUpdate || updateMessage && fromGithub(opened.source) ? '重试更新'
+              : updateMessage ? '重新选择文件夹' : '更新技能'}
           </button>
           <input ref={updateDirectoryInput} type="file" multiple hidden aria-label="选择更新技能文件夹"
             {...({ webkitdirectory: '' } as InputHTMLAttributes<HTMLInputElement>)}
@@ -335,7 +349,8 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
               if (target) replaceLocalSkill(target, files)
             }} />
         </>} />
-      <ConfirmationDialog open={!!removing} title={`删除「${removing?.name ?? ''}」？`} description="将从你的技能列表中移除。"
+      <ConfirmationDialog open={!!removing} title={`删除「${removing?.name ?? ''}」？`}
+        description={pending?.route === 'skills/remove' ? '正在从技能列表中移除，完成前请保留此窗口。' : '将从你的技能列表中移除。'}
         confirmLabel="删除" busy={busy} onReturnFocus={restoreFocus} onClose={() => setRemoving(null)}
         onConfirm={() => { if (removing && !disabled) void act(() => deliver({ route: 'skills/remove', label: '技能已删除',
           input: teachingSkillRemoveSchema.parse({ requestId: crypto.randomUUID(), skillId: removing.skillId }) })) }} />

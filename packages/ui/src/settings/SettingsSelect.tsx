@@ -50,12 +50,14 @@ export function ModelIdInput({ label, value, options, onChange, onOpen, loading 
     <Combobox.Portal container={anchor.current?.closest<HTMLElement>('[data-ui-popup-scope], [role="dialog"]') ?? undefined}>
       <Combobox.Positioner className="ui-select-positioner" sideOffset={6}>
         <Combobox.Popup className="ui-select-popup">
-          <Combobox.Empty className="ui-select-empty">{value.trim() ? '列表中没有此型号，可直接使用填写的模型 ID。' : '暂无模型列表，可直接输入模型 ID。'}</Combobox.Empty>
+          <Combobox.Empty className="ui-select-empty" data-loading={loading && options.length === 0 || undefined}>{loading && options.length === 0 ? '正在更新模型列表…'
+            : value.trim() ? '列表中没有此型号，可直接使用填写的模型 ID。' : '暂无模型列表，可直接输入模型 ID。'}</Combobox.Empty>
           <Combobox.List className="ui-select-list">{(item: SettingsChoice) => <Combobox.Item key={item.value} value={item} className="ui-select-item">
             <span className="ui-select-copy"><span>{item.label}</span>{item.label !== item.value && <small className="st-choice-model-id">{item.value}</small>}</span>
             <Combobox.ItemIndicator className="ui-select-check"><Icon name="check" size={16} /></Combobox.ItemIndicator>
           </Combobox.Item>}</Combobox.List>
-          {loading && options.length > 0 && <div className="ui-select-foot" role="status" aria-label="正在更新模型列表" />}
+          {loading && options.length > 0 && <div className="ui-select-foot" data-loading role="status" aria-live="polite"
+            aria-label="正在更新模型列表">正在更新模型列表…</div>}
         </Combobox.Popup>
       </Combobox.Positioner>
     </Combobox.Portal>

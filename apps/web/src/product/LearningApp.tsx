@@ -12,6 +12,7 @@ import { useModelSelection } from './ModelSelection'
 import { ProductHome } from './ProductHome'
 import { ProductConversationHistory, conversationTitle, useConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
+import { SettingsFailureBoundary } from './SettingsFailureBoundary'
 import { ProductProfile } from './ProductProfile'
 import { Button, ConfirmationDialog, SessionLogin } from '@xunjie/ui/foundation'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
@@ -741,7 +742,7 @@ function LearningView() {
     <p role="status">{pendingConnection.connectionId ? '学校认证已完成，请重新读取连接。' : pendingConnection.authenticated
       ? '学校认证已完成，点击下方按钮完成连接。' : '请在学校页面完成认证，然后返回这里完成连接。'}</p>
     <div className="product-school-actions">
-      <button type="button" className="primary" disabled={busy} onClick={() => void action(async generation => {
+      <button type="button" className="primary" disabled={busy} aria-busy={busy || undefined} onClick={() => void action(async generation => {
         let connectionId = pendingConnection.connectionId
         if (!connectionId) {
           const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
@@ -753,7 +754,8 @@ function LearningView() {
           rememberPendingConnection(null); setSchoolFormOpen(false); setSchoolEndpoint('')
           toast.success('学校已连接。')
         }
-      })}>{pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
+      })}>{busy ? pendingConnection.connectionId ? '正在读取连接…' : '正在完成连接…'
+        : pendingConnection.connectionId ? '重新读取连接' : '已完成认证，连接学校'}</button>
       {!pendingConnection.connectionId && <a className="outline product-school-auth-link" href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">重新打开学校认证页面</a>}
     </div>
     {!pendingConnection.connectionId && <button type="button" className="product-school-text-action" disabled={busy} onClick={event => {
@@ -769,7 +771,7 @@ function LearningView() {
   }) }}>
     <label>学校链接<TextInput type="url" autoComplete="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
     <div className="product-school-actions">
-      <Button type="submit" disabled={busy}>连接</Button>
+      <Button type="submit" disabled={busy} aria-busy={busy || undefined}>{busy ? '正在连接…' : '连接'}</Button>
       <Button type="button" variant="outline" disabled={busy} onClick={event => {
         const section = event.currentTarget.closest<HTMLElement>('.product-school')
         setError(''); setSchoolFormOpen(false)
@@ -781,7 +783,7 @@ function LearningView() {
       <span className="product-school-add-icon"><Icon name="add" size={22} /></span>
       <span>添加学校</span>
     </Button>
-  const schoolControls = context && <section className="product-school" tabIndex={-1}><h2>学校连接</h2>
+  const schoolControls = context && <section className="product-school" tabIndex={-1} aria-busy={busy || undefined}><h2>学校连接</h2>
       <p className="product-settings-section-desc">{schoolIdentities.length > 0
         ? '换绑前会先解绑当前学校账号；解绑只隐藏学校内容，本机学习记录仍会保留。'
         : '绑定学校后可领取课程与提交作品；个人学习空间仍可继续使用。'}</p>
@@ -824,7 +826,7 @@ function LearningView() {
           setKey(nextKey)
           setReload(value => value + 1)
         }
-      })}>退出学校登录</button></div> : null}
+      })}>{busy ? '正在退出…' : '退出学校登录'}</button></div> : null}
     </section>
   const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
   const visibleRelease = release?.courseId === selectedCourseId ? release : null
@@ -946,17 +948,19 @@ function LearningView() {
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
     {modelsOpen && <ProductSettings accountName={accountName} onBack={closeModels}
       accountState={context ? { status: 'ready' } : error
-        ? { status: 'error', message: error, onRetry: () => void action(async generation => { await refreshContext(undefined, generation) }) }
+        ? { status: 'error', busy, message: error, onRetry: () => void action(async generation => { await refreshContext(undefined, generation) }) }
         : { status: 'loading' }} readOnly={!!context?.readOnly}
       accountFeedback={error && (schoolFormOpen || pendingConnection) ? <SettingsStatus tone="error"
         title="学校连接未完成" description={error} /> : undefined}
       initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
       schoolName={context?.account?.schoolName} isLocal={!!context && !context.account}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
-      modelSettings={context && identity ? <Suspense fallback={<SettingsStatus tone="loading" title="正在读取个人设置"
-        description="模型、技能与 Agent 偏好会在原位置载入。" />}><PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
+      modelSettings={context && identity ? <SettingsFailureBoundary key={context.clientNamespace + key + identity.principalId} onBack={closeModels}>
+        <Suspense fallback={<SettingsStatus tone="loading" title="正在读取个人设置"
+          description="模型、技能与 Agent 偏好会在原位置载入。" />}><PersonalModelSettings
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
-        readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} cache={readCache} /></Suspense> : null} />}
+        readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} cache={readCache} /></Suspense>
+      </SettingsFailureBoundary> : null} />}
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>
       <Suspense fallback={<div className="content" role="status" aria-label="正在打开学习活动" />}>
       <ActivityReferences key={context.clientNamespace + key + opened.activityId}

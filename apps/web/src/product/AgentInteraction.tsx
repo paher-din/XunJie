@@ -109,8 +109,13 @@ export function AgentInteractionSettings({ controller }: { controller: AgentInte
       {!controller.settings && !controller.error && <SettingsStatus tone="loading" title="正在读取发送方式"
         description="问题、草稿和正在进行的操作不会改变。" />}
       {!controller.settings && controller.error && <SettingsStatus tone="error" title="发送方式暂时无法读取"
-        description={controller.error} action={<button type="button" className="outline" onClick={() => void controller.reload()}>重新读取</button>} />}
+        description={controller.error} action={<button type="button" className="outline" disabled={controller.loading}
+          aria-busy={controller.loading || undefined} onClick={() => void controller.reload()}>
+          {controller.loading ? '正在重新读取…' : '重新读取'}
+        </button>} />}
       {controller.settings && <>
+        {controller.loading && !pendingMode && <SettingsStatus tone="loading" title="正在重新读取发送方式"
+          description="当前选择会保留，读取完成后再更新。" />}
         <RadioCard<Mode> ariaLabel="忙碌时发送的默认方式" value={pendingMode ?? controller.settings.busyInputMode}
           onChange={mode => void selectMode(mode)} options={[
             { value: 'steering', title: '引导当前任务', desc: '在下一步开始前纳入补充；已经开始的操作不会被撤回。', disabled: !!pendingMode || controller.busy || !controller.writable },
@@ -121,7 +126,9 @@ export function AgentInteractionSettings({ controller }: { controller: AgentInte
         {controller.busy && !pendingMode && <SettingsStatus tone="loading" title="正在确认上次设置"
           description="会沿原操作恢复结果；当前选择不会先被改写。" />}
         {controller.error && <SettingsStatus tone="error" title="发送方式尚未保存"
-          description={controller.error} action={<button type="button" className="outline" onClick={() => void controller.reload()}>重新读取</button>} />}
+          description={controller.error} action={<button type="button" className="outline"
+            disabled={controller.loading || controller.busy} aria-busy={controller.loading || undefined}
+            onClick={() => void controller.reload()}>{controller.loading ? '正在重新读取…' : '重新读取'}</button>} />}
       </>}
     </div>
   </Section>

@@ -46,7 +46,7 @@ export function SkillDocumentDialog({ open, name, content, loading, error, foote
           <Dialog.Close asChild><button type="button" className="pc-x" aria-label="关闭技能"><Icon name="close" size={18} /></button></Dialog.Close>
         </div>
         <div className="st-dialog-body st-skill-document-body" aria-busy={loading || undefined}>
-          {loading && content === null && <p className="st-skill-document-status" role="status" aria-label="正在打开技能" />}
+          {loading && content === null && <p className="st-skill-document-status" role="status" aria-label="正在打开技能">正在打开技能…</p>}
           {!loading && error && <div className="st-skill-document-status" role="alert"><p>暂时无法打开技能，请重试。</p><button type="button" className="outline" onClick={onRetry}>重试</button></div>}
           {content !== null && !error && <article className="st-skill-document-content" role="document" tabIndex={0} aria-label={`${name}正文`}>
             <Markdown text={documentMarkdown(content)} />

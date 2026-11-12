@@ -63,6 +63,7 @@
 .st-provider-model-actions { display: flex; align-items: center; gap: 8px; }
 .st-provider-model-feedback { padding-bottom: 12px; }
 .st-provider-compact > .st-provider-bottom { padding-top: 8px; gap: 8px; }
+.st-provider-save-state { margin-inline-end: auto; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .st-provider-text-action {
   display: inline-flex;
   align-items: center;

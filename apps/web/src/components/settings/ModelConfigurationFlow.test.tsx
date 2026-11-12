@@ -567,7 +567,7 @@ it('lists fetched supplier models as unselected cards and saves only checked mod
   await select('模型 ID的默认思考强度', '高 · high')
   expect(onDirectory.mock.calls.some(([query]) => query.source === 'supplier')).toBe(false)
   await click('拉取模型')
-  expect(findButton('拉取模型').getAttribute('aria-busy')).toBe('true')
+  expect(findButton('正在拉取…').getAttribute('aria-busy')).toBe('true')
   expect(card('fetched-alpha')).toBeUndefined()
   const supplierReads = onDirectory.mock.calls.filter(([query]) => query.source === 'supplier')
   expect(supplierReads).toHaveLength(1)

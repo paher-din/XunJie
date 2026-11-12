@@ -45,6 +45,14 @@ it('distinguishes account loading, failure and ready states', async () => {
   expect(host.textContent).toContain('连接学校')
 })
 
+it('keeps the account recovery action explainable while a retry is in flight', async () => {
+  await render({ accountState: { status: 'error', message: '学习服务暂时不可用。', busy: true, onRetry: vi.fn() } })
+  const retry = [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '正在重新读取…')!
+  expect(retry.disabled).toBe(true)
+  expect(retry.getAttribute('aria-busy')).toBe('true')
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain('账号信息暂时无法读取')
+})
+
 it('explains every category and gives the portrait a meaningful empty state', async () => {
   await render()
   const descriptions: Record<string, string> = {

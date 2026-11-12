@@ -40,6 +40,8 @@ async function click(label: string) {
   await act(async () => { button.click() })
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
 }
+const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')]
+  .find(item => item.textContent?.trim() === label)!
 type Props = Parameters<typeof ModelProviderDialog>[0]
 async function draw(saved = provider(), onProfiles: Props['onProfiles'] = vi.fn(async () => ({ profiles: [], stale: true })), overrides: Partial<Props> = {}, openSaved = true) {
   const onSave = vi.fn(async (_input: SaveModelProvider) => saved), onClose = vi.fn()
@@ -226,6 +228,54 @@ it('Escape closes only the supplier menu and model cards retain their collapsed 
   expect(onClose).not.toHaveBeenCalled()
   expect(document.querySelector('[role="combobox"][aria-expanded="true"]')).toBeNull()
   await act(async () => input('模型 ID的上下文窗口').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(onClose).not.toHaveBeenCalled()
+  expect(document.querySelector('.xj-confirm-title')?.textContent).toBe('放弃未保存的修改？')
+  await click('放弃修改')
+  expect(onClose).toHaveBeenCalledOnce()
+})
+
+it('closes a pristine supplier directly but explains a dirty draft before discarding it', async () => {
+  const first = await draw(provider(), undefined, {}, false)
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="关闭"]')!.click())
+  expect(first.onClose).toHaveBeenCalledOnce()
+  expect(document.querySelector('.xj-confirm-title')).toBeNull()
+
+  const second = await draw(provider(), undefined, {}, false)
+  await type('连接名称', '尚未保存的名称')
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="关闭"]')!.click())
+  expect(second.onClose).not.toHaveBeenCalled()
+  expect(document.querySelector('.xj-confirm-title')?.textContent).toBe('放弃未保存的修改？')
+  expect(document.querySelector('.xj-confirm-description')?.textContent).toContain('当前草稿还没有保存')
+  await act(async () => [...document.querySelectorAll<HTMLButtonElement>('.xj-confirm-dialog button')]
+    .find(item => item.textContent === '取消')!.click())
+  expect(second.onClose).not.toHaveBeenCalled()
+  expect(input('连接名称').value).toBe('尚未保存的名称')
+})
+
+it('shows why saved-key actions are blocked while loading and keeps saving visible', async () => {
+  let finishKey!: (value: string) => void
+  const savedKey = new Promise<string>(resolve => { finishKey = resolve })
+  const saved = provider()
+  saved.hasCredential = true
+  saved.models[0] = { ...saved.models[0]!, hasCredential: true }
+  let finishSave!: (value: ModelProvider) => void
+  const save = new Promise<ModelProvider>(resolve => { finishSave = resolve })
+  const onSave = vi.fn(() => save)
+  const { onClose } = await draw(saved, undefined, { onReadCredential: () => savedKey, onSave }, false)
+  expect(document.body.textContent).toContain('正在读取已保存的密钥')
+  expect(button('保存').disabled).toBe(true)
+  await act(async () => { finishKey('synthetic-saved-key'); await Promise.resolve() })
+  expect(document.body.textContent).not.toContain('正在读取已保存的密钥')
+  expect(button('保存').disabled).toBe(false)
+
+  await act(async () => { button('保存').click(); await new Promise(resolve => setTimeout(resolve, 0)) })
+  expect(button('正在保存…').disabled).toBe(true)
+  expect(document.querySelector('[role="dialog"]')?.getAttribute('aria-busy')).toBe('true')
+  expect([...document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '取消')?.disabled).toBe(true)
+  await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(onClose).not.toHaveBeenCalled()
+  expect(document.body.textContent).toContain('正在保存供应商，完成后再关闭')
+  await act(async () => { finishSave(saved); await save })
   expect(onClose).toHaveBeenCalledOnce()
 })
 

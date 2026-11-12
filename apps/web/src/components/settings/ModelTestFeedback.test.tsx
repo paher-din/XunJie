@@ -31,7 +31,13 @@ it.each(['running', 'passed', 'cancelled'] as const)('keeps %s feedback as a pla
   if (status === 'running') {
     await act(async () => button('停止').click())
     expect(onStop).toHaveBeenCalledOnce()
-  } else expect(button('停止')).toBeUndefined()
+  } else {
+    expect(button('停止')).toBeUndefined()
+    if (status === 'cancelled') {
+      await act(async () => button('重新测试').click())
+      expect(onRetry).toHaveBeenCalledOnce()
+    } else expect(button('重新测试')).toBeUndefined()
+  }
 })
 
 it.each(['failed', 'unverified'] as const)('shows %s reason and recovery without diagnostics', async status => {

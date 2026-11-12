@@ -5,10 +5,11 @@ import { modelBaseUrlError, modelConfigurationSchema, saveModelProviderSchema, r
   modelProviderPresets, getModelPreset, resolvePresetModelRoute,
   type ModelPresetId, type ModelDirectoryEntry, type ModelDirectoryRefresh,
   type ModelConfiguration, type ModelProvider, type ModelProfile, type ModelAttempt, type SaveModelProvider, type ReasoningEffort } from '@xunjie/contracts/model-connections'
-import { ConnectionModelFields, Field, TextInput, SettingsSelect, ModelProviderLogo, ModelChoiceCard, ModelTestFeedback, ModelTestButton } from '@xunjie/ui/settings'
+import { ConnectionModelFields, Field, TextInput, SettingsSelect, SettingsStatus, ModelProviderLogo, ModelChoiceCard, ModelTestFeedback, ModelTestButton } from '@xunjie/ui/settings'
 import { ProviderIdentityFields } from './ProviderIdentityFields'
 import { Icon } from '../../icons'
 import { toast, useToastFeedback } from '@xunjie/ui/feedback'
+import { ConfirmationDialog } from '@xunjie/ui/foundation'
 import { useModelDirectory, type ReadModelDirectory } from './useModelDirectory'
 import { useModelConfigurationTests, type CheckModelConfiguration } from './useModelConfigurationTests'
 import { useSupplierChecks, type TestSupplierConnection } from './useSupplierChecks'
@@ -68,7 +69,8 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   const editableModelIds = useRef(new Set(draft.models.map(model => model.connectionId)))
   const [profiles, setProfiles] = useState<Map<string, ModelProfile>>(() => new Map()), [refresh, setRefresh] = useState(0), [profileBusy, setProfileBusy] = useState(false)
   const [profileNotice, setProfileNotice] = useState('')
-  const [apiKey, setApiKey] = useState(''), [saving, setSaving] = useState(false)
+  const [apiKey, setApiKey] = useState(''), [saving, setSaving] = useState(false), [dirty, setDirty] = useState(false)
+  const [closeConfirm, setCloseConfirm] = useState(false)
   const [lookupKey, setLookupKey] = useState<string | undefined>(provider?.hasCredential ? undefined : '')
   const [credentialReady, setCredentialReady] = useState(!provider?.hasCredential), [credentialError, setCredentialError] = useState('')
   const [credentialRetry, setCredentialRetry] = useState(0), [addressTouched, setAddressTouched] = useState(false)
@@ -129,7 +131,6 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
   }, [manualReadyAt])
   const directoryNotice = directory.error || [...new Set([refreshMessage(directory.data?.supplier, 'supplier'), refreshMessage(directory.data?.catalogue, 'catalogue')].filter(Boolean))].join(' ')
   const directoryFailed = Boolean(directory.error || refreshStates.some(state => state.error))
-  useToastFeedback(credentialError)
   useToastFeedback(directoryNotice || profileNotice)
   useToastFeedback(notice, 'info')
   const modelChoices = useMemo(() => {
@@ -227,7 +228,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     }, 400)
     return () => { active = false; clearTimeout(timer) }
   }, [profileKey, refresh, onProfiles, directoryStamp])
-  const changed = () => { epoch.current++; setNotice(''); if (!recovery) setError('') }
+  const changed = () => { epoch.current++; setDirty(true); setNotice(''); if (!recovery) setError('') }
   const change = (patch: Partial<Draft>) => { changed(); setDraft(previous => ({ ...previous, ...patch })) }
   const changeModel = (id: string, patch: Partial<ModelDraft>) => { tests.invalidate(id); change({ models: draft.models.map(model => model.connectionId === id ? { ...model, ...patch } : model) }) }
   const expandModel = (key: string, expanded: boolean) => setExpandedModels(previous => {
@@ -516,19 +517,32 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
     setModelQuery('')
     dialogContent.current?.querySelector<HTMLInputElement>('.st-model-list-search input')?.focus({ preventScroll: true })
   }
-  return <Dialog.Root open onOpenChange={open => { if (!open) onClose() }}><Dialog.Portal>
+  const testRunning = Object.values(tests.runs).some(run => run.status === 'running') || supplier.connection?.status === 'running'
+  const requestClose = () => {
+    if (saving) { setNotice('正在保存供应商，完成后再关闭。'); return }
+    if (dirty || recovery || testRunning) { setCloseConfirm(true); return }
+    onClose()
+  }
+  const closeDescription = [
+    dirty ? '当前草稿还没有保存。' : '',
+    recovery ? '原保存结果还没有核对；关闭不会撤销可能已经生效的原请求。' : '',
+    testRunning ? '正在进行的连接或模型测试会停止。' : '',
+  ].filter(Boolean).join('')
+  return <><Dialog.Root open onOpenChange={open => { if (!open) requestClose() }}><Dialog.Portal>
     <Dialog.Overlay className="overlay pc-overlay" /><Dialog.Content ref={dialogContent} className="st-dialog product-connection-dialog" aria-describedby={undefined}
+      aria-busy={saving || reading || undefined}
       onOpenAutoFocus={event => {
         if (!addModel) return
         event.preventDefault(); dialogContent.current?.querySelector<HTMLInputElement>('.st-model-list-search input')?.focus()
       }}
       onEscapeKeyDown={event => {
         // Radix handles Escape on document capture, before the nested Base UI menu.
-        if (event.isComposing || dialogContent.current?.querySelector('[role="combobox"][aria-expanded="true"], [role="tooltip"][data-open]')) event.preventDefault()
+        if (event.isComposing || closeConfirm || dialogContent.current?.querySelector('[role="combobox"][aria-expanded="true"], [role="tooltip"][data-open]')) event.preventDefault()
+        else if (!closeConfirm) { event.preventDefault(); requestClose() }
       }}
       onCloseAutoFocus={event => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus() }}>
       <div className="st-dialog-head"><Dialog.Title className="st-dialog-title">{provider ? '编辑供应商' : '添加供应商'}</Dialog.Title>
-        <Dialog.Close asChild><button type="button" className="pc-x" aria-label="关闭"><Icon name="close" size={18} /></button></Dialog.Close></div>
+        <button type="button" className="pc-x" aria-label="关闭" onClick={requestClose}><Icon name="close" size={18} /></button></div>
       <div className="st-dialog-body">
         <Field label="供应商"><SettingsSelect label="供应商" value={draft.presetId ?? 'custom'} onChange={value => choosePreset(value as ModelPresetId)}
           options={[{ value: 'custom', label: '自定义', icon: <ModelProviderLogo providerId="custom" /> },
@@ -545,7 +559,11 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
             onChange: value => { change({ protocol: value as Draft['protocol'], models: draft.models.map(model => ({ ...model, protocol: undefined, baseUrl: undefined })) }); if (draft.baseUrl) setAddressTouched(true) } }}
           onName={name => change({ name })} onBaseUrl={baseUrl => change({ baseUrl, models: draft.models.map(model => ({ ...model, protocol: undefined, baseUrl: undefined })) })}
           onApiKey={value => { changed(); setApiKey(value); credentialDrafts.current.set(scope, value) }} onApiKeyBlur={() => setLookupKey(apiKey)} />
-        {credentialError && <div><p className="detail">{credentialError}</p><button type="button" className="outline" onClick={() => setCredentialRetry(value => value + 1)}>重新读取密钥</button></div>}
+        {!credentialReady && !credentialError && <SettingsStatus tone="loading" title="正在读取已保存的密钥"
+          description="读取完成前不能保存或测试；当前草稿会保留。" />}
+        {credentialError && <SettingsStatus tone="error" title="已保存的密钥未能读取"
+          description={credentialError} action={<button type="button" className="outline"
+            onClick={() => setCredentialRetry(value => value + 1)}>重新读取密钥</button>} />}
         <div className="st-connection-test">
           <ModelTestButton kind="connection" running={supplier.connection?.status === 'running'} disabled={!credentialReady || !onConnectionTest}
             onTest={() => void supplier.runConnection()} onStop={supplier.stopConnection} />
@@ -555,7 +573,8 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         <div className="st-route-list-head"><span className="st-field-label">模型</span><button type="button" className="st-model-directory-refresh" aria-busy={directory.visibleBusy}
           disabled={onDirectory ? directory.busy || retryBlocked : profileBusy || Boolean(addressIssue) || !draft.models.some(model => model.modelId.trim())}
           title={retryBlocked ? `可在 ${new Date(manualReadyAt).toLocaleTimeString('zh-CN', { hour12: false })} 再次更新` : undefined}
-          onClick={() => void refreshDirectory()}>{retryBlocked ? directoryFailed ? '稍后重试' : '刚刚更新' : '更新模型资料'}<Icon name="refresh" size={14} /></button></div>
+          onClick={() => void refreshDirectory()}>{directory.visibleBusy ? '正在更新…'
+            : retryBlocked ? directoryFailed ? '稍后重试' : '刚刚更新' : '更新模型资料'}<Icon name="refresh" size={14} /></button></div>
         <div className="st-directory-feedback" aria-live="polite" aria-atomic="true">
           {(directoryNotice || profileNotice) && <p className="detail">
             {directoryNotice || profileNotice}
@@ -570,7 +589,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
           {!preset && <button type="button" className="outline st-model-list-add st-model-list-fetch" aria-busy={supplier.fetched?.busy ?? false}
             disabled={!credentialReady || !onDirectory || supplier.fetched?.busy}
             title={!onDirectory ? '模型列表服务暂不可用' : undefined}
-            onClick={() => void supplier.fetchModels()}><Icon name="download-minimalistic" size={16} />拉取模型</button>}</div>
+            onClick={() => void supplier.fetchModels()}><Icon name="download-minimalistic" size={16} />{supplier.fetched?.busy ? '正在拉取…' : '拉取模型'}</button>}</div>
           {!preset && supplier.fetched?.error && <ModelTestFeedback status="failed" title="拉取模型未完成" {...supplier.fetched.error}
             onRetry={() => void supplier.fetchModels()} />}
           <div className="st-model-choice-list" role="group" aria-label={preset ? '预设模型' : '自定义模型'}>
@@ -595,21 +614,32 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         </div>
         {recovery && error && <p className="detail">{error}</p>}
         {notice && <p className="detail">{notice}</p>}
-        {recovery === 'unknown' && <button type="button" className="outline" disabled={saving} onClick={() => { if (pending.current) void submit(pending.current) }}>核对原提交</button>}
+        {recovery === 'unknown' && <button type="button" className="outline" disabled={saving} aria-busy={saving || undefined}
+          onClick={() => { if (pending.current) void submit(pending.current) }}>{saving ? '正在核对…' : '核对原提交'}</button>}
         {recovery === 'conflict' && <>
-          <button type="button" className="outline" disabled={reading || saving} onClick={() => void readLatest()}>读取最新版本</button>
+          <button type="button" className="outline" disabled={reading || saving} aria-busy={reading || undefined}
+            onClick={() => void readLatest()}>{reading ? '正在读取…' : '读取最新版本'}</button>
           {latest && <div className="detail" role="region" aria-label="配置冲突核对">
             <p>已保存版本 {latest.version} · {latest.hasCredential ? '密钥已保存' : '尚未保存密钥'}</p>
             <p>名称：已保存「{latest.name}」；当前草稿「{draft.name}」</p>
             <p>地址：已保存「{latest.baseUrl}」；当前草稿「{draft.baseUrl}」</p>
             <p>模型：已保存「{latest.models.map(model => model.modelId).join('、')}」；当前草稿「{draft.models.map(model => model.modelId).join('、')}」</p>
             <p>{apiKey.trim() ? '保存后使用输入框中的当前密钥。' : '输入框已清空，保存后移除密钥。'}</p>
-            <button type="button" className="outline" disabled={saving || reading} onClick={() => void save(latest)}>确认按当前草稿重试</button>
+            <button type="button" className="outline" disabled={saving || reading} aria-busy={saving || undefined}
+              onClick={() => void save(latest)}>{saving ? '正在保存…' : '确认按当前草稿重试'}</button>
           </div>}
         </>}
       </div>
       <div className="st-dialog-foot">
         <div className="st-dialog-foot-right">
-          <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null} onClick={() => void save()}>保存</button></div></div>
+          <button type="button" className="outline" disabled={saving} onClick={requestClose}>取消</button>
+          <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null}
+            aria-busy={saving || undefined} onClick={() => void save()}>
+            {saving && <span className="st-spinner" aria-hidden="true" />}{saving ? '正在保存…' : '保存'}
+          </button></div></div>
     </Dialog.Content></Dialog.Portal></Dialog.Root>
+    <ConfirmationDialog open={closeConfirm} title={dirty ? '放弃未保存的修改？' : '关闭供应商设置？'}
+      description={closeDescription} confirmLabel={dirty ? '放弃修改' : '关闭'}
+      onClose={() => setCloseConfirm(false)} onConfirm={() => { setCloseConfirm(false); onClose() }} />
+  </>
 }

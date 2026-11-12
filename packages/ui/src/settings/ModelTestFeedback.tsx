@@ -22,6 +22,8 @@ export function ModelTestFeedback({ status, title, message, suggestion, onRetry,
     ? <button type="button" className="st-model-test-action" onClick={onStop}><Icon name="stop" />停止</button>
     : problem && onRetry
       ? <button type="button" className="st-model-test-action" onClick={onRetry}><Icon name="restart" />重试</button>
+      : status === 'cancelled' && onRetry
+        ? <button type="button" className="st-model-test-action" onClick={onRetry}><Icon name="restart" />重新测试</button>
       : undefined
   if (problem) return <Banner
     className="st-model-test-feedback" data-status={status} status={status === 'failed' ? 'error' : 'warning'}

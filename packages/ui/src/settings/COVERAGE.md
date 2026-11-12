@@ -23,7 +23,7 @@
 | `ProviderIdentityFields` 名称、地址、密钥字段 | `ProviderIdentityFields` | 已迁入 |
 | 正式供应商模型 ID、思考强度、容量与手动档位 | `ConnectionModelFields` | 纯表单已迁入；模型资料、档位适配和保存由正式控制器接入；目录与人工声明不代表实际能力验证 |
 | 供应商与接入方式选择、品牌图形 | `SettingsSelect`、`ModelProviderLogo` | Base UI 交互与循阶 token；资源随组件包分发，业务选项由调用方提供 |
-| 设置操作菜单 | `SettingsActionMenu` | 复用循阶按钮和弹层样式，操作及图标由调用方提供 |
+| 设置操作菜单 | `SettingsActionMenu` | 复用循阶按钮和弹层样式，触发按钮可按场景沿用主／次按钮外观，操作及图标由调用方提供 |
 | 技能列表条目 | `SkillListItem` | 两行摘要、带图标的打开／删除菜单和启停开关；Base UI Menu 提供 portal、避让与键盘操作，读写由调用方接入 |
 | 技能正文阅读 | `SkillDocumentDialog` | 完整显示 YAML 元信息和 Markdown 正文、读取／失败状态及返回焦点；文档与更新操作由调用方提供 |
 | 技能批量导入结果 | `SkillImportFeedback` | Astryx Banner 适配；未完成项、继续／重试和重选操作；进度与请求生命周期由调用方提供 |

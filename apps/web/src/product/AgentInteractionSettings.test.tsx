@@ -54,6 +54,12 @@ it('covers loading, read-only and unreadable interaction settings', async () => 
     expect([...host.querySelectorAll<HTMLButtonElement>('[role="radio"]')].every(item => item.disabled)).toBe(true)
 
     await act(async () => root.render(<AgentInteractionSettings controller={{
+      settings: { busyInputMode: 'queue' }, loading: true, writable: true, busy: false, error: '', save: vi.fn(), reload,
+    } as unknown as AgentInteractionController} />))
+    expect(host.textContent).toContain('正在重新读取发送方式')
+    expect(host.querySelector('[aria-checked="true"]')?.textContent).toContain('排队处理')
+
+    await act(async () => root.render(<AgentInteractionSettings controller={{
       settings: null, loading: false, writable: true, busy: false, error: '交互设置暂时无法读取', save: vi.fn(), reload,
     } as unknown as AgentInteractionController} />))
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('发送方式暂时无法读取')

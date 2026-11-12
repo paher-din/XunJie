@@ -15,7 +15,7 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
   order?: ModelSettingsOrder
   recoveryError?: string
-  onRetry?(): void
+  onRetry?(): void | Promise<void>
   readOnly?: boolean
   schoolModels?: SchoolModel[]; onSchoolCheck?(choice: SchoolModel): void
   toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
@@ -27,13 +27,19 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
 }) {
   useToastFeedback(error)
   const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({})
+  const [retrying, setRetrying] = useState(false)
   const positions = order ?? captureModelSettingsOrder(providers)
   const hasConfiguration = providers.length > 0 || schoolModels.length > 0
+  const retry = async () => {
+    if (!onRetry || retrying) return
+    setRetrying(true)
+    try { await onRetry() } finally { setRetrying(false) }
+  }
   const checkDisabled = (connection: ModelConnection, allowed = true) => readOnly || loading || !allowed || !connection.enabled || !connection.hasCredential
     || connection.adapterState !== 'ready' || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId
       && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))
   return <>
-    <div className="st-section">
+    <div className="st-section" aria-busy={loading || retrying || undefined}>
       <div className="product-model-settings-stack">
       {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
         description="可以查看已有模型；当前副本不能添加、修改、启停或测试模型。" />}
@@ -43,7 +49,10 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
         title={hasConfiguration ? '模型配置可能不是最新' : '模型配置暂时无法读取'}
         description={hasConfiguration ? `当前列表仍可查看；重新读取后再修改，避免覆盖其他位置的更新。${recoveryError}`
           : `现有配置没有被删除。检查连接或学习服务状态后重新读取。${recoveryError}`}
-        action={onRetry && <button type="button" className="outline" onClick={onRetry}>重新读取配置</button>} />}
+        action={onRetry && <button type="button" className="outline" disabled={loading || retrying}
+          aria-busy={loading || retrying || undefined} onClick={() => void retry()}>
+          {loading || retrying ? '正在重新读取…' : '重新读取配置'}
+        </button>} />}
       {!loading && !recoveryError && !hasConfiguration ? <SettingsEmptyState icon={<Icon name="model" size={24} />}
         title="还没有可用模型" description={readOnly ? '当前学习空间还没有可用模型；只读副本不能添加供应商。'
           : '添加自己的模型供应商后，Agent 才能开始对话与模型检查。学校提供的模型会单独列在这里。'}>
@@ -62,7 +71,7 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
               disabled={checkDisabled(choice.connection, Boolean(onSchoolCheck) && choice.policy.checksAllowed)}
               onTest={() => onSchoolCheck?.(choice)} onStop={onStopTest ? () => onStopTest(choice.connection.connectionId) : undefined} />}>
             {!choice.connection.enabled && <p className="detail">学校已停用</p>}
-            {tests[choice.connection.connectionId] && ['failed', 'unverified'].includes(tests[choice.connection.connectionId]!.status) && <ModelTestFeedback {...tests[choice.connection.connectionId]!}
+            {tests[choice.connection.connectionId] && ['failed', 'unverified', 'cancelled'].includes(tests[choice.connection.connectionId]!.status) && <ModelTestFeedback {...tests[choice.connection.connectionId]!}
               onRetry={onSchoolCheck && !checkDisabled(choice.connection, choice.policy.checksAllowed) ? () => onSchoolCheck(choice) : undefined} />}
           </ModelProviderModelRow>)}
         </div>
@@ -94,11 +103,13 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
   const busy = readOnly || loading || Boolean(toggleState[provider.providerId])
   const models = inIdOrder(provider.models, order.map(model => model.id), model => model.connectionId)
   const visible = expanded ? models : models.slice(0, 4)
-  return <ModelProviderCard name={provider.name} compact inactive={inactive}
+  return <ModelProviderCard name={provider.name} compact inactive={inactive} busy={busy}
         logo={provider.presetId ? <ModelProviderLogo providerId={provider.presetId} /> : undefined}
         actions={<SavedProviderActions provider={provider} disabled={busy}
           active={active} onEdit={() => onEdit(provider)} onRemove={onRemove} onToggle={() => onToggle(provider)} onConnectionTest={onConnectionTest} />}
-        footer={<><button type="button" className="st-provider-text-action" disabled={busy} onClick={() => onAddModel(provider)}><Icon name="add" size={14} />添加模型</button>
+        footer={<>
+          {toggleState[provider.providerId] === 'unknown' && <span className="st-provider-save-state" role="alert">开关结果未确认</span>}
+          <button type="button" className="st-provider-text-action" disabled={busy} onClick={() => onAddModel(provider)}><Icon name="add" size={14} />添加模型</button>
           {models.length > 4 && <button type="button" className="st-provider-text-action" aria-expanded={expanded} onClick={() => onExpand(!expanded)}>{expanded ? '收起' : `全部（${models.length}）`}</button>}
           {toggleState[provider.providerId] === 'unknown' && <button type="button" className="st-provider-text-action" onClick={() => onToggle(provider)}>核对开关提交</button>}
         </>}>
@@ -111,7 +122,7 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
           <Toggle checked={connection.modelEnabled ?? connection.enabled} label={`启用模型 ${connection.modelId}`} disabled={inactive || busy}
             onChange={() => onToggle(provider, connection.connectionId)} /></>}>
           {connection.adapterState !== 'ready' && <p className="detail">{connection.capabilities.text === 'unsupported' ? '该目标路线不支持所选协议' : '当前协议、地址或型号组合不可用，请核对配置'}</p>}
-        {tests[connection.connectionId] && ['failed', 'unverified'].includes(tests[connection.connectionId]!.status) && <ModelTestFeedback {...tests[connection.connectionId]!}
+        {tests[connection.connectionId] && ['failed', 'unverified', 'cancelled'].includes(tests[connection.connectionId]!.status) && <ModelTestFeedback {...tests[connection.connectionId]!}
           onRetry={!inactive && !checkDisabled(connection) ? () => onCheck(connection) : undefined} />}
         </ModelProviderModelRow>)}</div>}
       </ModelProviderCard>

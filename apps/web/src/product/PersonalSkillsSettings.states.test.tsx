@@ -31,7 +31,6 @@ afterEach(async () => {
   host.remove()
   vi.unstubAllGlobals()
 })
-
 const mount = async (readOnly = false) => act(async () => {
   root.render(createElement(PersonalSkillsSettings, { identity, spaceKey: 'personal', namespace: 'test', readOnly }))
   await settle()
@@ -46,6 +45,7 @@ it('shows initial loading before distinguishing an empty library', async () => {
   await act(async () => { finish(response({ skills: [], selections: [] })); await settle() })
   expect(host.textContent).toContain('还没有技能')
   expect(host.textContent).toContain('导入本机技能文件夹或 GitHub 仓库')
+  expect(host.querySelector('.skill-toolbar')).toBeNull()
   expect(host.querySelector('.product-settings-heading')).toBeNull()
   await act(async () => host.querySelector<HTMLButtonElement>('.primary')!.click())
   expect(document.querySelector('[role="menu"]')?.textContent).toContain('本地导入')
@@ -65,4 +65,20 @@ it('provides search recovery and a read-only explanation without removing the li
   await act(async () => [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '清除搜索')!.click())
   expect(search.value).toBe('')
   expect(host.textContent).toContain('分析思路')
+})
+
+it('keeps the current library visible while a background refresh is named', async () => {
+  let reads = 0, finish!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn(() => {
+    reads++
+    return reads === 1 ? Promise.resolve(response({ skills: [skill], selections: [] }))
+      : new Promise<Response>(resolve => { finish = resolve })
+  }))
+  await mount()
+  await act(async () => { window.dispatchEvent(new Event('focus')); await settle() })
+  expect(host.textContent).toContain('分析思路')
+  expect(host.querySelector('.settings-inline-status')?.textContent).toContain('正在刷新技能列表')
+  await act(async () => { finish(response({ skills: [{ ...skill, name: '更新后的技能' }], selections: [] })); await settle() })
+  expect(host.textContent).toContain('更新后的技能')
+  expect(host.querySelector('.settings-inline-status')).toBeNull()
 })

@@ -11,8 +11,9 @@ export interface SettingsActionMenuItem {
 }
 
 /** A compact settings action menu; the caller owns the action and its state. */
-export function SettingsActionMenu({ label, icon, items, disabled = false, open: controlledOpen, onOpenChange, panel, panelLabel }: {
+export function SettingsActionMenu({ label, icon, items, disabled = false, buttonClassName, open: controlledOpen, onOpenChange, panel, panelLabel }: {
   label: string; icon?: ReactNode; items: readonly SettingsActionMenuItem[]; disabled?: boolean
+  buttonClassName?: string
   open?: boolean; onOpenChange?(open: boolean): void; panel?: ReactNode; panelLabel?: string
 }) {
   const [internalOpen, setInternalOpen] = useState(false)
@@ -55,7 +56,7 @@ export function SettingsActionMenu({ label, icon, items, disabled = false, open:
     buttons[next]?.focus()
   }
   return <div className="st-action-menu" ref={root}>
-    <button ref={trigger} type="button" className="outline st-action-menu-trigger" disabled={disabled}
+    <button ref={trigger} type="button" className={`st-action-menu-trigger ${buttonClassName ?? 'outline'}`} disabled={disabled}
       aria-haspopup={panel ? 'dialog' : 'menu'} aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={() => setOpen(!open)}>{icon}{label}</button>
     {(open || present) && <div id={menuId} role={visiblePanel ? 'dialog' : 'menu'} aria-label={visiblePanel ? panelLabel ?? label : label}
       aria-hidden={!open || undefined} inert={!open} data-state={open ? 'open' : 'closed'}

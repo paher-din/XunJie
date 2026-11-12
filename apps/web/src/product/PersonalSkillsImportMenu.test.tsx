@@ -30,7 +30,7 @@ it('retains the GitHub form through exit and can reopen before exit finishes wit
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ skills: [], selections: [] })))
   const { host, root } = await render()
   try {
-    await click(host, '导入技能'); await click(host, '从 GitHub 导入')
+    await click(host, '导入第一个技能'); await click(host, '从 GitHub 导入')
     const dialog = host.querySelector('[role="dialog"][aria-label="从 GitHub 导入"]')!
     expect(dialog).not.toBeNull()
     expect(host.querySelector('[role="menu"]')).toBeNull()
@@ -50,7 +50,7 @@ it('retains the GitHub form through exit and can reopen before exit finishes wit
     expect(document.activeElement).toBe(trigger)
     await act(async () => { for (const frame of frames.splice(0)) frame(performance.now()); await settle() })
     expect(document.activeElement).toBe(trigger)
-    await click(host, '导入技能'); await click(host, '从 GitHub 导入')
+    await click(host, '导入第一个技能'); await click(host, '从 GitHub 导入')
     expect(host.querySelector<HTMLInputElement>('.skill-github input')!.value).toBe('https://github.com/example/skills')
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 160)) })
     expect(host.querySelector('[role="dialog"]')?.hasAttribute('inert')).toBe(false)
@@ -68,7 +68,7 @@ it('keeps the popup and address available when GitHub import fails', async () =>
     : Response.json({ skills: [], selections: [] })))
   const { host, root } = await render()
   try {
-    await click(host, '导入技能'); await click(host, '从 GitHub 导入')
+    await click(host, '导入第一个技能'); await click(host, '从 GitHub 导入')
     const input = host.querySelector<HTMLInputElement>('.skill-github input')!
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'https://github.com/example/missing')

@@ -146,7 +146,7 @@ it('retries a failure through loading to the document without exposing internal 
   await act(async () => button('重试').click())
   expect(onRetry).toHaveBeenCalledOnce()
   expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
-  expect(document.querySelector('[role="status"]')?.textContent).toBe('')
+  expect(document.querySelector('[role="status"]')?.textContent).toBe('正在打开技能…')
   expect(document.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('正在打开技能')
   expect(document.querySelector('[role="alert"], article')).toBeNull()
   await act(async () => { complete(); await pending })

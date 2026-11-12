@@ -9,6 +9,7 @@ export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | '
 export type ProductSettingsAccountState = {
   status: 'loading' | 'ready' | 'error'
   message?: string
+  busy?: boolean
   onRetry?: () => void
 }
 
@@ -90,7 +91,10 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
             description="学校连接与本机学习记录不会因等待而改变。" />
             : accountState.status === 'error' ? <SettingsStatus tone="error" title="账号信息暂时无法读取"
               description={accountState.message || '当前无法确认学习空间与学校连接。已保存的学习内容仍在本机。'}
-              action={accountState.onRetry && <button type="button" className="outline" onClick={accountState.onRetry}>重新读取账号</button>} />
+              action={accountState.onRetry && <button type="button" className="outline" disabled={accountState.busy}
+                aria-busy={accountState.busy || undefined} onClick={accountState.onRetry}>
+                {accountState.busy ? '正在重新读取…' : '重新读取账号'}
+              </button>} />
             : <>
               <Section title="当前学习空间" desc={isLocal ? '学习内容只保存在本机，不连接学校。' : '学校课程、提交与登录状态都使用这个账号。'}>
                 <div className="product-settings-identity">
@@ -124,7 +128,10 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
             ? <SettingsStatus tone="loading" title="正在读取个人设置" description="已有设置和进行中的操作不会因切换页面改变。" />
             : accountState.status === 'error'
               ? <SettingsStatus tone="error" title="个人设置暂时无法读取" description={accountState.message || '当前无法确认学习空间身份。'}
-                action={accountState.onRetry && <button type="button" className="outline" onClick={accountState.onRetry}>重新读取账号</button>} />
+                action={accountState.onRetry && <button type="button" className="outline" disabled={accountState.busy}
+                  aria-busy={accountState.busy || undefined} onClick={accountState.onRetry}>
+                  {accountState.busy ? '正在重新读取…' : '重新读取账号'}
+                </button>} />
               : modelSettings ?? <SettingsStatus tone="neutral" title="个人设置暂不可用"
                 description="当前学习空间没有可用的个人设置。返回学习空间后可重新进入。" />)}
         </section>

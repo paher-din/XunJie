@@ -24,4 +24,16 @@
 .ui-select-empty, .ui-select-foot { padding: 10px; font-size: 12px; color: var(--muted); }
 .ui-select-empty:empty { display: none; }
 .ui-select-foot { border-top: 1px solid var(--line); margin-top: 4px; }
+.ui-select-empty[data-loading], .ui-select-foot[data-loading] { display: flex; align-items: center; gap: 8px; }
+.ui-select-empty[data-loading]::before, .ui-select-foot[data-loading]::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: ui-select-loading-spin 800ms linear infinite;
+}
+@keyframes ui-select-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ui-select-empty[data-loading]::before, .ui-select-foot[data-loading]::before { animation: none; } }
 @media (forced-colors: active) { .ui-select-trigger:focus-visible, .ui-select-trigger[data-popup-open] { outline: 2px solid Highlight; outline-offset: 2px; } }

@@ -116,6 +116,7 @@
 .product-settings-model[data-settings-section='models'] .product-personal-agent { display: none; }
 .product-settings .st-card { box-shadow: none; min-height: 88px; padding: 16px; border-radius: 12px; }
 .product-settings .st-card-desc { color: var(--muted); font-size: 13px; line-height: 1.7; }
+.settings-inline-status { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .product-settings .st-provider { box-shadow: none; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 .product-settings .st-provider p { margin: 12px 0; }
 .product-settings .st-provider-url { overflow-wrap: anywhere; }
@@ -138,13 +139,15 @@
 }
 @media (max-width: 760px) {
   .settings.product-settings { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: 100%; }
-  .product-settings .st-nav { padding: 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow: hidden; }
+  .product-settings .st-nav { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px;
+    padding: 14px 16px 12px; border-right: 0; border-bottom: 1px solid var(--line); overflow: hidden; }
   .product-settings .st-nav nav::before { display: none; }
   .product-settings .st-nav-item.active { background: var(--chip-bg); }
-  .product-settings .st-title { margin: 0 0 12px; font-size: 22px; }
-  .product-settings .st-nav nav { flex-direction: row; overflow-x: auto; padding: 4px 2px; gap: 4px; }
+  .product-settings .st-title { grid-column: 1; grid-row: 1; margin: 0; font-size: 22px; }
+  .product-settings .st-nav nav { grid-column: 1 / -1; grid-row: 2; flex-direction: row; overflow-x: auto; padding: 2px 0; gap: 4px; }
   .product-settings .st-nav nav > .st-nav-item { flex-shrink: 0; margin-top: 0; }
-  .product-settings .product-settings-back { margin-top: 8px; align-self: flex-start; min-height: 32px; }
+  .product-settings .product-settings-back { grid-column: 2; grid-row: 1; align-self: center; justify-self: end;
+    min-height: 32px; margin-top: 0; padding: 6px 8px; }
   .product-settings .st-body-in { padding: 24px 20px 40px; }
   .product-settings-heading { margin-bottom: 24px; }
   .product-settings-identity { align-items: flex-start; flex-direction: column; }

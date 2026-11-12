@@ -70,3 +70,26 @@ it('marks the whole surface read-only and disables every mutation entry', async 
   expect(host.querySelector<HTMLButtonElement>('[aria-label="启用模型 example-model"]')?.disabled).toBe(true)
   expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
 })
+
+it('exposes provider switch progress to assistive technology and explains an unknown receipt', async () => {
+  await render({ providers: [provider], toggleState: { [provider.providerId]: 'saving' } })
+  expect(host.querySelector('.st-provider')?.getAttribute('aria-busy')).toBe('true')
+  expect(host.querySelector('.st-provider-save-state')).toBeNull()
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="启用供应商 示例供应商"]')?.disabled).toBe(true)
+
+  await render({ providers: [provider], toggleState: { [provider.providerId]: 'unknown' } })
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('开关结果未确认')
+  expect([...host.querySelectorAll<HTMLButtonElement>('button')]
+    .find(item => item.textContent === '核对开关提交')?.disabled).toBe(false)
+})
+
+it('keeps a stopped test visible with an explicit restart action', async () => {
+  const onCheck = vi.fn()
+  await render({ providers: [provider], onCheck, tests: { [connection.connectionId]: {
+    status: 'cancelled', title: '模型测试已停止', runId: 'run-1', configurationPassed: true,
+  } } })
+  expect(host.textContent).toContain('模型测试已停止')
+  await act(async () => [...host.querySelectorAll<HTMLButtonElement>('button')]
+    .find(item => item.textContent === '重新测试')!.click())
+  expect(onCheck).toHaveBeenCalledWith(connection)
+})
