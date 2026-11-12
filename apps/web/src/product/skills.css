@@ -9,9 +9,10 @@
 .skill-github .st-input { width: 100%; min-width: 0; }
 .skill-github > button { justify-self: end; min-width: 68px; }
 .skill-list { min-width: 0; padding: 0 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
-.skill-update-error { flex: 1; min-width: 0; margin: 0; color: var(--danger-deep); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.skill-update-error { flex: 1; min-width: 0; margin: 0; color: var(--danger-deep); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; animation: skill-update-error-in 150ms var(--ease-s) both; }
 .skill-update-button { display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 8px; min-width: 112px; }
 .skill-update-spinning { animation: skill-update-spin 1s linear infinite; }
 @keyframes skill-update-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .skill-update-spinning { animation: none; } }
+@keyframes skill-update-error-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .skill-update-error, .skill-update-spinning { animation: none; } }
 @media (max-width: 540px) { .skill-list { padding-inline: 12px; } }

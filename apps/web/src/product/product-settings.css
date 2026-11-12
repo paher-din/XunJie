@@ -1,14 +1,42 @@
 /* Settings keeps drafts mounted; the page owns hierarchy and disclosure. */
 .settings.product-settings { min-width: 0; min-height: 0; background: var(--paper); color: var(--ink); display: grid; height: 100%; grid-template-columns: 204px minmax(0, 1fr); }
 .product-settings .st-nav { padding: 32px 16px 24px; }
-.product-settings .st-nav nav { flex-direction: column; flex-wrap: nowrap; }
+.product-settings .st-nav nav { position: relative; flex-direction: column; flex-wrap: nowrap; }
+.product-settings .st-nav nav::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--chip-bg);
+  pointer-events: none;
+  transform: translateY(calc(var(--product-settings-tab-index, 0) * 42px));
+  transition: transform 240ms cubic-bezier(0.3, 1, 0.35, 1);
+}
 .product-settings .st-title { margin: 0 12px 24px; }
-.product-settings .st-nav-item { min-height: 40px; font-size: 13px; padding: 10px 12px; }
+.product-settings .st-nav-item { position: relative; z-index: 1; min-height: 40px; font-size: 13px; padding: 10px 12px; }
+.product-settings .st-nav-item.active { background: transparent; }
 .product-settings .product-settings-back { margin-top: auto; flex-shrink: 0; }
 .product-settings .st-body-in { width: 100%; max-width: 856px; box-sizing: border-box; padding: 40px 48px 64px; }
 .product-settings-heading { margin-bottom: 28px; animation: settings-arrive 240ms cubic-bezier(0.3, 1, 0.35, 1); }
 .product-settings-heading h1 { margin: 0; font-family: 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif; font-size: 28px; font-weight: 600; line-height: 1.4; text-wrap: balance; }
 .product-settings-pane[hidden] { display: none; }
+.product-settings .st-body-in > .product-settings-pane:not([hidden]):not(.product-settings-model) {
+  animation: settings-pane-in 240ms var(--ease-s) both;
+}
+.product-settings-model[data-settings-section='agent'] .product-personal-agent,
+.product-settings-model[data-settings-section='models'] .product-personal-model {
+  animation: settings-pane-in 240ms var(--ease-s) both;
+}
+.product-settings :is(.product-settings-empty, .learning-error, .st-empty, .st-skill-import-feedback,
+  .st-model-test-feedback, .product-school-add, .product-school-list, .product-school-session,
+  .product-school-connect-form, .product-school-pending, [role='alert']) {
+  animation: settings-state-in 150ms var(--ease-s) both;
+}
+.product-settings :is(.st-skill-item, .st-provider, .st-provider-model-row) {
+  animation: settings-item-in 150ms var(--ease-s) both;
+}
 .product-settings .st-section { margin-bottom: 32px; }
 .product-settings .st-section-title { font-family: 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif; font-size: 17px; font-weight: 600; }
 .product-settings .st-section-desc, .product-settings .detail { font-size: 13px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
@@ -92,6 +120,9 @@
 .product-settings .personal-skills > details { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 0; margin: 20px 0; }
 .product-settings .st-brand { padding: 40px 0; }
 @keyframes settings-arrive { from { opacity: .6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes settings-pane-in { from { opacity: .72; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes settings-state-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+@keyframes settings-item-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @media (max-width: 1180px) {
   .product-settings .st-body-in { padding: 32px 28px 48px; }
   .settings.product-settings { grid-template-columns: 184px minmax(0, 1fr); }
@@ -99,6 +130,8 @@
 @media (max-width: 760px) {
   .settings.product-settings { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: 100%; }
   .product-settings .st-nav { padding: 16px; border-right: 0; border-bottom: 1px solid var(--line); overflow: hidden; }
+  .product-settings .st-nav nav::before { display: none; }
+  .product-settings .st-nav-item.active { background: var(--chip-bg); }
   .product-settings .st-title { margin: 0 0 12px; font-size: 22px; }
   .product-settings .st-nav nav { flex-direction: row; overflow-x: auto; padding: 4px 2px; gap: 4px; }
   .product-settings .st-nav nav > .st-nav-item { flex-shrink: 0; margin-top: 0; }
@@ -113,8 +146,16 @@
   .product-settings .st-provider-head { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .product-settings-heading, .product-profile { animation: none; }
-  .product-settings .st-nav-item, .product-profile .pc-x, .product-school .product-school-add, .product-settings .product-provider-add { transition: none; }
+  .product-settings-heading, .product-profile,
+  .product-settings .st-body-in > .product-settings-pane:not([hidden]):not(.product-settings-model),
+  .product-settings-model[data-settings-section='agent'] .product-personal-agent,
+  .product-settings-model[data-settings-section='models'] .product-personal-model,
+  .product-settings :is(.product-settings-empty, .learning-error, .st-empty, .st-skill-import-feedback,
+    .st-model-test-feedback, .product-school-add, .product-school-list, .product-school-session,
+    .product-school-connect-form, .product-school-pending, [role='alert']),
+  .product-settings :is(.st-skill-item, .st-provider, .st-provider-model-row) { animation: none; }
+  .product-settings .st-nav nav::before, .product-settings .st-nav-item, .product-profile .pc-x,
+  .product-school .product-school-add, .product-settings .product-provider-add { transition: none; }
 }
 
 .product-profile-title {

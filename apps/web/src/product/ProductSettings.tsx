@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { AccountAvatar } from '@xunjie/ui/foundation'
 import { XunjieLogo } from '@xunjie/ui/brand'
 import { Icon, IconText, type IconName } from '@xunjie/ui/icons'
@@ -32,6 +32,7 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
 export function ProductSettings({ accountName, schoolName, isLocal = false, onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
   const [personalVisited, setPersonalVisited] = useState(initialTab === 'agent' || initialTab === 'models')
+  const activeTabIndex = Math.max(0, tabs.findIndex(tab => tab.id === active))
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
   const school = useRef<HTMLDivElement>(null)
@@ -56,7 +57,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
   return <div className="settings student-settings product-settings">
     <aside className="st-nav">
       <p className="st-title">设置</p>
-      <nav aria-label="设置导航">
+      <nav aria-label="设置导航" style={{ '--product-settings-tab-index': activeTabIndex } as CSSProperties}>
         {tabs.map(tab => <button key={tab.id} type="button" id={`${id}-${tab.id}-nav`}
           className={active === tab.id ? 'st-nav-item active' : 'st-nav-item'}
           aria-current={active === tab.id ? 'page' : undefined}
@@ -88,7 +89,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
             {schoolControls ?? <p className="product-settings-empty" role="status" aria-label="正在读取学校连接" />}
           </div>
         </section>
-        <section id={`${id}-portrait`} aria-labelledby={`${id}-portrait-nav`} hidden={active !== 'portrait'} inert={active !== 'portrait'}>
+        <section id={`${id}-portrait`} aria-labelledby={`${id}-portrait-nav`} hidden={active !== 'portrait'} inert={active !== 'portrait'} className="product-settings-pane">
           <SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。" />
         </section>
         <section id={`${id}-personal`} aria-labelledby={`${id}-${active === 'agent' ? 'agent' : 'models'}-nav`}
@@ -96,7 +97,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
           data-settings-section={active} className="product-settings-pane product-settings-model">
           {(personalVisited || active === 'agent' || active === 'models') && (modelSettings ?? <p className="product-settings-empty" role="status">个人设置暂不可用。</p>)}
         </section>
-        <section id={`${id}-about`} aria-labelledby={`${id}-about-nav`} hidden={active !== 'about'} inert={active !== 'about'}>
+        <section id={`${id}-about`} aria-labelledby={`${id}-about-nav`} hidden={active !== 'about'} inert={active !== 'about'} className="product-settings-pane">
           <div className="st-brand"><XunjieLogo format="stacked" className="st-brand-logo" label="循阶" /></div>
           <Section title="数据与隐私">
             <h3 className="product-settings-subheading">对话整理</h3>

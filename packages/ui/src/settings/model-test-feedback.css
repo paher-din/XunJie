@@ -1,4 +1,4 @@
-.st-model-test-feedback { min-width: 0; color: var(--ink); font: 400 13px/1.5 var(--font-sans); overflow-wrap: anywhere; }
+.st-model-test-feedback { min-width: 0; color: var(--ink); font: 400 13px/1.5 var(--font-sans); overflow-wrap: anywhere; animation: st-model-test-feedback-in 150ms cubic-bezier(0.3, 1, 0.35, 1) both; }
 .st-model-test-feedback.astryx-banner-frame { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); box-shadow: none; }
 .st-model-test-feedback > .astryx-banner { display: grid; grid-template-columns: 16px minmax(0, 1fr); grid-template-rows: auto; align-items: center; column-gap: 8px; row-gap: 0; padding: 10px 12px; border: 0; border-radius: 0; background: transparent; color: var(--ink); }
 .st-model-test-feedback > .astryx-banner:has(> :nth-child(3)) { grid-template-columns: 16px minmax(0, 1fr) auto; }
@@ -27,4 +27,5 @@
 .st-model-test-spinning { animation: st-model-test-spin 1s linear infinite; }
 .st-model-test-feedback ::selection { background: var(--accent-soft); color: var(--ink); }
 @keyframes st-model-test-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .st-model-test-spinning { animation: none; } }
+@keyframes st-model-test-feedback-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .st-model-test-feedback, .st-model-test-spinning { animation: none; } }
