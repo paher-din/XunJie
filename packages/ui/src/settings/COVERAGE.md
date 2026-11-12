@@ -27,6 +27,7 @@
 | 技能列表条目 | `SkillListItem` | 两行摘要、带图标的打开／删除菜单和启停开关；Base UI Menu 提供 portal、避让与键盘操作，读写由调用方接入 |
 | 技能正文阅读 | `SkillDocumentDialog` | 完整显示 YAML 元信息和 Markdown 正文、读取／失败状态及返回焦点；文档与更新操作由调用方提供 |
 | 技能批量导入结果 | `SkillImportFeedback` | Astryx Banner 适配；未完成项、继续／重试和重选操作；进度与请求生命周期由调用方提供 |
+| 设置页局部加载、只读与失败反馈 | `SettingsStatus` | 统一就地状态层；标题、说明、恢复动作及语气由调用方提供，不替代业务流程或持久化 |
 | 预设模型搜索与手填 ID | `ModelIdInput` | Base UI Combobox；列表、加载状态和刷新操作由调用方接入，保留自由输入 |
 | 预设模型选择与逐项展开配置 | `ModelChoiceCard` | 虚线框、选择态和可展开的参数区；选择、配置值与保存由调用方提供 |
 | 模型测试结果与反馈 | `ModelTestFeedback` | Astryx Banner 适配；简短结果、原因、建议和停止／重试，不展示诊断详情；测试及通知由调用方负责 |

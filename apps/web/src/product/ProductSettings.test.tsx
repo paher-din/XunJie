@@ -66,7 +66,7 @@ it('supports school sign-in without an identity or models, preserving the suppli
   const account = host.querySelector<HTMLInputElement>('[name="account"]')!
   account.value = 'school-user'
   await click('模型')
-  expect(host.querySelector('.product-settings-model')?.textContent).toBe('个人设置暂不可用。')
+  expect(host.querySelector('.product-settings-model')?.textContent).toContain('个人设置暂不可用')
   await click('账户')
   expect(host.querySelector('[name="account"]')).toBe(account)
   await click('登录此学校')

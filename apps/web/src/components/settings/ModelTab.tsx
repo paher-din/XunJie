@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ModelAttempt, ModelConnection, ModelProvider, ModelCheckPolicy } from '@xunjie/contracts/model-connections'
-import { ModelProviderCard, ModelProviderModelRow, ModelProviderLogo, Toggle, reasoningEffortLabels, ModelTestFeedback, ModelTestButton } from '@xunjie/ui/settings'
+import { ModelProviderCard, ModelProviderModelRow, ModelProviderLogo, SettingsEmptyState, SettingsStatus, Toggle, reasoningEffortLabels, ModelTestFeedback, ModelTestButton } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { ModelTestRun } from './useModelConfigurationTests'
@@ -10,11 +10,13 @@ import { useSupplierChecks, type TestSupplierConnection } from './useSupplierChe
 type SchoolModel = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetrySelection, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, tests = {}, onStopTest, onConnectionTest, onRemove, active = true }: {
+export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetry, readOnly = false,
+  toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, tests = {}, onStopTest, onConnectionTest, onRemove, active = true }: {
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
   order?: ModelSettingsOrder
   recoveryError?: string
-  onRetrySelection?: () => void
+  onRetry?(): void
+  readOnly?: boolean
   schoolModels?: SchoolModel[]; onSchoolCheck?(choice: SchoolModel): void
   toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
   onNew(): void; onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void; onCheck(connection: ModelConnection): void
@@ -24,20 +26,34 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
   active?: boolean
 }) {
   useToastFeedback(error)
-  useToastFeedback(recoveryError)
   const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({})
   const positions = order ?? captureModelSettingsOrder(providers)
-  const checkDisabled = (connection: ModelConnection, allowed = true) => loading || !allowed || !connection.enabled || !connection.hasCredential
+  const hasConfiguration = providers.length > 0 || schoolModels.length > 0
+  const checkDisabled = (connection: ModelConnection, allowed = true) => readOnly || loading || !allowed || !connection.enabled || !connection.hasCredential
     || connection.adapterState !== 'ready' || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId
       && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))
   return <>
     <div className="st-section">
-      {recoveryError && <p className="detail">{recoveryError}</p>}
-      {onRetrySelection && <button type="button" className="outline" onClick={onRetrySelection}>重试</button>}
-      <button type="button" className="product-provider-add" onClick={onNew}>
-        <span className="product-provider-add-icon"><Icon name="add" size={22} /></span>
-        <span>添加供应商</span>
-      </button>
+      <div className="product-model-settings-stack">
+      {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
+        description="可以查看已有模型；当前副本不能添加、修改、启停或测试模型。" />}
+      {loading && !hasConfiguration && <SettingsStatus tone="loading" title="正在读取模型配置"
+        description="已有模型与进行中的检查不会因切换页面改变。" />}
+      {recoveryError && <SettingsStatus tone="error"
+        title={hasConfiguration ? '模型配置可能不是最新' : '模型配置暂时无法读取'}
+        description={hasConfiguration ? `当前列表仍可查看；重新读取后再修改，避免覆盖其他位置的更新。${recoveryError}`
+          : `现有配置没有被删除。检查连接或学习服务状态后重新读取。${recoveryError}`}
+        action={onRetry && <button type="button" className="outline" onClick={onRetry}>重新读取配置</button>} />}
+      {!loading && !recoveryError && !hasConfiguration ? <SettingsEmptyState icon={<Icon name="model" size={24} />}
+        title="还没有可用模型" description={readOnly ? '当前学习空间还没有可用模型；只读副本不能添加供应商。'
+          : '添加自己的模型供应商后，Agent 才能开始对话与模型检查。学校提供的模型会单独列在这里。'}>
+        <button type="button" className="primary product-provider-add-empty" disabled={readOnly} onClick={onNew}>添加供应商</button>
+      </SettingsEmptyState> : hasConfiguration ? <>
+        <div className="product-model-toolbar">
+          <button type="button" className="outline product-provider-add-compact" disabled={readOnly || loading} onClick={onNew}>
+            <Icon name="add" size={16} />添加供应商
+          </button>
+        </div>
       {schoolModels.length > 0 && <ModelProviderCard name="学校" compact actions={null}>
         <div className="st-configured-models" aria-label="学校的模型">
           {schoolModels.map(choice => <ModelProviderModelRow key={choice.connection.connectionId} modelId={choice.connection.modelId}
@@ -54,15 +70,18 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
       {inIdOrder(providers, positions.providers.map(provider => provider.id), provider => provider.providerId).map(provider => <ProviderCard key={provider.providerId} provider={provider}
         order={positions.models[provider.providerId] ?? []} expanded={Boolean(expandedProviders[provider.providerId])}
         onExpand={expanded => setExpandedProviders(previous => ({ ...previous, [provider.providerId]: expanded }))}
-        loading={loading} toggleState={toggleState} onToggle={onToggle} onEdit={onEdit} onAddModel={onAddModel} onRemove={onRemove}
+        readOnly={readOnly} loading={loading} toggleState={toggleState} onToggle={onToggle} onEdit={onEdit} onAddModel={onAddModel} onRemove={onRemove}
         active={active} onConnectionTest={onConnectionTest} tests={tests} onCheck={onCheck} onStopTest={onStopTest} checkDisabled={checkDisabled} />)}
+      </> : null}
+      </div>
     </div>
   </>
 }
 
-function ProviderCard({ provider, order, expanded, onExpand, loading, toggleState, onToggle, onEdit, onAddModel, onRemove, active,
+function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, toggleState, onToggle, onEdit, onAddModel, onRemove, active,
   onConnectionTest, tests, onCheck, onStopTest, checkDisabled }: {
   provider: ModelProvider; order: ModelSettingsOrder['models'][string]; expanded: boolean; onExpand(expanded: boolean): void
+  readOnly: boolean
   loading: boolean; toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
   onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void
   onRemove?: ((provider: ModelProvider, trigger: HTMLButtonElement) => void) | undefined
@@ -72,7 +91,7 @@ function ProviderCard({ provider, order, expanded, onExpand, loading, toggleStat
   checkDisabled(connection: ModelConnection, allowed?: boolean): boolean
 }) {
   const inactive = !provider.enabled
-  const busy = loading || Boolean(toggleState[provider.providerId])
+  const busy = readOnly || loading || Boolean(toggleState[provider.providerId])
   const models = inIdOrder(provider.models, order.map(model => model.id), model => model.connectionId)
   const visible = expanded ? models : models.slice(0, 4)
   return <ModelProviderCard name={provider.name} compact inactive={inactive}

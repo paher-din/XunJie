@@ -1,0 +1,88 @@
+.st-status {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.st-status[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--status-overdue-fg) 24%, var(--line));
+  background: var(--status-overdue-bg);
+  color: var(--status-overdue-fg);
+}
+
+.st-status-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.st-status-title {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.st-status[data-tone='loading'] .st-status-title::before {
+  content: '';
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-inline-end: 8px;
+  border: 1.5px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: st-status-spin 800ms linear infinite;
+}
+
+.st-status-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.st-status[data-tone='error'] .st-status-description {
+  color: inherit;
+}
+
+.st-status-action {
+  display: flex;
+  flex: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@keyframes st-status-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 540px) {
+  .st-status {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .st-status-action {
+    align-self: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-status[data-tone='loading'] .st-status-title::before {
+    animation: none;
+  }
+}

@@ -2,15 +2,22 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode 
 import { AccountAvatar } from '@xunjie/ui/foundation'
 import { XunjieLogo } from '@xunjie/ui/brand'
 import { Icon, IconText, type IconName } from '@xunjie/ui/icons'
-import { Section, SettingsEmptyState } from '@xunjie/ui/settings'
+import { Section, SettingsEmptyState, SettingsStatus } from '@xunjie/ui/settings'
 import './product-settings.css'
 
 export type ProductSettingsTab = 'account' | 'portrait' | 'agent' | 'models' | 'about'
+export type ProductSettingsAccountState = {
+  status: 'loading' | 'ready' | 'error'
+  message?: string
+  onRetry?: () => void
+}
 
 export interface ProductSettingsProps {
   accountName: string
   schoolName?: string
   isLocal?: boolean
+  readOnly?: boolean
+  accountState?: ProductSettingsAccountState
   onBack: () => void
   schoolControls: ReactNode
   accountFeedback?: ReactNode
@@ -21,18 +28,20 @@ export interface ProductSettingsProps {
   onTabChange?: (tab: ProductSettingsTab) => void
 }
 
-const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconName }> = [
-  { id: 'account', label: '账户', icon: 'user-rounded' },
-  { id: 'portrait', label: '学生画像', icon: 'user-id' },
-  { id: 'agent', label: 'Agent 个性化', icon: 'assistant-mark' },
-  { id: 'models', label: '模型', icon: 'model' },
-  { id: 'about', label: '关于', icon: 'info-circle' },
+const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; description: string; icon: IconName }> = [
+  { id: 'account', label: '账户', description: '管理当前学习空间与学校连接。', icon: 'user-rounded' },
+  { id: 'portrait', label: '学生画像', description: '查看 Agent 有依据地理解到的学习情况。', icon: 'user-id' },
+  { id: 'agent', label: 'Agent 个性化', description: '决定 Agent 在执行任务时如何处理新消息，以及可以使用哪些技能。', icon: 'assistant-mark' },
+  { id: 'models', label: '模型', description: '管理 Agent 可使用的模型与个人供应商。', icon: 'model' },
+  { id: 'about', label: '关于', description: '了解数据如何保存，以及如何整理对话。', icon: 'info-circle' },
 ]
 /** Business operations and identity changes remain owned by the caller. */
-export function ProductSettings({ accountName, schoolName, isLocal = false, onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
+export function ProductSettings({ accountName, schoolName, isLocal = false, readOnly = false, accountState = { status: 'ready' },
+  onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
   const [personalVisited, setPersonalVisited] = useState(initialTab === 'agent' || initialTab === 'models')
   const activeTabIndex = Math.max(0, tabs.findIndex(tab => tab.id === active))
+  const activeTab = tabs.find(tab => tab.id === active) ?? tabs[0]
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
   const school = useRef<HTMLDivElement>(null)
@@ -51,7 +60,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
     if (!focusSchool || active !== 'account') return
     const frame = requestAnimationFrame(revealSchool)
     return () => cancelAnimationFrame(frame)
-  }, [active, focusSchool])
+  }, [accountState.status, active, focusSchool])
   // SettingsLayout keys its body by the active tab. Reuse its visual structure,
   // keeping these panes mounted so drafts and in-flight operations survive navigation.
   return <div className="settings student-settings product-settings">
@@ -72,41 +81,63 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
     <div className="st-body" ref={body}>
       <div className="st-body-in">
         <header className="product-settings-heading" key={active}>
-          <h1>{tabs.find(tab => tab.id === active)?.label}</h1>
+          <h1>{activeTab.label}</h1>
+          <p>{activeTab.description}</p>
         </header>
         <section id={`${id}-account`} aria-labelledby={`${id}-account-nav`}
           hidden={active !== 'account'} inert={active !== 'account'} className="product-settings-pane">
-          <div className="product-settings-identity">
-            <div className="product-settings-current">
-              <AccountAvatar name={accountName} />
-              <div className="product-settings-account">
-                {isLocal ? <><span>本地</span><strong>个人学习空间</strong></> : <><strong>{accountName}</strong>{schoolName && <span>{schoolName}</span>}</>}
+          {accountState.status === 'loading' ? <SettingsStatus tone="loading" title="正在读取当前学习空间"
+            description="学校连接与本机学习记录不会因等待而改变。" />
+            : accountState.status === 'error' ? <SettingsStatus tone="error" title="账号信息暂时无法读取"
+              description={accountState.message || '当前无法确认学习空间与学校连接。已保存的学习内容仍在本机。'}
+              action={accountState.onRetry && <button type="button" className="outline" onClick={accountState.onRetry}>重新读取账号</button>} />
+            : <>
+              <Section title="当前学习空间" desc={isLocal ? '学习内容只保存在本机，不连接学校。' : '学校课程、提交与登录状态都使用这个账号。'}>
+                <div className="product-settings-identity">
+                  <div className="product-settings-current">
+                    <AccountAvatar name={accountName} />
+                    <div className="product-settings-account">
+                      {isLocal ? <><span>本机</span><strong>个人学习空间</strong></> : <><strong>{accountName}</strong>{schoolName && <span>{schoolName}</span>}</>}
+                    </div>
+                  </div>
+                </div>
+              </Section>
+              {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
+                description="账号与学校连接只用于确认身份，不能在此修改。" />}
+              <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">
+                {accountFeedback}
+                <fieldset className="product-settings-school-controls" disabled={readOnly} inert={readOnly}>
+                  {schoolControls ?? <SettingsStatus tone="loading" title="正在读取学校连接"
+                    description="已下载课程和本机学习内容不会改变。" />}
+                </fieldset>
               </div>
-            </div>
-          </div>
-          <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">
-            {accountFeedback}
-            {schoolControls ?? <p className="product-settings-empty" role="status" aria-label="正在读取学校连接" />}
-          </div>
+            </>}
         </section>
         <section id={`${id}-portrait`} aria-labelledby={`${id}-portrait-nav`} hidden={active !== 'portrait'} inert={active !== 'portrait'} className="product-settings-pane">
-          <SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。" />
+          <SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="还没有形成学生画像"
+            description="画像会整理 Agent 从作品、提问和修改中得到的有依据判断，不等同于成绩。当前空间还没有可用内容。" />
         </section>
         <section id={`${id}-personal`} aria-labelledby={`${id}-${active === 'agent' ? 'agent' : 'models'}-nav`}
           hidden={active !== 'agent' && active !== 'models'} inert={active !== 'agent' && active !== 'models'}
           data-settings-section={active} className="product-settings-pane product-settings-model">
-          {(personalVisited || active === 'agent' || active === 'models') && (modelSettings ?? <p className="product-settings-empty" role="status">个人设置暂不可用。</p>)}
+          {(personalVisited || active === 'agent' || active === 'models') && (accountState.status === 'loading'
+            ? <SettingsStatus tone="loading" title="正在读取个人设置" description="已有设置和进行中的操作不会因切换页面改变。" />
+            : accountState.status === 'error'
+              ? <SettingsStatus tone="error" title="个人设置暂时无法读取" description={accountState.message || '当前无法确认学习空间身份。'}
+                action={accountState.onRetry && <button type="button" className="outline" onClick={accountState.onRetry}>重新读取账号</button>} />
+              : modelSettings ?? <SettingsStatus tone="neutral" title="个人设置暂不可用"
+                description="当前学习空间没有可用的个人设置。返回学习空间后可重新进入。" />)}
         </section>
         <section id={`${id}-about`} aria-labelledby={`${id}-about-nav`} hidden={active !== 'about'} inert={active !== 'about'} className="product-settings-pane">
           <div className="st-brand"><XunjieLogo format="stacked" className="st-brand-logo" label="循阶" /></div>
-          <Section title="数据与隐私">
+          <Section title="数据与隐私" desc="学习过程先写入当前学习空间；只有明确提交时，固定版本才会交给教师。">
             <h3 className="product-settings-subheading">对话整理</h3>
             <dl className="product-settings-facts">
               <div><dt>归档</dt><dd>从对话列表收起，可在归档箱恢复。</dd></div>
               <div><dt>删除对话入口</dt><dd>移除侧栏中的对话入口，学习活动和作品仍保留。</dd></div>
             </dl>
           </Section>
-          <Section title="项目仓库">
+          <Section title="项目仓库" desc="查看循阶的公开源代码。">
             <a className="product-settings-repository" href="https://github.com/paher-din/XunJie" target="_blank" rel="noreferrer">
               <IconText name="brand-github" size={16}>https://github.com/paher-din/XunJie</IconText>
             </a>

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingSkillDisableSchema, teachingSkillCatalogEntrySchema, teachingSkillDocumentSchema, teachingSkillRemoveSchema, teachingSkillImportSchema, teachingSkillLimits } from '@xunjie/contracts/agent-skills'
-import { Section, SettingsActionMenu, SettingsEmptyState, SkillListItem, SkillDocumentDialog, SkillImportFeedback } from '@xunjie/ui/settings'
+import { Section, SettingsActionMenu, SettingsEmptyState, SettingsStatus, SkillListItem, SkillDocumentDialog, SkillImportFeedback } from '@xunjie/ui/settings'
 import { ConfirmationDialog } from '@xunjie/ui/foundation'
 import { Icon } from '@xunjie/ui/icons'
 import { toast, useToastFeedback } from '@xunjie/ui/feedback'
@@ -225,7 +225,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
       if (live.current) await deliver({ route: 'skills/import', input, label: '技能已导入', importKind: 'github', inputUrl: url })
     })
   }
-  const disabled = readOnly || busy || !!pending || !!localImportProgress?.uncertain
+  const disabled = readOnly || busy || !!pending || !!localImportProgress?.uncertain || catalog.loading || !catalog.data
   const choose = (skill: SkillCatalogEntry, checked: boolean) => {
     if (disabled || !catalog.isCurrent()) return
     setRejectedToggle(null)
@@ -260,13 +260,21 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
     if (operation.update) runUpdate((operation.input as { skillId: string }).skillId, () => deliver(operation))
     else void act(() => deliver(operation))
   }
-  return <Section title="技能">
+  return <Section title="技能" desc="技能让 Agent 按固定方法完成一类工作；个人技能只在当前学习空间生效。">
     <div className="personal-skills">
-      {catalog.loading && !catalog.data && <p className="detail" role="status" aria-label="正在加载技能" />}
-      {catalog.error && <p className="detail" role="alert">{catalog.error}</p>}
-      {(catalog.error || needsReload) && <button className="outline" type="button" disabled={catalog.loading}
-        onClick={() => { setNeedsReload(false); void catalog.reload() }}>刷新列表</button>}
-      <div className="skill-toolbar">
+      {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
+        description="可以查看已有技能；当前副本不能导入、更新或启停技能。" />}
+      {catalog.loading && !catalog.data && <SettingsStatus tone="loading" title="正在读取技能"
+        description="已有技能与启用状态会在原位置载入。" />}
+      {catalog.error && !catalog.data && <SettingsStatus tone="error" title="技能暂时无法读取"
+        description={`${catalog.error}列表没有改变；检查连接或学习服务状态后重新读取。`}
+        action={<button className="outline" type="button" disabled={catalog.loading}
+          onClick={() => { setNeedsReload(false); void catalog.reload() }}>刷新列表</button>} />}
+      {catalog.data && (catalog.error || needsReload) && <SettingsStatus tone="error" title="技能列表可能不是最新"
+        description="当前列表仍可使用。重新读取后再修改，避免覆盖其他位置的更新。"
+        action={<button className="outline" type="button" disabled={catalog.loading}
+          onClick={() => { setNeedsReload(false); void catalog.reload() }}>刷新列表</button>} />}
+      {catalog.data && <div className="skill-toolbar">
         <div className="skill-search-field"><Icon name="minimalistic-magnifier" size={16} />
           <input ref={searchInput} className="st-input skill-search" type="search" aria-label="搜索技能" placeholder="搜索技能" value={search}
             onChange={event => setSearch(event.target.value)} /></div>
@@ -282,7 +290,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
           { id: 'github', label: '从 GitHub 导入', icon: <Icon name="brand-github" size={16} />, keepOpen: true,
             onSelect: () => setGithubOpen(true) },
         ]} />
-      </div>
+      </div>}
       {localImportProgress && localImportProgress.remaining > 0 && (localImportProgress.failures.length > 0 || localImportProgress.pauseReason) && <SkillImportFeedback
         summary={localImportSummary(localImportProgress)} failures={localImportProgress.failures}
         retryLabel={localImportProgress.total === 1 ? '重试' : localImportProgress.pauseReason ? '继续导入' : '重试未完成'}
@@ -291,8 +299,16 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
         {...(!localImportProgress.uncertain ? { onChooseFolder: chooseLocalFolder, onDismiss: () => {
           localImportBatch.current = null; setLocalImportProgress(null); toast.dismiss(feedbackId)
         } } : {})} />}
-      {catalog.data?.skills.length === 0 && <SettingsEmptyState icon={<Icon name="skill" size={24} />} title="还没有技能" />}
-      {catalog.data && catalog.data.skills.length > 0 && !visibleSkills.length && <SettingsEmptyState icon={<Icon name="minimalistic-magnifier" size={24} />} title="没有找到匹配的技能" />}
+      {catalog.data?.skills.length === 0 && <SettingsEmptyState icon={<Icon name="skill" size={24} />} title="还没有技能"
+        description={readOnly ? '当前学习空间还没有可查看的技能。' : '导入本机技能文件夹或 GitHub 仓库后，Agent 就能按其中的说明工作。'}>
+        {!readOnly && <button type="button" className="primary" disabled={disabled}
+          onClick={() => setImportMenuOpen(true)}>导入第一个技能</button>}
+      </SettingsEmptyState>}
+      {catalog.data && catalog.data.skills.length > 0 && !visibleSkills.length && <SettingsEmptyState
+        icon={<Icon name="minimalistic-magnifier" size={24} />} title="没有找到匹配的技能"
+        description={`没有技能名称、说明或来源匹配“${search.trim()}”。`}>
+        <button type="button" className="outline" onClick={() => { setSearch(''); searchInput.current?.focus() }}>清除搜索</button>
+      </SettingsEmptyState>}
       {visibleSkills.length > 0 && <div className="skill-list">{visibleSkills.map(skill => <SkillListItem key={`${skill.origin}:${skill.skillId}`}
         name={skill.name} description={skill.description} checked={skill.origin === 'course' ? skill.selected : choices[skill.skillId] ?? !skill.disabled}
         disabled={disabled || !catalog.isCurrent()} readOnly={readOnly || skill.origin === 'course'}

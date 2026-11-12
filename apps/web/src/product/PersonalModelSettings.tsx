@@ -298,7 +298,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} /></div>
       <div className="product-personal-model">
       <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} order={view.order} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
-      tests={savedTests.runs} onStopTest={savedTests.stop}
+      readOnly={readOnly} tests={savedTests.runs} onStopTest={savedTests.stop}
       active={modelsVisible} onConnectionTest={testConnection}
       onRemove={readOnly ? undefined : (provider, trigger) => {
         deleteTrigger.current = trigger; setRemoving({ provider, requestId: crypto.randomUUID() })
@@ -307,7 +307,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
       schoolModels={selection.selection?.options.filter(choice => choice.kind === 'school') ?? []}
       onSchoolCheck={choice => void savedTests.run(choice.connection, { school: { connectionId: choice.connection.connectionId, version: choice.connection.version } })}
-      onRetrySelection={selection.stale && selection.error ? () => void selection.reload() : undefined}
+      onRetry={() => { void reload(true); if (selection.stale && selection.error) void selection.reload() }}
       onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
       onCheck={connection => void savedTests.run(connection, { connectionId: connection.connectionId, version: connection.version })} /></div></div></div>
     {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onDirectory={readDirectory}
@@ -318,7 +318,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       onClose={() => setRemoving(null)} onConfirm={() => void remove()}
       onReturnFocus={() => {
         if (deleteTrigger.current?.isConnected) deleteTrigger.current.focus()
-        else rootElement.current?.querySelector<HTMLButtonElement>('.product-provider-add')?.focus()
+        else rootElement.current?.querySelector<HTMLButtonElement>('.product-provider-add, .product-provider-add-empty, .product-provider-add-compact')?.focus()
       }} />
   </div>
 }

@@ -42,7 +42,7 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
       if (active()) setState({ scope, data, loading: false, error: '', epoch })
       return data
     } catch {
-      if (active()) setState(previous => ({ ...previous, scope, loading: false, error: '暂时无法加载技能，请重试。' }))
+      if (active()) setState(previous => ({ ...previous, scope, loading: false, error: '暂时无法加载技能。' }))
       return null
     }
   }, [scope, activityId, request])

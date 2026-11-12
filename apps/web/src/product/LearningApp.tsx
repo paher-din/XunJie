@@ -16,7 +16,7 @@ import { ProductProfile } from './ProductProfile'
 import { Button, ConfirmationDialog, SessionLogin } from '@xunjie/ui/foundation'
 import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { Icon } from '@xunjie/ui/icons'
-import { TextInput } from '@xunjie/ui/settings'
+import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { LearningReadCache } from './learning-read-cache'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
@@ -782,6 +782,9 @@ function LearningView() {
       <span>添加学校</span>
     </Button>
   const schoolControls = context && <section className="product-school" tabIndex={-1}><h2>学校连接</h2>
+      <p className="product-settings-section-desc">{schoolIdentities.length > 0
+        ? '换绑前会先解绑当前学校账号；解绑只隐藏学校内容，本机学习记录仍会保留。'
+        : '绑定学校后可领取课程与提交作品；个人学习空间仍可继续使用。'}</p>
       {context.profile !== 'school' && (schoolIdentities.length > 0 ? <div className="product-school-list">
         {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
           <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
@@ -942,10 +945,16 @@ function LearningView() {
     {profileOpen && <ProductProfile accountName={accountName} schoolName={context?.account?.schoolName}
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
     {modelsOpen && <ProductSettings accountName={accountName} onBack={closeModels}
+      accountState={context ? { status: 'ready' } : error
+        ? { status: 'error', message: error, onRetry: () => void action(async generation => { await refreshContext(undefined, generation) }) }
+        : { status: 'loading' }} readOnly={!!context?.readOnly}
+      accountFeedback={error && (schoolFormOpen || pendingConnection) ? <SettingsStatus tone="error"
+        title="学校连接未完成" description={error} /> : undefined}
       initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
       schoolName={context?.account?.schoolName} isLocal={!!context && !context.account}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
-      modelSettings={context && identity ? <Suspense fallback={<p role="status" aria-label="正在读取个人设置" />}><PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
+      modelSettings={context && identity ? <Suspense fallback={<SettingsStatus tone="loading" title="正在读取个人设置"
+        description="模型、技能与 Agent 偏好会在原位置载入。" />}><PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
         readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} cache={readCache} /></Suspense> : null} />}
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>

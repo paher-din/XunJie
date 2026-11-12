@@ -4,7 +4,7 @@ import {
   LegacyModelDialogs, LegacyModelSettingsView, ModelConfigActions, ModelConnectionTestRow, ModelDialogView,
   ModelFields, ModelProviderCard, ModelProviderModelRow, ModelSettingsDialog, ModelSettingsFeedback, PortraitSettingsView,
   PrivacySettingsView, ProviderDialogView, ProviderIdentityFields, ProviderSettingsDialog, RadarChart,
-  RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, Slider, TextInput, Toggle,
+  RadioCard, Row, Section, Seg, SettingsAgentLink, SettingsLayout, SettingsEmptyState, SettingsStatus, Slider, TextInput, Toggle,
   SettingsSelect, SettingsActionMenu, SkillListItem, SkillDocumentDialog, SkillImportFeedback, ModelIdInput, ModelProviderLogo, ModelChoiceCard,
   ModelTestFeedback, ModelTestButton,
   type AgentSettingsDisplay, type LegacyModelDialogsProps, type PortraitDisplay, type ProviderModel, type ProviderSettingsData,
@@ -67,6 +67,16 @@ function LayoutDemo() {
   const [active, setActive] = useState('account')
   return <SettingsLayout tabs={[{ id: 'account', label: '账户', icon: 'user-rounded' }, { id: 'agent', label: 'Agent', icon: 'assistant-mark' }]}
     active={active} onSelect={setActive} version="示例" toast={null}><Section title={active === 'account' ? '账户示例' : 'Agent 示例'}><p>内容由调用方提供。</p></Section></SettingsLayout>
+}
+function SettingsStatusDemo() {
+  return <Frame><div className="st-section">
+    <SettingsStatus tone="loading" title="正在读取当前学习空间" description="学校连接与本机学习记录不会改变。" />
+    <div style={{ height: 12 }} />
+    <SettingsStatus tone="neutral" title="当前学习空间为只读" description="可以查看现有配置；修改入口已停用。" />
+    <div style={{ height: 12 }} />
+    <SettingsStatus tone="error" title="模型配置暂时无法读取" description="保留现有内容，检查连接后重新读取。"
+      action={<button type="button" className="outline">重新读取</button>} />
+  </div></Frame>
 }
 
 function AboutDemo() {
@@ -340,6 +350,9 @@ export const settingsEntries: CatalogEntry[] = [
   { id: 'settings-empty-state', name: 'SettingsEmptyState', description: '由 shadcn Empty 适配的设置空态，包含图标、标题、说明和操作。', importPath: settings,
     source: 'packages/ui/src/settings/SettingsEmptyState.tsx', exampleSource, props: ['icon, title, description, children'], dependencies: [],
     states: [{ id: 'default', name: '无数据', component: () => <Frame><SettingsEmptyState icon={<Icon name="user-id" size={24} />} title="暂无画像信息" description="当前空间还没有可展示的学生画像。"><button type="button" className="outline">返回学习空间</button></SettingsEmptyState></Frame> }] },
+  { id: 'settings-status', name: 'SettingsStatus', description: '设置页的加载、只读与错误状态，可在原位置提供恢复操作。', importPath: settings,
+    source: 'packages/ui/src/settings/SettingsStatus.tsx', exampleSource, props: ['tone?, title, description?, action?, className?'], dependencies: [],
+    states: [{ id: 'default', name: '加载、只读与错误', component: SettingsStatusDemo }] },
   { id: 'about-settings-view', name: 'AboutSettingsView', description: '关于与版本示例。', importPath: settings, source: 'packages/ui/src/settings/AboutSettingsView.tsx', exampleSource, props: ['version, credits, checking, checkUpdate'], dependencies: ['更新状态为本地示例'], states: [{ id: 'default', name: '默认', component: AboutDemo }] },
   { id: 'account-settings-view', name: 'AccountSettingsView', description: '账户资料与安全表单。', importPath: settings, source: 'packages/ui/src/settings/AccountSettingsView.tsx', exampleSource, props: ['account, name, avatarData, pwd', '保存、头像与绑定回调'], dependencies: ['不保存账户或密码'], states: [{ id: 'default', name: '示例资料', component: AccountDemo }] },
   { id: 'agent-settings-view', name: 'AgentSettingsView', description: '引导偏好与角色预览。', importPath: settings, source: 'packages/ui/src/settings/AgentSettingsView.tsx', exampleSource, props: ['agent, account, nickname, onAgentChange'], dependencies: ['设置只保存在内存'], states: [{ id: 'default', name: '交互示例', component: AgentDemo }] },
