@@ -14,7 +14,8 @@ vi.mock('./ActivitySession', () => ({ useActivitySession: () => ({
   workspace: { isReadOnly: () => false }, actions: { subscribe: () => () => {}, snapshot: () => state.actions },
   readCache: state.cache, viewActive: state.active,
 }) }))
-vi.mock('./learningTransport', async original => ({ ...await original<typeof import('./learningTransport')>(), learningRequest: state.request }))
+vi.mock('./learningTransport', async original => ({ ...await original<typeof import('./learningTransport')>(),
+  learningRequest: state.request, learningSubjectRequest: state.request }))
 vi.mock('marked', async original => {
   const actual = await original<typeof import('marked')>()
   return { ...actual, lexer: (...args: Parameters<typeof actual.lexer>) => { state.lex(); return actual.lexer(...args) } }
@@ -57,6 +58,7 @@ it('does not parse unchanged historical Markdown again when polling a long conve
 
 it('shows a cached conversation while its fresh read is pending and pauses reads behind settings', async () => {
   state.cache!.set('personal', 'conversation:' + workspaceScope('performance', activity), conversation)
+  await vi.advanceTimersByTimeAsync(1001)
   let finish!: (value: TeachingConversation) => void
   state.request.mockImplementation(() => new Promise(resolve => { finish = resolve }))
   await render()
@@ -71,4 +73,25 @@ it('shows a cached conversation while its fresh read is pending and pauses reads
   await render()
   expect(state.request).toHaveBeenCalledTimes(2)
   await act(async () => { finish(conversation) })
+})
+
+it('joins a conversation read started before the page module mounts', async () => {
+  const { readConversation } = await import('./conversation-read')
+  let finish!: (value: TeachingConversation) => void
+  state.request.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+  const prepared = readConversation(activity, 'personal', 'performance', state.cache)
+  await render()
+  expect(state.request).toHaveBeenCalledOnce()
+  await act(async () => { finish(conversation); await prepared })
+  expect(host.querySelectorAll('.teaching-message')).toHaveLength(500)
+})
+
+it('consumes a just-completed preload without immediately downloading the same history again', async () => {
+  const { readConversation } = await import('./conversation-read')
+  await readConversation(activity, 'personal', 'performance', state.cache)
+  await render()
+  expect(host.querySelectorAll('.teaching-message')).toHaveLength(500)
+  expect(state.request).toHaveBeenCalledOnce()
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  expect(state.request).toHaveBeenCalledTimes(2)
 })

@@ -35,7 +35,11 @@ import { Button } from '@xunjie/ui/foundation'
 
 图标 SVG、角色图片、Logo 原稿和霞鹜文楷字体随本包提供；字体许可见 [OFL.txt](src/assets/fonts/OFL.txt)，图标来源见 [ATTRIBUTION.md](src/icons/ATTRIBUTION.md)。本包不依赖旧版 Web 的 `public` 目录。
 
-角色运行时使用原尺寸、逐像素一致的无损 WebP；PNG 原稿及注册文件继续用于品牌校验。更新原稿时同步生成同名 `.webp`（`cwebp -lossless -exact -m 6 source.png -o source.webp`），并核对尺寸与 RGBA 像素一致，不能只更新其中一种格式。
+角色 PNG 原稿及注册文件继续用于品牌校验。`SproutMascot` 默认使用原尺寸、逐像素一致的无损 WebP，供品牌大图预览；产品入口 `MascotSvg` 使用 `compact/` 内宽 256px 的派生贴图，保持同一骨架、遮罩、轮廓和动效，避免 52px 角色下载 1254px 原稿。大尺寸调用可指定 `textureSize="original"`。更新原稿后执行 `node scripts/generate-sprout-webp.mjs`（需要 `cwebp`）再生两种尺寸，原尺寸须核对 RGBA 像素一致，派生尺寸须核对实际显示尺寸下的清晰度。
+
+文楷保留原始 WOFF2 与 OFL，运行时按 `fonts.css` 的互斥 `unicode-range` 加载 `assets/fonts/wenkai/` 下的子集；常用界面文字与 ASCII 使用核心字库，动态标题按字符下载其余分片，不回退下载整包字体。更新原字体或核心文字后，从根目录执行 `python scripts/generate-ui-font-subsets.py`（需要 `fonttools[woff]`）；生成器校验全部字符覆盖、字形轮廓、字宽及垂直度量，保持原有字体和 `font-display: swap`。
+
+`AgentEmptyState` 的角色独立异步加载，插槽预留比例，输入与标题不等待角色模块。角色默认只加载运行用主体遮罩，道具遮罩在第一次换装时读取，原始注册数据继续留给品牌校验与大图审阅。
 
 `SettingsEmptyState` 采用 shadcn/ui Empty 的图标、标题、说明和操作分层，已适配循阶 token，无 Tailwind 运行依赖；来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。实屏目录提供空态示例。
 

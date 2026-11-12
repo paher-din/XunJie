@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import registration from '../assets/brand/sprout/registration.json'
-import accessories from '../assets/brand/sprout/accessories/registration.json'
+import subject from '../assets/brand/sprout/runtime-subject.json'
 import rig from '../assets/brand/sprout/rig/registration.json'
 import eyes from '../assets/brand/sprout/rig/eye-masks.json'
 import type { SproutExpression, SproutMotion, SproutTool } from './artwork'
@@ -21,22 +20,23 @@ export interface SproutMascotProps {
   previewTime?: number
   speed?: number
   paused?: boolean
+  textureSize?: 'compact' | 'original'
 }
 // 资源由组件库持有，经过打包器解析后不依赖旧页面的 public 目录或部署根路径。
-const assets = import.meta.glob<string>('../assets/brand/sprout/**/*.png', { query: '?url', import: 'default', eager: true })
-function asset(source: string) {
-  const url = assets[`../assets/brand/sprout/${source}`]
+const assets = import.meta.glob<string>('../assets/brand/sprout/**/*.webp', { query: '?url', import: 'default', eager: true })
+function asset(source: string, textureSize: SproutMascotProps['textureSize']) {
+  const url = assets[`../assets/brand/sprout/${textureSize === 'compact' ? 'compact/' : ''}${source.replace(/\.png$/, '.webp')}`]
   if (!url) throw new Error(`Missing sprout asset: ${source}`)
   return url
 }
 const decoded = new Map<string, Promise<boolean>>()
-function prepare(source: string) {
-  if (!decoded.has(source)) {
+function prepare(url: string) {
+  if (!decoded.has(url)) {
     const image = new Image()
-    image.src = asset(source)
-    decoded.set(source, image.decode().then(() => true).catch(() => { decoded.delete(source); return false }))
+    image.src = url
+    decoded.set(url, image.decode().then(() => true).catch(() => { decoded.delete(url); return false }))
   }
-  return decoded.get(source)!
+  return decoded.get(url)!
 }
 const PARTS = {
   handLeft: 'M233 808C230 754 279 730 323 741C370 749 399 771 399 814C400 856 368 881 320 881C269 882 234 851 233 808Z',
@@ -47,10 +47,13 @@ const PARTS = {
   leafRight: 'M680 65L1000 65L1000 410L744 437L714 437L704 410L699 390L691 365L680 350Z',
 }
 const NEUTRAL = poseTransforms(REST)
+type AccessoryLayer = { source: string; width: number; height: number; mask: string; matrix: number[]; hand: string }
 
-export function SproutMascot({ expression = 'idle', tool = 'none', motion = 'none', label, className = '', replay = 0, previewTime, speed = 1, paused = false }: SproutMascotProps) {
+export function SproutMascot({ expression = 'idle', tool = 'none', motion = 'none', label, className = '', replay = 0, previewTime, speed = 1, paused = false, textureSize = 'original' }: SproutMascotProps) {
+  const imageUrl = (source: string) => asset(source, textureSize)
   const prefix = `sprout-${useId().replaceAll(':', '')}`
   const [shownTool, setShownTool] = useState<SproutTool>('none')
+  const [accessoryPoses, setAccessoryPoses] = useState<Partial<Record<SproutTool, AccessoryLayer[]>>>({})
   const [ready, setReady] = useState(false)
   // 换装相位：新道具先进场（透明 + 眼镜从下方升起），旧道具反向淡出后再卸载。
   const [entered, setEntered] = useState(true)
@@ -58,10 +61,18 @@ export function SproutMascot({ expression = 'idle', tool = 'none', motion = 'non
   const previousShownTool = useRef<SproutTool>('none')
   useEffect(() => {
     let current = true
-    void Promise.all([prepare('master.png'), prepare(`rig/${rig.source}`), ...accessories.poses[tool].map(layer => prepare(`accessories/${layer.source}`))])
-      .then(loaded => { if (current && loaded.every(Boolean)) { setShownTool(tool); setReady(true) } })
+    void (async () => {
+      const poses = tool === 'none' ? undefined : (await import('../assets/brand/sprout/accessories/registration.json')).default.poses
+      const layers = poses?.[tool] ?? []
+      const loaded = await Promise.all(['master.png', `rig/${rig.source}`, ...layers.map(layer => `accessories/${layer.source}`)]
+        .map(source => prepare(asset(source, textureSize))))
+      if (current && loaded.every(Boolean)) {
+        if (poses) setAccessoryPoses(poses)
+        setShownTool(tool); setReady(true)
+      }
+    })().catch(() => {})
     return () => { current = false }
-  }, [tool])
+  }, [tool, textureSize])
   useEffect(() => {
     if (!ready || shownTool === previousShownTool.current) return
     const previous = previousShownTool.current
@@ -76,11 +87,10 @@ export function SproutMascot({ expression = 'idle', tool = 'none', motion = 'non
     return () => { clearTimeout(fadeIn); if (fadeOut) clearTimeout(fadeOut) }
   }, [shownTool, ready])
   const { svgRef, bind } = useSproutAnimation({ motion, tool: shownTool, ready, replay, previewTime, speed, paused })
-  const subject = registration.poses.none
-  const layers = accessories.poses[shownTool]
-  const leavingLayers = leavingTool ? accessories.poses[leavingTool] : []
-  const picture = <image href={asset(subject.source)} width="1254" height="1254" />
-  const plate = <image href={asset(`rig/${rig.source}`)} width={rig.width} height={rig.height} transform={`matrix(${rig.matrix.join(' ')})`} />
+  const layers = accessoryPoses[shownTool] ?? []
+  const leavingLayers = leavingTool ? accessoryPoses[leavingTool] ?? [] : []
+  const picture = <image href={imageUrl(subject.source)} width="1254" height="1254" />
+  const plate = <image href={imageUrl(`rig/${rig.source}`)} width={rig.width} height={rig.height} transform={`matrix(${rig.matrix.join(' ')})`} />
   // The original diagonal color seam exaggerates the lean. Rebalance only this
   // band with the source palette; leave the silhouette and all original parts intact.
   // Counter-rotate the division so its edge contacts are level in the neutral stance.
@@ -99,7 +109,7 @@ export function SproutMascot({ expression = 'idle', tool = 'none', motion = 'non
   const prop = (layer: typeof layers[number], index: number, phase: 'enter' | 'idle' | 'leave') => (
     <g key={`${phase}-${index}`} data-accessory={layer.source} style={propStyle(layer, phase)}>
       <g transform={`matrix(${layer.matrix.join(' ')})`}>
-        <g mask={`url(#${prefix}-prop-${phase === 'leave' ? 'out' : 'in'}-${index})`}><image href={asset('accessories/' + layer.source)} width={layer.width} height={layer.height} /></g>
+        <g mask={`url(#${prefix}-prop-${phase === 'leave' ? 'out' : 'in'}-${index})`}><image href={imageUrl('accessories/' + layer.source)} width={layer.width} height={layer.height} /></g>
       </g>
     </g>
   )
@@ -142,8 +152,8 @@ export function SproutMascot({ expression = 'idle', tool = 'none', motion = 'non
               <g mask={`url(#${prefix}-torso)`}>{picture}{colorDivision}</g>
               {original('mouth')}
               {/* Reuse the original, unobstructed forehead texture beneath the lids. */}
-              <g clipPath={`url(#${prefix}-eyeLeft)`}><image href={asset(subject.source)} width="1254" height="1254" transform="translate(0 100)" /></g>
-              <g clipPath={`url(#${prefix}-eyeRight)`}><image href={asset(subject.source)} width="1254" height="1254" transform="translate(0 160)" /></g>
+              <g clipPath={`url(#${prefix}-eyeLeft)`}><image href={imageUrl(subject.source)} width="1254" height="1254" transform="translate(0 100)" /></g>
+              <g clipPath={`url(#${prefix}-eyeRight)`}><image href={imageUrl(subject.source)} width="1254" height="1254" transform="translate(0 160)" /></g>
               <g ref={bind.stem} data-part="stem" transform={NEUTRAL.stem}>
                 {original('stem')}
                 <g ref={bind.leafLeft} data-part="leafLeft" transform={NEUTRAL.leafLeft}>{original('leafLeft')}</g>

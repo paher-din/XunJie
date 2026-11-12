@@ -25,11 +25,13 @@ export class LearningReadCache {
     this.remember(key, entry)
   }
 
-  async read<Value>(space: string, path: string, load: () => Promise<Value>): Promise<Value> {
+  async read<Value>(space: string, path: string, load: () => Promise<Value>,
+    { maxAgeMs = 30000, preferPending = false }: { maxAgeMs?: number; preferPending?: boolean } = {}): Promise<Value> {
     const key = JSON.stringify([space, path])
     const entry = this.entries.get(key) ?? { updatedAt: 0, revision: 0 }
     this.remember(key, entry)
-    if (entry.value !== undefined && Date.now() - entry.updatedAt < 30000) return entry.value as Value
+    if (preferPending && entry.pending) return entry.pending as Promise<Value>
+    if (entry.value !== undefined && Date.now() - entry.updatedAt < maxAgeMs) return entry.value as Value
     if (entry.pending) return entry.pending as Promise<Value>
     const revision = entry.revision
     const pending = load().then(value => {

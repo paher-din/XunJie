@@ -35,11 +35,13 @@ export function loadMonaco(): Promise<MonacoModule> {
 }
 
 async function bootstrap(): Promise<MonacoModule> {
-  const monaco = await import('monaco-editor/editor/editor.api')
-  const EditorWorker = (await import('monaco-editor/editor/editor.worker?worker')).default
+  const [monaco, { default: EditorWorker }] = await Promise.all([
+    import('monaco-editor/editor/editor.api'),
+    import('monaco-editor/editor/editor.worker?worker'),
+    Promise.all([...EDITOR_FEATURES, ...LANGUAGE_DEFINITIONS].map(load => load())),
+  ])
   // 本地 worker，不走 CDN：编辑能力与运行工具链分开，离线也能编辑
   self.MonacoEnvironment = { getWorker: () => new EditorWorker() }
-  await Promise.all([...EDITOR_FEATURES, ...LANGUAGE_DEFINITIONS].map((path) => path()))
   syncTheme(monaco)
   return monaco
 }

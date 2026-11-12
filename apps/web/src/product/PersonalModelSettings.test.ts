@@ -102,9 +102,9 @@ it('refreshes model information when the model pane is entered, while hidden set
   expect(agentSettings()).toHaveLength(0)
   await poll()
   expect(configurations()).toHaveLength(0)
-  const pane = document.querySelector('section')!
+  const pane = document.querySelector<HTMLElement>('[data-settings-section]')!
   await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
-  expect(requests().some(([, init]) => JSON.parse(init!.body as string).refresh === true)).toBe(true)
+  expect(requests()).toHaveLength(0)
   expect(configurations()).toHaveLength(2)
   expect(agentSettings()).toHaveLength(0)
   const before = requests().length
@@ -114,7 +114,7 @@ it('refreshes model information when the model pane is entered, while hidden set
   expect(configurations()).toHaveLength(beforeConfigurations)
   expect(requests()).toHaveLength(before)
   await act(async () => { pane.hidden = false; pane.dataset.settingsSection = 'models'; await settle() })
-  expect(requests().length).toBeGreaterThan(before)
+  expect(requests()).toHaveLength(before)
   await act(async () => { pane.dataset.settingsSection = 'agent'; await settle() })
   expect(agentSettings()).toHaveLength(2)
 })
@@ -129,7 +129,7 @@ it('does not notify the account pane when a model read fails after leaving model
         createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection }))))
     await settle()
   })
-  const pane = document.querySelector('section')!
+  const pane = document.querySelector<HTMLElement>('[data-settings-section]')!
   await act(async () => { pane.hidden = true; pane.dataset.settingsSection = 'account'; await settle() })
   readFailure = true
   await act(async () => { release(); await settle() })
@@ -158,6 +158,23 @@ it('shows the cached suppliers immediately while a revisit is still checking the
   })
   expect(document.querySelector('.st-provider-name')?.textContent).toBe('原配置')
   expect(document.body.textContent).not.toContain('正在读取模型')
+})
+
+it('shows supplier configuration without waiting for slower test history', async () => {
+  await act(async () => { root.render(null); await settle() })
+  const original = vi.mocked(fetch).getMockImplementation()!
+  let release!: () => void
+  const held = new Promise<void>(resolve => { release = resolve })
+  vi.mocked(fetch).mockImplementation(async (...args) => {
+    if (String(args[0]).endsWith('/models/checks')) await held
+    return original(...args)
+  })
+  try {
+    await mount()
+    expect(document.querySelector('.st-provider-name')?.textContent).toBe('原配置')
+  } finally {
+    await act(async () => { release(); await settle() })
+  }
 })
 
 beforeAll(async () => {

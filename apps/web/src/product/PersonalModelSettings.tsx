@@ -11,7 +11,7 @@ import { z } from 'zod'
 import { type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
 import { PersonalSkillsSettings } from './PersonalSkillsSettings'
-import { useModelDirectory, type ReadModelDirectory } from '../components/settings/useModelDirectory'
+import type { ReadModelDirectory } from '../components/settings/useModelDirectory'
 import { useModelConfigurationTests, type ModelCheckOptions } from '../components/settings/useModelConfigurationTests'
 import type { LearningReadCache } from './learning-read-cache'
 
@@ -98,19 +98,26 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   const readDirectory = useCallback<ReadModelDirectory>(async (input, signal) => modelDirectorySchema.parse(await request('directory', input, signal)), [request])
   const testConnection = useCallback<NonNullable<React.ComponentProps<typeof ModelProviderDialog>['onConnectionTest']>>(
     async (input, signal) => modelConnectionTestResultSchema.parse(await request('providers/test-connection', input, signal)), [request])
-  useModelDirectory(readDirectory, { presetId: 'custom' }, modelsVisible && !readOnly)
   const reload = useCallback(async (visible = false) => {
     const generation = ++reads.current
     if (visible && !loaded.current) setLoading(true)
     try {
-      const [configurations, checks] = await Promise.all([request('providers'), request('checks')])
+      await Promise.all([
+        request('providers').then(value => {
+          if (!live.current || generation < appliedRead.current) return
+          const providers = z.array(modelProviderSchema).parse(value)
+          appliedRead.current = generation
+          loaded.current = true
+          setProviders(providers, true)
+        }),
+        request('checks').then(value => {
+          if (!live.current || generation < appliedRead.current) return
+          const attempts = z.array(modelAttemptSchema).parse(value)
+          appliedRead.current = generation
+          setAttempts(previous => JSON.stringify(previous) === JSON.stringify(attempts) ? previous : attempts)
+        }),
+      ])
       if (!live.current || generation < appliedRead.current) return
-      appliedRead.current = generation
-      const snapshot = { providers: z.array(modelProviderSchema).parse(configurations), attempts: z.array(modelAttemptSchema).parse(checks) }
-      loaded.current = true
-      cache?.set(spaceKey, cacheKey, snapshot)
-      setProviders(snapshot.providers, true)
-      setAttempts(previous => JSON.stringify(previous) === JSON.stringify(snapshot.attempts) ? previous : snapshot.attempts)
       setLoadError('')
     } catch (error) {
       if (live.current && generation >= appliedRead.current) {

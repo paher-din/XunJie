@@ -62,3 +62,34 @@ it('ignores a late read failure after an acknowledged mutation has replaced it',
   reject(new Error('old connection failed'))
   expect(await read).toEqual(['acknowledged'])
 })
+
+it('refreshes a live conversation without extending the list-cache lifetime or duplicating pending reads', async () => {
+  const cache = new LearningReadCache()
+  cache.set('personal', 'conversation', 'saved')
+  let finish!: (value: string) => void
+  const load = vi.fn(() => new Promise<string>(resolve => { finish = resolve }))
+  const first = cache.read('personal', 'conversation', load, { maxAgeMs: 0 })
+  const second = cache.read('personal', 'conversation', load, { maxAgeMs: 0 })
+  expect(load).toHaveBeenCalledOnce()
+  expect(cache.peek('personal', 'conversation')).toBe('saved')
+  finish('current')
+  expect(await first).toBe('current')
+  expect(await second).toBe('current')
+})
+
+it('joins an active live read even when an older snapshot is still fresh', async () => {
+  const cache = new LearningReadCache()
+  cache.set('personal', 'conversation', 'saved')
+  let finish!: (value: string) => void
+  const load = vi.fn(() => new Promise<string>(resolve => { finish = resolve }))
+  const refreshing = cache.read('personal', 'conversation', load, { maxAgeMs: 0 })
+  const mounting = cache.read('personal', 'conversation', load, { maxAgeMs: 1000, preferPending: true })
+  let mounted = false
+  void mounting.then(() => { mounted = true })
+  await Promise.resolve()
+  expect(mounted).toBe(false)
+  expect(load).toHaveBeenCalledOnce()
+  finish('current')
+  expect(await refreshing).toBe('current')
+  expect(await mounting).toBe('current')
+})

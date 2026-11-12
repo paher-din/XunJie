@@ -3,11 +3,16 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import registration from '../../public/brand/sprout/registration.json'
 import accessories from '../../public/brand/sprout/accessories/registration.json'
+import currentRegistration from '@xunjie/ui/assets/brand/sprout/registration.json'
+import runtimeSubject from '@xunjie/ui/assets/brand/sprout/runtime-subject.json'
 
 function covers(path, x, y) {
   return Array.from(path.matchAll(/M(\d+) (\d+)h(\d+)v1h-\d+z/g)).some(match => Number(match[2]) === y && x >= Number(match[1]) && x < Number(match[1]) + Number(match[3]))
 }
 describe('approved sprout identity', () => {
+  it('uses the original subject mask without carrying unused registered poses into the runtime', () => {
+    expect(runtimeSubject).toEqual({ source: currentRegistration.poses.none.source, mask: currentRegistration.poses.none.mask })
+  })
   it('keeps the approved source bytes instead of another drawing or regenerated image', () => {
     const expected = { 'master.png': 'e36865cbd4a52922bbfec77c3ca4f329ddc5e6aaf44648f13f806e40415adb9f', 'props.png': '34e872e1468f9301f8634f3b72c3abb0fd3d417e3ab2679398b754f376f4ad3a' }
     for (const [name, hash] of Object.entries(expected)) {

@@ -14,7 +14,8 @@ vi.mock('../lib/theme', () => ({ THEME_OPTIONS: [{ value: 'system', label: '跟�
 vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => null }))
 vi.mock('./ModelSelection', () => ({ useModelSelection: () => ({}) }))
 vi.mock('./ProductConversationHistory', () => ({ conversationTitle: () => '',
-  ProductConversationHistory: ({ activities }: { activities: LearningActivity[] | null }) => <div data-testid="history">{activities?.map(item => item.question).join(',')}</div>,
+  ProductConversationHistory: ({ activities, onOpen }: { activities: LearningActivity[] | null; onOpen(id: string): void }) =>
+    <div data-testid="history">{activities?.map(item => <button key={item.activityId} onClick={() => onOpen(item.activityId)}>{item.question}</button>)}</div>,
   useConversationHistory: () => ({ items: [], archivedIds: [], ready: true }),
 }))
 vi.mock('./ActivityReferences', () => ({ ActivityReferences: ({ children }: { children: ReactNode }) => children,
@@ -133,6 +134,17 @@ it('keeps the bound account across filtering, school entry, personal Agent, sett
   await remount(); expect(accountLabel()).toBe('Robert')
 })
 
+it('reserves the workspace layout while a deep-linked activity is still loading', async () => {
+  holdSchool = new Promise(resolve => { finishSchool = resolve })
+  history.replaceState(null, '', '/?space=' + schoolKey + '&activity=' + schoolActivity.activityId)
+  await mount()
+  expect(host.querySelector('.product-shell')?.classList.contains('immersive')).toBe(true)
+  expect(host.querySelector('[data-testid="workspace"]')).toBeNull()
+  await act(async () => { finishSchool?.(); await settle(); await settle() })
+  expect(host.querySelector('[data-testid="workspace"]')).not.toBeNull()
+  expect(host.querySelector('.product-shell')?.classList.contains('immersive')).toBe(true)
+})
+
 it('shares initial list reads and shows loaded content immediately across home and Agent navigation', async () => {
   await mount()
   const listReads = () => reads.filter(item => item.route === 'activities' || item.route === 'courses')
@@ -184,6 +196,19 @@ it('defers a hidden activity when entering settings directly and opens it on ret
   expect(host.querySelector('[data-testid="workspace"]')).toBeNull()
   await click('返回学习空间')
   expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
+})
+
+it('reuses recently verified activity metadata when reopening a conversation', async () => {
+  history.replaceState(null, '', '/?space=personal&view=agent&activity=' + personalActivity.activityId)
+  await mount()
+  expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
+  const activityReads = () => reads.filter(item => item.route === 'activities/' + personalActivity.activityId)
+  expect(activityReads()).toHaveLength(1)
+  await click('首页')
+  await click('Agent 对话')
+  await click('个人自主学习')
+  expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
+  expect(activityReads()).toHaveLength(1)
 })
 
 it('opens the school activity through its own source and protects it before opening the personal Agent', async () => {

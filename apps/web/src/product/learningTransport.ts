@@ -2,7 +2,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingSkillImportFailureSchema } from '@xunjie/contracts/agent-skills'
 
-export function workspaceScope(namespace: string, activity: LearningActivity) {
+export function workspaceScope(namespace: string, activity: Pick<LearningActivity, 'identity' | 'activityId'>) {
   const { environmentId, spaceId, principalId } = activity.identity
   return JSON.stringify([namespace, environmentId, spaceId, principalId, activity.activityId])
 }

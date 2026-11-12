@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { replaceEqualDeep } from '@tanstack/react-query'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
-import { teachingConversationSchema } from '@xunjie/contracts/teaching-agent'
 import type { TeachingConversation, TeachingMessage, TeachingRun, TeachingWait, TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
 import { learningRequest, workspaceScope } from './learningTransport'
 import { useActivitySession } from './ActivitySession'
@@ -16,6 +15,7 @@ import { teachingArtifactReceiptSchema } from '@xunjie/contracts/teaching-artifa
 import { ArtifactCard, ArtifactPreview } from '../teaching-artifacts/ArtifactCard'
 import type { TeachingArtifactsController } from '../teaching-artifacts/useTeachingArtifacts'
 import { useViewPolling } from './useViewPolling'
+import { readConversation } from './conversation-read'
 export { firstQuestionKey } from './first-question'
 
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
@@ -71,14 +71,16 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   const mounted = useRef(true)
   const shown = useRef(scope)
   const reads = useRef<{ scope: string; promise: Promise<void> } | null>(null)
+  const lastReadScope = useRef<string | null>(null)
   const request = useCallback((route: string, body?: unknown) =>
     learningRequest(activity, spaceKey, namespace, route, body), [activity, spaceKey, namespace])
   const agentRequest = useCallback((route: string, body?: unknown) => request(`agent/${activity.activityId}/${route}`, body), [activity.activityId, request])
   const read = useCallback(async (): Promise<void> => {
     if (reads.current?.scope === scope) return reads.current.promise
-    const activityId = activity.activityId
+    const maxAgeMs = lastReadScope.current === scope ? 0 : 1000
+    lastReadScope.current = scope
     const promise = (async () => { try {
-      const value = teachingConversationSchema.parse(await request(`agent/${activityId}/conversation`))
+      const value = await readConversation(activity, spaceKey, namespace, readCache, maxAgeMs)
       if (mounted.current && shown.current === scope) {
         const cached = readCache?.peek<TeachingConversation>(spaceKey, cacheKey)
         if (cached && cached.cursor > value.cursor) return

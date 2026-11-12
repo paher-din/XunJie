@@ -1,16 +1,19 @@
-import type { ReactNode, RefObject, UIEventHandler } from 'react'
+import { lazy, Suspense, type ReactNode, type RefObject, type UIEventHandler } from 'react'
 import { Icon } from '../icons'
-import { MascotSvg } from '../brand'
 import { SuggestionStack } from '../foundation'
 import { useToastFeedback } from '../feedback'
 import { MessageRail, type MessageRailProps } from './MessageRail'
 import { TurnAriaStatus } from './TurnAriaStatus'
 import type { TurnPhase } from './types'
 
+const EmptyStateMascot = lazy(() => import('../foundation/Mascot').then(module => ({ default: module.MascotSvg })))
+
 export interface AgentEmptyStateProps { title: string; description?: string }
 export function AgentEmptyState({ title, description }: AgentEmptyStateProps) {
   return <div className="chat-empty">
-    <div style={{ width: 52, margin: 'auto' }}><MascotSvg /></div>
+    <div style={{ width: 52, margin: 'auto', aspectRatio: '5 / 6' }}>
+      <Suspense fallback={null}><EmptyStateMascot /></Suspense>
+    </div>
     <h1>{title}</h1>{description !== undefined && <p style={{ color: 'var(--muted)' }}>{description}</p>}
   </div>
 }

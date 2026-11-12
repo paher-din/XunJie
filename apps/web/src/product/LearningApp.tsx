@@ -28,6 +28,7 @@ const loadActivityPage = () => import('./ActivityPage')
 const loadConversation = () => import('./ProductConversation')
 const loadReferences = () => import('./ActivityReferences')
 const loadAgent = () => import('./ProductAgent')
+const loadModelSettings = () => import('./PersonalModelSettings')
 const prepareAgent = () => { void loadAgent().catch(() => {}) }
 const ProductAgent = lazy(() => loadAgent().then(module => ({ default: module.ProductAgent })))
 const ActivityPage = lazy(() => loadActivityPage().then(module => ({ default: module.ActivityPage })))
@@ -35,7 +36,7 @@ const ProductConversation = lazy(() => loadConversation().then(module => ({ defa
 const ActivityReferences = lazy(() => loadReferences().then(module => ({ default: module.ActivityReferences })))
 const CourseMaterialReferences = lazy(() => loadReferences().then(module => ({ default: module.CourseMaterialReferences })))
 const CourseRequirementsReference = lazy(() => loadReferences().then(module => ({ default: module.CourseRequirementsReference })))
-const PersonalModelSettings = lazy(() => import('./PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
+const PersonalModelSettings = lazy(() => loadModelSettings().then(module => ({ default: module.PersonalModelSettings })))
 
 type Account = { key: string; accountName: string; schoolName: string }
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[]; account?: Account | null }
@@ -388,6 +389,7 @@ function LearningView() {
   const readCourses = (space: string) => readCache.read<Course[]>(space, 'courses', async () =>
     courseCatalogSchema.parse(await api('courses', undefined, space)).courses)
   function publishActivity(activity: LearningActivity, space = key) {
+    readCache.set(space, 'activities/' + activity.activityId, activity)
     const previous = readCache.peek<LearningActivity[]>(space, 'activities') ?? []
     const next = [activity, ...previous.filter(item => item.activityId !== activity.activityId)]
     readCache.set(space, 'activities', next)
@@ -396,9 +398,12 @@ function LearningView() {
       ...(space === personalKey ? { personal: next } : { school: next }) } : previous)
   }
   useEffect(() => {
-    if (!routeActivityId || modelsOpen && !opened) return
-    void Promise.all([loadReferences(), agentOpen ? loadConversation() : loadActivityPage()]).catch(() => {})
-  }, [routeActivityId, agentOpen, modelsOpen])
+    if (modelsOpen) {
+      void loadModelSettings().catch(() => {})
+    } else if (routeActivityId) {
+      void Promise.all([loadReferences(), agentOpen ? loadConversation() : loadActivityPage()]).catch(() => {})
+    } else if (agentOpen) prepareAgent()
+  }, [routeActivityId, agentOpen, modelsOpen, settingsPage])
   useEffect(() => {
     if (!context || !homeVisible) return
     const controller = new AbortController()
@@ -513,7 +518,12 @@ function LearningView() {
     const applies = () => !controller.signal.aborted && generation === epoch.current
       && readGeneration === routeReadEpoch.current && currentSearch.current === search
     setOpened(null); setError(''); rememberMaterial(null)
-    void api('activities/' + activityId, undefined, desiredKey, controller.signal).then(value => {
+    if (agentOpen && identity?.kind === 'personal') {
+      void import('./conversation-read').then(({ readConversation }) =>
+        readConversation({ identity, activityId }, desiredKey, context.clientNamespace, readCache)).catch(() => {})
+    }
+    void readCache.read(desiredKey, 'activities/' + activityId, async () =>
+      activitySchema.parse(await api('activities/' + activityId, undefined, desiredKey))).then(value => {
       if (applies()) {
         const activity = activitySchema.parse(value)
         try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${desiredKey}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* Optional reopening hint. */ }
@@ -850,6 +860,7 @@ function LearningView() {
   const goHome = () => changePage('home')
   const openAgent = () => { prepareAgent(); changePage('agent') }
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
+    void loadModelSettings().catch(() => {})
     await protectActivity()
     const params = new URLSearchParams(currentSearch.current); params.set('settings', tab)
     const search = params.toString()
@@ -920,7 +931,7 @@ function LearningView() {
     onRetryLogout={() => void action(async generation => { await refreshContext(undefined, generation) })}
     onRestoreSession={() => void action(async generation => { await refreshContext(undefined, generation) })} />
 
-  return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} accountName={accountName}
+  return <ProductShell immersive={!modelsOpen && (opened ? !conversationOpen : !!routeActivityId && !agentOpen)} accountName={accountName}
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
     onAgentIntent={prepareAgent}
