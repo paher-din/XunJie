@@ -126,7 +126,9 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     const previous = row?.body as StoredConnection | undefined;
     if (!providerWrite && (previous?.configuration.providerId || configuration.providerId)) throw new StorageError('conflict');
     if ((previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
-    await validateModelTarget(configuration, policy ? 'school-approved' : targetClass());
+    // Retiring an existing route and clearing its key must work even after its DNS disappears.
+    if (!(retired && input.credential.action === 'clear' && previous && targetOf(previous.configuration) === targetOf(configuration)))
+      await validateModelTarget(configuration, policy ? 'school-approved' : targetClass());
     let credentialRef = previous?.credentialRef ?? null;
     if (input.credential.action === 'keep' && credentialRef && previous && targetOf(previous.configuration) !== targetOf(configuration))
       throw new StorageError('conflict');

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError, type OwnedStorage, type OwnedTransaction, type Migration } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelProviderSchema, saveModelProviderSchema, modelReasoningError, resolveModelCapacity, modelPresetIdSchema, modelProtocolSchema,
+import { modelProviderSchema, saveModelProviderSchema, deleteModelProviderSchema, deleteModelProviderResultSchema, modelReasoningError, resolveModelCapacity, modelPresetIdSchema, modelProtocolSchema,
   type ModelConfiguration, type ModelConnection, type SaveModelConnection, type ModelProvider, type ModelProfile, type SaveModelProvider, type ModelDirectoryEntry } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
 
@@ -10,6 +10,7 @@ export const modelProviderMigration: Migration = { version: 20, name: 'model-pro
   CREATE TABLE model_providers(scope text NOT NULL,id uuid NOT NULL,body jsonb NOT NULL,PRIMARY KEY(scope,id));
 ` };
 const groupSchema = z.object({ version: z.number().int().positive(), connectionIds: z.array(z.uuid()).max(64),
+  deleted: z.literal(true).optional(),
   name: z.string().trim().min(1).max(120).optional(), enabled: z.boolean().optional(),
   addedOrder: z.number().int().positive().optional(), disabledOrder: z.number().int().positive().optional(),
   credentialConnection: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional(),
@@ -39,7 +40,7 @@ export function createModelProviders(storage: OwnedStorage, owner: {
     // A single statement observes heads and membership from one PostgreSQL snapshot.
     const { rows } = await storage.read(`SELECT c.id,c.body,p.id AS provider_id,p.body AS provider,a.body AS anchor
       FROM (SELECT * FROM model_connections WHERE scope=$1 AND NOT (body @> '{"retired":true}')) c
-      FULL JOIN (SELECT * FROM model_providers WHERE scope=$1) p
+      FULL JOIN (SELECT * FROM model_providers WHERE scope=$1 AND NOT (body @> '{"deleted":true}')) p
         ON p.scope=c.scope AND p.id=coalesce((c.body->'configuration'->>'providerId')::uuid,c.id)
       LEFT JOIN model_connections a ON a.scope=p.scope AND a.id=(p.body->'credentialConnection'->>'connectionId')::uuid
       ORDER BY coalesce(p.id,c.id),c.id`, [modelScopeOf(identity)]);
@@ -93,7 +94,7 @@ export function createModelProviders(storage: OwnedStorage, owner: {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + scope]);
       const { rows: [row] } = await tx.query('SELECT body FROM model_providers WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, input.providerId]);
       const previous = row ? groupSchema.parse(row.body) : undefined;
-      if ((previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
+      if (previous?.deleted || (previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
       const ids = new Set(input.models.map(model => model.connectionId));
       const removed = new Set(input.removedModels?.map(model => model.connectionId));
       const { rows } = await tx.query('SELECT id,body FROM model_connections WHERE scope=$1', [scope]);
@@ -204,6 +205,36 @@ export function createModelProviders(storage: OwnedStorage, owner: {
     return modelProviderSchema.parse(receipt.result);
   }
 
+  async function remove(identity: SpaceIdentity, providerId: string, value: unknown) {
+    owner.assertWritable(); await owner.authorize(identity);
+    z.uuid().parse(providerId);
+    const input = deleteModelProviderSchema.parse(value), scope = modelScopeOf(identity);
+    const fingerprint = createHash('sha256').update(JSON.stringify(['delete-provider', scope, providerId, input])).digest('hex');
+    const receipt = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
+      owner.assertWritable();
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-config:' + scope]);
+      const { rows: [row] } = await tx.query('SELECT body FROM model_providers WHERE scope=$1 AND id=$2 FOR UPDATE', [scope, providerId]);
+      const previous = row ? groupSchema.parse(row.body) : undefined;
+      if (previous?.deleted || (previous?.version ?? 0) !== input.expectedVersion) throw new StorageError('conflict');
+      const { rows } = await tx.query(`SELECT body FROM model_connections WHERE scope=$1
+        AND coalesce((body->'configuration'->>'providerId')::uuid,id)=$2 FOR UPDATE`, [scope, providerId]);
+      const heads = rows.map(row => row.body as Stored);
+      if (!previous && !heads.some(head => !head.retired)) throw new StorageError('missing');
+      if (previous && !previous.connectionIds.length)
+        emptyAnchor(providerId, previous, heads.find(head => head.configuration.connectionId === previous.credentialConnection?.connectionId));
+      // Clear every head, including former members and the empty-provider credential anchor.
+      // Historical versions and sealed credentials remain available only to their original facts.
+      for (const head of heads) await owner.write(tx, scope, { ...head.configuration, requestId: input.requestId,
+        expectedVersion: head.version, providerId, providerEnabled: false, modelEnabled: false, enabled: false,
+        credential: { action: 'clear' } }, true);
+      // A persistent tombstone fences stale saves, including legacy version-zero upgrades.
+      await tx.query(`INSERT INTO model_providers VALUES($1,$2,$3) ON CONFLICT(scope,id) DO UPDATE SET body=EXCLUDED.body`,
+        [scope, providerId, { version: input.expectedVersion + 1, connectionIds: [], deleted: true }]);
+      return { providerId };
+    });
+    return deleteModelProviderResultSchema.parse(receipt.result);
+  }
+
   async function validate() {
     const { rows: orphans } = await storage.read(`SELECT c.id FROM model_connections c LEFT JOIN model_providers p
       ON p.scope=c.scope AND p.id=(c.body->'configuration'->>'providerId')::uuid
@@ -213,6 +244,13 @@ export function createModelProviders(storage: OwnedStorage, owner: {
     const { rows } = await storage.read('SELECT scope,id,body FROM model_providers');
     for (const row of rows) {
       const group = groupSchema.parse(row.body);
+      if (group.deleted) {
+        z.object({ version: z.number().int().positive(), connectionIds: z.tuple([]), deleted: z.literal(true) }).strict().parse(row.body);
+        const { rows: heads } = await storage.read(`SELECT body FROM model_connections WHERE scope=$1
+          AND coalesce((body->'configuration'->>'providerId')::uuid,id)=$2`, [row.scope, row.id]);
+        if (heads.some(head => !(head.body as Stored).retired || (head.body as Stored).credentialRef)) throw new StorageError('corrupt');
+        continue;
+      }
       if (new Set(group.connectionIds).size !== group.connectionIds.length) throw new StorageError('corrupt');
       if (!group.connectionIds.length) {
         const { rows: [anchor] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2',
@@ -237,5 +275,5 @@ export function createModelProviders(storage: OwnedStorage, owner: {
       }
     }
   }
-  return { list, save, validate };
+  return { list, save, remove, validate };
 }

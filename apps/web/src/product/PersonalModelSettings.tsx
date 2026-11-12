@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { modelAttemptSchema, modelProviderSchema, modelProfilesSchema, modelCredentialValueSchema, modelDirectorySchema,
-  modelConnectionTestResultSchema, modelDiagnosticSchema, resolveModelCapacity, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
+  modelConnectionTestResultSchema, deleteModelProviderResultSchema, modelDiagnosticSchema, resolveModelCapacity, type ModelAttempt, type ModelProvider, type ModelCheckInput, type SaveModelProvider } from '@xunjie/contracts/model-connections'
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelProviderDialog } from '../components/settings/ModelProviderDialog'
 import { captureModelSettingsOrder, reconcileModelSettingsOrder } from '../components/settings/modelOrdering'
 import { toast } from '@xunjie/ui/feedback'
+import { ConfirmationDialog } from '@xunjie/ui/foundation'
 import { z } from 'zod'
 import { type ModelSelectionController } from './ModelSelection'
 import { AgentInteractionSettings, useAgentInteraction } from './AgentInteraction'
@@ -40,6 +41,9 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   }, [])
   const [attempts, setAttempts] = useState<ModelAttempt[]>([])
   const [dialog, setDialog] = useState<{ provider: ModelProvider | null; addModel?: boolean } | null>(null)
+  const [removing, setRemoving] = useState<{ provider: ModelProvider; requestId: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const deleteRunning = useRef(false), deleteTrigger = useRef<HTMLButtonElement | null>(null)
   const [toggleState, setToggleState] = useState<Record<string, 'saving' | 'unknown'>>({})
   const togglePending = useRef(new Map<string, SaveModelProvider>())
   const toggleRunning = useRef(new Set<string>())
@@ -80,6 +84,8 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     return result as unknown
   }, [identity.environmentId, identity.spaceId, identity.principalId, spaceKey, namespace])
   const readDirectory = useCallback<ReadModelDirectory>(async (input, signal) => modelDirectorySchema.parse(await request('directory', input, signal)), [request])
+  const testConnection = useCallback<NonNullable<React.ComponentProps<typeof ModelProviderDialog>['onConnectionTest']>>(
+    async (input, signal) => modelConnectionTestResultSchema.parse(await request('providers/test-connection', input, signal)), [request])
   useModelDirectory(readDirectory, { presetId: 'custom' }, modelsVisible && !readOnly)
   const reload = useCallback(async (visible = false) => {
     const generation = ++reads.current
@@ -221,6 +227,26 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       if (live.current) setActionError({ key: 'toggle:' + id, message: error instanceof Error ? error.message : '开关保存结果尚未确认，请核对原提交。' })
     } finally { toggleRunning.current.delete(id) }
   }
+  const remove = async () => {
+    if (!removing || readOnly || deleteRunning.current) return
+    const { provider, requestId } = removing
+    deleteRunning.current = true; setDeleting(true)
+    try {
+      const result = deleteModelProviderResultSchema.parse(await request('providers/' + provider.providerId + '/delete', { requestId, expectedVersion: provider.version }))
+      if (result.providerId !== provider.providerId) throw new Error('删除回执不匹配，请重试核对原请求。')
+      if (!live.current) return
+      appliedRead.current = ++reads.current
+      setProviders(previous => previous.filter(item => item.providerId !== provider.providerId))
+      for (const model of provider.models) savedTests.invalidate(model.connectionId)
+      setRemoving(null); setActionError(null)
+      toast.success(`已删除供应商「${provider.name}」`)
+      void reload(); void selection.reload().catch(() => {})
+    } catch (error) {
+      if (!live.current) return
+      toast.error(error instanceof Error ? error.message : '删除结果尚未确认，请重试核对原请求。')
+      if (error instanceof Error && 'code' in error && error.code === 'conflict') { setRemoving(null); void reload() }
+    } finally { deleteRunning.current = false; if (live.current) setDeleting(false) }
+  }
   const readProfiles = useCallback(async (input: Parameters<React.ComponentProps<typeof ModelProviderDialog>['onProfiles']>[0]) =>
     modelProfilesSchema.parse(await request('profiles', input)), [request])
   const readCredential = useCallback(async (connectionId: string, version: number) => {
@@ -235,6 +261,10 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       <div className="product-personal-model">
       <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} order={view.order} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
       tests={savedTests.runs} onStopTest={savedTests.stop}
+      active={modelsVisible} onConnectionTest={testConnection}
+      onRemove={readOnly ? undefined : (provider, trigger) => {
+        deleteTrigger.current = trigger; setRemoving({ provider, requestId: crypto.randomUUID() })
+      }}
       recoveryError={modelsVisible ? [loadError, selection.error].filter(Boolean).join('；') : ''}
       toggleState={toggleState} onToggle={(provider, connectionId) => void toggle(provider, connectionId)}
       schoolModels={selection.selection?.options.filter(choice => choice.kind === 'school') ?? []}
@@ -243,7 +273,14 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       onNew={() => setDialog({ provider: null })} onEdit={provider => setDialog({ provider })} onAddModel={provider => setDialog({ provider, addModel: true })}
       onCheck={connection => void savedTests.run(connection, { connectionId: connection.connectionId, version: connection.version })} /></div></div></div>
     {dialog && <ModelProviderDialog provider={dialog.provider} addModel={dialog.addModel} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onRead={readProvider} onReadCredential={readCredential} onProfiles={readProfiles} onDirectory={readDirectory}
-      onConnectionTest={async (input, signal) => modelConnectionTestResultSchema.parse(await request('providers/test-connection', input, signal))}
+      onConnectionTest={testConnection}
       onCheck={check} onCancel={cancel} />}
+    <ConfirmationDialog open={!!removing} title={`删除「${removing?.provider.name ?? ''}」？`}
+      description="将移除这个供应商及其模型配置，历史对话保留。" confirmLabel="删除" pendingLabel="删除中…" busy={deleting}
+      onClose={() => setRemoving(null)} onConfirm={() => void remove()}
+      onReturnFocus={() => {
+        if (deleteTrigger.current?.isConnected) deleteTrigger.current.focus()
+        else rootElement.current?.querySelector<HTMLButtonElement>('.product-provider-add')?.focus()
+      }} />
   </div>
 }

@@ -15,6 +15,8 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
   if (route === 'models/connections') return body === undefined ? models.list(identity) : models.save(identity, body);
   if (route === 'models/providers') return body === undefined ? models.providers.list(identity) : models.providers.save(identity, body);
+  const providerDelete = /^models\/providers\/([^/]+)\/delete$/.exec(route);
+  if (providerDelete && body !== undefined) return models.providers.remove(identity, providerDelete[1]!, body);
   if (route === 'models/providers/test-connection' && body !== undefined) return models.directory.testConnection(identity, body, signal);
   if (route === 'models/profiles' && body !== undefined) return models.profiles.read(identity, body);
   if (route === 'models/directory' && body !== undefined) return models.directory.read(identity, body, signal);

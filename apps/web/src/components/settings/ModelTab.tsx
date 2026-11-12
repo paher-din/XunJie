@@ -4,11 +4,12 @@ import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { ModelTestRun } from './useModelConfigurationTests'
 import { captureModelSettingsOrder, inIdOrder, type ModelSettingsOrder } from './modelOrdering'
+import { useSupplierChecks, type TestSupplierConnection } from './useSupplierChecks'
 
 type SchoolModel = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy }
 
 /** Formal model settings presentation. No legacy Session, settings store or model transport. */
-export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetrySelection, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, tests = {}, onStopTest }: {
+export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, attempts, loading, error, recoveryError, onRetrySelection, toggleState, onToggle, onNew, onEdit, onAddModel, onCheck, tests = {}, onStopTest, onConnectionTest, onRemove, active = true }: {
   providers: ModelProvider[]; attempts: ModelAttempt[]; loading: boolean; error: string
   order?: ModelSettingsOrder
   recoveryError?: string
@@ -17,6 +18,9 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
   toggleState: Record<string, 'saving' | 'unknown'>; onToggle(provider: ModelProvider, connectionId?: string): void
   onNew(): void; onEdit(provider: ModelProvider): void; onAddModel(provider: ModelProvider): void; onCheck(connection: ModelConnection): void
   tests?: Record<string, ModelTestRun>; onStopTest?(connectionId: string): void
+  onConnectionTest?: TestSupplierConnection
+  onRemove?(provider: ModelProvider, trigger: HTMLButtonElement): void
+  active?: boolean
 }) {
   useToastFeedback(error)
   useToastFeedback(recoveryError)
@@ -48,8 +52,8 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
       </ModelProviderCard>}
       {inIdOrder(providers, positions.providers.map(provider => provider.id), provider => provider.providerId).map(provider => <ModelProviderCard key={provider.providerId} name={provider.name} compact
         logo={provider.presetId ? <ModelProviderLogo providerId={provider.presetId} /> : undefined}
-        actions={<><button type="button" className="st-provider-text-action" disabled={Boolean(toggleState[provider.providerId])} onClick={() => onEdit(provider)}>编辑</button>
-          <Toggle checked={provider.enabled} label={`启用供应商 ${provider.name}`} disabled={Boolean(toggleState[provider.providerId])} onChange={() => onToggle(provider)} /></>}
+        actions={<SavedProviderActions provider={provider} disabled={loading || Boolean(toggleState[provider.providerId])}
+          active={active} onEdit={() => onEdit(provider)} onRemove={onRemove} onToggle={() => onToggle(provider)} onConnectionTest={onConnectionTest} />}
         footer={<><button type="button" className="st-provider-text-action" disabled={Boolean(toggleState[provider.providerId])} onClick={() => onAddModel(provider)}><Icon name="add" size={14} />添加模型</button>
           {!provider.enabled && <span className="detail">供应商已停用</span>}
           {toggleState[provider.providerId] === 'saving' && <span role="status" className="detail">正在保存…</span>}
@@ -69,5 +73,30 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
         </ModelProviderModelRow>)}</div>}
       </ModelProviderCard>)}
     </div>
+  </>
+}
+
+function SavedProviderActions({ provider, disabled, active, onEdit, onRemove, onToggle, onConnectionTest }: {
+  provider: ModelProvider; disabled: boolean; active: boolean; onEdit(): void; onToggle(): void
+  onRemove?: ((provider: ModelProvider, trigger: HTMLButtonElement) => void) | undefined
+  onConnectionTest: TestSupplierConnection | undefined
+}) {
+  const saved = provider.models.find(model => model.hasCredential) ?? provider.credentialConnection
+  const supplier = useSupplierChecks({ presetId: provider.presetId ?? 'custom',
+    ...(provider.variantId ? { variantId: provider.variantId } : {}), baseUrl: provider.baseUrl, protocol: provider.protocol,
+    credential: { action: 'keep' }, ...(saved ? { savedCredential: { connectionId: saved.connectionId, version: saved.version } } : {}) },
+  onConnectionTest, undefined, { notificationLabel: provider.name, active })
+  const running = supplier.connection?.status === 'running'
+  return <>
+    <div className="st-provider-manage-actions">
+      <button type="button" className="st-provider-text-action" disabled={disabled} onClick={onEdit}>编辑</button>
+      {onRemove && <button type="button" className="st-provider-text-action st-provider-delete" disabled={disabled}
+        aria-label={`删除供应商 ${provider.name}`} title="删除供应商" onClick={event => onRemove(provider, event.currentTarget)}>
+        <Icon name="trash-bin-trash" size={16} tone="neutral" />
+      </button>}
+    </div>
+    {onConnectionTest && <ModelTestButton kind="connection" iconOnly running={running} disabled={disabled || !provider.hasCredential}
+      onTest={() => void supplier.runConnection()} onStop={supplier.stopConnection} />}
+    <Toggle checked={provider.enabled} label={`启用供应商 ${provider.name}`} disabled={disabled} onChange={onToggle} />
   </>
 }

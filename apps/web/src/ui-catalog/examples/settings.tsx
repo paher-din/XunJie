@@ -180,6 +180,7 @@ function ModelChoiceSelected() { return <ModelChoiceDemo chosen /> }
 function ModelChoiceExpanded() { return <ModelChoiceDemo chosen open /> }
 function ProviderCardDemo() { const [notice, setNotice] = useState(''); return <Frame><ModelProviderCard name="示例供应商" address="https://example.invalid/v1" credentialLabel="示例状态" actions={<button type="button" className="outline" onClick={() => setNotice('已触发示例编辑')}>编辑</button>}><p>示例模型</p></ModelProviderCard><output>{notice}</output></Frame> }
 function ProviderRowsDemo({ state = 'default' }: { state?: 'default' | 'running' | 'failed' | 'disabled' | 'long' }) {
+  const [testingConnection, setTestingConnection] = useState(false)
   const [enabled, setEnabled] = useState(state !== 'disabled')
   const [models, setModels] = useState([true, true, true, false, true, true])
   const [runs, setRuns] = useState<Record<number, 'running' | 'failed' | 'cancelled'>>(state === 'running' ? { 1: 'running' } : state === 'failed' ? { 2: 'failed' } : {})
@@ -188,7 +189,12 @@ function ProviderRowsDemo({ state = 'default' }: { state?: 'default' | 'running'
     ...(state === 'long' ? ['sample-code', 'sample-vision'] : [])]
   return <Frame><ModelProviderCard compact name={state === 'long' ? '示例供应商的较长自定义名称用于核对窄窗口' : '示例供应商'}
     logo={<ModelProviderLogo providerId="deepseek" />}
-    actions={<><button type="button" className="st-provider-text-action" onClick={() => setNotice('已触发示例编辑')}>编辑</button>
+    actions={<><div className="st-provider-manage-actions">
+      <button type="button" className="st-provider-text-action" onClick={() => setNotice('已触发示例编辑')}>编辑</button>
+      <button type="button" className="st-provider-text-action st-provider-delete" aria-label="删除示例供应商" title="删除供应商"
+        onClick={() => setNotice('已触发示例删除')}><Icon name="trash-bin-trash" size={16} tone="neutral" /></button>
+      </div><ModelTestButton kind="connection" iconOnly running={testingConnection} onTest={() => setTestingConnection(true)}
+        onStop={() => setTestingConnection(false)} />
       <Toggle checked={enabled} label="启用示例供应商" onChange={setEnabled} /></>}
     footer={<><button type="button" className="st-provider-text-action" onClick={() => setNotice('已触发示例添加模型')}><Icon name="add" size={14} />添加模型</button>
       {!enabled && <span className="detail">供应商已停用</span>}</>}>

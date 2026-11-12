@@ -111,6 +111,10 @@ export const saveModelProviderSchema = z.object({ requestId: z.uuid(), providerI
     { path: ['removedModels'], message: 'Duplicate or conflicting model removal' });
 export type ModelProvider = z.infer<typeof modelProviderSchema>;
 export type SaveModelProvider = z.infer<typeof saveModelProviderSchema>;
+export const deleteModelProviderSchema = z.object({ requestId: z.uuid(), expectedVersion: z.number().int().nonnegative() }).strict();
+export const deleteModelProviderResultSchema = z.object({ providerId: z.uuid() }).strict();
+export type DeleteModelProvider = z.infer<typeof deleteModelProviderSchema>;
+export type DeleteModelProviderResult = z.infer<typeof deleteModelProviderResultSchema>;
 export const modelProfilesInputSchema = z.object({ baseUrl: modelBaseUrlSchema, protocol: modelProtocolSchema,
   modelIds: z.array(z.string().trim().min(1).max(200)).min(1).max(64), refresh: z.boolean().optional() }).strict();
 export const modelProfileSchema = z.object({ modelId: z.string(), dialect: z.enum(['standard', 'deepseek', 'command-code']),

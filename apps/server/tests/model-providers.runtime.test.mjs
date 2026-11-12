@@ -252,6 +252,111 @@ test('concurrent provider additions and disable events allocate distinct orders 
   });
 });
 
+test('provider deletion is atomic, versioned and durable for populated, empty and legacy suppliers', { timeout: 180000 }, async () => {
+  await product(async ({ api, save, send, restart, root, received, baseUrl }) => {
+    const original = provider(baseUrl);
+    let saved = await save(original);
+    const first = saved.models[0], former = saved.models[1];
+    const completed = await send(check(first));
+    // Former members can retain a credential in their head; deletion clears those too.
+    saved = await save(revision(saved, { models: [revision(saved).models[0]], removedModels: [removal(former)] }));
+    const current = saved.models[0];
+    const grant = await api('grants', { requestId: randomUUID(), grantId: randomUUID(), connectionId: current.connectionId, owner: 'self' });
+    assert.equal(grant.status, 200);
+    const source = { kind: 'personal', connectionId: current.connectionId, grantId: grant.value.grantId };
+    const selection = await api('selection', { requestId: randomUUID(), expectedVersion: (await api('selection')).value.version, source });
+    assert.equal(selection.status, 200);
+    const pending = check(current);
+    assert.equal((await api('checks', pending)).status, 200);
+    const path = `providers/${saved.providerId}/delete`;
+    const input = { requestId: randomUUID(), expectedVersion: saved.version };
+    for (const [body, status] of [
+      [{ ...input, expectedVersion: saved.version - 1 }, 409],
+      [{ ...input, expectedVersion: -1 }, 400], [{ requestId: input.requestId }, 400],
+      [{ ...input, unexpected: true }, 400],
+    ]) {
+      assert.equal((await api(path, body)).status, status);
+      assert.deepEqual((await api('providers')).value.find(p => p.providerId === saved.providerId), saved);
+    }
+    assert.equal((await api(path)).status, 404, 'GET cannot delete');
+    assert.equal((await api(path, { ...input, requestId: original.requestId })).status, 409, 'save and deletion cannot share a requestId');
+    assert.equal((await api(`providers/${randomUUID()}/delete`, { requestId: randomUUID(), expectedVersion: 0 })).status, 404);
+    assert.equal((await api('providers/invalid/delete', input)).status, 400);
+    // Duplicate concurrent requests must share one transaction receipt.
+    const deleted = await Promise.all([api(path, input), api(path, input)]);
+    for (const result of deleted) assert.deepEqual(result, { status: 200, value: { providerId: saved.providerId } });
+    assert.equal((await api(path, { ...input, expectedVersion: 0 })).status, 409, 'requestId cannot be reused with different content');
+    assert.equal((await api(path, { requestId: randomUUID(), expectedVersion: saved.version + 1 })).status, 409);
+    assert.equal((await api('providers', revision(saved))).status, 409);
+    assert.equal((await api('providers', { ...original, requestId: randomUUID() })).status, 409);
+    const guessed = revision(saved, { expectedVersion: saved.version + 1, models: [child('cannot-resurrect')] });
+    assert.equal((await api('providers', guessed)).status, 409, 'even the tombstone version cannot restore a deleted supplier');
+    assert.equal((await api('providers', original)).status, 200, 'old save receipts remain readable without restoring state');
+    assert.equal((await api('providers')).value.some(p => p.providerId === saved.providerId), false);
+    assert.equal((await api('connections')).value.some(c => [first.connectionId, former.connectionId].includes(c.connectionId)), false);
+    const after = await api('selection');
+    assert.equal(after.value.selected.connection.enabled, false);
+    assert.equal(after.value.options.some(c => c.connection.connectionId === current.connectionId && c.connection.enabled), false);
+    for (const selectedSource of [source, { kind: 'personal', connectionId: current.connectionId, owner: 'self' }])
+      assert.equal((await api('selection', { requestId: randomUUID(), expectedVersion: after.value.version, source: selectedSource })).status, 503);
+    const before = received.length;
+    assert.equal((await api(`checks/${pending.attemptId}/dispatch`, {})).status, 403);
+    assert.equal(received.length, before);
+    await modelStorage(root, async client => {
+      const { rows } = await client.query(`SELECT body FROM model_connections WHERE body->'configuration'->>'providerId'=$1`, [saved.providerId]);
+      assert.equal(rows.length, 2);
+      for (const { body } of rows) {
+        assert.equal(body.retired, true); assert.equal(body.credentialRef, null);
+        assert.equal(body.configuration.enabled, false); assert.equal(body.configuration.providerEnabled, false);
+        assert.equal((await api(`connections/${body.configuration.connectionId}/credential`, { version: body.version })).value.value, '');
+      }
+      const { rows: [group] } = await client.query('SELECT body FROM model_providers WHERE id=$1', [saved.providerId]);
+      assert.deepEqual(group.body, { version: saved.version + 1, connectionIds: [], deleted: true });
+      const { rows: [count] } = await client.query(`SELECT count(*)::int AS versions FROM model_versions
+        WHERE id=ANY($1::uuid[])`, [[first.connectionId, former.connectionId]]);
+      assert.equal(count.versions, 6, 'retries and rejected saves must not append history');
+    });
+    let empty = await save(provider(baseUrl));
+    empty = await save(revision(empty, { models: [], removedModels: empty.models.map(removal) }));
+    const anchor = empty.credentialConnection;
+    assert.equal((await api(`providers/${empty.providerId}/delete`, { requestId: randomUUID(), expectedVersion: empty.version })).status, 200);
+    assert.equal((await api(`connections/${anchor.connectionId}/credential`, { version: anchor.version + 1 })).value.value, '');
+    assert.equal((await api('providers', revision(empty, { models: [child('cannot-restore-anchor')] }))).status, 409);
+
+    const legacyInput = { requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '旧供应商',
+      protocol: 'chat-completions', baseUrl, path: '/chat/completions', modelId: 'legacy-delete',
+      dialect: 'standard', parameterMode: 'plain', enabled: true, credential: { action: 'replace', value: key } };
+    assert.equal((await api('connections', legacyInput)).status, 200);
+    const legacy = (await api('providers')).value.find(p => p.providerId === legacyInput.connectionId);
+    assert.equal(legacy.version, 0);
+    assert.equal((await api(`providers/${legacy.providerId}/delete`, { requestId: randomUUID(), expectedVersion: 0 })).status, 200);
+    const staleLegacy = revision(legacy);
+    staleLegacy.models[0].enabled = true;
+    assert.equal((await api('providers', staleLegacy)).status, 409);
+    assert.equal((await api('connections', { ...legacyInput, requestId: randomUUID(), expectedVersion: 2 })).status, 409);
+    await restart(); // Validates tombstones, encrypted historical bindings and retired heads.
+    assert.deepEqual((await api('providers')).value, []);
+    assert.deepEqual((await api(`checks/${completed.attemptId}`)).value, completed, 'historical attempt is unchanged');
+    assert.deepEqual(await api(path, input), deleted[0]);
+  });
+});
+
+test('concurrent supplier save and delete use the same scope lock and CAS', { timeout: 120000 }, async () => {
+  await product(async ({ api, save, restart, baseUrl }) => {
+    const saved = await save(provider(baseUrl));
+    const path = `providers/${saved.providerId}/delete`;
+    const deletion = { requestId: randomUUID(), expectedVersion: saved.version };
+    const [edit, removed] = await Promise.all([api('providers', revision(saved, { name: '并发编辑' })), api(path, deletion)]);
+    assert.deepEqual([edit.status, removed.status].sort(), [200, 409]);
+    if (edit.status === 200) {
+      assert.deepEqual((await api('providers')).value, [edit.value]);
+      assert.equal((await api(path, { ...deletion, expectedVersion: edit.value.version })).status, 200, 'failed requests remain retryable');
+    } else assert.equal((await api('providers', revision(saved))).status, 409);
+    await restart();
+    assert.deepEqual((await api('providers')).value, []);
+  });
+});
+
 test('provider lifecycle uses real native storage and SDK dispatch', { timeout: 240000 }, async t => {
   await product(async ({ api, save, send, restart, received, baseUrl }) => {
     await t.test('mixed native routes share one provider and retain their primary address, identities and credentials after restart', async () => {
@@ -665,6 +770,26 @@ test('lost PostgreSQL provider COMMIT ACK replays the original receipt without a
       assert.deepEqual(await save(input), replay);
       assert.deepEqual(await save(remove), empty);
       assert.deepEqual((await api('providers')).value.find(item => item.providerId === input.providerId), toggled);
+      const deletePath = `providers/${toggled.providerId}/delete`;
+      const deletion = { requestId: randomUUID(), expectedVersion: toggled.version };
+      relay.arm('INSERT INTO model_providers');
+      const deleteUnknown = await api(deletePath, deletion);
+      assert.equal(relay.cuts(), 3);
+      assert.equal(deleteUnknown.status, 409, JSON.stringify(deleteUnknown.value));
+      assert.equal(deleteUnknown.value.error, 'commit-unknown');
+      assert.equal((await api('providers')).value.some(item => item.providerId === toggled.providerId), false);
+      const deleted = { status: 200, value: { providerId: toggled.providerId } };
+      assert.deepEqual(await api(deletePath, deletion), deleted);
+      const deletionCounts = async () => modelStorage(root, async client => (await client.query(`SELECT
+        (SELECT count(*)::int FROM model_versions) AS versions,
+        (SELECT count(*)::int FROM model_credentials) AS credentials,
+        (SELECT count(*)::int FROM _storage_requests WHERE request_id=$1) AS receipts`, [deletion.requestId])).rows[0]);
+      const counts = await deletionCounts();
+      assert.deepEqual(counts, { versions: 9, credentials: 2, receipts: 1 });
+      await restart();
+      assert.deepEqual(await api(deletePath, deletion), deleted);
+      assert.deepEqual(await deletionCounts(), counts, 'lost-ACK replay must not retire twice');
+      assert.deepEqual((await api('providers')).value, []);
     });
   } finally { await relay?.close(); }
 });

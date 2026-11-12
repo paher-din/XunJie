@@ -5,12 +5,13 @@ import { describeConnectionTest, type ModelTestPresentation } from './modelTestP
 import type { ReadModelDirectory } from './useModelDirectory'
 
 export type TestSupplierConnection = (input: ModelConnectionTestInput, signal: AbortSignal) => Promise<ModelConnectionTestResult>
-export function useSupplierChecks(input: ModelConnectionTestInput, test: TestSupplierConnection | undefined, read: ReadModelDirectory | undefined) {
+export function useSupplierChecks(input: ModelConnectionTestInput, test: TestSupplierConnection | undefined, read: ReadModelDirectory | undefined,
+  { notificationLabel, active = true }: { notificationLabel?: string; active?: boolean } = {}) {
   const credentialIdentity = useRef({ value: '', revision: 0 })
   const secret = input.credential?.action === 'replace' ? input.credential.value : input.credential?.action ?? ''
   if (secret !== credentialIdentity.current.value) credentialIdentity.current = { value: secret, revision: credentialIdentity.current.revision + 1 }
-  const key = JSON.stringify([input.presetId, input.variantId, input.baseUrl, input.protocol, input.savedCredential, credentialIdentity.current.revision])
-  const context = useRef({ key, input, test, read }); context.current = { key, input, test, read }
+  const key = JSON.stringify([input.presetId, input.variantId, input.baseUrl, input.protocol, input.savedCredential, credentialIdentity.current.revision, active])
+  const context = useRef({ key, input, test, read, notificationLabel }); context.current = { key, input, test, read, notificationLabel }
   const connectionController = useRef<AbortController | null>(null), fetchController = useRef<AbortController | null>(null)
   const live = useRef(true)
   const [connection, setConnection] = useState<{ key: string; value: ModelTestPresentation }>()
@@ -24,10 +25,24 @@ export function useSupplierChecks(input: ModelConnectionTestInput, test: TestSup
     ?? (value.credential?.action === 'replace' && value.credential.value.trim() || value.credential?.action === 'keep' && value.savedCredential ? undefined : '请填写 API Key。')
   const runConnection = async () => {
     const current = context.current
-    if (!current.test || connectionController.current && !connectionController.current.signal.aborted) return
+    if (!active || !current.test || connectionController.current && !connectionController.current.signal.aborted) return
+    const notify = (value: ModelTestPresentation) => {
+      if (current.notificationLabel) {
+        const title = `${current.notificationLabel}：${value.title}`
+        const description = [value.message, value.suggestion].filter(Boolean).join(' ')
+        const options = { description: description || undefined, duration: value.status === 'failed' ? 8000 : 5000 }
+        if (value.status === 'passed') toast.success(title, options)
+        else if (value.status === 'failed') toast.error(title, options)
+        else if (value.status === 'cancelled') toast.info(title)
+        else toast.warning(title, options)
+      } else if (value.status === 'passed') toast.success(value.title)
+      else if (value.status === 'failed') toast.error(value.title + (value.message ? '：' + value.message : ''))
+      else if (value.status !== 'cancelled') toast.warning(value.title)
+    }
     const invalid = issue(current.input)
     if (invalid) {
-      setConnection({ key: current.key, value: { status: 'failed', title: '连接配置需修改', message: invalid } }); return
+      const value = { status: 'failed' as const, title: '连接配置需修改', message: invalid }
+      setConnection({ key: current.key, value }); if (current.notificationLabel) notify(value); return
     }
     const controller = new AbortController(); connectionController.current = controller
     const valid = () => live.current && context.current.key === current.key && connectionController.current === controller
@@ -36,18 +51,19 @@ export function useSupplierChecks(input: ModelConnectionTestInput, test: TestSup
       const result = await current.test(current.input, controller.signal)
       if (!valid()) return
       if (controller.signal.aborted) {
-        setConnection({ key: current.key, value: { status: 'cancelled', title: '连接测试已停止' } }); return
+        const value = { status: 'cancelled' as const, title: '连接测试已停止' }
+        setConnection({ key: current.key, value }); if (current.notificationLabel) notify(value); return
       }
       const value = describeConnectionTest(result); setConnection({ key: current.key, value })
-      if (value.status === 'passed') toast.success(value.title)
-      else if (value.status === 'failed') toast.error(value.title + (value.message ? '：' + value.message : ''))
-      else if (value.status !== 'cancelled') toast.warning(value.title)
+      notify(value)
     } catch {
       if (valid()) {
         const cancelled = controller.signal.aborted
-        setConnection({ key: current.key, value: cancelled ? { status: 'cancelled', title: '连接测试已停止' }
-          : { status: 'unverified', title: '连接测试未完成', message: '未能取得连接测试结果。', suggestion: '请检查本机服务和网络后重试。' } })
-        if (!cancelled) toast.warning('连接测试未完成，请检查本机服务和网络。')
+        const value: ModelTestPresentation = cancelled ? { status: 'cancelled', title: '连接测试已停止' }
+          : { status: 'unverified', title: '连接测试未完成', message: '未能取得连接测试结果。', suggestion: '请检查本机服务和网络后重试。' }
+        setConnection({ key: current.key, value })
+        if (current.notificationLabel) notify(value)
+        else if (!cancelled) toast.warning('连接测试未完成，请检查本机服务和网络。')
       }
     } finally { if (connectionController.current === controller) connectionController.current = null }
   }

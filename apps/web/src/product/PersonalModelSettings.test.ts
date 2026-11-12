@@ -27,6 +27,8 @@ const originalKey = 'synthetic-saved-key'
 let serverKey: string, credentialFailure: boolean
 let receipts: Map<string, { input: string; result: ModelProvider }>
 let extraModels: ModelConnection[]
+let deleted: boolean, loseDeleteReceipt: boolean, deleteRequests: { requestId: string; expectedVersion: number }[]
+let connectionStatus: 'passed' | 'failed', holdConnection: Promise<void> | undefined
 const providerOf = (model: ModelConnection): ModelProvider => ({ providerId: model.connectionId, version: model.version,
   name: model.name, baseUrl: model.baseUrl, protocol: model.protocol, enabled: model.providerEnabled ?? true,
   hasCredential: model.hasCredential, models: [model, ...structuredClone(extraModels)] })
@@ -154,6 +156,7 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   server = structuredClone(initial); saves = []; checks = []; receipts = new Map(); rejectCheck = true
   extraModels = []
+  deleted = false; loseDeleteReceipt = false; deleteRequests = []; connectionStatus = 'passed'; holdConnection = undefined
   rejectSave = ''; holdRead = undefined; holdSave = undefined; readFailure = false; serverKey = originalKey; credentialFailure = false
   vi.mocked(selection.reload).mockReset().mockResolvedValue(undefined)
   vi.stubGlobal('fetch', vi.fn(async (input: string, options: RequestInit = {}) => {
@@ -161,11 +164,23 @@ beforeEach(async () => {
     if (input === '/api/learning/agent-settings' && method === 'GET') return response({ version: 0, busyInputMode: 'steering' })
     if (input === '/api/learning/skills' && method === 'GET') return response({ skills: [], selections: [] })
     if (method === 'GET') {
-      const value = path === 'providers' ? [providerOf(structuredClone(server))] : structuredClone(checks)
+      const value = path === 'providers' ? deleted ? [] : [providerOf(structuredClone(server))] : structuredClone(checks)
       await holdRead
       return readFailure ? response({ error: 'unavailable' }, 503) : response(value)
     }
     const body = JSON.parse(options.body as string)
+    if (path === 'providers/test-connection') {
+      await (options.signal ? Promise.race([holdConnection, new Promise((_, reject) => {
+        options.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+      })]) : holdConnection)
+      return response({ status: connectionStatus, baseUrl: server.baseUrl, endpoint: server.baseUrl + '/models', protocol: server.protocol, elapsedMs: 50,
+        ...(connectionStatus === 'failed' ? { diagnostic: { code: 'authentication', message: '当前密钥没有权限。', suggestion: '请检查账号权限。' } } : {}) })
+    }
+    if (path === `providers/${server.connectionId}/delete`) {
+      deleteRequests.push(body); deleted = true
+      if (loseDeleteReceipt) { loseDeleteReceipt = false; throw new TypeError('synthetic delete ACK loss') }
+      return response({ providerId: server.connectionId })
+    }
     if (path === 'directory') return response({ models: [], catalogue: { status: 'ready' } })
     if (path.endsWith('/credential')) return credentialFailure ? response({ error: 'unavailable' }, 503)
       : body.version !== server.version ? response({ error: 'conflict' }, 409)
@@ -209,6 +224,58 @@ afterEach(async () => {
   document.body.innerHTML = ''; vi.useRealTimers()
 })
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
+
+it.each(['passed', 'failed'] as const)('tests the saved supplier with a credential reference and shows %s only in Sonner', async status => {
+  connectionStatus = status
+  const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
+  await click('连接测试', card)
+  const submitted = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith('/providers/test-connection'))!
+  expect(JSON.parse(submitted[1]!.body as string)).toMatchObject({ baseUrl: server.baseUrl, protocol: server.protocol,
+    credential: { action: 'keep' }, savedCredential: { connectionId: server.connectionId, version: server.version } })
+  expect(JSON.stringify(submitted)).not.toContain(originalKey)
+  expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).endsWith('/credential') || String(url).endsWith('/checks') && init?.method === 'POST')).toBe(false)
+  expect(card.querySelector('.st-model-test-feedback')).toBeNull()
+  expect(document.querySelector(`[data-sonner-toast][data-type="${status === 'passed' ? 'success' : 'error'}"]`)?.textContent)
+    .toContain(status === 'passed' ? '原配置：连接测试通过' : '原配置：连接测试未通过')
+  if (status === 'failed') expect(alerts()).toContain('请检查账号权限。')
+})
+
+it('stops a supplier test through the same button and keeps its layout and focus', async () => {
+  holdConnection = new Promise(() => {})
+  const trigger = button('连接测试')
+  await act(async () => { trigger.focus(); await settle() })
+  await click('连接测试')
+  expect(button('停止连接测试')).toBe(trigger)
+  await click('停止连接测试')
+  expect(button('连接测试')).toBe(trigger)
+  expect(document.activeElement).toBe(trigger)
+  expect(document.querySelector('[data-sonner-toast][data-type="info"]')?.textContent).toContain('连接测试已停止')
+})
+
+it('cancels deletion without a request, then removes the supplier and refreshes model choices', async () => {
+  const trigger = button('删除供应商 原配置'); trigger.focus()
+  await click('删除供应商 原配置'); await click('取消')
+  expect(deleteRequests).toHaveLength(0)
+  expect(document.activeElement).toBe(trigger)
+  await click('删除供应商 原配置'); await click('删除', document.querySelector('[role="dialog"]')!)
+  expect(deleteRequests).toHaveLength(1)
+  expect(deleteRequests[0]).toMatchObject({ expectedVersion: server.version })
+  expect(document.querySelector('[aria-label="个人连接配置"] .st-provider')).toBeNull()
+  expect(selection.reload).toHaveBeenCalledOnce()
+  expect(document.activeElement).toBe(button('添加供应商'))
+})
+
+it('reuses the deletion identity after a lost receipt, even when polling has already removed the card', async () => {
+  loseDeleteReceipt = true
+  await click('删除供应商 原配置'); await click('删除', document.querySelector('[role="dialog"]')!)
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+  await poll()
+  expect(document.querySelector('[aria-label="个人连接配置"] .st-provider')).toBeNull()
+  await click('删除', document.querySelector('[role="dialog"]')!)
+  expect(deleteRequests).toHaveLength(2)
+  expect(deleteRequests[1]).toEqual(deleteRequests[0])
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+})
 
 async function mountModelPane() {
   await act(async () => { root.render(null); await settle() })
