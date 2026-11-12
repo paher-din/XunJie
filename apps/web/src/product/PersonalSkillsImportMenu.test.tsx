@@ -81,3 +81,24 @@ it('keeps the popup and address available when GitHub import fails', async () =>
     expect(host.querySelector<HTMLInputElement>('.skill-github input')!.value).toBe('https://github.com/example/missing')
   } finally { await act(async () => { root.unmount(); await settle() }); host.remove() }
 })
+
+it('names the GitHub read before the import request starts', async () => {
+  let finish!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn((_route: string, options: RequestInit) => options.method === 'POST'
+    ? new Promise<Response>(resolve => { finish = resolve })
+    : Promise.resolve(Response.json({ skills: [], selections: [] }))))
+  const { host, root } = await render()
+  try {
+    await click(host, '导入第一个技能'); await click(host, '从 GitHub 导入')
+    const input = host.querySelector<HTMLInputElement>('.skill-github input')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'https://github.com/example/skills')
+      input.dispatchEvent(new Event('input', { bubbles: true })); await settle()
+    })
+    await act(async () => { input.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
+    expect(host.textContent).toContain('正在读取 GitHub 技能')
+    expect(host.textContent).toContain('仓库读取完成前不能开始另一项技能操作。')
+    await act(async () => { finish(Response.json({ error: 'github-timeout' }, { status: 504 })); await settle() })
+    expect(host.textContent).not.toContain('正在读取 GitHub 技能')
+  } finally { await act(async () => { root.unmount(); await settle() }); host.remove() }
+})

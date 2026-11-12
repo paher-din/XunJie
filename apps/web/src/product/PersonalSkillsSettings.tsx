@@ -29,6 +29,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   const catalog = useSkillCatalog(identity, spaceKey, namespace, undefined, active)
   const [search, setSearch] = useState('')
   const [githubOpen, setGithubOpen] = useState(false), [githubUrl, setGithubUrl] = useState('')
+  const [githubReading, setGithubReading] = useState(false)
   const [importMenuOpen, setImportMenuOpen] = useState(false)
   const [choices, setChoices] = useState<Record<string, boolean>>({})
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -170,7 +171,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
         request: input => catalog.request('skills/import', input), isActive: () => live.current,
         onProgress: value => {
           if (!live.current) return
-          if (!value.running) setLocalImportProgress(value)
+          setLocalImportProgress(value)
           if (value.running && value.total > 1 && viewActive.current) toast.loading(
             value.pauseReason === 'stopped' ? '正在停止导入…' : `正在导入技能 ${value.current?.index ?? 1}/${value.current?.total ?? value.total}`,
             { id: feedbackId, duration: Infinity, closeButton: false, icon: undefined, description: undefined,
@@ -227,10 +228,12 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   }
   const importGithub = () => {
     const url = githubUrl.trim()
+    if (!url || disabled || githubReading) return
+    setGithubReading(true)
     void act(async () => {
       const input = await readGithubPackage(url)
       if (live.current) await deliver({ route: 'skills/import', input, label: '技能已导入', importKind: 'github', inputUrl: url })
-    })
+    }).finally(() => { if (live.current) setGithubReading(false) })
   }
   const disabled = readOnly || busy || !!pending || !!localImportProgress?.uncertain || catalog.loading || !catalog.data
   const choose = (skill: SkillCatalogEntry, checked: boolean) => {
@@ -260,6 +263,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
     setGithubOpen(false); directoryInput.current?.click()
   }
   const pendingUpdate = pending?.update && (pending.input as { skillId: string }).skillId === opened?.skillId ? pending : null
+  const pendingTitle = pending?.route === 'skills/import' ? '正在导入技能' : ''
   const updateMessage = updateFailure?.skillId === opened?.skillId ? updateFailure?.message : ''
   const refreshingDocument = documentRead.loading && documentRead.content !== null
   const updateBusy = !!opened && (busy && updatingId === opened.skillId || refreshingDocument)
@@ -299,6 +303,12 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
         </button>} />}
       {catalog.data && catalog.loading && !busy && !catalog.error && !needsReload && <p className="settings-inline-status" role="status">
         正在刷新技能列表…</p>}
+      {githubReading && !pending && <SettingsStatus tone="loading" title="正在读取 GitHub 技能"
+        description="仓库读取完成前不能开始另一项技能操作。" />}
+      {localImportProgress?.running && localImportProgress.total === 1 && <SettingsStatus tone="loading" title="正在导入技能"
+        description="读取并保存完成前请保留此页面。" />}
+      {pending && pendingTitle && !opened && <SettingsStatus tone="loading" title={pendingTitle}
+        description="完成前会保留当前列表；结果未确认时可重试。" />}
       {catalog.data && catalog.data.skills.length > 0 && <div className="skill-toolbar">
         <div className="skill-search-field"><Icon name="minimalistic-magnifier" size={16} />
           <input ref={searchInput} className="st-input skill-search" type="search" aria-label="搜索技能" placeholder="搜索技能" value={search}

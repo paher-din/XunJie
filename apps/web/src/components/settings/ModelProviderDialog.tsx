@@ -507,7 +507,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       <div className="st-model-test" aria-label={`${model.modelId || '当前模型'}的模型测试`}>
         <ModelTestButton kind="model" running={run?.status === 'running'} disabled={!credentialReady}
           onTest={() => void test(model)} onStop={() => tests.stop(model.connectionId)} />
-        {run && ['failed', 'unverified'].includes(run.status) && <ModelTestFeedback {...run} onRetry={() => void test(model)} />}
+        {run && run.status !== 'running' && <ModelTestFeedback {...run} onRetry={() => void test(model)} />}
       </div></>
   }
   const addManualModel = () => {
@@ -567,7 +567,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         <div className="st-connection-test">
           <ModelTestButton kind="connection" running={supplier.connection?.status === 'running'} disabled={!credentialReady || !onConnectionTest}
             onTest={() => void supplier.runConnection()} onStop={supplier.stopConnection} />
-          {supplier.connection && ['failed', 'unverified'].includes(supplier.connection.status) && <ModelTestFeedback {...supplier.connection}
+          {supplier.connection && supplier.connection.status !== 'running' && <ModelTestFeedback {...supplier.connection}
             onRetry={() => void supplier.runConnection()} />}
         </div>
         <div className="st-route-list-head"><span className="st-field-label">模型</span><button type="button" className="st-model-directory-refresh" aria-busy={directory.visibleBusy}

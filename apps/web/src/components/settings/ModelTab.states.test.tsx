@@ -74,13 +74,47 @@ it('marks the whole surface read-only and disables every mutation entry', async 
 it('exposes provider switch progress to assistive technology and explains an unknown receipt', async () => {
   await render({ providers: [provider], toggleState: { [provider.providerId]: 'saving' } })
   expect(host.querySelector('.st-provider')?.getAttribute('aria-busy')).toBe('true')
-  expect(host.querySelector('.st-provider-save-state')).toBeNull()
+  expect(host.querySelector('.st-provider-save-state')?.textContent).toBe('正在保存开关…')
   expect(host.querySelector<HTMLButtonElement>('[aria-label="启用供应商 示例供应商"]')?.disabled).toBe(true)
 
   await render({ providers: [provider], toggleState: { [provider.providerId]: 'unknown' } })
   expect(host.querySelector('[role="alert"]')?.textContent).toBe('开关结果未确认')
   expect([...host.querySelectorAll<HTMLButtonElement>('button')]
     .find(item => item.textContent === '核对开关提交')?.disabled).toBe(false)
+})
+
+it('explains why a saved provider or model cannot be tested', async () => {
+  const noCredential = { ...connection, hasCredential: false }
+  const noKeyProvider = { ...provider, hasCredential: false, models: [noCredential] }
+  await render({ providers: [noKeyProvider], onConnectionTest: vi.fn() })
+  expect(host.textContent).toContain('尚未保存 API Key；连接测试和模型测试暂不可用。')
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="连接测试"]')?.disabled).toBe(true)
+
+  await render({ providers: [{ ...provider, enabled: false }], onConnectionTest: vi.fn() })
+  expect(host.textContent).toContain('供应商已停用；启用后才能测试模型并用于新对话。')
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
+
+  await render({ providers: [{ ...noKeyProvider, models: [] }], onConnectionTest: vi.fn() })
+  expect(host.textContent).toContain('还没有模型；添加模型后才能用于对话。')
+})
+
+it('explains a school policy that does not allow model checks', async () => {
+  await render({ schoolModels: [{ kind: 'school', connection,
+    policy: { checksAllowed: false, maxChecksPerHour: 0, maxOutputTokens: 64, timeoutMs: 10000 } }], onSchoolCheck: vi.fn() })
+  expect(host.textContent).toContain('学校未开放这个模型的测试。')
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
+})
+
+it('keeps a passed connection result in the provider card', async () => {
+  const onConnectionTest = vi.fn(async () => ({ status: 'passed' as const, baseUrl: provider.baseUrl,
+    protocol: provider.protocol, endpoint: provider.baseUrl + '/chat/completions', elapsedMs: 12 }))
+  await render({ providers: [provider], onConnectionTest })
+  await act(async () => {
+    host.querySelector<HTMLButtonElement>('[aria-label="连接测试"]')!.click()
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+  expect(host.textContent).toContain('连接测试通过')
 })
 
 it('keeps a stopped test visible with an explicit restart action', async () => {

@@ -24,7 +24,7 @@ export function SkillListItem({ name, description, checked, disabled = false, re
     <span className="st-skill-icon" aria-hidden="true"><Icon name="skill" size={22} /></span>
     <button type="button" className="st-skill-copy" onClick={event => onOpen(event.currentTarget)} aria-describedby={descriptionId}>
       <span className="st-skill-name">{name}</span>
-      <span className="st-skill-description" id={descriptionId}>{description}</span>
+      <span className="st-skill-description" id={descriptionId}>{busy ? '正在保存技能状态…' : description}</span>
     </button>
     <div className="st-skill-actions">
       <Menu.Root onOpenChange={open => { if (open) transferringFocus.current = false }}>

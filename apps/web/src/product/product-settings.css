@@ -157,6 +157,10 @@
   .product-settings-facts > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .product-settings .st-provider-head { flex-wrap: wrap; }
 }
+@media (max-width: 560px) {
+  .product-settings .st-nav nav { gap: 2px; }
+  .product-settings .st-nav nav > .st-nav-item { padding-inline: 8px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .product-settings-heading, .product-profile,
   .product-settings .st-body-in > .product-settings-pane:not([hidden]):not(.product-settings-model),

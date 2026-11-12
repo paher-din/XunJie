@@ -27,6 +27,17 @@
 .xj-confirm-title { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.5; }
 .xj-confirm-description { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .xj-confirm-description strong { color: var(--ink-soft); font-weight: 500; }
+.xj-confirm-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--status-overdue-fg) 24%, var(--line));
+  border-radius: 8px;
+  background: var(--status-overdue-bg);
+  color: var(--status-overdue-fg);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
 .xj-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
 .xj-confirm-actions .outline { min-height: 32px; padding: 6px 16px; font-size: 13px; }
 .xj-confirm-actions button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
