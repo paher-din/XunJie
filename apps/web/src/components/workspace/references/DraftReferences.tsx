@@ -42,7 +42,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     range: { ...reference.range } }))
   const add = useCallback((selection: ReferenceSelection) => {
     if (draft.isReadOnly()) return false
-    if (!draft.snapshot().ready) { setNotice('正在读取原问题草稿，请稍后重试。'); return false }
+    if (!draft.snapshot().ready) { setNotice('问题草稿尚未就绪，请稍后重试。'); return false }
     const snapshot = snapshotReference(selection.snapshot)
     if (!snapshot || snapshot.workspaceKey !== workspaceKey || !sources.current.has(snapshot.sourceId)) return false
     if (!snapshot.source) { setNotice('来源未登记，不能加入引用。'); return false }
@@ -114,7 +114,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
   }
   const submit = async () => {
     if (!receiver || !actionState.ready) { setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。'); return }
-    if (!deliveryReady) { setNotice('正在核对本次发送方式，原问题与引用仍保留。'); return }
+    if (!deliveryReady) { setNotice('本次发送方式尚未就绪，原问题与引用仍保留。'); return }
     if (creating.current || !draft.snapshot().question.trim()) return
     creating.current = true; setBusy(true)
     try {
@@ -141,7 +141,7 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children, delive
     const chosen = side === 'local' ? conflict.local : conflict.other
     try {
       await draft.resolve(chosen.question, chosen.references.map(reference => ({ ...reference, range: { ...reference.range } })), chosen.bases, chosen.skills)
-      setNotice(side === 'local' ? '已采用本页草稿，正在自动保存。' : '已采用另一版本，正在自动保存。')
+      setNotice(side === 'local' ? '已采用本页草稿。' : '已采用另一版本。')
     } catch { setNotice('草稿分歧尚未完成选择，请稍后重试。') }
   }
   const conflict = state.conflict ? {

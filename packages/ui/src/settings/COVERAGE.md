@@ -29,7 +29,7 @@
 | 技能批量导入结果 | `SkillImportFeedback` | Astryx Banner 适配；未完成项、继续／重试和重选操作；进度与请求生命周期由调用方提供 |
 | 预设模型搜索与手填 ID | `ModelIdInput` | Base UI Combobox；列表、加载状态和刷新操作由调用方接入，保留自由输入 |
 | 预设模型选择与逐项展开配置 | `ModelChoiceCard` | 虚线框、选择态和可展开的参数区；选择、配置值与保存由调用方提供 |
-| 模型测试结果与诊断 | `ModelTestFeedback` | Astryx Banner 适配；原因、建议、停止／重试和可复制详情，测试及通知由调用方负责 |
+| 模型测试结果与反馈 | `ModelTestFeedback` | Astryx Banner 适配；简短结果、原因、建议和停止／重试，不展示诊断详情；测试及通知由调用方负责 |
 | 连接／模型测试按钮 | `ModelTestButton` | 复用 Button；文字与单图标两种展示、稳定尺寸、悬停提示、浅深主题及同一按钮停止；测试生命周期由调用方接入 |
 | 拉取模型后的列表、勾选与展开 | `ModelChoiceCard` | 与预设型号复用卡片；搜索、拉取、容量限制及失败／空态由业务接入 |
 | `ModelSettingsFeedback` 已确认保存 / 错误状态槽 | `ModelSettingsFeedback` | 已迁入，使用公开反馈数据类型 |

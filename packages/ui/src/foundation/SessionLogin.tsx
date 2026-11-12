@@ -45,8 +45,7 @@ export function SessionLogin({ entryRole, loginName, password, busy, logoutFaile
         <input className="st-input" id="session-password" name="password" type="password" autoComplete="current-password"
           required maxLength={1024} value={password} disabled={busy || logoutFailed}
           onChange={event => onPasswordChange(event.target.value)} />
-        {busy && <div role="status" className="session-notice">正在核对登录状态…</div>}
-        <button className="primary" type="submit" disabled={busy || logoutFailed}>{busy ? '请稍候…' : submitLabel}</button>
+        <button className="primary" type="submit" disabled={busy || logoutFailed} aria-busy={busy || undefined}>{submitLabel}</button>
       </form>
       {logoutFailed
         ? <button type="button" onClick={onRetryLogout}>重试退出</button>

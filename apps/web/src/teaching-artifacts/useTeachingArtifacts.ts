@@ -9,11 +9,12 @@ import { useActivitySession } from '../product/ActivitySession'
 import { learningRequest, workspaceScope } from '../product/learningTransport'
 import { checkRevision, hashBytes, artifactViewUrl } from './frame'
 import { agentControlStore, protectAgentOperation, confirmAgentOperation, type PendingAgentOperation } from '../reliable-workspace/agent-controls'
+import { useViewPolling } from '../product/useViewPolling'
 
 export interface ArtifactEntry { artifact: TeachingArtifact; revision: TeachingArtifactRevision | null; issue: string }
 export interface ArtifactViewGuard { composing: boolean; focused: boolean }
 export function useTeachingArtifacts(activity: LearningActivity, spaceKey: string, namespace: string, authorized: boolean) {
-  const { workspace } = useActivitySession()
+  const { workspace, viewActive = true } = useActivitySession()
   const [entries, setEntries] = useState<ArtifactEntry[]>([]), [error, setError] = useState('')
   const displayed = useRef(entries); displayed.current = entries
   const [opened, setOpened] = useState<string | null>(null)
@@ -172,16 +173,12 @@ export function useTeachingArtifacts(activity: LearningActivity, spaceKey: strin
   }, [authorized, request, readRevision, workspace, activity.status, receipt, scope])
   useEffect(() => {
     ++generation.current; setEntries([]); setOpened(null); setCenterIds([]); revisions.current.clear(); issues.current.clear(); guards.current.clear()
-    let live = true, reading = false
-    const read = async () => {
-      if (!live || reading) return
-      reading = true
-      try { await refresh() } catch { if (live) setError('学习页面暂时无法读取，原页面与输入仍保留。') }
-      finally { reading = false }
-    }
-    void read(); const timer = setInterval(() => { void read() }, 1500)
-    return () => { live = false; ++generation.current; clearInterval(timer) }
-  }, [scope, refresh])
+    return () => { ++generation.current }
+  }, [scope])
+  useViewPolling(async () => {
+    const epoch = generation.current
+    try { await refresh() } catch { if (epoch === generation.current) setError('学习页面暂时无法读取，原页面与输入仍保留。') }
+  }, scope, 1500, viewActive)
   const shelf = async (entry: ArtifactEntry) => {
     if (workspace.isReadOnly()) return
     await workspace.leave()

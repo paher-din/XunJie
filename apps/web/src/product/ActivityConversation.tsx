@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { replaceEqualDeep } from '@tanstack/react-query'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { teachingConversationSchema } from '@xunjie/contracts/teaching-agent'
 import type { TeachingConversation, TeachingMessage, TeachingRun, TeachingWait, TeachingStudentQuestion } from '@xunjie/contracts/teaching-agent'
@@ -14,6 +15,7 @@ import { firstQuestionKey, firstQuestionToken, readFirstQuestion, rememberFirstQ
 import { teachingArtifactReceiptSchema } from '@xunjie/contracts/teaching-artifacts'
 import { ArtifactCard, ArtifactPreview } from '../teaching-artifacts/ArtifactCard'
 import type { TeachingArtifactsController } from '../teaching-artifacts/useTeachingArtifacts'
+import { useViewPolling } from './useViewPolling'
 export { firstQuestionKey } from './first-question'
 
 const activeStates: TeachingRun['state'][] = ['received', 'running', 'dispatching', 'waiting']
@@ -59,49 +61,64 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
   focusQuestionId?: string | null; onQuestionFocused?: () => void
   artifacts?: TeachingArtifactsController; onOpenArtifact?: (artifactId: string) => Promise<void>
 }) {
-  const { workspace } = useActivitySession()
-  const [conversation, setConversation] = useState<TeachingConversation | null>(null)
+  const { workspace, actions, readCache, viewActive = true } = useActivitySession()
+  const scope = workspaceScope(namespace, activity)
+  const cacheKey = 'conversation:' + scope
+  const [conversation, setConversation] = useState<TeachingConversation | null>(() => readCache?.peek(spaceKey, cacheKey) ?? null)
+  const actionState = useSyncExternalStore(actions.subscribe, actions.snapshot)
+  const wake = actionState.items.map(item => item.key + ':' + item.phase).join('|')
   const [error, setError] = useState('')
   const mounted = useRef(true)
-  const scope = workspaceScope(namespace, activity)
   const shown = useRef(scope)
+  const reads = useRef<{ scope: string; promise: Promise<void> } | null>(null)
   const request = useCallback((route: string, body?: unknown) =>
     learningRequest(activity, spaceKey, namespace, route, body), [activity, spaceKey, namespace])
   const agentRequest = useCallback((route: string, body?: unknown) => request(`agent/${activity.activityId}/${route}`, body), [activity.activityId, request])
-  const refresh = useCallback(async () => {
+  const read = useCallback(async (): Promise<void> => {
+    if (reads.current?.scope === scope) return reads.current.promise
     const activityId = activity.activityId
-    try {
+    const promise = (async () => { try {
       const value = teachingConversationSchema.parse(await request(`agent/${activityId}/conversation`))
       if (mounted.current && shown.current === scope) {
-        setConversation(previous => previous && previous.cursor > value.cursor ? previous : value); setError('')
+        const cached = readCache?.peek<TeachingConversation>(spaceKey, cacheKey)
+        if (cached && cached.cursor > value.cursor) return
+        readCache?.set(spaceKey, cacheKey, replaceEqualDeep(cached, value))
+        setConversation(previous => previous && previous.cursor > value.cursor ? previous : replaceEqualDeep(previous, value)); setError('')
         onQuestionChange?.(currentStudentQuestion(value))
       }
     } catch (cause) {
       if (mounted.current && shown.current === scope && (cause as { code?: string }).code !== 'unavailable')
         setError('学习对话暂时无法读取；原问题、草稿和历史仍保留。')
-    }
-  }, [activity.activityId, request, scope, onQuestionChange])
+    } })().finally(() => { if (reads.current?.promise === promise) reads.current = null })
+    reads.current = { scope, promise }
+    return promise
+  }, [activity.activityId, request, scope, onQuestionChange, readCache, spaceKey, cacheKey])
+  const refresh = useCallback(async () => {
+    if (reads.current?.scope === scope) await reads.current.promise
+    await read()
+  }, [read, scope])
   useEffect(() => {
     shown.current = scope
-    setConversation(null); setError('')
-    onQuestionChange?.(null)
+    const cached = readCache?.peek<TeachingConversation>(spaceKey, cacheKey) ?? null
+    setConversation(cached); setError('')
+    onQuestionChange?.(cached ? currentStudentQuestion(cached) : null)
   }, [scope, onQuestionChange])
   useEffect(() => {
     mounted.current = true
-    void refresh()
-    const timer = setInterval(() => { void refresh() }, 1500)
-    return () => { mounted.current = false; clearInterval(timer) }
-  }, [refresh])
+    return () => { mounted.current = false }
+  }, [scope])
   const latest = conversation?.runs.at(-1)
   const active = !!latest && activeStates.includes(latest.state)
+  useViewPolling(read, scope, active ? 1500 : 5000, viewActive, wake)
   useEffect(() => { onActiveChange?.(active) }, [active, onActiveChange])
   useEffect(() => () => { onActiveChange?.(false) }, [onActiveChange])
   const readOnly = workspace.isReadOnly()
+  const inputs = useMemo(() => new Map(conversation?.inputs.map(input => [input.inputId, input])), [conversation?.inputs])
   if (!conversation) {
     const restoredArtifacts = readOnly ? artifacts?.entries : undefined
     return <section aria-label="与 Agent 的对话" className="teaching-conversation">
       <h3>学习对话</h3>
-      {error ? <p role="alert" className="learning-error">{error}</p> : !restoredArtifacts?.length && <p className="detail">正在读取学习对话…</p>}
+      {error ? <p role="alert" className="learning-error">{error}</p> : !restoredArtifacts?.length && <p className="detail" role="status" aria-label="正在读取学习对话" />}
       {restoredArtifacts?.map(entry => artifacts && <ArtifactCard key={entry.artifact.artifactId} entry={entry} controller={artifacts}
         onOpen={() => onOpenArtifact?.(entry.artifact.artifactId) ?? Promise.resolve()} />)}
       {artifacts?.error && <p role="alert" className="learning-error">{artifacts.error}</p>}
@@ -174,8 +191,8 @@ export function ActivityConversation({ activity, spaceKey, namespace, onModels, 
         来源：{message.modelSource === 'school' ? '学校模型' : message.modelSource === 'personal' ? '个人模型' : '原模型'} · {message.model.modelId} · {message.model.protocol}
       </span>}
       {message.role === 'assistant' && message.state === 'stopped' && <span className="detail">（已停止，以上是已发生的内容）</span>}
-      {message.inputId && conversation.inputs.find(input => input.inputId === message.inputId) && <AgentInputRecord
-        input={conversation.inputs.find(input => input.inputId === message.inputId)!} scope={scope} readOnly={readOnly || activity.status !== 'open'}
+      {message.inputId && inputs.has(message.inputId) && <AgentInputRecord
+        input={inputs.get(message.inputId)!} scope={scope} readOnly={readOnly || activity.status !== 'open'}
         request={agentRequest} onConfirmed={refresh} />}
     </article>})}
     {artifacts?.entries.filter(entry => ![...finalArtifacts.values()].includes(entry.artifact.artifactId)).map(entry =>

@@ -214,11 +214,11 @@ export function NativeSessionPanel({ activity, binding, authorized, spaceKey, na
       <h2>{sessionTitle}</h2>
       <span className="execution-hint">原生进程 · 固定适配器 v{declared.adapterVersion}</span>
     </header>
-    {!state.ready ? <p className="execution-hint" role="status">正在读取本机会话记录…</p>
+    {!state.ready ? <p className="execution-hint" role="status" aria-label="正在读取本机会话记录" />
       : state.error ? <p className="execution-warn" role="status">{state.error}</p>
       : null}
     {plan && <p role="status" className={decision?.location ? 'execution-hint' : 'execution-warn'}>
-      {checking ? '正在核对执行环境准备状态…' : placementIssue || decision?.detail}
+      {checking ? '' : placementIssue || decision?.detail}
     </p>}
     {plan && !decision?.location && <button type="button" className="ws-btn ghost"
       disabled={checking || busy || !authorized || readOnly} onClick={() => setCheckAttempt(value => value + 1)}>重新检查环境</button>}

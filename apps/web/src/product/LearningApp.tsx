@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { activitySchema, createActivitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data'
 import type { LearningActivity, CourseActivityResult } from '@xunjie/contracts/learning-data'
 import { courseCatalogSchema, courseReleaseSchema, courseMaterialContentSchema, createCourseActivitySchema } from '@xunjie/contracts/courses'
@@ -7,13 +7,9 @@ import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/space
 import { useTheme } from '../lib/theme'
 import './product.css'
 import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
-import { ActivityPage } from './ActivityPage'
 import { ProductShell } from '../components/ProductShell'
-import { PersonalModelSettings } from './PersonalModelSettings'
 import { useModelSelection } from './ModelSelection'
 import { ProductHome } from './ProductHome'
-import { ProductAgent } from './ProductAgent'
-import { ProductConversation } from './ProductConversation'
 import { ProductConversationHistory, conversationTitle, useConversationHistory } from './ProductConversationHistory'
 import { ProductSettings, type ProductSettingsTab } from './ProductSettings'
 import { ProductProfile } from './ProductProfile'
@@ -22,11 +18,23 @@ import { Toaster, toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { Icon } from '@xunjie/ui/icons'
 import { TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
-import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
+import { LearningReadCache } from './learning-read-cache'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
 import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
   type PendingSchoolConnection } from './school-authorization'
 
+const loadActivityPage = () => import('./ActivityPage')
+const loadConversation = () => import('./ProductConversation')
+const loadReferences = () => import('./ActivityReferences')
+const loadAgent = () => import('./ProductAgent')
+const prepareAgent = () => { void loadAgent().catch(() => {}) }
+const ProductAgent = lazy(() => loadAgent().then(module => ({ default: module.ProductAgent })))
+const ActivityPage = lazy(() => loadActivityPage().then(module => ({ default: module.ActivityPage })))
+const ProductConversation = lazy(() => loadConversation().then(module => ({ default: module.ProductConversation })))
+const ActivityReferences = lazy(() => loadReferences().then(module => ({ default: module.ActivityReferences })))
+const CourseMaterialReferences = lazy(() => loadReferences().then(module => ({ default: module.CourseMaterialReferences })))
+const CourseRequirementsReference = lazy(() => loadReferences().then(module => ({ default: module.CourseRequirementsReference })))
+const PersonalModelSettings = lazy(() => import('./PersonalModelSettings').then(module => ({ default: module.PersonalModelSettings })))
 
 type Account = { key: string; accountName: string; schoolName: string }
 type Context = { clientNamespace: string; profile: string; readOnly?: boolean; identities: { key: string; identity: SpaceIdentity }[]; account?: Account | null }
@@ -141,6 +149,7 @@ function LearningView() {
   const settingsPage = new URLSearchParams(route.search).get('settings')
   const modelsOpen = settingsPage !== null
   const agentOpen = new URLSearchParams(route.search).get('view') === 'agent'
+  const routeActivityId = new URLSearchParams(route.search).get('activity')
   const requestedArtifactId = new URLSearchParams(route.search).get('artifact')
   const [context, setContext] = useState<Context | null>(null)
   const api = (path: string, body?: unknown, space?: string, signal?: AbortSignal) =>
@@ -255,7 +264,7 @@ function LearningView() {
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
   const identity = context?.identities.find(item => item.key === key)?.identity
-  const accountName = context ? context.account?.accountName ?? '本地学习空间' : '正在连接…'
+  const accountName = context ? context.account?.accountName ?? '本地学习空间' : '本地学习空间'
   const personalKey = context?.identities.find(item => item.identity.kind === 'personal')?.key
   const schoolKey = context?.account?.key
   const schoolLoginRequired = context?.profile === 'school' && !context.identities.some(item => item.key === 'school')
@@ -372,34 +381,54 @@ function LearningView() {
   }, [contextVerified, context, opened])
   const homeVisible = !agentOpen && !modelsOpen && !new URLSearchParams(route.search).has('activity') && !selectedCourseId
   const homeScope = context ? JSON.stringify([context.clientNamespace, context.identities]) : ''
+  const readCache = useMemo(() => new LearningReadCache(), [homeScope, reload, contextVerified])
+  const readActivities = (space: string) => readCache.read<LearningActivity[]>(space, 'activities', async () =>
+    (await api('activities', undefined, space) as unknown[]).map(item => activitySchema.parse(item)))
+  const readCourses = (space: string) => readCache.read<Course[]>(space, 'courses', async () =>
+    courseCatalogSchema.parse(await api('courses', undefined, space)).courses)
+  function publishActivity(activity: LearningActivity, space = key) {
+    const previous = readCache.peek<LearningActivity[]>(space, 'activities') ?? []
+    const next = [activity, ...previous.filter(item => item.activityId !== activity.activityId)]
+    readCache.set(space, 'activities', next)
+    setActivities(next); setActivitiesFor(pendingKey)
+    setHomeData(previous => previous?.scope === homeScope ? { ...previous,
+      ...(space === personalKey ? { personal: next } : { school: next }) } : previous)
+  }
+  useEffect(() => {
+    if (!routeActivityId || modelsOpen && !opened) return
+    void Promise.all([loadReferences(), agentOpen ? loadConversation() : loadActivityPage()]).catch(() => {})
+  }, [routeActivityId, agentOpen, modelsOpen])
   useEffect(() => {
     if (!context || !homeVisible) return
     const controller = new AbortController()
-    const snapshot: HomeData = { scope: homeScope, personal: personalKey ? null : [], school: schoolKey ? null : [],
-      courses: schoolKey ? null : [], personalError: '', schoolError: '' }
-    setHomeData(snapshot)
+    const snapshot: HomeData = { scope: homeScope,
+      personal: personalKey ? readCache.peek(personalKey, 'activities') ?? null : [],
+      school: schoolKey ? readCache.peek(schoolKey, 'activities') ?? null : [],
+      courses: schoolKey ? readCache.peek(schoolKey, 'courses') ?? null : [], personalError: '', schoolError: '' }
+    setHomeData(previous => previous?.scope === homeScope ? { ...previous, personalError: '', schoolError: '' } : snapshot)
     const update = (patch: Partial<HomeData>) => {
       if (!controller.signal.aborted) setHomeData(previous => previous?.scope === homeScope ? { ...previous, ...patch } : previous)
     }
-    if (personalKey) void api('activities', undefined, personalKey, controller.signal).then(value => {
-      update({ personal: (value as unknown[]).map(item => activitySchema.parse(item)) })
+    if (personalKey) void readActivities(personalKey).then(value => {
+      update({ personal: value })
     }).catch(cause => update({ personalError: errorText(cause) }))
     if (schoolKey) {
-      void api('activities', undefined, schoolKey, controller.signal).then(value => {
-        update({ school: (value as unknown[]).map(item => activitySchema.parse(item)) })
+      void readActivities(schoolKey).then(value => {
+        update({ school: value })
       }).catch(cause => update({ schoolError: errorText(cause) }))
-      void api('courses', undefined, schoolKey, controller.signal).then(value => {
-        update({ courses: courseCatalogSchema.parse(value).courses })
+      void readCourses(schoolKey).then(value => {
+        update({ courses: value })
       }).catch(cause => update({ schoolError: errorText(cause) }))
     }
     return () => controller.abort()
-  }, [homeVisible, homeScope, reload])
+  }, [homeVisible, readCache])
   const visibleHome = homeData?.scope === homeScope ? homeData : null
 
   useEffect(() => {
-    const generation = ++epoch.current
+    ++epoch.current
     const controller = new AbortController()
-    setActivities(null); setOpened(null); setCatalog(null); setRelease(null); setCoursePending(null); rememberMaterial(null)
+    setActivities(readCache.peek(key, 'activities') ?? null); setActivitiesFor(pendingKey)
+    setOpened(null); setCatalog(readCache.peek(key, 'courses') ?? null); setRelease(null); setCoursePending(null); rememberMaterial(null)
     setError(''); setPendingRequest(null); setBusy(false)
     if (formScope.current !== pendingKey) {
       formScope.current = pendingKey; setGoal(''); setReference('')
@@ -432,20 +461,21 @@ function LearningView() {
           setPendingRequest(pending); setGoal(pending.input.goal); setQuestion(pending.input.question); setReference(pending.input.references[0]?.url ?? '')
         }
       } catch { setError('无法读取上次活动请求，请保留当前输入并检查浏览器存储。') }
-      void api('activities', undefined, key, controller.signal).then(value => {
-        if (epoch.current === generation) {
-          setActivities((value as unknown[]).map(item => activitySchema.parse(item)))
-          setActivitiesFor(pendingKey)
-        }
-      }).catch(error => { if (epoch.current === generation && !controller.signal.aborted) setError(errorText(error)) })
-      if (identity?.kind === 'school') {
-        void api('courses', undefined, key, controller.signal).then(value => {
-          if (epoch.current === generation) setCatalog(courseCatalogSchema.parse(value).courses)
-        }).catch(error => { if (epoch.current === generation && !controller.signal.aborted) setError(errorText(error)) })
-      }
     }
     return () => { ++epoch.current; controller.abort() }
   }, [key, pendingKey, coursePendingKey, reload, contextVerified])
+
+  useEffect(() => {
+    if (!key || !pendingKey || !contextVerified || modelsOpen) return
+    let active = true
+    void readActivities(key).then(value => {
+      if (active) { setActivities(value); setActivitiesFor(pendingKey) }
+    }).catch(cause => { if (active) setError(errorText(cause)) })
+    if (identity?.kind === 'school') void readCourses(key).then(value => {
+      if (active) setCatalog(value)
+    }).catch(cause => { if (active) setError(errorText(cause)) })
+    return () => { active = false }
+  }, [key, pendingKey, contextVerified, modelsOpen, agentOpen, homeVisible, readCache])
 
   useEffect(() => {
     ++contentReadEpoch.current
@@ -459,7 +489,7 @@ function LearningView() {
     const readGeneration = ++routeReadEpoch.current
     const controller = new AbortController()
     const retire = () => controller.abort()
-    if (!context) return
+    if (!context || modelsOpen && !currentView.current.opened) return
     const params = new URLSearchParams(route.search)
     const activityId = params.get('activity')
     const desiredKey = agentOpen && !activityId ? personalKey ?? currentView.current.key
@@ -475,8 +505,8 @@ function LearningView() {
       return retire
     }
     if (activityId === (currentView.current.opened?.activityId ?? null)) return retire
-    if (!activityId) { ++epoch.current; setOpened(null); setBusy(false); setReload(n => n + 1); return retire }
-    if (!contextVerified || !activities || activitiesFor !== pendingKey) return retire
+    if (!activityId) { ++epoch.current; setOpened(null); setBusy(false); return retire }
+    if (!contextVerified) return retire
     const generation = ++epoch.current
     const search = route.search
     const applies = () => !controller.signal.aborted && generation === epoch.current
@@ -491,7 +521,7 @@ function LearningView() {
       }
     }).catch(cause => { if (applies()) setError(errorText(cause)) })
     return retire
-  }, [route.search, context?.clientNamespace, key, pendingKey, contextVerified, activities !== null, activitiesFor, schoolKey, personalKey])
+  }, [route.search, context?.clientNamespace, key, pendingKey, contextVerified, schoolKey, personalKey])
 
   async function action(operation: (generation: number) => Promise<void>) {
     const generation = epoch.current
@@ -542,8 +572,7 @@ function LearningView() {
         if (sameScope) {
           setQuestion(currentQuestion => currentQuestion === input.question ? '' : currentQuestion)
           setPendingRequest(currentRequest => currentRequest?.input.requestId === input.requestId ? null : currentRequest)
-          setActivities(previousActivities => [activity, ...(previousActivities ?? []).filter(item => item.activityId !== activity.activityId)])
-          setActivitiesFor(scopeKey)
+          publishActivity(activity, selected)
         }
       }
       if (completing && generation === epoch.current && startedSearch === currentSearch.current) {
@@ -590,8 +619,7 @@ function LearningView() {
       clearCoursePending(input, generation)
       if (generation === epoch.current && startedSearch === currentSearch.current) {
         rememberActivity(activity)
-        setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
-        setActivitiesFor(pendingKey)
+        publishActivity(activity)
       }
     } catch (error) {
       const code = (error as { code?: string }).code
@@ -610,6 +638,7 @@ function LearningView() {
   }
   async function openActivity(activityId: string, asConversation = false, sourceKey = key) {
     if (!context?.identities.some(item => item.key === sourceKey)) return
+    void Promise.all([loadReferences(), asConversation ? loadConversation() : loadActivityPage()]).catch(() => {})
     await protectActivity()
     returnFocus.current = { key: sourceKey, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     const params = new URLSearchParams(currentSearch.current)
@@ -622,7 +651,7 @@ function LearningView() {
     const generation = epoch.current
     const next = activitySchema.parse(await api('activity-status', { requestId: crypto.randomUUID(), activityId: activity.activityId,
       status: activity.status === 'closed' ? 'open' : 'closed' }, key))
-    if (generation === epoch.current) { setOpened(next); setActivities(previous => previous?.map(item => item.activityId === next.activityId ? next : item) ?? null) }
+    if (generation === epoch.current) { setOpened(next); publishActivity(next) }
   }
   async function viewRelease(releaseId: string) {
     const generation = epoch.current
@@ -740,7 +769,7 @@ function LearningView() {
   }) }}>
     <label>学校链接<TextInput type="url" autoComplete="url" required placeholder="https://school.example.edu" value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
     <div className="product-school-actions">
-      <Button type="submit" disabled={busy}>{busy ? '正在准备…' : '连接'}</Button>
+      <Button type="submit" disabled={busy}>连接</Button>
       <Button type="button" variant="outline" disabled={busy} onClick={event => {
         const section = event.currentTarget.closest<HTMLElement>('.product-school')
         setError(''); setSchoolFormOpen(false)
@@ -809,12 +838,12 @@ function LearningView() {
     const search = params.toString()
     approvedSearch.current = search ? '?' + search : ''
     navigate({ pathname: route.pathname, search })
+    ++epoch.current; setBusy(false)
     setOpened(null); setRelease(null); rememberMaterial(null)
     if (nextKey !== key) setKey(nextKey)
-    else setReload(value => value + 1)
   })
   const goHome = () => changePage('home')
-  const openAgent = () => changePage('agent')
+  const openAgent = () => { prepareAgent(); changePage('agent') }
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     await protectActivity()
     const params = new URLSearchParams(currentSearch.current); params.set('settings', tab)
@@ -889,6 +918,7 @@ function LearningView() {
   return <ProductShell immersive={!!opened && !modelsOpen && !conversationOpen} accountName={accountName}
     active={modelsOpen ? 'settings' : agentOpen ? 'agent' : 'home'}
     onHome={goHome} onAgent={openAgent} onSettings={() => openSettings()} onProfile={() => setProfileOpen(true)}
+    onAgentIntent={prepareAgent}
     archivedCount={archivedCount} archiveOpen={archiveOpen} onArchiveOpenChange={setArchiveOpen}
     agentHistory={(close, visible) => <ProductConversationHistory activities={key === personalKey ? visibleActivities?.filter(activity => !activity.course) ?? null : []} activeId={opened?.activityId}
       labels={conversationHistory.items} archiveOpen={archiveOpen} query={historyQuery} error={conversationHistory.error}
@@ -901,7 +931,7 @@ function LearningView() {
       onRestore={id => conversationHistory.setArchived(id, false)} />}>
     <ConfirmationDialog open={!!disconnectTarget} title={disconnectTarget?.replace ? '换绑学校？' : '断开学校连接？'}
       description={<>{disconnectTarget?.replace && '先解绑当前账号，再绑定新的学校账号。'}断开后，将无法在此访问<strong>「{disconnectTarget?.name}」</strong>的学习内容。{disconnectTarget?.key === key && context?.identities.some(item => item.key === 'personal') && '你将返回本地学习空间。'}本机数据会保留，重新绑定原账号后可继续学习。</>}
-      confirmLabel={disconnectTarget?.replace ? '确认解绑并换绑' : '确认断开'} pendingLabel="正在断开…" busy={busy} error={disconnectError}
+      confirmLabel={disconnectTarget?.replace ? '确认解绑并换绑' : '确认断开'} busy={busy} error={disconnectError}
       onClose={() => { setDisconnectTarget(null); setDisconnectError('') }} onConfirm={confirmDisconnect}
       onReturnFocus={() => {
         requestAnimationFrame(() => {
@@ -915,12 +945,13 @@ function LearningView() {
       initialTab={settingsTab} focusSchool={settingsPage === 'school'} onTabChange={selectSettingsTab}
       schoolName={context?.account?.schoolName} isLocal={!!context && !context.account}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
-      modelSettings={context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
+      modelSettings={context && identity ? <Suspense fallback={<p role="status" aria-label="正在读取个人设置" />}><PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
-        readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} /> : null} />}
+        readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} cache={readCache} /></Suspense> : null} />}
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>
+      <Suspense fallback={<div className="content" role="status" aria-label="正在打开学习活动" />}>
       <ActivityReferences key={context.clientNamespace + key + opened.activityId}
-      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly} viewActive={!modelsOpen}>
+      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized} readOnly={context.readOnly} viewActive={!modelsOpen} readCache={readCache}>
       {conversationOpen ? <ProductConversation activity={opened} spaceKey={key} namespace={context.clientNamespace} selection={modelSelection}
         title={conversationTitle(opened, conversationHistory.items)}
         authorized={activityAuthorized}
@@ -941,16 +972,17 @@ function LearningView() {
           </>}
           {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         </>} />}
-    </ActivityReferences></div> : modelsOpen ? null : unavailableRoute ? <div className="content home-page"><p>此活动属于未绑定的学校账号。请在设置中绑定原账号后打开，本机学习内容会保留。</p><Button onClick={() => openSettings('school')}>管理学校连接</Button><Button variant="outline" onClick={goHome}>返回首页</Button></div> : !context || !identity ? <div className="content home-page product-home">
-      {!context && !error && <p role="status">正在连接学习空间…</p>}
+    </ActivityReferences></Suspense></div> : modelsOpen ? null : unavailableRoute ? <div className="content home-page"><p>此活动属于未绑定的学校账号。请在设置中绑定原账号后打开，本机学习内容会保留。</p><Button onClick={() => openSettings('school')}>管理学校连接</Button><Button variant="outline" onClick={goHome}>返回首页</Button></div> : !context || !identity ? <div className="content home-page product-home">
+      {!context && !error && <p role="status" aria-label="正在连接学习空间" />}
       {!context && error && <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button>}
       {schoolControls}
-    </div> : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <ProductAgent question={question} onQuestion={value => {
+    </div> : routeActivityId ? <div className="content" role="status">{error ? '学习活动暂时无法打开。' : ''}{error && <Button variant="outline" onClick={goHome}>返回首页</Button>}</div>
+    : agentOpen && (!personalKey || key !== personalKey) ? <div className="content home-page"><p>请在本机客户端开始个人学习；学校课程请从首页进入。</p><Button onClick={goHome}>返回首页</Button></div> : agentOpen ? <Suspense fallback={<div className="content" role="status" aria-label="正在准备对话" />}><ProductAgent question={question} onQuestion={value => {
       setQuestion(value)
       try { if (draftKey) sessionStorage.setItem(draftKey, value) } catch { /* Optional draft cache. */ }
     }} onSend={() => void action(() => createActivity(question))} pending={pendingRequest}
       onRetry={() => void action(() => createActivity())} onDiscard={discardPending}
-      onSettings={openModels} selection={modelSelection} busy={busy} readOnly={!!context.readOnly} />
+      onSettings={openModels} selection={modelSelection} busy={busy} readOnly={!!context.readOnly} /></Suspense>
     : <>
       {(context.readOnly || authorize || pendingRequest || coursePending) && <div className="content product-home-alerts">
         {context.readOnly && <p role="status" className="product-workspace-notice">这是还原校验副本，作品与学习对话只读，不会启动 Agent 或实验；请由维护者完成接管后继续。</p>}
@@ -960,7 +992,7 @@ function LearningView() {
             onClick={() => void action(async () => { await authenticateSchoolClient() })}>认证并返回客户端</button>
         </section>}
         {pendingRequest && <p role="status">上次发起的学习尚未确认。 <button type="button" className="outline" onClick={openAgent}>查看原请求</button></p>}
-        {coursePending && <div className="course-pending"><p>{busy ? '正在准备课程活动…' : '上次课程活动的请求结果尚未核对，将先查询原请求。'}</p>
+        {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>
           <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
           <button type="button" className="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
       </div>}
@@ -968,7 +1000,7 @@ function LearningView() {
         <section className="course-region" aria-labelledby="course-title">
           <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>{selectedCourse?.name ?? '我的课程'}<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : ''}</small></h2>
             <button type="button" className="outline" onClick={() => selectCourse(null)}>全部课程</button></div>
-          {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : '正在读取课程…'}</p>
+          {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : ''}</p>
             : !selectedCourse ? <p className="empty">无法找到这门课程。</p>
             : <div className="task-card-grid">{selectedCourse.tasks.map(task => <article key={task.taskId} className="product-course-task">
               <h3>{task.title}</h3>{task.summary && <p>{task.summary}</p>}

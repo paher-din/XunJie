@@ -184,8 +184,8 @@ export function PromptInput({ value, onChange, onSend, autoFocus, contextTokens 
     return () => window.clearTimeout(timer)
   }, [activeId])
 
-  const statusText = !PREP_BUILD && (modelError || remoteModels.error || remoteModels.saving || !remoteModels.data?.enabled || !remoteModels.data.callsEnabled)
-    ? modelError || remoteModels.error || (remoteModels.saving ? '正在保存模型选择…' : !remoteModels.data?.enabled ? '请在设置中配置并启用个人模型' : '模型调用已停用') : undefined
+  const statusText = !PREP_BUILD && (modelError || remoteModels.error || (!remoteModels.saving && (!remoteModels.data?.enabled || !remoteModels.data.callsEnabled)))
+    ? modelError || remoteModels.error || (!remoteModels.data?.enabled ? '请在设置中配置并启用个人模型' : '模型调用已停用') : undefined
   return <PromptInputView value={value} onChange={onChange} onSend={submit} canSend={canSend}
     submitting={reading} autoFocus={autoFocus} busy={busy} onStop={onStop}
     attachments={attachments} onAddFiles={addFiles} onRemoveAttachment={removeAttachment}

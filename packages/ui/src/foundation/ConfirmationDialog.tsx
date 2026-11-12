@@ -10,7 +10,8 @@ export interface ConfirmationDialogProps {
   title: string
   description: ReactNode
   confirmLabel: string
-  pendingLabel: string
+  /** Deprecated: transient confirmation labels are intentionally not shown. */
+  pendingLabel?: string
   busy?: boolean
   error?: string
   onClose: () => void
@@ -19,7 +20,7 @@ export interface ConfirmationDialogProps {
 }
 
 /** A controlled confirmation; the caller owns the operation and its result. */
-export function ConfirmationDialog({ open, title, description, confirmLabel, pendingLabel, busy = false, error,
+export function ConfirmationDialog({ open, title, description, confirmLabel, busy = false, error,
   onClose, onConfirm, onReturnFocus }: ConfirmationDialogProps) {
   const cancel = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -43,7 +44,7 @@ export function ConfirmationDialog({ open, title, description, confirmLabel, pen
         <Dialog.Description className="xj-confirm-description">{description}</Dialog.Description>
         <div className="xj-confirm-actions">
           <Dialog.Close asChild><Button ref={cancel} type="button" variant="outline" disabled={busy}>取消</Button></Dialog.Close>
-          <DestructiveButton label={busy ? pendingLabel : confirmLabel} disabled={busy} onClick={onConfirm} />
+          <DestructiveButton label={confirmLabel} disabled={busy} onClick={onConfirm} />
         </div>
       </Dialog.Content>
     </Dialog.Portal>

@@ -30,7 +30,7 @@ it('面包屑保留键盘来源，课程区和标题保留定位／焦点 ref �
 it('首页状态与任务内容保留空／失败语义、徽标和可选进度差异', () => {
   const pending = renderToStaticMarkup(<HomeStatus kind="loading" message="读取中" />)
   const error = renderToStaticMarkup(<HomeStatus kind="error" message="失败" retry={{ disabled: true, onRetry() {} }} />)
-  expect(pending).toBe('<p role="status">读取中</p>')
+  expect(pending).toBe('<p role="status" aria-label="读取中"></p>')
   expect(error).toBe('<div class="empty" role="alert"><p>失败</p><button type="button" disabled="">重试</button></div>')
   const props = { title: '任务', status: '已分配' as const, action: '进入任务', onOpen() {} }
   const unknown = renderToStaticMarkup(<HomeTaskCard {...props} />)

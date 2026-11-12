@@ -156,7 +156,7 @@ export function StudentQuestionCard({ question, activityId, scope, readOnly, req
       </div>}
       <div className="student-question-actions"><button type="submit" className="primary" disabled={!canAnswer || !valid}>提交回应</button>
         {question.skippable && <button type="button" className="outline" disabled={!canAnswer} onClick={() => void submit(true)}>跳过这次提问</button>}</div>
-      {pending && !readOnly && <p className="detail">正在核对原回应，输入已保留。</p>}
+      {pending && !readOnly && <p className="detail">输入已保留，可核对原回应。</p>}
     </form>}
     <p className="student-question-status" role="status">{status}</p>
     {pending && !readOnly && <button type="button" className="outline" disabled={busy} onClick={() => void deliver(record!, true)}>核对原回应</button>}

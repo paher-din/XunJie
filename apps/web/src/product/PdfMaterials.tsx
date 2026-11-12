@@ -289,8 +289,8 @@ export function PdfMaterialEntries({ pdf }: { pdf: PdfMaterialsController }) {
       <span>{item.kind === 'upload' ? item.input.name : '课程 PDF'} · 尚未确认处理结果</span>
       <button type="button" className="ws-btn ghost" disabled={!pdf.writable || pdf.busy} onClick={() => void pdf.receive(item)}>核对并继续原请求</button>
     </div>)}
-    {pdf.loading && <p className="detail" role="status">正在读取 PDF 列表…</p>}
-    {pdf.busy && <p className="detail" role="status">正在保存或读取 PDF…</p>}
+    {pdf.loading && <p className="detail" role="status" aria-label="正在读取 PDF 列表" />}
+    {pdf.busy && <p className="detail" role="status" aria-label="正在保存或读取 PDF" />}
     {pdf.loadError && <p className="detail">{pdf.loadError}</p>}
     <button type="button" className="ws-btn ghost" disabled={pdf.busy || pdf.loading} onClick={() => void pdf.refresh()}>刷新 PDF 列表</button>
     <button type="button" className="ws-btn ghost" onClick={() => void pdf.reveal()}>打开 PDF 阅读区</button>
@@ -375,7 +375,7 @@ export function PdfMaterials({ pdf, onBack }: { pdf: PdfMaterialsController; onB
         </div>}
       </>}
     {pdf.pendingRead && !pdf.busy && <button type="button" className="ws-btn ghost" disabled={!pdf.writable} onClick={() => void pdf.retryRead()}>核对并继续本次阅读</button>}
-    {pdf.busy && <p className="pdf-hint" role="status">正在保存或读取 PDF…</p>}
+    {pdf.busy && <p className="pdf-hint" role="status" aria-label="正在保存或读取 PDF" />}
   </section>
 }
 

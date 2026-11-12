@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import type { Course } from '@xunjie/contracts/courses'
 import { DASHBOARD_WIDGETS, DashboardSection, defaultDashboardLayout, type DashboardLayout } from '@xunjie/ui/dashboard'
@@ -52,11 +52,13 @@ export function ProductHome({ accountName, personalActivities: personalData, sch
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好'
-  const personalActivities = personalData?.filter(activity => activity.identity.kind === 'personal' && !activity.course) ?? null
-  const schoolActivities = schoolKey ? schoolData?.filter(activity => activity.identity.kind === 'school') ?? null : []
+  const personalActivities = useMemo(() => personalData?.filter(activity => activity.identity.kind === 'personal' && !activity.course) ?? null, [personalData])
+  const schoolActivities = useMemo(() => schoolKey ? schoolData?.filter(activity => activity.identity.kind === 'school') ?? null : [], [schoolData, schoolKey])
+  const coursesById = useMemo(() => new Map(courses?.map((course, index) => [course.courseId, { course, index }])), [courses])
+  const activitiesById = useMemo(() => new Map(personalActivities?.map((activity, index) => [activity.activityId, { activity, index }])), [personalActivities])
   const currentActivities = category === 'school' ? schoolActivities : personalActivities
-  const recent = currentActivities?.filter(activity => activity.status === 'open')
-    .slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  const recent = currentActivities?.reduce<LearningActivity | undefined>((previous, activity) =>
+    activity.status === 'open' && (!previous || activity.createdAt > previous.createdAt) ? activity : previous, undefined)
   const sourceKey = category === 'school' ? schoolKey : personalKey
   const error = category === 'school' ? schoolError : personalError
 
@@ -81,19 +83,19 @@ export function ProductHome({ accountName, personalActivities: personalData, sch
       {!sourceKey ? <div className="empty product-home-empty">{category === 'school' ? '尚未绑定学校，绑定后可在这里查看课程。' : '请在本机客户端开始个人学习。'}
         {category === 'school' && onConnectSchool && <button type="button" className="outline" disabled={busy} onClick={onConnectSchool}>连接学校</button>}</div>
         : error ? <HomeStatus kind="error" message={error} retry={{ disabled: busy, onRetry: onRefresh }} />
-        : category === 'school' ? courses === null ? <HomeStatus kind="loading" message="正在读取学校课程…" />
+        : category === 'school' ? courses === null ? <HomeStatus kind="loading" message="学校课程" />
           : courses.length === 0 ? <HomeStatus kind="empty" message="暂无学校课程。" />
-            : <CourseTiles courses={courses.map(course => course.courseId)} toneOf={id => courses.findIndex(course => course.courseId === id)}
-              titleOf={id => courses.find(course => course.courseId === id)!.name}
-              summaryOf={id => `${courses.find(course => course.courseId === id)!.tasks.length} 个任务`}
+            : <CourseTiles courses={courses.map(course => course.courseId)} toneOf={id => coursesById.get(id)!.index}
+              titleOf={id => coursesById.get(id)!.course.name}
+              summaryOf={id => `${coursesById.get(id)!.course.tasks.length} 个任务`}
               onOpen={id => onOpenCourse(id)} />
-          : personalActivities === null ? <HomeStatus kind="loading" message="正在读取学习活动…" />
+          : personalActivities === null ? <HomeStatus kind="loading" message="学习活动" />
             : personalActivities.length === 0 ? <div className="empty product-home-empty">暂无自主学习活动。<button type="button" className="outline" disabled={busy} onClick={onStartConversation}>开始对话</button></div>
               : <CourseTiles courses={personalActivities.map(activity => activity.activityId)} idKind="activity"
-                toneOf={id => personalActivities.findIndex(activity => activity.activityId === id)}
-                titleOf={id => activityTitle(personalActivities.find(activity => activity.activityId === id)!)}
-                summaryOf={id => personalActivities.find(activity => activity.activityId === id)!.status === 'closed' ? '已关闭' : '进行中'}
-                actionOf={id => personalActivities.find(activity => activity.activityId === id)!.status === 'closed' ? '查看活动' : '继续学习'}
+                toneOf={id => activitiesById.get(id)!.index}
+                titleOf={id => activityTitle(activitiesById.get(id)!.activity)}
+                summaryOf={id => activitiesById.get(id)!.activity.status === 'closed' ? '已关闭' : '进行中'}
+                actionOf={id => activitiesById.get(id)!.activity.status === 'closed' ? '查看活动' : '继续学习'}
                 onOpen={id => onOpenActivity(id, personalKey!)} />}
     </HomeCourseRegion>
     {category === 'school' && !error && currentActivities && currentActivities.length > 0 && <section aria-labelledby="school-activities-title">

@@ -25,11 +25,13 @@ import { NativeSessionController } from '../tool-execution/session-controller'
 import { SessionRequests } from '../tool-execution/session-requests'
 import { useAgentInteraction } from './AgentInteraction'
 import { useSkillCatalog, draftSkillOption } from './skills'
+import type { LearningReadCache } from './learning-read-cache'
 
 const readable = cacheableMaterial
 
-export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children, viewActive = true }: {
+export function ActivityReferences({ activity, spaceKey, namespace, authorized, readOnly = false, children, viewActive = true, readCache }: {
   activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean; readOnly?: boolean; children: ReactNode; viewActive?: boolean
+  readCache?: LearningReadCache
 }) {
   const scope = workspaceScope(namespace, activity)
   const skills = useSkillCatalog(activity.identity, spaceKey, namespace, activity.activityId)
@@ -107,7 +109,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     if (authorized) { draft.resume(); workspace.resume(); actions.resume();void execution.synchronize().catch(()=>{}) }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, execution, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction }}>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution, sessions, interactions, inputInteraction, readCache, viewActive }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions} delivery={inputInteraction.delivery}
       viewActive={viewActive}
       skillCatalog={{ options: (skills.data?.skills ?? []).map(draftSkillOption),
@@ -161,7 +163,7 @@ export function CourseMaterialReferences({ activity, course, spaceKey, namespace
         </li>)}</ul></details>}
         {content?.text !== undefined ? <TextReferenceSource sourceId={questionReferenceSourceId(source)}
           sourceName={item.title} text={content.text} source={source} />
-          : content?.error ? <p className="detail" role="status">{content.error}</p> : <p className="detail" role="status">正在读取材料…</p>}
+          : content?.error ? <p className="detail" role="status">{content.error}</p> : <p className="detail" role="status" aria-label="正在读取材料" />}
       </article>
     })}
   </section>

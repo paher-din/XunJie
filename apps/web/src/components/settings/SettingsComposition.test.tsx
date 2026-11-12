@@ -66,7 +66,7 @@ it('keeps action availability controlled and dispatches each enabled action once
   await click('重新读取配置'); await click('停用个人模型')
   expect(onReload).toHaveBeenCalledTimes(1); expect(onToggle).toHaveBeenCalledTimes(1)
   await draw(createElement(ui.ModelConfigActions, { ...props, saving: true, reloadDisabled: true, toggleDisabled: true }))
-  await click('重新读取配置'); await click('保存中…')
+  await click('重新读取配置'); await click('停用个人模型')
   expect(onReload).toHaveBeenCalledTimes(1); expect(onToggle).toHaveBeenCalledTimes(1)
 })
 
@@ -75,7 +75,7 @@ it('preserves test feedback while another request disables the row', async () =>
   await draw(createElement(ui.ModelConnectionTestRow, { testing: false, disabled: false, result: { ok: false, text: '结果未确认' }, onTest }))
   await click('连接测试'); expect(onTest).toHaveBeenCalledTimes(1)
   await draw(createElement(ui.ModelConnectionTestRow, { testing: true, disabled: true, result: { ok: false, text: '结果未确认' }, onTest }))
-  await click('测试中…'); expect(onTest).toHaveBeenCalledTimes(1)
+  await click('连接测试'); expect(onTest).toHaveBeenCalledTimes(1)
   expect(document.querySelector('[role="status"]')?.textContent).toBe('结果未确认')
 })
 

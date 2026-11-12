@@ -36,7 +36,7 @@ export interface MarkdownProps {
   insertAfterPara?: number
 }
 
-export function Markdown({
+export const Markdown = memo(function Markdown({
   text,
   live,
   truncated,
@@ -56,7 +56,7 @@ export function Markdown({
       ))}
     </div>
   )
-}
+})
 
 /**
  * 流式中卡片要等它依附的那一段真的上了屏才挂：早半拍会先钉在当时的正文末尾，

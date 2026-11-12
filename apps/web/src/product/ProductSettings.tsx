@@ -31,10 +31,12 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
 /** Business operations and identity changes remain owned by the caller. */
 export function ProductSettings({ accountName, schoolName, isLocal = false, onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
+  const [personalVisited, setPersonalVisited] = useState(initialTab === 'agent' || initialTab === 'models')
   const id = useId()
   const body = useRef<HTMLDivElement>(null)
   const school = useRef<HTMLDivElement>(null)
   useEffect(() => setActive(initialTab), [initialTab])
+  useEffect(() => { if (active === 'agent' || active === 'models') setPersonalVisited(true) }, [active])
   useEffect(() => {
     if (body.current) body.current.scrollTop = 0
     if (window.matchMedia?.('(max-width: 760px)').matches) document.getElementById(`${id}-${active}-nav`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
@@ -83,7 +85,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
           </div>
           <div className="product-settings-school" ref={school} tabIndex={-1} role="region" aria-label="学校连接">
             {accountFeedback}
-            {schoolControls ?? <p className="product-settings-empty" role="status">正在读取学校连接…</p>}
+            {schoolControls ?? <p className="product-settings-empty" role="status" aria-label="正在读取学校连接" />}
           </div>
         </section>
         <section id={`${id}-portrait`} aria-labelledby={`${id}-portrait-nav`} hidden={active !== 'portrait'} inert={active !== 'portrait'}>
@@ -92,7 +94,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, onBa
         <section id={`${id}-personal`} aria-labelledby={`${id}-${active === 'agent' ? 'agent' : 'models'}-nav`}
           hidden={active !== 'agent' && active !== 'models'} inert={active !== 'agent' && active !== 'models'}
           data-settings-section={active} className="product-settings-pane product-settings-model">
-          {modelSettings ?? <p className="product-settings-empty" role="status">个人设置暂不可用。</p>}
+          {(personalVisited || active === 'agent' || active === 'models') && (modelSettings ?? <p className="product-settings-empty" role="status">个人设置暂不可用。</p>)}
         </section>
         <section id={`${id}-about`} aria-labelledby={`${id}-about-nav`} hidden={active !== 'about'} inert={active !== 'about'}>
           <div className="st-brand"><XunjieLogo format="stacked" className="st-brand-logo" label="循阶" /></div>

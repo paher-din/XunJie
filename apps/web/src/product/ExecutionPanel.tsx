@@ -84,7 +84,7 @@ export function ExecutionPanel({ activity, binding, authorized, requestIds }: {
         onClick={() => void rerun()}>用当前表格重新运行</button>}
     </header>
     {state.error && <p role="alert" className="execution-warn">{state.error}</p>}
-    {!state.ready ? <p className="execution-hint">正在读取本机执行记录…</p>
+    {!state.ready ? <p className="execution-hint" role="status" aria-label="正在读取本机执行记录" />
       : records.length === 0 ? <p className="execution-hint">{supported
         ? '还没有计算记录。在上方表格视图里选好分组列与数值列后运行计算。'
         : '还没有运行记录。在实验区设置输入后运行一次。'}</p>

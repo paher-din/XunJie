@@ -50,8 +50,8 @@ export function ProductConversation({ activity, spaceKey, namespace, authorized,
       <details className="product-conversation-mode"><summary>发送方式</summary><AgentInputMode active={active} /></details>
       <WorkspaceReferenceComposer modelPicker={<AgentModelPicker controller={picker} disabled={!authorized || workspace.isReadOnly()} onSettings={onModels} />}
         sendBlocked={!inputInteraction.ready || picker.blocked}
-        blockedHint={picker.blocked ? '正在切换模型，问题与引用仍保留。' : '正在核对本次发送方式，问题与引用仍保留。'}
-        blockedLabel={picker.blocked ? '切换模型中…' : '核对发送方式…'}
+        blockedHint="问题与引用仍保留。"
+        blockedLabel="暂时不能发送"
         submitLabel={active ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} />
     </div>
   </div>

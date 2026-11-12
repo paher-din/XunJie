@@ -153,7 +153,7 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
     if (inFlight.current || !state.current.question.trim()) return
     inFlight.current = true
     setBusy(true)
-    setNotice('正在交给接收方…')
+    setNotice('')
     const version = revision.current
     const submission: ReferenceSubmission = Object.freeze({ workspaceKey, question: state.current.question,
       references: Object.freeze(state.current.references.map(submissionReference)) })
@@ -221,7 +221,7 @@ function WorkspaceDraftSkills({ inputRef }: { inputRef: RefObject<HTMLTextAreaEl
       if ((event.target as Element).closest('input,button,summary')) pointerInput.current = null
     }}>
     <summary>本次问题的 Skills{pinned.length ? ` · 已固定 ${pinned.length} 个版本` : ' · 使用已启用技能'}</summary>
-    {skills.loading && <p className="wr-hint" role="status">正在读取 Skills…</p>}
+    {skills.loading && <p className="wr-hint" role="status" aria-label="正在读取 Skills" />}
     {skills.error && <p className="wr-notice" role="alert">{skills.error}</p>}
     {!skills.loading && !skills.options.length && !unknown.length && <p className="wr-hint">尚无可用 Skill，可在 Agent 个性化中导入并启用。</p>}
     {skills.options.length > 0 && <p className="wr-hint">勾选可固定本次使用的版本，其他已启用技能仍可按需使用。</p>}
@@ -329,7 +329,7 @@ export function WorkspaceReferenceComposer({ closeFocusRef, sendBlocked = false,
           : readOnly ? '还原校验环境中的问题与引用只读，接管后可继续编辑。'
             : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
         <button className="wr-primary" type="submit" disabled={!canSend || busy || !question.trim()}>
-          {sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable ? busy ? '发送中…' : submitLabel ?? '发送问题' : '发送问题（尚未接入）'}</button></div>
+          {sendBlocked ? blockedLabel ?? '等待当前回答' : sendAvailable ? submitLabel ?? '发送问题' : '发送问题（尚未接入）'}</button></div>
     </form>
   </section>
 }

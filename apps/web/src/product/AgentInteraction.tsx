@@ -101,7 +101,7 @@ export function AgentInteractionSettings({ controller }: { controller: AgentInte
       onChange={mode => void selectMode(mode)} options={[
         { value: 'steering', title: '引导当前任务', desc: '在下一步纳入补充，已开始的操作保留真实状态。', disabled: !!pendingMode || controller.busy || !controller.writable },
         { value: 'queue', title: '排队处理', desc: '完整一轮正常结束后，按接收顺序处理。', disabled: !!pendingMode || controller.busy || !controller.writable },
-      ]} /> : <p role="status" className="detail">正在读取交互设置…</p>}
+      ]} /> : <p role="status" className="detail" aria-label="正在读取交互设置" />}
     {controller.error && <p role="alert" className="learning-error">{controller.error}</p>}
     {controller.error && <button className="outline" type="button" onClick={() => void controller.reload()}>重新读取交互设置</button>}
   </Section>

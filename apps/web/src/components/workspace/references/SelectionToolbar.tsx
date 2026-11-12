@@ -37,7 +37,7 @@ export function SelectionToolbar() {
   return createPortal(<div className="wr-toolbar" data-reference-ui style={{ left: position?.left ?? 8,
     top: position?.top ?? 8, visibility: position ? 'visible' : 'hidden' }}>
     <button ref={button} type="button" aria-keyshortcuts="Alt+Enter" disabled={draftReady === false}
-      title={draftReady === false ? '正在读取原问题草稿，请稍候' : '询问 Agent（Alt + Enter）'}
+      title={draftReady === false ? '问题草稿尚未就绪' : '询问 Agent（Alt + Enter）'}
       onPointerDown={event => event.preventDefault()} onClick={ask}>询问 Agent</button>
   </div>, document.body)
 }

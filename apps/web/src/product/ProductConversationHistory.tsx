@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ConversationHistoryItem, LearningActivity } from '@xunjie/contracts/learning-data'
 import { ConversationPane } from '@xunjie/ui/foundation'
 import { Icon } from '@xunjie/ui/icons'
@@ -85,12 +85,12 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('scroll', scroll, true); window.removeEventListener('resize', resize) }
   }, [menu.id, visible, closeMenu])
 
-  const states = new Map(labels.map(item => [item.activityId, item]))
-  const conversations = (activities ?? []).filter(activity => !activity.course && !states.get(activity.activityId)?.deleted)
+  const states = useMemo(() => new Map(labels.map(item => [item.activityId, item])), [labels])
+  const conversations = useMemo(() => (activities ?? []).filter(activity => !activity.course && !states.get(activity.activityId)?.deleted)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.activityId.localeCompare(b.activityId))
-    .map(activity => ({ id: activity.activityId, title: conversationTitle(activity, labels),
+    .map(activity => ({ id: activity.activityId, title: states.get(activity.activityId)?.title || activity.goal || activity.question || '资料学习',
       pinned: states.get(activity.activityId)?.pinned ?? false, archived: states.get(activity.activityId)?.archived ?? false,
-      createdAt: activity.createdAt }))
+      createdAt: activity.createdAt })), [activities, states])
   const archived = conversations.filter(item => item.archived)
   const term = query.trim().toLowerCase()
   const matches = (item: { title: string }) => item.title.toLowerCase().includes(term)
@@ -121,7 +121,7 @@ export function ProductConversationHistory({ activities, activeId, labels, archi
     {error && <div className="agent-side-empty" role={operationError ? undefined : 'alert'}>{!operationError && error} <button type="button" className="agent-side-clear" onClick={onRetry}>重试</button></div>}
     {!ready || activities === null ? <>
       <button type="button" className="agent-newchat" onClick={onNew}><span className="navicon"><Icon name="pen-new-square" size={14} /></span>新对话</button>
-      <div className="agent-side-empty" role="status">{error ? '暂时无法显示对话' : '正在读取对话…'}</div>
+      <div className="agent-side-empty" role="status">{error ? '暂时无法显示对话' : ''}</div>
     </> : <ConversationPane archived={archived} archivedVisible={archived.slice(0, archivedShown)}
       archivedHits={term ? archived.filter(matches) : []} pinned={pinned} groups={groups} archiveOpen={archiveOpen}
       query={query} searching={!!term} activeId={activeId ?? null} menu={menu} renamingId={renamingId} confirmingId={confirmingId}

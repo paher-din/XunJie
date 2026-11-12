@@ -133,6 +133,59 @@ it('keeps the bound account across filtering, school entry, personal Agent, sett
   await remount(); expect(accountLabel()).toBe('Robert')
 })
 
+it('shares initial list reads and shows loaded content immediately across home and Agent navigation', async () => {
+  await mount()
+  const listReads = () => reads.filter(item => item.route === 'activities' || item.route === 'courses')
+  expect(listReads().filter(item => item.route === 'activities' && item.space === 'personal')).toHaveLength(1)
+  expect(listReads().filter(item => item.route === 'activities' && item.space === schoolKey)).toHaveLength(1)
+  expect(listReads().filter(item => item.route === 'courses')).toHaveLength(1)
+  const count = listReads().length
+  await click('Agent 对话')
+  expect(host.querySelector('[data-testid="history"]')?.textContent).toContain('个人自主学习')
+  await click('首页')
+  expect(host.textContent).toContain('学校课程')
+  expect(host.textContent).not.toContain('正在读取学校课程')
+  expect(listReads()).toHaveLength(count)
+})
+
+it('opens an activity without waiting for its slower activity list', async () => {
+  history.replaceState(null, '', '/?space=personal&view=agent&activity=' + personalActivity.activityId)
+  const original = vi.mocked(fetch).getMockImplementation()!
+  let finish!: () => void
+  const held = new Promise<void>(resolve => { finish = resolve })
+  vi.mocked(fetch).mockImplementation(async (...args) => {
+    if (String(args[0]) === '/api/learning/activities') await held
+    return original(...args)
+  })
+  try {
+    await mount()
+    expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
+  } finally { await act(async () => { finish(); await settle() }) }
+})
+
+it('refreshes the sidebar on a later visit when its cached activity list has expired', async () => {
+  await mount()
+  const original = vi.mocked(fetch).getMockImplementation()!
+  const added = activity(personal, '其他窗口新增的活动')
+  vi.mocked(fetch).mockImplementation(async (...args) => {
+    if (String(args[0]) === '/api/learning/activities'
+      && (args[1]?.headers as Record<string, string>)?.['x-xj-space'] === 'personal') return response([added, personalActivity])
+    return original(...args)
+  })
+  vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31000)
+  await click('Agent 对话')
+  expect(host.querySelector('[data-testid="history"]')?.textContent).toContain('其他窗口新增的活动')
+})
+
+it('defers a hidden activity when entering settings directly and opens it on return', async () => {
+  history.replaceState(null, '', '/?space=personal&view=agent&activity=' + personalActivity.activityId + '&settings=models')
+  await mount()
+  expect(reads.some(item => item.route === 'activities/' + personalActivity.activityId)).toBe(false)
+  expect(host.querySelector('[data-testid="workspace"]')).toBeNull()
+  await click('返回学习空间')
+  expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
+})
+
 it('opens the school activity through its own source and protects it before opening the personal Agent', async () => {
   await mount()
   await clickSelector('[data-activity-id="' + schoolActivity.activityId + '"]')

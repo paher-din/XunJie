@@ -54,6 +54,10 @@ async function conversationMenu(activityId: string, action: string) {
   await click(action)
 }
 async function fillQuestion(text: string) {
+  await vi.waitFor(async () => {
+    await act(async () => { await settle() })
+    expect(host.querySelector('textarea[aria-label="向 Agent 提问"]')).not.toBeNull()
+  })
   await act(async () => {
     const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!
     expect(field).not.toBeNull()

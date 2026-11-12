@@ -12,7 +12,8 @@ vi.mock('./school-authorization', async importOriginal => ({
 }))
 
 vi.mock('../lib/theme', () => ({ useTheme() {} }))
-vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))
+vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onSettings }: { children: ReactNode; onSettings(): void }) =>
+  <main><button onClick={onSettings}>打开设置</button>{children}</main> }))
 vi.mock('./ProductHome', () => ({ ProductHome: ({ onConnectSchool }: { onConnectSchool(): void }) => <button onClick={onConnectSchool}>连接学校</button> }))
 vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => null }))
 vi.mock('./ModelSelection', () => ({ useModelSelection: () => ({}) }))
@@ -313,10 +314,11 @@ it.each(['personal', 'school:connection'])('manages the one connected school fro
 
 it('keeps the personal activity mounted when disconnecting a school from personal space', async () => {
   connected = true; activityAvailable = true
-  history.replaceState(null, '', '/?space=personal&activity=' + activity.activityId + '&settings=account')
+  history.replaceState(null, '', '/?space=personal&activity=' + activity.activityId)
   await act(async () => { root.render(<LearningApp />); await settle(); await settle() })
   const original = host.querySelector('#test-personal-activity')
   expect(original).not.toBeNull()
+  await click('打开设置')
   await click('断开连接')
   await clickDialog('确认断开')
   expect(host.querySelector('#test-personal-activity')).toBe(original)
@@ -351,7 +353,8 @@ it('prevents duplicate disconnection while the confirmation is pending', async (
   const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
   expect(dialog.getAttribute('aria-busy')).toBe('true')
   expect([...dialog.querySelectorAll('button')].find(item => item.textContent === '取消')?.disabled).toBe(true)
-  await clickDialog('正在断开…')
+  const confirm = [...dialog.querySelectorAll('button')].find(item => item.textContent === '确认断开')!
+  expect(confirm.getAttribute('aria-disabled')).toBe('true')
   expect(revoked).toHaveLength(1)
   await act(async () => { release(); await settle() })
   expect(document.querySelector('[role="dialog"]')).toBeNull()

@@ -25,6 +25,7 @@
 .product-conversation-inner { padding: 24px 0; }
 .product-conversation .teaching-conversation-header h3 { font-size: 13px; color: var(--muted); }
 .product-conversation .teaching-message { padding: 16px 0; }
+.product-conversation .teaching-message:not([data-state='streaming']) { content-visibility: auto; contain-intrinsic-size: auto 120px; }
 .product-conversation .teaching-message.student { max-width: 80%; margin-left: auto; padding: 12px 16px; background: var(--chip-bg); border: 0; border-radius: 12px; }
 .product-conversation .teaching-message + .teaching-message { margin-top: 16px; }
 .product-conversation-records, .product-conversation-mode { color: var(--muted); font-size: 13px; }

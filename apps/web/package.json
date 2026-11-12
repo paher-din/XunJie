@@ -12,6 +12,8 @@
     "build": "node ../../scripts/build.mjs web --",
     "build:runtime": "node ../../scripts/build.mjs web:runtime --",
     "preview": "vite preview",
+    "precheck:performance": "node ../../scripts/build.mjs web:test",
+    "check:performance": "node ../../scripts/check-web-performance.mjs",
     "test": "vitest run",
     "typecheck": "node ../../scripts/build.mjs web:typecheck",
     "test:e2e": "playwright test",

@@ -3,11 +3,12 @@ import { Icon } from '../icons'
 import './model-provider-card.css'
 
 /** Shared card presentation; the caller owns identity, configuration, checks and persistence. */
-export function ModelProviderCard({ name, address, credentialLabel, logo, compact = false, actions, footer, children }: {
+export function ModelProviderCard({ name, address, credentialLabel, logo, compact = false, inactive = false, actions, footer, children }: {
   name: string; address?: string | undefined; credentialLabel?: string | undefined; logo?: ReactNode; compact?: boolean
+  inactive?: boolean
   actions: ReactNode; footer?: ReactNode; children: ReactNode
 }) {
-  return <div className={'st-provider' + (compact ? ' st-provider-compact' : '')}>
+  return <div className={'st-provider' + (compact ? ' st-provider-compact' : '') + (inactive ? ' st-provider-inactive' : '')}>
     <div className="st-provider-head">
       <span className="st-provider-badge" aria-hidden="true">{logo ?? <Icon name="model" size={18} />}</span>
       <div className="st-provider-info"><span className="st-provider-name" title={name}>{name}</span>

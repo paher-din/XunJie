@@ -316,8 +316,8 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, native
         <WorkspaceReferenceComposer closeFocusRef={ask}
           modelPicker={<AgentModelPicker controller={picker} disabled={!authorized || readOnly} onSettings={onModels} />}
           sendBlocked={!inputInteraction.ready || picker.blocked}
-          blockedHint={picker.blocked ? '正在切换模型，问题与引用仍保留。' : '正在核对本次发送方式，问题与引用仍保留。'}
-          blockedLabel={picker.blocked ? '切换模型中…' : '核对发送方式…'}
+          blockedHint="问题与引用仍保留。"
+          blockedLabel="暂时不能发送"
           submitLabel={conversationActive ? inputInteraction.mode === 'queue' ? '排队发送' : '补充当前任务' : '发送问题'} /><ActivityActions />
       </aside>
     </div>

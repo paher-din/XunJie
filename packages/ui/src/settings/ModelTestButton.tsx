@@ -35,9 +35,7 @@ export function ModelTestButton({ kind, running = false, disabled = false, compa
   const label = kind === 'connection' ? '连接测试' : '模型测试'
   const stoppable = running && Boolean(onStop)
   const accessibleLabel = stoppable ? `停止${label}` : running ? `${label}进行中` : label
-  const tip = stoppable ? '停止本次测试' : kind === 'connection'
-    ? '验证地址、协议和密钥'
-    : '验证模型与默认思考参数、能力配置'
+  const tip = stoppable ? '停止测试' : kind === 'connection' ? '测试连接' : '测试模型'
   return <Tooltip.Root open={open} onOpenChange={setOpen}>
     <Tooltip.Trigger ref={locateContainer} delay={300} render={<Button type="button" variant="outline" className={'st-model-test-button' + (compact ? ' st-xs' : '') + (iconOnly ? ' st-model-test-icon' : '')}
     data-running={running || undefined} aria-busy={running}

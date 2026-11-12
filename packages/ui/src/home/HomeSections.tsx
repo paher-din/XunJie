@@ -37,7 +37,7 @@ export interface HomeStatusProps {
   retry?: { disabled: boolean; onRetry: () => void }
 }
 export function HomeStatus({ kind, message, searchIcon, retry }: HomeStatusProps) {
-  if (kind === 'loading') return <p role="status">{message}</p>
+  if (kind === 'loading') return <p role="status" aria-label={message} />
   if (kind === 'error') return <div className="empty" role="alert">
     <p>{message}</p>{retry && <button type="button" disabled={retry.disabled} onClick={retry.onRetry}>重试</button>}
   </div>

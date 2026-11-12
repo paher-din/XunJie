@@ -157,7 +157,7 @@ export function AgentInputRecord({ input, scope, readOnly, request, onConfirmed 
         <button type="button" className="outline" onClick={() => void navigator.clipboard.writeText(draft.text)
           .catch(() => toast.error('暂时无法复制，请直接选中输入文字保存。'))}>复制修改草稿</button>
       </div>
-      <p className="detail" role="status">{control.protectedDraft ? '修改草稿已在本机保留。' : '正在保护修改草稿…'}</p>
+      {control.protectedDraft && <p className="detail" role="status">修改草稿已在本机保留。</p>}
       {!editable && <p className="detail">这条输入已处理，当前修改没有被采用。可复制后另行补充。</p>}
     </div>}
     {control.record?.pending && !readOnly && <button className="outline" type="button" disabled={control.busy} onClick={control.retry}>核对原操作</button>}

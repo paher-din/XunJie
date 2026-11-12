@@ -11,6 +11,7 @@ export interface ProductShellProps {
   accountName: string
   onHome: () => void
   onAgent: () => void
+  onAgentIntent?: () => void
   onSettings: () => void
   onProfile: () => void
   active?: 'home' | 'agent' | 'settings'
@@ -117,7 +118,7 @@ function ProductAccount({ name, avatar, visible, rail, onProfile, onSettings }: 
 
 /** Product presentation consumes real data and callbacks; it owns no business services or routing. */
 export function ProductShell({ children, immersive, accountName, avatar, onHome, onAgent, onSettings, onProfile, active,
-  agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange }: ProductShellProps) {
+  agentHistory, archivedCount = 0, archiveOpen = false, onArchiveOpenChange, onAgentIntent }: ProductShellProps) {
   const { collapsed, toggle, setCollapsed } = useShellNavigation()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -153,7 +154,7 @@ export function ProductShell({ children, immersive, accountName, avatar, onHome,
   }, [railPanelVisible, railPanel, archiveOpen, closeRailPanel])
 
   return <ShellFrame className="product-shell" collapsed={collapsed} onCollapsedChange={setCollapsed} immersive={immersive} mainRef={mainRef}
-    navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} />}
+    navigation={<SidebarNavigation onHome={active === 'home'} onAgent={active === 'agent'} history={agentHistory?.(() => {}, !collapsed && !immersive && active === 'agent')} openHome={onHome} openAgent={onAgent} prepareAgent={onAgentIntent} />}
     bottom={<div className="side-bottom">
       <ProductAccount name={accountName} avatar={avatar} visible={!collapsed && !immersive} onProfile={onProfile} onSettings={onSettings} />
       <button type="button" className={'side-icon' + (active === 'settings' ? ' active' : '')} data-tip="设置与帮助" aria-label="设置与帮助" onClick={onSettings}><Icon name="settings" size={16} /></button>
@@ -163,6 +164,7 @@ export function ProductShell({ children, immersive, accountName, avatar, onHome,
     rail={<>
       <nav aria-label="主导航">
         <SidebarRailNavigation onHome={active === 'home'} onAgent={active === 'agent'} panel={railPanel}
+          prepareAgent={onAgentIntent}
           archivedCount={archivedCount} archiveOpen={archiveOpen} showEmptyArchive
           openHome={() => { setRailPanel(null); onHome() }}
           openAgent={anchor => {

@@ -2,6 +2,15 @@
   container-type: inline-size;
   box-shadow: none;
 }
+.st-provider.st-provider-inactive {
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+.st-provider-inactive .st-provider-model-actions .st-toggle,
+.st-provider-inactive .st-provider-model-actions .st-model-test-button {
+  filter: grayscale(1);
+  opacity: .6;
+}
 .st-provider-compact > .st-provider-head {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;

@@ -39,7 +39,7 @@ function ConfirmationDialogDemo() {
   const [open, setOpen] = useState(true)
   return <><Button type="button" variant="outline" onClick={() => setOpen(true)}>打开确认</Button>
     <ConfirmationDialog open={open} title="断开学校连接？" description="断开后，将无法在此访问学校学习空间。需要时可重新连接。"
-      confirmLabel="确认断开" pendingLabel="正在断开…" onClose={() => setOpen(false)} onConfirm={() => setOpen(false)} /></>
+      confirmLabel="确认断开" onClose={() => setOpen(false)} onConfirm={() => setOpen(false)} /></>
 }
 function Avatars() {
   return <div className="demo-row demo-avatar-row">{['林同学', '陈同学', '李同学', '王同学'].map(name => <div key={name}><AccountAvatar name={name} /><span>{name}</span></div>)}</div>
@@ -424,7 +424,7 @@ export const foundationEntries: CatalogEntry[] = [
   { id: 'button', name: 'Button', description: '主操作与次操作按钮。', importPath: foundation, source: 'packages/ui/src/foundation/Button.tsx', exampleSource: source, props: ['variant: primary | outline', '原生 button 属性与 ref'], dependencies: [], states: [
     { id: 'variants', name: '主 / 次操作', component: ButtonVariants }, { id: 'disabled', name: '禁用', component: DisabledButtons },
   ] },
-  { id: 'confirmation-dialog', name: 'ConfirmationDialog', description: '危险操作前的受控确认弹窗。', importPath: foundation, source: 'packages/ui/src/foundation/ConfirmationDialog.tsx', exampleSource: source, props: ['open, title, description', 'confirmLabel, pendingLabel, busy, error', 'onClose, onConfirm, onReturnFocus?'], dependencies: ['Radix Dialog；操作及结果由调用方提供'], states: [
+  { id: 'confirmation-dialog', name: 'ConfirmationDialog', description: '危险操作前的受控确认弹窗。', importPath: foundation, source: 'packages/ui/src/foundation/ConfirmationDialog.tsx', exampleSource: source, props: ['open, title, description', 'confirmLabel, busy, error', 'onClose, onConfirm, onReturnFocus?'], dependencies: ['Radix Dialog；操作及结果由调用方提供'], states: [
     { id: 'default', name: '确认', component: ConfirmationDialogDemo },
   ] },
   { id: 'destructive-button', name: 'DestructiveButton', description: '危险操作按钮，适配 Astryx 与循阶主题。', importPath: foundation, source: 'packages/ui/src/foundation/DestructiveButton.tsx', exampleSource: source, props: ['label: string', 'disabled?: boolean', '按钮事件与 ref'], dependencies: ['Astryx Button；主题取循阶 token'], states: [

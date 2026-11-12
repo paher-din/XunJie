@@ -506,7 +506,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       <div className="st-model-test" aria-label={`${model.modelId || '当前模型'}的模型测试`}>
         <ModelTestButton kind="model" running={run?.status === 'running'} disabled={!credentialReady}
           onTest={() => void test(model)} onStop={() => tests.stop(model.connectionId)} />
-        {run && <ModelTestFeedback {...run} onRetry={run.status === 'failed' || run.status === 'unverified' ? () => void test(model) : undefined} />}
+        {run && ['failed', 'unverified'].includes(run.status) && <ModelTestFeedback {...run} onRetry={() => void test(model)} />}
       </div></>
   }
   const addManualModel = () => {
@@ -549,13 +549,13 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         <div className="st-connection-test">
           <ModelTestButton kind="connection" running={supplier.connection?.status === 'running'} disabled={!credentialReady || !onConnectionTest}
             onTest={() => void supplier.runConnection()} onStop={supplier.stopConnection} />
-          {supplier.connection && <ModelTestFeedback {...supplier.connection}
-            onRetry={['failed', 'unverified'].includes(supplier.connection.status) ? () => void supplier.runConnection() : undefined} />}
+          {supplier.connection && ['failed', 'unverified'].includes(supplier.connection.status) && <ModelTestFeedback {...supplier.connection}
+            onRetry={() => void supplier.runConnection()} />}
         </div>
         <div className="st-route-list-head"><span className="st-field-label">模型</span><button type="button" className="st-model-directory-refresh" aria-busy={directory.visibleBusy}
           disabled={onDirectory ? directory.busy || retryBlocked : profileBusy || Boolean(addressIssue) || !draft.models.some(model => model.modelId.trim())}
           title={retryBlocked ? `可在 ${new Date(manualReadyAt).toLocaleTimeString('zh-CN', { hour12: false })} 再次更新` : undefined}
-          onClick={() => void refreshDirectory()}>{directory.visibleBusy ? '正在更新…' : retryBlocked ? directoryFailed ? '稍后重试' : '刚刚更新' : '更新模型资料'}<Icon name="refresh" size={14} /></button></div>
+          onClick={() => void refreshDirectory()}>{retryBlocked ? directoryFailed ? '稍后重试' : '刚刚更新' : '更新模型资料'}<Icon name="refresh" size={14} /></button></div>
         <div className="st-directory-feedback" aria-live="polite" aria-atomic="true">
           {(directoryNotice || profileNotice) && <p className="detail">
             {directoryNotice || profileNotice}
@@ -569,8 +569,8 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
             }} /></div><button type="button" className="outline st-model-list-add" disabled={!modelQuery.trim()} onClick={addManualModel}><Icon name="add" size={16} />添加模型</button>
           {!preset && <button type="button" className="outline st-model-list-add st-model-list-fetch" aria-busy={supplier.fetched?.busy ?? false}
             disabled={!credentialReady || !onDirectory || supplier.fetched?.busy}
-            title={!credentialReady ? '正在读取密钥' : !onDirectory ? '模型列表服务暂不可用' : undefined}
-            onClick={() => void supplier.fetchModels()}><Icon name="download-minimalistic" size={16} />{supplier.fetched?.busy ? '拉取中…' : '拉取模型'}</button>}</div>
+            title={!onDirectory ? '模型列表服务暂不可用' : undefined}
+            onClick={() => void supplier.fetchModels()}><Icon name="download-minimalistic" size={16} />拉取模型</button>}</div>
           {!preset && supplier.fetched?.error && <ModelTestFeedback status="failed" title="拉取模型未完成" {...supplier.fetched.error}
             onRetry={() => void supplier.fetchModels()} />}
           <div className="st-model-choice-list" role="group" aria-label={preset ? '预设模型' : '自定义模型'}>
@@ -597,7 +597,7 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
         {notice && <p className="detail">{notice}</p>}
         {recovery === 'unknown' && <button type="button" className="outline" disabled={saving} onClick={() => { if (pending.current) void submit(pending.current) }}>核对原提交</button>}
         {recovery === 'conflict' && <>
-          <button type="button" className="outline" disabled={reading || saving} onClick={() => void readLatest()}>{reading ? '读取中…' : '读取最新版本'}</button>
+          <button type="button" className="outline" disabled={reading || saving} onClick={() => void readLatest()}>读取最新版本</button>
           {latest && <div className="detail" role="region" aria-label="配置冲突核对">
             <p>已保存版本 {latest.version} · {latest.hasCredential ? '密钥已保存' : '尚未保存密钥'}</p>
             <p>名称：已保存「{latest.name}」；当前草稿「{draft.name}」</p>
@@ -610,6 +610,6 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       </div>
       <div className="st-dialog-foot">
         <div className="st-dialog-foot-right">
-          <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button></div></div>
+          <button type="button" className="primary" disabled={saving || !credentialReady || recovery !== null} onClick={() => void save()}>保存</button></div></div>
     </Dialog.Content></Dialog.Portal></Dialog.Root>
 }

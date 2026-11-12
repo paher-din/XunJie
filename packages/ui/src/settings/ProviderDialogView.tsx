@@ -100,11 +100,11 @@ export function ProviderDialogView({ open, onClose, provider, preparation, name,
           <div className="st-dialog-foot">
             <button type="button" className="outline" disabled={testing || !baseUrl.trim()} onClick={runTest}>
               {testing ? <span className="st-spinner" aria-hidden="true" /> : <Icon name="refresh" size={15} />}
-              {testing ? '测试中…' : '连接测试'}
+              连接测试
             </button>
             <div className="st-dialog-foot-right">
               <Dialog.Close asChild><button type="button" className="outline">取消</button></Dialog.Close>
-              <button type="button" className="primary" disabled={saving || (provider != null && !dirty)} onClick={() => void submit()}>{saving ? '保存中…' : '保存'}</button>
+              <button type="button" className="primary" disabled={saving || (provider != null && !dirty)} onClick={() => void submit()}>保存</button>
             </div>
           </div>
         </Dialog.Content>

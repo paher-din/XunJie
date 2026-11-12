@@ -34,7 +34,7 @@ export function useModelConfigurationTests(check: CheckModelConfiguration) {
     const runId = crypto.randomUUID(), controller = new AbortController()
     active.current.set(id, { controller, runId })
     const current = () => live.current && active.current.get(id)?.runId === runId
-    let result: ModelTestRun = { status: 'running', title: '正在校验配置…', runId, configurationPassed: false }
+    let result: ModelTestRun = { status: 'running', title: '测试中…', runId, configurationPassed: false }
     let notificationOnly = false
     const apply = () => { if (current()) setRuns(previous => ({ ...previous, [id]: { ...result } })) }
     apply()
@@ -50,22 +50,24 @@ export function useModelConfigurationTests(check: CheckModelConfiguration) {
         const imageInput = configuration.imageInput ?? ('capabilities' in configuration && modelAllowsImages(configuration))
         for (const item of ['text', ...(imageInput ? ['images' as const] : [])] as const) {
           if (controller.signal.aborted) break
-          result = { ...result, status: 'running', title: item === 'text' ? '正在测试文本与默认思考参数…' : '正在测试图片理解…' }; apply()
+          result = { ...result, status: 'running', title: '测试中…', message: undefined, suggestion: undefined }; apply()
           const attempt = await check(source, { test: { runId, item }, configuration, signal: controller.signal,
             onAttempt: attempt => { result = { ...result, [item === 'text' ? 'text' : 'images']: attempt }; apply() } })
           if (!current()) return
           result = { ...result, [item === 'text' ? 'text' : 'images']: attempt, ...describeModelAttempt(attempt) }
           if (attempt.state !== 'completed') break
         }
-        if (controller.signal.aborted) result = { ...result, status: 'cancelled', title: '模型测试已停止' }
+        if (controller.signal.aborted) result = { ...result, status: 'cancelled', title: '模型测试已停止', message: undefined, suggestion: undefined }
         else if (result.status === 'passed') result = { ...result, title: '模型测试通过', message: undefined, suggestion: undefined }
         else if (result.text?.state === 'completed' && result.images) result = { ...result,
-          title: result.status === 'failed' ? '文本通过，图片测试未通过' : '文本通过，图片测试未完成' }
+          title: result.status === 'failed' ? '图片测试未通过' : '图片测试未完成' }
       }
     } catch (error) {
       notificationOnly = !controller.signal.aborted && (error as { code?: string } | null)?.code === 'resource-busy' && !result.text && !result.images
-      result = { ...result, ...(controller.signal.aborted
-        ? { status: 'cancelled' as const, title: '模型测试已停止' } : describeTestError(error)) }
+      const failure = controller.signal.aborted
+        ? { status: 'cancelled' as const, title: '模型测试已停止', message: undefined, suggestion: undefined }
+        : describeTestError(error)
+      result = { ...result, status: failure.status, title: failure.title, message: failure.message, suggestion: failure.suggestion }
     }
     finally {
       if (current()) {
@@ -81,10 +83,7 @@ export function useModelConfigurationTests(check: CheckModelConfiguration) {
   const stop = (id: string) => active.current.get(id)?.controller.abort()
   const expire = (id: string) => {
     active.current.get(id)?.controller.abort(); active.current.delete(id)
-    if (live.current) setRuns(previous => previous[id] ? { ...previous, [id]: {
-      runId: crypto.randomUUID(), configurationPassed: false, status: 'unverified', title: '模型配置已更新',
-      message: '模型资料或配置已变化，原测试结果已失效。', suggestion: '请按当前配置重新测试。',
-    } } : previous)
+    if (live.current) setRuns(previous => { const next = { ...previous }; delete next[id]; return next })
   }
   const fail = (id: string, message: string) => {
     invalidate(id)

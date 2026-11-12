@@ -421,8 +421,8 @@ export function PersonalMaterialEntries({ personal }: { personal: PersonalMateri
       <button type="button" className="ws-btn ghost" disabled={!personal.writable || personal.busy}
         onClick={() => void personal.receive(request)}>核对并继续原请求</button>
     </div>)}
-    {personal.loading && <p className="detail" role="status">正在读取个人笔记列表…</p>}
-    {personal.busy && <p className="detail" role="status">正在保存或读取个人笔记…</p>}
+    {personal.loading && <p className="detail" role="status" aria-label="正在读取个人笔记列表" />}
+    {personal.busy && <p className="detail" role="status" aria-label="正在保存或读取个人笔记" />}
     {personal.loadError && <p className="detail">{personal.loadError}</p>}
     <div className="personal-material-actions">
       <button type="button" className="ws-btn ghost" disabled={personal.busy || personal.loading}
@@ -471,6 +471,6 @@ export function PersonalMaterials({ personal, onBack }: { personal: PersonalMate
         </div>
       </div>}
     </>}
-    {personal.busy && <p className="personal-material-muted" role="status">正在保存或读取个人笔记…</p>}
+    {personal.busy && <p className="personal-material-muted" role="status" aria-label="正在保存或读取个人笔记" />}
   </section>
 }

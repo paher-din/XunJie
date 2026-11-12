@@ -27,7 +27,7 @@ export function ProviderIdentityFields({ name, baseUrl, apiKey, hasKey, errors =
     <Field label="API Key" tip={snapshotCredential ? '保存输入框中的当前密钥；清空后保存即可移除密钥' : hasKey ? '已加密保存；留空保留，填写后替换' : '仅由所属服务保管，读取不返回密钥'}>
       <div className="st-secret-input">
         <TextInput aria-label="API Key" type={visible ? 'text' : 'password'} autoComplete="off" spellCheck={false} disabled={apiKeyDisabled}
-          value={apiKey} placeholder={apiKeyDisabled ? '正在读取已保存的密钥…' : 'sk-…'} className="st-mono-input" onBlur={onApiKeyBlur} onChange={event => onApiKey(event.target.value)} />
+          value={apiKey} placeholder="sk-…" className="st-mono-input" onBlur={onApiKeyBlur} onChange={event => onApiKey(event.target.value)} />
         <button type="button" className="st-secret-reveal" aria-label={visible ? '隐藏 API Key' : '显示 API Key'} aria-pressed={visible}
           disabled={apiKeyDisabled} onMouseDown={event => event.preventDefault()} onClick={() => setVisible(value => !value)}><Icon name="eye" size={18} /></button>
       </div>

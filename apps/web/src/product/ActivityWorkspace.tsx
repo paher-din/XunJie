@@ -70,7 +70,7 @@ export function ActivityWorkspace({ activity, namespace, spaceKey, authorized, l
       {(starterError || state.error) && <div role="alert" className="learning-error"><p>{starterError || state.error}</p>
         <button type="button" className="ws-btn ghost" onClick={download}>导出当前作品</button>
         <label>可复制的当前原文<textarea readOnly value={file?.value ?? ''} /></label></div>}
-      {!state.ready ? <p>正在读取作品…</p> : <>
+      {!state.ready ? <p role="status" aria-label="正在读取作品" /> : <>
         {state.conflict && <div role="alert" className="learning-error"><h3>作品存在分歧</h3>
           <p>双方内容均保留。请比较后选择，或在下方合并当前文件。</p>
           <div className="work-comparison"><div><h4>本页内容</h4>{state.conflict.local.map(f => <details key={f.objectId} open><summary>{f.name}</summary><pre>{f.value}</pre></details>)}</div>

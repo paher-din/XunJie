@@ -68,7 +68,7 @@ export function LegacyModelSettingsView<Provider extends LegacyModelProviderDisp
             <>
               <ModelConfigActions {...configActions} />
               <p role="status">
-                {remote.loading ? '正在读取配置…' : remote.data?.enabled ? '个人模型已启用' : '个人模型未启用'}
+                {remote.loading ? '' : remote.data?.enabled ? '个人模型已启用' : '个人模型未启用'}
                 {remote.data && !remote.data.callsEnabled ? ' · 管理员已停用模型调用' : ''}
               </p>
             </>

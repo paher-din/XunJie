@@ -6,6 +6,7 @@ import type { Root } from 'react-dom/client'
 import type { ModelAttempt, ModelConnection, ModelProvider, SaveModelProvider } from '@xunjie/contracts/model-connections'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { ModelSelectionController } from './ModelSelection'
+import { LearningReadCache } from './learning-read-cache'
 
 // Use the real React/Radix tree. Only the browser host, transport and polling clock
 // are controlled; SSR cannot exercise the interleaved actions behind STD-02/SPC-02.
@@ -58,7 +59,7 @@ async function type(label: string, value: string) {
   })
 }
 const poll = async () => {
-  await act(async () => { vi.advanceTimersByTime(1000); await settle() })
+  await act(async () => { vi.advanceTimersByTime(15000); await settle() })
   await act(async () => { await settle() })
 }
 async function mount(subject = identity) {
@@ -134,6 +135,29 @@ it('does not notify the account pane when a model read fails after leaving model
   await act(async () => { release(); await settle() })
   holdRead = undefined
   expect(alerts()).not.toContain('连接或相应适配器不可用')
+})
+
+it('keeps idle settings quiet and refreshes after returning to the window', async () => {
+  const count = () => vi.mocked(fetch).mock.calls.filter(([path]) => /\/models\/(providers|checks)$/.test(String(path))).length
+  const before = count()
+  await act(async () => { vi.advanceTimersByTime(4000); await settle() })
+  expect(count()).toBe(before)
+  await act(async () => { window.dispatchEvent(new dom.window.Event('focus')); await settle() })
+  expect(count()).toBe(before + 2)
+})
+
+it('shows the cached suppliers immediately while a revisit is still checking the server', async () => {
+  const cache = new LearningReadCache()
+  cache.set('personal', JSON.stringify(['model-settings', 'test', identity.environmentId, identity.spaceId, identity.principalId]),
+    { providers: [providerOf(server)], attempts: [] })
+  await act(async () => { root.render(null); await settle() })
+  holdRead = new Promise(() => {})
+  await act(async () => {
+    root.render(createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection, cache }))
+    await settle()
+  })
+  expect(document.querySelector('.st-provider-name')?.textContent).toBe('原配置')
+  expect(document.body.textContent).not.toContain('正在读取模型')
 })
 
 beforeAll(async () => {
@@ -294,6 +318,28 @@ async function revisit(pane: HTMLElement) {
 }
 const modelRows = () => [...document.querySelectorAll('.st-provider-model-row')].map(row => row.getAttribute('aria-label'))
 
+it('shows at most four models until expanded, keeps transient toggles silent, and disables model controls on an inactive supplier', async () => {
+  extraModels = ['model-2', 'model-3', 'model-4', 'model-5'].map(modelId => ({ ...server,
+    connectionId: crypto.randomUUID(), modelId, modelEnabled: true, enabled: true }))
+  await act(async () => { root.render(null); await settle() })
+  await mount()
+  expect(modelRows()).toEqual(['model-2', 'model-3', 'model-4', 'model-5'])
+  expect(button('全部（5）')).toBeDefined()
+  await click('全部（5）')
+  expect(modelRows()).toEqual(['model-2', 'model-3', 'model-4', 'model-5', 'synthetic'])
+  const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
+  let releaseSave!: () => void
+  holdSave = new Promise<void>(resolve => { releaseSave = resolve })
+  await act(async () => { document.querySelector<HTMLButtonElement>('button[aria-label="启用供应商 原配置"]')!.click(); await settle() })
+  expect(card.textContent).not.toContain('正在保存')
+  expect(button('启用供应商 原配置', card).hasAttribute('disabled')).toBe(true)
+  expect(saves).toHaveLength(1)
+  await act(async () => { releaseSave(); holdSave = undefined; await settle() })
+  expect(card.classList.contains('st-provider-inactive')).toBe(true)
+  expect([...card.querySelectorAll('[role="switch"]')].map(toggle => toggle.hasAttribute('disabled'))).toEqual([false, true, true, true, true, true])
+  expect([...card.querySelectorAll('button[aria-label="模型测试"]')].every(item => (item as HTMLButtonElement).disabled)).toBe(true)
+})
+
 it('delays model regrouping until the next visit, preserves individual switch groups and keeps canonical dialog order', async () => {
   server.modelId = 'model-10'
   extraModels = [
@@ -371,7 +417,8 @@ describe('personal model settings recovery through real React controls', () => {
     expect(server.enabled).toBe(false); expect(server.providerEnabled).toBe(false); expect(server.modelEnabled).toBe(true)
     expect(document.querySelector('[aria-label="启用模型 synthetic"]')!.getAttribute('aria-checked')).toBe('true')
     expect(button('模型测试').disabled).toBe(true)
-    await toggle('启用模型 synthetic'); await toggle('启用供应商 原配置')
+    expect(button('启用模型 synthetic').disabled).toBe(true)
+    await toggle('启用供应商 原配置'); await toggle('启用模型 synthetic')
     expect(server.providerEnabled).toBe(true); expect(server.modelEnabled).toBe(false); expect(server.enabled).toBe(false)
     expect(saves.every(input => input.credential.action === 'keep')).toBe(true)
     expect(vi.mocked(fetch).mock.calls.some(([path]) => String(path).endsWith('/credential'))).toBe(false)
@@ -495,34 +542,33 @@ describe('personal model settings recovery through real React controls', () => {
     rejectCheck = false
     await click('模型测试')
     const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
-    expect(card.textContent).toContain('模型测试通过')
+    expect(card.querySelector('.st-model-test-feedback')).toBeNull()
+    expect(document.querySelectorAll('[data-sonner-toast][data-type="success"]')).toHaveLength(1)
     await poll()
-    expect(card.textContent).toContain('模型测试通过')
+    expect(card.querySelector('.st-model-test-feedback')).toBeNull()
     server = { ...server, version: 2, maxOutputTokens: 32768 }
     await poll()
-    expect(card.textContent).not.toContain('模型测试通过')
+    expect(card.querySelector('.st-model-test-feedback')).toBeNull()
     expect(checks).toHaveLength(1)
   })
 
-  it('publishes completed polling reads while newer reads are pending, without accepting older snapshots afterward', async () => {
-    let releaseFirst!: () => void, releaseSecond!: () => void, releaseLast!: () => void
+  it('does not stack background reads when the previous poll is slow, then picks up later changes', async () => {
+    let releaseFirst!: () => void
     server = { ...server, name: '较早读取' }
     holdRead = new Promise(resolve => { releaseFirst = resolve }); await poll()
-    server = { ...server, name: '已完成读取' }
-    holdRead = new Promise(resolve => { releaseSecond = resolve }); await poll()
+    const reads = () => vi.mocked(fetch).mock.calls.filter(([path]) => String(path).endsWith('/models/providers')).length
+    const before = reads()
     server = { ...server, name: '仍在读取' }
-    holdRead = new Promise(resolve => { releaseLast = resolve }); await poll()
+    await poll(); await poll()
     try {
-      await act(async () => { releaseSecond(); await settle() })
+      expect(reads()).toBe(before)
+      await act(async () => { releaseFirst(); await settle() }); holdRead = undefined
       const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
-      expect(card.textContent).toContain('已完成读取')
-      await act(async () => { releaseFirst(); await settle() })
-      expect(card.textContent).toContain('已完成读取')
-      expect(card.textContent).not.toContain('较早读取')
-      await act(async () => { releaseLast(); await settle() })
+      expect(card.textContent).toContain('较早读取')
+      await poll()
       expect(card.textContent).toContain('仍在读取')
     } finally {
-      await act(async () => { releaseFirst(); releaseSecond(); releaseLast(); await settle() }); holdRead = undefined
+      await act(async () => { releaseFirst(); await settle() }); holdRead = undefined
     }
   })
 

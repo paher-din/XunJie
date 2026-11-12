@@ -12,8 +12,7 @@ export interface ModelSettingsFeedbackProps {
 export function ModelSettingsFeedback({ data, loading, saving, error, savedRevision }: ModelSettingsFeedbackProps) {
   const current = data ? (data.enabled ? '个人模型已启用' : '个人模型未启用') : '尚未读取模型配置'
   const failed = !loading && !saving && Boolean(error)
-  const message = loading ? '正在读取配置…'
-    : saving ? `正在保存… · ${current}`
+  const message = loading || saving ? ''
     : failed ? `${current} · ${error}`
     : data && savedRevision === data.revision ? `已保存 · ${current}`
     : current

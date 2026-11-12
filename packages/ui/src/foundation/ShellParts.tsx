@@ -13,14 +13,15 @@ export interface SidebarNavigationProps {
   history: ReactNode
   openHome: () => void
   openAgent: () => void
+  prepareAgent?: () => void
 }
 
-export function SidebarNavigation({ onHome, onAgent, history, openHome, openAgent }: SidebarNavigationProps) {
+export function SidebarNavigation({ onHome, onAgent, history, openHome, openAgent, prepareAgent }: SidebarNavigationProps) {
   return <nav className="side-nav">
     <button className={onHome ? 'sidebtn active' : 'sidebtn'} onClick={openHome}>
       <span className="navicon"><Icon name="home-2" size={20} variant={onHome ? 'bold' : 'linear'} /></span>首页
     </button>
-    <div className="sideitem"><button className={onAgent ? 'sidebtn active' : 'sidebtn'} onClick={openAgent} aria-expanded={onAgent}>
+    <div className="sideitem"><button className={onAgent ? 'sidebtn active' : 'sidebtn'} onClick={openAgent} aria-expanded={onAgent} onPointerEnter={prepareAgent} onFocus={prepareAgent}>
       <span className="navicon"><Icon name="chat-round-dots" size={20} variant={onAgent ? 'bold' : 'linear'} /></span>Agent 对话
     </button></div>
     <div className={onAgent ? 'agent-sub open' : 'agent-sub'} inert={!onAgent} aria-hidden={!onAgent ? true : undefined}>
@@ -95,19 +96,21 @@ export interface SidebarRailNavigationProps {
   showEmptyArchive?: boolean
   openHome: () => void
   openAgent: (anchor: HTMLButtonElement) => void
+  prepareAgent?: () => void
   newConversation: () => void
   toggleArchive: (anchor: HTMLButtonElement) => void
   toggleSearch: (anchor: HTMLButtonElement) => void
 }
 
 export function SidebarRailNavigation({ onHome, onAgent, panel, archivedCount, archiveOpen, showEmptyArchive = false,
-  openHome, openAgent, newConversation, toggleArchive, toggleSearch }: SidebarRailNavigationProps) {
+  openHome, openAgent, newConversation, toggleArchive, toggleSearch, prepareAgent }: SidebarRailNavigationProps) {
   const showArchive = onAgent && (showEmptyArchive || archivedCount > 0)
   return <>
     <button className={'railbtn r-home' + (onHome ? ' active' : '')} onClick={openHome} title="首页" aria-label="首页">
       <Icon name="home-2" size={20} variant={onHome ? 'bold' : 'linear'} />
     </button>
     <button className={'railbtn r-agent' + (onAgent ? ' active' : '')} onClick={event => openAgent(event.currentTarget)}
+      onPointerEnter={prepareAgent} onFocus={prepareAgent}
       title="Agent 对话" aria-label="Agent 对话" aria-expanded={onAgent ? panel !== null : undefined}>
       <Icon name="chat-round-dots" size={20} variant={onAgent ? 'bold' : 'linear'} />
     </button>

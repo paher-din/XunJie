@@ -302,7 +302,7 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
           {message && <p role="status">{message}</p>}
           {pending ? <section className="activity-submission-section" aria-label="待确认的原提交">
             <h3>这次提交尚未确认</h3><SubmissionContents input={pending.input} activityId={activity.activityId} />
-            <Button type="button" disabled={busy || !authorized} onClick={() => void retry()}>{busy ? '正在核对…' : '核对并重试原提交'}</Button>
+            <Button type="button" disabled={busy || !authorized} onClick={() => void retry()}>核对并重试原提交</Button>
           </section> : draft && <section className="activity-submission-section" aria-label="本次提交清单">
             <h3>本次作品</h3><WorkContents works={draft.works} />
             {draft.artifacts.length > 0 && <fieldset disabled={busy || !!prepared.current}><legend>教学页面</legend>
@@ -312,7 +312,7 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
                   onChange={() => toggle(setSelectedArtifacts, item.artifactId)} />{item.payload.title}</label>)}
             </fieldset>}
             <fieldset disabled={busy || !!prepared.current}><legend>附上实验结果</legend>
-              {historyLoading ? <p role="status">正在读取实验结果…</p> : history.length || nativeSessions.length ? <>{history.map(entry => <label key={entry.query.requestId} className="activity-submission-choice">
+              {historyLoading ? <p role="status" aria-label="正在读取实验结果" /> : history.length || nativeSessions.length ? <>{history.map(entry => <label key={entry.query.requestId} className="activity-submission-choice">
                 <input type="checkbox" checked={selectedEvidence.includes(entry.query.requestId)} onChange={() => toggle(setSelectedEvidence, entry.query.requestId)} />
                 {entry.query.output!.artifact!.name}<span>{date(entry.createdAt)}</span></label>)}
                 {nativeSessions.map(query => <label key={query.requestId} className="activity-submission-choice">
@@ -320,7 +320,7 @@ function SchoolSubmissionControl({ activity, spaceKey, namespace, authorized, wo
                   本机会话观察<span>{date(query.session!.observations.at(-1)!.at)}</span></label>)}</> : <p>没有可附上的实验结果。</p>}
               {historyError && <p>{historyError}<button type="button" className="ws-btn ghost" onClick={() => void loadHistory()}>重新读取</button></p>}
             </fieldset>
-            <Button type="button" disabled={busy || !authorized || !latest.current.writable} onClick={() => void confirm()}>{busy ? '正在提交…' : '确认提交'}</Button>
+            <Button type="button" disabled={busy || !authorized || !latest.current.writable} onClick={() => void confirm()}>确认提交</Button>
           </section>}
           <section className="activity-submission-section" aria-label="我的提交记录"><header><h3>提交记录</h3>
             <button type="button" className="ws-btn ghost" disabled={busy} onClick={() => void loadList()}>刷新记录</button></header>

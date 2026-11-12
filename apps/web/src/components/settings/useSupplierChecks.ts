@@ -15,7 +15,7 @@ export function useSupplierChecks(input: ModelConnectionTestInput, test: TestSup
   const connectionController = useRef<AbortController | null>(null), fetchController = useRef<AbortController | null>(null)
   const live = useRef(true)
   const [connection, setConnection] = useState<{ key: string; value: ModelTestPresentation }>()
-  const [fetched, setFetched] = useState<{ key: string; models: ModelDirectoryEntry[]; busy: boolean; error?: { message: string; suggestion?: string; details?: string } }>()
+  const [fetched, setFetched] = useState<{ key: string; models: ModelDirectoryEntry[]; busy: boolean; error?: { message: string; suggestion?: string } }>()
   useEffect(() => { live.current = true; return () => { live.current = false; connectionController.current?.abort(); fetchController.current?.abort() } }, [])
   useEffect(() => {
     connectionController.current?.abort(); fetchController.current?.abort()
@@ -84,8 +84,6 @@ export function useSupplierChecks(input: ModelConnectionTestInput, test: TestSup
           message: supplier.diagnostic?.message ?? (supplier.httpStatus === 404 || supplier.httpStatus === 405
             ? '供应商未提供可用的模型列表接口。' : supplier.status === 'needs-credential' ? '请填写 API Key。' : '未能拉取供应商模型列表。'),
           suggestion: supplier.diagnostic?.suggestion ?? '请核对地址、协议和密钥；也可以继续手动添加模型。',
-          details: [supplier.httpStatus && `HTTP：${supplier.httpStatus}`, supplier.upstream?.errorCode && `上游错误代码：${supplier.upstream.errorCode}`,
-            supplier.upstream?.message, supplier.upstream?.requestId && `请求 ID：${supplier.upstream.requestId}`].filter(Boolean).join('\n'),
         } }))
       } else setFetched({ key: current.key, models: [...new Map(result.models.map(model => [model.modelId, model])).values()], busy: false })
     } catch (error) {
