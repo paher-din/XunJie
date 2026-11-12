@@ -439,7 +439,8 @@ test('Messages errors retain safe upstream status request identity and retry tim
   }, async ({ api, source, finish, restart }) => {
     const first = await finish(call(await segment(api, source)));
     assert.equal(first.state, 'failed'); assert.equal(first.reason, 'rate-limited');
-    assert.deepEqual(first.upstream, { httpStatus: 429, requestId: 'req-messages-rate-limit', retryAfterSeconds: 7 });
+    assert.deepEqual(first.upstream, { httpStatus: 429, requestId: 'req-messages-rate-limit', retryAfterSeconds: 7,
+      errorCode: 'rate_limit_error' });
     assert.equal(JSON.stringify(first).includes('private-'), false);
     await restart(); const after = (await api('calls/' + first.attemptId)).value;
     assert.deepEqual(after.upstream, first.upstream); assert.equal(after.resultRef, first.resultRef);

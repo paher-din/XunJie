@@ -133,7 +133,8 @@ test('Messages uses the owner-injected fetch and keeps safe HTTP facts', async (
   const result = await run([], { injectedFetch: true, status: 429,
     headers: { 'request-id': 'req-messages-review', 'retry-after': '17' } });
   assert.equal(result.state, 'failed'); assert.equal(result.reason, 'rate-limited');
-  assert.deepEqual(result.upstream, { httpStatus: 429, requestId: 'req-messages-review', retryAfterSeconds: 17 });
+  assert.deepEqual(result.upstream, { httpStatus: 429, requestId: 'req-messages-review', retryAfterSeconds: 17,
+    errorCode: 'rate_limit_error', message: 'fixture' });
 });
 
 test('Messages sensitive-output gate covers parsed escapes, split fields and signed content', async t => {

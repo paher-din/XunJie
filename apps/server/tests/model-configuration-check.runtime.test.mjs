@@ -30,7 +30,7 @@ let fixture;
 before(async () => { fixture = await nativeFixture(); });
 after(async () => { await fixture?.close(); });
 const protocols = ['chat-completions', 'responses', 'messages'];
-const key = 'sk-synthetic-A9x7B6v5C4n3M2p1Q0r8T7s6';
+const key = 'synthetic-review-key-A9x7B6v5C4n3M2p1Q0r8T7s6';
 const event = value => 'data: ' + JSON.stringify(value) + '\n\n';
 const response = (protocol, text, complete = true) => {
   if (protocol === 'chat-completions') return new Response(event({ choices: [{ index: 0,

@@ -206,7 +206,8 @@ test('three protocol HTTP facts survive owner persistence and restart with no re
       assert.equal((await api('models/connections', connection)).status, 200);
       const result = await finish(input(await segment(connection)));
       assert.equal(result.state, 'failed'); assert.equal(result.reason, 'rate-limited');
-      assert.deepEqual(result.upstream, { httpStatus: 429, requestId: 'fixture-429-request', retryAfterSeconds: 17 });
+      assert.deepEqual(result.upstream, { httpStatus: 429, requestId: 'fixture-429-request', retryAfterSeconds: 17,
+        errorCode: 'rate_limit_error', message: 'synthetic rate limit' });
       assert.deepEqual((await native(result)).upstream, result.upstream); results.push(result);
     }
     await restart();
