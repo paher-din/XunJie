@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ModelAttempt, ModelConnection, ModelProvider, ModelCheckPolicy } from '@xunjie/contracts/model-connections'
-import { ModelProviderCard, ModelProviderModelRow, ModelProviderLogo, SettingsEmptyState, SettingsStatus, Toggle, reasoningEffortLabels, ModelTestFeedback, ModelTestButton } from '@xunjie/ui/settings'
+import { ModelProviderCard, ModelProviderModelRow, ModelProviderLogo, SettingsEmptyState, SettingsStatus, Toggle, reasoningEffortLabels, ModelTestButton } from '@xunjie/ui/settings'
 import { Icon } from '@xunjie/ui/icons'
 import { useToastFeedback } from '@xunjie/ui/feedback'
 import type { ModelTestRun } from './useModelConfigurationTests'
@@ -36,15 +36,15 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
     setRetrying(true)
     try { await onRetry() } finally { setRetrying(false) }
   }
-  const testState = (connection: ModelConnection, { allowed = true, inactiveLabel = '模型', credentialVisible = true } = {}): ModelTestState => {
+  const testState = (connection: ModelConnection, { allowed = true, credentialVisible = true } = {}): ModelTestState => {
     if (readOnly || loading) return { disabled: true, reason: '' }
     if (!allowed) return { disabled: true, reason: '学校未开放这个模型的测试。' }
-    if (!connection.enabled) return { disabled: true, reason: `${inactiveLabel}已停用；启用后才能测试。` }
+    if (!connection.enabled) return { disabled: true, reason: '' }
     if (!connection.hasCredential) return { disabled: true, reason: credentialVisible ? '尚未保存 API Key；保存后才能测试。' : '' }
     if (connection.adapterState !== 'ready') return { disabled: true, reason: '' }
     if (attempts.some(attempt => attempt.connection.connectionId === connection.connectionId
       && (attempt.state === 'accepted' || !attempt.physicalRequestEnded)))
-      return { disabled: true, reason: '已有测试正在进行，完成前不能再次开始。' }
+      return { disabled: true, reason: '' }
     return { disabled: false, reason: '' }
   }
   return <>
@@ -70,8 +70,7 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
       {schoolModels.length > 0 && <ModelProviderCard name="学校" compact actions={null}>
         <div className="st-configured-models" aria-label="学校的模型">
           {schoolModels.map(choice => {
-            const state = testState(choice.connection, { allowed: Boolean(onSchoolCheck) && choice.policy.checksAllowed,
-              inactiveLabel: '学校模型' })
+            const state = testState(choice.connection, { allowed: Boolean(onSchoolCheck) && choice.policy.checksAllowed })
             const run = tests[choice.connection.connectionId]
             return <ModelProviderModelRow key={choice.connection.connectionId} modelId={choice.connection.modelId}
               effort={choice.connection.reasoningEffort && choice.connection.reasoningEffort !== 'auto' ? reasoningEffortLabels[choice.connection.reasoningEffort] : undefined}
@@ -80,9 +79,6 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
                 onStop={onStopTest ? () => onStopTest(choice.connection.connectionId) : undefined} />}>
               {state.reason && <p className="detail st-model-test-reason">{state.reason}</p>}
               {choice.connection.adapterState !== 'ready' && <p className="detail">{connectionRouteProblem(choice.connection)}</p>}
-              {run && run.status !== 'running' && <ModelTestFeedback {...run}
-                onRetry={run.status !== 'cancelled' && onSchoolCheck && !testState(choice.connection, { allowed: Boolean(onSchoolCheck) && choice.policy.checksAllowed }).disabled
-                  ? () => onSchoolCheck(choice) : undefined} />}
             </ModelProviderModelRow>
           })}
         </div>
@@ -108,28 +104,27 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
   active: boolean; onConnectionTest?: TestSupplierConnection
   tests: Record<string, ModelTestRun>; onCheck(connection: ModelConnection): void
   onStopTest?(connectionId: string): void
-  testState(connection: ModelConnection, options?: { allowed?: boolean; inactiveLabel?: string; credentialVisible?: boolean }): ModelTestState
+  testState(connection: ModelConnection, options?: { allowed?: boolean; credentialVisible?: boolean }): ModelTestState
 }) {
   const inactive = !provider.enabled
-  const busy = readOnly || loading || Boolean(toggleState[provider.providerId])
+  const saving = toggleState[provider.providerId] === 'saving'
+  const busy = readOnly || loading || toggleState[provider.providerId] === 'unknown'
   const models = inIdOrder(provider.models, order.map(model => model.id), model => model.connectionId)
   const visible = expanded ? models : models.slice(0, 4)
-  const providerNote = inactive ? '供应商已停用；启用后才能测试模型并用于新对话。'
-    : !provider.hasCredential ? '尚未保存 API Key；连接测试和模型测试暂不可用。' : ''
+  const providerNote = !inactive && !provider.hasCredential ? '尚未保存 API Key；连接测试和模型测试暂不可用。' : ''
   const saved = provider.models.find(model => model.hasCredential) ?? provider.credentialConnection
   const supplier = useSupplierChecks({ presetId: provider.presetId ?? 'custom',
     ...(provider.variantId ? { variantId: provider.variantId } : {}), baseUrl: provider.baseUrl, protocol: provider.protocol,
     credential: { action: 'keep' }, ...(saved ? { savedCredential: { connectionId: saved.connectionId, version: saved.version } } : {}) },
   onConnectionTest, undefined, { notificationLabel: provider.name, active })
   const connectionRunning = supplier.connection?.status === 'running'
-  return <ModelProviderCard name={provider.name} compact inactive={inactive} busy={busy}
+  return <ModelProviderCard name={provider.name} compact inactive={inactive} busy={busy || saving}
         logo={provider.presetId ? <ModelProviderLogo providerId={provider.presetId} /> : undefined}
         actions={<SavedProviderActions provider={provider} disabled={busy} onEdit={() => onEdit(provider)}
           onRemove={onRemove} onToggle={() => onToggle(provider)}
           connectionTest={onConnectionTest ? { running: connectionRunning, disabled: busy || !provider.hasCredential,
             onTest: () => void supplier.runConnection(), onStop: supplier.stopConnection } : undefined} />}
         footer={<>
-          {toggleState[provider.providerId] === 'saving' && <span className="st-provider-save-state" role="status">正在保存开关…</span>}
           {toggleState[provider.providerId] === 'unknown' && <span className="st-provider-save-state" role="alert">开关结果未确认</span>}
           <button type="button" className="st-provider-text-action" disabled={busy} onClick={() => onAddModel(provider)}><Icon name="add" size={14} />添加模型</button>
           {models.length > 4 && <button type="button" className="st-provider-text-action" aria-expanded={expanded} onClick={() => onExpand(!expanded)}>{expanded ? '收起' : `全部（${models.length}）`}</button>}
@@ -149,14 +144,8 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
               onChange={() => onToggle(provider, connection.connectionId)} /></>}>
             {state.reason && <p className="detail st-model-test-reason">{state.reason}</p>}
             {connection.adapterState !== 'ready' && <p className="detail">{connectionRouteProblem(connection)}</p>}
-            {run && run.status !== 'running' && <ModelTestFeedback {...run}
-              onRetry={run.status !== 'cancelled' && !state.disabled ? () => onCheck(connection) : undefined} />}
           </ModelProviderModelRow>
         })}</div>}
-        {supplier.connection && supplier.connection.status !== 'running' && <div className="st-provider-connection-feedback">
-          <ModelTestFeedback {...supplier.connection}
-            onRetry={!busy && provider.hasCredential ? () => void supplier.runConnection() : undefined} />
-        </div>}
       </ModelProviderCard>
 }
 

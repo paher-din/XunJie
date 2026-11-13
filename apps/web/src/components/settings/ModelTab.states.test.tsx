@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { ModelAttempt, ModelConnection, ModelProvider } from '@xunjie/contracts/model-connections'
+import { toast } from '@xunjie/ui/feedback'
 import { ModelTab } from './ModelTab'
 
 const connection: ModelConnection = {
@@ -73,11 +74,13 @@ it('marks the whole surface read-only and disables every mutation entry', async 
 it('exposes provider switch progress to assistive technology and explains an unknown receipt', async () => {
   await render({ providers: [provider], toggleState: { [provider.providerId]: 'saving' } })
   expect(host.querySelector('.st-provider')?.getAttribute('aria-busy')).toBe('true')
-  expect(host.querySelector('.st-provider-save-state')?.textContent).toBe('正在保存开关…')
-  expect(host.querySelector<HTMLButtonElement>('[aria-label="启用供应商 示例供应商"]')?.disabled).toBe(true)
+  expect(host.querySelector('.st-provider-save-state')).toBeNull()
+  expect(host.textContent).not.toContain('正在保存开关')
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="启用供应商 示例供应商"]')?.disabled).toBe(false)
 
   await render({ providers: [provider], toggleState: { [provider.providerId]: 'unknown' } })
   expect(host.querySelector('[role="alert"]')?.textContent).toBe('开关结果未确认')
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="启用供应商 示例供应商"]')?.disabled).toBe(true)
   expect([...host.querySelectorAll<HTMLButtonElement>('button')]
     .find(item => item.textContent === '核对开关提交')?.disabled).toBe(false)
 })
@@ -91,7 +94,7 @@ it('explains why a saved provider or model cannot be tested', async () => {
   expect(host.querySelector<HTMLButtonElement>('[aria-label="连接测试"]')?.disabled).toBe(true)
 
   await render({ providers: [{ ...provider, enabled: false }], onConnectionTest: vi.fn() })
-  expect(host.textContent).toContain('供应商已停用；启用后才能测试模型并用于新对话。')
+  expect(host.textContent).not.toContain('供应商已停用')
   expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
 
   await render({ providers: [{ ...noKeyProvider, models: [] }], onConnectionTest: vi.fn() })
@@ -105,7 +108,8 @@ it('explains a school policy that does not allow model checks', async () => {
   expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
 })
 
-it('keeps a passed connection result in the provider card', async () => {
+it('reports a passed connection test only as a notification, not inside the provider card', async () => {
+  const notify = vi.spyOn(toast, 'success')
   const onConnectionTest = vi.fn(async () => ({ status: 'passed' as const, baseUrl: provider.baseUrl,
     protocol: provider.protocol, endpoint: provider.baseUrl + '/chat/completions', elapsedMs: 12 }))
   await render({ providers: [provider], onConnectionTest })
@@ -113,7 +117,11 @@ it('keeps a passed connection result in the provider card', async () => {
     host.querySelector<HTMLButtonElement>('[aria-label="连接测试"]')!.click()
     await new Promise(resolve => setTimeout(resolve, 0))
   })
-  expect(host.textContent).toContain('连接测试通过')
+  expect(host.textContent).not.toContain('连接测试通过')
+  expect(host.querySelector('.st-model-test-feedback')).toBeNull()
+  expect(notify).toHaveBeenCalledOnce()
+  expect(notify.mock.calls[0]![0]).toContain('连接测试通过')
+  notify.mockRestore()
 })
 
 it('moves restart to the original test action after a stopped test', async () => {
@@ -121,7 +129,8 @@ it('moves restart to the original test action after a stopped test', async () =>
   await render({ providers: [provider], onCheck, tests: { [connection.connectionId]: {
     status: 'cancelled', title: '模型测试已停止', runId: 'run-1', configurationPassed: true,
   } } })
-  expect(host.textContent).toContain('模型测试已停止')
+  expect(host.textContent).not.toContain('模型测试已停止')
+  expect(host.querySelector('.st-model-test-feedback')).toBeNull()
   expect(host.querySelector('.st-model-test-action')).toBeNull()
   const restart = host.querySelector<HTMLButtonElement>('[aria-label="重新测试模型"]')!
   expect(restart).not.toBeNull()

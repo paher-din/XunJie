@@ -26,6 +26,7 @@ export function ModelProviderCard({ name, address, credentialLabel, logo, compac
 export function ModelProviderModelRow({ modelId, effort, actions, children }: {
   modelId: string; effort?: string | undefined; actions: ReactNode; children?: ReactNode
 }) {
+  const feedback = Children.toArray(children).filter(child => child !== '')
   return <div className="st-configured-model st-provider-model-row" role="group" aria-label={modelId}>
     <div className="st-provider-model-main">
       <div className="st-provider-model-copy">
@@ -34,7 +35,7 @@ export function ModelProviderModelRow({ modelId, effort, actions, children }: {
       </div>
       <div className="st-provider-model-actions">{actions}</div>
     </div>
-    {Children.toArray(children).length > 0 && <div className="st-provider-model-feedback">{children}</div>}
+    {feedback.length > 0 && <div className="st-provider-model-feedback">{feedback}</div>}
   </div>
 }
 

@@ -87,7 +87,7 @@ test('formal model settings save and reopen a personal connection without a lega
   await expect(page.getByRole('region', { name: '个人连接配置', exact: true }).getByText('本人的测试服务', { exact: true })).toBeVisible()
   expect(calls).toBe(0)
   await page.getByRole('button', { name: '模型测试', exact: true }).click()
-  await expect(page.getByText('模型测试通过', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('[data-sonner-toast][data-type="success"]').filter({ hasText: '模型测试通过' }).first()).toBeVisible()
   await expect(page.getByText(/^模型测试记录（/)).toHaveCount(0)
   expect(calls).toBe(1)
   await page.getByRole('button', { name: '编辑', exact: true }).click()
@@ -225,7 +225,7 @@ test('Responses settings check drafts, save, reopen and cancel through the forma
   await page.reload()
   const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: 'Responses 正式连接' })
   await card.getByRole('button', { name: '模型测试', exact: true }).click()
-  await expect(card.getByText('模型测试通过', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-sonner-toast][data-type="success"]').filter({ hasText: '模型测试通过' }).first()).toBeVisible()
   await card.getByRole('button', { name: '编辑', exact: true }).click()
   await expect(dialog.getByRole('radio', { name: 'OpenAI Responses', exact: true })).toBeChecked()
   await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-responses-ui-key')
@@ -235,9 +235,9 @@ test('Responses settings check drafts, save, reopen and cancel through the forma
   await expect(dialog).toBeHidden()
   await expect(card.getByText('fixture-responses-cancel', { exact: true })).toBeVisible()
   await card.getByRole('button', { name: '模型测试', exact: true }).click()
-  await expect(card.getByText('正在测试文本与默认思考参数…', { exact: true })).toBeVisible()
+  await expect(card.getByRole('button', { name: '停止模型测试', exact: true })).toBeVisible()
   await card.getByRole('button', { name: '停止模型测试', exact: true }).click()
-  await expect(card.getByText('模型测试已停止', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-sonner-toast][data-type="info"]').filter({ hasText: '模型测试已停止' }).first()).toBeVisible()
   if (evidenceDirectory()) await page.screenshot({ path: evidencePath('164/responses-settings.png'), fullPage: true })
 })
 
@@ -276,7 +276,7 @@ test('rejected tests notify once across successful polls and allow a later retry
     if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'action-error-after-two-polls.png'), fullPage: true })
     denied = false
     await card.getByRole('button', { name: '模型测试', exact: true }).click()
-    await expect(card.getByText('模型测试通过', { exact: true })).toBeVisible()
+    await expect(page.locator('[data-sonner-toast][data-type="success"]').filter({ hasText: '模型测试通过' }).first()).toBeVisible()
     if (reviewScreenshots) await page.screenshot({ path: join(reviewScreenshots, 'action-retry-confirmed.png'), fullPage: true })
   } finally { await page.unroute('**/api/learning/models/checks') }
 })

@@ -16,7 +16,7 @@ export interface ModelTestRun extends ModelTestPresentation {
 }
 
 /** One explicit action owns every stage and notification, including late receipt/cancel races. */
-export function useModelConfigurationTests(check: CheckModelConfiguration) {
+export function useModelConfigurationTests(check: CheckModelConfiguration, { notifyCancelled = false }: { notifyCancelled?: boolean } = {}) {
   const [runs, setRuns] = useState<Record<string, ModelTestRun>>({})
   const active = useRef(new Map<string, { controller: AbortController; runId: string }>())
   const live = useRef(true)
@@ -74,9 +74,11 @@ export function useModelConfigurationTests(check: CheckModelConfiguration) {
         if (notificationOnly) setRuns(previous => { const next = { ...previous }; delete next[id]; return next })
         else apply()
         active.current.delete(id)
-        if (result.status === 'passed') toast.success(result.title)
-        else if (result.status === 'failed') toast.error(result.title + (result.message ? '：' + result.message : ''))
-        else if (result.status !== 'cancelled') toast.warning(result.title + (result.message ? '：' + result.message : ''))
+        const title = `${configuration.modelId}：${result.title}`
+        if (result.status === 'passed') toast.success(title)
+        else if (result.status === 'failed') toast.error(title + (result.message ? '：' + result.message : ''))
+        else if (result.status === 'cancelled') { if (notifyCancelled) toast.info(title) }
+        else toast.warning(title + (result.message ? '：' + result.message : ''))
       }
     }
   }

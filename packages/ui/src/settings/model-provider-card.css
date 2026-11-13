@@ -74,8 +74,6 @@
   text-wrap: pretty;
 }
 .st-provider-empty { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.st-provider-connection-feedback { margin-top: 12px; }
-.st-provider-connection-feedback .st-model-test-feedback { margin: 0; }
 .st-provider-text-action {
   display: inline-flex;
   align-items: center;

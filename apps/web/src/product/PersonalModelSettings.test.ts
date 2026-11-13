@@ -266,7 +266,7 @@ afterEach(async () => {
 })
 afterAll(() => { dom.window.close(); vi.unstubAllGlobals() })
 
-it.each(['passed', 'failed'] as const)('tests the saved supplier with a credential reference and keeps the %s result in the card', async status => {
+it.each(['passed', 'failed'] as const)('tests the saved supplier with a credential reference and reports the %s result only as a notification', async status => {
   connectionStatus = status
   const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
   await click('连接测试', card)
@@ -275,8 +275,8 @@ it.each(['passed', 'failed'] as const)('tests the saved supplier with a credenti
     credential: { action: 'keep' }, savedCredential: { connectionId: server.connectionId, version: server.version } })
   expect(JSON.stringify(submitted)).not.toContain(originalKey)
   expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).endsWith('/credential') || String(url).endsWith('/checks') && init?.method === 'POST')).toBe(false)
-  expect(card.querySelector('.st-provider-connection-feedback')?.textContent)
-    .toContain(status === 'passed' ? '连接测试通过' : '连接测试未通过')
+  expect(card.querySelector('.st-provider-connection-feedback')).toBeNull()
+  expect(card.querySelector('.st-model-test-feedback')).toBeNull()
   expect(document.querySelector(`[data-sonner-toast][data-type="${status === 'passed' ? 'success' : 'error'}"]`)?.textContent)
     .toContain(status === 'passed' ? '原配置：连接测试通过' : '原配置：连接测试未通过')
   if (status === 'failed') expect(alerts()).toContain('请检查账号权限。')
@@ -291,7 +291,7 @@ it('stops a supplier test through the same button and keeps its layout and focus
   await click('停止连接测试')
   expect(button('连接测试')).toBe(trigger)
   expect(document.activeElement).toBe(trigger)
-  expect(document.querySelector('.st-provider-connection-feedback')?.textContent).toContain('连接测试已停止')
+  expect(document.querySelector('.st-provider-connection-feedback')).toBeNull()
   expect(document.querySelector('[data-sonner-toast][data-type="info"]')?.textContent).toContain('连接测试已停止')
 })
 
@@ -337,7 +337,7 @@ async function revisit(pane: HTMLElement) {
 }
 const modelRows = () => [...document.querySelectorAll('.st-provider-model-row')].map(row => row.getAttribute('aria-label'))
 
-it('shows at most four models until expanded, names a saving toggle, and disables model controls on an inactive supplier', async () => {
+it('shows at most four models until expanded, guards a saving toggle against re-entry, and disables model controls on an inactive supplier', async () => {
   extraModels = ['model-2', 'model-3', 'model-4', 'model-5'].map(modelId => ({ ...server,
     connectionId: crypto.randomUUID(), modelId, modelEnabled: true, enabled: true }))
   await act(async () => { root.render(null); await settle() })
@@ -350,8 +350,10 @@ it('shows at most four models until expanded, names a saving toggle, and disable
   let releaseSave!: () => void
   holdSave = new Promise<void>(resolve => { releaseSave = resolve })
   await act(async () => { document.querySelector<HTMLButtonElement>('button[aria-label="启用供应商 原配置"]')!.click(); await settle() })
-  expect(card.textContent).toContain('正在保存开关…')
-  expect(button('启用供应商 原配置', card).hasAttribute('disabled')).toBe(true)
+  expect(card.textContent).not.toContain('正在保存开关')
+  expect(button('启用供应商 原配置', card).hasAttribute('disabled')).toBe(false)
+  expect(saves).toHaveLength(1)
+  await act(async () => { button('启用供应商 原配置', card).click(); await settle() })
   expect(saves).toHaveLength(1)
   await act(async () => { releaseSave(); holdSave = undefined; await settle() })
   expect(card.classList.contains('st-provider-inactive')).toBe(true)
@@ -557,17 +559,16 @@ describe('personal model settings recovery through real React controls', () => {
     notify.mockRestore()
   })
 
-  it('invalidates an old test result when polling discovers a changed model configuration', async () => {
+  it('notifies a model test once across polls and does not re-test when polling discovers a changed configuration', async () => {
     rejectCheck = false
     await click('模型测试')
     const card = document.querySelector('[aria-label="个人连接配置"] .st-provider')!
-    expect(card.querySelector('.st-model-test-feedback')?.textContent).toContain('模型测试通过')
+    expect(card.querySelector('.st-model-test-feedback')).toBeNull()
     expect(document.querySelectorAll('[data-sonner-toast][data-type="success"]')).toHaveLength(1)
     await poll()
-    expect(card.querySelector('.st-model-test-feedback')?.textContent).toContain('模型测试通过')
+    expect(document.querySelectorAll('[data-sonner-toast][data-type="success"]')).toHaveLength(1)
     server = { ...server, version: 2, maxOutputTokens: 32768 }
     await poll()
-    expect(card.querySelector('.st-model-test-feedback')).toBeNull()
     expect(checks).toHaveLength(1)
   })
 

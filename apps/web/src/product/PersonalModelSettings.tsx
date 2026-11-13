@@ -195,7 +195,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
       catch { throw error }
     } finally { options?.signal.removeEventListener('abort', stop) }
   }
-  const savedTests = useModelConfigurationTests(check)
+  const savedTests = useModelConfigurationTests(check, { notifyCancelled: true })
   const testedConfigurations = useRef(new Map<string, string>())
   useEffect(() => {
     const next = new Map<string, string>()

@@ -27,6 +27,10 @@
   color: var(--danger);
 }
 
+.xj-toaster [data-sonner-toast][data-type='success'] > [data-icon] {
+  color: var(--icon-green);
+}
+
 .xj-toaster [data-sonner-toast][data-styled='true'] [data-close-button] {
   box-sizing: border-box;
   display: grid;
