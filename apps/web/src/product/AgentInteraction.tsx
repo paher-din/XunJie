@@ -102,29 +102,24 @@ export function AgentInteractionSettings({ controller }: { controller: AgentInte
     setPendingMode(mode)
     try { await controller.save(mode) } finally { setPendingMode(null) }
   }
-  return <Section title="运行中发送方式" desc="Agent 正在执行时，新输入默认如何进入当前工作。">
+  return <Section title="运行中发送方式">
     <div className="agent-interaction-settings">
-      {!controller.writable && <SettingsStatus tone="neutral" title="当前学习空间为只读"
-        description="已有发送方式仍会显示；当前副本不能修改它。" />}
-      {!controller.settings && !controller.error && <SettingsStatus tone="loading" title="正在读取发送方式"
-        description="问题、草稿和正在进行的操作不会改变。" />}
+      {!controller.writable && <SettingsStatus tone="neutral" title="当前学习空间为只读" />}
+      {!controller.settings && !controller.error && <SettingsStatus tone="loading" title="正在读取发送方式" />}
       {!controller.settings && controller.error && <SettingsStatus tone="error" title="发送方式暂时无法读取"
         description={controller.error} action={<button type="button" className="outline" disabled={controller.loading}
           aria-busy={controller.loading || undefined} onClick={() => void controller.reload()}>
           {controller.loading ? '正在重新读取…' : '重新读取'}
         </button>} />}
       {controller.settings && <>
-        {controller.loading && !pendingMode && <SettingsStatus tone="loading" title="正在重新读取发送方式"
-          description="当前选择会保留，读取完成后再更新。" />}
+        {controller.loading && !pendingMode && <SettingsStatus tone="loading" title="正在重新读取发送方式" />}
         <RadioCard<Mode> ariaLabel="忙碌时发送的默认方式" value={pendingMode ?? controller.settings.busyInputMode}
           onChange={mode => void selectMode(mode)} options={[
             { value: 'steering', title: '引导当前任务', desc: '在下一步开始前纳入补充；已经开始的操作不会被撤回。', disabled: !!pendingMode || controller.busy || !controller.writable },
             { value: 'queue', title: '排队处理', desc: '等这一轮正常结束后，再按发送顺序处理。', disabled: !!pendingMode || controller.busy || !controller.writable },
           ]} />
-        {pendingMode && <SettingsStatus tone="loading" title="正在保存发送方式"
-          description="保存成功前保留当前选择；失败时恢复原设置并说明原因。" />}
-        {controller.busy && !pendingMode && <SettingsStatus tone="loading" title="正在确认上次设置"
-          description="会沿原操作恢复结果；当前选择不会先被改写。" />}
+        {pendingMode && <SettingsStatus tone="loading" title="正在保存发送方式" />}
+        {controller.busy && !pendingMode && <SettingsStatus tone="loading" title="正在确认上次设置" />}
         {controller.error && <SettingsStatus tone="error" title="发送方式尚未保存"
           description={controller.error} action={<button type="button" className="outline"
             disabled={controller.loading || controller.busy} aria-busy={controller.loading || undefined}

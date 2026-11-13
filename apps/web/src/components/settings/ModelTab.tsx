@@ -50,28 +50,23 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
   return <>
     <div className="st-section" aria-busy={loading || retrying || undefined}>
       <div className="product-model-settings-stack">
-      {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
-        description="可以查看已有模型；当前副本不能添加、修改、启停或测试模型。" />}
-      {loading && !hasConfiguration && <SettingsStatus tone="loading" title="正在读取模型配置"
-        description="已有模型与进行中的检查不会因切换页面改变。" />}
+      {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读" />}
+      {loading && !hasConfiguration && <SettingsStatus tone="loading" title="正在读取模型配置" />}
       {recoveryError && <SettingsStatus tone="error"
         title={hasConfiguration ? '模型配置可能不是最新' : '模型配置暂时无法读取'}
-        description={hasConfiguration ? `当前列表仍可查看；重新读取后再修改，避免覆盖其他位置的更新。${recoveryError}`
-          : `现有配置没有被删除。检查连接或学习服务状态后重新读取。${recoveryError}`}
+        description={recoveryError}
         action={onRetry && <button type="button" className="outline" disabled={loading || retrying}
           aria-busy={loading || retrying || undefined} onClick={() => void retry()}>
           {loading || retrying ? '正在重新读取…' : '重新读取配置'}
         </button>} />}
       {!loading && !recoveryError && !hasConfiguration ? <SettingsEmptyState icon={<Icon name="model" size={24} />}
-        title="还没有可用模型" description={readOnly ? '当前学习空间还没有可用模型；只读副本不能添加供应商。'
-          : '添加自己的模型供应商后，Agent 才能开始对话与模型检查。学校提供的模型会单独列在这里。'}>
+        title="还没有可用模型">
         <button type="button" className="primary product-provider-add-empty" disabled={readOnly} onClick={onNew}>添加供应商</button>
       </SettingsEmptyState> : hasConfiguration ? <>
-        <div className="product-model-toolbar">
-          <button type="button" className="outline product-provider-add-compact" disabled={readOnly || loading} onClick={onNew}>
-            <Icon name="add" size={16} />添加供应商
-          </button>
-        </div>
+        <button type="button" className="product-provider-add" disabled={readOnly || loading} onClick={onNew}>
+          <span className="product-provider-add-icon"><Icon name="add" size={22} /></span>
+          <span>添加供应商</span>
+        </button>
       {schoolModels.length > 0 && <ModelProviderCard name="学校" compact actions={null}>
         <div className="st-configured-models" aria-label="学校的模型">
           {schoolModels.map(choice => {
@@ -80,13 +75,13 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
             const run = tests[choice.connection.connectionId]
             return <ModelProviderModelRow key={choice.connection.connectionId} modelId={choice.connection.modelId}
               effort={choice.connection.reasoningEffort && choice.connection.reasoningEffort !== 'auto' ? reasoningEffortLabels[choice.connection.reasoningEffort] : undefined}
-              actions={<ModelTestButton kind="model" iconOnly running={run?.status === 'running'}
+              actions={<ModelTestButton kind="model" iconOnly running={run?.status === 'running'} restart={run?.status === 'cancelled'}
                 disabled={state.disabled} onTest={() => onSchoolCheck?.(choice)}
                 onStop={onStopTest ? () => onStopTest(choice.connection.connectionId) : undefined} />}>
               {state.reason && <p className="detail st-model-test-reason">{state.reason}</p>}
               {choice.connection.adapterState !== 'ready' && <p className="detail">{connectionRouteProblem(choice.connection)}</p>}
               {run && run.status !== 'running' && <ModelTestFeedback {...run}
-                onRetry={onSchoolCheck && !testState(choice.connection, { allowed: Boolean(onSchoolCheck) && choice.policy.checksAllowed }).disabled
+                onRetry={run.status !== 'cancelled' && onSchoolCheck && !testState(choice.connection, { allowed: Boolean(onSchoolCheck) && choice.policy.checksAllowed }).disabled
                   ? () => onSchoolCheck(choice) : undefined} />}
             </ModelProviderModelRow>
           })}
@@ -141,13 +136,13 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
           {toggleState[provider.providerId] === 'unknown' && <button type="button" className="st-provider-text-action" onClick={() => onToggle(provider)}>核对开关提交</button>}
         </>}>
         {providerNote && <p className="detail st-provider-note" role="status">{providerNote}</p>}
-        {visible.length > 0 ? <div className="st-configured-models" aria-label={`${provider.name}的模型`}>
+        {visible.length > 0 && <div className="st-configured-models" aria-label={`${provider.name}的模型`}>
         {visible.map(connection => {
           const state = inactive ? { disabled: true, reason: '' } : testState(connection, { credentialVisible: provider.hasCredential })
           const run = tests[connection.connectionId]
           return <ModelProviderModelRow key={connection.connectionId} modelId={connection.modelId}
             effort={connection.reasoningEffort && connection.reasoningEffort !== 'auto' ? reasoningEffortLabels[connection.reasoningEffort] : undefined}
-            actions={<><ModelTestButton kind="model" iconOnly running={run?.status === 'running'}
+            actions={<><ModelTestButton kind="model" iconOnly running={run?.status === 'running'} restart={run?.status === 'cancelled'}
             disabled={state.disabled} onTest={() => onCheck(connection)}
             onStop={onStopTest ? () => onStopTest(connection.connectionId) : undefined} />
             <Toggle checked={connection.modelEnabled ?? connection.enabled} label={`启用模型 ${connection.modelId}`} disabled={inactive || busy}
@@ -155,9 +150,9 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
             {state.reason && <p className="detail st-model-test-reason">{state.reason}</p>}
             {connection.adapterState !== 'ready' && <p className="detail">{connectionRouteProblem(connection)}</p>}
             {run && run.status !== 'running' && <ModelTestFeedback {...run}
-              onRetry={!state.disabled ? () => onCheck(connection) : undefined} />}
+              onRetry={run.status !== 'cancelled' && !state.disabled ? () => onCheck(connection) : undefined} />}
           </ModelProviderModelRow>
-        })}</div> : <p className="st-provider-empty detail">还没有模型；添加模型后才能用于对话。</p>}
+        })}</div>}
         {supplier.connection && supplier.connection.status !== 'running' && <div className="st-provider-connection-feedback">
           <ModelTestFeedback {...supplier.connection}
             onRetry={!busy && provider.hasCredential ? () => void supplier.runConnection() : undefined} />

@@ -53,22 +53,15 @@ it('keeps the account recovery action explainable while a retry is in flight', a
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('账号信息暂时无法读取')
 })
 
-it('explains every category and gives the portrait a meaningful empty state', async () => {
+it('keeps category headings concise and gives the portrait an empty state', async () => {
   await render()
-  const descriptions: Record<string, string> = {
-    账户: '管理当前学习空间与学校连接。',
-    学生画像: '查看 Agent 有依据地理解到的学习情况。',
-    'Agent 个性化': '决定 Agent 在执行任务时如何处理新消息，以及可以使用哪些技能。',
-    模型: '管理 Agent 可使用的模型与个人供应商。',
-    关于: '了解数据如何保存，以及如何整理对话。',
-  }
-  for (const [label, description] of Object.entries(descriptions)) {
+  for (const label of ['账户', '学生画像', 'Agent 个性化', '模型', '关于']) {
     await click(label)
-    expect(host.querySelector('.product-settings-heading p')?.textContent).toBe(description)
+    expect(host.querySelector('.product-settings-heading h1')?.textContent).toBe(label)
+    expect(host.querySelector('.product-settings-heading p')).toBeNull()
   }
   await click('学生画像')
   expect(host.textContent).toContain('还没有形成学生画像')
-  expect(host.textContent).toContain('不等同于成绩')
 })
 
 it('keeps school controls visible but inert in a read-only space', async () => {

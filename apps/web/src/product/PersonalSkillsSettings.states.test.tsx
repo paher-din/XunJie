@@ -44,7 +44,6 @@ it('shows initial loading before distinguishing an empty library', async () => {
   expect(host.textContent).not.toContain('还没有技能')
   await act(async () => { finish(response({ skills: [], selections: [] })); await settle() })
   expect(host.textContent).toContain('还没有技能')
-  expect(host.textContent).toContain('导入本机技能文件夹或 GitHub 仓库')
   expect(host.querySelector('.skill-toolbar')).toBeNull()
   expect(host.querySelector('.product-settings-heading')).toBeNull()
   await act(async () => host.querySelector<HTMLButtonElement>('.primary')!.click())

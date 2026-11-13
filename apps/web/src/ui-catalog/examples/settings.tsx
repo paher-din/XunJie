@@ -132,13 +132,13 @@ function ConnectionFieldsDemo() {
     imageInput={imageInput} onImageInput={setImageInput}
     onId={setId} onEffort={setEffort} onLevels={setManual} onCapacity={patch => setCapacity(current => ({ ...current, ...patch }))} /></Frame>
 }
-function ModelTestButtonDemo({ state = 'idle' }: { state?: 'idle' | 'running' | 'disabled' | 'compact' | 'icon' }) {
+function ModelTestButtonDemo({ state = 'idle' }: { state?: 'idle' | 'running' | 'restart' | 'disabled' | 'compact' | 'icon' }) {
   const [connectionRunning, setConnectionRunning] = useState(state === 'running')
   const [modelRunning, setModelRunning] = useState(state === 'running')
   return <Frame><div className="demo-row">
     <ModelTestButton kind="connection" running={connectionRunning} compact={state === 'compact'} iconOnly={state === 'icon'} disabled={state === 'disabled'}
       onTest={() => setConnectionRunning(true)} onStop={() => setConnectionRunning(false)} />
-    <ModelTestButton kind="model" running={modelRunning} compact={state === 'compact'} iconOnly={state === 'icon'} disabled={state === 'disabled'}
+    <ModelTestButton kind="model" running={modelRunning} restart={state === 'restart'} compact={state === 'compact'} iconOnly={state === 'icon'} disabled={state === 'disabled'}
       onTest={() => setModelRunning(true)} onStop={() => setModelRunning(false)} />
   </div></Frame>
 }
@@ -300,10 +300,11 @@ function LegacyModelEmpty() { return <LegacyModelDemo empty /> }
 
 export const settingsEntries: CatalogEntry[] = [
   { id: 'model-test-button', name: 'ModelTestButton', description: '带语义图标的连接／模型测试，原按钮可直接停止测试。', importPath: settings,
-    source: 'packages/ui/src/settings/ModelTestButton.tsx', exampleSource, props: ['kind: connection | model', 'running?, disabled?, compact?, iconOnly?, onTest, onStop?'],
+    source: 'packages/ui/src/settings/ModelTestButton.tsx', exampleSource, props: ['kind: connection | model', 'running?, restart?, disabled?, compact?, iconOnly?, onTest, onStop?'],
     dependencies: ['循阶 Button、Base UI Tooltip 和 Solar Linear 图标；本地状态示例'], states: [
       { id: 'idle', name: '开始测试', component: ModelTestButtonDemo },
       { id: 'running', name: '测试中与停止', component: () => <ModelTestButtonDemo state="running" /> },
+      { id: 'restart', name: '停止后重新测试', component: () => <ModelTestButtonDemo state="restart" /> },
       { id: 'disabled', name: '不可用', component: () => <ModelTestButtonDemo state="disabled" /> },
       { id: 'compact', name: '列表紧凑样式', component: () => <ModelTestButtonDemo state="compact" /> },
       { id: 'icon', name: '单图标与停止', component: () => <ModelTestButtonDemo state="icon" /> }] },

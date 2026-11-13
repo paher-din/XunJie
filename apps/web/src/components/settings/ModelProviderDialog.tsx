@@ -505,9 +505,10 @@ export function ModelProviderDialog({ provider, addModel = false, onClose, onSav
       onLevels={value => changeModel(model.connectionId, { reasoningLevels: value as ModelInput['reasoningLevels'] })}
       onCapacity={patch => changeModel(model.connectionId, patch)} />
       <div className="st-model-test" aria-label={`${model.modelId || '当前模型'}的模型测试`}>
-        <ModelTestButton kind="model" running={run?.status === 'running'} disabled={!credentialReady}
+        <ModelTestButton kind="model" running={run?.status === 'running'} restart={run?.status === 'cancelled'} disabled={!credentialReady}
           onTest={() => void test(model)} onStop={() => tests.stop(model.connectionId)} />
-        {run && run.status !== 'running' && <ModelTestFeedback {...run} onRetry={() => void test(model)} />}
+        {run && run.status !== 'running' && <ModelTestFeedback {...run}
+          onRetry={run.status !== 'cancelled' ? () => void test(model) : undefined} />}
       </div></>
   }
   const addManualModel = () => {

@@ -46,7 +46,6 @@ it('separates initial loading from a genuinely empty model list', async () => {
   const onNew = vi.fn()
   await render({ onNew })
   expect(host.textContent).toContain('还没有可用模型')
-  expect(host.textContent).toContain('学校提供的模型会单独列在这里')
   await act(async () => host.querySelector<HTMLButtonElement>('.product-provider-add-empty')!.click())
   expect(onNew).toHaveBeenCalledOnce()
 })
@@ -64,7 +63,7 @@ it('keeps cached providers visible when a refresh fails and exposes the recovery
 it('marks the whole surface read-only and disables every mutation entry', async () => {
   await render({ providers: [provider], readOnly: true })
   expect(host.textContent).toContain('当前学习空间为只读')
-  expect(host.querySelector<HTMLButtonElement>('.product-provider-add-compact')?.disabled).toBe(true)
+  expect(host.querySelector<HTMLButtonElement>('.product-provider-add')?.disabled).toBe(true)
   expect([...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '编辑')?.disabled).toBe(true)
   expect(host.querySelector<HTMLButtonElement>('[aria-label="启用供应商 示例供应商"]')?.disabled).toBe(true)
   expect(host.querySelector<HTMLButtonElement>('[aria-label="启用模型 example-model"]')?.disabled).toBe(true)
@@ -96,7 +95,7 @@ it('explains why a saved provider or model cannot be tested', async () => {
   expect(host.querySelector<HTMLButtonElement>('[aria-label="模型测试"]')?.disabled).toBe(true)
 
   await render({ providers: [{ ...noKeyProvider, models: [] }], onConnectionTest: vi.fn() })
-  expect(host.textContent).toContain('还没有模型；添加模型后才能用于对话。')
+  expect(host.querySelector('.st-provider-empty')).toBeNull()
 })
 
 it('explains a school policy that does not allow model checks', async () => {
@@ -117,13 +116,15 @@ it('keeps a passed connection result in the provider card', async () => {
   expect(host.textContent).toContain('连接测试通过')
 })
 
-it('keeps a stopped test visible with an explicit restart action', async () => {
+it('moves restart to the original test action after a stopped test', async () => {
   const onCheck = vi.fn()
   await render({ providers: [provider], onCheck, tests: { [connection.connectionId]: {
     status: 'cancelled', title: '模型测试已停止', runId: 'run-1', configurationPassed: true,
   } } })
   expect(host.textContent).toContain('模型测试已停止')
-  await act(async () => [...host.querySelectorAll<HTMLButtonElement>('button')]
-    .find(item => item.textContent === '重新测试')!.click())
+  expect(host.querySelector('.st-model-test-action')).toBeNull()
+  const restart = host.querySelector<HTMLButtonElement>('[aria-label="重新测试模型"]')!
+  expect(restart).not.toBeNull()
+  await act(async () => restart.click())
   expect(onCheck).toHaveBeenCalledWith(connection)
 })

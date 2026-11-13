@@ -794,9 +794,6 @@ function LearningView() {
       <span>添加学校</span>
     </Button>
   const schoolControls = context && <section className="product-school" tabIndex={-1} aria-busy={busy || undefined}><h2>学校连接</h2>
-      <p className="product-settings-section-desc">{schoolIdentities.length > 0
-        ? '换绑前会先解绑当前学校账号；解绑只隐藏学校内容，本机学习记录仍会保留。'
-        : '绑定学校后可领取课程与提交作品；个人学习空间仍可继续使用。'}</p>
       {context.profile !== 'school' && (schoolIdentities.length > 0 ? <div className="product-school-list">
         {schoolIdentities.map(item => <div className="product-school-row" key={item.key}>
           <div className="product-school-name"><span className="product-school-icon"><Icon name="link" size={18} /></span>
@@ -967,8 +964,7 @@ function LearningView() {
       schoolName={context?.account?.schoolName} isLocal={!!context && !context.account}
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
       modelSettings={context && identity ? <SettingsFailureBoundary key={context.clientNamespace + key + identity.principalId} onBack={closeModels}>
-        <Suspense fallback={<SettingsStatus tone="loading" title="正在读取个人设置"
-          description="模型、技能与 Agent 偏好会在原位置载入。" />}><PersonalModelSettings
+        <Suspense fallback={<SettingsStatus tone="loading" title="正在读取个人设置" />}><PersonalModelSettings
         identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
         readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} cache={readCache} /></Suspense>
       </SettingsFailureBoundary> : null} />}

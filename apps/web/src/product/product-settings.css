@@ -21,7 +21,6 @@
 .product-settings .st-body-in { width: 100%; max-width: 856px; box-sizing: border-box; padding: 40px 48px 64px; }
 .product-settings-heading { margin-bottom: 28px; animation: settings-arrive 240ms cubic-bezier(0.3, 1, 0.35, 1); }
 .product-settings-heading h1 { margin: 0; font-family: 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif; font-size: 28px; font-weight: 600; line-height: 1.4; text-wrap: balance; }
-.product-settings-heading p { max-width: 62ch; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; text-wrap: pretty; }
 .product-settings-pane[hidden] { display: none; }
 .product-settings-pane > .st-status { margin-bottom: 24px; }
 .product-settings .st-body-in > .product-settings-pane:not([hidden]):not(.product-settings-model) {
@@ -55,7 +54,6 @@
 .product-settings-account span { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .product-settings-empty { color: var(--muted); font-size: 13px; line-height: 1.7; margin: 0 0 20px; }
 .product-settings-subheading { margin: 0; color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.5; }
-.product-settings-section-desc { max-width: 66ch; margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.65; text-wrap: pretty; }
 .product-settings-facts { margin: 0; }
 .product-settings-facts > div { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); }
 .product-settings-facts dt { color: var(--ink); font-size: 13px; font-weight: 500; }
@@ -70,7 +68,6 @@
 .product-settings-school .st-status { margin-bottom: 20px; }
 .product-settings-school > .learning-error { margin: 0 0 20px; }
 .product-school h2 { font-family: 'LXGW WenKai', 'Kaiti SC', 'STKaiti', serif; font-size: 17px; font-weight: 600; margin: 0 0 16px; }
-.product-school h2 + .product-settings-section-desc { margin-top: -8px; }
 .product-school-list { margin: 0; border: 1px solid var(--line); border-radius: 12px; }
 .product-school-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; font-size: 13px; }
 .product-school-row + .product-school-row { border-top: 1px solid var(--line); }
@@ -121,8 +118,6 @@
 .product-settings .st-provider p { margin: 12px 0; }
 .product-settings .st-provider-url { overflow-wrap: anywhere; }
 .product-model-settings-stack { display: grid; gap: 16px; }
-.product-model-toolbar { display: flex; justify-content: flex-end; }
-.product-model-toolbar .product-provider-add-compact { display: inline-flex; align-items: center; gap: 8px; }
 .product-settings .skill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .product-settings .skill-import { border: 0; background: transparent; padding: 0; margin: 20px 0; }
 .product-settings .skill-import h3 { font-size: 15px; font-weight: 500; }

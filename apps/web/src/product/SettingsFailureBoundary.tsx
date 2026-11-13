@@ -15,7 +15,6 @@ export class SettingsFailureBoundary extends Component<Props, State> {
   render() {
     if (!this.state.failed) return this.props.children
     return <SettingsStatus tone="error" title="设置内容暂时无法打开"
-      description="已保存的学习内容与配置不会因此改变。重新加载页面后再试。"
       action={<>
         <button type="button" className="outline" onClick={() => window.location.reload()}>重新加载页面</button>
         <button type="button" className="outline" onClick={this.props.onBack}>返回学习空间</button>

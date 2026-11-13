@@ -283,32 +283,27 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
       { id: 'github', label: '从 GitHub 导入', icon: <Icon name="brand-github" size={16} />, keepOpen: true,
         onSelect: () => setGithubOpen(true) },
     ]} />
-  return <Section title="技能" desc="技能让 Agent 按固定方法完成一类工作；个人技能只在当前学习空间生效。">
+  return <Section title="技能">
     <div ref={rootElement} className="personal-skills" aria-busy={catalog.loading || busy || undefined}>
-      {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读"
-        description="可以查看已有技能；当前副本不能导入、更新或启停技能。" />}
-      {catalog.loading && !catalog.data && <SettingsStatus tone="loading" title="正在读取技能"
-        description="已有技能与启用状态会在原位置载入。" />}
+      {readOnly && <SettingsStatus tone="neutral" title="当前学习空间为只读" />}
+      {catalog.loading && !catalog.data && <SettingsStatus tone="loading" title="正在读取技能" />}
       {catalog.error && !catalog.data && <SettingsStatus tone="error" title="技能暂时无法读取"
-        description={`${catalog.error}列表没有改变；检查连接或学习服务状态后重新读取。`}
+        description={catalog.error}
         action={<button className="outline" type="button" disabled={catalog.loading}
           aria-busy={catalog.loading || undefined} onClick={() => { setNeedsReload(false); void catalog.reload() }}>
           {catalog.loading ? '正在刷新…' : '刷新列表'}
         </button>} />}
       {catalog.data && (catalog.error || needsReload) && <SettingsStatus tone="error" title="技能列表可能不是最新"
-        description="当前列表仍可使用。重新读取后再修改，避免覆盖其他位置的更新。"
+        description={catalog.error || undefined}
         action={<button className="outline" type="button" disabled={catalog.loading}
           aria-busy={catalog.loading || undefined} onClick={() => { setNeedsReload(false); void catalog.reload() }}>
           {catalog.loading ? '正在刷新…' : '刷新列表'}
         </button>} />}
       {catalog.data && catalog.loading && !busy && !catalog.error && !needsReload && <p className="settings-inline-status" role="status">
         正在刷新技能列表…</p>}
-      {githubReading && !pending && <SettingsStatus tone="loading" title="正在读取 GitHub 技能"
-        description="仓库读取完成前不能开始另一项技能操作。" />}
-      {localImportProgress?.running && localImportProgress.total === 1 && <SettingsStatus tone="loading" title="正在导入技能"
-        description="读取并保存完成前请保留此页面。" />}
-      {pending && pendingTitle && !opened && <SettingsStatus tone="loading" title={pendingTitle}
-        description="完成前会保留当前列表；结果未确认时可重试。" />}
+      {githubReading && !pending && <SettingsStatus tone="loading" title="正在读取 GitHub 技能" />}
+      {localImportProgress?.running && localImportProgress.total === 1 && <SettingsStatus tone="loading" title="正在导入技能" />}
+      {pending && pendingTitle && !opened && <SettingsStatus tone="loading" title={pendingTitle} />}
       {catalog.data && catalog.data.skills.length > 0 && <div className="skill-toolbar">
         <div className="skill-search-field"><Icon name="minimalistic-magnifier" size={16} />
           <input ref={searchInput} className="st-input skill-search" type="search" aria-label="搜索技能" placeholder="搜索技能" value={search}
@@ -323,13 +318,11 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
         {...(!localImportProgress.uncertain ? { onChooseFolder: chooseLocalFolder, onDismiss: () => {
           localImportBatch.current = null; setLocalImportProgress(null); toast.dismiss(feedbackId)
         } } : {})} />}
-      {catalog.data?.skills.length === 0 && <SettingsEmptyState icon={<Icon name="skill" size={24} />} title="还没有技能"
-        description={readOnly ? '当前学习空间还没有可查看的技能。' : '导入本机技能文件夹或 GitHub 仓库后，Agent 就能按其中的说明工作。'}>
+      {catalog.data?.skills.length === 0 && <SettingsEmptyState icon={<Icon name="skill" size={24} />} title="还没有技能">
         {!readOnly && importMenu(true)}
       </SettingsEmptyState>}
       {catalog.data && catalog.data.skills.length > 0 && !visibleSkills.length && <SettingsEmptyState
-        icon={<Icon name="minimalistic-magnifier" size={24} />} title="没有找到匹配的技能"
-        description={`没有技能名称、说明或来源匹配“${search.trim()}”。`}>
+        icon={<Icon name="minimalistic-magnifier" size={24} />} title="没有找到匹配的技能">
         <button type="button" className="outline" onClick={() => { setSearch(''); searchInput.current?.focus() }}>清除搜索</button>
       </SettingsEmptyState>}
       {visibleSkills.length > 0 && <div className="skill-list">{visibleSkills.map(skill => <SkillListItem key={`${skill.origin}:${skill.skillId}`}
