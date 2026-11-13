@@ -304,7 +304,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
   return <div ref={rootElement} className="content product-model-settings">
     <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
-      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} /></div>
+      <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} cache={cache} /></div>
       <div className="product-personal-model">
       <div role="region" aria-label="个人连接配置"><ModelTab providers={providers} order={view.order} attempts={attempts} loading={loading} error={modelsVisible ? actionError?.message ?? '' : ''}
       readOnly={readOnly} tests={savedTests.runs} onStopTest={savedTests.stop}

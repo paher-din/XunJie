@@ -118,7 +118,6 @@ export function AgentInteractionSettings({ controller }: { controller: AgentInte
             { value: 'steering', title: '引导当前任务', desc: '在下一步开始前纳入补充；已经开始的操作不会被撤回。', disabled: !!pendingMode || controller.busy || !controller.writable },
             { value: 'queue', title: '排队处理', desc: '等这一轮正常结束后，再按发送顺序处理。', disabled: !!pendingMode || controller.busy || !controller.writable },
           ]} />
-        {pendingMode && <SettingsStatus tone="loading" title="正在保存发送方式" />}
         {controller.busy && !pendingMode && <SettingsStatus tone="loading" title="正在确认上次设置" />}
         {controller.error && <SettingsStatus tone="error" title="发送方式尚未保存"
           description={controller.error} action={<button type="button" className="outline"

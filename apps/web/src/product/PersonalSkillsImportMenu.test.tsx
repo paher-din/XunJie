@@ -97,7 +97,6 @@ it('names the GitHub read before the import request starts', async () => {
     })
     await act(async () => { input.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await settle() })
     expect(host.textContent).toContain('正在读取 GitHub 技能')
-    expect(host.textContent).toContain('仓库读取完成前不能开始另一项技能操作。')
     await act(async () => { finish(Response.json({ error: 'github-timeout' }, { status: 504 })); await settle() })
     expect(host.textContent).not.toContain('正在读取 GitHub 技能')
   } finally { await act(async () => { root.unmount(); await settle() }); host.remove() }

@@ -20,6 +20,8 @@ import { Icon } from '@xunjie/ui/icons'
 import { SettingsStatus, TextInput } from '@xunjie/ui/settings'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { LearningReadCache } from './learning-read-cache'
+import { skillCatalogCacheKey, skillCatalogSchema } from './skills'
+import { learningSubjectRequest } from './learningTransport'
 import { parsePendingActivityRequest, rememberFirstQuestion, type PendingActivityRequest } from './first-question'
 import { startSchoolAuthorization, rememberSchoolConnection, restoreSchoolConnection, schoolAuthorizationReturnUrl, returnToSchoolClient,
   type PendingSchoolConnection } from './school-authorization'
@@ -858,6 +860,10 @@ function LearningView() {
   const openAgent = () => { prepareAgent(); changePage('agent') }
   const openSettings = (tab: ProductSettingsTab | 'school' = 'account') => void action(async () => {
     void loadModelSettings().catch(() => {})
+    // Warm the personal skill catalog so the Agent pane opens from cache instead of a cold read.
+    if (context && identity) void readCache.read(key, skillCatalogCacheKey(context.clientNamespace, identity),
+      () => learningSubjectRequest(identity, key, context.clientNamespace, 'skills').then(value => skillCatalogSchema.parse(value)),
+      { maxAgeMs: 0 }).catch(() => {})
     await protectActivity()
     const params = new URLSearchParams(currentSearch.current); params.set('settings', tab)
     const search = params.toString()

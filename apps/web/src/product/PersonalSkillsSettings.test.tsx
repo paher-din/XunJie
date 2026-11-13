@@ -301,7 +301,6 @@ it.each(['success', 'rejected', 'unconfirmed'] as const)('imports a local folder
   })
   expect(writes).toHaveLength(1)
   expect(host.textContent).toContain('正在导入技能')
-  expect(host.textContent).toContain('读取并保存完成前请保留此页面。')
   expect(button('导入第一个技能').disabled).toBe(true)
   expect(host.querySelector('.skill-local-import')).toBeNull()
   expect(host.textContent).not.toContain('已选择')

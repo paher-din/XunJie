@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import type { TeachingSkillCatalogEntry } from '@xunjie/contracts/agent-skills'
 import { PersonalSkillsSettings } from './PersonalSkillsSettings'
+import { LearningReadCache } from './learning-read-cache'
 
 const identity: SpaceIdentity = {
   environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(),
@@ -80,4 +81,42 @@ it('keeps the current library visible while a background refresh is named', asyn
   await act(async () => { finish(response({ skills: [{ ...skill, name: '更新后的技能' }], selections: [] })); await settle() })
   expect(host.textContent).toContain('更新后的技能')
   expect(host.querySelector('.settings-inline-status')).toBeNull()
+})
+
+it('reopens from the shared read cache without blanking the list or naming the revalidation', async () => {
+  const cache = new LearningReadCache()
+  let reads = 0, finish!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn(() => {
+    reads++
+    return reads === 1 ? Promise.resolve(response({ skills: [skill], selections: [] }))
+      : new Promise<Response>(resolve => { finish = resolve })
+  }))
+  const view = (key: string) => createElement(PersonalSkillsSettings, { key, identity, spaceKey: 'personal', namespace: 'test', cache })
+  await act(async () => { root.render(view('first')); await settle() })
+  expect(host.textContent).toContain('分析思路')
+  await act(async () => { root.render(view('second')); await settle() })
+  expect(host.textContent).toContain('分析思路')
+  expect(host.textContent).not.toContain('正在读取技能')
+  expect(host.querySelector('.settings-inline-status')).toBeNull()
+  await act(async () => { finish(response({ skills: [{ ...skill, name: '刷新后的技能' }], selections: [] })); await settle() })
+  expect(host.textContent).toContain('刷新后的技能')
+})
+
+it('flips the switch at once without a saving flash or disabling the row', async () => {
+  let disabled = false, release!: () => void
+  vi.stubGlobal('fetch', vi.fn((_route: string, options: RequestInit) => {
+    if (options.method === 'POST') return new Promise<Response>(resolve => {
+      release = () => { disabled = true; resolve(response({ ...skill, disabled: true, selected: false })) }
+    })
+    return Promise.resolve(response({ skills: [{ ...skill, disabled, selected: !disabled }], selections: [] }))
+  }))
+  await mount()
+  const toggle = host.querySelector<HTMLButtonElement>('[role="switch"]')!
+  await act(async () => { toggle.click(); await settle() })
+  expect(toggle.getAttribute('aria-checked')).toBe('false')
+  expect(toggle.disabled).toBe(false)
+  expect(host.textContent).not.toContain('正在保存技能状态')
+  expect(host.querySelector('.personal-skills [role="status"]')).toBeNull()
+  await act(async () => { release(); await settle() })
+  expect(toggle.getAttribute('aria-checked')).toBe('false')
 })

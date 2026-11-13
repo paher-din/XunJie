@@ -20,7 +20,8 @@ it('shows the selected mode immediately and restores the saved mode if saving fa
     await act(async () => cards[1].click())
     expect(save).toHaveBeenCalledWith('queue')
     expect(cards[1].getAttribute('aria-checked')).toBe('true')
-    expect(host.textContent).toContain('正在保存发送方式')
+    expect(host.textContent).not.toContain('正在保存')
+    expect(host.querySelector('[role="status"]')).toBeNull()
     await act(async () => {
       root.render(<AgentInteractionSettings controller={{ ...controller, error: '交互设置尚未保存' }} />)
       finish()

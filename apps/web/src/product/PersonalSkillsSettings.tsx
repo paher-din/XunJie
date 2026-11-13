@@ -8,10 +8,11 @@ import { toast, useToastFeedback } from '@xunjie/ui/feedback'
 import { readSkillPackage, skillImportInput, skillImportErrorMessage, useSkillCatalog, type SkillCatalogEntry } from './skills'
 import { learningSubjectRequest } from './learningTransport'
 import { LocalSkillImportBatch, type LocalSkillImportProgress } from './skill-import'
+import type { LearningReadCache } from './learning-read-cache'
 import './skills.css'
 
 type Props = { identity: SpaceIdentity; spaceKey: string; namespace: string; readOnly?: boolean; active?: boolean
-  activityId?: string; courseId?: string }
+  activityId?: string; courseId?: string; cache?: LearningReadCache }
 type Operation = { route: string; input: unknown; label: string; importKind?: 'local' | 'github'; inputUrl?: string; update?: 'local' | 'github' }
 const fromGithub = (source: string) => /^https:\/\/github\.com\//i.test(source)
 const localImportSummary = (progress: LocalSkillImportProgress) => [
@@ -25,8 +26,8 @@ export function PersonalSkillsSettings(props: Props) {
     props.identity.principalId, props.activityId, props.courseId])
   return <SkillsSettingsBody key={key} {...props} />
 }
-function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, active = true }: Props) {
-  const catalog = useSkillCatalog(identity, spaceKey, namespace, undefined, active)
+function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, active = true, cache }: Props) {
+  const catalog = useSkillCatalog(identity, spaceKey, namespace, undefined, active, cache)
   const [search, setSearch] = useState('')
   const [githubOpen, setGithubOpen] = useState(false), [githubUrl, setGithubUrl] = useState('')
   const [githubReading, setGithubReading] = useState(false)
@@ -49,7 +50,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
   const rootElement = useRef<HTMLDivElement>(null), previousSkillCount = useRef(0)
   useToastFeedback(active ? error : '')
   const [rejectedToggle, setRejectedToggle] = useState<Operation | null>(null)
-  const live = useRef(false), acting = useRef(false)
+  const live = useRef(false), acting = useRef(false), toggling = useRef(new Set<string>())
   const directoryInput = useRef<HTMLInputElement>(null), updateDirectoryInput = useRef<HTMLInputElement>(null)
   const updateTarget = useRef<SkillCatalogEntry | null>(null)
   const feedbackId = useId(), githubInput = useRef<HTMLInputElement>(null)
@@ -235,14 +236,38 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
       if (live.current) await deliver({ route: 'skills/import', input, label: '技能已导入', importKind: 'github', inputUrl: url })
     }).finally(() => { if (live.current) setGithubReading(false) })
   }
-  const disabled = readOnly || busy || !!pending || !!localImportProgress?.uncertain || catalog.loading || !catalog.data
+  const disabled = readOnly || busy || !!pending || !!localImportProgress?.uncertain || !catalog.data
   const choose = (skill: SkillCatalogEntry, checked: boolean) => {
-    if (disabled || !catalog.isCurrent()) return
+    if (disabled || toggling.current.has(skill.skillId)) return
     setRejectedToggle(null)
     setChoices(previous => ({ ...previous, [skill.skillId]: checked }))
-    void act(() => deliver({ route: 'skills/disable', input: teachingSkillDisableSchema.parse({
-      requestId: crypto.randomUUID(), skillId: skill.skillId, disabled: !checked,
-    }), label: checked ? '技能已启用' : '技能已停用' }))
+    const operation: Operation = { route: 'skills/disable', input: teachingSkillDisableSchema.parse({
+      requestId: crypto.randomUUID(), skillId: skill.skillId, disabled: !checked }), label: checked ? '技能已启用' : '技能已停用' }
+    toggling.current.add(skill.skillId)
+    // The switch flips at once; the confirmed receipt is merged without blocking the list on a full reread.
+    void (async () => {
+      try {
+        const updated = teachingSkillCatalogEntrySchema.parse(await catalog.request(operation.route, operation.input))
+        if (!live.current) return
+        catalog.apply(updated)
+        setChoices(previous => { const next = { ...previous }; delete next[skill.skillId]; return next })
+        setError(''); setNeedsReload(false)
+        if (viewActive.current) toast.success(operation.label, { id: feedbackId, duration: 2400, closeButton: false, action: undefined, description: undefined,
+          icon: <Icon name={updated.disabled ? 'minus-circle' : 'check-circle'} variant="linear" tone="neutral" size={18}
+            style={{ color: updated.disabled ? 'var(--muted)' : 'var(--progress-fill-done)' }} /> })
+        void catalog.reload({ silent: true })
+      } catch (cause) {
+        if (!live.current) return
+        const code = (cause as { code?: string }).code
+        const rejected = ['invalid', 'invalid-skill', 'conflict', 'identity-conflict', 'forbidden', 'missing'].includes(code ?? '')
+        setNeedsReload(code === 'conflict' || code === 'identity-conflict')
+        if (rejected) setRejectedToggle(operation); else setPending(operation)
+        setError(skillImportErrorMessage(cause) ?? (code === 'invalid' || code === 'invalid-skill' ? '暂时无法更改技能，请刷新列表后重试。'
+          : code === 'forbidden' ? '没有修改此技能的权限，请检查当前账号。'
+          : code === 'conflict' || code === 'identity-conflict' ? '技能已在其他位置更新，请刷新列表后重试。'
+          : '暂时无法确认结果，请重试。'))
+      } finally { toggling.current.delete(skill.skillId) }
+    })()
   }
   const restoreFocus = () => {
     if (returnFocus.current?.isConnected) returnFocus.current.focus()
@@ -327,7 +352,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
       </SettingsEmptyState>}
       {visibleSkills.length > 0 && <div className="skill-list">{visibleSkills.map(skill => <SkillListItem key={`${skill.origin}:${skill.skillId}`}
         name={skill.name} description={skill.description} checked={skill.origin === 'course' ? skill.selected : choices[skill.skillId] ?? !skill.disabled}
-        disabled={disabled || !catalog.isCurrent()} readOnly={readOnly || skill.origin === 'course'}
+        disabled={disabled} readOnly={readOnly || skill.origin === 'course'}
         busy={busy && (pending?.input as { skillId?: string } | undefined)?.skillId === skill.skillId}
         onCheckedChange={checked => choose(skill, checked)}
         onOpen={trigger => { returnFocus.current = trigger; setDocumentRead({ content: null, loading: true, error: '' }); setOpened(skill) }}

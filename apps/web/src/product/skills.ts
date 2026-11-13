@@ -4,10 +4,13 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces'
 import { teachingSkillListSchema,
   teachingSkillImportSchema, teachingSkillImportFailureSchema, teachingSkillLimits, teachingSkillPathSchema, type TeachingSkillImport } from '@xunjie/contracts/agent-skills'
 import { learningSubjectRequest } from './learningTransport'
+import type { LearningReadCache } from './learning-read-cache'
 
 export const skillCatalogSchema = teachingSkillListSchema.extend({ selections: teachingSkillListSchema.shape.selections.optional() })
 export type SkillCatalog = z.infer<typeof skillCatalogSchema>
 export type SkillCatalogEntry = SkillCatalog['skills'][number]
+export const skillCatalogCacheKey = (namespace: string, identity: SpaceIdentity, activityId?: string) =>
+  JSON.stringify(['skill-catalog', namespace, identity.environmentId, identity.spaceId, identity.principalId, activityId ?? null])
 const catalogChanges = new Set<(namespace: string, sender: object) => void>()
 
 /** Question pins may use another fixed version; disabled or unavailable packages stay unavailable. */
@@ -18,12 +21,19 @@ export function draftSkillOption(skill: SkillCatalogEntry) {
     ...(unavailable ? { unavailable } : {}) }
 }
 
-export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, activityId?: string, enabled = true) {
+export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, namespace: string, activityId?: string, enabled = true, cache?: LearningReadCache) {
   const scope = JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId, activityId])
+  const cacheKey = skillCatalogCacheKey(namespace, identity, activityId)
   const current = useRef(scope), live = useRef(false), reads = useRef(0)
   const client = useRef({})
   current.current = scope
-  const [state, setState] = useState<{ scope: string; data: SkillCatalog | null; loading: boolean; error: string; epoch: number }>({ scope, data: null, loading: true, error: '', epoch: 0 })
+  const [state, setState] = useState<{ scope: string; data: SkillCatalog | null; loading: boolean; error: string; epoch: number }>(() => {
+    // Seed the first paint from the shared cache so a reopened pane never flashes a cold-load spinner.
+    const cached = cache?.peek<SkillCatalog>(spaceKey, cacheKey) ?? null
+    return { scope, data: cached, loading: !cached, error: '', epoch: 0 }
+  })
+  const latest = useRef(state)
+  latest.current = state
   const request = useCallback(async (route: string, body?: unknown) => {
     // An activity's pinned owner remains authoritative even if the member binding changes.
     const boundRoute = activityId && (route === 'skills' || route.startsWith('skills/')) ? `agent/${activityId}/${route}` : route
@@ -33,36 +43,55 @@ export function useSkillCatalog(identity: SpaceIdentity, spaceKey: string, names
       for (const changed of catalogChanges) changed(namespace, client.current)
     return result
   }, [scope])
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = !!options?.silent
     const epoch = ++reads.current
     const active = () => live.current && current.current === scope && reads.current === epoch
-    if (active()) setState(previous => ({ ...previous, loading: true }))
+    if (!silent && active()) setState(previous => ({ ...previous, loading: true }))
     try {
-      const data = skillCatalogSchema.parse(await request('skills'))
+      const load = async () => skillCatalogSchema.parse(await request('skills'))
+      const data = cache ? await cache.read(spaceKey, cacheKey, load, { maxAgeMs: 0 }) : await load()
       if (active()) setState({ scope, data, loading: false, error: '', epoch })
       return data
     } catch {
-      if (active()) setState(previous => ({ ...previous, scope, loading: false, error: '暂时无法加载技能。' }))
+      // A silent revalidation keeps the confirmed list it already shows; only a first read surfaces failure.
+      if (active()) setState(previous => ({ ...previous, scope, loading: false,
+        ...(silent && previous.data ? {} : { error: '暂时无法加载技能。' }) }))
       return null
     }
-  }, [scope, activityId, request])
+  }, [scope, activityId, request, cache, spaceKey, cacheKey])
+  // Merge a confirmed write receipt without waiting for a full reread; older in-flight reads are retired.
+  const apply = useCallback((entry: SkillCatalogEntry) => {
+    const previous = latest.current
+    if (previous.scope !== scope || !previous.data) return
+    const epoch = ++reads.current
+    const skills = previous.data.skills.some(item => item.skillId === entry.skillId)
+      ? previous.data.skills.map(item => item.skillId === entry.skillId ? entry : item)
+      : [...previous.data.skills, entry]
+    const data = { ...previous.data, skills }
+    cache?.set(spaceKey, cacheKey, data)
+    setState({ scope, data, loading: false, error: '', epoch })
+  }, [scope, cache, spaceKey, cacheKey])
   useEffect(() => {
     if (!enabled) {
       setState(previous => ({ ...previous, loading: false, error: '' }))
       return
     }
     live.current = true
-    setState({ scope, data: null, loading: true, error: '', epoch: 0 })
+    const previous = latest.current
+    // Reuse the last confirmed list (this mount or the shared read cache) so reopening never blanks the pane.
+    const data = previous.scope === scope && previous.data ? previous.data : cache?.peek<SkillCatalog>(spaceKey, cacheKey) ?? null
+    setState({ scope, data, loading: !data, error: '', epoch: reads.current })
     const changed = (changedNamespace: string, sender: object) => {
       if (changedNamespace === namespace && sender !== client.current) void reload()
     }
     catalogChanges.add(changed)
-    void reload()
+    void reload({ silent: !!data })
     const refresh = () => { void reload() }
     window.addEventListener('focus', refresh)
     return () => { live.current = false; reads.current++; catalogChanges.delete(changed); window.removeEventListener('focus', refresh) }
-  }, [scope, reload, enabled])
-  return { ...(state.scope === scope ? state : { data: null, loading: true, error: '' }), reload, request,
+  }, [scope, reload, enabled, cache, spaceKey, cacheKey])
+  return { ...(state.scope === scope ? state : { data: null, loading: true, error: '' }), reload, request, apply,
     // An older rendered controller cannot fix pins while its catalog is being replaced.
     isCurrent: () => live.current && current.current === scope && state.scope === scope && !!state.data
       && state.epoch === reads.current && !state.loading && !state.error }
