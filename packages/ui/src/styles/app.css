@@ -2604,7 +2604,7 @@ h3 {
   background: var(--chip-bg);
 }
 .agent-conv-row.active {
-  background: var(--chip-active);
+  background: var(--chip-bg);
 }
 /* 归档行（2026-10-11 定稿）：归档箱与搜索命中里的只读行——标题灰一档、不可进入，
    整行不铺浅灰面（行本身不可点，悬停反馈交给尾部「恢复」），故这条要排在 :hover 之后把它压掉。
