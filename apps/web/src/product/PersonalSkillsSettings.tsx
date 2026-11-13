@@ -15,6 +15,8 @@ type Props = { identity: SpaceIdentity; spaceKey: string; namespace: string; rea
   activityId?: string; courseId?: string; cache?: LearningReadCache }
 type Operation = { route: string; input: unknown; label: string; importKind?: 'local' | 'github'; inputUrl?: string; update?: 'local' | 'github' }
 const fromGithub = (source: string) => /^https:\/\/github\.com\//i.test(source)
+const skillSourceLabel = (skill: SkillCatalogEntry) => skill.origin === 'course' ? '课程' : fromGithub(skill.source) ? 'GitHub' : '本地'
+const skillSourceIcon = (skill: SkillCatalogEntry) => skill.origin === 'personal' && fromGithub(skill.source) ? 'brand-github' as const : undefined
 const localImportSummary = (progress: LocalSkillImportProgress) => [
   progress.imported > 0 ? `已导入 ${progress.imported} 个技能` : '',
   progress.existing > 0 ? `${progress.existing} 个已在列表中` : '',
@@ -351,7 +353,7 @@ function SkillsSettingsBody({ identity, spaceKey, namespace, readOnly = false, a
         <button type="button" className="outline" onClick={() => { setSearch(''); searchInput.current?.focus() }}>清除搜索</button>
       </SettingsEmptyState>}
       {visibleSkills.length > 0 && <div className="skill-list">{visibleSkills.map(skill => <SkillListItem key={`${skill.origin}:${skill.skillId}`}
-        name={skill.name} description={skill.description} checked={skill.origin === 'course' ? skill.selected : choices[skill.skillId] ?? !skill.disabled}
+        name={skill.name} description={skill.description} source={skillSourceLabel(skill)} sourceIcon={skillSourceIcon(skill)} checked={skill.origin === 'course' ? skill.selected : choices[skill.skillId] ?? !skill.disabled}
         disabled={disabled} readOnly={readOnly || skill.origin === 'course'}
         busy={busy && (pending?.input as { skillId?: string } | undefined)?.skillId === skill.skillId}
         onCheckedChange={checked => choose(skill, checked)}

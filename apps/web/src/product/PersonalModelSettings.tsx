@@ -302,7 +302,7 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     return saved.value
   }, [request])
   return <div ref={rootElement} className="content product-model-settings">
-    <div className="sectionhead"><h1>个人设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
+    <div className="sectionhead"><span className="sectionhead-title">个人设置</span><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} cache={cache} /></div>
       <div className="product-personal-model">

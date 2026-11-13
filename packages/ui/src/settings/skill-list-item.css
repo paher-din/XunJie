@@ -3,7 +3,10 @@
 .st-skill-icon { box-sizing: border-box; display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 1px solid var(--line-strong); border-radius: 12px; color: var(--muted); }
 .st-skill-icon > .ui-icon { display: block; }
 .st-skill-copy { display: grid; flex: 1; gap: 4px; min-width: 0; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font-family: var(--font-sans); }
-.st-skill-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; line-height: 1.5; }
+.st-skill-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.st-skill-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; line-height: 1.5; }
+.st-skill-source { flex: none; padding: 1px 6px; border-radius: 6px; background: var(--chip-bg); color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.5; white-space: nowrap; }
+.st-skill-source-icon { display: inline-grid; place-items: center; flex: none; color: var(--muted); }
 .st-skill-description { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; font-weight: 400; line-height: 1.7; }
 .st-skill-copy:hover .st-skill-name { color: var(--accent-deep); }
 .st-skill-actions { display: flex; align-items: center; flex: none; gap: 12px; }

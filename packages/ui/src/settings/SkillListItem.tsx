@@ -1,12 +1,16 @@
 import { useId, useRef } from 'react'
 import { Menu } from '@base-ui/react/menu'
-import { Icon } from '../icons'
+import { Icon, type IconName } from '../icons'
 import { Toggle } from './controls'
 import './skill-list-item.css'
 
 export interface SkillListItemProps {
   name: string
   description: string
+  /** Visible origin label: 课程 / GitHub / 本地. */
+  source?: string
+  /** Use an icon instead of the source text chip. */
+  sourceIcon?: IconName
   checked: boolean
   disabled?: boolean
   readOnly?: boolean
@@ -17,13 +21,18 @@ export interface SkillListItemProps {
 }
 
 /** A compact skill row. Persistence and document loading belong to the caller. */
-export function SkillListItem({ name, description, checked, disabled = false, readOnly = false, busy = false,
+export function SkillListItem({ name, description, source, sourceIcon, checked, disabled = false, readOnly = false, busy = false,
   onCheckedChange, onOpen, onRemove }: SkillListItemProps) {
   const descriptionId = useId(), transferringFocus = useRef(false), trigger = useRef<HTMLButtonElement>(null)
   return <article className="st-skill-item" aria-busy={busy || undefined}>
     <span className="st-skill-icon" aria-hidden="true"><Icon name="skill" size={22} /></span>
-    <button type="button" className="st-skill-copy" onClick={event => onOpen(event.currentTarget)} aria-describedby={descriptionId}>
-      <span className="st-skill-name">{name}</span>
+    <button type="button" className="st-skill-copy" onClick={event => onOpen(event.currentTarget)}
+      aria-label={`打开技能：${name}${source ? `（${source}）` : ''}`} aria-describedby={descriptionId}>
+      <span className="st-skill-title">
+        <span className="st-skill-name">{name}</span>
+        {sourceIcon ? <span className="st-skill-source-icon" title={source} aria-hidden="true"><Icon name={sourceIcon} size={16} /></span>
+          : source && <span className="st-skill-source">{source}</span>}
+      </span>
       <span className="st-skill-description" id={descriptionId}>{busy ? '正在保存技能状态…' : description}</span>
     </button>
     <div className="st-skill-actions">

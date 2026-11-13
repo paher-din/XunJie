@@ -28,11 +28,11 @@ function ToggleDemo() { const [value, setValue] = useState(true); return <Frame>
 function SkillListDemo() {
   const [checked, setChecked] = useState(true), [event, setEvent] = useState('')
   return <Frame><div style={{ minWidth: 0, padding: '0 20px', border: '1px solid var(--line)', borderRadius: 16 }}>
-    <SkillListItem name="evidence-analysis" description="先核对原始依据，再解释观察与预测之间的差异。" checked={checked}
+    <SkillListItem name="evidence-analysis" source="本地" description="先核对原始依据，再解释观察与预测之间的差异。" checked={checked}
       onCheckedChange={setChecked} onOpen={() => setEvent('打开示例 SKILL.md')} onRemove={() => setEvent('删除示例技能')} />
-    <SkillListItem name="a-skill-with-a-long-name-for-layout-checks" description="This deliberately long description checks that the row preserves room for the menu and switch, while keeping the full document available through Open."
+    <SkillListItem name="a-skill-with-a-long-name-for-layout-checks" source="GitHub" sourceIcon="brand-github" description="This deliberately long description checks that the row preserves room for the menu and switch, while keeping the full document available through Open."
       checked={false} onCheckedChange={() => {}} onOpen={() => setEvent('打开示例 SKILL.md')} onRemove={() => setEvent('删除示例技能')} />
-    <SkillListItem name="course-skill" description="课程提供的只读技能。" checked readOnly onCheckedChange={() => {}} onOpen={() => setEvent('打开课程示例')} />
+    <SkillListItem name="course-skill" source="课程" description="课程提供的只读技能。" checked readOnly onCheckedChange={() => {}} onOpen={() => setEvent('打开课程示例')} />
   </div><output>{event}</output></Frame>
 }
 function SkillDocumentDemo({ loading = false, error = false }: { loading?: boolean; error?: boolean }) {
@@ -316,8 +316,8 @@ export const settingsEntries: CatalogEntry[] = [
       { id: 'passed', name: '通过', component: () => <ModelTestFeedbackDemo state="passed" /> },
       { id: 'unverified', name: '部分完成', component: () => <ModelTestFeedbackDemo state="unverified" /> },
       { id: 'cancelled', name: '停止', component: () => <ModelTestFeedbackDemo state="cancelled" /> }] },
-  { id: 'skill-list-item', name: 'SkillListItem', description: '技能名称、简介、更多菜单和即时开关；业务操作由调用方接入。', importPath: settings,
-    source: 'packages/ui/src/settings/SkillListItem.tsx', exampleSource, props: ['name, description, checked, onCheckedChange', 'disabled?, readOnly?, busy?, onOpen, onRemove?'],
+  { id: 'skill-list-item', name: 'SkillListItem', description: '技能名称、来源标签或图标、简介、更多菜单和即时开关；业务操作由调用方接入。', importPath: settings,
+    source: 'packages/ui/src/settings/SkillListItem.tsx', exampleSource, props: ['name, description, checked, onCheckedChange', 'source?, sourceIcon?, disabled?, readOnly?, busy?, onOpen, onRemove?'],
     dependencies: ['Base UI Menu、Toggle 与包内图标'], states: [{ id: 'default', name: '启用、停用与只读', component: SkillListDemo }] },
   { id: 'skill-document-dialog', name: 'SkillDocumentDialog', description: '完整显示元信息与 Markdown 正文的技能阅读窗口。', importPath: settings,
     source: 'packages/ui/src/settings/SkillDocumentDialog.tsx', exampleSource, props: ['open, name, content, loading, error?, footer?', 'onClose, onRetry, onReturnFocus?'],
