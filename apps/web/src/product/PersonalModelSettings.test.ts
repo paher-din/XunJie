@@ -63,7 +63,7 @@ const poll = async () => {
   await act(async () => { await settle() })
 }
 async function mount(subject = identity) {
-  await act(async () => { root.render(createElement(Fragment, null, createElement(feedback.Toaster), createElement(PersonalModelSettings, { identity: subject, spaceKey: 'personal', namespace: 'test', onBack() {}, selection }))); await settle() })
+  await act(async () => { root.render(createElement(Fragment, null, createElement(feedback.Toaster), createElement(PersonalModelSettings, { identity: subject, spaceKey: 'personal', namespace: 'test', selection }))); await settle() })
   await act(async () => { await settle() })
 }
 
@@ -91,7 +91,7 @@ it('refreshes model information when the model pane is entered, while hidden set
   vi.mocked(fetch).mockClear()
   await act(async () => {
     root.render(createElement('section', { hidden: true, 'data-settings-section': 'account' },
-      createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })))
+      createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', selection })))
     await settle()
   })
   const requests = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/models/directory'))
@@ -126,7 +126,7 @@ it('does not notify the account pane when a model read fails after leaving model
   await act(async () => {
     root.render(createElement(Fragment, null, createElement(feedback.Toaster),
       createElement('section', { 'data-settings-section': 'models' },
-        createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection }))))
+        createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', selection }))))
     await settle()
   })
   const pane = document.querySelector<HTMLElement>('[data-settings-section]')!
@@ -153,7 +153,7 @@ it('shows the cached suppliers immediately while a revisit is still checking the
   await act(async () => { root.render(null); await settle() })
   holdRead = new Promise(() => {})
   await act(async () => {
-    root.render(createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection, cache }))
+    root.render(createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', selection, cache }))
     await settle()
   })
   expect(document.querySelector('.st-provider-name')?.textContent).toBe('原配置')
@@ -324,7 +324,7 @@ async function mountModelPane() {
   await act(async () => { root.render(null); await settle() })
   await act(async () => {
     root.render(createElement('section', { 'data-settings-section': 'models' },
-      createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', onBack() {}, selection })))
+      createElement(PersonalModelSettings, { identity, spaceKey: 'personal', namespace: 'test', selection })))
     await settle()
   })
   await act(async () => { await settle() })

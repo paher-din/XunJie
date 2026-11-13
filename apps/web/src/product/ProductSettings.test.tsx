@@ -24,7 +24,7 @@ const click = async (label: string) => act(async () => {
   button!.click()
 })
 const renderSettings = async (props: Partial<ProductSettingsProps> = {}) => act(async () => {
-  root.render(<ProductSettings accountName="未登录" onBack={() => {}} schoolControls={null} modelSettings={null} {...props} />)
+  root.render(<ProductSettings accountName="未登录" schoolControls={null} modelSettings={null} {...props} />)
 })
 
 it('keeps model drafts and pending operations mounted through category switches and parent updates', async () => {
@@ -58,8 +58,8 @@ it('keeps model drafts and pending operations mounted through category switches 
 })
 
 it('supports school sign-in without an identity or models, preserving the supplied form and callbacks', async () => {
-  const login = vi.fn(), onBack = vi.fn()
-  await renderSettings({ initialTab: 'account', onBack,
+  const login = vi.fn()
+  await renderSettings({ initialTab: 'account',
     schoolControls: <form onSubmit={event => { event.preventDefault(); login(new FormData(event.currentTarget).get('account')) }}>
       <label>学校账号<input name="account" /></label><button type="submit">登录此学校</button>
     </form> })
@@ -71,8 +71,6 @@ it('supports school sign-in without an identity or models, preserving the suppli
   expect(host.querySelector('[name="account"]')).toBe(account)
   await click('登录此学校')
   expect(login).toHaveBeenCalledWith('school-user')
-  await click('返回学习空间')
-  expect(onBack).toHaveBeenCalledOnce()
 })
 
 it('shows only the supplied profile identity and restores focus after Escape', async () => {

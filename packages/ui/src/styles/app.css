@@ -7801,12 +7801,15 @@ button.outline.danger {
   gap: 2px;
 }
 .st-provider-name {
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 500;
+  line-height: 1.5;
   color: var(--ink);
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 0;
 }
 .st-provider-sub {
   font-size: 12px;

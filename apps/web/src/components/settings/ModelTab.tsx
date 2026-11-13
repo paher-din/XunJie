@@ -67,7 +67,7 @@ export function ModelTab({ providers, order, schoolModels = [], onSchoolCheck, a
           <span className="product-provider-add-icon"><Icon name="add" size={22} /></span>
           <span>添加供应商</span>
         </button>
-      {schoolModels.length > 0 && <ModelProviderCard name="学校" compact actions={null}>
+      {schoolModels.length > 0 && <ModelProviderCard name="学校" compact headingLevel={2} actions={null}>
         <div className="st-configured-models" aria-label="学校的模型">
           {schoolModels.map(choice => {
             const state = testState(choice.connection, { allowed: Boolean(onSchoolCheck) && choice.policy.checksAllowed })
@@ -118,7 +118,7 @@ function ProviderCard({ provider, order, expanded, onExpand, readOnly, loading, 
     credential: { action: 'keep' }, ...(saved ? { savedCredential: { connectionId: saved.connectionId, version: saved.version } } : {}) },
   onConnectionTest, undefined, { notificationLabel: provider.name, active })
   const connectionRunning = supplier.connection?.status === 'running'
-  return <ModelProviderCard name={provider.name} compact inactive={inactive} busy={busy || saving}
+  return <ModelProviderCard name={provider.name} compact headingLevel={2} inactive={inactive} busy={busy || saving}
         logo={provider.presetId ? <ModelProviderLogo providerId={provider.presetId} /> : undefined}
         actions={<SavedProviderActions provider={provider} disabled={busy} onEdit={() => onEdit(provider)}
           onRemove={onRemove} onToggle={() => onToggle(provider)}

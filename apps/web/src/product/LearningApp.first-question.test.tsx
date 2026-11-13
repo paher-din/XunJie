@@ -17,8 +17,8 @@ vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onSett
 }) => createElement('main', null, createElement('button', { onClick: onSettings }, '打开侧栏设置'),
   createElement('button', { onClick: onHome }, '返回首页'),
   createElement('button', { onClick: onAgent }, 'Agent 对话'), createElement('nav', { 'aria-label': '对话历史' }, agentHistory(() => {})), children) }))
-vi.mock('./ProductSettings', () => ({ ProductSettings: ({ modelSettings, onBack }: { modelSettings: ReactNode; onBack(): void }) =>
-  createElement('div', null, '设置视图', modelSettings, createElement('button', { onClick: onBack }, '关闭设置')) }))
+vi.mock('./ProductSettings', () => ({ ProductSettings: ({ modelSettings }: { modelSettings: ReactNode }) =>
+  createElement('div', null, '设置视图', modelSettings) }))
 vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => createElement('p', null, '模型设置视图') }))
 vi.mock('./ActivityReferences', () => ({ ActivityReferences: ({ children }: { children: ReactNode }) => children,
   CourseMaterialReferences: () => null, CourseRequirementsReference: () => null }))
@@ -184,7 +184,8 @@ it('retains the authorized first question when creation completes after a view c
   expect(host.textContent).toContain('模型设置视图')
   expect(readFirstQuestion(activity.activityId)).toEqual(saved.firstQuestion)
   expect(localStorage.getItem(pendingKey)).toBeNull()
-  await click('关闭设置')
+  await act(async () => { history.back(); await settle() })
+  await vi.waitFor(async () => { await act(settle); expect(location.search).not.toContain('settings=account') })
   expect(host.textContent).not.toContain('上次发起的学习尚未确认')
   expect(host.querySelector('nav[aria-label="对话历史"]')?.textContent).toContain(activity.question)
   const field = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="向 Agent 提问"]')!

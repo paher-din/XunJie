@@ -18,7 +18,7 @@ afterEach(async () => {
 })
 
 const render = async (props: Partial<ProductSettingsProps> = {}) => act(async () => {
-  root.render(<ProductSettings accountName="示例同学" onBack={() => {}} schoolControls={null} modelSettings={null} {...props} />)
+  root.render(<ProductSettings accountName="示例同学" schoolControls={null} modelSettings={null} {...props} />)
 })
 const click = async (label: string) => act(async () => {
   const button = [...host.querySelectorAll('button')].find(item => item.textContent === label)

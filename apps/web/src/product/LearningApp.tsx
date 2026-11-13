@@ -960,7 +960,7 @@ function LearningView() {
       }} />
     {profileOpen && <ProductProfile accountName={accountName} schoolName={context?.account?.schoolName}
       onClose={() => setProfileOpen(false)} onSettings={() => { setProfileOpen(false); openSettings() }} />}
-    {modelsOpen && <ProductSettings accountName={accountName} onBack={closeModels}
+    {modelsOpen && <ProductSettings accountName={accountName}
       accountState={context ? { status: 'ready' } : error
         ? { status: 'error', busy, message: error, onRetry: () => void action(async generation => { await refreshContext(undefined, generation) }) }
         : { status: 'loading' }} readOnly={!!context?.readOnly}
@@ -971,7 +971,7 @@ function LearningView() {
       schoolControls={schoolControls ?? (error ? <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button> : null)}
       modelSettings={context && identity ? <SettingsFailureBoundary key={context.clientNamespace + key + identity.principalId} onBack={closeModels}>
         <Suspense fallback={<SettingsStatus tone="loading" title="正在读取个人设置" />}><PersonalModelSettings
-        identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection}
+        identity={identity} spaceKey={key} namespace={context.clientNamespace} selection={modelSelection}
         readOnly={context.readOnly} activityId={opened?.activityId} courseId={opened?.course?.courseId} cache={readCache} /></Suspense>
       </SettingsFailureBoundary> : null} />}
     {context && identity && opened ? <div style={{ display: modelsOpen ? 'none' : 'contents' }} inert={modelsOpen} aria-hidden={modelsOpen || undefined}>

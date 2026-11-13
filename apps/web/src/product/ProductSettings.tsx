@@ -19,7 +19,6 @@ export interface ProductSettingsProps {
   isLocal?: boolean
   readOnly?: boolean
   accountState?: ProductSettingsAccountState
-  onBack: () => void
   schoolControls: ReactNode
   accountFeedback?: ReactNode
   modelSettings: ReactNode
@@ -38,7 +37,7 @@ const tabs: ReadonlyArray<{ id: ProductSettingsTab; label: string; icon: IconNam
 ]
 /** Business operations and identity changes remain owned by the caller. */
 export function ProductSettings({ accountName, schoolName, isLocal = false, readOnly = false, accountState = { status: 'ready' },
-  onBack, schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
+  schoolControls, accountFeedback, modelSettings, initialTab = 'account', focusSchool = false, onTabChange }: ProductSettingsProps) {
   const [active, setActive] = useState<ProductSettingsTab>(initialTab)
   const [personalVisited, setPersonalVisited] = useState(initialTab === 'agent' || initialTab === 'models')
   const activeTabIndex = Math.max(0, tabs.findIndex(tab => tab.id === active))
@@ -49,8 +48,7 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
   useEffect(() => { if (active === 'agent' || active === 'models') setPersonalVisited(true) }, [active])
   useEffect(() => {
     if (body.current) body.current.scrollTop = 0
-    if (window.matchMedia?.('(max-width: 760px)').matches) document.getElementById(`${id}-${active}-nav`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
-  }, [active, id])
+  }, [active])
   const select = (tab: ProductSettingsTab) => { setActive(tab); onTabChange?.(tab) }
   const revealSchool = () => {
     school.current?.focus({ preventScroll: true })
@@ -74,9 +72,6 @@ export function ProductSettings({ accountName, schoolName, isLocal = false, read
           <IconText name={tab.icon} size={17}>{tab.label}</IconText>
         </button>)}
       </nav>
-      <button type="button" className="st-nav-item product-settings-back" onClick={onBack}>
-        <IconText name="alt-arrow-left" size={17}>返回学习空间</IconText>
-      </button>
     </aside>
     <div className="st-body" ref={body}>
       <div className="st-body-in">

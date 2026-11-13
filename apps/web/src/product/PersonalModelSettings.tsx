@@ -20,7 +20,7 @@ const failures: Record<string, string> = { conflict: '配置已被更新，当�
   unavailable: '连接或相应适配器不可用，请检查配置。', invalid: '请检查地址、协议、模型及密钥填写。', maintenance: '模型服务正在维护，请稍后重试。' }
 type PendingToggle = { input: SaveModelProvider; label: string }
 type PersonalModelSettingsProps = {
-  identity: SpaceIdentity; spaceKey: string; namespace: string; onBack(): void; selection: ModelSelectionController; readOnly?: boolean
+  identity: SpaceIdentity; spaceKey: string; namespace: string; selection: ModelSelectionController; readOnly?: boolean
   activityId?: string; courseId?: string
   cache?: LearningReadCache
 }
@@ -30,7 +30,7 @@ export function PersonalModelSettings(props: PersonalModelSettingsProps) {
   // A subject change must discard old drafts, errors and late async responses together.
   return <PersonalModelSettingsBody key={JSON.stringify([namespace, spaceKey, identity.environmentId, identity.spaceId, identity.principalId])} {...props} />
 }
-function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, selection, activityId, courseId, readOnly = false, cache }: PersonalModelSettingsProps) {
+function PersonalModelSettingsBody({ identity, spaceKey, namespace, selection, activityId, courseId, readOnly = false, cache }: PersonalModelSettingsProps) {
   const displayVisit = useRef(0)
   const cacheKey = JSON.stringify(['model-settings', namespace, identity.environmentId, identity.spaceId, identity.principalId])
   const initial = useRef(cache?.peek<ModelSettingsSnapshot>(spaceKey, cacheKey))
@@ -302,7 +302,6 @@ function PersonalModelSettingsBody({ identity, spaceKey, namespace, onBack, sele
     return saved.value
   }, [request])
   return <div ref={rootElement} className="content product-model-settings">
-    <div className="sectionhead"><span className="sectionhead-title">个人设置</span><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
     <div className="st-body-in"><div className="product-personal-agent"><AgentInteractionSettings controller={interaction} />
       <PersonalSkillsSettings identity={identity} spaceKey={spaceKey} namespace={namespace} activityId={activityId} courseId={courseId} readOnly={readOnly} active={agentVisible} cache={cache} /></div>
       <div className="product-personal-model">

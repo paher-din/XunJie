@@ -3,17 +3,20 @@ import { Icon } from '../icons'
 import './model-provider-card.css'
 
 /** Shared card presentation; the caller owns identity, configuration, checks and persistence. */
-export function ModelProviderCard({ name, address, credentialLabel, logo, compact = false, inactive = false, busy = false, actions, footer, children }: {
+export function ModelProviderCard({ name, address, credentialLabel, logo, compact = false, inactive = false, busy = false, headingLevel = 3, actions, footer, children }: {
   name: string; address?: string | undefined; credentialLabel?: string | undefined; logo?: ReactNode; compact?: boolean
   inactive?: boolean
   busy?: boolean
+  /** Heading level for the provider name; 2 under a page title, 3 under a section title. */
+  headingLevel?: 2 | 3 | 4
   actions: ReactNode; footer?: ReactNode; children: ReactNode
 }) {
+  const Heading = `h${headingLevel}` as 'h2' | 'h3' | 'h4'
   return <div className={'st-provider' + (compact ? ' st-provider-compact' : '') + (inactive ? ' st-provider-inactive' : '')}
     aria-busy={busy || undefined}>
     <div className="st-provider-head">
       <span className="st-provider-badge" aria-hidden="true">{logo ?? <Icon name="model" size={18} />}</span>
-      <div className="st-provider-info"><span className="st-provider-name" title={name}>{name}</span>
+      <div className="st-provider-info"><Heading className="st-provider-name" title={name}>{name}</Heading>
         {address && <span className="st-mono st-provider-url">{address}</span>}{credentialLabel && <span>{credentialLabel}</span>}</div>
       <div className="st-provider-acts">{actions}</div>
     </div>

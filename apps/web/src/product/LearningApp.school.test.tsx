@@ -12,8 +12,8 @@ vi.mock('./school-authorization', async importOriginal => ({
 }))
 
 vi.mock('../lib/theme', () => ({ useTheme() {} }))
-vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onSettings }: { children: ReactNode; onSettings(): void }) =>
-  <main><button onClick={onSettings}>打开设置</button>{children}</main> }))
+vi.mock('../components/ProductShell', () => ({ ProductShell: ({ children, onSettings, onHome }: { children: ReactNode; onSettings(): void; onHome(): void }) =>
+  <main><button onClick={onSettings}>打开设置</button><button onClick={onHome}>首页</button>{children}</main> }))
 vi.mock('./ProductHome', () => ({ ProductHome: ({ onConnectSchool }: { onConnectSchool(): void }) => <button onClick={onConnectSchool}>连接学校</button> }))
 vi.mock('./PersonalModelSettings', () => ({ PersonalModelSettings: () => null }))
 vi.mock('./ModelSelection', () => ({ useModelSelection: () => ({}) }))
@@ -277,7 +277,7 @@ it('returns to an unfinished authorization and lets the user correct the school 
   await click('添加学校')
   await fill('input[type="url"]', 'https://school.example.edu')
   await click('连接')
-  await click('返回学习空间')
+  await click('首页')
   await click('连接学校')
   expect(host.textContent).toContain('请在学校页面完成认证')
   await click('重新填写学校链接')
@@ -323,7 +323,8 @@ it('keeps the personal activity mounted when disconnecting a school from persona
   await clickDialog('确认断开')
   expect(host.querySelector('#test-personal-activity')).toBe(original)
   expect(new URLSearchParams(location.search).get('activity')).toBe(activity.activityId)
-  await click('返回学习空间')
+  await act(async () => { history.back(); await settle() })
+  await vi.waitFor(async () => { await act(settle); expect(new URLSearchParams(location.search).get('settings')).toBeNull() })
   expect(host.querySelector('#test-personal-activity')).toBe(original)
 })
 

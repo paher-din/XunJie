@@ -125,7 +125,7 @@ it('keeps the bound account across filtering, school entry, personal Agent, sett
   expect(host.querySelector('.product-settings-current')?.textContent).toContain('Robert')
   expect(host.querySelector('.product-settings-current')?.textContent).toContain('示例大学')
   expect(host.textContent).not.toContain('切换到个人空间')
-  await click('返回学习空间')
+  await click('首页')
   await clickSelector('.account-pill'); await click('个人资料')
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Robert')
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('示例大学')
@@ -189,13 +189,13 @@ it('refreshes the sidebar on a later visit when its cached activity list has exp
   expect(host.querySelector('[data-testid="history"]')?.textContent).toContain('其他窗口新增的活动')
 })
 
-it('defers a hidden activity when entering settings directly and opens it on return', async () => {
+it('defers a hidden activity when entering settings directly', async () => {
   history.replaceState(null, '', '/?space=personal&view=agent&activity=' + personalActivity.activityId + '&settings=models')
   await mount()
   expect(reads.some(item => item.route === 'activities/' + personalActivity.activityId)).toBe(false)
   expect(host.querySelector('[data-testid="workspace"]')).toBeNull()
-  await click('返回学习空间')
-  expect(host.querySelector('[data-testid="workspace"]')?.textContent).toBe('个人自主学习')
+  await click('首页')
+  expect(new URLSearchParams(location.search).get('settings')).toBeNull()
 })
 
 it('reuses recently verified activity metadata when reopening a conversation', async () => {
@@ -244,7 +244,7 @@ it('keeps personal learning available when school reads fail and clears late sch
   await click('断开连接'); await click('确认断开')
   expect(accountLabel()).toBe('本地学习空间')
   await act(async () => { finishSchool!(); await settle() })
-  await click('返回学习空间')
+  await click('首页')
   expect(host.textContent).not.toContain('学校课程')
   await click('学校')
   expect(host.textContent).toContain('尚未绑定学校')
@@ -313,7 +313,7 @@ it('unbinds before rebinding, keeps local data, and restores the same account co
   await click('已完成认证，连接学校')
   expect(accountLabel()).toBe('Robert')
   expect(localStorage.getItem(localDraftKey)).toBe(pendingCourse)
-  await click('返回学习空间')
+  await click('首页')
   expect(host.textContent).toContain('学校课程')
   expect(host.querySelector('[data-activity-id="' + schoolActivity.activityId + '"]')).not.toBeNull()
   await clickSelector('[data-activity-id="' + schoolActivity.activityId + '"]')
