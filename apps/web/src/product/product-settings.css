@@ -26,9 +26,14 @@
 .product-settings .st-body-in > .product-settings-pane:not([hidden]):not(.product-settings-model) {
   animation: settings-pane-in 240ms var(--ease-s) both;
 }
-.product-settings-model[data-settings-section='agent'] .product-personal-agent,
-.product-settings-model[data-settings-section='models'] .product-personal-model {
+/* The personal pane stays mounted across Agent/模型 tabs. Enter once when the pane appears;
+   never replay child entrances on every tab switch — display:none restarting them reads as a flicker. */
+.product-settings .st-body-in > .product-settings-model:not([hidden]) {
   animation: settings-pane-in 240ms var(--ease-s) both;
+}
+.product-settings .product-settings-model :is(.st-status, .st-skill-item, .st-provider, .st-provider-model-row,
+  .st-empty, .st-skill-import-feedback, .st-model-test-feedback, .learning-error, [role='alert']) {
+  animation: none;
 }
 .product-settings :is(.product-settings-empty, .learning-error, .st-empty, .st-status, .st-skill-import-feedback,
   .st-model-test-feedback, .product-school-add, .product-school-list, .product-school-session,
@@ -159,8 +164,7 @@
 @media (prefers-reduced-motion: reduce) {
   .product-settings-heading, .product-profile,
   .product-settings .st-body-in > .product-settings-pane:not([hidden]):not(.product-settings-model),
-  .product-settings-model[data-settings-section='agent'] .product-personal-agent,
-  .product-settings-model[data-settings-section='models'] .product-personal-model,
+  .product-settings .st-body-in > .product-settings-model:not([hidden]),
   .product-settings :is(.product-settings-empty, .learning-error, .st-empty, .st-status, .st-skill-import-feedback,
     .st-model-test-feedback, .product-school-add, .product-school-list, .product-school-session,
     .product-school-connect-form, .product-school-pending, [role='alert']),

@@ -21,6 +21,8 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState('')
   const alive = useRef(false), saving = useRef(false), current = useRef(scope), canWrite = useRef(writable)
   const channel = useRef<BroadcastChannel | null>(null), reads = useRef(0)
+  const settingsRef = useRef(settings), loadedScope = useRef<string | null>(null)
+  settingsRef.current = settings
   canWrite.current = writable; current.current = scope
   const request = useCallback((route: string, body?: unknown) => learningSubjectRequest(identity, spaceKey, namespace, route, body), [scope])
   const deliver = useCallback(async (pending: PendingAgentOperation, notify = false) => {
@@ -48,31 +50,38 @@ export function useAgentInteraction(identity: SpaceIdentity, spaceKey: string, n
       }
     } finally { saving.current = false; if (alive.current && current.current === scope) setBusy(false) }
   }, [key, scope, request])
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = !!options?.silent
     const generation = ++reads.current
-    if (alive.current && current.current === scope) setLoading(true)
+    if (!silent && alive.current && current.current === scope) setLoading(true)
     try {
       const value = teachingInteractionSettingsSchema.parse(await request('agent-settings'))
       if (alive.current && current.current === scope && generation === reads.current) {
-        setSettings(value); setError('')
+        setSettings(value); setError(''); loadedScope.current = scope
       }
-    } catch { if (alive.current && current.current === scope) setError('交互设置暂时无法读取，问题与草稿仍保留。') }
+    } catch {
+      // A silent revalidation keeps the confirmed choice on screen; only a first read surfaces failure.
+      if (alive.current && current.current === scope && generation === reads.current && !(silent && settingsRef.current))
+        setError('交互设置暂时无法读取，问题与草稿仍保留。')
+    }
     finally {
-      if (alive.current && current.current === scope && generation === reads.current) setLoading(false)
+      if (!silent && alive.current && current.current === scope && generation === reads.current) setLoading(false)
     }
   }, [scope, request])
   useEffect(() => {
     if (!enabled) { setLoading(false); return }
     alive.current = true; current.current = scope
-    setSettings(null); setOverride(null); setError('')
-    void reload()
+    // Re-entering the same subject keeps its confirmed choice so the pane never blanks into a reading state.
+    const keep = loadedScope.current === scope && !!settingsRef.current
+    if (!keep) { setSettings(null); setOverride(null); setError(''); loadedScope.current = null }
+    void reload({ silent: keep })
     void agentControlStore.read(key).then(saved => {
       if (alive.current && current.current === scope && saved?.scope === scope && saved.pending && canWrite.current) void deliver(saved.pending)
     }).catch(() => { if (alive.current) setError('本机操作保护暂不可用，请保留当前页面后重试。') })
     const broadcast = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('xunjie-agent-settings:' + scope)
     channel.current = broadcast
-    if (broadcast) broadcast.onmessage = () => { void reload() }
-    const focus = () => { void reload() }
+    if (broadcast) broadcast.onmessage = () => { void reload({ silent: true }) }
+    const focus = () => { void reload({ silent: true }) }
     window.addEventListener('focus', focus)
     return () => { alive.current = false; broadcast?.close(); channel.current = null; window.removeEventListener('focus', focus) }
   }, [scope, key, reload, deliver, writable, enabled])
