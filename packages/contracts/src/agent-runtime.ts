@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { spaceIdentitySchema } from './spaces.js';
-import { modelUsageSchema } from './model-connections.js';
+
+/** Mirrors modelUsageSchema; inlined to avoid a contracts import cycle with model-connections. */
+const agentUsageSchema = z.object({ state: z.enum(['final', 'partial', 'unknown']),
+  inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
+  totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
+  reasoningTokens: z.number().nonnegative().optional() }).strict();
 
 /** A real user input. The kernel decides steering vs new Turn from the active Turn, not a caller mode. */
 export const agentInputSchema = z.object({
@@ -47,7 +52,7 @@ export const agentAttemptSchema = z.object({
   attemptId: z.uuid(), stepId: z.uuid(), attemptNo: z.number().int().positive(),
   state: agentAttemptStateSchema,
   requestRef: z.uuid().nullable(), responseRef: z.uuid().nullable(),
-  usage: modelUsageSchema, reserved: z.object({ inputTokens: z.number().int().nonnegative(),
+  usage: agentUsageSchema, reserved: z.object({ inputTokens: z.number().int().nonnegative(),
     outputTokens: z.number().int().nonnegative() }).strict(),
   error: z.string().max(500).nullable(),
   createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),

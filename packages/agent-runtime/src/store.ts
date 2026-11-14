@@ -13,7 +13,56 @@ import {
 import type { Facts, HistoryEntry, TaskTerminalFact } from './ports.js';
 import { AgentError } from './errors.js';
 
-export const agentRuntimeMigrations: readonly Migration[] = [{ version: 9, name: 'agent-turn-loop', sql: `
+export const agentRuntimeMigrations: readonly Migration[] = [{ version: 1, name: 'independent-agent-sessions', sql: `
+  CREATE TABLE agent_runtime_sessions(session_id uuid PRIMARY KEY,body jsonb NOT NULL,next_seq bigint NOT NULL DEFAULT 1);
+  CREATE TABLE agent_runs(run_id uuid PRIMARY KEY,session_id uuid NOT NULL REFERENCES agent_runtime_sessions(session_id),
+    request_id uuid NOT NULL,input_id uuid NOT NULL,state text NOT NULL,reason text NOT NULL DEFAULT '',
+    generation integer NOT NULL DEFAULT 0,revision bigint NOT NULL DEFAULT 0,stop_requested boolean NOT NULL DEFAULT false,
+    needs_continue boolean NOT NULL DEFAULT false,previous_run_id uuid REFERENCES agent_runs(run_id),
+    context jsonb NOT NULL DEFAULT '{}',created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),completed_at timestamptz);
+  CREATE INDEX agent_runs_session ON agent_runs(session_id,created_at,run_id);
+  CREATE TABLE agent_inputs(input_id uuid PRIMARY KEY,request_id uuid NOT NULL UNIQUE,
+    session_id uuid NOT NULL REFERENCES agent_runtime_sessions(session_id),run_id uuid NOT NULL REFERENCES agent_runs(run_id),
+    seq bigint NOT NULL,version integer NOT NULL DEFAULT 1,mode text NOT NULL,
+    state text NOT NULL DEFAULT 'pending',body jsonb NOT NULL,input_digest text NOT NULL,
+    adopted_step_id uuid,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),UNIQUE(session_id,seq));
+  CREATE TABLE agent_events(session_id uuid NOT NULL REFERENCES agent_runtime_sessions(session_id),seq bigint NOT NULL,
+    event_id uuid NOT NULL UNIQUE,kind text NOT NULL,body jsonb NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),PRIMARY KEY(session_id,seq));
+  CREATE TABLE agent_controls(request_id uuid PRIMARY KEY,session_id uuid NOT NULL,
+    run_id uuid NOT NULL,operation text NOT NULL,input_digest text NOT NULL,body jsonb NOT NULL);
+` }, { version: 2, name: 'fixed-agent-operations-and-waits', sql: `
+  CREATE TABLE agent_steps(step_id uuid PRIMARY KEY,run_id uuid NOT NULL REFERENCES agent_runs(run_id),
+    step_no integer NOT NULL,operation_id uuid NOT NULL UNIQUE,operation jsonb NOT NULL,snapshot jsonb NOT NULL,
+    state text NOT NULL CHECK(state IN ('prepared','dispatching','waiting','unknown','completed')),
+    result jsonb,dispatch_generation integer,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),UNIQUE(run_id,step_no));
+  CREATE TABLE agent_waits(wait_id uuid PRIMARY KEY,run_id uuid NOT NULL REFERENCES agent_runs(run_id),
+    operation_id uuid NOT NULL REFERENCES agent_steps(operation_id),version integer NOT NULL,
+    kind text NOT NULL,state text NOT NULL,presentation jsonb NOT NULL,response jsonb,deadline timestamptz,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp());
+  CREATE INDEX agent_waits_run ON agent_waits(run_id,state);
+` }, { version: 3, name: 'agent-session-state', sql: `
+  ALTER TABLE agent_runtime_sessions ADD COLUMN state jsonb NOT NULL DEFAULT '{}';
+` }, { version: 4, name: 'original-agent-inputs', sql: `
+  ALTER TABLE agent_inputs ADD COLUMN original_body jsonb;
+  UPDATE agent_inputs SET original_body=body;
+  ALTER TABLE agent_inputs ALTER COLUMN original_body SET NOT NULL;
+` }, { version: 5, name: 'agent-model-progress', sql: `
+  CREATE TABLE agent_progress(operation_id uuid NOT NULL REFERENCES agent_steps(operation_id),revision bigint NOT NULL CHECK(revision>0),
+    generation integer NOT NULL,body jsonb NOT NULL,event_id uuid NOT NULL UNIQUE REFERENCES agent_events(event_id),
+    PRIMARY KEY(operation_id,revision));
+` }, { version: 6, name: 'frozen-agent-run-budgets', sql: `
+  ALTER TABLE agent_runs ADD COLUMN budget jsonb NOT NULL DEFAULT '{"maxSteps":128,"maxDispatches":128,"deadline":null}';
+  ALTER TABLE agent_runs ADD COLUMN dispatch_count integer NOT NULL DEFAULT 0 CHECK(dispatch_count>=0);
+  UPDATE agent_runs r SET dispatch_count=(SELECT count(*) FROM agent_steps s WHERE s.run_id=r.run_id AND s.dispatch_generation IS NOT NULL);
+` }, { version: 7, name: 'explicit-operation-continuations', sql: `
+  ALTER TABLE agent_steps ADD COLUMN continuation_open boolean NOT NULL DEFAULT false;
+  ALTER TABLE agent_waits ADD COLUMN continuation_operation_id uuid REFERENCES agent_steps(operation_id);
+` }, { version: 8, name: 'interruptible-agent-waits', sql: `
+  ALTER TABLE agent_waits ADD COLUMN interruptible boolean NOT NULL DEFAULT false;
+` }, { version: 9, name: 'agent-turn-loop', sql: `
   DROP TABLE IF EXISTS agent_progress;
   DROP TABLE IF EXISTS agent_waits;
   DROP TABLE IF EXISTS agent_steps;
@@ -272,7 +321,7 @@ export function createAgentStore(storage: OwnedStorage, options: StoreOptions) {
     const nonce = randomUUID();
     const result = await storage.request({ requestId: 'agent-transition:' + nonce, fingerprint: nonce }, async tx => {
       await tx.query('SELECT session_id FROM agent_runtime_sessions WHERE session_id=$1 FOR UPDATE', [sessionId]);
-      return work(tx);
+      return (await work(tx)) ?? null;
     });
     return result.result as T;
   }
