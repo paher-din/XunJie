@@ -50,7 +50,7 @@ export function createAgentConnection(root: string, connectionId: string, capabi
     const readOnlyQuery = dependency?.success ? isAgentDependencyRead(dependency.data)
       : ['run', 'events', 'snapshot', 'request', 'conversation'].includes(call.operation);
     // Bounded authority checks always consult the original owner and never a saved receipt.
-    if (call.operation === 'assertDispatch' || call.operation === 'authorize') return send(payload);
+    if (call.operation === 'authorize') return send(payload);
     // A pure owner query has no effect to recover. Small replies use one fresh call;
     // large replies still use bounded chunks and release their temporary bytes after decoding.
     if (readOnlyQuery) return chunked(payload, { inline: true, acknowledge: true });
