@@ -36,7 +36,7 @@ export const personalProjectContentSchema = z.object({ title: z.string().trim().
 }).strict();
 export type PersonalProjectContent = z.infer<typeof personalProjectContentSchema>;
 export const personalProjectCreateSchema = z.object({ operationId: z.uuid(), sourceSessionId: z.uuid(), inputId: z.uuid(),
-  responseId: z.uuid().optional(), content: personalProjectContentSchema }).strict();
+  responseId: z.uuid().optional(), proposalKey: z.string().min(1).max(200).optional(), content: personalProjectContentSchema }).strict();
 export type PersonalProjectCreate = z.infer<typeof personalProjectCreateSchema>;
 export const personalProjectSchema = personalProjectCreateSchema.extend({ projectId: z.uuid(), activityId: z.uuid(),
   workspaceSessionId: z.uuid(), identity: spaceIdentitySchema, target: learningTargetSchema,
