@@ -60,7 +60,6 @@ import { authorizePersonalProjectCreation } from '@xunjie/agents/student-assista
 import { agentServiceMigrations, validateAgentServiceStorage, collectAgentServiceSources, validateAgentServiceSources } from '@xunjie/agents/transport/session-storage';
 import { createAgentSessionHandler } from './session-handler.js';
 import { createWorkspaceAgentAuthority } from './workspace-agent-authority.js';
-import { readWorkspaceAgentWait } from './workspace-agent-waits.js';
 import { createSkills } from '@xunjie/learning-space/learning-data/skills';
 import { createSkillTools } from '@xunjie/agents/capabilities/skills/index';
 import { createAgentSessionApplication, type AgentSessionDirectory } from './agent-sessions.js';

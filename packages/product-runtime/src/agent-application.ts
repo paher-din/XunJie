@@ -18,7 +18,6 @@ import type { InstalledConfiguration } from './runtime.js';
 import { createStorageRecoveryOwner } from './storage-recovery.js';
 import { createAgentConnection } from './agent-connections.js';
 import { createProductAgent } from './product-agent.js';
-import { readWorkspaceAgentWait } from './workspace-agent-waits.js';
 import { collectAgentRuntimeBoundary, collectAgentRuntimeReceiverBoundary } from '@xunjie/agent-runtime/maintenance';
 import { readJson } from './io.js';
 import type { CapabilityHandler } from './connections.js';
@@ -74,12 +73,6 @@ export function createStandaloneAgentApplication(options: {
       const ports = dependencies.forSession(session.identity, session.sessionId);
       return { workspace: ports.workspace, learning: ports.learning, courses: ports.courses };
     },
-    waits: { async read(session, wait) {
-      const fixed = z.object({ activityId: z.uuid(), requestId: z.uuid(), association: agentExecutionAssociationSchema }).passthrough().parse(wait.presentation);
-      const directory = await dependencies.sessions.read(session.identity, session.sessionId);
-      if (fixed.activityId !== directory.workspace?.activityId) throw new StorageError('forbidden');
-      return readWorkspaceAgentWait(dependencies.forSession(session.identity, session.sessionId).learning.executions, session, wait);
-    } },
   });
   const service = createAgentSessionService(agent.local, { audience: 'service',
     async authorize(identity, sessionId, operation) {
