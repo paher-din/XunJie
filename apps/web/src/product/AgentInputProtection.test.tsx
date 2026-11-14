@@ -29,7 +29,7 @@ afterEach(async () => {
   environments = []; host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers()
 })
 async function fixture() {
-  const activityId = id(), environmentId = id(), spaceId = id(), principalId = id(), sessionId = id(), runId = id(), inputId = id(), waitId = id()
+  const activityId = id(), environmentId = id(), spaceId = id(), principalId = id(), sessionId = id(), turnId = id(), inputId = id(), questionId = id()
   const scope = JSON.stringify(['session-protection', environmentId, spaceId, principalId, activityId])
   const workspace = new ReliableWorkspace(scope, { read: async () => ({ revision: 0, files: [] }), receipt: async () => null,
     sync: async () => { throw new Error('Unexpected work synchronization') } })
@@ -40,22 +40,26 @@ async function fixture() {
   const identity = { kind: 'personal' as const, environmentId, spaceId, principalId, name: '个人' }
   const client = new AgentSessionsClient({ identity, namespace: 'session-protection', spaceKey: 'personal' })
   const now = new Date().toISOString(), original = '原排队问题', requestId = id()
-  const input = { inputId, runId, version: 1, mode: 'queue', state: 'pending', text: original, createdAt: now }
-  const run = { runId, sessionId, requestId, inputId, state: 'waiting', reason: '', generation: 1, stopRequested: false, needsContinue: false,
-    previousRunId: null, createdAt: now, updatedAt: now, completedAt: null }
-  const wait = { waitId, runId, operationId: id(), version: 1, kind: 'user', state: 'pending', presentation: { question: '观察到了什么？', source: '原实验', options: [], allowText: true, skippable: false }, response: null, deadline: null }
-  const projection = { sessionId, lastSeq: 1, messages: [{ messageId: 'input:' + inputId, inputId, runId, role: 'user', text: original, state: 'settled', createdAt: now }],
-    runs: [run], inputs: [input], waits: [wait], tools: [], workspaces: [] }
+  const input = { inputId, turnId, version: 1, state: 'pending' as 'pending' | 'removed', text: original, createdAt: now }
+  const turn = { turnId, sessionId, requestId, trigger: 'user' as const, originNotificationId: null, state: 'active' as const, reason: '',
+    ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: null }
+  const question = { questionId, sessionId, turnId, stepId: id(), toolCallId: id(), version: 1, state: 'pending' as const,
+    presentation: { question: '观察到了什么？', source: '原实验', options: [], allowText: true, skippable: false },
+    answer: null, answerRequestId: null, deadline: null, createdAt: now, updatedAt: now }
+  const projection = { sessionId, lastSeq: 1, messages: [{ messageId: 'input:' + inputId, inputId, turnId, role: 'user', text: original, state: 'settled', createdAt: now }],
+    turns: [turn], inputs: [input], questions: [question], tools: [], workspaces: [] }
   const writes: { url: string; body: any }[] = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
     if (!options.body) return new Response(JSON.stringify(projection))
     const body = JSON.parse(String(options.body)); writes.push({ url, body })
-    if (url.endsWith('/responses')) { wait.state = 'consumed'; return new Response(JSON.stringify({ runId, waitId })) }
-    input.version++; input.text = body.text
-    return new Response(JSON.stringify({ requestId: body.requestId, input: { ...input, input: { sessionId, requestId, text: input.text, mode: 'queue', context: {} } } }))
+    if (url.endsWith('/responses')) { question.state = 'answered'; return new Response(JSON.stringify({ requestId: body.requestId,
+      questionId, questionVersion: 2, turnId, status: 'accepted', reason: '' })) }
+    input.version++; if (body.operation === 'edit') input.text = body.text; if (body.operation === 'remove') input.state = 'removed'
+    return new Response(JSON.stringify({ requestId: body.requestId, input: { inputId, turnId, version: input.version, state: input.state,
+      input: { sessionId, requestId: body.requestId, text: input.text, context: {} }, createdAt: now } }))
   }))
   await Promise.all([workspace.open(), draft.open()]); await actions.open(); await settle()
-  return { activityId, scope, workspace, draft, actions, actionScope: { environmentId, spaceId, principalId, activityId }, client, sessionId, inputId, waitId, original, writes }
+  return { activityId, scope, workspace, draft, actions, actionScope: { environmentId, spaceId, principalId, activityId }, client, sessionId, inputId, questionId, original, writes }
 }
 function View({ env, standalone = false }: { env: Awaited<ReturnType<typeof fixture>>; standalone?: boolean }) {
   controller = useAgentSession(env.client, env.sessionId, true)
@@ -99,7 +103,7 @@ function failSessionWrites(sessionId: string) {
 function beforeUnloadPrevented() { const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); return event.defaultPrevented }
 async function activityLeave(env: Awaited<ReturnType<typeof fixture>>) { await env.workspace.leave(); await env.draft.leave(); await env.actions.leave() }
 
-describe('session v2 drafts use the actual public input protection contract', () => {
+describe('session drafts use the actual public input protection contract', () => {
   it.each(['response', 'queued revision'] as const)('retains a %s through quota failure, remount, blocked leave and recovery retry', async kind => {
     const env = await fixture(); environments.push(env); await mount(env)
     if (kind === 'queued revision') { await click('编辑这条消息'); expect(host.querySelector('[aria-label="修改这条消息"]')).not.toBeNull() }

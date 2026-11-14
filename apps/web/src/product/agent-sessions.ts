@@ -1,8 +1,8 @@
 import { replaceEqualDeep } from '@tanstack/react-query'
 import { z } from 'zod'
 import { agentSessionSchema, createAgentSessionSchema, updateAgentSessionSchema, type AgentSession, type CreateAgentSession, type UpdateAgentSession } from '@xunjie/contracts/agent-sessions'
-import { agentInputSchema, agentInputReceiptSchema, agentRunSchema, agentEventSchema, type AgentInput } from '@xunjie/contracts/agent-runtime'
-import { agentAcceptedRequestSchema, agentConversationSchema, agentWaitReceiptSchema, type AgentConversation } from '@xunjie/contracts/agent-service'
+import { agentInputSchema, agentInputReceiptSchema, agentEventSchema, agentTurnSchema, agentQuestionReceiptSchema, type AgentInput } from '@xunjie/contracts/agent-runtime'
+import { agentAcceptedRequestSchema, agentConversationSchema, type AgentConversation } from '@xunjie/contracts/agent-service'
 import { learningTargetSchema, type LearningTarget, type SpaceIdentity } from '@xunjie/contracts/spaces'
 
 export interface SessionSubject { identity: SpaceIdentity; spaceKey: string; namespace: string }
@@ -26,7 +26,7 @@ export class AgentSessionsClient {
     const { identity, spaceKey, namespace } = this.subject
     const response = await fetch('/api/learning/agent-sessions' + (route ? '/' + route : ''), {
       method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store',
-      headers: { 'content-type': 'application/json', 'x-xj-agent-contract': '2', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
+      headers: { 'content-type': 'application/json', 'x-xj-agent-contract': '3', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
         'x-xj-expected-subject': [identity.environmentId, identity.spaceId, identity.principalId].join('.') },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(60000),
     })
@@ -71,28 +71,31 @@ export class AgentSessionsClient {
     if (result.some((event, index) => event.sessionId !== sessionId || event.seq <= (result[index - 1]?.seq ?? after))) throw fail('corrupt', '事件不属于原会话或顺序不完整。')
     return result
   }
-  async control(sessionId: string, runId: string, operation: 'stop' | 'continue', requestId: string) {
-    const result = agentRunSchema.parse(await this.request(`${sessionId}/runs/${runId}/${operation}`, { requestId }))
-    if (result.runId !== runId || result.sessionId !== sessionId) throw fail('corrupt', '运行回执不匹配。'); return result
+  async control(sessionId: string, turnId: string, operation: 'stop' | 'continue', requestId: string) {
+    const result = agentTurnSchema.parse(await this.request(`${sessionId}/runs/${turnId}/${operation}`, { requestId }))
+    // Continue opens a new Turn; only stop answers with the Turn it closed.
+    if (result.sessionId !== sessionId || operation === 'stop' && result.turnId !== turnId) throw fail('corrupt', '运行回执不匹配。')
+    return result
   }
-  async respond(sessionId: string, waitId: string, expectedVersion: number, answer: Record<string, any>, requestId: string) {
-    const result = agentWaitReceiptSchema.parse(await this.request(`${sessionId}/waits/${waitId}/responses`, { requestId, expectedVersion, answer }))
-    if (result.waitId !== waitId) throw fail('corrupt', '回应回执不匹配。'); return result
+  async respond(sessionId: string, questionId: string, expectedVersion: number, answer: Record<string, any>, requestId: string) {
+    const result = agentQuestionReceiptSchema.parse(await this.request(`${sessionId}/waits/${questionId}/responses`,
+      { requestId, questionId, expectedVersion, answer }))
+    if (result.questionId !== questionId) throw fail('corrupt', '回应回执不匹配。'); return result
   }
 }
-const startSchema = z.object({ version: z.literal(2), create: createAgentSessionSchema, input: agentInputSchema }).strict()
+const startSchema = z.object({ version: z.literal(3), create: createAgentSessionSchema, input: agentInputSchema }).strict()
 export type SessionStart = z.infer<typeof startSchema>
 type StoragePort = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 /** Persist identities and complete bytes before the first network call. A restart queries the original owner. */
 export class SessionOutbox {
   readonly key: string
-  constructor(readonly client: AgentSessionsClient, private storage: StoragePort = localStorage) { this.key = 'xj.agent-session.v2.' + client.scope }
+  constructor(readonly client: AgentSessionsClient, private storage: StoragePort = localStorage) { this.key = 'xj.agent-session.v3.' + client.scope }
   start(): SessionStart | null { const raw = this.storage.getItem(this.key + '.first'); return raw ? startSchema.parse(JSON.parse(raw)) : null }
   begin(text: string, context: AgentInput['context'] = {}): SessionStart {
     const previous = this.start(); if (previous) return previous
     const sessionId = crypto.randomUUID()
-    const value = startSchema.parse({ version: 2, create: { sessionId, requestId: crypto.randomUUID(), scenario: 'student-assistant', title: text.trim().slice(0, 80) || null },
-      input: { sessionId, requestId: crypto.randomUUID(), text, mode: 'steering', context } })
+    const value = startSchema.parse({ version: 3, create: { sessionId, requestId: crypto.randomUUID(), scenario: 'student-assistant', title: text.trim().slice(0, 80) || null },
+      input: { sessionId, requestId: crypto.randomUUID(), text, context } })
     this.storage.setItem(this.key + '.first', JSON.stringify(value)); return value
   }
   async deliverStart(value = this.start()) {
@@ -124,17 +127,18 @@ export function mergeAgentConversation(previous: AgentConversation | null, next:
     const before = messages.get(message.messageId)
     messages.set(message.messageId, before ? { ...message, createdAt: before.createdAt } : message)
   }
-  const runs = new Map(next.runs.map(run => [run.runId, run]))
+  const turns = new Map(next.turns.map(turn => [turn.turnId, turn]))
   for (const [id, message] of messages) {
-    const run = runs.get(message.runId)
-    if (message.state === 'streaming' && run && ['stopped', 'failed', 'completed', 'paused'].includes(run.state))
-      messages.set(id, { ...message, state: run.state === 'stopped' ? 'stopped' : run.state === 'failed' ? 'failed' : 'settled' })
+    if (message.state !== 'streaming') continue
+    const turn = turns.get(message.turnId)
+    if (!turn || !['completed', 'stopped', 'interrupted', 'failed'].includes(turn.state)) continue
+    messages.set(id, { ...message, state: turn.state === 'stopped' ? 'stopped' : turn.state === 'failed' ? 'failed' : 'settled' })
   }
   const merged = <T,>(before: T[], incoming: T[], key: (item: T) => string) => { const values = new Map(before.map(item => [key(item), item])); for (const item of incoming) values.set(key(item), item); return [...values.values()] }
   return replaceEqualDeep(previous, { ...next, messages: [...messages.values()].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)),
-    runs: merged(previous.runs, next.runs, item => item.runId), inputs: merged(previous.inputs, next.inputs, item => item.inputId),
-    waits: merged(previous.waits, next.waits, item => item.waitId), tools: merged(previous.tools, next.tools, item => item.operationId),
-    workspaces: merged(previous.workspaces, next.workspaces, item => item.operationId) })
+    turns: merged(previous.turns, next.turns, item => item.turnId), inputs: merged(previous.inputs, next.inputs, item => item.inputId),
+    questions: merged(previous.questions, next.questions, item => item.questionId), tools: merged(previous.tools, next.tools, item => item.toolCallId),
+    workspaces: merged(previous.workspaces, next.workspaces, item => item.toolCallId) })
 }
 export function workspaceCard(value: unknown): { activityId: string; title: string; goal?: string; target: LearningTarget } | null {
   const schema = z.object({ activityId: z.uuid(), title: z.string().min(1).optional(), goal: z.string().optional(),
@@ -164,7 +168,7 @@ export function createSessionActionReceiver(client: AgentSessionsClient, session
     await protect(action)
     const outbox = new SessionOutbox(client)
     const result = await outbox.send({ requestId: action.requestId, sessionId: session.sessionId, text: action.draft.question || '请结合所选内容帮助我。',
-      mode: action.delivery?.mode ?? 'steering', context: { action: JSON.parse(JSON.stringify(action)) } })
+      context: { action: JSON.parse(JSON.stringify(action)) } })
     return receipt(action.requestId, inputDigest, result.inputId)
   } }
 }

@@ -45,7 +45,7 @@ function historyState(saved: Scope) {
 function serverRequest(url: string, options: RequestInit = {}) {
   const headers = options.headers as Record<string, string>, scope = headers['x-xj-space']
   expect(headers['x-xj-expected-subject']).toBe([identity.environmentId, identity.spaceId, identity.principalId].join('.'))
-  expect(headers['x-xj-agent-contract']).toBe('2')
+  expect(headers['x-xj-agent-contract']).toBe('3')
   expect(headers['x-xj-namespace']).toBe('client')
   const saved = savedScope(scope), body = JSON.parse(String(options.body ?? '{}'))
   if (url === '/api/learning/agent-sessions/update') {

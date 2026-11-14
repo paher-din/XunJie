@@ -23,7 +23,7 @@ vi.mock('./ActivityPage', () => ({ ActivityPage: ({ workspaceRef }: { workspaceR
 } }))
 const actor = { environmentId: crypto.randomUUID(), spaceId: crypto.randomUUID(), principalId: crypto.randomUUID(), kind: 'personal', name: '学生' }
 const owner = { version: 1, connectionId: crypto.randomUUID(), installationId: crypto.randomUUID(), target: { environmentId: actor.environmentId, serviceId: crypto.randomUUID(),
-  endpoint: 'https://agent.example.test', unit: 'teaching-agent', protocolVersion: 1, capabilities: ['agent.sessions.v2'] } }
+  endpoint: 'https://agent.example.test', unit: 'teaching-agent', protocolVersion: 1, capabilities: ['agent.sessions.v3'] } }
 const now = '2026-11-13T00:00:00.000Z'
 let root: Root, host: HTMLDivElement, sessions: Map<string, AgentSession>, conversations: Map<string, AgentConversation>, receipts: Map<string, any>
 let writes: { path: string; body: any }[], loss: boolean, activityReads: number, workspaces: any[]
@@ -65,14 +65,14 @@ beforeEach(() => {
     if (path.startsWith('activities/')) return response(workspaces.find(item => item.activityId === path.split('/')[1]))
     if (path.startsWith('skills')) return response({ skills: [] })
     if (!path.startsWith('agent-sessions')) throw new Error('Unexpected endpoint ' + path)
-    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('2')
+    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('3')
     expect(new Headers(options.headers).get('x-xj-space')).toBe('personal')
     if (path === 'agent-sessions' && !body) return response({ items: [...sessions.values()] })
     if (path === 'agent-sessions' && body) {
       const value = { ...body, identity: actor, owner, title: body.title ?? null, pinned: false, archived: false, deleted: false,
         state: 'ready', createdAt: now, updatedAt: now, readyAt: now } as AgentSession
       sessions.set(body.sessionId, value)
-      conversations.set(body.sessionId, { sessionId: body.sessionId, lastSeq: 0, messages: [], runs: [], inputs: [], waits: [], tools: [], workspaces: [] })
+      conversations.set(body.sessionId, { sessionId: body.sessionId, lastSeq: 0, messages: [], turns: [], inputs: [], questions: [], tools: [], workspaces: [] })
       return response(value)
     }
     if (path === 'agent-sessions/update') {
@@ -85,16 +85,16 @@ beforeEach(() => {
     if (parts[2]?.startsWith('conversation')) return response(conversations.get(sessionId))
     if (parts[2] === 'requests') return response(receipts.get(parts[3]! ) ?? null)
     if (parts[2] === 'inputs' && parts.length === 3) {
-      const input = body as AgentInput, inputId = crypto.randomUUID(), runId = crypto.randomUUID()
-      const receipt = { requestId: input.requestId, sessionId, inputId, runId, inputDigest: 'a'.repeat(64) }
+      const input = body as AgentInput, inputId = crypto.randomUUID(), turnId = crypto.randomUUID()
+      const receipt = { requestId: input.requestId, sessionId, inputId, turnId, inputDigest: 'a'.repeat(64) }
       receipts.set(input.requestId, { receipt, input })
-      const run = { sessionId, inputId, runId, requestId: input.requestId, state: 'completed' as const, reason: '', generation: 1, stopRequested: false,
-        needsContinue: false, previousRunId: null, createdAt: now, updatedAt: now, completedAt: now }
+      const turn = { turnId, sessionId, requestId: input.requestId, trigger: 'user' as const, originNotificationId: null,
+        state: 'completed' as const, reason: '', ownerInstanceId: 'test', createdAt: now, updatedAt: now, completedAt: now }
       const value = conversations.get(sessionId)!
-      conversations.set(sessionId, { ...value, lastSeq: value.lastSeq + 2, runs: [...value.runs, run],
-        messages: [...value.messages, { messageId: inputId, inputId, runId, role: 'user', text: input.text, createdAt: now, state: 'settled' },
-          { messageId: crypto.randomUUID(), runId, role: 'assistant', text: '递归通过更小的同类问题求解。', createdAt: now, state: 'settled' }],
-        inputs: [...value.inputs, { inputId, runId, version: 1, mode: input.mode, state: 'adopted', text: input.text, createdAt: now }] })
+      conversations.set(sessionId, { ...value, lastSeq: value.lastSeq + 2, turns: [...value.turns, turn],
+        messages: [...value.messages, { messageId: inputId, inputId, turnId, role: 'user', text: input.text, createdAt: now, state: 'settled' },
+          { messageId: crypto.randomUUID(), turnId, role: 'assistant', text: '递归通过更小的同类问题求解。', createdAt: now, state: 'settled' }],
+        inputs: [...value.inputs, { inputId, turnId, version: 1, state: 'adopted', text: input.text, createdAt: now }] })
       if (loss) throw new Error('lost reply')
       return response(receipt)
     }
@@ -150,11 +150,11 @@ it('the formal sidebar renames, pins, archives, restores and deletes the same se
 
 it('a confirmed workspace tool result refreshes the formal home tiles and opens the real activity', async () => {
   await mount(); await send('创建一个练习项目'); await waitFor(() => expect(sessions.size).toBe(1))
-  const sessionId = [...sessions.keys()][0]!, conversation = conversations.get(sessionId)!, runId = conversation.runs[0]!.runId, activityId = crypto.randomUUID()
+  const sessionId = [...sessions.keys()][0]!, conversation = conversations.get(sessionId)!, turnId = conversation.turns[0]!.turnId, activityId = crypto.randomUUID()
   const activity = { activityId, identity: actor, target: { environmentId: actor.environmentId, serviceId: crypto.randomUUID(), version: 1 }, question: '递归练习', goal: '递归练习', references: [], status: 'open', createdAt: now }
   workspaces.push(activity)
   conversation.lastSeq++
-  conversation.workspaces.push({ operationId: crypto.randomUUID(), runId, workspace: { ...activity, title: '递归练习' } })
+  conversation.workspaces.push({ toolCallId: crypto.randomUUID(), turnId, workspace: { ...activity, title: '递归练习' } })
   const before = activityReads
   await act(async () => { window.dispatchEvent(new Event('focus')); await settle() })
   await waitFor(() => expect(host.querySelector('.msg-task-card')).not.toBeNull())

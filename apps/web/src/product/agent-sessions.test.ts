@@ -6,14 +6,14 @@ import type { AgentConversation } from '@xunjie/contracts/agent-service'
 const id = () => crypto.randomUUID()
 const actor = { environmentId: id(), spaceId: id(), principalId: id(), kind: 'personal' as const, name: '学生' }
 const owner = { version: 1 as const, connectionId: id(), installationId: id(), target: { environmentId: id(), serviceId: id(),
-  unit: 'teaching-agent' as const, endpoint: 'https://agent.example.test', protocolVersion: 1 as const, capabilities: ['agent.sessions.v2'] } }
+  unit: 'teaching-agent' as const, endpoint: 'https://agent.example.test', protocolVersion: 1 as const, capabilities: ['agent.sessions.v3'] } }
 const target = { environmentId: actor.environmentId, serviceId: id(), version: 1 as const }
 let sessions: Map<string, AgentSession>, inputs: Map<string, any>, calls: { path: string; body?: any }[], loseReply: boolean
 const storage = () => { const map = new Map<string, string>(); return { getItem: (key: string) => map.get(key) ?? null, setItem: (key: string, value: string) => { map.set(key, value) }, removeItem: (key: string) => { map.delete(key) } } }
 beforeEach(() => {
   sessions = new Map(); inputs = new Map(); calls = []; loseReply = false
   vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
-    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('2')
+    expect(new Headers(options.headers).get('x-xj-agent-contract')).toBe('3')
     expect(new Headers(options.headers).get('x-xj-expected-subject')).toBe([actor.environmentId, actor.spaceId, actor.principalId].join('.'))
     const path = url.replace('/api/learning/', ''), body = options.body ? JSON.parse(String(options.body)) : undefined
     calls.push({ path, body })
@@ -29,7 +29,7 @@ beforeEach(() => {
     if (parts.length === 2) return sessions.has(sessionId) ? respond(sessions.get(sessionId)) : respond({ error: 'missing' }, 404)
     if (parts[2] === 'requests') return respond(inputs.get(parts[3]!) ?? null)
     if (parts[2] === 'inputs' && body) {
-      const receipt = { requestId: body.requestId, sessionId, inputId: id(), runId: id(), inputDigest: 'a'.repeat(64) }
+      const receipt = { requestId: body.requestId, sessionId, inputId: id(), turnId: id(), inputDigest: 'a'.repeat(64) }
       inputs.set(body.requestId, { receipt, input: body })
       if (loseReply) { loseReply = false; throw new Error('lost ACK') }
       return respond(receipt)
@@ -58,15 +58,17 @@ it('workspace inputs retain the actual ActionInput in context and never reuse th
   const activityId = id(), workspace = await client.workspace(activityId, target)
   expect(workspace.sessionId).not.toBe(home.session.sessionId)
   const action = { requestId: id(), scope: { ...actor, activityId }, draft: { question: '分析当前作品' } }
-  const input = { requestId: action.requestId, sessionId: workspace.sessionId, text: '分析当前作品', mode: 'steering' as const, context: { action } }
+  const input = { requestId: action.requestId, sessionId: workspace.sessionId, text: '分析当前作品', context: { action } }
   await outbox.send(input)
   expect(inputs.get(action.requestId).input.context.action).toEqual(action)
   expect(calls.find(call => call.path === 'agent-sessions/workspace')!.body).toEqual({ activityId, target })
 })
 it('incremental reads retain prior messages and update streaming messages by stable identity without duplicating workspace cards', () => {
-  const sessionId = id(), runId = id(), messageId = id(), operationId = id()
-  const base = { sessionId, lastSeq: 2, messages: [{ messageId, runId, role: 'assistant', text: '递', createdAt: '2026-11-13T00:00:00Z', state: 'streaming' }], runs: [], inputs: [], waits: [], tools: [], workspaces: [] } as unknown as AgentConversation
-  const next = { ...base, lastSeq: 3, messages: [{ ...base.messages[0]!, text: '递归', state: 'settled' }], workspaces: [{ operationId, runId, workspace: { activityId: id(), title: '递归练习', target } }] } as AgentConversation
+  const sessionId = id(), turnId = id(), messageId = id(), toolCallId = id()
+  const base = { sessionId, lastSeq: 2, messages: [{ messageId, turnId, role: 'assistant', text: '递', createdAt: '2026-11-13T00:00:00Z', state: 'streaming' }],
+    turns: [], questions: [], inputs: [], tools: [], workspaces: [] } as unknown as AgentConversation
+  const next = { ...base, lastSeq: 3, messages: [{ ...base.messages[0]!, text: '递归', state: 'settled' }],
+    workspaces: [{ toolCallId, turnId, workspace: { activityId: id(), title: '递归练习', target } }] } as AgentConversation
   const merged = mergeAgentConversation(base, next)
   expect(merged.messages).toHaveLength(1); expect(merged.messages[0]!.text).toBe('递归')
   expect(mergeAgentConversation(merged, { ...next, messages: [], workspaces: [] }).messages).toHaveLength(1)
@@ -91,12 +93,14 @@ it('the reliable workspace receiver sends complete protected ActionInput bytes a
   await expect(receiver.accept({ ...action, scope: { ...action.scope, activityId: id() } }, digest)).rejects.toMatchObject({ code: 'forbidden' })
   await expect(receiver.query(action.requestId, 'b'.repeat(64))).rejects.toMatchObject({ code: 'identity-conflict' })
 })
-it('settles retained streaming text when the run stops without a final assistant event and keeps its original message position', () => {
-  const sessionId = id(), runId = id(), inputId = id(), createdAt = '2026-11-13T00:00:00.000Z'
-  const run = { runId, sessionId, requestId: id(), inputId, state: 'running' as const, reason: '', generation: 1, stopRequested: false, needsContinue: false, previousRunId: null, createdAt, updatedAt: createdAt, completedAt: null }
-  const original: AgentConversation = { sessionId, lastSeq: 3, messages: [{ messageId: 'assistant:' + id(), runId, role: 'assistant', text: '已有半段回答', createdAt, state: 'streaming' }], runs: [run], inputs: [], tools: [], waits: [], workspaces: [] }
+it('settles retained streaming text when the turn stops without a final assistant event and keeps its original message position', () => {
+  const sessionId = id(), turnId = id(), createdAt = '2026-11-13T00:00:00.000Z'
+  const turn = { turnId, sessionId, requestId: id(), trigger: 'user' as const, originNotificationId: null, state: 'active' as const, reason: '',
+    ownerInstanceId: 'local', createdAt, updatedAt: createdAt, completedAt: null }
+  const original: AgentConversation = { sessionId, lastSeq: 3, turns: [turn], questions: [], tools: [], workspaces: [],
+    messages: [{ messageId: 'assistant:' + id(), turnId, role: 'assistant', text: '已有半段回答', createdAt, state: 'streaming' }], inputs: [] }
   const more = mergeAgentConversation(original, { ...original, lastSeq: 4, messages: [{ ...original.messages[0]!, text: '已有半段回答，继续', createdAt: '2026-11-13T00:00:02.000Z' }] })
   expect(more.messages[0]!.createdAt).toBe(createdAt)
-  const stopped = mergeAgentConversation(more, { ...more, lastSeq: 5, messages: [], runs: [{ ...run, state: 'stopped', stopRequested: true }] })
+  const stopped = mergeAgentConversation(more, { ...more, lastSeq: 5, messages: [], turns: [{ ...turn, state: 'stopped', reason: 'student-stop', completedAt: createdAt }] })
   expect(stopped.messages[0]).toMatchObject({ text: '已有半段回答，继续', state: 'stopped', createdAt })
 })
